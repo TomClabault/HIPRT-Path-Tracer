@@ -536,12 +536,12 @@ void GPUKernelCompilerOptions::set_pointer_to_macro(const std::string& name, std
 		m_options_macro_map[name] = pointer_to_value;
 }
 
-const std::unordered_map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_options_macro_map() const
+const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_options_macro_map() const
 {
 	return m_options_macro_map;
 }
 
-const std::unordered_map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_custom_macro_map() const
+const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_custom_macro_map() const
 {
 	return m_custom_macro_map;
 }

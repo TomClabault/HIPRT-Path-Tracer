@@ -104,7 +104,9 @@ public:
 	LightTreeATSBuilderOptions& get_light_tree_sg_build_options();
 	LightTreeSGSamplingDataStructure& get_light_tree_sg_sampling_data_structure();
 
+	bool gmon_used() const;
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
+	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();

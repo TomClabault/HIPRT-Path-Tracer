@@ -12,6 +12,7 @@
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -178,12 +179,12 @@ private:
 	// Which option macros (as defined in KernelOptions.h) the kernel uses.
 	// 
 	// See uses_macro() for some examples of what "use" means.
-	std::unordered_set<std::string> m_used_option_macros;
+	std::set<std::string> m_used_option_macros;
 
 	// An additional map of macros to pass to the compiler for this kernel and their values.
 	//
 	// Example: { "ReSTIR_DI_InitialCandidatesKernel", 1 }
-	std::unordered_map<std::string, int> m_additional_compilation_macros;
+	std::map<std::string, int> m_additional_compilation_macros;
 
 	// Options/macros used by the compiler when compiling this kernel
 	GPUKernelCompilerOptions m_compiler_options;

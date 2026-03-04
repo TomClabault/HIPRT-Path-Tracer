@@ -83,7 +83,12 @@ private:
 template <typename RenderPassType>
 std::shared_ptr<RenderPassType> RenderGraph::create_render_pass()
 {
-	return std::make_shared<RenderPassType>(m_renderer, m_compiler_options);
+	std::shared_ptr<RenderPassType> pass = std::make_shared<RenderPassType>(m_renderer, m_compiler_options);
+
+	for (auto& [kernel_name, kernel] : pass->get_all_kernels())
+		kernel->get_kernel_options() = *m_compiler_options;
+
+	return pass;
 }
 
 #endif

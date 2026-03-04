@@ -80,7 +80,7 @@ public:
 	 * if the given kernel uses this two macros (if the kernel has some "#if == DirectLightNEEEstimator", "#ifdef DirectLightNEEEstimator"
 	 * directives or similar in its code)
 	 */
-	std::unordered_set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel);
+	std::set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel);
 
 	/**
 	 * For background kernel precompilation, threads compiling kernels actually open the kernel

@@ -7,6 +7,7 @@
 #define GPU_KERNEL_OPTIONS_H
 
 #include <memory>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -230,12 +231,12 @@ public:
 	/**
 	 * Returns the map that stores the macro names with their associated values
 	 */
-	const std::unordered_map<std::string, std::shared_ptr<int>>& get_options_macro_map() const;
+	const std::map<std::string, std::shared_ptr<int>>& get_options_macro_map() const;
 
 	/**
 	 * Returns the map that stores the custom macro names with their associated values
 	 */
-	const std::unordered_map<std::string, std::shared_ptr<int>>& get_custom_macro_map() const;
+	const std::map<std::string, std::shared_ptr<int>>& get_custom_macro_map() const;
 
 	/**
 	 * Removes all options from this instance
@@ -261,11 +262,11 @@ private:
 	// another instance of GPUKernelCompilerOptions. This requires having the value
 	// of our macro point to the value of the other GPUKernelCompilerOptions instance
 	// and we need pointers for that
-	std::unordered_map<std::string, std::shared_ptr<int>> m_options_macro_map;
+	std::map<std::string, std::shared_ptr<int>> m_options_macro_map;
 
 	// This "custom macro" map contains the macros given by the user with set_macro_value().
 	// Any macro that isn't defined in KernelOptions.h will be found in this custom macro map
-	std::unordered_map<std::string, std::shared_ptr<int>> m_custom_macro_map;
+	std::map<std::string, std::shared_ptr<int>> m_custom_macro_map;
 };
 
 #endif

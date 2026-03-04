@@ -291,10 +291,6 @@ struct HIPRTRenderSettings
 	 */
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const
 	{
-		static int counter = 0;
-		if( hippt::is_pixel_index(0, 0) && counter % 10 == 0)
-			printf("Direct: %d && %d\nGI: %d && %d\n\n", DirectLightNEEEstimator == LSS_RESTIR_DI, restir_di_settings.common_temporal_pass.do_temporal_reuse_pass, PathSamplingStrategy == PSS_RESTIR_GI, restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass);
-
 		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
 		// (as far as the codebase goes at the time of writing this function anyways)
 		bool need_g_buffer = false;

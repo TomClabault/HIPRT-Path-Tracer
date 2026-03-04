@@ -120,7 +120,7 @@ void GPURendererThread::setup_render_graphs()
 	 */
 
 	RenderGraph& render_graph_interactivity = m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME];
-	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_BASE_POWER);
+	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = render_graph_interactivity.create_render_pass<FillGBufferRenderPass>();
@@ -374,6 +374,11 @@ std::unordered_map<std::string, RenderGraph>& GPURendererThread::get_render_grap
 }
 
 std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass()
+{
+	return std::dynamic_pointer_cast<GMoNRenderPass>(m_active_render_graph->get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+}
+
+std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass() const
 {
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_active_render_graph->get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 }

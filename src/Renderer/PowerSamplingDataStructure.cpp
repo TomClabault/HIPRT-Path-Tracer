@@ -4,11 +4,13 @@
 
 PowerSamplingDataStructure::PowerSamplingDataStructure(GPURenderer* renderer) : m_renderer(renderer) {}
 
-void PowerSamplingDataStructure::compute_from_scene(const Scene& scene)
+void PowerSamplingDataStructure::compute_from_scene(const Scene& scene, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
 {
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
 
 	compute(
+		compiler_options, 
+
 		scene.emissive_triangles_primitive_indices,
 		scene.vertices_positions,
 		scene.triangles_vertex_indices,
@@ -22,14 +24,18 @@ void PowerSamplingDataStructure::compute_from_scene(const Scene& scene)
 	// the initialization of the renderer
 }
 
-void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
+void PowerSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
 	if (skip_if_already_computed && m_alias_table_aliases.get_byte_size() > 0)
 		// Already computed
 		return;
 
-	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count))
+	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count, compiler_options))
+	{
+		free();
+
 		return;
+	}
 
 	m_renderer->synchronize_all_kernels();
 
@@ -41,6 +47,8 @@ void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_comput
 	std::vector<int> material_indices = hiprt_scene.material_indices.download_data();
 
 	compute(
+		compiler_options,
+
 		emissive_triangle_indices,
 		vertices_positions,
 		triangles_indices,
@@ -53,6 +61,8 @@ void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_comput
 }
 
 void PowerSamplingDataStructure::compute(
+	std::shared_ptr<GPUKernelCompilerOptions> compiler_options,
+
 	const std::vector<int>& emissive_triangle_indices,
 	const std::vector<float3_t>& vertices_positions,
 	const std::vector<int>& triangles_indices,
@@ -64,6 +74,8 @@ void PowerSamplingDataStructure::compute(
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, [
 		this,
+		compiler_options,
+
 		&emissive_triangle_indices,
 		&vertices_positions,
 		&triangles_indices,
@@ -74,7 +86,7 @@ void PowerSamplingDataStructure::compute(
 		{
 			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
 
-			if (!is_needed(emissive_triangle_indices.size()))
+			if (!is_needed(emissive_triangle_indices.size(), compiler_options))
 			{
 				free();
 
@@ -142,18 +154,17 @@ void PowerSamplingDataStructure::free()
 	render_data.buffers.emissive_triangles_power_alias_table.sum_elements = 0;
 }
 
-bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count)
+bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
 {
-	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
-	bool directly_using_power = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_POWER;
+	bool directly_using_power = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_POWER;
 	bool using_regir_power =
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		(global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL) == LSS_BASE_POWER ||
-			global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL) == LSS_BASE_POWER);
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
+		(compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL) == LSS_BASE_POWER ||
+			compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL) == LSS_BASE_POWER);
 	bool regir_using_light_distributions_using_power_sampling =
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE) == LSS_BASE_POWER;
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE) == LSS_BASE_POWER;
 
 	return (directly_using_power || using_regir_power || regir_using_light_distributions_using_power_sampling) && emissive_count > 0;
 }

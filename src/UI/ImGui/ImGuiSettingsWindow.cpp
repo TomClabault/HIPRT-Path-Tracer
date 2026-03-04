@@ -105,8 +105,7 @@ void ImGuiSettingsWindow::draw_header()
 		else
 		{
 			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
-			std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
-			if (gmon_render_pass && gmon_render_pass->is_render_pass_used() && gmon_render_pass->recomputation_requested())
+			if (m_renderer->gmon_used() && m_renderer->get_gmon_render_pass()->recomputation_requested())
 				// If we're waiting for GMoN, indicating it
 				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
 			else
@@ -332,7 +331,7 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 		{
 			if (ImGui::InputInt("Max sample count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-			if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
+			if (m_renderer->gmon_used())
 			{
 				// Using GMoN
 
@@ -578,7 +577,7 @@ bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_typ
 		return !render_settings.has_access_to_adaptive_sampling_buffers();
 
 	case DisplayViewType::GMON_BLEND:
-		return !m_renderer->get_gmon_render_pass()->is_render_pass_used();
+		return !m_renderer->gmon_used();
 
 	case DisplayViewType::DENOISED_BLEND:
 		return !m_application_settings->enable_denoising;
@@ -3045,7 +3044,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::TreePop();
 	}
 
-	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count());
+	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
 	if (light_tree_used_by_regir)
 		draw_light_tree_ATS_settings_panel();
 }

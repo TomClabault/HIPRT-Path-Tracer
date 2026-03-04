@@ -326,7 +326,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 	return final_cache_key;
 }
 
-std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
+std::set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
 {
 	if (kernel.is_precompiled())
 		// If this kernel is being precompiled, we can increment the counter
@@ -366,7 +366,7 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 			yet_to_process_includes.push_back(new_include);
 	}
 
-	std::unordered_set<std::string> option_macro_names;
+	std::set<std::string> option_macro_names;
 	for (const std::string& include : already_processed_includes)
 	{
 		std::unordered_set<std::string> include_option_macros = read_option_macro_of_file(include);

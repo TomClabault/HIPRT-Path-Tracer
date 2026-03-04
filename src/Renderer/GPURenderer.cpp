@@ -200,29 +200,18 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 
 void GPURenderer::compute_emissives_sampling_data_structure_from_scene(const Scene& scene)
 {
-	m_power_sampling_data_structure.compute_from_scene(scene);
-	m_light_tree_ats_sampling_data_structure.compute_from_scene(scene);
-	m_light_tree_sg_sampling_data_structure.compute_from_scene(scene);
+	m_power_sampling_data_structure.compute_from_scene(scene,  get_active_render_graph().get_compiler_options());
+	m_light_tree_ats_sampling_data_structure.compute_from_scene(scene, get_active_render_graph().get_compiler_options());
+	m_light_tree_sg_sampling_data_structure.compute_from_scene(scene, get_active_render_graph().get_compiler_options());
 }
 
 void GPURenderer::recompute_emissives_sampling_data_structure()
 {
 	synchronize_all_kernels();
 
-	if (m_power_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
-		m_power_sampling_data_structure.recompute_if_needed();
-	else
-		m_power_sampling_data_structure.free();
-
-	if (m_light_tree_ats_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
-		m_light_tree_ats_sampling_data_structure.recompute_if_needed();
-	else
-		m_light_tree_ats_sampling_data_structure.free();
-
-	if (m_light_tree_sg_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
-		m_light_tree_sg_sampling_data_structure.recompute_if_needed();
-	else
-		m_light_tree_sg_sampling_data_structure.free();
+	m_power_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options());
+	m_light_tree_ats_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options());
+	m_light_tree_sg_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options());
 
 	get_NEE_plus_plus_render_pass()->reset(false);
 }
@@ -247,7 +236,17 @@ LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_s
 	return m_light_tree_sg_sampling_data_structure;
 }
 
+bool GPURenderer::gmon_used() const
+{
+	return get_gmon_render_pass() && get_gmon_render_pass()->is_render_pass_used();
+}
+
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
+{
+	return m_render_thread.get_gmon_render_pass();
+}
+
+std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass() const
 {
 	return m_render_thread.get_gmon_render_pass();
 }
@@ -299,9 +298,9 @@ void GPURenderer::step_animations(float delta_time)
 
 void GPURenderer::prepare_light_sampling_data_structures()
 {
-	m_power_sampling_data_structure.recompute_if_needed(true);
-	m_light_tree_ats_sampling_data_structure.recompute_if_needed(true);
-	m_light_tree_sg_sampling_data_structure.recompute_if_needed(true);
+	m_power_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options(), true);
+	m_light_tree_ats_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options(), true);
+	m_light_tree_sg_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options(), true);
 }
 
 void GPURenderer::download_status_buffers()
@@ -434,7 +433,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	if (m_render_data.render_settings.sample_number == 0)
 		// If this is the very first sample, launching the prepass
 		// of all the render passes
-		m_render_thread.get_active_render_graph().prepass();
+		get_active_render_graph().prepass();
 
 	HIPRTRenderData render_data_for_frame				= m_render_data;
 	GPUKernelCompilerOptions compiler_options_for_frame = active_render_graph->get_compiler_options()->deep_copy();
@@ -476,9 +475,8 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop)
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer()
 {
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass = get_gmon_render_pass();
-	if (gmon_render_pass && gmon_render_pass->is_render_pass_used() && gmon_render_pass->buffers_allocated())
-		return gmon_render_pass->get_result_framebuffer();
+	if (gmon_used() && get_gmon_render_pass()->buffers_allocated())
+		return get_gmon_render_pass()->get_result_framebuffer();
 	else
 		return m_framebuffer;
 }
@@ -641,7 +639,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
 
-	for (auto& name_to_kernel : m_render_thread.get_active_render_graph().get_all_kernels())
+	for (auto& name_to_kernel : get_active_render_graph().get_all_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -651,7 +649,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
 
-	for (auto& name_to_kernel : m_render_thread.get_active_render_graph().get_tracing_kernels())
+	for (auto& name_to_kernel : get_active_render_graph().get_tracing_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -672,9 +670,9 @@ oroStream_t GPURenderer::get_main_stream()
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
-	m_render_thread.get_active_render_graph().compute_render_times();
+	get_active_render_graph().compute_render_times();
 
-	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_active_render_graph().get_full_frame_time();
+	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = get_active_render_graph().get_full_frame_time();
 }
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
@@ -691,7 +689,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 {
 	compute_render_pass_times();
 
-	m_render_thread.get_active_render_graph().update_perf_metrics(perf_metrics);
+	get_active_render_graph().update_perf_metrics(perf_metrics);
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 }

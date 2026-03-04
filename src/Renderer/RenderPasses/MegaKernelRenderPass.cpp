@@ -11,7 +11,6 @@
 
 const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Megakernel Render Pass";
 const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL = "Megakernel (1 SPP)";
-const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION = "Megakernel (ReGIR interactivity)";
 
 MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : MegaKernelRenderPass(renderer, options, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME) {}
 MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name) : RenderPass(renderer, options, name)
@@ -22,16 +21,6 @@ MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, std::shared_pt
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
-	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
-	options_not_synchronized.insert(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION] = std::make_shared<GPUKernel>();
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->set_kernel_function_name("MegaKernel");
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->synchronize_options_with(m_compiler_options, options_not_synchronized);
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 }
 
 bool MegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -45,12 +34,6 @@ bool MegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOro
 	{
 		updated = true;
 		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-	}
-
-	if (!m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->has_been_compiled() && m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR)
-	{
-		updated = true;
-		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
 	return updated;
@@ -87,12 +70,7 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 
 	void* launch_args[] = { &render_data };
 
-	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR && m_render_window->is_interacting())
-		// If we're using ReGIR and we're interacting with the camera, using another kernel which uses a light
-		// tree for light sampling because ReGIR isn't good for interactivity
-		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
-	else
-		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
 }
@@ -118,14 +96,4 @@ bool MegaKernelRenderPass::is_render_pass_used() const
 	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_GI;
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> MegaKernelRenderPass::get_all_kernels()
-{
-	std::map<std::string, std::shared_ptr<GPUKernel>> kernels = m_kernels;
-
-	if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BASE_REGIR)
-		kernels.erase(MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION);
-
-	return kernels;
 }

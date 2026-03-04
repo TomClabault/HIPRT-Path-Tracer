@@ -13,7 +13,6 @@ class MegaKernelRenderPass : public RenderPass
 public:
 	static const std::string MEGAKERNEL_RENDER_PASS_NAME;
 	static const std::string MEGAKERNEL_KERNEL;
-	static const std::string MEGAKERNEL_KERNEL_REGIR_INTERACTION;
 
 	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name);
@@ -33,8 +32,6 @@ public:
 	virtual void reset(bool reset_by_camera_movement) override;
 
 	virtual bool is_render_pass_used() const override;
-
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels();
 
 private:
 	int2_t m_render_resolution = make_int2(0, 0);

@@ -1128,8 +1128,7 @@ bool RenderWindow::needs_viewport_refresh()
 	if (!needs_refresh)
 		return false;
 
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
-	if (gmon_render_pass && gmon_render_pass->is_render_pass_used())
+	if (m_renderer->gmon_used())
 	{
 		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
 		// before refreshing the viewport

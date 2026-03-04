@@ -94,9 +94,6 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 	void* launch_args[] = { &render_data };
 
-	std::cerr << "Resolution: " << m_render_resolution.x * m_render_resolution.y << std::endl;
-	std::cerr << "\tGBuffer res & prev: " << m_g_buffer.geometric_normals.get_element_count() << " / " << m_g_buffer_prev_frame.geometric_normals.get_element_count() << std::endl;
-
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
 																			   m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
