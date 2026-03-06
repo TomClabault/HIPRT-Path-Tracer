@@ -58,6 +58,12 @@
 // - Reuse on specular is ok
 // - Using rejection heuristics is better
 // -------------------------- DIRTY FIX RIGHT NOW --------------------------
+//
+// -------------------------- TLDR OF THE SOLUTION: --------------------------
+// ReSTIR GI as presented in the original paper will always be biased because it is resampling whole path trees. The RIS theory does not support resampling full
+// path trees. Only paths can be resampled, the same as in ReSTIR PT. This is why ReSTIR GI will always be biased, if even re-evaluating both BSDFs at the
+// visible point and sample point.
+// -------------------------- TLDR OF THE SOLUTION: --------------------------
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)

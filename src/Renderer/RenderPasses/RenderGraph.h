@@ -25,6 +25,7 @@ public:
 	void set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	template <typename RenderPassType>
+		requires std::derived_from<RenderPassType, RenderPass>
 	std::shared_ptr<RenderPassType> create_render_pass();
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
@@ -89,12 +90,16 @@ private:
 };
 
 template <typename RenderPassType>
+	requires std::derived_from<RenderPassType, RenderPass>
 std::shared_ptr<RenderPassType> RenderGraph::create_render_pass()
 {
 	std::shared_ptr<RenderPassType> pass = std::make_shared<RenderPassType>(m_renderer, m_compiler_options);
+	pass->set_compiler_options(m_compiler_options);
 
-	for (auto& [kernel_name, kernel] : pass->get_all_kernels())
-		kernel->get_kernel_options() = *m_compiler_options;
+	// We need this commented otherwise kernels that set custom options in the constructor of the render pass get overriden by this (ReSTIR GI and the
+	// DirectionalReuseCompute kernel option for example)
+	/*for (auto& [kernel_name, kernel] : pass->get_all_kernels())
+		kernel->get_kernel_options() = *m_compiler_options;*/
 
 	return pass;
 }
