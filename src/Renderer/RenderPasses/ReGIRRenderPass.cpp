@@ -532,8 +532,6 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 {
 	bool has_rehashed = false;
 
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-
 	do
 	{
 		update_all_cell_alive_count(render_data);
@@ -575,8 +573,6 @@ void ReGIRRenderPass::launch_grid_fill(HIPRTRenderData& render_data,
 									   bool for_pre_integration,
 									   oroStream_t stream)
 {
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-
 	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int reservoirs_per_cell   = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 
@@ -637,7 +633,6 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 
 	for (int i = 0; i < render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count; i++)
 	{
-		render_data.random_number														  = m_renderer->get_rng_generator().xorshift32();
 		render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
 
 		void* launch_args[] = { &render_data, &first_input_reservoirs, &first_output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive,
@@ -683,12 +678,8 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 		return;
 
-	unsigned int seed_backup = render_data.random_number;
-
 	for (int i = 0; i < render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor; i++)
 	{
-		render_data.random_number = m_local_rng.xorshift32();
-
 		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
 		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_correlation_reduction_copy(render_data, spatial_output);
@@ -700,8 +691,6 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 		render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available =
 								m_hash_grid_storage.get_correlation_reduction_frames_available();
 	}
-
-	render_data.random_number = seed_backup;
 }
 
 void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
@@ -782,7 +771,6 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream)
 {
-	unsigned int seed_backup	= render_data.random_number;
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int nb_threads		= hippt::min(nb_cells_alive,
 											 (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
@@ -792,13 +780,9 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 
 	for (int i = 0; i < render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 	{
-		render_data.random_number = m_local_rng.xorshift32();
-
 		launch_grid_fill(render_data, primary_hit, true, stream);
 		launch_spatial_reuse(render_data, primary_hit, true, stream);
 	}
-
-	render_data.random_number = seed_backup;
 }
 
 bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data)

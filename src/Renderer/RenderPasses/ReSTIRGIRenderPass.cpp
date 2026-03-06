@@ -255,15 +255,12 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 void ReSTIRGIRenderPass::configure_initial_candidates_pass(HIPRTRenderData& render_data)
 {
 	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
-
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 }
 
 void ReSTIRGIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_data)
 {
 	void* launch_args[] = { &render_data };
 
-	m_initial_candidates_generation_seed = render_data.random_number;
 	if (render_data.render_settings.nb_bounces > 0)
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
@@ -274,7 +271,6 @@ void ReSTIRGIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 
 void ReSTIRGIRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_data)
 {
-	render_data.random_number																			= m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 
 	ReSTIRGIReservoir* temporal_input_reservoirs;
@@ -311,7 +307,6 @@ void ReSTIRGIRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data
 
 void ReSTIRGIRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index)
 {
-	render_data.random_number															  = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
@@ -358,8 +353,6 @@ void ReSTIRGIRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data)
 
 void ReSTIRGIRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
 {
-	render_data.random_number = m_initial_candidates_generation_seed;
-
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
 	else if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)

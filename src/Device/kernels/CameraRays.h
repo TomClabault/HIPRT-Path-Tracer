@@ -56,6 +56,9 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
 		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
 	}
+
+	if (render_data.need_to_reset_random_seeds)
+		render_data.random_seeds[pixel_index] = 0xdeadbeef;
 }
 
 HIPRT_DEVICE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index)
@@ -155,7 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 			render_data.aux_buffers.pixel_sample_count[pixel_index]++;
 	}
 
-	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Direction to the center of the pixel
@@ -211,6 +214,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		// do_update_status_buffers is only true on the last sample of a frame
 		render_data.aux_buffers.still_one_ray_active[0] = 1;
 	}
+
+	render_data.random_seeds[pixel_index] = random_number_generator.m_state.seed;
 }
 
 #endif

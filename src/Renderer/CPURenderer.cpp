@@ -103,6 +103,7 @@ void CPURenderer::resize_buffers()
 
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
+	m_random_seeds.resize(width * height, 0);
 	m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
 	m_denoiser_normals.resize(width * height, float3_t{ 0.0f, 0.0f, 0.0f });
 	m_pixel_sample_count.resize(width * height, 0);
@@ -364,6 +365,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixel_squared_luminance.data();
 	m_render_data.aux_buffers.still_one_ray_active		   = &m_still_one_ray_active;
 	m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
+	m_render_data.random_seeds							   = m_random_seeds.data();
 
 	m_render_data.g_buffer.materials			= m_g_buffer.materials.data();
 	m_render_data.g_buffer.geometric_normals	= m_g_buffer.geometric_normals.data();
@@ -619,7 +621,6 @@ void CPURenderer::post_sample_update(int frame_number)
 {
 	if (m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number++;
-	m_render_data.random_number					= m_rng.xorshift32();
 	m_render_data.render_settings.need_to_reset = false;
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render
@@ -728,8 +729,6 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 
 void CPURenderer::camera_rays_pass()
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 	debug_render_pass([this](int x, int y) { CameraRays(m_render_data, x, y); });
 }
 
@@ -755,8 +754,6 @@ void CPURenderer::ReGIR_pass()
 template <bool accumulatePreIntegration>
 void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 #pragma omp parallel for
 	for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count *
 														m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
@@ -814,19 +811,14 @@ void CPURenderer::ReGIR_pre_integration()
 	{
 		bool primary_hit = (i == 0);
 
-		unsigned int seed_backup	= m_render_data.random_number;
 		unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count;
 		unsigned int nb_threads		= nb_cells_alive;
 
 		for (int i = 0; i < m_render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 		{
-			m_render_data.random_number = m_rng.xorshift32();
-
 			ReGIR_grid_fill_pass<true>(primary_hit);
 			ReGIR_spatial_reuse_pass<true>(primary_hit);
 		}
-
-		m_render_data.random_number = seed_backup;
 	}
 }
 
@@ -1149,8 +1141,6 @@ void CPURenderer::ReSTIR_GI_pass()
 
 void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 	debug_render_pass(
 							[this](int x, int y)
 							{
@@ -1166,7 +1156,6 @@ void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 
 void CPURenderer::configure_ReSTIR_DI_initial_pass()
 {
-	m_render_data.random_number															  = m_rng.xorshift32();
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 }
 
@@ -1179,7 +1168,6 @@ void CPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 {
-	m_render_data.random_number																			   = m_rng.xorshift32();
 	m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
@@ -1213,7 +1201,6 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
 {
-	m_render_data.random_number																			   = m_rng.xorshift32();
 	m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
@@ -1230,8 +1217,6 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
 
 void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 	if (spatial_pass_index == 0)
 	{
 		if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
@@ -1338,15 +1323,11 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 	debug_render_pass([this](int x, int y) { MegaKernel(m_render_data, x, y); });
 }
 
 void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
 {
-	m_render_data.random_number = m_rng.xorshift32();
-
 	debug_render_pass(
 							[this](int x, int y)
 							{
@@ -1363,16 +1344,12 @@ void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
 void CPURenderer::configure_ReSTIR_GI_initial_candidates_pass()
 {
 	m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
-
-	m_render_data.random_number = m_rng.xorshift32();
 }
 
 static unsigned int seed;
 
 void CPURenderer::launch_ReSTIR_GI_initial_candidates_pass()
 {
-	seed = m_render_data.random_number;
-
 	if (m_render_data.render_settings.nb_bounces > 0)
 	{
 		debug_render_pass([this](int x, int y) { ReSTIR_GI_InitialCandidates(m_render_data, x, y); });
@@ -1395,8 +1372,6 @@ void CPURenderer::configure_ReSTIR_GI_temporal_reuse_pass()
 		m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
 	else
 		m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
-
-	m_render_data.random_number = m_rng.xorshift32();
 }
 
 void CPURenderer::launch_ReSTIR_GI_temporal_reuse_pass()
@@ -1441,8 +1416,6 @@ void CPURenderer::configure_ReSTIR_GI_spatial_reuse_pass(int spatial_pass_index)
 
 	m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs	= input_reservoirs;
 	m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = output_reservoirs;
-
-	m_render_data.random_number = m_rng.xorshift32();
 }
 
 void CPURenderer::launch_ReSTIR_GI_spatial_reuse_pass()
@@ -1461,8 +1434,6 @@ void CPURenderer::configure_ReSTIR_GI_shading_pass()
 	else
 		m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
 								m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
-
-	m_render_data.random_number = seed;
 }
 
 void CPURenderer::launch_ReSTIR_GI_shading_pass()

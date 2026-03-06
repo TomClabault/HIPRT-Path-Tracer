@@ -394,8 +394,8 @@ void GPURenderer::resize(int new_width, int new_height)
 	}
 
 	m_render_thread.resize(new_width, new_height);
-
 	m_pixel_active.resize(new_width * new_height);
+	m_random_seeds.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -712,8 +712,8 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 
 		if (!m_animation_state.randomize_seeds_each_frame && m_animation_state.do_animations)
 		{
-			m_rng.m_state.seed			= 42;
-			m_render_data.random_number = 42;
+			m_rng.m_state.seed						 = 42;
+			m_render_data.need_to_reset_random_seeds = true;
 		}
 		m_render_data.render_settings.need_to_reset = true;
 	}
@@ -787,6 +787,8 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.pixel_active				   = m_pixel_active.get_device_pointer();
 		m_render_data.aux_buffers.still_one_ray_active		   = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
+
+		m_render_data.random_seeds = m_random_seeds.get_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
 	}

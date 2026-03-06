@@ -5,8 +5,8 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
-#include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
 const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Megakernel Render Pass";
@@ -73,8 +73,6 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
-
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
 	void* launch_args[] = { &render_data };
 

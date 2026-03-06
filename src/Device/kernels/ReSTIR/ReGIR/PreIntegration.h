@@ -11,9 +11,9 @@
 #include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/RayPayload.h"
-#include "Device/includes/SanityCheck.h"
 #include "Device/includes/ReSTIR/ReGIR/GridFillSurface.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/SanityCheck.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -44,7 +44,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 														? cell_alive_index
 														: regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
 
-		unsigned int seed = wang_hash((hash_grid_cell_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+		unsigned int seed = wang_hash((hash_grid_cell_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[0]);
 
 		Xorshift32Generator random_number_generator(seed);
 

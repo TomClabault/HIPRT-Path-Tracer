@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "GMoNRenderPass.h"
+#include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"

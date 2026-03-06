@@ -11,18 +11,18 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
+#include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
-#include "Device/includes/ReSTIR/Surface.h"
-#include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/UtilsTemporal.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
-#include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/Color.h"
 #include "Device/includes/HitInfo.h"
+#include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/RenderData.h"
 
 /** References:
@@ -68,7 +68,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 
 	// Initializing the random generator
-	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[center_pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)

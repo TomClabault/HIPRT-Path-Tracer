@@ -9,11 +9,11 @@
 #include "Device/includes/GBufferDevice.h"
 #include "Device/includes/NEE++/NEE++.h"
 
+#include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
-#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/WorldSettings.h"
@@ -45,9 +45,13 @@ struct CPUData
  */
 struct HIPRTRenderData
 {
-	// Random number that is updated by the CPU and that can help generate a
+	// Random numbers that is updated by the CPU and that can help generate a
 	// random seed on the GPU for the random number generator to get started
-	unsigned int random_number = 42;
+	//
+	// This is a fullscreen buffer of random seeds, one for each pixel
+	unsigned int* random_seeds = nullptr;
+	// If true, the next camera rays kernel call will reset the random seeds.
+	bool need_to_reset_random_seeds = true;
 
 	// HIPRT BVH built over all the triangles of the scene
 	hiprtGeometry GPU_BVH = nullptr;

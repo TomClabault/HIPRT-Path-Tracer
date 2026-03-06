@@ -351,8 +351,6 @@ void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 
 void ReSTIRDIRenderPass::configure_initial_pass(HIPRTRenderData& render_data)
 {
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_initial_candidates_reservoirs.get_device_pointer();
 }
 
@@ -369,7 +367,6 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 
 void ReSTIRDIRenderPass::configure_temporal_pass(HIPRTRenderData& render_data)
 {
-	render_data.random_number																			 = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested	 = m_temporal_buffer_clear_requested;
 
@@ -421,7 +418,6 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data
 
 void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data)
 {
-	render_data.random_number																			 = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested	 = m_temporal_buffer_clear_requested;
 
@@ -436,7 +432,6 @@ void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal(HIPRTR
 
 void ReSTIRDIRenderPass::configure_spatial_pass(HIPRTRenderData& render_data, int spatial_pass_index)
 {
-	render_data.random_number															  = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	ReSTIRDIReservoir* spatial_pass_input_reservoirs  = nullptr;
@@ -480,8 +475,6 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(HIPRTRe
 {
 	ReSTIRDISettings& restir_settings					   = render_data.render_settings.restir_di_settings;
 	restir_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
-
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
 	ReSTIRDIReservoir* spatial_pass_input_reservoirs  = nullptr;
 	ReSTIRDIReservoir* spatial_pass_output_reservoirs = nullptr;

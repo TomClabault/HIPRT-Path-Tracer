@@ -9,12 +9,12 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/UtilsTemporal.h"
-#include "Device/includes/ReSTIR/GI/Reservoir.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -59,7 +59,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 	// Initializing the random generator
-	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[center_pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Surface data of the center pixel

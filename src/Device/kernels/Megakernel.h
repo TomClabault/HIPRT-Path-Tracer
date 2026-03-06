@@ -8,9 +8,9 @@
 
 #include "Device/includes/AdaptiveSampling.h"
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/LightSampling/NEEEstimators.h"
-#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/LightSampling/Envmap.h"
+#include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/RayPayload.h"
@@ -48,7 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
 #endif
 
-	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Initializing the closest hit info the information from the camera ray pass
@@ -124,6 +124,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 		else if (ray_payload.next_ray_state == RayState::MISSED)
 			break;
 	}
+
+	render_data.random_seeds[pixel_index] = random_number_generator.m_state.seed;
 
 	// Checking for NaNs / negative value samples. Output
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))

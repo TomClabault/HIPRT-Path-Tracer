@@ -98,10 +98,10 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 				  ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
 				  /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
 					 We don't need that in RIS*/
-										  ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation &&
-										  ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus > (render_data, surface, primary_hit, light_sample.emission,
-																								light_sample.light_source_normal, light_sample.point_on_light,
-																								rng);
+									ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation &&
+															ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus >
+																					(render_data, surface, primary_hit, light_sample.emission,
+																					 light_sample.light_source_normal, light_sample.point_on_light, rng);
 
 			float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(
 									render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point),
@@ -335,7 +335,7 @@ inline ReGIR_Grid_Fill(HIPRTRenderData render_data,
 		unsigned int hash_grid_cell_index	 = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
 		unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(primary_hit) + reservoir_index_in_cell;
 
-		unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+		unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[0]);
 
 		Xorshift32Generator random_number_generator(seed);
 		ReGIRReservoir output_reservoir;

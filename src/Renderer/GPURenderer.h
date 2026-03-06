@@ -418,6 +418,8 @@ private:
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;
 	OrochiBuffer<unsigned char> m_pixel_active;
+	// Fullscreen buffer that contains the random seed used for each pixel.
+	OrochiBuffer<unsigned int> m_random_seeds;
 
 	StatusBuffersGPUData m_status_buffers;
 	// Whether or not the pixel at the given index is active and needs more samples
