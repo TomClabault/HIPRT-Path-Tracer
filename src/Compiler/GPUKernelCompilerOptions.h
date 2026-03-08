@@ -6,8 +6,8 @@
 #ifndef GPU_KERNEL_OPTIONS_H
 #define GPU_KERNEL_OPTIONS_H
 
-#include <memory>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -133,6 +133,8 @@ public:
 	static const std::string RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING;
 
 	static const std::string GMON_M_SETS_COUNT;
+
+	static const std::string SSBN_PERMUTATION_BLOCK_SIZE;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 

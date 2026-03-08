@@ -103,6 +103,10 @@ void GPURendererThread::setup_render_graphs()
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
+	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
+	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);
+	ssbn_permutation_render_pass->add_dependency(restir_gi_render_pass);
+
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
 	render_graph_full.add_render_pass(regir_render_pass);
@@ -110,6 +114,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_gi_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
+	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
 
 	render_graph_full.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
 
@@ -258,23 +263,29 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 	}
 }
 
-void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void GPURendererThread::post_sample_update(HIPRTRenderData& render_data_for_frame, GPUKernelCompilerOptions& compiler_options)
 {
-	m_active_render_graph->post_sample_update_async(render_data, compiler_options);
+	// This function also updates render_data_for_frame such that if multiple samples are dispatched per frame then the next samples are going to get the
+	// updated render data as well
 
-	render_data.render_settings.sample_number++;
+	m_active_render_graph->post_sample_update_async(render_data_for_frame, compiler_options);
+
+	render_data_for_frame.render_settings.sample_number++;
 	m_renderer->get_render_data().render_settings.sample_number++;
 
-	render_data.render_settings.denoiser_AOV_accumulation_counter++;
+	render_data_for_frame.render_settings.denoiser_AOV_accumulation_counter++;
 	m_renderer->get_render_data().render_settings.denoiser_AOV_accumulation_counter++;
 
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
-	render_data.render_settings.need_to_reset					= false;
+	render_data_for_frame.render_settings.need_to_reset = false;
 	m_renderer->get_render_data().render_settings.need_to_reset = false;
 
-	render_data.nee_plus_plus.m_reset_visibility_map				   = false;
+	render_data_for_frame.render_settings.need_to_reset_random_seeds = false;
+	m_renderer->get_render_data().render_settings.need_to_reset_random_seeds = false;
+
+	render_data_for_frame.nee_plus_plus.m_reset_visibility_map		   = false;
 	m_renderer->get_render_data().nee_plus_plus.m_reset_visibility_map = false;
 }
 

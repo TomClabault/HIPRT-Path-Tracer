@@ -166,7 +166,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	// Initializing the random generator
 	// TODO try having multiply instead of XOR again
-	unsigned int seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_seeds[center_pixel_index]);
+	unsigned int seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^
+								  render_data.buffers.random_seeds[center_pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used

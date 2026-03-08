@@ -384,7 +384,9 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 
-// TODOs  performance improvements branch:
+// TODO performance improvements branch:
+// - Thread swizzling for loading/storing Gbuffer/screen space info because at the moment 8x8 blocks do not coalesce fully accross the 32-wide warps: we only
+// get coalescing on [8, 8, 8, 8] threads, 4x slower
 // - Pack stuff in LightSamplePointInformation
 // - Pass is_srgb as template parameter to texture sample function to avoid the register cost of the pow() call enclosed in a simple if()
 // - Remove all raw cos() and sin() calls (we've got some in microfacet.h)

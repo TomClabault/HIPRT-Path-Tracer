@@ -57,14 +57,14 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
 	}
 
-	if (render_data.need_to_reset_random_seeds)
-		render_data.random_seeds[pixel_index] = 0xdeadbeef;
+	if (render_data.render_settings.need_to_reset_random_seeds)
+		render_data.buffers.random_seeds[pixel_index] = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ 0xdeadbeef);
 }
 
-HIPRT_DEVICE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index)
+HIPRT_DEVICE void rescale_samples_for_display(HIPRTRenderData& render_data, uint32_t pixel_index)
 {
 	// Because when displaying the framebuffer, we're dividing by the number of samples to
-	// rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
+	// rescale the color of a pixel, we're going to have a problem if some pixels stopped sampling
 	// at 10 samples while the other pixels are still being sampled and have 100 samples for example.
 	// The pixels that only received 10 samples are going to be divided by 100 at display time, making them
 	// appear too dark.
@@ -148,7 +148,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 	{
 		if (!sampling_needed)
 		{
-			rescale_samples(render_data, pixel_index);
+			rescale_samples_for_display(render_data, pixel_index);
 
 			render_data.aux_buffers.pixel_active[pixel_index] = false;
 
@@ -158,8 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 			render_data.aux_buffers.pixel_sample_count[pixel_index]++;
 	}
 
-	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[pixel_index]);
-	Xorshift32Generator random_number_generator(seed);
+	Xorshift32Generator random_number_generator(render_data.buffers.random_seeds[pixel_index]);
 
 	// Direction to the center of the pixel
 	float x_ray_point_direction = (x + 0.5f);
@@ -215,7 +214,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		render_data.aux_buffers.still_one_ray_active[0] = 1;
 	}
 
-	render_data.random_seeds[pixel_index] = random_number_generator.m_state.seed;
+	if (render_data.render_settings.sample_number == 0)
+		render_data.buffers.random_seeds[pixel_index] = random_number_generator.m_state.seed;
 }
 
 #endif

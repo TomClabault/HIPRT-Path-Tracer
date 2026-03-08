@@ -710,10 +710,10 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		// Also we want to not reset the random number seed if we're rendering an animation and the user has asked
 		// for random seeds each frame (to avoid same-noise pattern each frame of the animation)
 
-		if (!m_animation_state.randomize_seeds_each_frame && m_animation_state.do_animations)
+		if ((m_animation_state.randomize_seeds_each_frame && m_animation_state.do_animations) || !m_animation_state.do_animations)
 		{
-			m_rng.m_state.seed						 = 42;
-			m_render_data.need_to_reset_random_seeds = true;
+			m_rng.m_state.seed										 = 42;
+			m_render_data.render_settings.need_to_reset_random_seeds = true;
 		}
 		m_render_data.render_settings.need_to_reset = true;
 	}
@@ -736,6 +736,8 @@ void GPURenderer::update_render_data()
 {
 	if (m_render_data_buffers_invalidated)
 	{
+		m_render_data.buffers.random_seeds = m_random_seeds.get_device_pointer();
+
 		m_render_data.GPU_BVH		= m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
 
@@ -787,8 +789,6 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.pixel_active				   = m_pixel_active.get_device_pointer();
 		m_render_data.aux_buffers.still_one_ray_active		   = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
-
-		m_render_data.random_seeds = m_random_seeds.get_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
 	}

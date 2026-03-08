@@ -7,8 +7,8 @@
 #define HOST_DEVICE_COMMON_RENDER_BUFFERS_H
 
 #include "Device/includes/AliasTable.h"
-#include "Device/includes/LightSampling/EmissiveMeshesAliasTables.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
+#include "Device/includes/LightSampling/EmissiveMeshesAliasTables.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 #include "HostDeviceCommon/PrecomputedEmissiveTrianglesDataSoADevice.h"
@@ -19,6 +19,12 @@ struct RenderBuffers
 	// pre-divided by the number of samples i.e. this buffer
 	// contains pure accumulation of pixel colors
 	ColorRGB32F* accumulated_ray_colors = nullptr;
+
+	// Random numbers that is updated by the CPU and that can help generate a
+	// random seed on the GPU for the random number generator to get started
+	//
+	// This is a fullscreen buffer of random seeds, one for each pixel
+	unsigned int* random_seeds = nullptr;
 
 	// Data for the GMoN estimator
 	GMoNDevice gmon_estimator;

@@ -15,6 +15,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
+#include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
 /**
  * This file references the path tracer options that can be passed to HIPCC using the -D <macro>=<value> option.
@@ -158,7 +159,7 @@
  *
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
@@ -177,7 +178,7 @@
  * Useful for debugging features that may take effect after the first sample and we only want to see what
  * the second sample looks like without the accumulation
  */
-#define DisplayOnlySampleN KERNEL_OPTION_FALSE
+#define DisplayOnlySampleN KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

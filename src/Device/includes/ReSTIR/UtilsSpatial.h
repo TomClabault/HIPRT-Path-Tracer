@@ -247,8 +247,8 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 				// If we're allowing the reuse of converged neighbors, only doing so with a certain probability
 
 				Xorshift32Generator rng_converged_neighbor_reuse(
-										render_data.random_seeds[center_pixel_coords.x +
-																 center_pixel_coords.y * render_data.render_settings.render_resolution.x]);
+										render_data.buffers.random_seeds[center_pixel_coords.x +
+																		 center_pixel_coords.y * render_data.render_settings.render_resolution.x]);
 				if (rng_converged_neighbor_reuse() > spatial_pass_settings.converged_neighbor_reuse_probability)
 				{
 					// We didn't pass the probability check, we are not allowed to reuse the neighbor if it

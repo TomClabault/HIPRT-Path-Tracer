@@ -36,6 +36,9 @@ struct HIPRTRenderSettings
 	// If true, the camera ray kernel will reset all buffers to their default values.
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
+	// Whether or not to reset the random seeds of each pixel to their default values when the render is reset (i.e. when need_to_reset is true above). The
+	// resetting is done by the camera rays kernel
+	bool need_to_reset_random_seeds = true;
 
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////

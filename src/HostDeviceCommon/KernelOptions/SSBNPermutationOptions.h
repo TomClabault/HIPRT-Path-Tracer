@@ -1,0 +1,17 @@
+/*
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
+#define HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
+
+#define SSBNPermutationBlueNoiseTextureSize 512
+
+/**
+ * Block size for the sorting pass of the implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between
+ * Frames, Heitz 2019]
+ */
+#define SSBNPermutationBlockSize 32
+
+#endif

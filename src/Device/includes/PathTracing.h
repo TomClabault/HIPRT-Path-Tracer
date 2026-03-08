@@ -221,16 +221,17 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 #if DisplayOnlySampleN == KERNEL_OPTION_TRUE
 	int sampleIndex = render_data.render_settings.output_debug_sample_N;
 
-	if (render_data.render_settings.sample_number == sampleIndex)
+	if (render_data.render_settings.sample_number == 0)
+		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
+	else if (render_data.render_settings.sample_number == sampleIndex)
 	{
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
 #if ViewportColorOverriden == 0
-		render_data.buffers.accumulated_ray_colors[pixel_index] *= (sampleIndex + 1);
+		render_data.buffers.accumulated_ray_colors[pixel_index] *= (render_data.render_settings.sample_number + 1);
 #endif
 	}
 
-	return;
-#endif
+#else // DisplayOnlySampleN
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
@@ -259,6 +260,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		else
 			render_data.buffers.gmon_estimator.sets[offset] += ray_color;
 	}
+#endif
 }
 
 HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data,

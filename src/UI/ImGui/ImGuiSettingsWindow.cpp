@@ -4171,7 +4171,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 				"compute the true multiple scattering path integral within the microsurface.More expensive than LUTs but more accurate and physically based."
 			};
 
-			if (ImGuiRenderer::ComboWithTooltips("Energy compensation mode",
+			ImGui::SeparatorText("Energy compensation method");
+			if (ImGuiRenderer::ComboWithTooltips("Method",
 												 global_kernel_options->get_raw_pointer_to_macro_value(
 																		 GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE),
 												 energy_compensation_mode, IM_ARRAYSIZE(energy_compensation_mode), tooltips_energy_compensation_mode))
@@ -4277,6 +4278,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+			ImGui::SeparatorText("Lobes compensation");
 			{
 				bool do_glass_energy_compensation =
 										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION);

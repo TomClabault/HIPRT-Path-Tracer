@@ -40,8 +40,8 @@ public:
 
 	void setup_nee_plus_plus();
 	void setup_gmon();
-	void gmon_check_for_sets_accumulation();
-	void ReGIR_post_render_update();
+	void GMoN_post_sample_update();
+	void ReGIR_post_sample_update();
 
 	void set_scene(Scene& parsed_scene);
 	void compute_emissives_power_alias_table(const Scene& scene);

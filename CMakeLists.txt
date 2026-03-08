@@ -45,6 +45,7 @@ add_compile_definitions(OROCHI_INCLUDES_DIRECTORY="${OROCHI_SOURCES_DIR}/..") # 
 add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
 add_compile_definitions(DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data")
 add_compile_definitions(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY="${CMAKE_SOURCE_DIR}/data/BRDFsData/DirectionalAlbedo")
+add_compile_definitions(SSBN_PERMUTATION_DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data/SSBNPermutation")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})

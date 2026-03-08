@@ -52,7 +52,8 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 		// Pixel isn't active because of adaptive sampling or render resolution scaling
 		return;
 
-	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seeds[center_pixel_index]);
+	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) *
+								  render_data.buffers.random_seeds[center_pixel_index]);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Clearing previous data

@@ -23,6 +23,8 @@ public:
 
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
+
 	/**
 	 * Allocates/deallocates the buffers used by GMoN.
 	 *
@@ -42,6 +44,10 @@ public:
 
 private:
 	bool m_using_ssbn_permutation = true;
+
+	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
+	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
+	OrochiBuffer<unsigned char> m_blue_noise_retargeting_texture_buffer;
 };
 
 #endif

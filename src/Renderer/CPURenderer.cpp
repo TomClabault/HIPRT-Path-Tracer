@@ -6,7 +6,6 @@
 #include "Device/includes/BSDFs/LTCsData/GGXConductorLTCFitData.h"
 
 #include "Device/kernels/CameraRays.h"
-#include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/Megakernel.h"
 
 #include "Device/kernels/NEE++/GridPrepopulate.h"
@@ -32,6 +31,9 @@
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
 
+#include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
+#include "Device/kernels/SSBNPermutation/SortingPass.h"
+
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/CPURenderer.h"
@@ -46,7 +48,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -231,7 +233,7 @@ void CPURenderer::setup_gmon()
 	}
 }
 
-void CPURenderer::gmon_check_for_sets_accumulation()
+void CPURenderer::GMoN_post_sample_update()
 {
 	if (m_gmon.use_gmon)
 	{
@@ -247,7 +249,7 @@ void CPURenderer::gmon_check_for_sets_accumulation()
 	}
 }
 
-void CPURenderer::ReGIR_post_render_update()
+void CPURenderer::ReGIR_post_sample_update()
 {
 #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 	return;
@@ -365,7 +367,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixel_squared_luminance.data();
 	m_render_data.aux_buffers.still_one_ray_active		   = &m_still_one_ray_active;
 	m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
-	m_render_data.random_seeds							   = m_random_seeds.data();
+	m_render_data.buffers.random_seeds					   = m_random_seeds.data();
 
 	m_render_data.g_buffer.materials			= m_g_buffer.materials.data();
 	m_render_data.g_buffer.geometric_normals	= m_g_buffer.geometric_normals.data();
@@ -625,8 +627,8 @@ void CPURenderer::post_sample_update(int frame_number)
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render
 
-	gmon_check_for_sets_accumulation();
-	ReGIR_post_render_update();
+	GMoN_post_sample_update();
+	ReGIR_post_sample_update();
 }
 
 void CPURenderer::update_cameras(int sample)
