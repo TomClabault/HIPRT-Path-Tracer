@@ -8,6 +8,8 @@
 
 #define SSBNPermutationBlueNoiseTextureSize 512
 
+#ifndef __KERNELCC__
+
 /**
  * Whether or not the implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between Frames, Heitz 2019] is
  * enabled in the render
@@ -19,5 +21,7 @@
  * Frames, Heitz 2019]
  */
 #define SSBNPermutationBlockSize 32
+
+#endif
 
 #endif
