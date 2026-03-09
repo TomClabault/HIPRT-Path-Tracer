@@ -48,7 +48,9 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	unsigned int in_block_x = threadIdx.x;
 	unsigned int in_block_y = threadIdx.y;
 
-	unsigned int pixel_index		   = x + y * resolution_x;
+	unsigned int pixel_index = x + y * resolution_x;
+	if (pixel_index == 0)
+		printf("Block size: %d\n", SSBNPermutationBlockSize);
 	unsigned int thread_index_in_block = in_block_x + in_block_y * SSBNPermutationBlockSize;
 
 	bool thread_valid = x < resolution_x && y < resolution_y;

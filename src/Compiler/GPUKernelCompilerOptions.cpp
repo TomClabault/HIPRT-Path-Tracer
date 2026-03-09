@@ -135,6 +135,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMP
 const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount";
 
 const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE = "SSBNPermutationBlockSize";
+const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED = "SSBNPermutationEnabled";
 
 // clang-format on
 
@@ -256,6 +257,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::GMON_M_SETS_COUNT,
 
 	GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE,
+	GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -381,6 +383,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
 
 	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE] = std::make_shared<int>(SSBNPermutationBlockSize);
+	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED] = std::make_shared<int>(SSBNPermutationEnabled);
 	// clang-format on
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist

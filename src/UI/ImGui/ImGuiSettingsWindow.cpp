@@ -4727,6 +4727,44 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	}
 	ImGui::EndDisabled();
 
+	if (ImGui::CollapsingHeader("SSBN Permutation"))
+	{
+		ImGui::TreePush("SSBN Permutation tree");
+
+		static bool ssbn_permutation_enabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED);
+		if (ImGui::Checkbox("Enable", &ssbn_permutation_enabled))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED,
+												   ssbn_permutation_enabled ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_render_window->set_render_dirty(true);
+			m_renderer->recompile_kernels();
+		}
+
+		ImGui::BeginDisabled(!ssbn_permutation_enabled);
+		static int block_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+		ImGui::SliderInt("Permutation block size", &block_size, 1, 32);
+
+		if (block_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
+		{
+			ImGui::TreePush("SSBN Permutation block size apply tree");
+
+			if (ImGui::Button("Apply"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE, block_size);
+
+				m_render_window->set_render_dirty(true);
+				m_renderer->recompile_kernels();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::EndDisabled();
+
+		ImGui::TreePop();
+	}
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
 }

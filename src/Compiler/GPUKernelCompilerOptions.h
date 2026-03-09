@@ -135,6 +135,7 @@ public:
 	static const std::string GMON_M_SETS_COUNT;
 
 	static const std::string SSBN_PERMUTATION_BLOCK_SIZE;
+	static const std::string SSBN_PERMUTATION_ENABLED;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 

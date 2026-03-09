@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Compiler/GPUKernelCompilerOptions.h"
 #include "Compiler/GPUKernelCompiler.h"
+#include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
@@ -57,6 +57,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 												const std::string& additional_cache_key,
 												bool silent)
 {
+	use_cache												= false;
 	std::string kernel_file_path							= kernel.get_kernel_file_path();
 	std::string kernel_function_name						= kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
