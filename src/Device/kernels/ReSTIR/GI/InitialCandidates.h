@@ -42,8 +42,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 		// for better interactivity
 		render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
 
-	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.buffers.random_seeds[pixel_index]);
-	Xorshift32Generator random_number_generator(seed);
+	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	// Initializing the closest hit info the information from the camera ray pass
 	HitInfo closest_hit_info;
@@ -170,7 +169,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 			break;
 	}
 
-	render_data.buffers.random_seeds[pixel_index] = random_number_generator.m_state.seed;
+	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
 	// Checking for NaNs / negative value samples. Output
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))

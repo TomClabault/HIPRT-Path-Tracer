@@ -54,12 +54,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	}
 
 	// Initializing the random generator
-	unsigned int seed;
-	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.coalesced_spatial_reuse)
-		seed = wang_hash((render_data.render_settings.sample_number + 1) * render_data.buffers.random_seeds[center_pixel_index]);
-	else
-		seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) * render_data.buffers.random_seeds[center_pixel_index]);
-	Xorshift32Generator random_number_generator(seed);
+	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
 
 	ReSTIRGIReservoir* input_reservoir_buffer = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs;
 	ReSTIRGIReservoir center_pixel_reservoir  = input_reservoir_buffer[center_pixel_index];

@@ -62,7 +62,8 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned char* blue_noise_texture_buffer_pointer = m_blue_noise_dither_texture_buffer.get_device_pointer();
 	unsigned int* sorted_seeds_buffer_pointer		 = m_sorted_seeds_buffer.get_device_pointer();
 
-	void* launch_args_sorting[] = { &render_data, &blue_noise_texture_buffer_pointer, &render_data.buffers.random_seeds };
+	void* launch_args_sorting[] = { &render_data, &blue_noise_texture_buffer_pointer, &render_data.buffers.get_input_random_seeds_pointer(),
+									&render_data.buffers.get_input_random_seeds_pointer() };
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
 							SSBNPermutationBlockSize, SSBNPermutationBlockSize, render_data.render_settings.render_resolution.x,
 							render_data.render_settings.render_resolution.y, launch_args_sorting, m_renderer->get_main_stream());

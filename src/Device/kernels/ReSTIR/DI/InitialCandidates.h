@@ -412,9 +412,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 	uint32_t pixel_index				   = (x + y * render_data.render_settings.render_resolution.x);
 	DevicePackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
 
-	unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.buffers.random_seeds[pixel_index]);
-
-	Xorshift32Generator random_number_generator(seed);
+	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	if (!render_data.aux_buffers.pixel_active[pixel_index] || render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
@@ -448,7 +446,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 #endif
 
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;
-	render_data.buffers.random_seeds[pixel_index]													 = random_number_generator.m_state.seed;
+	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 }
 
 #endif

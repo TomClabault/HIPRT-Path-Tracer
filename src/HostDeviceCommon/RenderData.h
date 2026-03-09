@@ -77,6 +77,30 @@ struct HIPRTRenderData
 
 	// Data only used by the CPU
 	CPUData cpu_only;
+
+	HIPRT_DEVICE unsigned int get_input_random_seed(int pixel_index) const
+	{
+		return buffers.input_random_seeds[pixel_index];
+	}
+
+	HIPRT_DEVICE unsigned int get_updated_random_seed(int pixel_index) const
+	{
+#if SSBNPermutationEnabled == KERNEL_OPTION_TRUE
+		return buffers.updated_random_seeds[pixel_index];
+#else
+		return buffers.updated_random_seeds[pixel_index];
+#endif
+	}
+
+	HIPRT_DEVICE void store_input_random_seed(int pixel_index, unsigned int seed) const
+	{
+		buffers.input_random_seeds[pixel_index] = seed;
+	}
+
+	HIPRT_DEVICE void store_updated_random_seed(int pixel_index, unsigned int seed) const
+	{
+		buffers.updated_random_seeds[pixel_index] = seed;
+	}
 };
 
 #endif

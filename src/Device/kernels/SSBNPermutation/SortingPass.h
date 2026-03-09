@@ -36,6 +36,7 @@ HIPRT_DEVICE void bubble_sort(T keys[SSBNPermutationBlockSize * SSBNPermutationB
 GLOBAL_KERNEL_SIGNATURE(void)
 SSBNPermutationSortingPass(HIPRTRenderData render_data,
 						   unsigned char* __restrict__ blue_noise_dither_texture_buffer,
+						   unsigned int* __restrict__ in_seeds_to_sort,
 						   unsigned int* __restrict__ out_sorted_seeds_buffer)
 {
 	unsigned int resolution_x = render_data.render_settings.render_resolution.x;
@@ -107,7 +108,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 
 	if (luminance_coords.x != -1 && luminance_coords.y != -1)
-		sorted_seeds[blue_noise_block_sorted_index] = render_data.buffers.random_seeds[luminance_global_sorted_index];
+		sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index];
 
 	__syncthreads();
 

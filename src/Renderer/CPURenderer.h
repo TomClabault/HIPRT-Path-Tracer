@@ -117,8 +117,11 @@ private:
 	int2_t m_resolution;
 
 	Image32Bit m_framebuffer;
+
+	std::vector<unsigned int> m_updated_random_seeds;
+	std::vector<unsigned int> m_input_random_seeds;
+
 	std::vector<unsigned char> m_pixel_active_buffer;
-	std::vector<unsigned int> m_random_seeds;
 	std::vector<ColorRGB32F> m_denoiser_albedo;
 	std::vector<float3_t> m_denoiser_normals;
 

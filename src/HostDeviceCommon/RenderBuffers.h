@@ -13,18 +13,14 @@
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 #include "HostDeviceCommon/PrecomputedEmissiveTrianglesDataSoADevice.h"
 
+struct HIPRTRenderData;
+
 struct RenderBuffers
 {
 	// Sum of samples color per pixel. Should not be
 	// pre-divided by the number of samples i.e. this buffer
 	// contains pure accumulation of pixel colors
 	ColorRGB32F* accumulated_ray_colors = nullptr;
-
-	// Random numbers that is updated by the CPU and that can help generate a
-	// random seed on the GPU for the random number generator to get started
-	//
-	// This is a fullscreen buffer of random seeds, one for each pixel
-	unsigned int* random_seeds = nullptr;
 
 	// Data for the GMoN estimator
 	GMoNDevice gmon_estimator;
@@ -76,6 +72,39 @@ struct RenderBuffers
 	// oroTextureObject_t whether if CPU or GPU rendering respectively
 	// This pointer can be cast for the textures to be be retrieved.
 	void* material_textures = nullptr;
+
+	HIPRT_DEVICE unsigned int*& get_input_random_seeds_pointer()
+	{
+		return input_random_seeds;
+	}
+
+	HIPRT_DEVICE unsigned int*& get_updated_random_seeds_pointer()
+	{
+		return updated_random_seeds;
+	}
+
+	HIPRT_DEVICE void set_input_random_seed_pointer(unsigned int* new_input_random_seeds)
+	{
+		input_random_seeds = new_input_random_seeds;
+	}
+
+	HIPRT_DEVICE void set_updated_random_seed_pointer(unsigned int* new_updated_random_seeds)
+	{
+		updated_random_seeds = new_updated_random_seeds;
+	}
+
+private:
+	friend struct HIPRTRenderData;
+
+	// Random seeds that the path tracing is going to start with this frame (i.e. the camera rays kernel starts with these seeds). These seeds are then updated
+	// as rendering goes on and the updated seeds are stored in updated_random_seeds
+	unsigned int* input_random_seeds = nullptr;
+
+	// Random numbers that is updated by the CPU and that can help generate a
+	// random seed on the GPU for the random number generator to get started
+	//
+	// This is a fullscreen buffer of random seeds, one for each pixel
+	unsigned int* updated_random_seeds = nullptr;
 };
 
 #endif

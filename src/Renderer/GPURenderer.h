@@ -418,8 +418,12 @@ private:
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;
 	OrochiBuffer<unsigned char> m_pixel_active;
+
+	// Very first seeds (1 per each pixel) that the path tracer will use to generate the frame (this is usually the first seed that the camera ray kernel uses
+	// for example)
+	OrochiBuffer<unsigned int> m_input_seeds;
 	// Fullscreen buffer that contains the random seed used for each pixel.
-	OrochiBuffer<unsigned int> m_random_seeds;
+	OrochiBuffer<unsigned int> m_updated_random_seeds;
 
 	StatusBuffersGPUData m_status_buffers;
 	// Whether or not the pixel at the given index is active and needs more samples

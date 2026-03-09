@@ -395,7 +395,8 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_render_thread.resize(new_width, new_height);
 	m_pixel_active.resize(new_width * new_height);
-	m_random_seeds.resize(new_width * new_height);
+	m_input_seeds.resize(new_width * new_height);
+	m_updated_random_seeds.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -736,7 +737,8 @@ void GPURenderer::update_render_data()
 {
 	if (m_render_data_buffers_invalidated)
 	{
-		m_render_data.buffers.random_seeds = m_random_seeds.get_device_pointer();
+		m_render_data.buffers.set_updated_random_seed_pointer(m_updated_random_seeds.get_device_pointer());
+		m_render_data.buffers.set_input_random_seed_pointer(m_input_seeds.get_device_pointer());
 
 		m_render_data.GPU_BVH		= m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;

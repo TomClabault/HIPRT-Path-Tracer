@@ -105,7 +105,8 @@ void CPURenderer::resize_buffers()
 
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
-	m_random_seeds.resize(width * height, 0);
+	m_input_random_seeds.resize(width * height, 0);
+	m_updated_random_seeds.resize(width * height, 0);
 	m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
 	m_denoiser_normals.resize(width * height, float3_t{ 0.0f, 0.0f, 0.0f });
 	m_pixel_sample_count.resize(width * height, 0);
@@ -367,7 +368,8 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixel_squared_luminance.data();
 	m_render_data.aux_buffers.still_one_ray_active		   = &m_still_one_ray_active;
 	m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
-	m_render_data.buffers.random_seeds					   = m_random_seeds.data();
+	m_render_data.buffers.set_input_random_seed_pointer(m_input_random_seeds.data());
+	m_render_data.buffers.set_updated_random_seed_pointer(m_updated_random_seeds.data());
 
 	m_render_data.g_buffer.materials			= m_g_buffer.materials.data();
 	m_render_data.g_buffer.geometric_normals	= m_g_buffer.geometric_normals.data();

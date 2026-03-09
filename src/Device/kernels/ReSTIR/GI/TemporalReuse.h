@@ -59,9 +59,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 	// Initializing the random generator
-	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) *
-								  render_data.buffers.random_seeds[center_pixel_index]);
-	Xorshift32Generator random_number_generator(seed);
+	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);

@@ -48,8 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
 #endif
 
-	unsigned int DEBUG_INITIAL_SEED = render_data.buffers.random_seeds[pixel_index];
-	Xorshift32Generator random_number_generator(render_data.buffers.random_seeds[pixel_index]);
+	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	// Initializing the closest hit info the information from the camera ray pass
 	HitInfo closest_hit_info;
@@ -125,8 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 			break;
 	}
 
-	if (render_data.render_settings.sample_number == 0)
-		render_data.buffers.random_seeds[pixel_index] = DEBUG_INITIAL_SEED;
+	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
 	// Checking for NaNs / negative value samples. Output
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
@@ -139,7 +137,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
 	path_tracing_accumulate_debug_view_color(render_data, ray_payload, pixel_index, random_number_generator);
 	path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
-	// path_tracing_accumulate_color(render_data, ColorRGB32F(DEBUG_INITIAL_SEED) / (float)((unsigned int)(-1)), pixel_index);
 }
 
 #endif
