@@ -251,6 +251,11 @@ std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass() const
 	return m_render_thread.get_gmon_render_pass();
 }
 
+std::shared_ptr<SSBNPermutationRenderPass> GPURenderer::get_ssbn_permutation_render_pass()
+{
+	return m_render_thread.get_ssbn_permutation_render_pass();
+}
+
 std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass()
 {
 	return m_render_thread.get_NEE_plus_plus_render_pass();
@@ -384,6 +389,7 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
 	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
 
+	m_last_frame_ray_colors.resize(new_width * new_height);
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 
@@ -782,6 +788,7 @@ void GPURenderer::update_render_data()
 		m_render_data.bsdfs_data.GGX_glass_inverse_directional_albedo = m_GGX_glass_inverse_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo	  = m_GGX_thin_glass_directional_albedo.get_device_texture();
 
+		m_render_data.buffers.last_frame_ray_colors = m_last_frame_ray_colors.get_device_pointer();
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
 			m_render_data.aux_buffers.pixel_sample_count	  = m_pixels_sample_count_buffer.get_device_pointer();

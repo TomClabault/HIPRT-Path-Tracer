@@ -218,6 +218,8 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
 HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
 {
+	render_data.buffers.last_frame_ray_colors[pixel_index] = ray_color;
+
 #if DisplayOnlySampleN == KERNEL_OPTION_TRUE
 	int sampleIndex = render_data.render_settings.output_debug_sample_N;
 

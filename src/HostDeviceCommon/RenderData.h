@@ -85,11 +85,7 @@ struct HIPRTRenderData
 
 	HIPRT_DEVICE unsigned int get_updated_random_seed(int pixel_index) const
 	{
-#if SSBNPermutationEnabled == KERNEL_OPTION_TRUE
 		return buffers.updated_random_seeds[pixel_index];
-#else
-		return buffers.updated_random_seeds[pixel_index];
-#endif
 	}
 
 	HIPRT_DEVICE void store_input_random_seed(int pixel_index, unsigned int seed) const
@@ -100,6 +96,13 @@ struct HIPRTRenderData
 	HIPRT_DEVICE void store_updated_random_seed(int pixel_index, unsigned int seed) const
 	{
 		buffers.updated_random_seeds[pixel_index] = seed;
+
+#if SSBNPermutationEnabled == KERNEL_OPTION_FALSE
+		// If we don't have the SSBN permutation render pass enabled, then we need to update the input random seeds such that the next frame reads the updated
+		// seeds and produces new random numbers and converges correctly. If we don't store the input seeds here, then the kernels of the next frame are going
+		// to read the same input seeds = produce the exact same frame and we will not have convergence
+		buffers.input_random_seeds[pixel_index] = seed;
+#endif
 	}
 };
 

@@ -105,6 +105,7 @@ public:
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;
+	std::shared_ptr<SSBNPermutationRenderPass> get_ssbn_permutation_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();

@@ -21,6 +21,8 @@ struct RenderBuffers
 	// pre-divided by the number of samples i.e. this buffer
 	// contains pure accumulation of pixel colors
 	ColorRGB32F* accumulated_ray_colors = nullptr;
+	// Fullscreen buffer that contains only the sample color of the last rendered frame that got accumulated into accumulated_ray_colors
+	ColorRGB32F* last_frame_ray_colors = nullptr;
 
 	// Data for the GMoN estimator
 	GMoNDevice gmon_estimator;

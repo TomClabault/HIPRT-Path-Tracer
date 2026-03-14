@@ -4731,7 +4731,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	{
 		ImGui::TreePush("SSBN Permutation tree");
 
-		static bool ssbn_permutation_enabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED);
+		std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
+		static bool ssbn_permutation_enabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) && ssbn_pass;
 		if (ImGui::Checkbox("Enable", &ssbn_permutation_enabled))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED,
@@ -4742,6 +4743,21 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		}
 
 		ImGui::BeginDisabled(!ssbn_permutation_enabled);
+
+		static bool last_retargeting_valid_val;
+		if (ssbn_pass)
+		{
+			last_retargeting_valid_val = ssbn_pass->get_do_retargeting();
+			if (ImGui::Checkbox("Do retargeting", &ssbn_pass->get_do_retargeting()))
+				m_render_window->set_render_dirty(true);
+		}
+		else
+		{
+			// Dummy checkbox because we don't have a valid pass
+			if (ImGui::Checkbox("Do retargeting", &last_retargeting_valid_val))
+				m_render_window->set_render_dirty(true);
+		}
+
 		static int block_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 		ImGui::SliderInt("Permutation block size", &block_size, 1, 32);
 

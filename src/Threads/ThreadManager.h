@@ -120,7 +120,9 @@ public:
 
 	static void join_threads(const std::string& key)
 	{
+		m_join_mutexes_map_mutex.lock();
 		std::lock_guard<std::mutex> lock(m_join_mutexes[key]);
+		m_join_mutexes_map_mutex.unlock();
 
 		if (auto find = m_threads_map.find(key); find != m_threads_map.end())
 		{
@@ -276,6 +278,7 @@ private:
 	// we want amongst all the threads stored, we use keys, hence the unordered_map
 	static std::unordered_map<std::string, std::vector<std::thread>> m_threads_map;
 
+	static std::mutex m_join_mutexes_map_mutex;
 	// Because of the dependency management system, it may be possible that we call .join()
 	// on the same thread (or threads with the same thread key) from multiple threads.
 	// Calling .join() concurrently on the same thread is likely to result in a race condition

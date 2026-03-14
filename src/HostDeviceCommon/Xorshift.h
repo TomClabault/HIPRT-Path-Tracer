@@ -35,10 +35,10 @@ struct Xorshift32Generator
 	 * Returns a uniform random number between 0 and
 	 * array_size - 1 (included)
 	 */
-	HIPRT_DEVICE int random_index(int array_size)
+	HIPRT_DEVICE int random_index(int max_index_excluded)
 	{
-		int random_num = xorshift32() / static_cast<float>(XORSHIFT_MAX) * array_size;
-		return hippt::min(random_num, array_size - 1);
+		int random_num = xorshift32() / static_cast<float>(XORSHIFT_MAX) * max_index_excluded;
+		return hippt::min(random_num, max_index_excluded - 1);
 	}
 
 	/*

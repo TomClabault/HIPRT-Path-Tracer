@@ -4,7 +4,9 @@
  */
 
 #include "Device/includes/SSBNPermutation/SSBNPermutationCommon.h"
+#include "HostDeviceCommon/Xorshift.h"
 #include "Image/SSBNPermutationSimulatedAnnealing.h"
+#include "Utils/Utils.h"
 
 #include <random>
 
@@ -39,22 +41,39 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 	for (int i = 0; i < input_width * input_height; i++)
 		m_permuted_positions[i] = i;
 
-	double temperature	= 1000.0;
-	double cooling_rate = 0.99999999;
-	int max_radius		= 6;
+	double temperature					 = 1;
+	double cooling_rate					 = 0.99999999;
+	double current_mse_error			 = 10000.0;
+	int max_allowed_permutation_distance = 6;
 
 	std::mt19937 rng(1337);
 	std::uniform_int_distribution<int> dist_x(0, input_width - 1);
 	std::uniform_int_distribution<int> dist_y(0, input_height - 1);
-	std::uniform_int_distribution<int> dist_radius(-max_radius, max_radius);
-	std::uniform_real_distribution<float> dist_prob(0.0f, 1.0f);
+	std::uniform_int_distribution<int> dist_radius(-max_allowed_permutation_distance, max_allowed_permutation_distance);
+	Xorshift32Generator dist_prob(42);
 
 	// Running the random permutation loop
 	//
 	// Enough iterations to basically give each pixel a chance to be swapped with a good candidate in its neighborhood
-	size_t max_iter = input_width * input_height * max_radius * 6 * 1000;
-	for (size_t iter = 0; iter < max_iter; ++iter)
+	size_t iter		  = 0;
+	double target_mse = 5.0;
+	while (current_mse_error > target_mse)
 	{
+		if (iter++ % 100000000 == 0)
+		{
+			Image8Bit current_t_1_result(input_width, input_height, 1);
+			for (unsigned int index = 0; index < input_width * input_height; index++)
+				current_t_1_result.data()[index] = blue_noise_image.data()[m_permuted_positions[index] * blue_noise_image.channels];
+
+			current_mse_error = 0.0;
+			for (unsigned int index = 0; index < input_width * input_height; index++)
+				current_mse_error += hippt::square(current_t_1_result.data()[index] - m_blue_noise_image_t_plus_1.data()[index]);
+			current_mse_error /= (input_width * input_height);
+
+			std::cout << "Iteration " << iter << ", Temperature: " << temperature << ". Current state MSE: " << current_mse_error
+					  << ". Target MSE: " << target_mse << std::endl;
+		}
+
 		// Randomly select a pixel and a small random offset
 		int random_x		= dist_x(rng);
 		int random_y		= dist_y(rng);
@@ -77,17 +96,29 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 							  hippt::abs(m_blue_noise_image.data()[indexA] - m_blue_noise_image_t_plus_1.data()[indexB]);
 
 		float delta_error = swapped_error - current_error;
+		// If the total permutation distance of the chosen pixel is greater than the radius, we're not allowing the permutation. We want to produce local
+		// permutations from t_0 to t_+1 so we only allow small permutations
+		{
+			int new_permutation_index = m_permuted_positions[indexB];
+			int new_permutation_x	  = new_permutation_index % input_width;
+			int new_permutation_y	  = new_permutation_index / input_width;
+
+			float distance_after_swap = hippt::length(make_float2(new_permutation_x - random_x, new_permutation_y - random_y));
+
+			if (distance_after_swap > max_allowed_permutation_distance)
+				continue;
+		}
 
 		// Decide whether to accept the swap
 		bool accept = false;
-		if (delta_error < 0.0f)
+		if (delta_error <= 1.0e-6f)
 			// It's an improvement, always accept
 			accept = true;
 		else
 		{
 			// It's worse, accept with a probability based on temperature
 			float acceptance_probability = std::exp(-delta_error / temperature);
-			if (dist_prob(rng) < acceptance_probability)
+			if (dist_prob() < acceptance_probability)
 				accept = true;
 		}
 
@@ -103,8 +134,9 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 		// Cool down
 		temperature *= cooling_rate;
 
-		if (iter % 5000000 == 0)
-			std::cout << "Iteration " << iter << " (" << iter / (double)max_iter * 100.0 << "%), Temperature: " << temperature << std::endl;
+		if (current_mse_error <= 2.5)
+			// Good enough
+			break;
 	}
 
 	std::ofstream permutation_output_file("permutation.bin", std::ios::binary);
@@ -113,6 +145,8 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 	Image8Bit final_permutation_map_visualization(input_width, input_height, 1);
 	for (unsigned int index = 0; index < input_width * input_height; index++)
 		final_permutation_map_visualization.data()[index] = blue_noise_image.data()[m_permuted_positions[index] * blue_noise_image.channels];
+
+	final_permutation_map_visualization.write_image_png("final_permutation_visualization_debug.png");
 
 	double final_mse = 0.0;
 	for (unsigned int index = 0; index < input_width * input_height; index++)

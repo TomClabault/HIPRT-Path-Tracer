@@ -41,13 +41,17 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
 	virtual bool is_render_pass_used() const override;
+	bool& get_do_retargeting();
 
 private:
 	bool m_using_ssbn_permutation = true;
+	bool m_do_retargeting		  = true;
 
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
-	OrochiBuffer<unsigned char> m_blue_noise_retargeting_texture_buffer;
+	OrochiBuffer<int> m_blue_noise_retargeting_texture_buffer;
+	unsigned int m_blue_noise_texture_width;
+	unsigned int m_blue_noise_texture_height;
 };
 
 #endif

@@ -39,5 +39,8 @@ bool ThreadManager::m_monothread = false;
 std::atomic<unsigned int> ThreadManager::m_threads_waiting_to_start = 0;
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_states;
 std::unordered_map<std::string, std::vector<std::thread>> ThreadManager::m_threads_map;
+
+std::mutex ThreadManager::m_join_mutexes_map_mutex;
 std::unordered_map<std::string, std::mutex> ThreadManager::m_join_mutexes;
+
 std::unordered_map<std::string, std::unordered_set<std::string>> ThreadManager::m_dependencies;

@@ -506,6 +506,12 @@ math_vector<T, 4> operator/(const math_vector<T, 4>& a, T b)
 	return math_vector<T, 4>{ a.x / b, a.y / b, a.z / b, a.w / b };
 }
 
+using uchar2_t = math_vector<unsigned char, 2>;
+using uchar3_t = math_vector<unsigned char, 3>;
+using uchar4_t = math_vector<unsigned char, 4>;
+using short2_t = math_vector<short int, 2>;
+using short3_t = math_vector<short int, 3>;
+using short4_t = math_vector<short int, 4>;
 using int2_t   = math_vector<int, 2>;
 using int3_t   = math_vector<int, 3>;
 using int4_t   = math_vector<int, 4>;
@@ -515,6 +521,66 @@ using uint4_t  = math_vector<unsigned int, 4>;
 using float2_t = math_vector<float, 2>;
 using float3_t = math_vector<float, 3>;
 using float4_t = math_vector<float, 4>;
+
+inline constexpr uchar2_t make_uchar2(unsigned char x, unsigned char y)
+{
+	return uchar2_t(x, y);
+}
+
+inline constexpr uchar2_t make_uchar2(unsigned char v)
+{
+	return uchar2_t(v, v);
+}
+
+inline constexpr uchar3_t make_uchar3(unsigned char x, unsigned char y, unsigned char z)
+{
+	return uchar3_t(x, y, z);
+}
+
+inline constexpr uchar3_t make_uchar3(unsigned char v)
+{
+	return uchar3_t(v, v, v);
+}
+
+inline constexpr uchar4_t make_uchar4(unsigned char x, unsigned char y, unsigned char z, unsigned char w)
+{
+	return uchar4_t(x, y, z, w);
+}
+
+inline constexpr uchar4_t make_uchar4(unsigned char v)
+{
+	return uchar4_t(v, v, v, v);
+}
+
+inline constexpr short2_t make_short2(short int x, short int y)
+{
+	return short2_t(x, y);
+}
+
+inline constexpr short2_t make_short2(short int v)
+{
+	return short2_t(v, v);
+}
+
+inline constexpr short3_t make_short3(short int x, short int y, short int z)
+{
+	return short3_t(x, y, z);
+}
+
+inline constexpr short3_t make_short3(short int v)
+{
+	return short3_t(v, v, v);
+}
+
+inline constexpr short4_t make_short4(short int x, short int y, short int z, short int w)
+{
+	return short4_t(x, y, z, w);
+}
+
+inline constexpr short4_t make_short4(short int v)
+{
+	return short4_t(v, v, v, v);
+}
 
 inline constexpr int2_t make_int2(int x, int y)
 {
@@ -609,6 +675,12 @@ inline constexpr float4_t make_float4(float v)
 
 #include "Device/includes/FixIntellisense.h"
 
+using uchar2_t = uchar2;
+using uchar3_t = uchar3;
+using uchar4_t = uchar4;
+using short2_t = short2;
+using short3_t = short3;
+using short4_t = short4;
 using int2_t   = int2;
 using int3_t   = int3;
 using int4_t   = int4;
@@ -620,6 +692,36 @@ using float3_t = float3;
 using float4_t = float4;
 
 // Defining the missing one-value constructors
+HIPRT_DEVICE inline constexpr uchar2_t make_uchar2(unsigned char v)
+{
+	return uchar2_t(v, v);
+}
+
+HIPRT_DEVICE inline constexpr uchar3_t make_uchar3(unsigned char v)
+{
+	return uchar3_t(v, v, v);
+}
+
+HIPRT_DEVICE inline constexpr uchar4_t make_uchar4(unsigned char v)
+{
+	return uchar4_t(v, v, v, v);
+}
+
+HIPRT_DEVICE inline constexpr short2_t make_short2(short int v)
+{
+	return make_short2(v, v);
+}
+
+HIPRT_DEVICE inline constexpr short3_t make_short3(short int v)
+{
+	return make_short3(v, v, v);
+}
+
+HIPRT_DEVICE inline constexpr short4_t make_short4(short int v)
+{
+	return make_short4(v, v, v, v);
+}
+
 HIPRT_DEVICE inline constexpr int2_t make_int2(int v)
 {
 	return make_int2(v, v);

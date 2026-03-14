@@ -6,8 +6,6 @@
 #ifndef HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
 #define HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
 
-#define SSBNPermutationBlueNoiseTextureSize 512
-
 #ifndef __KERNELCC__
 
 /**

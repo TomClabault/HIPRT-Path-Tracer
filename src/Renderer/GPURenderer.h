@@ -107,6 +107,7 @@ public:
 	bool gmon_used() const;
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;
+	std::shared_ptr<SSBNPermutationRenderPass> get_ssbn_permutation_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
@@ -409,6 +410,7 @@ private:
 	// variables in the renderer class
 	DenoiserBuffersGPUData m_denoiser_buffers;
 
+	OrochiBuffer<ColorRGB32F> m_last_frame_ray_colors;
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;
 	// This buffer stores the number of samples accumulated *until* a pixel has converged

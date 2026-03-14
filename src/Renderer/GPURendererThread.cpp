@@ -279,10 +279,10 @@ void GPURendererThread::post_sample_update(HIPRTRenderData& render_data_for_fram
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
-	render_data_for_frame.render_settings.need_to_reset = false;
+	render_data_for_frame.render_settings.need_to_reset			= false;
 	m_renderer->get_render_data().render_settings.need_to_reset = false;
 
-	render_data_for_frame.render_settings.need_to_reset_random_seeds = false;
+	render_data_for_frame.render_settings.need_to_reset_random_seeds		 = false;
 	m_renderer->get_render_data().render_settings.need_to_reset_random_seeds = false;
 
 	render_data_for_frame.nee_plus_plus.m_reset_visibility_map		   = false;
@@ -392,6 +392,12 @@ std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass()
 std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass() const
 {
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_active_render_graph->get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+}
+
+std::shared_ptr<SSBNPermutationRenderPass> GPURendererThread::get_ssbn_permutation_render_pass()
+{
+	return std::dynamic_pointer_cast<SSBNPermutationRenderPass>(
+							m_active_render_graph->get_render_pass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReGIRRenderPass> GPURendererThread::get_ReGIR_render_pass()
