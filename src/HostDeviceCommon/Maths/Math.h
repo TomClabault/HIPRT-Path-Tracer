@@ -838,7 +838,8 @@ namespace hippt
 		return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z));
 	}
 
-	static float abs(float a)
+	template <typename T>
+	static T abs(T a)
 	{
 		return std::abs(a);
 	}

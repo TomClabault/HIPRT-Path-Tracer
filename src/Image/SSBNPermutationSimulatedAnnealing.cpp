@@ -8,9 +8,13 @@
 #include "Image/SSBNPermutationSimulatedAnnealing.h"
 #include "Utils/Utils.h"
 
+#include <chrono>
 #include <random>
 
-SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_input_image, int max_allowed_permutation_distance)
+SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_input_image,
+																	 int max_allowed_permutation_distance,
+																	 int max_time_seconds)
+	: m_max_allowed_permutation_distance(max_allowed_permutation_distance), m_max_time_seconds(max_time_seconds)
 {
 	unsigned int input_width  = blue_noise_input_image.width;
 	unsigned int input_height = blue_noise_input_image.height;
@@ -37,14 +41,12 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 			m_blue_noise_image_t_plus_1.data()[x + y * input_width] = m_blue_noise_image.data()[blue_noise_index_x + blue_noise_index_y * input_width];
 		}
 	}
-
-	m_max_allowed_permutation_distance = max_allowed_permutation_distance;
 }
 
 void SSBNPermutationSimulatedAnnealing::compute_permutation()
 {
-	unsigned int input_width  = m_blue_noise_image.width;
-	unsigned int input_height = m_blue_noise_image.height;
+	int input_width	 = m_blue_noise_image.width;
+	int input_height = m_blue_noise_image.height;
 
 	m_permuted_positions = std::vector<int>(input_width * input_height);
 	for (int i = 0; i < input_width * input_height; i++)
@@ -53,6 +55,7 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 	double temperature		 = 1;
 	double cooling_rate		 = 0.99999999;
 	double current_mse_error = 10000.0;
+	double last_mse_error	 = current_mse_error;
 
 	std::mt19937 rng(1337);
 	std::uniform_int_distribution<int> dist_x(0, input_width - 1);
@@ -64,10 +67,15 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 	//
 	// Enough iterations to basically give each pixel a chance to be swapped with a good candidate in its neighborhood
 	size_t iter		  = 0;
-	double target_mse = 5.0;
+	double target_mse = 0.0;
+
+	std::cout << std::endl << "Target MSE: " << target_mse << std::endl;
+	auto start = std::chrono::high_resolution_clock::now();
 	while (current_mse_error > target_mse)
 	{
-		if (iter++ % 100000000 == 0)
+		iter++;
+
+		if (iter % 100000000 == 0)
 		{
 			Image8Bit current_t_1_result(input_width, input_height, 1);
 			for (unsigned int index = 0; index < input_width * input_height; index++)
@@ -78,8 +86,50 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 				current_mse_error += hippt::square(current_t_1_result.data()[index] - m_blue_noise_image_t_plus_1.data()[index]);
 			current_mse_error /= (input_width * input_height);
 
-			std::cout << "Iteration " << iter << ", Temperature: " << temperature << ". Current state MSE: " << current_mse_error
-					  << ". Target MSE: " << target_mse << std::endl;
+			bool failed_to_converge						  = false;
+			static int current_mse_higher_than_last_count = 0;
+			static int good_converge_in_a_row			  = 0;
+			if (current_mse_error > last_mse_error)
+			{
+				current_mse_higher_than_last_count++;
+				failed_to_converge	   = true;
+				good_converge_in_a_row = 0;
+			}
+			else
+				good_converge_in_a_row++;
+
+			if (good_converge_in_a_row >= 10)
+			{
+				good_converge_in_a_row			   = 0;
+				current_mse_higher_than_last_count = 0;
+			}
+			if (current_mse_higher_than_last_count == 5)
+			{
+				// The optimizer struggles to converge, let's stop now
+				std::cout << "Current MSE error has been higher than the last MSE error too many times, struggling to converge. Stopping the permutation "
+							 "process."
+						  << std::endl;
+				break;
+			}
+
+			std::cout << "Time: " << std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count()
+					  << "s. Iteration " << iter << ", Temperature: " << temperature << ". Current MSE : " << current_mse_error;
+			if (failed_to_converge)
+				std::cout << ". Failed to converge";
+			std::cout << std::endl;
+
+			last_mse_error = current_mse_error;
+		}
+
+		if (iter % 1000000 == 0)
+		{
+			auto current_time = std::chrono::high_resolution_clock::now();
+			if (std::chrono::duration_cast<std::chrono::seconds>(current_time - start).count() > m_max_time_seconds)
+			{
+				std::cout << "Reached maximum time of " << m_max_time_seconds << " seconds. Stopping the permutation process." << std::endl;
+
+				break;
+			}
 		}
 
 		// Randomly select a pixel and a small random offset
@@ -141,11 +191,8 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 
 		// Cool down
 		temperature *= cooling_rate;
-
-		if (current_mse_error <= 2.5)
-			// Good enough
-			break;
 	}
+	auto stop = std::chrono::high_resolution_clock::now();
 
 	Image8Bit final_permutation_map_visualization(input_width, input_height, 1);
 	for (unsigned int index = 0; index < input_width * input_height; index++)
@@ -156,7 +203,8 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 	for (unsigned int index = 0; index < input_width * input_height; index++)
 		final_mse += hippt::square(final_permutation_map_visualization.data()[index] - m_blue_noise_image_t_plus_1.data()[index]);
 	final_mse /= (input_width * input_height);
-	std::cout << "Final MSE error: " << final_mse << std::endl;
+	std::cout << "Final MSE error: " << final_mse << ". " << "Time taken: " << std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()
+			  << " seconds." << std::endl;
 }
 
 void SSBNPermutationSimulatedAnnealing::write_permutations_to_file(const std::string_view file_path)

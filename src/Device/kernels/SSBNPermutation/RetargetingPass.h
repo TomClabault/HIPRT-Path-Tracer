@@ -30,7 +30,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 
 	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
 	if (render_data.render_settings.sample_number > 0)
-		get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
+		get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number - 1, blue_noise_offset_x,
 									  blue_noise_offset_y);
 
 	int tile_base_x				= (x / blue_noise_texture_width) * blue_noise_texture_width;

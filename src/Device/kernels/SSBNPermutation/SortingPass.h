@@ -62,7 +62,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 
-	int blue_noise_offset_x, blue_noise_offset_y;
+	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
 								  blue_noise_offset_y);
 

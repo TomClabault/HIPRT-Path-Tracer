@@ -19,19 +19,22 @@ const unsigned int SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTUR
 SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(renderer, options, SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME)
 {
-	int max_radius						= 15;
+	int max_radius						= 7;
 	std::string blue_noise_texture_path = SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH) + "x" +
 										  std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT) + ".png";
 	std::string permutation_file_path_no_extension = SSBN_PERMUTATION_DATA_DIRECTORY "/permutation" +
 													 std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH) + "x" +
 													 std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT) + "-r" + std::to_string(max_radius);
 
-	/*Image8Bit input_image = Image8Bit::read_image(blue_noise_texture_path, 1, false);
+	// Execute annealing simulation block
+	{
+		/*Image8Bit input_image = Image8Bit::read_image(blue_noise_texture_path, 1, false);
 
-	SSBNPermutationSimulatedAnnealing annealing(input_image, 15);
-	annealing.compute_permutation();
-	annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
-	annealing.write_permutation_visualization_image(permutation_file_path_no_extension + ".png");*/
+		SSBNPermutationSimulatedAnnealing annealing(input_image, max_radius, 600);
+		annealing.compute_permutation();
+		annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
+		annealing.write_permutation_visualization_image(permutation_file_path_no_extension + ".png");*/
+	}
 
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] = std::make_shared<GPUKernel>();
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
