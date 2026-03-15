@@ -46,8 +46,8 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	int local_retargeted_x = retargeted_index % blue_noise_texture_width;
 	int local_retargeted_y = retargeted_index / blue_noise_texture_width;
 
-	int global_retargeted_x = (tile_base_x + local_retargeted_x) % resolution_x;
-	int global_retargeted_y = (tile_base_y + local_retargeted_y) % resolution_y;
+	int global_retargeted_x = tile_base_x + local_retargeted_x;
+	int global_retargeted_y = tile_base_y + local_retargeted_y;
 
 	if (global_retargeted_x >= resolution_x || global_retargeted_y >= resolution_y)
 	{

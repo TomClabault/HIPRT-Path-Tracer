@@ -28,7 +28,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
 - Diffuse Lambertian BTDF
 - Spectral dispersion using Cauchy's equation
-- Microfacet BRDFs multiple-scattering
+- Microfacet BRDFs multiple-scattering:
 	- Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle [\[Cui et al., 2023\]](https://wangningbei.github.io/2023/GMBBRDF.html)
 	- Energy compensation for conductors (double metal layer), dielectrics (transmission layer), glossy-diffuse (specular + diffuse layer) and coated (coat layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 - Thin-film interference over dielectrics and conductors [\[Belcour, Barla, 2017\]](https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html)
@@ -57,8 +57,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- BSDF * (projected) solid angle product sampling with LTCs \[[Heitz et al., 2016](https://eheitzresearch.wordpress.com/415-2/)\], [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 	
 - NEE estimators (built on-top of base techniques):
-	- Naive NEE
-	- MIS with BSDF sampling
+	- Naive NEE (light sampling only)
+	- NEE with MIS (BSDF sampling + light sampling)
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) for many-lights sampling augmented with:
 		- Representative cell surface-data + integration with NEE++ for resampling according to the product **BRDF \* L_i \* G \* V**
 		- Partial implementation of Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) with per-cell light distributions
@@ -72,8 +72,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Other light sampling features
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
 	- NEE for HDR environment maps using:
-		- CDF-inversion & binary search
 		- Alias Table (Vose's O(N) construction [\[Vose, 1991\]](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=f65bcde1fcf82e05388b31de80cba10bf65acc07))
+		- CDF-inversion & binary search
 	
 - BSDF sampling:
 	- GGX NDF Sampling:
@@ -99,9 +99,9 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Adaptive-directional spatial reuse for improved offline rendering efficiency
 	- Optimal visibility sampling [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features
+- Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between Frames [\[Heitz and Belcour, 2019.\]](https://eheitzresearch.wordpress.com/772-2/)
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
-- Texture support for all the parameters of the BSDF
 - Texture alpha transparency support
 - Stochastic material opacity support
 - Normal mapping

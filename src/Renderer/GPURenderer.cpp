@@ -401,8 +401,17 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_render_thread.resize(new_width, new_height);
 	m_pixel_active.resize(new_width * new_height);
+
+	/*std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
+	if (ssbn_permutation_render_pass && ssbn_permutation_render_pass->is_render_pass_used())
+	{
+		unsigned int padded_width = std::ceil(new_width / (float)ssbn_permutation_render_pass->blue_noise_texture_width()) *
+	ssbn_permutation_render_pass->blue_noise_texture_width(); unsigned int padded_height = std::ceil(new_height /
+	(float)ssbn_permutation_render_pass->blue_noise_texture_height()) * ssbn_permutation_render_pass->blue_noise_texture_height();*/
+
 	m_input_seeds.resize(new_width * new_height);
 	m_updated_random_seeds.resize(new_width * new_height);
+	//}
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed

@@ -21,6 +21,9 @@ public:
 	static const std::string SSBN_PERMUTATION_SORTING_PASS;
 	static const std::string SSBN_PERMUTATION_RETARGETING_PASS;
 
+	static const unsigned int SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
+	static const unsigned int SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
+
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
@@ -50,8 +53,6 @@ private:
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
 	OrochiBuffer<int> m_blue_noise_retargeting_texture_buffer;
-	unsigned int m_blue_noise_texture_width;
-	unsigned int m_blue_noise_texture_height;
 };
 
 #endif
