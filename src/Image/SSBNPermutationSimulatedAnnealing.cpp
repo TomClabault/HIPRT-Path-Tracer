@@ -10,16 +10,17 @@
 
 #include <random>
 
-SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_image)
+SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_input_image, int max_allowed_permutation_distance)
 {
-	unsigned int input_width  = blue_noise_image.width;
-	unsigned int input_height = blue_noise_image.height;
+	unsigned int input_width  = blue_noise_input_image.width;
+	unsigned int input_height = blue_noise_input_image.height;
 
-	m_blue_noise_image = Image8Bit(input_width, input_height, 1);
+	m_blue_noise_image_original = blue_noise_input_image;
+	m_blue_noise_image			= Image8Bit(input_width, input_height, 1);
 	// Copying only the first channel of the input image to m_blue_noise_image
 	for (unsigned int y = 0; y < input_height; y++)
 		for (unsigned int x = 0; x < input_width; x++)
-			m_blue_noise_image.data()[x + y * input_width] = blue_noise_image.data()[(x + y * input_width) * blue_noise_image.channels + 0];
+			m_blue_noise_image.data()[x + y * input_width] = blue_noise_input_image.data()[(x + y * input_width) * blue_noise_input_image.channels + 0];
 
 	m_blue_noise_image_t_plus_1 = Image8Bit(input_width, input_height, 1);
 
@@ -37,19 +38,26 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 		}
 	}
 
+	m_max_allowed_permutation_distance = max_allowed_permutation_distance;
+}
+
+void SSBNPermutationSimulatedAnnealing::compute_permutation()
+{
+	unsigned int input_width  = m_blue_noise_image.width;
+	unsigned int input_height = m_blue_noise_image.height;
+
 	m_permuted_positions = std::vector<int>(input_width * input_height);
 	for (int i = 0; i < input_width * input_height; i++)
 		m_permuted_positions[i] = i;
 
-	double temperature					 = 1;
-	double cooling_rate					 = 0.99999999;
-	double current_mse_error			 = 10000.0;
-	int max_allowed_permutation_distance = 6;
+	double temperature		 = 1;
+	double cooling_rate		 = 0.99999999;
+	double current_mse_error = 10000.0;
 
 	std::mt19937 rng(1337);
 	std::uniform_int_distribution<int> dist_x(0, input_width - 1);
 	std::uniform_int_distribution<int> dist_y(0, input_height - 1);
-	std::uniform_int_distribution<int> dist_radius(-max_allowed_permutation_distance, max_allowed_permutation_distance);
+	std::uniform_int_distribution<int> dist_radius(-m_max_allowed_permutation_distance, m_max_allowed_permutation_distance);
 	Xorshift32Generator dist_prob(42);
 
 	// Running the random permutation loop
@@ -63,7 +71,7 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 		{
 			Image8Bit current_t_1_result(input_width, input_height, 1);
 			for (unsigned int index = 0; index < input_width * input_height; index++)
-				current_t_1_result.data()[index] = blue_noise_image.data()[m_permuted_positions[index] * blue_noise_image.channels];
+				current_t_1_result.data()[index] = m_blue_noise_image_original.data()[m_permuted_positions[index] * m_blue_noise_image_original.channels];
 
 			current_mse_error = 0.0;
 			for (unsigned int index = 0; index < input_width * input_height; index++)
@@ -105,7 +113,7 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 
 			float distance_after_swap = hippt::length(make_float2(new_permutation_x - random_x, new_permutation_y - random_y));
 
-			if (distance_after_swap > max_allowed_permutation_distance)
+			if (distance_after_swap > m_max_allowed_permutation_distance)
 				continue;
 		}
 
@@ -125,7 +133,7 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 		// Apply the swap if accepted
 		if (accept)
 		{
-			// Swap the visual values in our working state
+			// Swap the values in our working state
 			std::swap(m_blue_noise_image[indexA], m_blue_noise_image[indexB]);
 
 			std::swap(m_permuted_positions[indexA], m_permuted_positions[indexB]);
@@ -139,18 +147,38 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 			break;
 	}
 
-	std::ofstream permutation_output_file("permutation.bin", std::ios::binary);
-	permutation_output_file.write(reinterpret_cast<const char*>(m_permuted_positions.data()), m_permuted_positions.size() * sizeof(int));
-
 	Image8Bit final_permutation_map_visualization(input_width, input_height, 1);
 	for (unsigned int index = 0; index < input_width * input_height; index++)
-		final_permutation_map_visualization.data()[index] = blue_noise_image.data()[m_permuted_positions[index] * blue_noise_image.channels];
-
-	final_permutation_map_visualization.write_image_png("final_permutation_visualization_debug.png");
+		final_permutation_map_visualization.data()[index] =
+								m_blue_noise_image_original.data()[m_permuted_positions[index] * m_blue_noise_image_original.channels];
 
 	double final_mse = 0.0;
 	for (unsigned int index = 0; index < input_width * input_height; index++)
 		final_mse += hippt::square(final_permutation_map_visualization.data()[index] - m_blue_noise_image_t_plus_1.data()[index]);
 	final_mse /= (input_width * input_height);
 	std::cout << "Final MSE error: " << final_mse << std::endl;
+}
+
+void SSBNPermutationSimulatedAnnealing::write_permutations_to_file(const std::string_view file_path)
+{
+	std::ofstream permutation_output_file(file_path.data(), std::ios::binary);
+	permutation_output_file.write(reinterpret_cast<const char*>(m_permuted_positions.data()), m_permuted_positions.size() * sizeof(int));
+}
+
+void SSBNPermutationSimulatedAnnealing::write_permutation_visualization_image(const std::string_view file_path)
+{
+	unsigned int input_width  = m_blue_noise_image.width;
+	unsigned int input_height = m_blue_noise_image.height;
+
+	Image8Bit final_permutation_map_visualization(input_width, input_height, 1);
+	for (unsigned int index = 0; index < input_width * input_height; index++)
+		final_permutation_map_visualization.data()[index] =
+								m_blue_noise_image_original.data()[m_permuted_positions[index] * m_blue_noise_image_original.channels];
+
+	final_permutation_map_visualization.write_image_png(file_path);
+}
+
+std::vector<int>& SSBNPermutationSimulatedAnnealing::permuted_positions()
+{
+	return m_permuted_positions;
 }

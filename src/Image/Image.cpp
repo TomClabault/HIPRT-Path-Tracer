@@ -93,7 +93,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 	return Image8Bit(converted_data, width, height, output_channels);
 }
 
-bool Image8Bit::write_image_png(const char* filename, const bool flipY) const
+bool Image8Bit::write_image_png(const std::string_view filename, const bool flipY) const
 {
 	if (byte_size() == 0)
 		return false;
@@ -104,10 +104,10 @@ bool Image8Bit::write_image_png(const char* filename, const bool flipY) const
 			tmp[i * channels + j] = hippt::clamp(static_cast<unsigned char>(0), static_cast<unsigned char>(255), m_pixel_data[i * channels + j]);
 
 	stbi_flip_vertically_on_write(flipY);
-	return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
+	return stbi_write_png(filename.data(), width, height, channels, tmp.data(), width * channels) != 0;
 }
 
-bool Image8Bit::write_image_hdr(const char* filename, const bool flipY) const
+bool Image8Bit::write_image_hdr(const std::string_view filename, const bool flipY) const
 {
 	if (byte_size() == 0)
 		return false;
@@ -118,7 +118,7 @@ bool Image8Bit::write_image_hdr(const char* filename, const bool flipY) const
 			tmp[i * channels + j] = m_pixel_data[i * channels + j] / 255.0f;
 
 	stbi_flip_vertically_on_write(flipY);
-	return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
+	return stbi_write_hdr(filename.data(), width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
 float Image8Bit::luminance_of_pixel(int x, int y) const

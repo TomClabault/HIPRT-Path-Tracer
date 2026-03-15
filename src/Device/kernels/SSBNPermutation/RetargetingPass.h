@@ -28,19 +28,20 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	if (x >= resolution_x || y >= resolution_y)
 		return;
 
-	int blue_noise_offset_x, blue_noise_offset_y;
-	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
-								  blue_noise_offset_y);
+	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
+	if (render_data.render_settings.sample_number > 0)
+		get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
+									  blue_noise_offset_y);
 
-	int tile_base_x		   = (x / blue_noise_texture_width) * blue_noise_texture_width;
-	int tile_base_y		   = (y / blue_noise_texture_height) * blue_noise_texture_height;
-	int local_x			   = x % blue_noise_texture_width;
-	int local_y			   = y % blue_noise_texture_height;
-	int local_offset_x	   = (local_x) % blue_noise_texture_width;
-	int local_offset_y	   = (local_y) % blue_noise_texture_height;
-	int local_offset_index = local_offset_x + local_offset_y * blue_noise_texture_width;
+	int tile_base_x				= (x / blue_noise_texture_width) * blue_noise_texture_width;
+	int tile_base_y				= (y / blue_noise_texture_height) * blue_noise_texture_height;
+	int local_x					= x % blue_noise_texture_width;
+	int local_y					= y % blue_noise_texture_height;
+	int local_offset_x			= (local_x + blue_noise_offset_x) % blue_noise_texture_width;
+	int local_offset_y			= (local_y + blue_noise_offset_y) % blue_noise_texture_height;
+	int permutation_index_fetch = local_offset_x + local_offset_y * blue_noise_texture_width;
 
-	int retargeted_index = blue_noise_retargeting_texture_buffer[local_offset_index];
+	int retargeted_index = blue_noise_retargeting_texture_buffer[permutation_index_fetch];
 
 	int local_retargeted_x = retargeted_index % blue_noise_texture_width;
 	int local_retargeted_y = retargeted_index / blue_noise_texture_width;

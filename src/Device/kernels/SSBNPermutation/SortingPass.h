@@ -52,11 +52,11 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int in_block_y = threadIdx.y;
 
 	int pixel_index			  = x + y * resolution_x;
-	int thread_index_in_block = in_block_x + in_block_y * SSBNPermutationBlockSize;
+	int thread_index_in_block = in_block_x + in_block_y * blockDim.x;
 
 	bool thread_valid = x < resolution_x && y < resolution_y;
 
-	__shared__ unsigned char input_blue_noise[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	__shared__ short int input_blue_noise[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short2_t input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ fp16 input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
@@ -79,10 +79,10 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	}
 	else
 	{
-		input_blue_noise[thread_index_in_block]				= 255;
+		input_blue_noise[thread_index_in_block]				= 32767;
 		input_blue_noise_coordinates[thread_index_in_block] = make_short2(-1, -1);
 
-		input_pixel_luminance[thread_index_in_block]			 = static_cast<fp16>(1.0e10f);
+		input_pixel_luminance[thread_index_in_block]			 = static_cast<fp16>(1.0e10);
 		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(-1, -1);
 	}
 	sorted_seeds[thread_index_in_block] = 0;
@@ -97,19 +97,35 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 
 	__syncthreads();
 
-	unsigned int blue_noise_block_sorted_index = input_blue_noise_coordinates[thread_index_in_block].x +
-												 input_blue_noise_coordinates[thread_index_in_block].y * SSBNPermutationBlockSize;
+	int blue_noise_block_sorted_index;
+	short2_t luminance_coords;
+	int luminance_global_sorted_index;
+	// Thread index in block but accounting for invalid threads. Basically this is thread index in block but as if the thread block was fitting the image
+	// perfectly and not spilling over (at the edges of the image where thread blocks are spilling over)
+	unsigned int valid_block_size_x			 = hippt::min(blockDim.x, resolution_x - blockIdx.x * blockDim.x);
+	unsigned int valid_thread_index_in_block = in_block_x + in_block_y * valid_block_size_x;
+	if (thread_valid)
+	{
 
-	unsigned int block_start_x			   = blockIdx.x * SSBNPermutationBlockSize;
-	unsigned int block_start_y			   = blockIdx.y * SSBNPermutationBlockSize;
-	unsigned int block_start_global_offset = block_start_x + block_start_y * resolution_x;
+		/*unsigned int blue_noise_block_sorted_index = input_blue_noise_coordinates[thread_index_in_block].x +
+													 input_blue_noise_coordinates[thread_index_in_block].y * SSBNPermutationBlockSize;*/
+		blue_noise_block_sorted_index = input_blue_noise_coordinates[valid_thread_index_in_block].x +
+										input_blue_noise_coordinates[valid_thread_index_in_block].y * SSBNPermutationBlockSize;
 
-	short2_t luminance_coords				   = input_pixel_luminance_coordinates[thread_index_in_block];
-	unsigned int luminance_global_sorted_index = block_start_global_offset + input_pixel_luminance_coordinates[thread_index_in_block].x +
-												 input_pixel_luminance_coordinates[thread_index_in_block].y * resolution_x;
+		unsigned int block_start_x			   = blockIdx.x * SSBNPermutationBlockSize;
+		unsigned int block_start_y			   = blockIdx.y * SSBNPermutationBlockSize;
+		unsigned int block_start_global_offset = block_start_x + block_start_y * resolution_x;
 
-	if (luminance_coords.x != -1 && luminance_coords.y != -1)
-		sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index];
+		/*short2_t luminance_coords				   = input_pixel_luminance_coordinates[thread_index_in_block];
+		unsigned int luminance_global_sorted_index = block_start_global_offset + input_pixel_luminance_coordinates[thread_index_in_block].x +
+													 input_pixel_luminance_coordinates[thread_index_in_block].y * resolution_x;*/
+		luminance_coords			  = input_pixel_luminance_coordinates[valid_thread_index_in_block];
+		luminance_global_sorted_index = block_start_global_offset + input_pixel_luminance_coordinates[valid_thread_index_in_block].x +
+										input_pixel_luminance_coordinates[valid_thread_index_in_block].y * resolution_x;
+
+		if (luminance_coords.x != -1 && luminance_coords.y != -1)
+			sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index];
+	}
 
 	__syncthreads();
 

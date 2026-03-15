@@ -4,7 +4,6 @@
  */
 
 #include "Image/Image.h"
-#include "Image/SSBNPermutationSimulatedAnnealing.h"
 #include "Renderer/BVH.h"
 #include "Renderer/Compute/RadixSort.h"
 #include "Renderer/CPURenderer.h"

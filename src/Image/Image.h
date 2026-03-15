@@ -37,8 +37,8 @@ public:
 	static Image8Bit read_image(const std::string& filepath, int output_channels, bool flipY);
 	static Image8Bit read_image_hdr(const std::string& filepath, int output_channels, bool flipY);
 
-	bool write_image_png(const char* filename, const bool flipY = true) const;
-	bool write_image_hdr(const char* filename, const bool flipY = true) const;
+	bool write_image_png(const std::string_view filename, const bool flipY = true) const;
+	bool write_image_hdr(const std::string_view, const bool flipY = true) const;
 
 	float luminance_of_pixel(int x, int y) const;
 	float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;

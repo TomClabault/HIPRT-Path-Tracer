@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Image/SSBNPermutationSimulatedAnnealing.h"
 #include "Renderer/RenderPasses/SSBNPermutationRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -15,6 +16,14 @@ const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS =
 SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(renderer, options, SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME)
 {
+	/*Image8Bit input_image = Image8Bit::read_image(SSBN_PERMUTATION_DATA_DIRECTORY "/noise512x512.png", 1, false);
+
+	int max_radius = 7;
+	SSBNPermutationSimulatedAnnealing annealing(input_image, max_radius);
+	annealing.compute_permutation();
+	annealing.write_permutations_to_file(SSBN_PERMUTATION_DATA_DIRECTORY "/permutation512x512-r" + std::to_string(max_radius) + ".bin");
+	annealing.write_permutation_visualization_image(SSBN_PERMUTATION_DATA_DIRECTORY "/permutation512x512-r" + std::to_string(max_radius) + ".png");*/
+
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] = std::make_shared<GPUKernel>();
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_function_name("SSBNPermutationSortingPass");
@@ -32,7 +41,7 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 	for (int i = 0; i < blue_noise_texture.width * blue_noise_texture.height; i++)
 		blue_noise_dither_data[i] = static_cast<unsigned char>(std::round(blue_noise_texture.data()[i * blue_noise_texture.channels + 0]));
 
-	std::ifstream blue_noise_retargeting_file(SSBN_PERMUTATION_DATA_DIRECTORY "/permutation512x512.bin", std::ios::binary);
+	std::ifstream blue_noise_retargeting_file(SSBN_PERMUTATION_DATA_DIRECTORY "/permutation512x512-r15.bin", std::ios::binary);
 
 	std::vector<int> blue_noise_retargeting_data(blue_noise_texture.width * blue_noise_texture.height);
 	blue_noise_retargeting_file.read(reinterpret_cast<char*>(blue_noise_retargeting_data.data()),
@@ -88,9 +97,9 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 															   &m_blue_noise_texture_height,
 															   &sorted_seeds_buffer_pointer,
 															   &render_data.buffers.get_input_random_seeds_pointer() };
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(
-								SSBNPermutationBlockSize, SSBNPermutationBlockSize, render_data.render_settings.render_resolution.x,
-								render_data.render_settings.render_resolution.y, launch_args_retargeting, m_renderer->get_main_stream());
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, render_data.render_settings.render_resolution.x,
+																									 render_data.render_settings.render_resolution.y,
+																									 launch_args_retargeting, m_renderer->get_main_stream());
 	}
 	else
 	{

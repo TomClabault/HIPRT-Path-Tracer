@@ -11,13 +11,20 @@
 class SSBNPermutationSimulatedAnnealing
 {
 public:
-	SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_image);
+	SSBNPermutationSimulatedAnnealing(const Image8Bit& blue_noise_input_image, int max_allowed_permutation_distance);
 
-	void compute_permutation(Image32Bit& out_permutation) const;
+	void compute_permutation();
+	void write_permutations_to_file(const std::string_view file_path);
+	void write_permutation_visualization_image(const std::string_view file_path);
+
+	std::vector<int>& permuted_positions();
 
 private:
+	Image8Bit m_blue_noise_image_original;
+
 	Image8Bit m_blue_noise_image;
 	Image8Bit m_blue_noise_image_t_plus_1;
+	int m_max_allowed_permutation_distance;
 
 	std::vector<int> m_permuted_positions;
 };
