@@ -3,25 +3,39 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/RenderWindow.h"
 #include "UI/Interaction/RenderWindowKeyboardInteractor.h"
+#include "UI/RenderWindow.h"
 
 void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	void* user_pointer			= glfwGetWindowUserPointer(window);
-	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
+	void* user_pointer					  = glfwGetWindowUserPointer(window);
+	RenderWindow* render_window			  = reinterpret_cast<RenderWindow*>(user_pointer);
+	std::shared_ptr<GPURenderer> renderer = render_window->get_renderer();
 
 	// We still want to process the inputs if we're hovering the render window because then
 	// we *are* trying to move the camera with the keyboard
 	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
 
 	ImGuiIO& io = ImGui::GetIO();
-	if (io.WantCaptureKeyboard && !render_window_hovered && !(action == GLFW_RELEASE))
+	if (io.WantCaptureKeyboard && !(action == GLFW_RELEASE) && !render_window_hovered)
 		// We always want to handle release key otherwise we could press a key while
 		// hovering the render window and then release the with our mouse over another window
 		// --> not hovering the render window --> the key won't be released and the camera
 		// will keep moving
 		return;
+
+	// Handling general shortcuts
+	switch (key)
+	{
+	case GLFW_KEY_R:
+		// Soft shaders reload
+		renderer->recompile_kernels(true);
+		render_window->set_render_dirty(true);
+
+		break;
+	}
+
+	// Now handling viewport controls below
 
 	RenderWindowKeyboardInteractor& interactor_instance = render_window->get_keyboard_interactor();
 	switch (key)
