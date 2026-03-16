@@ -29,7 +29,7 @@ SSBNPermutationSimulatedAnnealing::SSBNPermutationSimulatedAnnealing(const Image
 	m_blue_noise_image_t_plus_1 = Image8Bit(input_width, input_height, 1);
 
 	int blue_noise_offset_x, blue_noise_offset_y;
-	get_blue_noise_texture_offset(input_width, input_height, 0, blue_noise_offset_x, blue_noise_offset_y);
+	get_blue_noise_texture_offset(input_width, input_height, 1, blue_noise_offset_x, blue_noise_offset_y);
 
 	for (int y = 0; y < input_height; y++)
 	{
