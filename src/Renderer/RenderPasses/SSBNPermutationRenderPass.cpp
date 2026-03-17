@@ -56,6 +56,15 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->synchronize_options_with(m_compiler_options, {});
 
 	Image8Bit blue_noise_texture = Image8Bit::read_image(blue_noise_texture_path, 1, false);
+	if (blue_noise_texture.width != SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH || blue_noise_texture.height != SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT)
+	{
+		std::cerr << "Error: Blue noise texture has wrong dimensions. Expected " << SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH << "x"
+				  << SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT << ", got " << blue_noise_texture.width << "x" << blue_noise_texture.height << std::endl;
+
+		throw std::runtime_error("Error: Blue noise texture has wrong dimensions. Expected " + std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH) + "x" +
+								 std::to_string(SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT) + ", got " + std::to_string(blue_noise_texture.width) + "x" +
+								 std::to_string(blue_noise_texture.height));
+	}
 
 	std::vector<unsigned char> blue_noise_dither_data(blue_noise_texture.width * blue_noise_texture.height);
 	for (int i = 0; i < blue_noise_texture.width * blue_noise_texture.height; i++)
