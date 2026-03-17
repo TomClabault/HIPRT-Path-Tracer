@@ -146,7 +146,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	}
 	// path_tracing_accumulate_color(render_data, ColorRGB32F(render_data.get_input_random_seed(pixel_index) / (float)((unsigned int)(-1))), pixel_index);
 
-	// path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
+	path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
 }
 
 #endif

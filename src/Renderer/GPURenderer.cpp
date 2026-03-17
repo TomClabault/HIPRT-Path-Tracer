@@ -384,12 +384,12 @@ void GPURenderer::resize(int new_width, int new_height)
 	synchronize_all_kernels();
 	unmap_buffers();
 
+	m_last_frame_ray_colors.resize(new_width * new_height);
 	m_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
 	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
 
-	m_last_frame_ray_colors.resize(new_width * new_height);
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 

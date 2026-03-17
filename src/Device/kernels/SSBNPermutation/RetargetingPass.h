@@ -35,25 +35,27 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
 								  blue_noise_offset_y);
 
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
+		printf("Pixel: (%d, %d)\n", x, y);
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 		printf("Blue noise offset: (%d, %d)\n", blue_noise_offset_x, blue_noise_offset_y);
 
 	int local_offset_x = (x + blue_noise_offset_x) % blue_noise_texture_width;
 	int local_offset_y = (y + blue_noise_offset_y) % blue_noise_texture_height;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 		printf("Local offset (fetching at) in blue noise texture: (%d, %d)\n", local_offset_x, local_offset_y);
 
 	int permutation_index_fetch = local_offset_x + local_offset_y * blue_noise_texture_width;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 		printf("Permutation index fetch: %d\n", permutation_index_fetch);
 
 	int local_retargeted_index = blue_noise_retargeting_texture_buffer[permutation_index_fetch];
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 		printf("Local retargeted index: %d\n", local_retargeted_index);
 
 	int local_retargeted_x = local_retargeted_index % blue_noise_texture_width;
 	int local_retargeted_y = local_retargeted_index / blue_noise_texture_width;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("int local_retargeted_x = local_retargeted_index %% blue_noise_texture_width; // %d\n", local_retargeted_x);
 		printf("int local_retargeted_y = local_retargeted_index / blue_noise_texture_width; // %d\n", local_retargeted_y);
@@ -61,7 +63,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 
 	local_retargeted_x -= blue_noise_offset_x;
 	local_retargeted_y -= blue_noise_offset_y;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("local_retargeted_x -= blue_noise_offset_x; // %d\n", local_retargeted_x);
 		printf("local_retargeted_y -= blue_noise_offset_y; // %d\n", local_retargeted_y);
@@ -69,7 +71,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 
 	local_retargeted_x %= blue_noise_texture_width;
 	local_retargeted_y %= blue_noise_texture_height;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("local_retargeted_x %%= blue_noise_texture_width; // %d\n", local_retargeted_x);
 		printf("local_retargeted_y %%= blue_noise_texture_height; // %d\n", local_retargeted_y);
@@ -79,7 +81,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	local_retargeted_y = (local_retargeted_y + blue_noise_texture_height) % blue_noise_texture_height;
 	/*local_retargeted_x = (local_retargeted_x % blue_noise_texture_width + blue_noise_texture_width) % blue_noise_texture_width;
 	local_retargeted_y = (local_retargeted_y % blue_noise_texture_height + blue_noise_texture_height) % blue_noise_texture_height;*/
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("After modulo wrapping:\n");
 		printf("local_retargeted_x = %d\n", local_retargeted_x);
@@ -88,7 +90,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 
 	int tile_base_x = (x / blue_noise_texture_width) * blue_noise_texture_width;
 	int tile_base_y = (y / blue_noise_texture_height) * blue_noise_texture_height;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("Tile base:\n");
 		printf("tile_base_x = (x / blue_noise_texture_width) * blue_noise_texture_width; // %d\n", tile_base_x);
@@ -97,7 +99,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 
 	int global_retargeted_x = tile_base_x + local_retargeted_x;
 	int global_retargeted_y = tile_base_y + local_retargeted_y;
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("Global retargeted pixel:\n");
 		printf("global_retargeted_x = tile_base_x + local_retargeted_x; // %d\n", global_retargeted_x);
@@ -123,7 +125,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 		}
 	}
 
-	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 		printf("\n\n\n");
 
 	out_retargeted_seeds_buffer[x + y * padded_resolution_x] = sorted_seeds_buffer[global_retargeted_x + global_retargeted_y * padded_resolution_x];

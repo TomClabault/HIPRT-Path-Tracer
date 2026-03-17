@@ -49,7 +49,7 @@ public:
 
 private:
 	bool m_using_ssbn_permutation = true;
-	bool m_do_retargeting		  = true;
+	bool m_do_retargeting		  = false;
 
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
