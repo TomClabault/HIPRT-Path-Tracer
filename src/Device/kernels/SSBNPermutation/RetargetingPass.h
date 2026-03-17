@@ -32,29 +32,74 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
 								  blue_noise_offset_y);
 
-	int local_offset_x			= (x + blue_noise_offset_x) % blue_noise_texture_width;
-	int local_offset_y			= (y + blue_noise_offset_y) % blue_noise_texture_height;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+		printf("Blue noise offset: (%d, %d)\n", blue_noise_offset_x, blue_noise_offset_y);
+
+	int local_offset_x = (x + blue_noise_offset_x) % blue_noise_texture_width;
+	int local_offset_y = (y + blue_noise_offset_y) % blue_noise_texture_height;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+		printf("Local offset (fetching at) in blue noise texture: (%d, %d)\n", local_offset_x, local_offset_y);
+
 	int permutation_index_fetch = local_offset_x + local_offset_y * blue_noise_texture_width;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+		printf("Permutation index fetch: %d\n", permutation_index_fetch);
 
 	int local_retargeted_index = blue_noise_retargeting_texture_buffer[permutation_index_fetch];
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+		printf("Local retargeted index: %d\n", local_retargeted_index);
 
 	int local_retargeted_x = local_retargeted_index % blue_noise_texture_width;
 	int local_retargeted_y = local_retargeted_index / blue_noise_texture_width;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("int local_retargeted_x = local_retargeted_index %% blue_noise_texture_width; // %d\n", local_retargeted_x);
+		printf("int local_retargeted_y = local_retargeted_index / blue_noise_texture_width; // %d\n", local_retargeted_y);
+	}
 
 	local_retargeted_x -= blue_noise_offset_x;
 	local_retargeted_y -= blue_noise_offset_y;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("local_retargeted_x -= blue_noise_offset_x; // %d\n", local_retargeted_x);
+		printf("local_retargeted_y -= blue_noise_offset_y; // %d\n", local_retargeted_y);
+	}
 
 	local_retargeted_x %= blue_noise_texture_width;
 	local_retargeted_y %= blue_noise_texture_height;
-
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("local_retargeted_x %%= blue_noise_texture_width; // %d\n", local_retargeted_x);
+		printf("local_retargeted_y %%= blue_noise_texture_height; // %d\n", local_retargeted_y);
+	}
 	// Modulo wrapping accounting for potentially negative local_retargeted_*
-	local_retargeted_x = (local_retargeted_x + blue_noise_texture_width) % blue_noise_texture_width;
-	local_retargeted_y = (local_retargeted_y + blue_noise_texture_height) % blue_noise_texture_height;
+	/*local_retargeted_x = (local_retargeted_x + blue_noise_texture_width) % blue_noise_texture_width;
+	local_retargeted_y = (local_retargeted_y + blue_noise_texture_height) % blue_noise_texture_height;*/
+	local_retargeted_x = (local_retargeted_x % blue_noise_texture_width + blue_noise_texture_width) % blue_noise_texture_width;
+	local_retargeted_y = (local_retargeted_y % blue_noise_texture_height + blue_noise_texture_height) % blue_noise_texture_height;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("After modulo wrapping:\n");
+		printf("local_retargeted_x = %d\n", local_retargeted_x);
+		printf("local_retargeted_y = %d\n", local_retargeted_y);
+	}
 
-	int tile_base_x			= (x / blue_noise_texture_width) * blue_noise_texture_width;
-	int tile_base_y			= (y / blue_noise_texture_height) * blue_noise_texture_height;
+	int tile_base_x = (x / blue_noise_texture_width) * blue_noise_texture_width;
+	int tile_base_y = (y / blue_noise_texture_height) * blue_noise_texture_height;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("Tile base:\n");
+		printf("tile_base_x = (x / blue_noise_texture_width) * blue_noise_texture_width; // %d\n", tile_base_x);
+		printf("tile_base_y = (y / blue_noise_texture_height) * blue_noise_texture_height; // %d\n", tile_base_y);
+	}
+
 	int global_retargeted_x = tile_base_x + local_retargeted_x;
 	int global_retargeted_y = tile_base_y + local_retargeted_y;
+	if (x == 0 && y == 18 && render_data.render_settings.sample_number == 1)
+	{
+		printf("Global retargeted pixel:\n");
+		printf("global_retargeted_x = tile_base_x + local_retargeted_x; // %d\n", global_retargeted_x);
+		printf("global_retargeted_y = tile_base_y + local_retargeted_y; // %d\n", global_retargeted_y);
+	}
 
 	if (global_retargeted_x >= resolution_x || global_retargeted_y >= resolution_y)
 	{
@@ -62,6 +107,12 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 		// just keep it in place to maintain the bijection for the edge pixels.
 		global_retargeted_x = x;
 		global_retargeted_y = y;
+
+		if (render_data.render_settings.sample_number == render_data.render_settings.output_debug_sample_N - 1)
+		{
+			out_retargeted_seeds_buffer[x + y * resolution_x] = 0;
+			return;
+		}
 	}
 
 	out_retargeted_seeds_buffer[x + y * resolution_x] = sorted_seeds_buffer[global_retargeted_x + global_retargeted_y * resolution_x];

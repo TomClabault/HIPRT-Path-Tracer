@@ -402,16 +402,24 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_render_thread.resize(new_width, new_height);
 	m_pixel_active.resize(new_width * new_height);
 
-	/*std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
+	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
 	if (ssbn_permutation_render_pass && ssbn_permutation_render_pass->is_render_pass_used())
 	{
-		unsigned int padded_width = std::ceil(new_width / (float)ssbn_permutation_render_pass->blue_noise_texture_width()) *
-	ssbn_permutation_render_pass->blue_noise_texture_width(); unsigned int padded_height = std::ceil(new_height /
-	(float)ssbn_permutation_render_pass->blue_noise_texture_height()) * ssbn_permutation_render_pass->blue_noise_texture_height();*/
+		unsigned int padded_width = (new_width + SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH - 1) /
+									SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH *
+									SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
+		unsigned int padded_height = (new_height + SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT - 1) /
+									 SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT *
+									 SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
 
-	m_input_seeds.resize(new_width * new_height);
-	m_updated_random_seeds.resize(new_width * new_height);
-	//}
+		m_input_seeds.resize(padded_width * padded_height);
+		m_updated_random_seeds.resize(padded_width * padded_height);
+	}
+	else
+	{
+		m_input_seeds.resize(new_width * new_height);
+		m_updated_random_seeds.resize(new_width * new_height);
+	}
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed

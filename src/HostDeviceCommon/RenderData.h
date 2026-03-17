@@ -80,21 +80,29 @@ struct HIPRTRenderData
 
 	HIPRT_DEVICE unsigned int get_input_random_seed(int pixel_index) const
 	{
+		pixel_index = get_padded_pixel_index(pixel_index);
+
 		return buffers.input_random_seeds[pixel_index];
 	}
 
 	HIPRT_DEVICE unsigned int get_updated_random_seed(int pixel_index) const
 	{
+		pixel_index = get_padded_pixel_index(pixel_index);
+
 		return buffers.updated_random_seeds[pixel_index];
 	}
 
 	HIPRT_DEVICE void store_input_random_seed(int pixel_index, unsigned int seed) const
 	{
+		pixel_index = get_padded_pixel_index(pixel_index);
+
 		buffers.input_random_seeds[pixel_index] = seed;
 	}
 
 	HIPRT_DEVICE void store_updated_random_seed(int pixel_index, unsigned int seed) const
 	{
+		pixel_index = get_padded_pixel_index(pixel_index);
+
 		buffers.updated_random_seeds[pixel_index] = seed;
 
 #if SSBNPermutationEnabled == KERNEL_OPTION_FALSE
@@ -102,6 +110,22 @@ struct HIPRTRenderData
 		// seeds and produces new random numbers and converges correctly. If we don't store the input seeds here, then the kernels of the next frame are going
 		// to read the same input seeds = produce the exact same frame and we will not have convergence
 		buffers.input_random_seeds[pixel_index] = seed;
+#endif
+	}
+
+private:
+	HIPRT_DEVICE int get_padded_pixel_index(int pixel_index) const
+	{
+#if SSBNPermutationEnabled == KERNEL_OPTION_TRUE
+		int x = pixel_index % render_settings.render_resolution.x;
+		int y = pixel_index / render_settings.render_resolution.x;
+
+		int padded_resolution_x = render_settings.render_resolution.x + SSBNPermutationBlueNoiseTextureWidth - 1 -
+								  (render_settings.render_resolution.x - 1) % SSBNPermutationBlueNoiseTextureWidth;
+
+		return x + y * padded_resolution_x;
+#else
+		return pixel_index;
 #endif
 	}
 };

@@ -18,6 +18,7 @@ class SSBNPermutationRenderPass : public RenderPass
 {
 public:
 	static const std::string SSBN_PERMUTATION_RENDER_PASS_NAME;
+	static const std::string SSBN_PERMUTATION_INIT_PADDED_SEEDS;
 	static const std::string SSBN_PERMUTATION_SORTING_PASS;
 	static const std::string SSBN_PERMUTATION_RETARGETING_PASS;
 
@@ -48,7 +49,7 @@ public:
 
 private:
 	bool m_using_ssbn_permutation = true;
-	bool m_do_retargeting		  = true;
+	bool m_do_retargeting		  = false;
 
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;

@@ -9,9 +9,10 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME = "SSBN Permutation Render Pass";
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS	   = "SSBN Permutation Sorting Pass";
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS = "SSBN Permutation Retargeting Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME	= "SSBN Permutation Render Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS = "SSBN Permutation Init Padded Seeds";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS		= "SSBN Permutation Sorting Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS	= "SSBN Permutation Retargeting Pass";
 
 const unsigned int SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH	 = 512;
 const unsigned int SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT = 512;
@@ -36,6 +37,12 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 		annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
 		annealing.write_permutation_visualization_image(permutation_file_path_no_extension + ".png");
 	}
+
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS] = std::make_shared<GPUKernel>();
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																								   "/SSBNPermutation/InitPaddedSeeds.h");
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS]->set_kernel_function_name("SSBNPermutationInitPaddedSeeds");
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] = std::make_shared<GPUKernel>();
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
@@ -72,7 +79,12 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 
 void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	m_sorted_seeds_buffer.resize(new_width * new_height);
+	unsigned int padded_width = (new_width + SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH - 1) / SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH *
+								SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
+	unsigned int padded_height = (new_height + SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT - 1) / SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT *
+								 SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
+
+	m_sorted_seeds_buffer.resize(padded_width * padded_height);
 }
 
 bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
@@ -94,8 +106,27 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned int* sorted_seeds_buffer_pointer		 = m_sorted_seeds_buffer.get_device_pointer();
 	unsigned int blue_noise_texture_width			 = SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
 	unsigned int blue_noise_texture_height			 = SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
+	unsigned int padded_render_solution_x = (render_data.render_settings.render_resolution.x + blue_noise_texture_width - 1) / blue_noise_texture_width *
+											blue_noise_texture_width;
+	unsigned int padded_render_solution_y = (render_data.render_settings.render_resolution.y + blue_noise_texture_height - 1) / blue_noise_texture_height *
+											blue_noise_texture_height;
 
 	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+
+	if (render_data.render_settings.sample_number == 0)
+	{
+		// First sample, we need to fill the padded area of the seed buffer with proper information for the sorting pass
+		void* launch_args_init_padded_seeds[] = {
+			&render_data.render_settings.render_resolution.x,
+			&render_data.render_settings.render_resolution.y,
+			&padded_render_solution_x,
+			&render_data.buffers.get_input_random_seeds_pointer(),
+		};
+
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_INIT_PADDED_SEEDS]->launch_asynchronous(
+								32, 32, padded_render_solution_x, padded_render_solution_y, launch_args_init_padded_seeds, m_renderer->get_main_stream());
+	}
+
 	if (m_do_retargeting)
 	{
 		void* launch_args_sorting[] = { &render_data,
@@ -106,8 +137,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 										&sorted_seeds_buffer_pointer };
 
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
-								block_size, block_size, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
-								launch_args_sorting, m_renderer->get_main_stream());
+								block_size, block_size, padded_render_solution_x, padded_render_solution_y, launch_args_sorting, m_renderer->get_main_stream());
 
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
 		void* launch_args_retargeting[]					   = { &render_data,
@@ -116,8 +146,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 															   &blue_noise_texture_height,
 															   &sorted_seeds_buffer_pointer,
 															   &render_data.buffers.get_input_random_seeds_pointer() };
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, render_data.render_settings.render_resolution.x,
-																									 render_data.render_settings.render_resolution.y,
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, padded_render_solution_x, padded_render_solution_y,
 																									 launch_args_retargeting, m_renderer->get_main_stream());
 	}
 	else
@@ -130,8 +159,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 										&render_data.buffers.get_input_random_seeds_pointer() };
 
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
-								block_size, block_size, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
-								launch_args_sorting, m_renderer->get_main_stream());
+								block_size, block_size, padded_render_solution_x, padded_render_solution_y, launch_args_sorting, m_renderer->get_main_stream());
 	}
 }
 
