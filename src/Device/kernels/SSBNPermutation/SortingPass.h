@@ -117,7 +117,8 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 			// to work: the sorted seeds in the padded area are not at all a mirror of the sorted seeds at the edge of the visible area so if we use mirroring,
 			// we're going to get luminance which is completely uncorrelated from the seeds of the padded area = bad = white noise so we need something else
 
-			float approx_luminance = in_seeds_to_sort[x + y * padded_resolution_x] / (float)((unsigned int)(-1)); // WE NEED AN APPROXMATION HERE
+			// float approx_luminance = render_data.buffers.last_frame_ray_colors[x + y * padded_resolution_x].luminance(); // WE NEED AN APPROXMATION HERE
+			float approx_luminance						 = in_seeds_to_sort[x + y * padded_resolution_x] / (float)((unsigned int)(-1));
 			input_pixel_luminance[thread_index_in_block] = approx_luminance;
 		}
 	}
@@ -167,7 +168,24 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		printf("Luminance global sorted index: %d\n", luminance_global_sorted_index);
 	}
 
-	sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index];
+	int seed_fetch_index = luminance_global_sorted_index;
+
+	int index_x = luminance_global_sorted_index % padded_resolution_x;
+	int index_y = luminance_global_sorted_index / padded_resolution_x;
+	if ((index_x >= resolution_x || index_y >= resolution_y) && render_data.render_settings.sample_number == 0)
+	{
+		// If we're trying to fetch a seed that is in the padded area and this is the very first sample of the render, wedon't have seeds generated in the
+		// padded area yet (because the renderer doesn't render the padded area = doesn't produce seeds in there). So we're just faking seeds in the padded area
+		// by mirroring the seeds that are at the edge of the image
+		int mirrored_x	   = index_x >= resolution_x ? (resolution_x - 1 - (index_x - resolution_x)) : index_x;
+		int mirrored_y	   = index_y >= resolution_y ? (resolution_y - 1 - (index_y - resolution_y)) : index_y;
+		int mirrored_index = mirrored_x + mirrored_y * padded_resolution_x;
+
+		seed_fetch_index = mirrored_index;
+	}
+
+	sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[seed_fetch_index];
+
 	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
 	{
 		printf("sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index]; // sorted_seeds[%d] = in_seeds_to_sort[%d] = "
@@ -186,7 +204,12 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		printf("Writing sorted seed: out_sorted_seeds_buffer[%d] = sorted_seeds[%d] = %u\n", full_pixel_index, thread_index_in_block,
 			   sorted_seeds[thread_index_in_block]);
 	}
+
 	out_sorted_seeds_buffer[full_pixel_index] = sorted_seeds[thread_index_in_block];
+
+	// if (!thread_valid)
+	//	// TODO this we want the luminance associated with the seed or something
+	//	render_data.buffers.last_frame_ray_colors[x + y * padded_resolution_x] = ColorRGB32F();
 }
 
 #endif

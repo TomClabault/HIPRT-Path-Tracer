@@ -153,6 +153,14 @@ public:
 	void resize(int new_width, int new_height);
 
 	/**
+	 * Reloads a new blue noise texture for the SSBN permutation render pass with the given width and height.
+	 *
+	 * This also resizes the seed buffers of the renderer such that they are padded to the right size to be perfectly tiled with the new blue noise texture
+	 * size.
+	 */
+	void reload_ssbn_permutation_blue_noise_texture(unsigned int new_width, unsigned int new_height);
+
+	/**
 	 * Requests a frame to the render thread
 	 */
 	void render(float delta_time_gpu, RenderWindow* render_window);

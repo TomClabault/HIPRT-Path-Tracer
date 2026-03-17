@@ -384,7 +384,6 @@ void GPURenderer::resize(int new_width, int new_height)
 	synchronize_all_kernels();
 	unmap_buffers();
 
-	m_last_frame_ray_colors.resize(new_width * new_height);
 	m_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
@@ -405,18 +404,21 @@ void GPURenderer::resize(int new_width, int new_height)
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
 	if (ssbn_permutation_render_pass && ssbn_permutation_render_pass->is_render_pass_used())
 	{
-		unsigned int padded_width = (new_width + SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH - 1) /
-									SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH *
-									SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
-		unsigned int padded_height = (new_height + SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT - 1) /
-									 SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT *
-									 SSBNPermutationRenderPass::SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
+		unsigned int blue_noise_width  = ssbn_permutation_render_pass->get_blue_noise_texture_width();
+		unsigned int blue_noise_height = ssbn_permutation_render_pass->get_blue_noise_texture_height();
+
+		unsigned int padded_width  = (new_width + blue_noise_width - 1) / blue_noise_width * blue_noise_width;
+		unsigned int padded_height = (new_height + blue_noise_height - 1) / blue_noise_height * blue_noise_height;
+
+		m_last_frame_ray_colors.resize(padded_width * padded_height);
 
 		m_input_seeds.resize(padded_width * padded_height);
 		m_updated_random_seeds.resize(padded_width * padded_height);
 	}
 	else
 	{
+		m_last_frame_ray_colors.resize(new_width * new_height);
+
 		m_input_seeds.resize(new_width * new_height);
 		m_updated_random_seeds.resize(new_width * new_height);
 	}
@@ -432,6 +434,24 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_render_data.render_settings.render_resolution = m_render_resolution;
 	m_render_data.render_settings.need_to_reset		= true;
 	m_render_data_buffers_invalidated				= true;
+}
+
+void GPURenderer::reload_ssbn_permutation_blue_noise_texture(unsigned int new_width, unsigned int new_height)
+{
+	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
+	if (!ssbn_permutation_render_pass)
+		return;
+
+	ssbn_permutation_render_pass->reload_blue_noise_texture(new_width, new_height);
+
+	unsigned int render_resolution_x = m_render_data.render_settings.render_resolution.x;
+	unsigned int render_resolution_y = m_render_data.render_settings.render_resolution.y;
+
+	unsigned int padded_width  = (render_resolution_x + new_width - 1) / new_width * new_width;
+	unsigned int padded_height = (render_resolution_y + new_height - 1) / new_height * new_height;
+
+	m_input_seeds.resize(padded_width * padded_height);
+	m_updated_random_seeds.resize(padded_width * padded_height);
 }
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)

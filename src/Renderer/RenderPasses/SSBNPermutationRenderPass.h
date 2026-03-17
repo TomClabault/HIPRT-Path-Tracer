@@ -18,16 +18,13 @@ class SSBNPermutationRenderPass : public RenderPass
 {
 public:
 	static const std::string SSBN_PERMUTATION_RENDER_PASS_NAME;
-	static const std::string SSBN_PERMUTATION_INIT_PADDED_SEEDS;
 	static const std::string SSBN_PERMUTATION_SORTING_PASS;
 	static const std::string SSBN_PERMUTATION_RETARGETING_PASS;
-
-	static const unsigned int SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_WIDTH;
-	static const unsigned int SSBN_PERMUTATION_BLUE_NOISE_TEXTURE_HEIGHT;
 
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
+	void reload_blue_noise_texture(unsigned int new_width, unsigned int new_height);
 
 	/**
 	 * Allocates/deallocates the buffers used by GMoN.
@@ -47,6 +44,9 @@ public:
 	virtual bool is_render_pass_used() const override;
 	bool& get_do_retargeting();
 
+	int& get_blue_noise_texture_width();
+	int& get_blue_noise_texture_height();
+
 private:
 	bool m_using_ssbn_permutation = true;
 	bool m_do_retargeting		  = false;
@@ -54,6 +54,9 @@ private:
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
 	OrochiBuffer<int> m_blue_noise_retargeting_texture_buffer;
+
+	int m_blue_noise_texture_width	= 64;
+	int m_blue_noise_texture_height = 64;
 };
 
 #endif

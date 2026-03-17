@@ -4733,7 +4733,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
 		static bool ssbn_permutation_enabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) && ssbn_pass;
-		if (ImGui::Checkbox("Enable", &ssbn_permutation_enabled))
+		if (ImGui::Checkbox("Enable SSBN permutation", &ssbn_permutation_enabled))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED,
 												   ssbn_permutation_enabled ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -4741,6 +4741,9 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			m_render_window->set_render_dirty(true);
 			m_renderer->recompile_kernels();
 		}
+		ImGuiRenderer::show_help_marker("Implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between "
+										"Frames, Heitz & Belcour, 2019]");
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ImGui::BeginDisabled(!ssbn_permutation_enabled);
 
@@ -4774,6 +4777,37 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			}
 
 			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		bool blue_noise_texture_size_changed = false;
+		ImGui::Text("Blue noise tile size (square)");
+		blue_noise_texture_size_changed |= ImGui::RadioButton("16", &ssbn_pass->get_blue_noise_texture_width(), 16);
+		ImGui::SameLine();
+		blue_noise_texture_size_changed |= ImGui::RadioButton("32", &ssbn_pass->get_blue_noise_texture_width(), 32);
+		ImGui::SameLine();
+		blue_noise_texture_size_changed |= ImGui::RadioButton("64", &ssbn_pass->get_blue_noise_texture_width(), 64);
+		ImGui::SameLine();
+		blue_noise_texture_size_changed |= ImGui::RadioButton("128", &ssbn_pass->get_blue_noise_texture_width(), 128);
+		ImGui::SameLine();
+		blue_noise_texture_size_changed |= ImGui::RadioButton("256", &ssbn_pass->get_blue_noise_texture_width(), 256);
+		ImGui::SameLine();
+		blue_noise_texture_size_changed |= ImGui::RadioButton("512", &ssbn_pass->get_blue_noise_texture_width(), 512);
+
+		if (blue_noise_texture_size_changed)
+		{
+			unsigned int permutation_block_size_clamping =
+									hippt::min(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE),
+											   ssbn_pass->get_blue_noise_texture_width());
+			if (permutation_block_size_clamping != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE, permutation_block_size_clamping);
+				m_renderer->recompile_kernels();
+			}
+
+			m_renderer->reload_ssbn_permutation_blue_noise_texture(ssbn_pass->get_blue_noise_texture_width(), ssbn_pass->get_blue_noise_texture_width());
+			m_render_window->set_render_dirty(true);
 		}
 
 		ImGui::EndDisabled();

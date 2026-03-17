@@ -11,6 +11,7 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 SSBNPermutationInitPaddedSeeds(int resolution_x, int resolution_y, int padded_resolution_x, unsigned int* __restrict__ in_seeds_to_sort)
 {
+	return;
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 

@@ -6,9 +6,6 @@
 #ifndef HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
 #define HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H
 
-#define SSBNPermutationBlueNoiseTextureWidth  512
-#define SSBNPermutationBlueNoiseTextureHeight 512
-
 #ifndef __KERNELCC__
 
 /**
@@ -21,7 +18,7 @@
  * Block size for the sorting pass of the implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between
  * Frames, Heitz 2019]
  */
-#define SSBNPermutationBlockSize 32
+#define SSBNPermutationBlockSize 8
 
 #endif
 

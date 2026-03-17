@@ -16,6 +16,7 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
+#include "HostDeviceCommon/SSBNPermutationSettings.h"
 #include "HostDeviceCommon/WorldSettings.h"
 
 #ifdef __KERNELCC__
@@ -70,6 +71,9 @@ struct HIPRTRenderData
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
 
+	// Data for SSBN permutations
+	SSBNPermutationSettings ssbn_settings;
+
 	// Camera for the current frame
 	HIPRTCamera current_camera;
 	// Camera of the last frame
@@ -120,8 +124,8 @@ private:
 		int x = pixel_index % render_settings.render_resolution.x;
 		int y = pixel_index / render_settings.render_resolution.x;
 
-		int padded_resolution_x = render_settings.render_resolution.x + SSBNPermutationBlueNoiseTextureWidth - 1 -
-								  (render_settings.render_resolution.x - 1) % SSBNPermutationBlueNoiseTextureWidth;
+		int padded_resolution_x = render_settings.render_resolution.x + ssbn_settings.blue_noise_texture_width - 1 -
+								  (render_settings.render_resolution.x - 1) % ssbn_settings.blue_noise_texture_width;
 
 		return x + y * padded_resolution_x;
 #else
