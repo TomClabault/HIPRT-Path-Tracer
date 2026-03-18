@@ -452,6 +452,8 @@ void GPURenderer::reload_ssbn_permutation_blue_noise_texture(unsigned int new_wi
 
 	m_input_seeds.resize(padded_width * padded_height);
 	m_updated_random_seeds.resize(padded_width * padded_height);
+
+	m_render_data_buffers_invalidated = true;
 }
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)

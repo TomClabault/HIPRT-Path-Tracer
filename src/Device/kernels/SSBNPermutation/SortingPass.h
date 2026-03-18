@@ -67,40 +67,18 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
 								  blue_noise_offset_y);
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Pixel: (%d, %d)\n", x, y);
-		printf("Thread index in block: %d\n", thread_index_in_block);
-	}
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-		printf("Blue noise offset: (%d, %d)\n", blue_noise_offset_x, blue_noise_offset_y);
 
 	int blue_noise_index_x = (x + blue_noise_offset_x) % blue_noise_texture_width;
 	int blue_noise_index_y = (y + blue_noise_offset_y) % blue_noise_texture_height;
 
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-		printf("Local offset (fetching at) in blue noise texture: (%d, %d)\n", blue_noise_index_x, blue_noise_index_y);
-
 	input_blue_noise[thread_index_in_block]				= blue_noise_dither_texture_buffer[blue_noise_index_x + blue_noise_index_y * blue_noise_texture_width];
 	input_blue_noise_coordinates[thread_index_in_block] = make_short2(in_block_x, in_block_y);
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Blue noise value fetched: %d\n", input_blue_noise[thread_index_in_block]);
-		printf("Blue noise coordinates in block: (%d, %d)\n", input_blue_noise_coordinates[thread_index_in_block].x,
-			   input_blue_noise_coordinates[thread_index_in_block].y);
-	}
 
 	// First sample and our thread is in the padded area of the seed buffer, reading from mirrored values for the luminance
 	// For pixels that are in-screen, the mirrored_pixel_index is just the pixel index
 	int mirrored_at_edge_x	 = x >= resolution_x ? (resolution_x - 1 - (x - resolution_x)) : x;
 	int mirrored_at_edge_y	 = y >= resolution_y ? (resolution_y - 1 - (y - resolution_y)) : y;
 	int mirrored_pixel_index = mirrored_at_edge_x + mirrored_at_edge_y * resolution_x;
-
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Mirrored at edge coordinates: (%d, %d)\n", mirrored_at_edge_x, mirrored_at_edge_y);
-		printf("Mirrored pixel index for luminance fetch: %d\n", mirrored_pixel_index);
-	}
 
 	if (!thread_valid)
 	{
@@ -117,19 +95,17 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 			// to work: the sorted seeds in the padded area are not at all a mirror of the sorted seeds at the edge of the visible area so if we use mirroring,
 			// we're going to get luminance which is completely uncorrelated from the seeds of the padded area = bad = white noise so we need something else
 
-			// float approx_luminance = render_data.buffers.last_frame_ray_colors[x + y * padded_resolution_x].luminance(); // WE NEED AN APPROXMATION HERE
-			float approx_luminance						 = in_seeds_to_sort[x + y * padded_resolution_x] / (float)((unsigned int)(-1));
-			input_pixel_luminance[thread_index_in_block] = approx_luminance;
+			// TODO we need an approximation of the luminance that the rendered would have produced with the seeds of last frame for the pixels in the padded
+			// area. We could for example use the average luminance of the actually rendered pixels as an approximation for the luminance of the pixels in the
+			// padded area. It's not perfect but it's probably better than using completely uncorrelated values from mirroring
+			input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
+			// input_pixel_luminance[thread_index_in_block] = in_seeds_to_sort[x + y * padded_resolution_x] / (float)((unsigned int)(-1));
 		}
 	}
 	else
 		input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
 	input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(in_block_x, in_block_y);
 
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Pixel luminance fetched: %f\n", (float)input_pixel_luminance[thread_index_in_block]);
-	}
 	__syncthreads();
 
 	if (in_block_x == 0 && in_block_y == 0)
@@ -143,30 +119,13 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int blue_noise_block_sorted_index = input_blue_noise_coordinates[thread_index_in_block].x +
 										input_blue_noise_coordinates[thread_index_in_block].y * SSBNPermutationBlockSize;
 
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Blue noise block sorted index: %d\n", blue_noise_block_sorted_index);
-	}
-
 	unsigned int block_start_x			   = blockIdx.x * SSBNPermutationBlockSize;
 	unsigned int block_start_y			   = blockIdx.y * SSBNPermutationBlockSize;
 	unsigned int block_start_global_offset = block_start_x + block_start_y * padded_resolution_x;
 
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Block start (x, y): (%d, %d)\n", block_start_x, block_start_y);
-		printf("Block start global offset: %d\n", block_start_global_offset);
-	}
-
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];
 	int luminance_global_sorted_index = block_start_global_offset + input_pixel_luminance_coordinates[thread_index_in_block].x +
 										input_pixel_luminance_coordinates[thread_index_in_block].y * padded_resolution_x;
-
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Luminance coordinates in block: (%d, %d)\n", luminance_coords.x, luminance_coords.y);
-		printf("Luminance global sorted index: %d\n", luminance_global_sorted_index);
-	}
 
 	int seed_fetch_index = luminance_global_sorted_index;
 
@@ -186,30 +145,12 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 
 	sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[seed_fetch_index];
 
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[luminance_global_sorted_index]; // sorted_seeds[%d] = in_seeds_to_sort[%d] = "
-			   "%u\n",
-			   blue_noise_block_sorted_index, luminance_global_sorted_index, sorted_seeds[blue_noise_block_sorted_index]);
-	}
-
 	__syncthreads();
 
 	// Full pixel index that can go in the padded area of the seeds buffer
-	int full_pixel_index = blockIdx.x * blockDim.x + threadIdx.x + (blockIdx.y * blockDim.y + threadIdx.y) * padded_resolution_x;
-
-	if (x == resolution_x - 1 && y == 18 && render_data.render_settings.sample_number == 1)
-	{
-		printf("Full pixel index for writing sorted seeds: %d\n", full_pixel_index);
-		printf("Writing sorted seed: out_sorted_seeds_buffer[%d] = sorted_seeds[%d] = %u\n", full_pixel_index, thread_index_in_block,
-			   sorted_seeds[thread_index_in_block]);
-	}
+	int full_pixel_index = x + y * padded_resolution_x;
 
 	out_sorted_seeds_buffer[full_pixel_index] = sorted_seeds[thread_index_in_block];
-
-	// if (!thread_valid)
-	//	// TODO this we want the luminance associated with the seed or something
-	//	render_data.buffers.last_frame_ray_colors[x + y * padded_resolution_x] = ColorRGB32F();
 }
 
 #endif

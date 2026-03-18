@@ -4727,11 +4727,11 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	}
 	ImGui::EndDisabled();
 
-	if (ImGui::CollapsingHeader("SSBN Permutation"))
+	std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
+	if (ImGui::CollapsingHeader("SSBN Permutation") && ssbn_pass)
 	{
 		ImGui::TreePush("SSBN Permutation tree");
 
-		std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
 		static bool ssbn_permutation_enabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) && ssbn_pass;
 		if (ImGui::Checkbox("Enable SSBN permutation", &ssbn_permutation_enabled))
 		{
@@ -4744,23 +4744,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGuiRenderer::show_help_marker("Implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between "
 										"Frames, Heitz & Belcour, 2019]");
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		ImGui::BeginDisabled(!ssbn_permutation_enabled);
-
-		static bool last_retargeting_valid_val;
-		if (ssbn_pass)
-		{
-			last_retargeting_valid_val = ssbn_pass->get_do_retargeting();
-			if (ImGui::Checkbox("Do retargeting", &ssbn_pass->get_do_retargeting()))
-				m_render_window->set_render_dirty(true);
-		}
-		else
-		{
-			// Dummy checkbox because we don't have a valid pass
-			if (ImGui::Checkbox("Do retargeting", &last_retargeting_valid_val))
-				m_render_window->set_render_dirty(true);
-		}
-
 		static int block_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 		ImGui::SliderInt("Permutation block size", &block_size, 1, 32);
 
@@ -4797,12 +4780,16 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (blue_noise_texture_size_changed)
 		{
+			ssbn_pass->get_max_retargeting_radius() = SSBNPermutationRenderPass::DEFAULT_MAX_RETARGETING_RADIUS;
+
 			unsigned int permutation_block_size_clamping =
 									hippt::min(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE),
 											   ssbn_pass->get_blue_noise_texture_width());
 			if (permutation_block_size_clamping != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
 			{
+				block_size = permutation_block_size_clamping;
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE, permutation_block_size_clamping);
+
 				m_renderer->recompile_kernels();
 			}
 
@@ -4810,7 +4797,57 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
-		ImGui::EndDisabled();
+		ImGui::TreePush("Padding overhead tree");
+		unsigned int render_resolution_width  = m_renderer->get_render_data().render_settings.render_resolution.x;
+		unsigned int render_resolution_height = m_renderer->get_render_data().render_settings.render_resolution.y;
+
+		unsigned int blue_noise_width	 = ssbn_pass->get_blue_noise_texture_width();
+		unsigned int blue_noise_height	 = ssbn_pass->get_blue_noise_texture_height();
+		unsigned int padded_resolution_x = (render_resolution_width + blue_noise_width - 1) / blue_noise_width * blue_noise_width;
+		unsigned int padded_resolution_y = (render_resolution_height + blue_noise_height - 1) / blue_noise_height * blue_noise_height;
+
+		ImGui::Text("Padding overhead: %.2f%%",
+					100.0f * ((float)(padded_resolution_x * padded_resolution_y) / (render_resolution_width * render_resolution_height) - 1.0f));
+		ImGuiRenderer::show_help_marker("Because the SSBN permutation is done in blocks, the render resolution is padded to be a multiple of the blue noise "
+										"texture size. "
+										"This results in some overhead because some pixels are rendered but not displayed. This percentage indicates how much "
+										"more rendering is done");
+		ImGui::TreePop();
+
+		auto retargeting_permutations_exists = [&ssbn_pass](int retarget_radius)
+		{
+			std::ifstream blue_noise_retargeting_file(ssbn_pass->get_permutation_file_path_no_extension(retarget_radius) + ".bin", std::ios::binary);
+			return blue_noise_retargeting_file.is_open();
+		};
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::Checkbox("Do retargeting", &ssbn_pass->get_do_retargeting()))
+			m_render_window->set_render_dirty(true);
+
+		bool max_retargeting_radius_changed = false;
+		ImGui::BeginDisabled(!ssbn_pass->get_do_retargeting());
+		ImGui::Text("Max retargeting radius (in pixels)");
+
+		std::vector<int> radii = { 2, 3, 4, 5, 6, 7, 15, 32 };
+		for (int i = 0; i < radii.size(); i++)
+		{
+			ImGui::BeginDisabled(!retargeting_permutations_exists(radii[i]));
+
+			max_retargeting_radius_changed |= ImGui::RadioButton((std::to_string(radii[i]) + "##retargeting_max_radius").c_str(),
+																 &ssbn_pass->get_max_retargeting_radius(), radii[i]);
+			if (i != radii.size() - 1)
+				ImGui::SameLine();
+
+			ImGui::EndDisabled();
+		}
+
+		if (max_retargeting_radius_changed)
+		{
+			ssbn_pass->reload_retargeting_data(ssbn_pass->get_max_retargeting_radius());
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGui::EndDisabled(); // ImGui::BeginDisabled(!ssbn_pass->get_do_retargeting());
 
 		ImGui::TreePop();
 	}

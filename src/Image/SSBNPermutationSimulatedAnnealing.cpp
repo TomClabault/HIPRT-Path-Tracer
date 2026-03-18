@@ -67,7 +67,7 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 	//
 	// Enough iterations to basically give each pixel a chance to be swapped with a good candidate in its neighborhood
 	size_t iter		  = 0;
-	double target_mse = 0.0;
+	double target_mse = 2.5;
 
 	std::cout << std::endl << "Target MSE: " << target_mse << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
