@@ -55,6 +55,8 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 	unsigned int padded_height = (new_height + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 	m_sorted_seeds_buffer.resize(padded_width * padded_height);
+	m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
+	m_screen_space_hash_grid_cell_offsets_buffer.resize(padded_width * padded_height);
 }
 
 void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new_height)
@@ -135,6 +137,8 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 	if (!is_render_pass_used() && m_sorted_seeds_buffer.size() != 0)
 	{
 		m_sorted_seeds_buffer.free();
+		m_screen_space_hash_grid_buffer.free();
+		m_screen_space_hash_grid_cell_offsets_buffer.free();
 
 		updated = true;
 	}
@@ -146,6 +150,8 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 									 m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 		m_sorted_seeds_buffer.resize(padded_width * padded_height);
+		m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
+		m_screen_space_hash_grid_cell_offsets_buffer.resize(padded_width * padded_height);
 
 		updated = true;
 	}
@@ -170,6 +176,27 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned int padded_render_solution_y = (render_data.render_settings.render_resolution.y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height *
 											m_blue_noise_texture_height;
 
+	unsigned int different_hash_count = 0;
+	{
+		// CPU sorting for now
+		std::vector<uint3_t> screen_space_hash_grid_data = m_screen_space_hash_grid_buffer.download_data();
+		std::sort(screen_space_hash_grid_data.begin(), screen_space_hash_grid_data.end(), [](const uint3_t& a, const uint3_t& b) { return a.x < b.x; });
+
+		// Computing the number of hash cells and the offsets of each cell in the sorted hash grid
+		std::vector<int> offsets(padded_render_solution_x * padded_render_solution_y);
+		offsets[0] = 0;
+		for (size_t i = 1; i < screen_space_hash_grid_data.size(); i++)
+		{
+			if (screen_space_hash_grid_data[i].x != screen_space_hash_grid_data[i - 1].x)
+			{
+				different_hash_count++;
+				offsets[different_hash_count] = i;
+			}
+		}
+
+		m_screen_space_hash_grid_buffer.upload_data(screen_space_hash_grid_data);
+	}
+
 	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 
 	if (m_do_retargeting)
@@ -185,27 +212,32 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 								block_size, block_size, padded_render_solution_x, padded_render_solution_y, launch_args_sorting, m_renderer->get_main_stream());
 
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
+		int* hash_grid_offsets_buffer_pointer			   = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
 		void* launch_args_retargeting[]					   = { &render_data,
 															   &blue_noise_retargeting_texture_buffer_pointer,
 															   &m_blue_noise_texture_width,
 															   &m_blue_noise_texture_height,
 															   &sorted_seeds_buffer_pointer,
-															   &render_data.buffers.get_input_random_seeds_pointer() };
+															   &render_data.buffers.get_input_random_seeds_pointer(),
+															   &hash_grid_offsets_buffer_pointer };
 
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, padded_render_solution_x, padded_render_solution_y,
 																									 launch_args_retargeting, m_renderer->get_main_stream());
 	}
 	else
 	{
-		void* launch_args_sorting[] = { &render_data,
-										&blue_noise_texture_buffer_pointer,
-										&m_blue_noise_texture_width,
-										&m_blue_noise_texture_height,
-										&render_data.buffers.get_input_random_seeds_pointer(),
-										&render_data.buffers.get_input_random_seeds_pointer() };
+		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
+		void* launch_args_sorting[]			  = { &render_data,
+												  &blue_noise_texture_buffer_pointer,
+												  &m_blue_noise_texture_width,
+												  &m_blue_noise_texture_height,
+												  &render_data.buffers.get_input_random_seeds_pointer(),
+												  &render_data.buffers.get_input_random_seeds_pointer(),
+												  &hash_grid_offsets_buffer_pointer };
 
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
-								block_size, block_size, padded_render_solution_x, padded_render_solution_y, launch_args_sorting, m_renderer->get_main_stream());
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
+																								 block_size * block_size * different_hash_count, 1,
+																								 launch_args_sorting, m_renderer->get_main_stream());
 	}
 }
 
@@ -217,6 +249,7 @@ void SSBNPermutationRenderPass::update_render_data()
 
 	render_data.ssbn_settings.blue_noise_texture_width	= m_blue_noise_texture_width;
 	render_data.ssbn_settings.blue_noise_texture_height = m_blue_noise_texture_height;
+	render_data.ssbn_settings.screen_space_hash_grid	= m_screen_space_hash_grid_buffer.get_device_pointer();
 }
 
 bool SSBNPermutationRenderPass::is_render_pass_used() const

@@ -59,6 +59,9 @@ private:
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
 	OrochiBuffer<int> m_blue_noise_retargeting_texture_buffer;
 
+	OrochiBuffer<uint3_t> m_screen_space_hash_grid_buffer;
+	OrochiBuffer<int> m_screen_space_hash_grid_cell_offsets_buffer;
+
 	int m_blue_noise_texture_width	= 64;
 	int m_blue_noise_texture_height = 64;
 	int m_max_retargeting_radius	= DEFAULT_MAX_RETARGETING_RADIUS;

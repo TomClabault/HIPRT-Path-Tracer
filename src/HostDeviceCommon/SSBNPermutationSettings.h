@@ -6,10 +6,14 @@
 #ifndef HOST_DEVICE_SSBN_PERMUTATION_SETTINGS_H
 #define HOST_DEVICE_SSBN_PERMUTATION_SETTINGS_H
 
+#include "HostDeviceCommon/Maths/VecTypes.h"
+
 struct SSBNPermutationSettings
 {
 	unsigned int blue_noise_texture_width  = 128;
 	unsigned int blue_noise_texture_height = 128;
+
+	uint3_t* screen_space_hash_grid = nullptr;
 };
 
 #endif

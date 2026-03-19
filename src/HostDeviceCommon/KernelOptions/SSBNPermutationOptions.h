@@ -18,7 +18,7 @@
  * Block size for the sorting pass of the implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between
  * Frames, Heitz 2019]
  */
-#define SSBNPermutationBlockSize 12
+#define SSBNPermutationBlockSize 4
 
 #endif
 

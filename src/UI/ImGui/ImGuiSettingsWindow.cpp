@@ -4728,6 +4728,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	ImGui::EndDisabled();
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
+	ImGui::BeginDisabled(!ssbn_pass);
 	if (ImGui::CollapsingHeader("SSBN Permutation") && ssbn_pass)
 	{
 		ImGui::TreePush("SSBN Permutation tree");
@@ -4851,6 +4852,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		ImGui::TreePop();
 	}
+	ImGui::EndDisabled(); // !ssbn_pass
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();

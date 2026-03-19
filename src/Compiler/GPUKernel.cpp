@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Compiler/GPUKernelCompiler.h"
 #include "Compiler/GPUKernel.h"
+#include "Compiler/GPUKernelCompiler.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Threads/ThreadFunctions.h"
@@ -165,14 +165,14 @@ void GPUKernel::launch_3D_block_size(int block_size_x,
 	m_launched_at_least_once = true;
 }
 
-void GPUKernel::launch_3D_block_count(int block_count_x,
-									  int block_count_y,
-									  int block_count_z,
-									  int block_size_x,
-									  int block_size_y,
-									  int block_size_z,
-									  void** launch_args,
-									  oroStream_t stream)
+void GPUKernel::launch_asynchronous_3D_block_count(int block_count_x,
+												   int block_count_y,
+												   int block_count_z,
+												   int block_size_x,
+												   int block_size_y,
+												   int block_size_z,
+												   void** launch_args,
+												   oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
 											 stream, launch_args, 0));

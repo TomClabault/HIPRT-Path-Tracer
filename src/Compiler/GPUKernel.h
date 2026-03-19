@@ -10,8 +10,8 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 
 #include <hiprt/hiprt.h>
-#include <Orochi/Orochi.h>
 #include <memory>
+#include <Orochi/Orochi.h>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -66,6 +66,28 @@ public:
 								int nb_threads_z,
 								void** launch_args,
 								oroStream_t stream);
+
+	/**
+	 * @param block_count_x The number of blocks to launch on the X axis of the grid
+	 * @param block_count_y The number of blocks to launch on the Y axis of the grid
+	 * @param block_count_z The number of blocks to launch on the Z axis of the grid
+	 *
+	 * @param block_size_x The number of threads per block on the X axis
+	 * @param block_size_y The number of threads per block on the Y axis
+	 * @param block_size_z The number of threads per block on the Z axis
+	 *
+	 * @param launch_args The arguments to pass to the kernel. This should be an array of pointers to the arguments, in the same order as the kernel function
+	 * parameters
+	 * @stream The stream to launch the kernel on. Can be 0 for the default stream
+	 */
+	void launch_asynchronous_3D_block_count(int block_count_x,
+											int block_count_y,
+											int block_count_z,
+											int block_size_x,
+											int block_size_y,
+											int block_size_z,
+											void** launch_args,
+											oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -161,14 +183,6 @@ public:
 private:
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
-	void launch_3D_block_count(int block_count_x,
-							   int block_count_y,
-							   int block_count_z,
-							   int block_size_x,
-							   int block_size_y,
-							   int block_size_z,
-							   void** launch_args,
-							   oroStream_t stream);
 
 	std::string m_kernel_file_path	   = "";
 	std::string m_kernel_function_name = "";
