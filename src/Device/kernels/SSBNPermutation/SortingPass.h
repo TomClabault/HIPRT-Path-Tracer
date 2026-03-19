@@ -49,10 +49,6 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int padded_resolution_y = (resolution_y + blue_noise_texture_height - 1) / blue_noise_texture_height * blue_noise_texture_height;
 
 	int thread_index_in_block = threadIdx.x;
-	int in_block_x			  = thread_index_in_block % SSBNPermutationBlockSize;
-	int in_block_y			  = thread_index_in_block / SSBNPermutationBlockSize;
-
-	int index_in_grid = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int hash_grid_cell_offset = in_hash_grid_cell_offsets_buffer[blockIdx.x];
 	int end_of_current_hash_grid_cell;
@@ -76,7 +72,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	bool valid_input_data = pixel_hash != 0;
 
 	__shared__ short int input_blue_noise[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
-	__shared__ short2_t input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	__shared__ short int input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ fp16 input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
@@ -89,15 +85,18 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int blue_noise_index_x = (pixel_x + blue_noise_offset_x) % blue_noise_texture_width;
 	int blue_noise_index_y = (pixel_y + blue_noise_offset_y) % blue_noise_texture_height;
 
-	if (valid_input_data)
+	if (valid_input_data && thread_valid)
 	{
 		input_blue_noise[thread_index_in_block] = blue_noise_dither_texture_buffer[blue_noise_index_x + blue_noise_index_y * blue_noise_texture_width];
-		input_blue_noise_coordinates[thread_index_in_block] = make_short2(in_block_x, in_block_y);
+
+		int screen_space_x									= thread_index_in_block % SSBNPermutationBlockSize;
+		int screen_space_y									= thread_index_in_block / SSBNPermutationBlockSize;
+		input_blue_noise_coordinates[thread_index_in_block] = screen_space_x + screen_space_y * SSBNPermutationBlockSize;
 	}
 	else
 	{
 		input_blue_noise[thread_index_in_block]				= 32767;
-		input_blue_noise_coordinates[thread_index_in_block] = make_short2(-1, -1);
+		input_blue_noise_coordinates[thread_index_in_block] = -1;
 	}
 
 	// First sample and our thread is in the padded area of the seed buffer, reading from mirrored values for the luminance
@@ -132,15 +131,15 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
 	input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(pixel_x, pixel_y);
 
-	if (!valid_input_data)
+	if (!valid_input_data || !thread_valid)
 	{
-		input_pixel_luminance[thread_index_in_block]			 = 0.0f;
+		input_pixel_luminance[thread_index_in_block]			 = static_cast<fp16>(1.0e10f);
 		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(-1, -1);
 	}
 
 	__syncthreads();
 
-	if (in_block_x == 0 && in_block_y == 0)
+	if (thread_index_in_block == 0)
 	{
 		bubble_sort(input_blue_noise, input_blue_noise_coordinates);
 		bubble_sort(input_pixel_luminance, input_pixel_luminance_coordinates);
@@ -167,9 +166,9 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		seed_fetch_index = mirrored_index;
 	}
 
-	int blue_noise_block_sorted_index = input_blue_noise_coordinates[thread_index_in_block].x +
-										input_blue_noise_coordinates[thread_index_in_block].y * SSBNPermutationBlockSize;
-	sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[seed_fetch_index];
+	int blue_noise_block_sorted_index = input_blue_noise_coordinates[thread_index_in_block];
+	if (luminance_coords.x != -1 && blue_noise_block_sorted_index != -1)
+		sorted_seeds[blue_noise_block_sorted_index] = in_seeds_to_sort[seed_fetch_index];
 
 	__syncthreads();
 
