@@ -181,21 +181,14 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
 	return cell_hash;
 }
 
-HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(int pixel_x,
-														   int pixel_y,
-														   int screen_space_grid_cell_size,
-														   float3_t world_position,
-														   float3_t geometric_normal,
-														   const HIPRTCamera& current_camera)
+HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(
+						int pixel_x, int pixel_y, int screen_space_grid_cell_size, float3_t world_position, float3_t geometric_normal)
 {
 	unsigned int grid_coord_x  = pixel_x / screen_space_grid_cell_size;
 	unsigned int grid_coord_y  = pixel_y / screen_space_grid_cell_size;
-	unsigned int hashed_normal = 0; // hash_quantize_normal(geometric_normal, 2);
+	unsigned int hashed_normal = hash_quantize_normal(geometric_normal, 2);
 
-	float distance_to_camera				  = hippt::length(world_position - current_camera.position);
-	unsigned int distance_to_camera_quantized = 0; // static_cast<int>(distance_to_camera / 0.3f);
-
-	return h1_pcg(grid_coord_x + h1_pcg(grid_coord_y + h1_pcg(hashed_normal + h1_pcg(distance_to_camera_quantized))));
+	return h1_pcg(grid_coord_x + h1_pcg(grid_coord_y + h1_pcg(hashed_normal)));
 }
 
 #endif

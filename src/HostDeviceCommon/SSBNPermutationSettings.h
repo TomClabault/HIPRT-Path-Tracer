@@ -13,6 +13,10 @@ struct SSBNPermutationSettings
 	unsigned int blue_noise_texture_width  = 128;
 	unsigned int blue_noise_texture_height = 128;
 
+	bool use_screen_space_hash_grid = true;
+	bool use_surface_normal			= true;
+	bool use_world_space_hash_grid	= false;
+
 	uint3_t* screen_space_hash_grid = nullptr;
 };
 

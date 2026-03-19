@@ -147,10 +147,8 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
 		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
 
-		unsigned int padded_width = (resolution_x + m_blue_noise_texture_width - 1) /
-									m_blue_noise_texture_width * m_blue_noise_texture_width;
-		unsigned int padded_height = (resolution_y + m_blue_noise_texture_height - 1) /
-									 m_blue_noise_texture_height * m_blue_noise_texture_height;
+		unsigned int padded_width  = (resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
+		unsigned int padded_height = (resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 		m_sorted_seeds_buffer.resize(padded_width * padded_height);
 		m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
@@ -179,8 +177,9 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned int padded_render_solution_y = (render_data.render_settings.render_resolution.y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height *
 											m_blue_noise_texture_height;
 
-	unsigned int different_hash_count = 0;
+	if (render_data.render_settings.sample_number == 0)
 	{
+		m_different_hash_count = 0;
 		// CPU sorting for now
 		std::vector<uint3_t> screen_space_hash_grid_data = m_screen_space_hash_grid_buffer.download_data();
 		std::sort(screen_space_hash_grid_data.begin(), screen_space_hash_grid_data.end(), [](const uint3_t& a, const uint3_t& b) { return a.x < b.x; });
@@ -192,8 +191,8 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		{
 			if (screen_space_hash_grid_data[i].x != screen_space_hash_grid_data[i - 1].x)
 			{
-				different_hash_count++;
-				offsets[different_hash_count] = i;
+				m_different_hash_count++;
+				offsets[m_different_hash_count] = i;
 			}
 		}
 
@@ -215,7 +214,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 												  &hash_grid_offsets_buffer_pointer };
 
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
-																								 block_size * block_size * different_hash_count, 1,
+																								 block_size * block_size * m_different_hash_count, 1,
 																								 launch_args_sorting, m_renderer->get_main_stream());
 
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
@@ -241,7 +240,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 												  &hash_grid_offsets_buffer_pointer };
 
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
-																								 block_size * block_size * different_hash_count, 1,
+																								 block_size * block_size * m_different_hash_count, 1,
 																								 launch_args_sorting, m_renderer->get_main_stream());
 	}
 }
