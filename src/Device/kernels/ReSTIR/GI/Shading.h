@@ -157,6 +157,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 		}
 	}
 
+	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
+
 	// Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
 	ray_payload.ray_color = camera_outgoing_radiance;
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))

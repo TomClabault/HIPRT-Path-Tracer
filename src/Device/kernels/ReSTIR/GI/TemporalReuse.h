@@ -229,6 +229,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 }
 
 #endif
