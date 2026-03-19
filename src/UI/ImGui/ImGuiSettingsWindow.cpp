@@ -3146,9 +3146,6 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
-		if (do_splitting)
-			ImGuiRenderer::add_warning("The splitting implementation is biased with most MIS schemes (including ReGIR) due to not being able to compute the "
-									   "PDF of a splitting sample.");
 
 		if (do_splitting)
 		{

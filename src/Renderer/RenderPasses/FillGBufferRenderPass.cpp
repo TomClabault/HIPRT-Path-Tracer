@@ -5,6 +5,7 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
+#include "UI/RenderWindow.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 

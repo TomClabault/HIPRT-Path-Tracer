@@ -326,6 +326,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 											 center_pixel_surface.primitive_index, random_number_generator);
 
 	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 }
 
 #endif
