@@ -55,8 +55,8 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 	unsigned int padded_height = (new_height + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 	m_sorted_seeds_buffer.resize(padded_width * padded_height);
-	m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
-	m_screen_space_hash_grid_cell_offsets_buffer.resize(padded_width * padded_height);
+	m_screen_space_hash_grid_buffer.resize(new_width * new_height);
+	m_screen_space_hash_grid_cell_offsets_buffer.resize(new_width * new_height);
 }
 
 void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new_height)
@@ -144,14 +144,17 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 	}
 	else if (m_sorted_seeds_buffer.size() == 0)
 	{
-		unsigned int padded_width = (m_renderer->get_render_data().render_settings.render_resolution.x + m_blue_noise_texture_width - 1) /
+		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
+		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
+
+		unsigned int padded_width = (resolution_x + m_blue_noise_texture_width - 1) /
 									m_blue_noise_texture_width * m_blue_noise_texture_width;
-		unsigned int padded_height = (m_renderer->get_render_data().render_settings.render_resolution.y + m_blue_noise_texture_height - 1) /
+		unsigned int padded_height = (resolution_y + m_blue_noise_texture_height - 1) /
 									 m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 		m_sorted_seeds_buffer.resize(padded_width * padded_height);
 		m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
-		m_screen_space_hash_grid_cell_offsets_buffer.resize(padded_width * padded_height);
+		m_screen_space_hash_grid_cell_offsets_buffer.resize(resolution_x * resolution_y);
 
 		updated = true;
 	}

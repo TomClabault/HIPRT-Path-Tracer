@@ -53,7 +53,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int hash_grid_cell_offset = in_hash_grid_cell_offsets_buffer[blockIdx.x];
 	int end_of_current_hash_grid_cell;
 	if (blockIdx.x == gridDim.x - 1)
-		end_of_current_hash_grid_cell = padded_resolution_x * padded_resolution_y;
+		end_of_current_hash_grid_cell = resolution_x * resolution_y;
 	else
 		end_of_current_hash_grid_cell = in_hash_grid_cell_offsets_buffer[blockIdx.x + 1];
 
