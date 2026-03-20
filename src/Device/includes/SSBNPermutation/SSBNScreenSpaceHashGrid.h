@@ -35,7 +35,7 @@ HIPRT_DEVICE void SSBN_update_screen_space_hash_grid(HIPRTRenderData& render_dat
 										h1_pcg(pixel_x / SSBNPermutationBlockSize + h1_pcg(pixel_y / SSBNPermutationBlockSize)));
 		}
 		else
-			pixel_gbuffer_hash = screen_space_gbuffer_hash(pixel_x, pixel_y, SSBNPermutationBlockSize, shading_point, geometric_normal);
+			pixel_gbuffer_hash = screen_space_gbuffer_hash(pixel_x, pixel_y, SSBNPermutationBlockSize, shading_point, geometric_normal, 0.2f);
 	}
 	else
 		pixel_gbuffer_hash = h1_pcg(pixel_x / SSBNPermutationBlockSize + h1_pcg(pixel_y / SSBNPermutationBlockSize));

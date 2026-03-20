@@ -446,7 +446,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 #endif
 
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;
-	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
+	// render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 }
 
 #endif

@@ -13,9 +13,9 @@ struct ReSTIRDIReservoir;
 struct ReSTIRDIInitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 4;
+	int number_of_initial_light_candidates = 1;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_bsdf_candidates = 1;
+	int number_of_initial_bsdf_candidates = 0;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
 	float envmap_candidate_probability = 0.5f;
@@ -56,7 +56,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 		common_temporal_pass.temporal_buffer_clear_requested = false;
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index	 = 0;
 		common_spatial_pass.number_of_passes	 = 1;
@@ -71,7 +71,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 		common_spatial_pass.do_neighbor_rotation				   = false;
 		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;
-		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
+		common_spatial_pass.use_adaptive_directional_spatial_reuse = false;
 
 		common_spatial_pass.allow_converged_neighbors_reuse		 = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;

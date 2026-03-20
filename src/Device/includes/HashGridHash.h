@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_HASH_GRID_HASH_H
 #define DEVICE_INCLUDES_HASH_GRID_HASH_H
 
+#include "Device/includes/ONB.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 
 /**
@@ -46,6 +47,23 @@ HIPRT_DEVICE static unsigned int h2_xxhash32(unsigned int seed)
 HIPRT_HOST_DEVICE static unsigned int h2_xxhash32(float seed)
 {
 	return h2_xxhash32(hippt::float_as_uint(seed));
+}
+
+HIPRT_DEVICE static float3_t jitter_normal_in_tangent_plane(float3_t surface_normal, float3_t shading_point, float fuzzy_strength = 0.2f)
+{
+	// Getting the tangent plane vectors from the normal
+	float3_t T, B;
+	build_ONB(surface_normal, T, B);
+
+	// Some deterministic random numbers from the position, in [-1, 1]
+	float jitter_x = Xorshift32Generator(h2_xxhash32(shading_point.x * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
+	float jitter_y = Xorshift32Generator(h2_xxhash32(shading_point.y * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
+
+	// Jittering our normal in the tangent plane
+	float3_t jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_strength;
+
+	// --- Step 4: renormalize ---
+	return hippt::normalize(jittered);
 }
 
 /**
@@ -181,12 +199,18 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
 	return cell_hash;
 }
 
-HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(
-						int pixel_x, int pixel_y, int screen_space_grid_cell_size, float3_t world_position, float3_t geometric_normal)
+HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(int pixel_x,
+														   int pixel_y,
+														   int screen_space_grid_cell_size,
+														   float3_t world_position,
+														   float3_t geometric_normal,
+														   float normal_jitter_strength)
 {
-	unsigned int grid_coord_x  = pixel_x / screen_space_grid_cell_size;
-	unsigned int grid_coord_y  = pixel_y / screen_space_grid_cell_size;
-	unsigned int hashed_normal = hash_quantize_normal(geometric_normal, 2);
+	unsigned int grid_coord_x = pixel_x / screen_space_grid_cell_size;
+	unsigned int grid_coord_y = pixel_y / screen_space_grid_cell_size;
+
+	unsigned int hashed_normal = hash_quantize_normal(jitter_normal_in_tangent_plane(geometric_normal, world_position, normal_jitter_strength), 2);
+	// unsigned int hashed_normal = hash_quantize_normal(geometric_normal, 2);
 
 	return h1_pcg(grid_coord_x + h1_pcg(grid_coord_y + h1_pcg(hashed_normal)));
 }

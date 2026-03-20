@@ -1825,11 +1825,13 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
-	if (ImGui::CollapsingHeader("ReSTIR DI Settings"))
+	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = m_renderer->get_ReSTIR_DI_render_pass();
+	ImGui::BeginDisabled(!restir_di_render_pass);
+	if (ImGui::CollapsingHeader("ReSTIR DI Settings") && restir_di_render_pass)
 	{
 		ImGui::TreePush("ReSTIR DI Settings tree");
 
-		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
+		ImGui::Text("VRAM Usage: %.3fMB", restir_di_render_pass->get_VRAM_usage());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		display_ReSTIR_DI_bias_status(global_kernel_options);
@@ -2103,6 +2105,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 
 		ImGui::TreePop(); // ReSTIR DI Settings tree
 	}
+	ImGui::EndDisabled(); // !restir_di_render_pass
 }
 
 void ImGuiSettingsWindow::draw_ltc_settings_panel()

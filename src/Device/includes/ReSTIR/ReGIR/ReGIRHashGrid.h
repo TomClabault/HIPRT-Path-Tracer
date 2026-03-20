@@ -8,11 +8,11 @@
 
 #include "Device/includes/HashGrid.h"
 #include "Device/includes/HashGridHash.h"
+#include "Device/includes/ONB.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridCellData.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
-#include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
-#include "Device/includes/ONB.h"
+#include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -69,23 +69,6 @@ struct ReGIRHashGrid
 #endif
 	}
 
-	HIPRT_DEVICE float3_t jitter_normal_in_tangent_plane(float3_t surface_normal, float3_t pos) const
-	{
-		// Getting the tangent plane vectors from the normal
-		float3_t T, B;
-		build_ONB(surface_normal, T, B);
-
-		// Some deterministic random numbers from the position, in [-1, 1]
-		float jitter_x = Xorshift32Generator(h2_xxhash32(pos.x * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
-		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
-
-		// Jittering our normal in the tangent plane
-		float3_t jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
-
-		// --- Step 4: renormalize ---
-		return hippt::normalize(jittered);
-	}
-
 	HIPRT_DEVICE unsigned int custom_regir_hash(float3_t world_position,
 												float3_t surface_normal,
 												const HIPRTCamera& current_camera,
@@ -104,7 +87,7 @@ struct ReGIRHashGrid
 		if (fuzzy_normals_strength > 0.01f)
 			// Jittering the normal a little bit in its tangent plane to help hide
 			// grid artifacts due to normal discretization a bit better
-			surface_normal = jitter_normal_in_tangent_plane(surface_normal, world_position);
+			surface_normal = jitter_normal_in_tangent_plane(surface_normal, world_position, fuzzy_normals_strength);
 #endif
 
 #if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
