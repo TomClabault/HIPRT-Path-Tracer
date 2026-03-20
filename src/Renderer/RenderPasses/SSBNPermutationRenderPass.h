@@ -20,7 +20,7 @@ public:
 	static const std::string SSBN_PERMUTATION_RENDER_PASS_NAME;
 	static const std::string SSBN_PERMUTATION_SORTING_PASS;
 	static const std::string SSBN_PERMUTATION_RETARGETING_PASS;
-	static const int DEFAULT_MAX_RETARGETING_RADIUS = 4;
+	static const int DEFAULT_MAX_RETARGETING_RADIUS = 5;
 
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
@@ -63,8 +63,8 @@ private:
 	OrochiBuffer<int> m_screen_space_hash_grid_cell_offsets_buffer;
 	unsigned int m_different_hash_count = 0;
 
-	int m_blue_noise_texture_width	= 64;
-	int m_blue_noise_texture_height = 64;
+	int m_blue_noise_texture_width	= 4096;
+	int m_blue_noise_texture_height = 2048;
 	int m_max_retargeting_radius	= DEFAULT_MAX_RETARGETING_RADIUS;
 };
 

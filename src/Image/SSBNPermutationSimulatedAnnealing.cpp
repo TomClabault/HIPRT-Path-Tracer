@@ -69,7 +69,7 @@ void SSBNPermutationSimulatedAnnealing::compute_permutation()
 	size_t iter		  = 0;
 	double target_mse = 2.5;
 
-	std::cout << std::endl << "Target MSE: " << target_mse << std::endl;
+	std::cout << std::endl << "Target MSE: " << target_mse << ". Max time: " << m_max_time_seconds << "s" << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
 	while (current_mse_error > target_mse)
 	{
