@@ -162,7 +162,7 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 
 bool SSBNPermutationRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	return false;
+	return is_render_pass_used();
 }
 
 void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
