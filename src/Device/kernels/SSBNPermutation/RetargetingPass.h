@@ -61,7 +61,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 	int global_retargeted_x = tile_base_x + local_retargeted_x;
 	int global_retargeted_y = tile_base_y + local_retargeted_y;
 
-	if (global_retargeted_x >= padded_resolution_x || global_retargeted_y >= padded_resolution_y)
+	if (global_retargeted_x >= resolution_x || global_retargeted_y >= resolution_y)
 	{
 		// This should never happen because the seed buffer is padded to the next multiple of the blue noise texture dimensions, which means that we should
 		// never get out of bounds
