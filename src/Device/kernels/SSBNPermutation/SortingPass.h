@@ -6,6 +6,7 @@
 #ifndef KERNELS_SSBN_PERMUTATION_SORTING_PASS_H
 #define KERNELS_SSBN_PERMUTATION_SORTING_PASS_H
 
+#include "Device/includes/Compute/RadixSortBlock.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/SSBNPermutation/SSBNPermutationCommon.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
@@ -73,7 +74,10 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 
 	__shared__ short int input_blue_noise[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short int input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
-	__shared__ fp16 input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	// input_pixel_luminance are fp16 but with bits reinterpreted as unsigned short int for the radix sort. We don't have negative luminance or NaNs/special
+	// values so reinterpreting is fine
+	__shared__ unsigned short int input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	// These can be short int with linear index instead of short2
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	sorted_seeds[thread_index_in_block] = 0;
@@ -105,47 +109,22 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int mirrored_at_edge_y	 = pixel_y >= resolution_y ? (resolution_y - 1 - (pixel_y - resolution_y)) : pixel_y;
 	int mirrored_pixel_index = mirrored_at_edge_x + mirrored_at_edge_y * resolution_x;
 
-	if (!thread_valid)
-	{
-		// For out of frame threads
-		if (render_data.render_settings.sample_number == 0)
-			// For the first sample, we don't have luminance information in the padded area because the renderer doesn't render that so we're using the mirrored
-			// pixel index to mirror the luminance from the actually rendered area
-			input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
-		else
-		{
-			// At higher samples, we don't want to use the mirrored luminance anymore. What we want is use the output of the sorting pass last frame, we want to
-			// get as close as possible to what luminance the renderer would have produced with the sorted seeds of last frame. We don't have the exact answer
-			// to that because we're not rendering padded-area pixels so we need to find an approxmiation. And using mirroring again here is certainly not going
-			// to work: the sorted seeds in the padded area are not at all a mirror of the sorted seeds at the edge of the visible area so if we use mirroring,
-			// we're going to get luminance which is completely uncorrelated from the seeds of the padded area = bad = white noise so we need something else
-
-			// TODO we need an approximation of the luminance that the rendered would have produced with the seeds of last frame for the pixels in the padded
-			// area. We could for example use the average luminance of the actually rendered pixels as an approximation for the luminance of the pixels in the
-			// padded area. It's not perfect but it's probably better than using completely uncorrelated values from mirroring
-			input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
-			// input_pixel_luminance[thread_index_in_block] = in_seeds_to_sort[x + y * padded_resolution_x] / (float)((unsigned int)(-1));
-		}
-	}
-	else
-		input_pixel_luminance[thread_index_in_block] = render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance();
-	input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(pixel_x, pixel_y);
-
 	if (!valid_input_data || !thread_valid)
 	{
-		input_pixel_luminance[thread_index_in_block]			 = static_cast<fp16>(1.0e10f);
+		input_pixel_luminance[thread_index_in_block]			 = (unsigned short int)-1;
 		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(-1, -1);
 	}
-
-	__syncthreads();
-
-	if (thread_index_in_block == 0)
+	else
 	{
-		bubble_sort(input_blue_noise, input_blue_noise_coordinates);
-		bubble_sort(input_pixel_luminance, input_pixel_luminance_coordinates);
+		fp16 luminance								 = static_cast<fp16>(render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance());
+		input_pixel_luminance[thread_index_in_block] = hippt::half_as_ushort(luminance);
+		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(pixel_x, pixel_y);
 	}
 
 	__syncthreads();
+
+	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_blue_noise, input_blue_noise_coordinates);
+	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_pixel_luminance, input_pixel_luminance_coordinates);
 
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];
 	int luminance_global_sorted_index = luminance_coords.x + luminance_coords.y * padded_resolution_x;

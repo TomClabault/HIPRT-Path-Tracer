@@ -3,27 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
-
-// Register-based warp inclusive scan
-HIPRT_DEVICE unsigned int warp_scan_inclusive(unsigned int val)
-{
-	unsigned int lane = threadIdx.x % 32;
-
-#pragma unroll
-	for (int i = 1; i <= 16; i *= 2)
-	{
-		unsigned int n = hippt::warp_shfl_up(val, i);
-
-		if (lane >= i)
-			val += n;
-	}
-
-	return val;
-}
 
 HIPRT_DEVICE unsigned int block_scan_early_publish(unsigned int thread_input_value,
 												   unsigned int bid,
@@ -87,9 +71,7 @@ HIPRT_DEVICE unsigned int block_scan_early_publish(unsigned int thread_input_val
 
 	// Add the base from previous warps to the local warp prefix
 	if (warp_id > 0)
-	{
 		warp_base = smem_warp_sums[warp_id - 1];
-	}
 
 	// This thread's inclusive sum over the whole block
 	return warp_prefix + warp_base;

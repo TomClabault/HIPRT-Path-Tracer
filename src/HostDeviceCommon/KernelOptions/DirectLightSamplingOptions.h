@@ -119,7 +119,7 @@
  *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
  *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
  */
-#define DirectLightNEEEstimator LSS_RESTIR_DI
+#define DirectLightNEEEstimator LSS_MIS_LIGHT_BSDF
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant
