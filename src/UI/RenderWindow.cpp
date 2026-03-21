@@ -799,12 +799,12 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR,
 								[this, renderer_width, renderer_height]()
 								{
-									// m_denoiser->initialize();
-									// m_denoiser = std::make_shared<OpenImageDenoiser>();
-									// m_denoiser->resize(renderer_width, renderer_height);
-									// m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
-									// m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
-									// m_denoiser->finalize();
+									m_denoiser = std::make_shared<OpenImageDenoiser>();
+									m_denoiser->initialize();
+									m_denoiser->resize(renderer_width, renderer_height);
+									m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+									m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+									m_denoiser->finalize();
 
 									m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
 
@@ -1124,8 +1124,10 @@ bool RenderWindow::needs_viewport_refresh()
 	// We always need to update the viewport if real-time rendering
 	bool realtime_rendering = !m_renderer->get_render_settings().accumulate;
 	bool force_refresh		= m_application_state->force_viewport_refresh;
+	bool denoiser_enabled	= m_application_settings->enable_denoising;
+	bool denoise_each_frame = !m_application_settings->denoise_when_rendering_done && !m_application_settings->denoise_only_on_viewport_refresh;
 
-	bool needs_refresh = enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+	bool needs_refresh = enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh || (denoiser_enabled && denoise_each_frame);
 	if (!needs_refresh)
 		return false;
 
@@ -1135,7 +1137,7 @@ bool RenderWindow::needs_viewport_refresh()
 		// before refreshing the viewport
 
 		if (!needs_refresh)
-			// No need of
+			// No need to run GMoN
 			return false;
 
 		if (m_renderer->get_gmon_render_pass()->recomputation_completed())

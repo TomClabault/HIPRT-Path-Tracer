@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Renderer/OpenImageDenoiser.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
+#include "Renderer/OpenImageDenoiser.h"
 
 #include <iostream>
 
@@ -36,7 +36,6 @@ void OpenImageDenoiser::set_denoise_albedo(bool denoise_albedo_or_not)
 
 void OpenImageDenoiser::resize(int new_width, int new_height)
 {
-	return;
 	if (!check_valid_state())
 		return;
 
@@ -54,7 +53,6 @@ void OpenImageDenoiser::initialize()
 
 void OpenImageDenoiser::finalize()
 {
-	return;
 	if (!check_valid_state())
 		return;
 

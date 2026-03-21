@@ -30,6 +30,9 @@ struct ApplicationSettings
 	float last_denoised_duration = 0.0f;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_when_rendering_done = true;
+	// If true, the denoiser will only execute on viewport refresh, if false, the denoiser will execute at each frame (while respecting other parameters
+	// (denoise sample skip, denoise_when_rendering_done, ...)
+	bool denoise_only_on_viewport_refresh = true;
 	// How many frames to wait for before denoising (this basically reduces
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 0;
