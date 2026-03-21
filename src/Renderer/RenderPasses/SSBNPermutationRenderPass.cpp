@@ -142,7 +142,7 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 
 		updated = true;
 	}
-	else if (m_sorted_seeds_buffer.size() == 0)
+	else if (is_render_pass_used())
 	{
 		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
 		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
@@ -150,9 +150,14 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 		unsigned int padded_width  = (resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
 		unsigned int padded_height = (resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
 
-		m_sorted_seeds_buffer.resize(padded_width * padded_height);
-		m_screen_space_hash_grid_buffer.resize(padded_width * padded_height);
-		m_screen_space_hash_grid_cell_offsets_buffer.resize(resolution_x * resolution_y);
+		if (m_sorted_seeds_buffer.size() != padded_width * padded_height)
+		{
+			// If one buffer is not the right size, assuming everyone isn't the right size and resizing
+
+			m_sorted_seeds_buffer.resize(padded_width * padded_height);
+			m_screen_space_hash_grid_buffer.resize(resolution_x * resolution_y);
+			m_screen_space_hash_grid_cell_offsets_buffer.resize(resolution_x * resolution_y);
+		}
 
 		updated = true;
 	}
