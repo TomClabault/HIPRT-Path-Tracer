@@ -25,7 +25,7 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 		return;
 
 	// Handling general shortcuts
-	if (!io.WantCaptureKeyboard)
+	if (!io.WantTextInput)
 	{
 		switch (key)
 		{
