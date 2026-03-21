@@ -10,10 +10,8 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#define RadixSortBlockRadixBits 2
+#define RadixSortBlockRadixBits 4
 #define RadixSortBlockRadix		(1 << RadixSortBlockRadixBits)
-
-#define DEBUG_PRINT 0
 
 /**
  * keys and values are assumed to be array_length in size
@@ -33,32 +31,15 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 
 	const int thread_id_in_block = threadIdx.x + threadIdx.y * blockDim.x;
 	const int threads_per_block	 = blockDim.x * blockDim.y;
-	const int warp_index		 = thread_id_in_block / 32;
-
-	bool DEBUGvery_first = thread_id_in_block == 0 && blockIdx.x == 0 && blockIdx.y == 0;
-	if (DEBUGvery_first)
-	{
-#if DEBUG_PRINT
-		printf("Input values:\n");
-		printf("\t[");
-		for (int i = 0; i < array_length; i++)
-			printf("(%d, %d), ", in_keys[i], in_values[i]);
-		printf("\n");
-		printf("\n");
-#endif
-	}
+	const int warp_index		 = thread_id_in_block >> 5;
+	constexpr int warp_count	 = array_length >> 5;
+	// Assert array length divisible by warp size
+	static_assert(warp_count << 5 == array_length);
 
 	__syncthreads();
 
 	for (int shift = 0; shift < sizeof(K_t) * 8; shift += RadixSortBlockRadixBits)
 	{
-		if (DEBUGvery_first)
-		{
-#if DEBUG_PRINT
-			printf("Pass %d\n", shift);
-#endif
-		}
-
 		// Reset digit counts
 		if (thread_id_in_block < RadixSortBlockRadix)
 			digit_counts[thread_id_in_block] = 0;
@@ -67,20 +48,9 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 		// Count digits
 		int digit = (in_keys[thread_id_in_block] >> shift) & (RadixSortBlockRadix - 1);
 #if defined(__KERNELCC__) // Needs this otherwise the CPU compiler whines because hippt::atomic_fetch_add is called on a non-atomic variable. On the GPU this is
-						  // fine because
+		// fine because
 		hippt::atomic_fetch_add(&digit_counts[digit], 1);
 #endif
-		if (DEBUGvery_first && DEBUG_PRINT)
-		{
-#if DEBUG_PRINT
-			printf("Digit counts:\n");
-			printf("\t[");
-			for (int i = 0; i < RadixSortBlockRadix; i++)
-				printf("%2d, ", digit_counts[i]);
-			printf("\n");
-#endif
-		}
-
 		__syncthreads();
 
 		// Compute prefix sums for each digit bin
@@ -94,50 +64,50 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 
 		__syncthreads();
 
-		if (DEBUGvery_first && DEBUG_PRINT)
-		{
-#if DEBUG_PRINT
-			printf("Bucket bases:\n");
-			printf("\t[");
-			for (int i = 0; i < RadixSortBlockRadix; i++)
-				printf("%d, ", bucket_base[i]);
-			printf("\n");
-#endif
-		}
-
 		// Computing the local rank of each element within its digit bin
-		int local_rank = 0;
-		for (int i = 0; i < RadixSortBlockRadix; i++)
+		unsigned int warp_local_rank = 0;
+		__shared__ unsigned int warp_digit_counts[warp_count][RadixSortBlockRadix];
+		for (int d = 0; d < RadixSortBlockRadix; d++)
 		{
-			bool is_digit = digit == i;
-			int rank	  = block_scan_exclusive<array_length>(is_digit, thread_id_in_block);
-			__syncthreads();
+			bool is_digit = digit == d;
+
+			unsigned int ballot		  = hippt::warp_ballot(0xffffffff, is_digit);
+			unsigned int lane_idx	  = thread_id_in_block & 31;
+			unsigned int mask_lane_lt = (lane_idx == 0) ? 0u : (1u << lane_idx) - 1;
 
 			if (is_digit)
-				local_rank = rank;
+				warp_local_rank = hippt::popc(ballot & mask_lane_lt);
+
+			if (lane_idx == 0)
+				warp_digit_counts[warp_index][d] = hippt::popc(ballot);
 		}
 
-		{
-			__shared__ int local_rank_shared[array_length];
-			local_rank_shared[thread_id_in_block] = local_rank;
-			__syncthreads();
+		__syncthreads();
 
-			if (DEBUGvery_first && DEBUG_PRINT)
+		__shared__ unsigned int warp_digit_bases[warp_count][RadixSortBlockRadix];
+		// TODO We can have each warp scan one digit here
+		if (warp_index == 0)
+		{
+			for (int d = 0; d < RadixSortBlockRadix; d++)
 			{
-#if DEBUG_PRINT
-				printf("Local ranks:\n");
-				printf("\t[");
-				for (int i = 0; i < array_length; i++)
-					printf("%2d, ", local_rank_shared[i]);
-				printf("\n");
-#endif
+				unsigned int warp_digit_count = 0;
+				if (thread_id_in_block < warp_count)
+					warp_digit_count = warp_digit_counts[thread_id_in_block][d];
+
+				unsigned int warp_digit_prefix = warp_scan_exclusive(warp_digit_count, thread_id_in_block);
+
+				if (thread_id_in_block < warp_count)
+					warp_digit_bases[thread_id_in_block][d] = warp_digit_prefix;
 			}
 		}
 
+		__syncthreads();
+
 		// Scatter step
-		int output_index		 = bucket_base[digit] + local_rank;
-		out_keys[output_index]	 = in_keys[thread_id_in_block];
-		out_values[output_index] = in_values[thread_id_in_block];
+		unsigned int warp_digit_base = warp_digit_bases[warp_index][digit];
+		int output_index			 = bucket_base[digit] + warp_local_rank + warp_digit_base;
+		out_keys[output_index]		 = in_keys[thread_id_in_block];
+		out_values[output_index]	 = in_values[thread_id_in_block];
 
 		__syncthreads();
 
@@ -149,24 +119,14 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 		V_t* temp_v = in_values;
 		in_values	= out_values;
 		out_values	= temp_v;
-
-#if DEBUG_PRINT
-		if (DEBUGvery_first && DEBUG_PRINT)
-			printf("\n\n");
-#endif
 	}
 
-	// if (sizeof(K_t) * 8 / RadixSortBlockRadixBits & 1)
-	//{
-	//	// Copying so the final output is in the input arrays given by the user
-	//	in_keys[thread_id_in_block]	  = out_keys[thread_id_in_block];
-	//	in_values[thread_id_in_block] = out_values[thread_id_in_block];
-	// }
-
-#if DEBUG_PRINT
-	if (DEBUGvery_first && DEBUG_PRINT)
-		printf("\n\n\n");
-#endif
+	if (sizeof(K_t) * 8 / RadixSortBlockRadixBits & 1)
+	{
+		// Copying so the final output is in the input arrays given by the user
+		in_keys[thread_id_in_block]	  = out_keys[thread_id_in_block];
+		in_values[thread_id_in_block] = out_values[thread_id_in_block];
+	}
 }
 
 #endif
