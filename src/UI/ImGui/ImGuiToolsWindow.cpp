@@ -595,12 +595,15 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::Text("Step 2: Data capture settings");
 		ImGui::TreePush("Convergence graph - step 2 tree");
-		static int capture_interval_type = 0;
-		ImGui::SeparatorText("Capture interval type");
-		ImGui::RadioButton("Every N seconds", &capture_interval_type, 0);
-		ImGui::RadioButton("Every N samples", &capture_interval_type, 1);
 
+		static int capture_interval_type	= 0;
 		static float capture_interval_value = 1.0f;
+		ImGui::SeparatorText("Capture interval type");
+		if (ImGui::RadioButton("Every N seconds", &capture_interval_type, 0))
+			capture_interval_value = 1.0f;
+		if (ImGui::RadioButton("Every N samples", &capture_interval_type, 1))
+			capture_interval_value = 16;
+
 		ImGui::InputFloat("Capture interval value", &capture_interval_value);
 		if (capture_interval_type == 1)
 			// We want an integer number of samples

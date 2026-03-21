@@ -25,14 +25,17 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 		return;
 
 	// Handling general shortcuts
-	switch (key)
+	if (!io.WantCaptureKeyboard)
 	{
-	case GLFW_KEY_R:
-		// Soft shaders reload
-		renderer->recompile_kernels(true);
-		render_window->set_render_dirty(true);
+		switch (key)
+		{
+		case GLFW_KEY_R:
+			// Soft shaders reload
+			renderer->recompile_kernels(true);
+			render_window->set_render_dirty(true);
 
-		break;
+			break;
+		}
 	}
 
 	// Now handling viewport controls below
