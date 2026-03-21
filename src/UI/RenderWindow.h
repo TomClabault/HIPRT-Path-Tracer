@@ -7,18 +7,18 @@
 #define RENDER_WINDOW_H
 
 #include "OpenGL/OpenGLProgram.h"
-#include "Renderer/OpenImageDenoiser.h"
-#include "Renderer/GPURenderer.h"
 #include "Renderer/Baker/GPUBaker.h"
+#include "Renderer/GPURenderer.h"
+#include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/ApplicationState.h"
 #include "UI/DisplayView/DisplayTextureType.h"
 #include "UI/DisplayView/DisplayViewEnum.h"
 #include "UI/DisplayView/DisplayViewSystem.h"
 #include "UI/ImGui/ImGuiRenderer.h"
-#include "UI/PerformanceMetricsComputer.h"
 #include "UI/Interaction/RenderWindowKeyboardInteractor.h"
 #include "UI/Interaction/RenderWindowMouseInteractor.h"
+#include "UI/PerformanceMetricsComputer.h"
 #include "UI/Screenshoter.h"
 #include "Utils/CommandlineArguments.h"
 

@@ -1538,7 +1538,7 @@ bool RenderWindow::denoise()
 		// - Is the rendering done
 		// - And we only want to denoise when the rendering is done
 		// - And we haven't alraedy denoised the final frame
-		bool denoise_rendering_done = rendering_done && denoise_when_done && !final_frame_denoised_already;
+		bool denoise_rendering_done = rendering_done && denoise_when_done;
 		// Have we rendered enough samples since last time we denoised that we need to denoise again?
 		bool sample_skip_threshold_reached =
 								!denoise_when_done && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >=
@@ -1558,6 +1558,7 @@ bool RenderWindow::denoise()
 		need_denoising |= sample_skip_threshold_reached;
 		need_denoising |= denoiser_settings_changed;
 		need_denoising &= !is_interacting();
+		need_denoising &= !final_frame_denoised_already;
 
 		// Display the noisy framebuffer if:
 		//	- We only denoise when the rendering is done but it isn't done yet
