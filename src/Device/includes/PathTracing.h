@@ -12,6 +12,7 @@
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/RussianRoulette.h"
 
+#include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data,
@@ -392,9 +393,20 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 
 		ray_payload.ray_color = ColorRGB32F(color);
 	}
-#endif
-#endif
-#endif
+#endif // ReGIR debug mode
+
+#elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE
+	ColorRGB32F color = ColorRGB32F::random_color(render_data.ssbn_settings.screen_space_hash_grid[pixel_index].x);
+	color *= render_data.render_settings.sample_number + 1;
+
+	ray_payload.ray_color = ColorRGB32F(color);
+#elif SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE
+	ColorRGB32F color = ColorRGB32F(render_data.get_input_random_seed(pixel_index) / (float)((unsigned int)(-1)));
+	color *= render_data.render_settings.sample_number + 1;
+
+	ray_payload.ray_color = ColorRGB32F(color);
+#endif // Switch on the debugging option
+#endif // ViewportColorsOverriden == 1
 }
 
 #endif

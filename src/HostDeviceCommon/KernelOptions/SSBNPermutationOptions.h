@@ -20,6 +20,16 @@
  */
 #define SSBNPermutationBlockSize 16
 
+/**
+ * If true, the hash grid will be displayed instead of rendering radiance
+ */
+#define SSBNPermutationDebugHashGrid KERNEL_OPTION_FALSE
+
+/**
+ * If true, the luminance of the random seeds will be displayed to the screen instead of the path tracer radiance
+ */
+#define SSBNPermutationDebugSeeds KERNEL_OPTION_FALSE
+
 #endif
 
 #endif

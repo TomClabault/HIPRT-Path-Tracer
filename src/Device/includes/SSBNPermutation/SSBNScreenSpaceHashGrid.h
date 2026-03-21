@@ -20,28 +20,28 @@ HIPRT_DEVICE void SSBN_update_screen_space_hash_grid(HIPRTRenderData& render_dat
 		// We only do this at the first sample because the camera doesn't move for offline rendering
 		return;
 
-	unsigned int pixel_gbuffer_hash;
+	unsigned int sort_key;
+
+	// 10 bits each for x and y
+	// +1 to x and y so that we don't get a sort_key == 0 because that's a special case
+	unsigned int x_bits = (static_cast<unsigned int>(pixel_x / SSBNPermutationBlockSize + 1) & ((1 << 10) - 1));
+	unsigned int y_bits = (static_cast<unsigned int>(pixel_y / SSBNPermutationBlockSize + 1) & ((1 << 10) - 1)) << 10;
+
+	sort_key = x_bits | y_bits;
+
 	if (render_data.ssbn_settings.use_screen_space_hash_grid)
 	{
 		if (!render_data.ssbn_settings.use_surface_normal)
 			geometric_normal = make_float3(0.0f, 0.0f, 0.0f);
 
-		if (render_data.ssbn_settings.use_world_space_hash_grid)
-		{
-			unsigned int trash;
-			pixel_gbuffer_hash = hash_pos_distance_to_camera(/* maximum, we don't care */ -1, shading_point, current_camera, 10, 1.0, trash);
-			// Adding surface normal and screen space grid
-			pixel_gbuffer_hash = h1_pcg(pixel_gbuffer_hash + hash_quantize_normal(geometric_normal, 2) +
-										h1_pcg(pixel_x / SSBNPermutationBlockSize + h1_pcg(pixel_y / SSBNPermutationBlockSize)));
-		}
-		else
-			pixel_gbuffer_hash = screen_space_gbuffer_hash(pixel_x, pixel_y, SSBNPermutationBlockSize, shading_point, geometric_normal, 0.2f);
+		// 6 bits
+		unsigned int normal_bits = hash_quantize_normal(geometric_normal, 2) << 20;
+
+		sort_key |= normal_bits;
 	}
-	else
-		pixel_gbuffer_hash = h1_pcg(pixel_x / SSBNPermutationBlockSize + h1_pcg(pixel_y / SSBNPermutationBlockSize));
 
 	render_data.ssbn_settings.screen_space_hash_grid[pixel_x + pixel_y * render_data.render_settings.render_resolution.x] =
-							make_uint3(pixel_gbuffer_hash, pixel_x, pixel_y);
+							make_uint3(sort_key, pixel_x, pixel_y);
 }
 
 #endif

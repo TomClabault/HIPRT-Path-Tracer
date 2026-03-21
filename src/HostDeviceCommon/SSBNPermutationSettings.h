@@ -15,7 +15,6 @@ struct SSBNPermutationSettings
 
 	bool use_screen_space_hash_grid = true;
 	bool use_surface_normal			= true;
-	bool use_world_space_hash_grid	= false;
 
 	uint3_t* screen_space_hash_grid = nullptr;
 };

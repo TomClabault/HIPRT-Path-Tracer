@@ -187,7 +187,10 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		m_different_hash_count = 0;
 		// CPU sorting for now
 		std::vector<uint3_t> screen_space_hash_grid_data = m_screen_space_hash_grid_buffer.download_data();
-		std::sort(screen_space_hash_grid_data.begin(), screen_space_hash_grid_data.end(), [](const uint3_t& a, const uint3_t& b) { return a.x < b.x; });
+		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID) == KERNEL_OPTION_FALSE)
+			// Only sorting if we're not debugging the hash grid because if we're debugging the hash grid we're going to display the hash cells on screen but if
+			// they are sorted this does not look like much of anything
+			std::sort(screen_space_hash_grid_data.begin(), screen_space_hash_grid_data.end(), [](const uint3_t& a, const uint3_t& b) { return a.x < b.x; });
 
 		// Computing the number of hash cells and the offsets of each cell in the sorted hash grid
 		std::vector<int> offsets(padded_render_solution_x * padded_render_solution_y);

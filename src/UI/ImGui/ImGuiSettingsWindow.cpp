@@ -4783,6 +4783,14 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			blue_noise_texture_size_changed |= ImGui::RadioButton("256", &ssbn_pass->get_blue_noise_texture_width(), 256);
 			ImGui::SameLine();
 			blue_noise_texture_size_changed |= ImGui::RadioButton("512", &ssbn_pass->get_blue_noise_texture_width(), 512);
+			ImGui::SameLine();
+			if (ImGui::RadioButton("4096x2048", &ssbn_pass->get_blue_noise_texture_width(), 4096))
+			{
+				blue_noise_texture_size_changed = true;
+
+				// Special case for 4096 x 2048 blue noise texture
+				ssbn_pass->get_blue_noise_texture_height() = 2048;
+			}
 
 			if (blue_noise_texture_size_changed)
 			{
@@ -4799,7 +4807,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					m_renderer->recompile_kernels();
 				}
 
-				m_renderer->reload_ssbn_permutation_blue_noise_texture(ssbn_pass->get_blue_noise_texture_width(), ssbn_pass->get_blue_noise_texture_width());
+				m_renderer->reload_ssbn_permutation_blue_noise_texture(ssbn_pass->get_blue_noise_texture_width(), ssbn_pass->get_blue_noise_texture_height());
 				m_render_window->set_render_dirty(true);
 			}
 
@@ -4834,8 +4842,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			{
 				ImGui::TreePush("Screen space hash grid tree");
 
-				if (ImGui::Checkbox("Use world space grid", &render_data.ssbn_settings.use_world_space_hash_grid))
-					m_render_window->set_render_dirty(true);
 				if (ImGui::Checkbox("Use surface normal", &render_data.ssbn_settings.use_surface_normal))
 					m_render_window->set_render_dirty(true);
 
@@ -4871,6 +4877,27 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGui::EndDisabled(); // ImGui::BeginDisabled(!ssbn_pass->get_do_retargeting());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Debug");
+
+			static bool visualize_hash_grid = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID);
+			if (ImGui::Checkbox("Debug hash grid", &visualize_hash_grid))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID, visualize_hash_grid);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			static bool debug_seeds = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_SEEDS);
+			if (ImGui::Checkbox("Debug seeds", &debug_seeds))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_SEEDS, debug_seeds);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 		}
 
 		ImGui::TreePop();

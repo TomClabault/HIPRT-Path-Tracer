@@ -12,29 +12,6 @@
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-template <typename K_t, typename V_t>
-HIPRT_DEVICE void bubble_sort(K_t keys[SSBNPermutationBlockSize * SSBNPermutationBlockSize], V_t values[SSBNPermutationBlockSize * SSBNPermutationBlockSize])
-{
-	int n = SSBNPermutationBlockSize * SSBNPermutationBlockSize;
-
-	for (int i = 0; i < n - 1; i++)
-	{
-		for (int j = 0; j < n - i - 1; j++)
-		{
-			if (keys[j] > keys[j + 1])
-			{
-				K_t temp_key = keys[j];
-				keys[j]		 = keys[j + 1];
-				keys[j + 1]	 = temp_key;
-
-				V_t temp_value = values[j];
-				values[j]	   = values[j + 1];
-				values[j + 1]  = temp_value;
-			}
-		}
-	}
-}
-
 GLOBAL_KERNEL_SIGNATURE(void)
 SSBNPermutationSortingPass(HIPRTRenderData render_data,
 						   unsigned char* __restrict__ blue_noise_dither_texture_buffer,

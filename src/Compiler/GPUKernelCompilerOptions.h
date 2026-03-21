@@ -136,6 +136,8 @@ public:
 
 	static const std::string SSBN_PERMUTATION_BLOCK_SIZE;
 	static const std::string SSBN_PERMUTATION_ENABLED;
+	static const std::string SSBN_PERMUTATION_DEBUG_HASH_GRID;
+	static const std::string SSBN_PERMUTATION_DEBUG_SEEDS;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 

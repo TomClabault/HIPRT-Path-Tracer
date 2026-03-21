@@ -136,6 +136,8 @@ const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount"
 
 const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE = "SSBNPermutationBlockSize";
 const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED = "SSBNPermutationEnabled";
+const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID = "SSBNPermutationDebugHashGrid";
+const std::string GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_SEEDS = "SSBNPermutationDebugSeeds";
 
 // clang-format on
 
@@ -258,6 +260,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE,
 	GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED,
+	GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID,
+	GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_SEEDS,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -384,6 +388,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE] = std::make_shared<int>(SSBNPermutationBlockSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED] = std::make_shared<int>(SSBNPermutationEnabled);
+	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID] = std::make_shared<int>(SSBNPermutationDebugHashGrid);
+	m_options_macro_map[GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_SEEDS] = std::make_shared<int>(SSBNPermutationDebugSeeds);
 	// clang-format on
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist

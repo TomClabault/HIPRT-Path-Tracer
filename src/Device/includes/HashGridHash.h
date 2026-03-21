@@ -106,6 +106,8 @@ HIPRT_HOST_DEVICE static float3_t hash_grid_aliasing_fix_clamping(float3_t base_
  * Higher values mean more discretization steps mean more precision.
  *
  * 2 is a default good value for 'precision'
+ *
+ * The output is precision * 3 bits, packed in the lower end of the uint
  */
 HIPRT_HOST_DEVICE static unsigned int hash_quantize_normal(float3_t normal, unsigned int precision)
 {
