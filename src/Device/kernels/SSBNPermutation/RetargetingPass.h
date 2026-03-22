@@ -19,17 +19,11 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 							   const unsigned int* __restrict__ sorted_seeds_buffer,
 							   unsigned int* __restrict__ out_retargeted_seeds_buffer)
 {
-	int resolution_x		= render_data.render_settings.render_resolution.x;
-	int resolution_y		= render_data.render_settings.render_resolution.y;
-	int padded_resolution_x = (resolution_x + blue_noise_texture_width - 1) / blue_noise_texture_width * blue_noise_texture_width;
-	int padded_resolution_y = (resolution_y + blue_noise_texture_height - 1) / blue_noise_texture_height * blue_noise_texture_height;
+	int resolution_x = render_data.render_settings.render_resolution.x;
+	int resolution_y = render_data.render_settings.render_resolution.y;
 
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	if (x >= padded_resolution_x || y >= padded_resolution_y)
-		// This should never happen because the launch dimensions should be exactly the padded resolution, but just in case
-		return;
 
 	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
@@ -72,7 +66,7 @@ SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
 		global_retargeted_y = y;
 	}
 
-	out_retargeted_seeds_buffer[x + y * padded_resolution_x] = sorted_seeds_buffer[global_retargeted_x + global_retargeted_y * padded_resolution_x];
+	out_retargeted_seeds_buffer[x + y * resolution_x] = sorted_seeds_buffer[global_retargeted_x + global_retargeted_y * resolution_x];
 }
 
 #endif

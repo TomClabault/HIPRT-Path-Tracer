@@ -4756,39 +4756,37 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Accumulate blue noise at 1SPP", &render_data.ssbn_settings.accumulate_blue_noise_1spp))
 			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("This is used to force the random seeds to not be reset when we reset the render. Useful to accumulate blue noise "
+										"quality with SSBN permutations, otherwise SSBN permutation always needs more than 1SPP to kick in. This breaks "
+										"determinism though as all 1SPP frame will be different!");
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ssbn_permutation_enabled)
 		{
 			ImGui::SeparatorText("Sorting pass");
 
-			static int block_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+			static int block_size	= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+			bool block_size_changed = false;
 			ImGui::Text("Sorting block size");
-			ImGui::RadioButton("8##block_size", &block_size, 8);
+			block_size_changed |= ImGui::RadioButton("8##block_size", &block_size, 8);
 			ImGui::SameLine();
-			ImGui::RadioButton("16##block_size", &block_size, 16);
+			block_size_changed |= ImGui::RadioButton("16##block_size", &block_size, 16);
 			ImGui::SameLine();
-			ImGui::RadioButton("32##block_size", &block_size, 32);
+			block_size_changed |= ImGui::RadioButton("32##block_size", &block_size, 32);
 
-			if (block_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
+			if (block_size_changed)
 			{
-				ImGui::TreePush("SSBN Permutation block size apply tree");
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE, block_size);
 
-				if (ImGui::Button("Apply"))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE, block_size);
-
-					m_render_window->set_render_dirty(true);
-					m_renderer->recompile_kernels();
-				}
-
-				ImGui::TreePop();
+				m_render_window->set_render_dirty(true);
+				m_renderer->recompile_kernels();
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			bool blue_noise_texture_size_changed = false;
-			ImGui::Text("Blue noise tile size (square)");
+			ImGui::Text("Blue noise tile size");
 			blue_noise_texture_size_changed |= ImGui::RadioButton("16", &ssbn_pass->get_blue_noise_texture_width(), 16);
 			ImGui::SameLine();
 			blue_noise_texture_size_changed |= ImGui::RadioButton("32", &ssbn_pass->get_blue_noise_texture_width(), 32);

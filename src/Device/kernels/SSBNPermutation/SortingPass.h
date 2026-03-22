@@ -21,10 +21,8 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 						   unsigned int* __restrict__ out_sorted_seeds_buffer,
 						   const int* __restrict__ in_hash_grid_cell_offsets_buffer)
 {
-	int resolution_x		= render_data.render_settings.render_resolution.x;
-	int resolution_y		= render_data.render_settings.render_resolution.y;
-	int padded_resolution_x = (resolution_x + blue_noise_texture_width - 1) / blue_noise_texture_width * blue_noise_texture_width;
-	int padded_resolution_y = (resolution_y + blue_noise_texture_height - 1) / blue_noise_texture_height * blue_noise_texture_height;
+	int resolution_x = render_data.render_settings.render_resolution.x;
+	int resolution_y = render_data.render_settings.render_resolution.y;
 
 	int thread_index_in_block = threadIdx.x;
 
@@ -104,12 +102,12 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_pixel_luminance, input_pixel_luminance_coordinates);
 
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];
-	int luminance_global_sorted_index = luminance_coords.x + luminance_coords.y * padded_resolution_x;
+	int luminance_global_sorted_index = luminance_coords.x + luminance_coords.y * resolution_x;
 
 	int seed_fetch_index = luminance_global_sorted_index;
 
-	int index_x = luminance_global_sorted_index % padded_resolution_x;
-	int index_y = luminance_global_sorted_index / padded_resolution_x;
+	int index_x = luminance_global_sorted_index % resolution_x;
+	int index_y = luminance_global_sorted_index / resolution_x;
 	if ((index_x >= resolution_x || index_y >= resolution_y) && render_data.render_settings.sample_number == 0)
 	{
 		// If we're trying to fetch a seed that is in the padded area and this is the very first sample of the render, wedon't have seeds generated in the
@@ -117,7 +115,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		// by mirroring the seeds that are at the edge of the image
 		int mirrored_x	   = index_x >= resolution_x ? (resolution_x - 1 - (index_x - resolution_x)) : index_x;
 		int mirrored_y	   = index_y >= resolution_y ? (resolution_y - 1 - (index_y - resolution_y)) : index_y;
-		int mirrored_index = mirrored_x + mirrored_y * padded_resolution_x;
+		int mirrored_index = mirrored_x + mirrored_y * resolution_x;
 
 		seed_fetch_index = mirrored_index;
 	}
@@ -128,7 +126,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 
 	__syncthreads();
 
-	out_sorted_seeds_buffer[pixel_x + pixel_y * padded_resolution_x] = sorted_seeds[thread_index_in_block];
+	out_sorted_seeds_buffer[pixel_x + pixel_y * resolution_x] = sorted_seeds[thread_index_in_block];
 }
 
 #endif

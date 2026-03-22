@@ -46,12 +46,18 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 	if (!is_render_pass_used())
 		return;
 
-	unsigned int padded_width  = (new_width + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
-	unsigned int padded_height = (new_height + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
-
-	m_sorted_seeds_buffer.resize(padded_width * padded_height);
+	m_sorted_seeds_buffer.resize(new_width * new_height);
 	m_screen_space_hash_grid_buffer.resize(new_width * new_height);
 	m_screen_space_hash_grid_cell_offsets_buffer.resize(new_width * new_height);
+
+	if (!m_need_to_restore_accumulate_1spp_settings)
+	{
+		m_render_data_accumulate_blue_noise_1spp_backup = m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp;
+		// Force set to false otherwise we won't be re-generating random seeds even though the sorted seeds buffer now contains all 0 seeds after being resized. The
+		// backup will be used to restore the settings at the end of post_sample_update
+		m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp = false;
+		m_need_to_restore_accumulate_1spp_settings							   = true;
+	}
 }
 
 void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new_height)
@@ -81,14 +87,6 @@ void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new
 		blue_noise_dither_data[i] = blue_noise_texture.data()[i * blue_noise_texture.channels + 0];
 
 	m_blue_noise_dither_texture_buffer = OrochiBuffer<unsigned char>(blue_noise_dither_data);
-
-	unsigned int render_resolution_x		= m_renderer->get_render_data().render_settings.render_resolution.x;
-	unsigned int render_resolution_y		= m_renderer->get_render_data().render_settings.render_resolution.y;
-	unsigned int padded_render_resolution_x = (render_resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
-	unsigned int padded_render_resolution_y =
-							(render_resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
-
-	m_sorted_seeds_buffer.resize(padded_render_resolution_x * padded_render_resolution_y);
 
 	reload_retargeting_data(m_max_retargeting_radius);
 }
@@ -121,6 +119,8 @@ void SSBNPermutationRenderPass::reload_retargeting_data(int new_max_retargeting_
 		SSBNPermutationSimulatedAnnealing annealing(input_image, m_max_retargeting_radius, 600);
 		annealing.compute_permutation();
 		annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
+
+		blue_noise_retargeting_file = std::ifstream(permutation_file_path_no_extension + ".bin", std::ios::binary);
 	}
 
 	std::vector<int> blue_noise_retargeting_data(m_blue_noise_texture_width * m_blue_noise_texture_height);
@@ -158,14 +158,11 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
 		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
 
-		unsigned int padded_width  = (resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
-		unsigned int padded_height = (resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
-
-		if (m_sorted_seeds_buffer.size() != padded_width * padded_height)
+		if (m_sorted_seeds_buffer.size() != resolution_x * resolution_y)
 		{
 			// If one buffer is not the right size, assuming everyone isn't the right size and resizing
 
-			m_sorted_seeds_buffer.resize(padded_width * padded_height);
+			m_sorted_seeds_buffer.resize(resolution_x * resolution_y);
 			m_screen_space_hash_grid_buffer.resize(resolution_x * resolution_y);
 			m_screen_space_hash_grid_cell_offsets_buffer.resize(resolution_x * resolution_y);
 		}
@@ -188,10 +185,8 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 
 	unsigned char* blue_noise_texture_buffer_pointer = m_blue_noise_dither_texture_buffer.get_device_pointer();
 	unsigned int* sorted_seeds_buffer_pointer		 = m_sorted_seeds_buffer.get_device_pointer();
-	unsigned int resolution_x						 = render_data.render_settings.render_resolution.x;
-	unsigned int resolution_y						 = render_data.render_settings.render_resolution.y;
-	unsigned int padded_render_solution_x = (resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
-	unsigned int padded_render_solution_y = (resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
+	unsigned int render_resolution_x				 = render_data.render_settings.render_resolution.x;
+	unsigned int render_resolution_y				 = render_data.render_settings.render_resolution.y;
 
 	if (render_data.render_settings.sample_number == 0)
 	{
@@ -204,7 +199,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 			std::sort(screen_space_hash_grid_data.begin(), screen_space_hash_grid_data.end(), [](const uint3_t& a, const uint3_t& b) { return a.x < b.x; });
 
 		// Computing the number of hash cells and the offsets of each cell in the sorted hash grid
-		std::vector<int> offsets(padded_render_solution_x * padded_render_solution_y);
+		std::vector<int> offsets(render_resolution_x * render_resolution_y);
 		offsets[0] = 0;
 		for (size_t i = 1; i < screen_space_hash_grid_data.size(); i++)
 		{
@@ -226,7 +221,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		// the sorting passes but that's not enough and we'll lose convergence eventually so we need to refresh the seeds.
 		void* launch_args_refresh_seeds[] = { &render_data };
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(
-								32, 1, resolution_x, resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
+								32, 1, render_resolution_x, render_resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
 
 		// And return because now we have brand new seeds, the luminance currently in the buffer doesn't correspond so sorting and retargeting will be helpless,
 		// we'll just render the next frame normally. This will be a white noise frame but not sure what else to do when we need to refresh the seeds....
@@ -236,6 +231,9 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 	if (m_do_retargeting)
 	{
+		std::vector<unsigned int> input_seeds = OrochiBuffer<unsigned int>::download_data(render_data.buffers.get_input_random_seeds_pointer(),
+																						  render_resolution_x * render_resolution_y);
+
 		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
 		void* launch_args_sorting[]			  = { &render_data,
 												  &blue_noise_texture_buffer_pointer,
@@ -249,6 +247,9 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 																								 block_size * block_size * m_different_hash_count, 1,
 																								 launch_args_sorting, m_renderer->get_main_stream());
 
+		std::vector<unsigned int> sorted_seeds =
+								OrochiBuffer<unsigned int>::download_data(sorted_seeds_buffer_pointer, render_resolution_x * render_resolution_y);
+
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
 		void* launch_args_retargeting[]					   = { &render_data,
 															   &blue_noise_retargeting_texture_buffer_pointer,
@@ -257,7 +258,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 															   &sorted_seeds_buffer_pointer,
 															   &render_data.buffers.get_input_random_seeds_pointer() };
 
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, padded_render_solution_x, padded_render_solution_y,
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, render_resolution_x, render_resolution_y,
 																									 launch_args_retargeting, m_renderer->get_main_stream());
 	}
 	else
@@ -274,6 +275,14 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
 																								 block_size * block_size * m_different_hash_count, 1,
 																								 launch_args_sorting, m_renderer->get_main_stream());
+	}
+
+	if (m_need_to_restore_accumulate_1spp_settings)
+	{
+		m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp = m_render_data_accumulate_blue_noise_1spp_backup;
+		render_data.ssbn_settings.accumulate_blue_noise_1spp = m_render_data_accumulate_blue_noise_1spp_backup;
+
+		m_need_to_restore_accumulate_1spp_settings							   = false;
 	}
 }
 

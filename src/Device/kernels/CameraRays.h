@@ -59,8 +59,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
 	}
 
-	bool ssbn_force_no_reset_seeds = render_data.ssbn_settings.accumulate_blue_noise_1spp && render_data.render_settings.sample_number == 0 &&
-									 SSBNPermutationEnabled == KERNEL_OPTION_TRUE;
+	bool ssbn_force_no_reset_seeds = render_data.ssbn_settings.accumulate_blue_noise_1spp && SSBNPermutationEnabled == KERNEL_OPTION_TRUE;
 	if (render_data.render_settings.need_to_reset_random_seeds && !ssbn_force_no_reset_seeds)
 		render_data.store_input_random_seed(pixel_index, generate_fresh_pixel_random_seed(render_data, pixel_index));
 }
