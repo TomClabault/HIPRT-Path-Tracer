@@ -516,23 +516,6 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 	std::vector<T> data = download_data();
 	glTexImage2D(GL_TEXTURE_2D, 0, texture_type.get_gl_internal_format(), width, height, 0, texture_type.get_gl_format(), texture_type.get_gl_type(),
 				 data.data());
-
-	// oroGraphicsResource_t graphics_resource = nullptr;
-	// OROCHI_CHECK_ERROR(oroGraphicsGLRegisterImage(&graphics_resource, texture, GL_TEXTURE_2D, oroGraphicsRegisterFlagsWriteDiscard));
-
-	//// Map the OpenGL texture for CUDA/HIP access
-	// OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &graphics_resource, 0));
-
-	//// Access the CUDA/HIP array used by the OpenGL texture under the hood
-	// oroArray_t array = nullptr;
-	//	OROCHI_CHECK_ERROR(oroGraphicsSubResourceGetMappedArray(&array, graphics_resource, 0, 0));
-
-	//// Copy data from the CUDA buffer to the CUDA array
-	//	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(array, 0, 0, m_data_pointer, width * texture_type.sizeof_type(), width * texture_type.sizeof_type(), height,
-	// oroMemcpyDeviceToDevice));
-
-	//// Unmap the OpenGL texture
-	// OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));
 }
 
 template <typename T>

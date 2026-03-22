@@ -3,9 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "GL/glew.h"
 #include "GLFW/glfw3.h"
 #include "UI/ImGui/ImGuiConvergenceGraphWidget.h"
 #include "UI/ImGui/ImGuiLogger.h"
+#include "UI/RenderWindow.h"
 #include "Utils/Utils.h"
 
 #include "implot.h"
@@ -13,13 +15,19 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-void ImGuiConvergenceGraphWidget::draw()
+ImGuiConvergenceGraphWidget::ImGuiConvergenceGraphWidget() : m_screenshoter(this) {}
+
+void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 {
+	if (plotSize.x < 0)
+		plotSize.x = (float)m_plot_width;
+	if (plotSize.y < 0)
+		plotSize.y = (float)m_plot_height;
+
 	// TODO save the data to a file such that we can keep plotting accross sessions?
-	if (ImPlot::BeginPlot(m_plot_title.c_str(), ImVec2(m_plot_width, m_plot_height)))
+	if (ImPlot::BeginPlot(m_plot_title.c_str(), ImVec2(plotSize.x, plotSize.y)))
 	{
 		ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
-
 		ImPlot::SetupAxes(m_x_axis_name.c_str(), m_y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
 
 		for (size_t i = 0; i < m_recorded_legends.size(); i++)
@@ -30,7 +38,7 @@ void ImGuiConvergenceGraphWidget::draw()
 								ImVec4(176 / 255.0f, 122 / 255.0f, 161 / 255.0f, 1.0f), ImVec4(255 / 255.0f, 157 / 255.0f, 167 / 255.0f, 1.0f),
 								ImVec4(156 / 255.0f, 117 / 255.0f, 95 / 255.0f, 1.0f),	ImVec4(186 / 255.0f, 176 / 255.0f, 172 / 255.0f, 1.0f) };
 
-			if (i > 10)
+			if (i >= 10)
 				ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, m_line_weight);
 			else
 				ImPlot::SetNextLineStyle(colors[i], m_line_weight);
@@ -39,90 +47,7 @@ void ImGuiConvergenceGraphWidget::draw()
 		}
 
 		ImPlot::EndPlot();
-
-		// Store the last plot position and size for screenshot purposes
-		ImVec2 min = ImGui::GetItemRectMin();
-		ImVec2 max = ImGui::GetItemRectMax();
-
-		m_last_plot_pos	   = min;
-		m_last_plot_size.x = max.x - min.x;
-		m_last_plot_size.y = max.y - min.y;
 	}
-}
-
-void ImGuiConvergenceGraphWidget::request_screenshot(bool request, bool to_file)
-{
-	if (to_file)
-		m_screenshot_to_file_requested = request;
-	else
-		m_screenshot_to_clipboard_requested = request;
-}
-
-void ImGuiConvergenceGraphWidget::process_screenshots()
-{
-	if (m_screenshot_to_file_requested)
-	{
-		if (!screenshot_graph_to_file("convergence_graph.png"))
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to save convergence graph screenshot to file.");
-
-		m_screenshot_to_file_requested = false;
-	}
-	else if (m_screenshot_to_clipboard_requested)
-	{
-		screenshot_graph_to_clipboard();
-
-		m_screenshot_to_clipboard_requested = false;
-	}
-}
-
-std::vector<unsigned char> ImGuiConvergenceGraphWidget::screenshot_graph_to_memory(int& out_width, int& out_height, bool flip_y)
-{
-	ImGuiIO& io		= ImGui::GetIO();
-	ImVec2 fb_scale = io.DisplayFramebufferScale; // Handle DPI
-
-	int px = (int)(m_last_plot_pos.x * fb_scale.x + 0.5f);
-	// OpenGL origin is bottom-left, ImGui uses top-left, so compute y accordingly:
-	int py = (int)((io.DisplaySize.y - (m_last_plot_pos.y + m_last_plot_size.y)) * fb_scale.y + 0.5f);
-
-	out_width  = (int)(m_last_plot_size.x * fb_scale.x + 0.5f);
-	out_height = (int)(m_last_plot_size.y * fb_scale.y + 0.5f);
-
-	if (out_width <= 0 || out_height <= 0)
-		return std::vector<unsigned char>();
-
-	std::vector<unsigned char> pixels(out_width * out_height * 4);
-
-	glFinish();
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	glReadPixels(px, py, out_width, out_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-
-	if (flip_y)
-	{
-		std::vector<unsigned char> flipped(out_width * out_height * 4);
-		for (int row = 0; row < out_height; ++row)
-			memcpy(&flipped[row * out_width * 4], &pixels[(out_height - 1 - row) * out_width * 4], (size_t)out_width * 4);
-
-		return flipped;
-	}
-	else
-		return pixels;
-}
-
-bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const char* filename)
-{
-	int width, height;
-	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height, true);
-
-	unsigned int stride_bytes = width * 4;
-	return stbi_write_png(filename, width, height, 4, pixels.data(), stride_bytes) != 0;
-}
-
-void ImGuiConvergenceGraphWidget::screenshot_graph_to_clipboard()
-{
-	int width, height;
-	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height, true);
-
-	Utils::copy_image_to_clipboard(Image8Bit(pixels, width, height, 4), false);
 }
 
 int& ImGuiConvergenceGraphWidget::get_plot_width()
@@ -170,6 +95,16 @@ std::vector<std::vector<float>>& ImGuiConvergenceGraphWidget::get_recorded_ys_li
 	return m_recorded_ys_list;
 }
 
+bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const std::string_view filename)
+{
+	return m_screenshoter.screenshot_graph_to_file(m_plot_width, m_plot_height, filename.data());
+}
+
+void ImGuiConvergenceGraphWidget::screenshot_graph_to_clipboard()
+{
+	m_screenshoter.screenshot_graph_to_clipboard(m_plot_width, m_plot_height);
+}
+
 void ImGuiConvergenceGraphWidget::set_x_axis_name(const std::string& name)
 {
 	m_x_axis_name = name;
@@ -178,4 +113,10 @@ void ImGuiConvergenceGraphWidget::set_x_axis_name(const std::string& name)
 void ImGuiConvergenceGraphWidget::set_y_axis_name(const std::string& name)
 {
 	m_y_axis_name = name;
+}
+
+void ImGuiConvergenceGraphWidget::set_render_window(RenderWindow* render_window)
+{
+	m_render_window = render_window;
+	m_screenshoter.set_render_window(render_window);
 }

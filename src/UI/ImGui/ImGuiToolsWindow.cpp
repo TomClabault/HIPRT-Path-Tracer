@@ -13,14 +13,13 @@
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 
-#include "implot.h"
-
 const char* ImGuiToolsWindow::TITLE = "Tools";
 
 void ImGuiToolsWindow::set_render_window(RenderWindow* render_window)
 {
 	m_render_window	  = render_window;
 	m_settings_window = &render_window->get_imgui_renderer()->get_imgui_settings_window();
+	m_convergence_graph_widget.set_render_window(render_window);
 
 	m_renderer = m_render_window->get_renderer();
 }
@@ -895,10 +894,13 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ImGui::Button("Screenshot graph"))
-			m_convergence_graph_widget.request_screenshot(true, true);
+		{
+			if (!m_convergence_graph_widget.screenshot_graph_to_file("convergence_graph.png"))
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to save convergence graph screenshot to file.");
+		}
 		ImGui::SameLine();
 		if (ImGui::Button("Copy graph to clipboard"))
-			m_convergence_graph_widget.request_screenshot(true, false);
+			m_convergence_graph_widget.screenshot_graph_to_clipboard();
 
 		std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
 		std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "Root MSE" : "Mean FLIP Error";

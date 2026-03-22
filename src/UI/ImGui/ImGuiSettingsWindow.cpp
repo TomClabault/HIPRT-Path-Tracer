@@ -4646,7 +4646,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGuiRenderer::add_warning("GMoN cannot be used without enabling accumulation.");
 	}
 	ImGui::BeginDisabled(!render_data.render_settings.accumulate || gmon_render_pass == nullptr);
-	if (ImGui::CollapsingHeader("GMoN"))
+	if (ImGui::CollapsingHeader("GMoN") && gmon_render_pass)
 	{
 		ImGui::TreePush("GMoN tree post processing");
 
@@ -4663,7 +4663,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 								""
 								"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
-		if (gmon_data.use_gmon && gmon_render_pass != nullptr)
+		if (gmon_data.use_gmon)
 		{
 			ImGui::Text("VRAM Usage: %.3fMB", gmon_render_pass->get_VRAM_usage_bytes() / 1000000.0f);
 
@@ -4731,6 +4731,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				ImGuiRenderer::add_warning("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.");
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 	ImGui::EndDisabled();
@@ -4792,13 +4793,12 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			ImGui::SameLine();
 			blue_noise_texture_size_changed |= ImGui::RadioButton("512", &ssbn_pass->get_blue_noise_texture_width(), 512);
 			ImGui::SameLine();
-			if (ImGui::RadioButton("4096x2048", &ssbn_pass->get_blue_noise_texture_width(), 4096))
-			{
-				blue_noise_texture_size_changed = true;
-
+			if (blue_noise_texture_size_changed |= ImGui::RadioButton("4096x2048", &ssbn_pass->get_blue_noise_texture_width(), 4096))
 				// Special case for 4096 x 2048 blue noise texture
 				ssbn_pass->get_blue_noise_texture_height() = 2048;
-			}
+			else
+				// Other cases are square textures
+				ssbn_pass->get_blue_noise_texture_height() = ssbn_pass->get_blue_noise_texture_width();
 
 			if (blue_noise_texture_size_changed)
 			{

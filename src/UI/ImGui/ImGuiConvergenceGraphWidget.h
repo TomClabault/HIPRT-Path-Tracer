@@ -6,18 +6,22 @@
 #ifndef UI_IMGUI_IMGUI_CONVERGENCE_GRAPH_WIDGET_H
 #define UI_IMGUI_IMGUI_CONVERGENCE_GRAPH_WIDGET_H
 
+#include "UI/ImGui/ImGuiConvergenceGraphWidgetScreenshotter.h"
+
 #include "imgui.h"
+#include "implot.h"
 
 #include <string>
 #include <vector>
 
+class RenderWindow;
+
 class ImGuiConvergenceGraphWidget
 {
 public:
-	void draw();
+	ImGuiConvergenceGraphWidget();
 
-	void request_screenshot(bool request, bool to_file);
-	void process_screenshots();
+	void draw(ImVec2 plot_size = ImVec2(-1, -1));
 
 	std::vector<unsigned char> screenshot_graph_to_memory(int& out_width, int& out_height, bool flip_y);
 
@@ -32,14 +36,22 @@ public:
 	std::vector<std::vector<float>>& get_recorded_xs_list();
 	std::vector<std::vector<float>>& get_recorded_ys_list();
 
-	void set_x_axis_name(const std::string& name);
-	void set_y_axis_name(const std::string& name);
-
-private:
-	bool screenshot_graph_to_file(const char* filename);
+	bool screenshot_graph_to_file(const std::string_view filename);
 	void screenshot_graph_to_clipboard();
 
+	void set_x_axis_name(const std::string& name);
+	void set_y_axis_name(const std::string& name);
+	void set_render_window(RenderWindow* render_window);
+
 private:
+	void prepare_screenshot_fbo();
+	void draw_plot_only(ImVec2 plotSize);
+
+	void restore_viewport_texture_after_screenshotting();
+
+private:
+	RenderWindow* m_render_window = nullptr;
+
 	int m_plot_width		  = 575;
 	int m_plot_height		  = 400;
 	float m_line_weight		  = 3.0f;
@@ -52,12 +64,7 @@ private:
 	std::vector<std::vector<float>> m_recorded_xs_list;
 	std::vector<std::vector<float>> m_recorded_ys_list;
 
-	// Private data for handling screenshots
-	bool m_screenshot_to_file_requested		 = false;
-	bool m_screenshot_to_clipboard_requested = false;
-
-	ImVec2 m_last_plot_pos	= ImVec2(0, 0);
-	ImVec2 m_last_plot_size = ImVec2(0, 0);
+	ImGuiConvergenceGraphWidgetScreenshotter m_screenshoter;
 };
 
 #endif
