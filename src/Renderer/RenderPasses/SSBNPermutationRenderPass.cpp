@@ -246,7 +246,6 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 																								 block_size * block_size * m_different_hash_count, 1,
 																								 launch_args_sorting, m_renderer->get_main_stream());
 
-		std::vector<int> retargeting_data				   = m_blue_noise_retargeting_texture_buffer.download_data();
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
 		void* launch_args_retargeting[]					   = { &render_data,
 															   &blue_noise_retargeting_texture_buffer_pointer,
