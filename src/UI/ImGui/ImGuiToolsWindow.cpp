@@ -496,7 +496,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			}
 		}
 
-		if (ImGui::Button("Compute RMSE"))
+		if (ImGui::Button("Compute Root MSE"))
 		{
 			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
@@ -508,9 +508,9 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			}
 			else
 			{
-				error_value = Utils::compute_image_rmse(reference_image, subject_image);
+				error_value = Utils::compute_image_root_mse(reference_image, subject_image);
 
-				status_text = std::string("RMSE: " + std::to_string(error_value));
+				status_text = std::string("Root MSE: " + std::to_string(error_value));
 			}
 		}
 
@@ -648,7 +648,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static int error_metric_type = 2;
 		ImGui::SeparatorText("Error metric");
 		ImGui::RadioButton("MSE", &error_metric_type, 0);
-		ImGui::RadioButton("RMSE", &error_metric_type, 1);
+		ImGui::RadioButton("Root MSE", &error_metric_type, 1);
 		ImGui::RadioButton("FLIP", &error_metric_type, 2);
 
 		ImGui::TreePop();
@@ -669,6 +669,9 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static std::vector<float> current_captured_errors;
 		static std::vector<float> current_recorded_xs;
 		static std::vector<float> current_recorded_ys;
+
+		if (ImGui::Button("Debug"))
+			Debug::debugbreak();
 
 		if (capture_started)
 		{
@@ -766,8 +769,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				break;
 
 			case 1:
-				// RMSE
-				error = Utils::compute_image_rmse(ref_image, current_image);
+				// Root MSE
+				error = Utils::compute_image_root_mse(ref_image, current_image);
 				break;
 
 			case 2:
@@ -804,6 +807,9 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			}
 
 			ImGui::Text("Min / max error: %f / %f", min_error, max_error);
+
+			// Stop rendering to avoid burning the PC
+			m_render_window->get_application_settings()->max_sample_count = 1;
 		}
 
 		ImGui::TreePop();
@@ -895,7 +901,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			m_convergence_graph_widget.request_screenshot(true, false);
 
 		std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
-		std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP Error";
+		std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "Root MSE" : "Mean FLIP Error";
 
 		m_convergence_graph_widget.set_x_axis_name(x_axis_name);
 		m_convergence_graph_widget.set_y_axis_name(y_axis_name);

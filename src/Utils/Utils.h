@@ -37,7 +37,7 @@ public:
 	static std::string open_file_dialog(const char* filter_patterns[], int filter_count);
 
 	static float compute_image_mse(const Image32Bit& reference, const Image32Bit& subject);
-	static float compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject);
+	static float compute_image_root_mse(const Image32Bit& reference, const Image32Bit& subject);
 	static float compute_image_weighted_median_FLIP(const Image32Bit& reference, const Image32Bit& subject, float** out_error_map);
 
 	static void copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& data, int width, int height);

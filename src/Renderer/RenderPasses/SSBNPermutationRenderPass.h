@@ -20,6 +20,7 @@ public:
 	static const std::string SSBN_PERMUTATION_RENDER_PASS_NAME;
 	static const std::string SSBN_PERMUTATION_SORTING_PASS;
 	static const std::string SSBN_PERMUTATION_RETARGETING_PASS;
+	static const std::string SSBN_PERMUTATION_REFRESH_SEEDS_PASS;
 	static const int DEFAULT_MAX_RETARGETING_RADIUS = 5;
 
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
@@ -50,6 +51,7 @@ public:
 	int& get_blue_noise_texture_width();
 	int& get_blue_noise_texture_height();
 	int& get_max_retargeting_radius();
+	int& get_refresh_seeds_sample_interval();
 
 private:
 	bool m_using_ssbn_permutation = true;
@@ -63,9 +65,10 @@ private:
 	OrochiBuffer<int> m_screen_space_hash_grid_cell_offsets_buffer;
 	unsigned int m_different_hash_count = 0;
 
-	int m_blue_noise_texture_width	= 4096;
-	int m_blue_noise_texture_height = 2048;
-	int m_max_retargeting_radius	= DEFAULT_MAX_RETARGETING_RADIUS;
+	int m_blue_noise_texture_width		= 4096;
+	int m_blue_noise_texture_height		= 2048;
+	int m_max_retargeting_radius		= DEFAULT_MAX_RETARGETING_RADIUS;
+	int m_refresh_seeds_sample_interval = 64;
 };
 
 #endif

@@ -7,30 +7,19 @@
 #include "Renderer/RenderPasses/SSBNPermutationRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "UI/RenderWindow.h"
 
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME = "SSBN Permutation Render Pass";
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS	   = "SSBN Permutation Sorting Pass";
-const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS = "SSBN Permutation Retargeting Pass";
+extern ImGuiLogger g_imgui_logger;
+
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME	 = "SSBN Permutation Render Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS		 = "SSBN Permutation Sorting Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS	 = "SSBN Permutation Retargeting Pass";
+const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS = "SSBN Permutation Refresh Seeds Pass";
 
 SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(renderer, options, SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME)
 {
-	// Execute annealing simulation block for generating permutations
-	if (false)
-	{
-		std::string blue_noise_texture_path = SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" +
-											  std::to_string(m_blue_noise_texture_height) + ".png";
-		std::string permutation_file_path_no_extension = SSBN_PERMUTATION_DATA_DIRECTORY "/permutation" + std::to_string(m_blue_noise_texture_width) + "x" +
-														 std::to_string(m_blue_noise_texture_height) + "-r" + std::to_string(m_max_retargeting_radius);
-
-		Image8Bit input_image = Image8Bit::read_image(blue_noise_texture_path, 1, false);
-
-		SSBNPermutationSimulatedAnnealing annealing(input_image, m_max_retargeting_radius, 600);
-		annealing.compute_permutation();
-		annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
-	}
-
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] = std::make_shared<GPUKernel>();
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_function_name("SSBNPermutationSortingPass");
@@ -41,6 +30,12 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 																								  "/SSBNPermutation/RetargetingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->set_kernel_function_name("SSBNPermutationRetargetingPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS] = std::make_shared<GPUKernel>();
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																									"/SSBNPermutation/RefreshSeedsPass.h");
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_function_name("SSBNPermutationRefreshSeedsPass");
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->synchronize_options_with(m_compiler_options, {});
 
 	reload_blue_noise_texture(m_blue_noise_texture_width, m_blue_noise_texture_height);
 	reload_retargeting_data(m_max_retargeting_radius);
@@ -110,9 +105,22 @@ void SSBNPermutationRenderPass::reload_retargeting_data(int new_max_retargeting_
 	std::ifstream blue_noise_retargeting_file(permutation_file_path_no_extension + ".bin", std::ios::binary);
 	if (!blue_noise_retargeting_file.is_open())
 	{
-		std::cerr << "Error opening blue noise retargeting file: " << permutation_file_path_no_extension + ".bin" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+								"Retargeting data file not found for retargeting radius %d and blue noise texture %dx%d running simulated annealing to "
+								"generate it...\n",
+								m_max_retargeting_radius, m_blue_noise_texture_width, m_blue_noise_texture_height);
+		// We don't have the retargeting data for that, let's run the simulation
+		// Execute annealing simulation block for generating permutations
+		std::string blue_noise_texture_path = SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" +
+											  std::to_string(m_blue_noise_texture_height) + ".png";
+		std::string permutation_file_path_no_extension = SSBN_PERMUTATION_DATA_DIRECTORY "/permutation" + std::to_string(m_blue_noise_texture_width) + "x" +
+														 std::to_string(m_blue_noise_texture_height) + "-r" + std::to_string(m_max_retargeting_radius);
 
-		throw std::runtime_error("Error opening blue noise retargeting file: " + permutation_file_path_no_extension + ".bin");
+		Image8Bit input_image = Image8Bit::read_image(blue_noise_texture_path, 1, false);
+
+		SSBNPermutationSimulatedAnnealing annealing(input_image, m_max_retargeting_radius, 600);
+		annealing.compute_permutation();
+		annealing.write_permutations_to_file(permutation_file_path_no_extension + ".bin");
 	}
 
 	std::vector<int> blue_noise_retargeting_data(m_blue_noise_texture_width * m_blue_noise_texture_height);
@@ -177,10 +185,10 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 
 	unsigned char* blue_noise_texture_buffer_pointer = m_blue_noise_dither_texture_buffer.get_device_pointer();
 	unsigned int* sorted_seeds_buffer_pointer		 = m_sorted_seeds_buffer.get_device_pointer();
-	unsigned int padded_render_solution_x = (render_data.render_settings.render_resolution.x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width *
-											m_blue_noise_texture_width;
-	unsigned int padded_render_solution_y = (render_data.render_settings.render_resolution.y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height *
-											m_blue_noise_texture_height;
+	unsigned int resolution_x						 = render_data.render_settings.render_resolution.x;
+	unsigned int resolution_y						 = render_data.render_settings.render_resolution.y;
+	unsigned int padded_render_solution_x = (resolution_x + m_blue_noise_texture_width - 1) / m_blue_noise_texture_width * m_blue_noise_texture_width;
+	unsigned int padded_render_solution_y = (resolution_y + m_blue_noise_texture_height - 1) / m_blue_noise_texture_height * m_blue_noise_texture_height;
 
 	if (render_data.render_settings.sample_number == 0)
 	{
@@ -208,8 +216,21 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		m_screen_space_hash_grid_cell_offsets_buffer.upload_data(offsets);
 	}
 
-	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+	if (render_data.render_settings.sample_number > 0 && m_refresh_seeds_sample_interval > 0 &&
+		render_data.render_settings.sample_number % m_refresh_seeds_sample_interval == 0)
+	{
+		// Refreshing the seeds for the next frame to ensure convergence otherwise we'll keep rendering the image with the same seeds, just shuffled around by
+		// the sorting passes but that's not enough and we'll lose convergence eventually so we need to refresh the seeds.
+		void* launch_args_refresh_seeds[] = { &render_data };
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(
+								32, 32, resolution_x, resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
 
+		// And return because now we have brand new seeds, the luminance currently in the buffer doesn't correspond so sorting and retargeting will be helpless,
+		// we'll just render the next frame normally. This will be a white noise frame but not sure what else to do when we need to refresh the seeds....
+		return;
+	}
+
+	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 	if (m_do_retargeting)
 	{
 		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
@@ -296,4 +317,9 @@ int& SSBNPermutationRenderPass::get_blue_noise_texture_height()
 int& SSBNPermutationRenderPass::get_max_retargeting_radius()
 {
 	return m_max_retargeting_radius;
+}
+
+int& SSBNPermutationRenderPass::get_refresh_seeds_sample_interval()
+{
+	return m_refresh_seeds_sample_interval;
 }

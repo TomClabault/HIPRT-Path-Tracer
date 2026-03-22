@@ -10,6 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/Random.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SSBNPermutation/SSBNScreenSpaceHashGrid.h"
@@ -59,7 +60,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 	}
 
 	if (render_data.render_settings.need_to_reset_random_seeds)
-		render_data.store_input_random_seed(pixel_index, wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ 0xdeadbeef));
+		render_data.store_input_random_seed(pixel_index, generate_fresh_pixel_random_seed(render_data, pixel_index));
 }
 
 HIPRT_DEVICE void rescale_samples_for_display(HIPRTRenderData& render_data, uint32_t pixel_index)

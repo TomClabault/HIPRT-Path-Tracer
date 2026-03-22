@@ -5,16 +5,16 @@
 
 #include "stb_image.h"
 
+#include "clip.h"
+#include "FLIP.h"
 #include "Image/Image.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
-#include "FLIP.h"
-#include "clip.h"
 
 #include <deque>
 #include <format>
-#include <iostream>
 #include <iomanip> // get_current_date_string()
+#include <iostream>
 #include <OpenImageDenoise/oidn.hpp>
 #include <sstream>
 #include <string>
@@ -254,7 +254,7 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 	return mse;
 }
 
-float Utils::compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject)
+float Utils::compute_image_root_mse(const Image32Bit& reference, const Image32Bit& subject)
 {
 	return sqrtf(Utils::compute_image_mse(reference, subject));
 }

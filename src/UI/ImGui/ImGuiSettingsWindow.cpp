@@ -4837,12 +4837,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 									"more rendering is done");
 			ImGui::TreePop();
 
-			auto retargeting_permutations_exists = [&ssbn_pass](int retarget_radius)
-			{
-				std::ifstream blue_noise_retargeting_file(ssbn_pass->get_permutation_file_path_no_extension(retarget_radius) + ".bin", std::ios::binary);
-				return blue_noise_retargeting_file.is_open();
-			};
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Use screen space hash grid", &render_data.ssbn_settings.use_screen_space_hash_grid))
 				m_render_window->set_render_dirty(true);
@@ -4868,14 +4862,10 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			std::vector<int> radii = { 2, 3, 4, 5, 6, 7, 15, 32 };
 			for (int i = 0; i < radii.size(); i++)
 			{
-				ImGui::BeginDisabled(!retargeting_permutations_exists(radii[i]));
-
 				max_retargeting_radius_changed |= ImGui::RadioButton((std::to_string(radii[i]) + "##retargeting_max_radius").c_str(),
 																	 &ssbn_pass->get_max_retargeting_radius(), radii[i]);
 				if (i != radii.size() - 1)
 					ImGui::SameLine();
-
-				ImGui::EndDisabled();
 			}
 
 			if (max_retargeting_radius_changed)
@@ -4885,6 +4875,18 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGui::EndDisabled(); // ImGui::BeginDisabled(!ssbn_pass->get_do_retargeting());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Refresh seeds pass");
+			if (ImGui::SliderInt("Refresh seeds interval", &ssbn_pass->get_refresh_seeds_sample_interval(), 0, 256))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+									"Refreshing the seeds used for rendering once in a while. This is needed to ensure convergence because otherwise, the "
+									"sorting/retargeting pass keep shuffling around the same seeds forever. This is fine for a few samples but eventually "
+									"pixels will run out of fresh seeds to integrate their pixel value and we'll lose convergence. We thus need to refresh the "
+									"seeds eventually. Lower values mean more frequent refreshes and better MSE convergence (but not perceptual convergence!) "
+									"but also more noise because each frame rendered with refreshed seeds is basically a white noise frame. Higher values mean "
+									"better blue noise but worse convergence / more bias on the whole image. 0 never refreshes seeds.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Debug");
