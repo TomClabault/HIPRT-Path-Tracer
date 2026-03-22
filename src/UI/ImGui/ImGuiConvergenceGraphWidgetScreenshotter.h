@@ -23,7 +23,6 @@ public:
 	static constexpr int SCREENSHOT_PADDING_HEIGHT = 15;
 
 	ImGuiConvergenceGraphWidgetScreenshotter(ImGuiConvergenceGraphWidget* graph_widget);
-	~ImGuiConvergenceGraphWidgetScreenshotter();
 
 	bool screenshot_graph_to_file(int screenshot_width, int screenshot_height, const std::string_view filename);
 	void screenshot_graph_to_clipboard(int screenshot_width, int screenshot_height);

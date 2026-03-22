@@ -4796,7 +4796,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			if (blue_noise_texture_size_changed |= ImGui::RadioButton("4096x2048", &ssbn_pass->get_blue_noise_texture_width(), 4096))
 				// Special case for 4096 x 2048 blue noise texture
 				ssbn_pass->get_blue_noise_texture_height() = 2048;
-			else
+			if (blue_noise_texture_size_changed && ssbn_pass->get_blue_noise_texture_width() != 4096)
 				// Other cases are square textures
 				ssbn_pass->get_blue_noise_texture_height() = ssbn_pass->get_blue_noise_texture_width();
 

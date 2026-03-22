@@ -8,12 +8,6 @@
 
 ImGuiConvergenceGraphWidgetScreenshotter::ImGuiConvergenceGraphWidgetScreenshotter(ImGuiConvergenceGraphWidget* graph_widget) : m_graph_widget(graph_widget) {}
 
-ImGuiConvergenceGraphWidgetScreenshotter::~ImGuiConvergenceGraphWidgetScreenshotter()
-{
-	ImGui::DestroyContext(m_captureImguiCtx);
-	ImPlot::DestroyContext(m_captureImPlotCtx);
-}
-
 void ImGuiConvergenceGraphWidgetScreenshotter::init()
 {
 	ImFontAtlas* shared_fonts = ImGui::GetIO().Fonts;
