@@ -4627,7 +4627,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		bool changed = false;
 		changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
 		changed |= ImGui::SliderFloat("Gamma", &display_settings.tone_mapping_gamma, 1.0f, 2.4f);
-		changed |= ImGui::SliderFloat("Exposure", &display_settings.tone_mapping_exposure, 0.0f, 3.0f);
+		changed |= ImGui::SliderFloat("Exposure", &display_settings.tone_mapping_exposure, 0.0f, 5.0f);
 		if (changed)
 			m_render_window->set_force_viewport_refresh(true);
 
@@ -4760,7 +4760,12 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			ImGui::SeparatorText("Sorting pass");
 
 			static int block_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
-			ImGui::SliderInt("Sorting block size", &block_size, 1, 32);
+			ImGui::Text("Sorting block size");
+			ImGui::RadioButton("8##block_size", &block_size, 8);
+			ImGui::SameLine();
+			ImGui::RadioButton("16##block_size", &block_size, 16);
+			ImGui::SameLine();
+			ImGui::RadioButton("32##block_size", &block_size, 32);
 
 			if (block_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
 			{
