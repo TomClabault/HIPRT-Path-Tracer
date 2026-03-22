@@ -4753,6 +4753,9 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		}
 		ImGuiRenderer::show_help_marker("Implementation of [Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between "
 										"Frames, Heitz & Belcour, 2019]");
+
+		if (ImGui::Checkbox("Accumulate blue noise at 1SPP", &render_data.ssbn_settings.accumulate_blue_noise_1spp))
+			m_render_window->set_render_dirty(true);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ssbn_permutation_enabled)

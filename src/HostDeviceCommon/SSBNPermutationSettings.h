@@ -16,6 +16,9 @@ struct SSBNPermutationSettings
 	bool use_screen_space_hash_grid = true;
 	bool use_surface_normal			= true;
 
+	// This is used to force the random seeds to not be reset when we reset the render. Useful to accumulate blue noise quality with SSBN permutations
+	bool accumulate_blue_noise_1spp = true;
+
 	uint3_t* screen_space_hash_grid = nullptr;
 };
 

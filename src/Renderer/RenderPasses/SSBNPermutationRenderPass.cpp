@@ -142,15 +142,18 @@ std::string SSBNPermutationRenderPass::get_permutation_file_path_no_extension(in
 bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 {
 	bool updated = false;
-	if (!is_render_pass_used() && m_sorted_seeds_buffer.size() != 0)
+	if (!is_render_pass_used())
 	{
-		m_sorted_seeds_buffer.free();
-		m_screen_space_hash_grid_buffer.free();
-		m_screen_space_hash_grid_cell_offsets_buffer.free();
+		if (m_sorted_seeds_buffer.size() != 0)
+		{
+			m_sorted_seeds_buffer.free();
+			m_screen_space_hash_grid_buffer.free();
+			m_screen_space_hash_grid_cell_offsets_buffer.free();
+		}
 
 		updated = true;
 	}
-	else if (is_render_pass_used())
+	else
 	{
 		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
 		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
@@ -223,7 +226,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		// the sorting passes but that's not enough and we'll lose convergence eventually so we need to refresh the seeds.
 		void* launch_args_refresh_seeds[] = { &render_data };
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(
-								32, 32, resolution_x, resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
+								32, 1, resolution_x, resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
 
 		// And return because now we have brand new seeds, the luminance currently in the buffer doesn't correspond so sorting and retargeting will be helpless,
 		// we'll just render the next frame normally. This will be a white noise frame but not sure what else to do when we need to refresh the seeds....
