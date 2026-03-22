@@ -19,7 +19,7 @@ public:
 	void request_screenshot(bool request, bool to_file);
 	void process_screenshots();
 
-	std::vector<unsigned char> screenshot_graph_to_memory(int& out_width, int& out_height);
+	std::vector<unsigned char> screenshot_graph_to_memory(int& out_width, int& out_height, bool flip_y);
 
 	int& get_plot_width();
 	int& get_plot_height();

@@ -75,7 +75,7 @@ void ImGuiConvergenceGraphWidget::process_screenshots()
 	}
 }
 
-std::vector<unsigned char> ImGuiConvergenceGraphWidget::screenshot_graph_to_memory(int& out_width, int& out_height)
+std::vector<unsigned char> ImGuiConvergenceGraphWidget::screenshot_graph_to_memory(int& out_width, int& out_height, bool flip_y)
 {
 	ImGuiIO& io		= ImGui::GetIO();
 	ImVec2 fb_scale = io.DisplayFramebufferScale; // Handle DPI
@@ -96,20 +96,22 @@ std::vector<unsigned char> ImGuiConvergenceGraphWidget::screenshot_graph_to_memo
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	glReadPixels(px, py, out_width, out_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
-	// Flip rows because glReadPixels returns bottom->top but PNG expects top->down
-	std::vector<unsigned char> flipped(out_width * out_height * 4);
-	for (int row = 0; row < out_height; ++row)
+	if (flip_y)
 	{
-		memcpy(&flipped[row * out_width * 4], &pixels[(out_height - 1 - row) * out_width * 4], (size_t)out_width * 4);
-	}
+		std::vector<unsigned char> flipped(out_width * out_height * 4);
+		for (int row = 0; row < out_height; ++row)
+			memcpy(&flipped[row * out_width * 4], &pixels[(out_height - 1 - row) * out_width * 4], (size_t)out_width * 4);
 
-	return flipped;
+		return flipped;
+	}
+	else
+		return pixels;
 }
 
 bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const char* filename)
 {
 	int width, height;
-	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height);
+	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height, true);
 
 	unsigned int stride_bytes = width * 4;
 	return stbi_write_png(filename, width, height, 4, pixels.data(), stride_bytes) != 0;
@@ -118,7 +120,7 @@ bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const char* filename)
 void ImGuiConvergenceGraphWidget::screenshot_graph_to_clipboard()
 {
 	int width, height;
-	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height);
+	std::vector<unsigned char> pixels = screenshot_graph_to_memory(width, height, true);
 
 	Utils::copy_image_to_clipboard(Image8Bit(pixels, width, height, 4), false);
 }
