@@ -12,6 +12,149 @@
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#define INVALID_BLUE_NOISE_VALUE 32767
+
+HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, short int* blue_noise_coordinates)
+{
+	int thread_index_in_block = threadIdx.x;
+
+	__shared__ int blue_noise_invalid_values_count;
+	__shared__ int blue_noise_values_counts[256];
+
+	for (int i = thread_index_in_block; i < 256; i += blockDim.x * blockDim.y)
+		blue_noise_values_counts[i] = 0;
+	blue_noise_invalid_values_count = 0;
+
+	__syncthreads();
+
+	short int blue_noise_value = blue_noise_values[thread_index_in_block];
+	if (blue_noise_value != INVALID_BLUE_NOISE_VALUE)
+		hippt::atomic_fetch_add_gpu(&blue_noise_values_counts[blue_noise_value], 1);
+
+	__syncthreads();
+
+	// Exclusive prefix sum of the counts
+	__shared__ int warps_inclusive_scans[8];
+
+	// if constexpr (SSBNPermutationBlockSize * SSBNPermutationBlockSize < 256)
+	//{
+	//	int running_warp_prefix_sum = 0;
+
+	//	int warp_index	= thread_index_in_block >> 5;
+	//	int warp_offset = 0;
+	//	while (warp_index + warp_offset < 8)
+	//	{
+	//		int warp_index_offsetted = warp_index + warp_offset;
+
+	//		int lane				= thread_index_in_block & 31;
+	//		int element_index		= warp_index_offsetted * 32 + lane;
+	//		int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[element_index] : 0;
+	//		int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
+
+	//		if (lane == 31)
+	//			warps_inclusive_scans[warp_index_offsetted] = warp_inclusive_scan;
+
+	//		__syncthreads();
+
+	//		// The first thread scans the values written so far by the warps
+	//		int warps_per_block = (blockDim.x * blockDim.y) >> 5;
+	//		if (thread_index_in_block == 0)
+	//		{
+	//			for (int w = warp_offset; w < warps_per_block, w < 8; ++w)
+	//			{
+	//				int warp_inclusive = warps_inclusive_scans[w];
+
+	//				warps_inclusive_scans[w] = running_warp_prefix_sum;
+
+	//				running_warp_prefix_sum += warp_inclusive;
+	//			}
+	//		}
+
+	//		__syncthreads();
+
+	//		if (element_index < 256)
+	//		{
+	//			int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
+	//			int warp_base			= warp_index_offsetted > 0 ? warps_inclusive_scans[warp_index_offsetted - 1] : 0;
+
+	//			blue_noise_values_counts[element_index] = warp_exclusive_scan + warp_base;
+	//		}
+
+	//		warp_offset += warps_per_block;
+	//	}
+	//}
+	// else
+	//{
+	//	// We don't need a while loop for this one
+	//	int warp_index			= thread_index_in_block >> 5;
+	//	int lane				= thread_index_in_block & 31;
+	//	int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[thread_index_in_block] : 0;
+	//	int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
+
+	//	if (lane == 31)
+	//		warps_inclusive_scans[warp_index] = warp_inclusive_scan;
+
+	//	__syncthreads();
+
+	//	// Thread 0 does the scan of the 8 values
+	//	if (thread_index_in_block == 0)
+	//	{
+	//		int running = 0;
+
+	//		for (int w = 0; w < 8; ++w)
+	//		{
+	//			int warp_inclusive = warps_inclusive_scans[w];
+
+	//			warps_inclusive_scans[w] = running;
+
+	//			running += warp_inclusive;
+	//		}
+	//	}
+
+	//	__syncthreads();
+
+	//	if (thread_index_in_block < 256)
+	//	{
+	//		int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
+	//		int warp_base			= warp_index > 0 ? warps_inclusive_scans[warp_index - 1] : 0;
+
+	//		blue_noise_values_counts[thread_index_in_block] = warp_exclusive_scan + warp_base;
+	//	}
+	//}
+
+	if (thread_index_in_block == 0)
+	{
+		int running = 0;
+		for (int i = 0; i < 256; ++i)
+		{
+			int c						= blue_noise_values_counts[i];
+			blue_noise_values_counts[i] = running;
+			running += c;
+		}
+	}
+
+	__syncthreads();
+
+	int blue_noise_value_sorted_index;
+	if (blue_noise_value != INVALID_BLUE_NOISE_VALUE)
+		blue_noise_value_sorted_index = hippt::atomic_fetch_add_gpu(&blue_noise_values_counts[blue_noise_value], 1);
+	else
+		// Putting the invalid values at the end
+		blue_noise_value_sorted_index =
+								SSBNPermutationBlockSize * SSBNPermutationBlockSize - 1 - hippt::atomic_fetch_add_gpu(&blue_noise_invalid_values_count, 1);
+
+	__shared__ short int blue_noise_value_sorted_values[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	__shared__ short int blue_noise_value_sorted_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+
+	blue_noise_value_sorted_values[blue_noise_value_sorted_index]	   = blue_noise_value;
+	blue_noise_value_sorted_coordinates[blue_noise_value_sorted_index] = blue_noise_coordinates[thread_index_in_block];
+
+	__syncthreads();
+
+	blue_noise_values[thread_index_in_block]	  = blue_noise_value_sorted_values[thread_index_in_block];
+	blue_noise_coordinates[thread_index_in_block] = blue_noise_value_sorted_coordinates[thread_index_in_block];
+}
+
 GLOBAL_KERNEL_SIGNATURE(void)
 SSBNPermutationSortingPass(HIPRTRenderData render_data,
 						   unsigned char* __restrict__ blue_noise_dither_texture_buffer,
@@ -47,10 +190,15 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	bool thread_valid	  = pixel_x < resolution_x && pixel_y < resolution_y;
 	bool valid_input_data = pixel_hash != 0;
 
+	// TODO can we store these in 1 unsigned int array with some packing and sort them together to avoid having 2 shared mem arrays = 2x less shared mem
+	// accesses?
 	__shared__ short int input_blue_noise[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short int input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	// input_pixel_luminance are fp16 but with bits reinterpreted as unsigned short int for the radix sort. We don't have negative luminance or NaNs/special
 	// values so reinterpreting is fine
+	// TODO approximate this with unsigned char and use counting sort as well? We don't need perfect sorting after all, just a rough ordering
+	// TODO can we store these in 1 unsigned_int3 array with some packing and sort them together to avoid having 2 shared mem arrays = 2x less shared mem
+	// accesses?
 	__shared__ unsigned short int input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	// These can be short int with linear index instead of short2
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
@@ -74,7 +222,7 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	}
 	else
 	{
-		input_blue_noise[thread_index_in_block]				= 32767;
+		input_blue_noise[thread_index_in_block]				= INVALID_BLUE_NOISE_VALUE;
 		input_blue_noise_coordinates[thread_index_in_block] = -1;
 	}
 
@@ -98,7 +246,8 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 
 	__syncthreads();
 
-	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_blue_noise, input_blue_noise_coordinates);
+	// Simple counting sort instead of radix sort for sorting the blue noise because there are only 256 possible values
+	sort_blue_noise_counting_sort(input_blue_noise, input_blue_noise_coordinates);
 	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_pixel_luminance, input_pixel_luminance_coordinates);
 
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];

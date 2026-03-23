@@ -540,6 +540,12 @@ namespace hippt
 		return atomicAdd(address, increment);
 	}
 
+	template <typename T>
+	__device__ static T atomic_fetch_add_gpu(T* address, T increment)
+	{
+		return atomic_fetch_add(address, increment);
+	}
+
 	template <>
 	__device__ unsigned char atomic_fetch_add(unsigned char* address, unsigned char increment)
 	{
@@ -1288,6 +1294,16 @@ static
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment)
 	{
 		return atomic_address->fetch_add(increment);
+	}
+
+	/**
+	 * This one is just an overload such that the code compiles on the CPU but this is meant to be used in kernels that will only ever run on the GPU. This is
+	 * just to make the CPU compiler happy
+	 */
+	template <typename T>
+	T atomic_fetch_add_gpu(T* atomic_address, T increment)
+	{
+		return 0;
 	}
 
 	template <typename T>

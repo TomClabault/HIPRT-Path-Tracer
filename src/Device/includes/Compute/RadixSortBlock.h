@@ -47,10 +47,8 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 
 		// Count digits
 		int digit = (in_keys[thread_id_in_block] >> shift) & (RadixSortBlockRadix - 1);
-#if defined(__KERNELCC__) // Needs this otherwise the CPU compiler whines because hippt::atomic_fetch_add is called on a non-atomic variable. On the GPU this is
-		// fine because
-		hippt::atomic_fetch_add(&digit_counts[digit], 1);
-#endif
+		hippt::atomic_fetch_add_gpu(&digit_counts[digit], 1);
+
 		__syncthreads();
 
 		// Compute prefix sums for each digit bin
