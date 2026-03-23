@@ -84,52 +84,41 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 	//	}
 	//}
 	// else
-	//{
-	//	// We don't need a while loop for this one
-	//	int warp_index			= thread_index_in_block >> 5;
-	//	int lane				= thread_index_in_block & 31;
-	//	int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[thread_index_in_block] : 0;
-	//	int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
-
-	//	if (lane == 31)
-	//		warps_inclusive_scans[warp_index] = warp_inclusive_scan;
-
-	//	__syncthreads();
-
-	//	// Thread 0 does the scan of the 8 values
-	//	if (thread_index_in_block == 0)
-	//	{
-	//		int running = 0;
-
-	//		for (int w = 0; w < 8; ++w)
-	//		{
-	//			int warp_inclusive = warps_inclusive_scans[w];
-
-	//			warps_inclusive_scans[w] = running;
-
-	//			running += warp_inclusive;
-	//		}
-	//	}
-
-	//	__syncthreads();
-
-	//	if (thread_index_in_block < 256)
-	//	{
-	//		int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
-	//		int warp_base			= warp_index > 0 ? warps_inclusive_scans[warp_index - 1] : 0;
-
-	//		blue_noise_values_counts[thread_index_in_block] = warp_exclusive_scan + warp_base;
-	//	}
-	//}
-
-	if (thread_index_in_block == 0)
 	{
-		int running = 0;
-		for (int i = 0; i < 256; ++i)
+		// We don't need a while loop for this one
+		int warp_index			= thread_index_in_block >> 5;
+		int lane				= thread_index_in_block & 31;
+		int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[thread_index_in_block] : 0;
+		int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
+
+		if (lane == 31)
+			warps_inclusive_scans[warp_index] = warp_inclusive_scan;
+
+		__syncthreads();
+
+		// Thread 0 does the scan of the 8 values
+		if (thread_index_in_block == 0)
 		{
-			int c						= blue_noise_values_counts[i];
-			blue_noise_values_counts[i] = running;
-			running += c;
+			int running = 0;
+
+			for (int w = 0; w < 8; ++w)
+			{
+				int warp_inclusive = warps_inclusive_scans[w];
+
+				warps_inclusive_scans[w] = running;
+
+				running += warp_inclusive;
+			}
+		}
+
+		__syncthreads();
+
+		if (thread_index_in_block < 256)
+		{
+			int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
+			int warp_base			= warps_inclusive_scans[warp_index];
+
+			blue_noise_values_counts[thread_index_in_block] = warp_exclusive_scan + warp_base;
 		}
 	}
 
