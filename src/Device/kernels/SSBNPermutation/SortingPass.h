@@ -36,54 +36,54 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 	// Exclusive prefix sum of the counts
 	__shared__ int warps_inclusive_scans[8];
 
-	// if constexpr (SSBNPermutationBlockSize * SSBNPermutationBlockSize < 256)
-	//{
-	//	int running_warp_prefix_sum = 0;
+	if constexpr (SSBNPermutationBlockSize * SSBNPermutationBlockSize < 256)
+	{
+		int running_warp_prefix_sum = 0;
 
-	//	int warp_index	= thread_index_in_block >> 5;
-	//	int warp_offset = 0;
-	//	while (warp_index + warp_offset < 8)
-	//	{
-	//		int warp_index_offsetted = warp_index + warp_offset;
+		int warp_index	= thread_index_in_block >> 5;
+		int warp_offset = 0;
+		while (warp_index + warp_offset < 8)
+		{
+			int warp_index_offsetted = warp_index + warp_offset;
 
-	//		int lane				= thread_index_in_block & 31;
-	//		int element_index		= warp_index_offsetted * 32 + lane;
-	//		int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[element_index] : 0;
-	//		int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
+			int lane				= thread_index_in_block & 31;
+			int element_index		= warp_index_offsetted * 32 + lane;
+			int bn_value_count		= element_index < 256 ? blue_noise_values_counts[element_index] : 0;
+			int warp_inclusive_scan = warp_scan_inclusive(bn_value_count);
 
-	//		if (lane == 31)
-	//			warps_inclusive_scans[warp_index_offsetted] = warp_inclusive_scan;
+			if (lane == 31)
+				warps_inclusive_scans[warp_index_offsetted] = warp_inclusive_scan;
 
-	//		__syncthreads();
+			__syncthreads();
 
-	//		// The first thread scans the values written so far by the warps
-	//		int warps_per_block = (blockDim.x * blockDim.y) >> 5;
-	//		if (thread_index_in_block == 0)
-	//		{
-	//			for (int w = warp_offset; w < warps_per_block, w < 8; ++w)
-	//			{
-	//				int warp_inclusive = warps_inclusive_scans[w];
+			// The first thread scans the values written so far by the warps
+			int warps_per_block = (blockDim.x * blockDim.y) >> 5;
+			if (thread_index_in_block == 0)
+			{
+				for (int w = warp_offset; w < warp_offset + warps_per_block && w < 8; ++w)
+				{
+					int warp_inclusive = warps_inclusive_scans[w];
 
-	//				warps_inclusive_scans[w] = running_warp_prefix_sum;
+					warps_inclusive_scans[w] = running_warp_prefix_sum;
 
-	//				running_warp_prefix_sum += warp_inclusive;
-	//			}
-	//		}
+					running_warp_prefix_sum += warp_inclusive;
+				}
+			}
 
-	//		__syncthreads();
+			__syncthreads();
 
-	//		if (element_index < 256)
-	//		{
-	//			int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
-	//			int warp_base			= warp_index_offsetted > 0 ? warps_inclusive_scans[warp_index_offsetted - 1] : 0;
+			if (element_index < 256)
+			{
+				int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
+				int warp_base			= warps_inclusive_scans[warp_index_offsetted];
 
-	//			blue_noise_values_counts[element_index] = warp_exclusive_scan + warp_base;
-	//		}
+				blue_noise_values_counts[element_index] = warp_exclusive_scan + warp_base;
+			}
 
-	//		warp_offset += warps_per_block;
-	//	}
-	//}
-	// else
+			warp_offset += warps_per_block;
+		}
+	}
+	else
 	{
 		// We don't need a while loop for this one
 		int warp_index			= thread_index_in_block >> 5;
