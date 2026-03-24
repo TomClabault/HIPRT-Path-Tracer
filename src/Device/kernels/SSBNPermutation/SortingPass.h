@@ -190,11 +190,11 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	__shared__ short int input_blue_noise_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	// input_pixel_luminance are fp16 but with bits reinterpreted as unsigned short int for the radix sort. We don't have negative luminance or NaNs/special
 	// values so reinterpreting is fine
-	// TODO approximate this with unsigned char and use counting sort as well? We don't need perfect sorting after all, just a rough ordering
+	//
+	// TODO approximate this with unsigned char and scale with the maximum value to have the maximum spread in the unsigned char and use counting sort as well?
 	// TODO can we store these in 1 unsigned_int3 array with some packing and sort them together to avoid having 2 shared mem arrays = 2x less shared mem
 	// accesses?
 	__shared__ unsigned short int input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
-	// These can be short int with linear index instead of short2
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	sorted_seeds[thread_index_in_block] = 0;

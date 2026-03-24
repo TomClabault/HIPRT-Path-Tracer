@@ -56,27 +56,29 @@ HIPRT_DEVICE int warp_scan_inclusive(T val, int thread_idx = threadIdx.x, Operat
 	return inclusive_scan;
 }
 
-// template <typename T, typename Operator = OperatorSum<T>>
-// HIPRT_DEVICE T warp_scan_exclusive(T val, int thread_idx = threadIdx.x, Operator op = Operator())
-//{
-//	const unsigned lane = thread_idx & 31;
-//
-//	// shift right by one lane, insert identity at lane 0
-//	T x = (lane == 0) ? Operator::identity : hippt::warp_shfl_up(val, 1);
-//
-//	UNROLL_LOOP
-//	for (int i = 1; i <= 16; i <<= 1)
-//	{
-//		T n = hippt::warp_shfl_up(x, i);
-//		if (lane >= i)
-//			x = op(n, x);
-//	}
-//
-//	return x;
-// }
-
 template <typename T, typename Operator = OperatorSum<T>>
 HIPRT_DEVICE T warp_scan_exclusive(T val, int thread_idx = threadIdx.x, Operator op = Operator())
+{
+	const unsigned int lane = thread_idx & 31;
+
+	// Shift right by one lane, insert identity at lane 0
+	T val_shifted = hippt::warp_shfl_up(val, 1);
+	val_shifted	  = lane == 0 ? 0 : val_shifted;
+
+	UNROLL_LOOP
+	for (int i = 1; i <= 16; i <<= 1)
+	{
+		T n = hippt::warp_shfl_up(val_shifted, i);
+
+		if (lane >= i)
+			val_shifted = op(n, val_shifted);
+	}
+
+	return val_shifted;
+}
+
+template <typename T, typename Operator = OperatorSum<T>>
+HIPRT_DEVICE T warp_scan_exclusive_ref(T val, int thread_idx = threadIdx.x, Operator op = Operator())
 {
 	return warp_scan_inclusive(val, thread_idx, op) - val;
 }
