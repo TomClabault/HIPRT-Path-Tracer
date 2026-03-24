@@ -3,28 +3,82 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
+#include <limits>
+
 template <typename T>
-HIPRT_DEVICE int warp_scan_inclusive(T val, int thread_idx = threadIdx.x)
+struct OperatorSum
+{
+	static constexpr T identity = T(0);
+
+	HIPRT_DEVICE T operator()(T a, T b) const
+	{
+		return a + b;
+	}
+};
+
+template <typename T>
+struct OperatorMin
+{
+	static constexpr T identity = std::numeric_limits<T>::max();
+
+	HIPRT_DEVICE T operator()(T a, T b) const
+	{
+		return hippt::min(a, b);
+	}
+};
+
+template <typename T>
+struct OperatorMax
+{
+	static constexpr T identity = std::numeric_limits<T>::lowest();
+
+	HIPRT_DEVICE T operator()(T a, T b) const
+	{
+		return hippt::max(a, b);
+	}
+};
+
+template <typename T, typename Operator = OperatorSum<T>>
+HIPRT_DEVICE int warp_scan_inclusive(T val, int thread_idx = threadIdx.x, Operator op = Operator())
 {
 	unsigned int lane  = thread_idx & 31;
 	int inclusive_scan = val;
 
 	UNROLL_LOOP
-	for (int i = 1; i <= 16; i *= 2)
+	for (int i = 1; i <= 16; i <<= 1)
 	{
 		int n = hippt::warp_shfl_up(inclusive_scan, i);
 
 		if (lane >= i)
-			inclusive_scan += n;
+			inclusive_scan = op(n, inclusive_scan);
 	}
 
 	return inclusive_scan;
 }
 
-template <typename T>
-HIPRT_DEVICE int warp_scan_exclusive(T val, int thread_idx = threadIdx.x)
+// template <typename T, typename Operator = OperatorSum<T>>
+// HIPRT_DEVICE T warp_scan_exclusive(T val, int thread_idx = threadIdx.x, Operator op = Operator())
+//{
+//	const unsigned lane = thread_idx & 31;
+//
+//	// shift right by one lane, insert identity at lane 0
+//	T x = (lane == 0) ? Operator::identity : hippt::warp_shfl_up(val, 1);
+//
+//	UNROLL_LOOP
+//	for (int i = 1; i <= 16; i <<= 1)
+//	{
+//		T n = hippt::warp_shfl_up(x, i);
+//		if (lane >= i)
+//			x = op(n, x);
+//	}
+//
+//	return x;
+// }
+
+template <typename T, typename Operator = OperatorSum<T>>
+HIPRT_DEVICE T warp_scan_exclusive(T val, int thread_idx = threadIdx.x, Operator op = Operator())
 {
-	return warp_scan_inclusive(val, thread_idx) - val;
+	return warp_scan_inclusive(val, thread_idx, op) - val;
 }
 
 /**

@@ -729,12 +729,12 @@ namespace hippt
 	 * Copy from a lane with higher ID relative to caller
 	 */
 	template <typename T>
-	__device__ T warp_shfl_down(T var, int src_lane, int width = warpSize)
+	__device__ T warp_shfl_down(T var, int delta, int width = warpSize)
 	{
 #ifdef __CUDACC__
-		return __shfl_down_sync(0xFFFFFFFF, var, src_lane, width);
+		return __shfl_down_sync(0xFFFFFFFF, var, delta, width);
 #else
-		return __shfl_down(var, src_lane, width);
+		return __shfl_down(var, delta, width);
 #endif
 	}
 
@@ -742,12 +742,12 @@ namespace hippt
 	 * Copy from a lane with lower ID relative to caller
 	 */
 	template <typename T>
-	__device__ T warp_shfl_up(T var, int src_lane, int width = warpSize)
+	__device__ T warp_shfl_up(T var, int delta, int width = warpSize)
 	{
 #ifdef __CUDACC__
-		return __shfl_up_sync(0xFFFFFFFF, var, src_lane, width);
+		return __shfl_up_sync(0xFFFFFFFF, var, delta, width);
 #else
-		return __shfl_up(var, src_lane, width);
+		return __shfl_up(var, delta, width);
 #endif
 	}
 
@@ -1443,7 +1443,7 @@ static
 	 * Copy from a lane with higher ID relative to caller
 	 */
 	template <typename T>
-	static T warp_shfl_down(T var, int srcLane, int width = 1)
+	static T warp_shfl_down(T var, int delta, int width = 1)
 	{
 		return var;
 	}
@@ -1452,7 +1452,7 @@ static
 	 * Copy from a lane with higher ID relative to caller
 	 */
 	template <typename T>
-	static T warp_shfl_up(T var, int srcLane, int width = 1)
+	static T warp_shfl_up(T var, int delta, int width = 1)
 	{
 		return var;
 	}

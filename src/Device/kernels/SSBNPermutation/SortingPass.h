@@ -13,23 +13,29 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #define INVALID_BLUE_NOISE_VALUE 32767
+#define INVALID_LUMINANCE_VALUE	 32767
 
-HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, short int* blue_noise_coordinates)
+/**
+ * Sorts key/value pairs where the keys can only take values 0-255. The keys are short int to allow for encoding an INVALID_VALUE. Those invalid values will be
+ * sorted at the end of the array
+ */
+template <typename V_t>
+HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(short int* keys_uchar, V_t* values, short int INVALID_VALUE)
 {
 	int thread_index_in_block = threadIdx.x;
 
-	__shared__ int blue_noise_invalid_values_count;
-	__shared__ int blue_noise_values_counts[256];
+	__shared__ int invalid_values_count;
+	__shared__ int values_counts[256];
 
 	for (int i = thread_index_in_block; i < 256; i += blockDim.x * blockDim.y)
-		blue_noise_values_counts[i] = 0;
-	blue_noise_invalid_values_count = 0;
+		values_counts[i] = 0;
+	invalid_values_count = 0;
 
 	__syncthreads();
 
-	short int blue_noise_value = blue_noise_values[thread_index_in_block];
-	if (blue_noise_value != INVALID_BLUE_NOISE_VALUE)
-		hippt::atomic_fetch_add_gpu(&blue_noise_values_counts[blue_noise_value], 1);
+	short int value = keys_uchar[thread_index_in_block];
+	if (value != INVALID_VALUE)
+		hippt::atomic_fetch_add_gpu(&values_counts[value], 1);
 
 	__syncthreads();
 
@@ -48,7 +54,7 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 
 			int lane				= thread_index_in_block & 31;
 			int element_index		= warp_index_offsetted * 32 + lane;
-			int bn_value_count		= element_index < 256 ? blue_noise_values_counts[element_index] : 0;
+			int bn_value_count		= element_index < 256 ? values_counts[element_index] : 0;
 			int warp_inclusive_scan = warp_scan_inclusive(bn_value_count);
 
 			if (lane == 31)
@@ -77,7 +83,7 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 				int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
 				int warp_base			= warps_inclusive_scans[warp_index_offsetted];
 
-				blue_noise_values_counts[element_index] = warp_exclusive_scan + warp_base;
+				values_counts[element_index] = warp_exclusive_scan + warp_base;
 			}
 
 			warp_offset += warps_per_block;
@@ -88,7 +94,7 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 		// We don't need a while loop for this one
 		int warp_index			= thread_index_in_block >> 5;
 		int lane				= thread_index_in_block & 31;
-		int bn_value_count		= thread_index_in_block < 256 ? blue_noise_values_counts[thread_index_in_block] : 0;
+		int bn_value_count		= thread_index_in_block < 256 ? values_counts[thread_index_in_block] : 0;
 		int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
 
 		if (lane == 31)
@@ -118,30 +124,29 @@ HIPRT_DEVICE void sort_blue_noise_counting_sort(short int* blue_noise_values, sh
 			int warp_exclusive_scan = warp_inclusive_scan - bn_value_count;
 			int warp_base			= warps_inclusive_scans[warp_index];
 
-			blue_noise_values_counts[thread_index_in_block] = warp_exclusive_scan + warp_base;
+			values_counts[thread_index_in_block] = warp_exclusive_scan + warp_base;
 		}
 	}
 
 	__syncthreads();
 
-	int blue_noise_value_sorted_index;
-	if (blue_noise_value != INVALID_BLUE_NOISE_VALUE)
-		blue_noise_value_sorted_index = hippt::atomic_fetch_add_gpu(&blue_noise_values_counts[blue_noise_value], 1);
+	int value_sorted_index;
+	if (value != INVALID_VALUE)
+		value_sorted_index = hippt::atomic_fetch_add_gpu(&values_counts[value], 1);
 	else
 		// Putting the invalid values at the end
-		blue_noise_value_sorted_index =
-								SSBNPermutationBlockSize * SSBNPermutationBlockSize - 1 - hippt::atomic_fetch_add_gpu(&blue_noise_invalid_values_count, 1);
+		value_sorted_index = SSBNPermutationBlockSize * SSBNPermutationBlockSize - 1 - hippt::atomic_fetch_add_gpu(&invalid_values_count, 1);
 
-	__shared__ short int blue_noise_value_sorted_values[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
-	__shared__ short int blue_noise_value_sorted_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	__shared__ short int sorted_keys[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
+	__shared__ V_t value_sorted_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 
-	blue_noise_value_sorted_values[blue_noise_value_sorted_index]	   = blue_noise_value;
-	blue_noise_value_sorted_coordinates[blue_noise_value_sorted_index] = blue_noise_coordinates[thread_index_in_block];
+	sorted_keys[value_sorted_index]				 = value;
+	value_sorted_coordinates[value_sorted_index] = values[thread_index_in_block];
 
 	__syncthreads();
 
-	blue_noise_values[thread_index_in_block]	  = blue_noise_value_sorted_values[thread_index_in_block];
-	blue_noise_coordinates[thread_index_in_block] = blue_noise_value_sorted_coordinates[thread_index_in_block];
+	keys_uchar[thread_index_in_block] = sorted_keys[thread_index_in_block];
+	values[thread_index_in_block]	  = value_sorted_coordinates[thread_index_in_block];
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
@@ -236,8 +241,9 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	__syncthreads();
 
 	// Simple counting sort instead of radix sort for sorting the blue noise because there are only 256 possible values
-	sort_blue_noise_counting_sort(input_blue_noise, input_blue_noise_coordinates);
-	radix_threadblock_sort<SSBNPermutationBlockSize * SSBNPermutationBlockSize>(input_pixel_luminance, input_pixel_luminance_coordinates);
+	sort_counting_sort_8b_with_invalid_values(input_blue_noise, input_blue_noise_coordinates, INVALID_BLUE_NOISE_VALUE);
+	radix_threadblock_sort_key_values<SSBNPermutationBlockSize * SSBNPermutationBlockSize, sizeof(short int) * 8>(input_pixel_luminance,
+																												  input_pixel_luminance_coordinates);
 
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];
 	int luminance_global_sorted_index = luminance_coords.x + luminance_coords.y * resolution_x;

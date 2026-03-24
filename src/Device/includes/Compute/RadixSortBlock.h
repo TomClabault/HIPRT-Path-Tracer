@@ -17,8 +17,8 @@
  * keys and values are assumed to be array_length in size
  * and array_length is a multiple of 32
  */
-template <int array_length, typename K_t, typename V_t>
-HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
+template <int array_length, int key_bits, typename K_t, typename V_t>
+HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 {
 	__shared__ int digit_counts[RadixSortBlockRadix];
 	__shared__ K_t temp_keys[array_length];
@@ -32,13 +32,18 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 	const int thread_id_in_block = threadIdx.x + threadIdx.y * blockDim.x;
 	const int threads_per_block	 = blockDim.x * blockDim.y;
 	const int warp_index		 = thread_id_in_block >> 5;
+	const int lane_idx			 = thread_id_in_block & 31;
 	constexpr int warp_count	 = array_length >> 5;
+
 	// Assert array length divisible by warp size
 	static_assert(warp_count << 5 == array_length);
 
+	// Key bits divisible by radix bit
+	static_assert(key_bits / RadixSortBlockRadixBits * RadixSortBlockRadixBits == key_bits);
+
 	__syncthreads();
 
-	for (int shift = 0; shift < sizeof(K_t) * 8; shift += RadixSortBlockRadixBits)
+	for (int shift = 0; shift < key_bits; shift += RadixSortBlockRadixBits)
 	{
 		// Reset digit counts
 		if (thread_id_in_block < RadixSortBlockRadix)
@@ -53,11 +58,35 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 
 		// Compute prefix sums for each digit bin
 		__shared__ int bucket_base[RadixSortBlockRadix];
-		if (warp_index == 0)
+		if constexpr (RadixSortBlockRadix < 32)
 		{
-			int bucket_base_value = warp_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0, thread_id_in_block);
+			if (warp_index == 0)
+			{
+				int bucket_base_value = warp_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0,
+															thread_id_in_block);
+				if (thread_id_in_block < RadixSortBlockRadix)
+					bucket_base[thread_id_in_block] = bucket_base_value;
+			}
+		}
+		else if (threads_per_block >= RadixSortBlockRadix)
+		{
+			int digit_count = thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0;
+			int digit_scan	= block_scan_exclusive<RadixSortBlockRadix>(digit_count, thread_id_in_block);
 			if (thread_id_in_block < RadixSortBlockRadix)
-				bucket_base[thread_id_in_block] = bucket_base_value;
+				bucket_base[thread_id_in_block] = digit_scan;
+		}
+		else
+		{
+			// Simple fallback, not performant
+			if (thread_id_in_block == 0)
+			{
+				int sum = 0;
+				for (int i = 0; i < RadixSortBlockRadix; i++)
+				{
+					bucket_base[i] = sum;
+					sum += digit_counts[i];
+				}
+			}
 		}
 
 		__syncthreads();
@@ -70,7 +99,6 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 			bool is_digit = digit == d;
 
 			unsigned int ballot		  = hippt::warp_ballot(0xffffffff, is_digit);
-			unsigned int lane_idx	  = thread_id_in_block & 31;
 			unsigned int mask_lane_lt = (lane_idx == 0) ? 0u : (1u << lane_idx) - 1;
 
 			if (is_digit)
@@ -119,7 +147,7 @@ HIPRT_DEVICE void radix_threadblock_sort(K_t* keys, V_t* values)
 		out_values	= temp_v;
 	}
 
-	if (sizeof(K_t) * 8 / RadixSortBlockRadixBits & 1)
+	if (key_bits / RadixSortBlockRadixBits & 1)
 	{
 		// Copying so the final output is in the input arrays given by the user
 		in_keys[thread_id_in_block]	  = out_keys[thread_id_in_block];
