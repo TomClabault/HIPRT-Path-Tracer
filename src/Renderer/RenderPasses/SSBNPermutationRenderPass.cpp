@@ -53,11 +53,13 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 	if (!m_need_to_restore_accumulate_1spp_settings)
 	{
 		m_render_data_accumulate_blue_noise_1spp_backup = m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp;
-		// Force set to false otherwise we won't be re-generating random seeds even though the sorted seeds buffer now contains all 0 seeds after being resized. The
-		// backup will be used to restore the settings at the end of post_sample_update
+		// Force set to false otherwise we won't be re-generating random seeds even though the sorted seeds buffer now contains all 0 seeds after being resized.
+		// The backup will be used to restore the settings at the end of post_sample_update
 		m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp = false;
 		m_need_to_restore_accumulate_1spp_settings							   = true;
 	}
+
+	m_just_resized = true;
 }
 
 void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new_height)
@@ -280,9 +282,22 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	if (m_need_to_restore_accumulate_1spp_settings)
 	{
 		m_renderer->get_render_data().ssbn_settings.accumulate_blue_noise_1spp = m_render_data_accumulate_blue_noise_1spp_backup;
-		render_data.ssbn_settings.accumulate_blue_noise_1spp = m_render_data_accumulate_blue_noise_1spp_backup;
+		render_data.ssbn_settings.accumulate_blue_noise_1spp				   = m_render_data_accumulate_blue_noise_1spp_backup;
 
-		m_need_to_restore_accumulate_1spp_settings							   = false;
+		m_need_to_restore_accumulate_1spp_settings = false;
+	}
+
+	if (m_just_resized)
+	{
+		// During a window resize, the seeds buffer is cleared, which means no blue noise distribution on the first sample.
+		//
+		// If this is the first call to post_sample_update since the resize of the window, we're going to set the render dirty just to be able to accumulate one
+		// nice frame of blue noise to get a nice render
+		if (render_data.ssbn_settings.accumulate_blue_noise_1spp)
+			// If the user wants blue noise @ 1spp, re-launching a render by setting dirty so that we can render a frame with the now sorted seeds = blue noise
+			m_render_window->set_render_dirty(true);
+
+		m_just_resized = false;
 	}
 }
 

@@ -72,6 +72,8 @@ private:
 
 	bool m_render_data_accumulate_blue_noise_1spp_backup = false;
 	bool m_need_to_restore_accumulate_1spp_settings		 = false;
+
+	bool m_just_resized = false;
 };
 
 #endif
