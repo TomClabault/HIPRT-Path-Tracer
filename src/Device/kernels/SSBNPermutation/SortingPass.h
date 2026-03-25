@@ -6,21 +6,22 @@
 #ifndef KERNELS_SSBN_PERMUTATION_SORTING_PASS_H
 #define KERNELS_SSBN_PERMUTATION_SORTING_PASS_H
 
+#include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/Compute/RadixSortBlock.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/SSBNPermutation/SSBNPermutationCommon.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define INVALID_BLUE_NOISE_VALUE 32767
-#define INVALID_LUMINANCE_VALUE	 32767
+#define INVALID_BLUE_NOISE_VALUE ((short int)32767)
+#define INVALID_LUMINANCE_VALUE	 ((unsigned short int)-1)
 
 /**
  * Sorts key/value pairs where the keys can only take values 0-255. The keys are short int to allow for encoding an INVALID_VALUE. Those invalid values will be
  * sorted at the end of the array
  */
-template <typename V_t>
-HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(short int* keys_uchar, V_t* values, short int INVALID_VALUE)
+template <typename K_v, typename V_t>
+HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t* values, K_v INVALID_VALUE)
 {
 	int thread_index_in_block = threadIdx.x;
 
@@ -33,7 +34,7 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(short int* keys_ucha
 
 	__syncthreads();
 
-	short int value = keys_uchar[thread_index_in_block];
+	K_v value = keys_uchar[thread_index_in_block];
 	if (value != INVALID_VALUE)
 		hippt::atomic_fetch_add_gpu(&values_counts[value], 1);
 
@@ -197,7 +198,9 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	__shared__ unsigned short int input_pixel_luminance[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ short2_t input_pixel_luminance_coordinates[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
 	__shared__ unsigned int sorted_seeds[SSBNPermutationBlockSize * SSBNPermutationBlockSize];
-	sorted_seeds[thread_index_in_block] = 0;
+
+	input_pixel_luminance[thread_index_in_block] = 0;
+	sorted_seeds[thread_index_in_block]			 = 0;
 
 	int blue_noise_offset_x = 0, blue_noise_offset_y = 0;
 	get_blue_noise_texture_offset(blue_noise_texture_width, blue_noise_texture_height, render_data.render_settings.sample_number, blue_noise_offset_x,
@@ -226,9 +229,29 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int mirrored_at_edge_y	 = pixel_y >= resolution_y ? (resolution_y - 1 - (pixel_y - resolution_y)) : pixel_y;
 	int mirrored_pixel_index = mirrored_at_edge_x + mirrored_at_edge_y * resolution_x;
 
+#define QUANTIZED_LUMINANCE	   1
+#define LUMINANCE_QUANTIZATION 255
+
+#if QUANTIZED_LUMINANCE
+	fp16 luminance = 0.0f;
+	if (valid_input_data && thread_valid)
+		luminance = (fp16)hippt::intrin_logf(1.0f + render_data.buffers.last_frame_ray_colors[mirrored_pixel_index].luminance());
+
+	// All threads participate in this to find the maximum. Invalid threads have luminance 0 so they do not interfere with the maximum
+	fp16 max_luminance_value = block_reduce<SSBNPermutationBlockSize * SSBNPermutationBlockSize, fp16, OperatorMax<fp16>>(luminance, thread_index_in_block);
+
+	input_pixel_luminance[thread_index_in_block] = static_cast<unsigned short int>((float)luminance / (float)max_luminance_value * LUMINANCE_QUANTIZATION);
+	input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(pixel_x, pixel_y);
+
 	if (!valid_input_data || !thread_valid)
 	{
-		input_pixel_luminance[thread_index_in_block]			 = (unsigned short int)-1;
+		input_pixel_luminance[thread_index_in_block]			 = INVALID_LUMINANCE_VALUE;
+		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(-1, -1);
+	}
+#else
+	if (!valid_input_data || !thread_valid)
+	{
+		input_pixel_luminance[thread_index_in_block]			 = INVALID_LUMINANCE_VALUE;
 		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(-1, -1);
 	}
 	else
@@ -237,13 +260,18 @@ SSBNPermutationSortingPass(HIPRTRenderData render_data,
 		input_pixel_luminance[thread_index_in_block] = hippt::half_as_ushort(luminance);
 		input_pixel_luminance_coordinates[thread_index_in_block] = make_short2(pixel_x, pixel_y);
 	}
+#endif
 
 	__syncthreads();
 
 	// Simple counting sort instead of radix sort for sorting the blue noise because there are only 256 possible values
 	sort_counting_sort_8b_with_invalid_values(input_blue_noise, input_blue_noise_coordinates, INVALID_BLUE_NOISE_VALUE);
-	radix_threadblock_sort_key_values<SSBNPermutationBlockSize * SSBNPermutationBlockSize, sizeof(short int) * 8>(input_pixel_luminance,
-																												  input_pixel_luminance_coordinates);
+#if QUANTIZED_LUMINANCE == 1 && LUMINANCE_QUANTIZATION == 255
+	sort_counting_sort_8b_with_invalid_values(input_pixel_luminance, input_pixel_luminance_coordinates, INVALID_LUMINANCE_VALUE);
+#else
+	radix_threadblock_sort_key_values<SSBNPermutationBlockSize * SSBNPermutationBlockSize, sizeof(*input_pixel_luminance) * 8>(
+							input_pixel_luminance, input_pixel_luminance_coordinates);
+#endif
 
 	short2_t luminance_coords		  = input_pixel_luminance_coordinates[thread_index_in_block];
 	int luminance_global_sorted_index = luminance_coords.x + luminance_coords.y * resolution_x;
