@@ -726,6 +726,24 @@ namespace hippt
 	}
 
 	/**
+	 * T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
+	 * The warp shuffle functions exchange values between threads within a warp.
+	 *
+	 * The optional width argument specifies subgroups, in which the warp can be divided to share the variables. It has to be a power of two smaller than or
+	 * equal to warpSize. If it is smaller than warpSize, the warp is grouped into separate groups, that are each indexed from 0 to width as if it was its own
+	 * entity, and only the lanes within that subgroup participate in the shuffle. The lane indices in the subgroup are given by laneIdx % width.
+	 *
+	 * The 64-bit unsigned integer mask argument specifies the lanes of the warp that will participate. Each participating thread must have its own bit set in
+	 * its mask argument, and all active threads specified in any mask argument must execute the same call with the same mask, otherwise the result is
+	 * undefined. The implementation includes a static assert to check that the program source uses the correct type for the mask.
+	 */
+	template <typename T>
+	__device__ static T warp_shfl_sync(unsigned long long int mask, T var, int srcLane, int width = warpSize)
+	{
+		return __shfl_sync(mask, var, srcLane, width);
+	}
+
+	/**
 	 * Copy from a lane with higher ID relative to caller
 	 */
 	template <typename T>
@@ -1414,7 +1432,7 @@ static
 		return predicate ? 1 : 0;
 	}
 
-	static unsigned int warp_activemask()
+	static unsigned long long int warp_activemask()
 	{
 		return 1;
 	}
@@ -1435,6 +1453,24 @@ static
 	 */
 	template <typename T>
 	static T warp_shfl(T var, int srcLane, int width = 1)
+	{
+		return var;
+	}
+
+	/**
+	 *  T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
+	 *  The warp shuffle functions exchange values between threads within a warp.
+	 *
+	 * The optional width argument specifies subgroups, in which the warp can be divided to share the variables. It has to be a power of two smaller than or
+	 * equal to warpSize. If it is smaller than warpSize, the warp is grouped into separate groups, that are each indexed from 0 to width as if it was its own
+	 * entity, and only the lanes within that subgroup participate in the shuffle. The lane indices in the subgroup are given by laneIdx % width.
+	 *
+	 * The 64-bit unsigned integer mask argument specifies the lanes of the warp that will participate. Each participating thread must have its own bit set in
+	 * its mask argument, and all active threads specified in any mask argument must execute the same call with the same mask, otherwise the result is
+	 * undefined. The implementation includes a static assert to check that the program source uses the correct type for the mask.
+	 */
+	template <typename T>
+	static T warp_shfl_sync(unsigned long long int mask, T var, int srcLane, int width = 1)
 	{
 		return var;
 	}
