@@ -52,13 +52,13 @@ namespace HIPPTOrochiUtils
 {
 	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes)
 	{
-		std::fstream f(path);
+		std::ifstream f(path);
 		if (f.is_open())
 		{
 			size_t sizeFile;
-			f.seekg(0, std::fstream::end);
+			f.seekg(0, std::ifstream::end);
 			size_t size = sizeFile = (size_t)f.tellg();
-			f.seekg(0, std::fstream::beg);
+			f.seekg(0, std::ifstream::beg);
 			if (includes)
 			{
 				sourceCode.clear();
@@ -113,6 +113,12 @@ namespace HIPPTOrochiUtils
 			f.close();
 			return true;
 		}
+		else
+		{
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to open file '%s' for reading: %s", path.c_str(), std::strerror(errno));
+			Debug::debugbreak();
+		}
+
 		return false;
 	}
 
@@ -129,7 +135,10 @@ namespace HIPPTOrochiUtils
 								  const std::string& additional_cache_key)
 	{
 		std::string kernel_source_code;
+
 		read_source_code(kernel_file_path, kernel_source_code);
+		if (kernel_source_code == "")
+			Debug::debugbreak();
 
 		std::vector<const char*> compiler_options_cstr;
 
