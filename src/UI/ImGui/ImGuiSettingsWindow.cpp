@@ -4825,24 +4825,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			ImGui::TreePush("Padding overhead tree");
-			unsigned int render_resolution_width  = render_data.render_settings.render_resolution.x;
-			unsigned int render_resolution_height = render_data.render_settings.render_resolution.y;
-
-			unsigned int blue_noise_width	 = ssbn_pass->get_blue_noise_texture_width();
-			unsigned int blue_noise_height	 = ssbn_pass->get_blue_noise_texture_height();
-			unsigned int padded_resolution_x = (render_resolution_width + blue_noise_width - 1) / blue_noise_width * blue_noise_width;
-			unsigned int padded_resolution_y = (render_resolution_height + blue_noise_height - 1) / blue_noise_height * blue_noise_height;
-
-			ImGui::Text("Padding overhead: %.2f%%",
-						100.0f * ((float)(padded_resolution_x * padded_resolution_y) / (render_resolution_width * render_resolution_height) - 1.0f));
-			ImGuiRenderer::show_help_marker(
-									"Because the SSBN permutation is done in blocks, the render resolution is padded to be a multiple of the blue noise "
-									"texture size. "
-									"This results in some overhead because some pixels are rendered but not displayed. This percentage indicates how much "
-									"more rendering is done");
-			ImGui::TreePop();
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Use screen space hash grid", &render_data.ssbn_settings.use_screen_space_hash_grid))
 				m_render_window->set_render_dirty(true);
@@ -4884,7 +4866,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refresh seeds pass");
-			if (ImGui::SliderInt("Refresh seeds interval", &ssbn_pass->get_refresh_seeds_sample_interval(), 0, 256))
+			if (ImGui::SliderInt("Refresh seeds interval", &ssbn_pass->get_refresh_seeds_sample_interval(), 0, 64))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
 									"Refreshing the seeds used for rendering once in a while. This is needed to ensure convergence because otherwise, the "

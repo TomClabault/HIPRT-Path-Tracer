@@ -690,6 +690,12 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			bool capture_impossible = render_settings.render_resolution.x != ref_image.width || render_settings.render_resolution.y != ref_image.height;
 			ImGui::BeginDisabled(capture_impossible);
 
+			if (!capture_impossible)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.7f, 0.0f, 1.0f));		   // Green
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 1.0f, 0.2f, 1.0f)); // Lighter green when hovered
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.5f, 0.0f, 1.0f));  // Darker green when clicked
+			}
 			if (ImGui::Button("Start capture"))
 			{
 				// Removing auto samples per frame for consistency and to avoid
@@ -715,6 +721,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				// but the render window will only really reset once the current frame has finished rendering)
 				capture_requested = true;
 			}
+			if (!capture_impossible)
+				ImGui::PopStyleColor(3); // Start capture button
 
 			if (capture_impossible)
 			{

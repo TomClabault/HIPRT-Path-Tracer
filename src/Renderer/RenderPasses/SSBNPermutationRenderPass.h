@@ -68,7 +68,7 @@ private:
 	int m_blue_noise_texture_width		= 4096;
 	int m_blue_noise_texture_height		= 2048;
 	int m_max_retargeting_radius		= DEFAULT_MAX_RETARGETING_RADIUS;
-	int m_refresh_seeds_sample_interval = 64;
+	int m_refresh_seeds_sample_interval = 4;
 
 	bool m_render_data_accumulate_blue_noise_1spp_backup = false;
 	bool m_need_to_restore_accumulate_1spp_settings		 = false;

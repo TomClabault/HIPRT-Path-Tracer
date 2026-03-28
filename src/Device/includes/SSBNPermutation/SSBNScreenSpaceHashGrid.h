@@ -9,12 +9,8 @@
 #include "Device/includes/HashGridHash.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE void SSBN_update_screen_space_hash_grid(HIPRTRenderData& render_data,
-													 unsigned int pixel_x,
-													 unsigned int pixel_y,
-													 float3_t shading_point,
-													 float3_t geometric_normal,
-													 HIPRTCamera& current_camera)
+HIPRT_DEVICE void SSBN_update_screen_space_hash_grid(
+						HIPRTRenderData& render_data, unsigned int pixel_x, unsigned int pixel_y, float3_t shading_point, float3_t geometric_normal)
 {
 	if (render_data.render_settings.sample_number != 0)
 		// We only do this at the first sample because the camera doesn't move for offline rendering
