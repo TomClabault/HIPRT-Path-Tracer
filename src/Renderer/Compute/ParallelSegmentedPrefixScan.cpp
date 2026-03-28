@@ -35,29 +35,78 @@ void ParallelSegmentedPrefixScan::initialize_kernels()
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedPrefixScan/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelSegmentedPrefixScanDecoupledLookback_Scan");
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 }
 
-void ParallelSegmentedPrefixScan::upload_input_data(const std::vector<unsigned int>& data, const std::vector<unsigned int>& flags)
+void ParallelSegmentedPrefixScan::resize(unsigned int element_count)
 {
-	m_size = data.size();
+	if (m_last_resize_element_count == element_count)
+		// Nothing to resize
+		return;
+
+	m_last_resize_element_count = element_count;
+
+	m_size = element_count;
 
 	m_input_buffer.resize(m_size);
-	m_input_buffer.upload_data(data);
-
-	m_flags_buffer.resize(flags.size());
-	m_flags_buffer.upload_data(flags);
-
+	m_flags_buffer.resize(element_count);
 	m_output_buffer.resize(m_size);
 
 	m_global_block_index_counter_buffer.resize(1);
 	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
 }
 
-void ParallelSegmentedPrefixScan::scan()
+void ParallelSegmentedPrefixScan::upload_input_data(const std::vector<unsigned int>& data, const std::vector<unsigned int>& flags)
+{
+	m_size = data.size();
+
+	resize(data.size());
+
+	m_input_buffer.upload_data(data);
+	m_flags_buffer.upload_data(flags);
+
+	m_input_data_pointer = m_input_buffer.get_device_pointer();
+	m_flags_data_pointer = m_flags_buffer.get_device_pointer();
+}
+
+void ParallelSegmentedPrefixScan::set_data_pointers(unsigned int* device_data_pointer, unsigned int element_count)
+{
+	set_data_pointers(device_data_pointer, nullptr, element_count);
+}
+
+void ParallelSegmentedPrefixScan::set_data_pointers(unsigned int* device_data_pointer, unsigned int* device_flags_pointer, unsigned int element_count)
+{
+	if (m_last_resize_element_count != element_count)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"ParallelSegmentedPrefixScan::set_data_pointers() called with an element_count (%u) that is different from the last one used "
+								"in resize() (%u). This is "
+								"invalid usage and will lead to undefined behavior.",
+								element_count, m_last_resize_element_count);
+
+		Debug::debugbreak();
+
+		return;
+	}
+
+	m_size = element_count;
+
+	m_input_data_pointer = device_data_pointer;
+	if (device_flags_pointer)
+		m_flags_data_pointer = device_flags_pointer;
+}
+
+void ParallelSegmentedPrefixScan::set_evenly_spaced_segment_size(unsigned int segment_size)
+{
+	m_evenly_spaced_segment_size = segment_size;
+}
+
+void ParallelSegmentedPrefixScan::scan(bool auto_stream_synchronize)
 {
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
 	{
@@ -67,22 +116,51 @@ void ParallelSegmentedPrefixScan::scan()
 		return;
 	}
 
+	if (m_evenly_spaced_segment_size == 0 && m_flags_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelSegmentedPrefixScan::scan() called but no segment information provided. "
+																		 "Please either upload segment flags or set an evenly spaced segment size.");
+
+		Debug::debugbreak();
+
+		return;
+	}
+
 	ParallelPrefixScanDecoupledLookbackBlockDescriptor* block_descriptors_buffer_pointer = m_block_descriptors_buffer.get_device_pointer();
 
 	unsigned int block_descriptor_count				 = m_block_descriptors_buffer.size();
 	unsigned int* global_block_index_counter_pointer = m_global_block_index_counter_buffer.get_device_pointer();
-	void* block_descriptor_init_args[]				 = { &block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
+	void* block_descriptor_init_args[]				 = {
+		  &block_descriptors_buffer_pointer,
+		  &block_descriptor_count,
+		  &global_block_index_counter_pointer,
+	};
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
-	unsigned int* input_buffer_pointer	= m_input_buffer.get_device_pointer();
-	unsigned int* flags_buffer_pointer	= m_flags_buffer.get_device_pointer();
+	unsigned int* input_buffer_pointer	= m_input_data_pointer;
+	unsigned int* flags_buffer_pointer	= m_flags_data_pointer;
 	unsigned int* output_buffer_pointer = m_output_buffer.get_device_pointer();
 	void* block_scan_args[]				= {
-		&input_buffer_pointer, &flags_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer, &m_size
+		&input_buffer_pointer,
+		&flags_buffer_pointer,
+		&m_evenly_spaced_segment_size,
+		&output_buffer_pointer,
+		&block_descriptors_buffer_pointer,
+		&global_block_index_counter_pointer,
+		&m_size,
 	};
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
+	if (auto_stream_synchronize)
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
+}
+
+float ParallelSegmentedPrefixScan::get_last_execution_time()
+{
+	m_block_descriptor_init_kernel.compute_execution_time();
+	m_scan_kernel.compute_execution_time();
+
+	return m_block_descriptor_init_kernel.get_last_execution_time() + m_scan_kernel.get_last_execution_time();
 }
 
 OrochiBuffer<unsigned int>& ParallelSegmentedPrefixScan::get_output_buffer()

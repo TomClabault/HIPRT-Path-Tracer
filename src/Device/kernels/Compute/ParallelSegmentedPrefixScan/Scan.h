@@ -139,6 +139,7 @@ HIPRT_DEVICE unsigned int block_segmented_scan_early_publish(unsigned int thread
 GLOBAL_KERNEL_SIGNATURE(void)
 ParallelSegmentedPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
 												  const unsigned int* __restrict__ flags,
+												  const unsigned int evenly_spaced_segment_size,
 												  unsigned int* __restrict__ output,
 												  ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
 												  unsigned int* __restrict__ g_global_block_index_counter,
@@ -162,7 +163,16 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict
 
 	unsigned int warp_id = global_tid >> 5;
 	unsigned int lane_id = global_tid & 31;
-	unsigned int flag	 = (global_tid < input_size) ? flags[warp_id] & (1u << lane_id) : 0;
+	unsigned int flag;
+	if (evenly_spaced_segment_size > 0)
+		// If we have evenly spaced segments, we can calculate the flag without reading from memory by checking if the global thread ID is a multiple of the
+		// segment size
+		flag = (global_tid < input_size) && (global_tid % evenly_spaced_segment_size == 0) ? 1 : 0;
+	else
+		// Otherwise, we read the flag from memory. Each unsigned int in 'flags' contains 32 flags for 32 consecutive threads, so we need to extract the
+		// relevant bit.
+		flag = (global_tid < input_size) ? flags[warp_id] & (1u << lane_id) : 0;
+
 	if (tid == 0 && bid == 0)
 		flag = 1; // Ensure the very first element of the array is a head / segment start
 

@@ -23,7 +23,8 @@ void RadixSort::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
 
-	m_prefix_scan.set_context(hiprt_ctx, stream);
+	m_global_count_table_prefix_scan.set_context(hiprt_ctx, stream);
+	m_per_block_count_table_prefix_scan.set_context(hiprt_ctx, stream);
 
 	initialize_kernels();
 }
@@ -33,22 +34,25 @@ void RadixSort::initialize_kernels()
 	m_memset_0_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Memset_0.h");
 	m_memset_0_kernel.set_kernel_function_name("RadixSort_Memset_0");
 	m_memset_0_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_memset_0_kernel.set_measure_execution_time(false);
 
 	m_count_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Count.h");
 	m_count_kernel.set_kernel_function_name("RadixSort_Count");
 	m_count_kernel.compile(m_hiprt_ctx, {}, true, false);
-
-	m_per_block_prefix_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/PerBlockScan.h");
-	m_per_block_prefix_scan_kernel.set_kernel_function_name("RadixSort_PerBlockScan");
-	m_per_block_prefix_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_count_kernel.set_measure_execution_time(false);
 
 	m_reorder_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Reorder.h");
 	m_reorder_kernel.set_kernel_function_name("RadixSort_Reorder");
 	m_reorder_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_reorder_kernel.set_measure_execution_time(false);
 }
 
 void RadixSort::resize(unsigned int element_count)
 {
+	if (m_last_resize_element_count == element_count)
+		// Nothing to resize
+		return;
+
 	m_last_resize_element_count = element_count;
 
 	m_size = element_count;
@@ -58,7 +62,8 @@ void RadixSort::resize(unsigned int element_count)
 	m_values_buffer.resize(m_size);
 	m_temp_values_buffer.resize(m_size);
 
-	unsigned int per_block_count_table_size = (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE * RADIX_SORT_RADIX_SIZE;
+	unsigned int chunk_count				= (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+	unsigned int per_block_count_table_size = chunk_count * RADIX_SORT_RADIX_SIZE;
 	if (m_per_block_count_tables_buffer.size() != per_block_count_table_size)
 	{
 		m_per_block_count_tables_buffer.resize(per_block_count_table_size);
@@ -69,7 +74,8 @@ void RadixSort::resize(unsigned int element_count)
 	if (m_global_count_tables_buffer.size() != count_table_size)
 		m_global_count_tables_buffer.resize(count_table_size);
 
-	m_prefix_scan.resize(count_table_size);
+	m_global_count_table_prefix_scan.resize(count_table_size);
+	m_per_block_count_table_prefix_scan.resize(per_block_count_table_size);
 }
 
 void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values)
@@ -95,9 +101,14 @@ void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned in
 	if (!m_last_resize_element_count != element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). This is "
+								"RadixSort::set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). "
+								"This is "
 								"invalid usage and will lead to undefined behavior.",
 								element_count, m_last_resize_element_count);
+
+		Debug::debugbreak();
+
+		return;
 	}
 
 	m_size = element_count;
@@ -120,7 +131,7 @@ void RadixSort::sort()
 	unsigned int* per_block_count_tables_scanned = m_per_block_count_tables_scanned_buffer.get_device_pointer();
 
 	// Perform radix sort in multiple passes
-	static constexpr int NUM_PASSES = 32 / RADIX_SORT_RADIX_BITS;
+	static constexpr int NUM_PASSES = sizeof(unsigned int) * 8 / RADIX_SORT_RADIX_BITS;
 	for (int pass = 0; pass < NUM_PASSES; pass++)
 	{
 		int bit_offset = pass * RADIX_SORT_RADIX_BITS;
@@ -143,21 +154,20 @@ void RadixSort::sort()
 		void* count_args[] = { &input_keys, &count_tables, &per_block_count_tables, &m_size, &bit_offset };
 		m_count_kernel.launch_asynchronous(RADIX_SORT_INPUT_CHUNK_SIZE, 1, m_size, 1, count_args, m_stream);
 
-		// TODO this kernel is very un-optimal
-		unsigned int num_blocks		= (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
-		void* per_block_scan_args[] = { &per_block_count_tables, &per_block_count_tables_scanned, &num_blocks };
-		m_per_block_prefix_scan_kernel.launch_asynchronous(RADIX_SORT_RADIX_SIZE, 1, RADIX_SORT_RADIX_SIZE, 1, per_block_scan_args, m_stream);
+		unsigned int num_blocks = (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+		m_per_block_count_table_prefix_scan.set_data_pointers(per_block_count_tables, per_block_count_tables_size);
+		m_per_block_count_table_prefix_scan.set_evenly_spaced_segment_size(num_blocks);
+		m_per_block_count_table_prefix_scan.scan(false);
 
 		// Scan kernel: Compute exclusive prefix sum
 		{
 			// Replace the prefix scan here with just a block prefix scan because the count table is always small (256 elements)
-			m_prefix_scan.set_data_pointers(m_global_count_tables_buffer.get_device_pointer(), RADIX_SORT_RADIX_SIZE);
-			m_prefix_scan.scan();
+			m_global_count_table_prefix_scan.set_data_pointers(m_global_count_tables_buffer.get_device_pointer(), RADIX_SORT_RADIX_SIZE);
+			m_global_count_table_prefix_scan.scan(false);
 		}
 
-		// TODO Avoid this download + upload by directly using the output buffer of the prefix scan
-		unsigned int* global_count_table_prefix_scanned	   = m_prefix_scan.get_output_buffer().get_device_pointer();
-		unsigned int* per_block_count_table_prefix_scanned = m_per_block_count_tables_scanned_buffer.get_device_pointer();
+		unsigned int* global_count_table_prefix_scanned	   = m_global_count_table_prefix_scan.get_output_buffer().get_device_pointer();
+		unsigned int* per_block_count_table_prefix_scanned = m_per_block_count_table_prefix_scan.get_output_buffer().get_device_pointer();
 
 		// Reorder kernel: Scatter elements to sorted positions
 		void* reorder_args[] = {
@@ -215,13 +225,13 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 	{
 		rng.seed(i);
 
-		unsigned int test_size = 1280 * 720;
+		unsigned int test_size = rng() % 10000000;
 
 		std::vector<unsigned int> input_keys(test_size);
 		std::vector<unsigned int> input_values(test_size);
 
 		std::iota(input_values.begin(), input_values.end(), 0);
-		std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng() % 10; });
+		std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng(); });
 
 		std::vector<std::pair<unsigned int, unsigned int>> key_value_pairs(test_size);
 
@@ -236,9 +246,10 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 				  << std::endl;
 
 		sorter.upload_input_data(input_keys, input_values);
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(stream));
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		unsigned int repeats = 5;
+		unsigned int repeats = 10;
 		for (int j = 0; j < repeats; j++)
 		{
 			sorter.sort();

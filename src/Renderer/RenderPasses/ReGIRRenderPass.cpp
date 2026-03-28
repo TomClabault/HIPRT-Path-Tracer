@@ -915,7 +915,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		start = std::chrono::high_resolution_clock::now();
 
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
-			std::iota(sorted_mesh_indices.begin() + emissive_mesh_count * i, sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
+			std::iota(sorted_mesh_indices.begin() + emissive_mesh_count * i, sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0, 1, 2,...
 
 #pragma omp parallel for
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)

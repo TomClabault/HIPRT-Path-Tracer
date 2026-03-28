@@ -35,8 +35,9 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	unsigned int value = index < size ? input_values[index] : 0;
 	unsigned int radix = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
 
+	unsigned int num_blocks	   = (size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
 	unsigned int global_offset = index < size ? global_count_table_prefix_scanned[radix] : 0;
-	unsigned int block_offset  = index < size ? per_block_count_table_prefix_scanned[blockIdx.x * RADIX_SORT_RADIX_SIZE + radix] : 0;
+	unsigned int block_offset  = index < size ? per_block_count_table_prefix_scanned[radix * num_blocks + blockIdx.x] : 0;
 
 	__shared__ short int digit_count_per_warp[warp_count][RADIX_SORT_RADIX_SIZE];
 
@@ -61,28 +62,6 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 
 	__syncthreads();
 
-	// Brute force verification
-	/*if (threadIdx.x == 0 && blockIdx.x == 0)
-	{
-		for (int warp = 0; warp < warp_count; warp++)
-		{
-			for (int digit = 0; digit < RADIX_SORT_RADIX_SIZE; digit++)
-			{
-				short int expected_count = 0;
-				for (int w = 0; w < warp; w++)
-					expected_count += digit_count_per_warp[w][digit];
-
-				short int count = digit_count_per_warp_prefix_summed[warp][digit];
-				if (count != expected_count)
-				{
-					printf("Warp %d, digit %d: prefixed-count %d does not match expected count %d\n", warp, digit, count, expected_count);
-
-					return;
-				}
-			}
-		}
-	}*/
-
 	unsigned int inter_warp_offset = digit_count_per_warp_prefix_summed[warp_index][radix];
 
 	// And now computing the intra-warp offset by summing the counts of the previous threads with the same radix in the same warp
@@ -100,15 +79,6 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	}
 
 	unsigned int sorted_position = global_offset + block_offset + inter_warp_offset + intra_warp_offset;
-
-	/*if (sorted_position >= size)
-	{
-		printf("Error: sorted position %u is out of bounds for size %u (global_offset %u, block_offset %u, inter_warp_offset %u, intra_warp_offset %u, tid: "
-			   "%u)\n",
-			   sorted_position, size, global_offset, block_offset, inter_warp_offset, intra_warp_offset, threadIdx.x);
-
-		return;
-	}*/
 
 	// Scatter to the output position
 	if (index < size)

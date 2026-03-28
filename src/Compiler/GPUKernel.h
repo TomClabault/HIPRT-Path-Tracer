@@ -155,7 +155,7 @@ public:
 	 * Returns the time taken for the last execution of this kernel in milliseconds
 	 */
 	float compute_execution_time();
-	float get_last_execution_time();
+	float get_last_execution_time() const;
 
 	/**
 	 * Structure used to pass data to the compute_elapsed_time_callback that computes the
@@ -179,6 +179,9 @@ public:
 
 	bool is_precompiled() const;
 	void set_precompiled(bool precompiled);
+
+	bool is_measuring_execution_time() const;
+	void set_measure_execution_time(bool measure_execution_time);
 
 private:
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
@@ -225,6 +228,13 @@ private:
 	// the counter of the ImGuiLoggerLine that counts how many kernels have been precompiled
 	// so far
 	bool m_is_precompiled_kernel = false;
+
+	// If true, the execution time of this kernel will be measured with CUDA/HIP events and returned by compute_execution_time() and get_last_execution_time().
+	// If false, the execution time returned by these functions will be 0.0f.
+	//
+	// Launching CUDA events can have non negligible overhead, so for some very fast kernels, it can be better to disable the execution time measurement to
+	// avoid that overhead.
+	bool m_measure_execution_time = true;
 };
 
 #endif

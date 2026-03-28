@@ -29,13 +29,19 @@ public:
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void initialize_kernels();
 
+	void resize(unsigned int element_count);
 	/**
 	 * @param data Input data to scan
 	 * @param flags Segment flags. The prefix scans will be computed separately for each segment. This vector should contain packed bits, i.e. one unsigned int
 	 * contains 32 flags. This vector should therefore be of size ceil(data.size() / 32)
 	 */
 	void upload_input_data(const std::vector<unsigned int>& data, const std::vector<unsigned int>& flags);
-	void scan();
+	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int element_count);
+	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
+	void set_evenly_spaced_segment_size(unsigned int segment_size);
+	void scan(bool auto_stream_synchronize = true);
+
+	float get_last_execution_time();
 
 	OrochiBuffer<unsigned int>& get_output_buffer();
 
@@ -44,6 +50,11 @@ public:
 private:
 	OrochiBuffer<unsigned int> m_input_buffer;
 	OrochiBuffer<unsigned int> m_flags_buffer;
+
+	unsigned int* m_input_data_pointer		  = nullptr;
+	unsigned int* m_flags_data_pointer		  = nullptr;
+	unsigned int m_evenly_spaced_segment_size = 0;
+
 	OrochiBuffer<unsigned int> m_output_buffer;
 
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
@@ -56,6 +67,7 @@ private:
 	oroStream_t m_stream;
 
 	unsigned int m_size;
+	unsigned int m_last_resize_element_count = 0;
 };
 
 #endif

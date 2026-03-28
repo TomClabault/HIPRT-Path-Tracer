@@ -204,7 +204,7 @@ bool GPUKernel::uses_macro(const std::string& name) const
 
 float GPUKernel::compute_execution_time()
 {
-	if (!m_launched_at_least_once)
+	if (!m_launched_at_least_once || !m_measure_execution_time)
 		return 0.0f;
 
 	float out;
@@ -217,6 +217,9 @@ float GPUKernel::compute_execution_time()
 
 float GPUKernel::get_last_execution_time() const
 {
+	if (!m_measure_execution_time)
+		return 0.0f;
+
 	return m_last_execution_time;
 }
 
@@ -235,6 +238,16 @@ void GPUKernel::set_precompiled(bool precompiled)
 	m_is_precompiled_kernel = precompiled;
 }
 
+bool GPUKernel::is_measuring_execution_time() const
+{
+	return m_measure_execution_time;
+}
+
+void GPUKernel::set_measure_execution_time(bool measure_execution_time)
+{
+	m_measure_execution_time = measure_execution_time;
+}
+
 void GPUKernel::launch_asynchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, oroStream_t stream)
 {
 	launch_asynchronous_3D(block_size_x, block_size_y, 1, nb_threads_x, nb_threads_y, 1, launch_args, stream);
@@ -249,9 +262,11 @@ void GPUKernel::launch_asynchronous_3D(int block_size_x,
 									   void** launch_args,
 									   oroStream_t stream)
 {
-	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
+	if (m_measure_execution_time)
+		OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 
 	launch_3D_block_size(block_size_x, block_size_y, block_size_z, nb_threads_x, nb_threads_y, nb_threads_z, launch_args, stream);
 
-	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
+	if (m_measure_execution_time)
+		OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
 }

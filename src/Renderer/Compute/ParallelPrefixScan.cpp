@@ -34,10 +34,12 @@ void ParallelPrefixScan::initialize_kernels()
 	m_block_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScan/BlockScan.h");
 	m_block_scan_kernel.set_kernel_function_name("ParallelPrefixScan_BlockScan");
 	m_block_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_block_scan_kernel.set_measure_execution_time(false);
 
 	m_block_increment_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScan/BlockIncrement.h");
 	m_block_increment_kernel.set_kernel_function_name("ParallelPrefixScan_BlockIncrement");
 	m_block_increment_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_block_increment_kernel.set_measure_execution_time(false);
 }
 
 void ParallelPrefixScan::upload_input_data(const std::vector<unsigned int>& data)

@@ -34,10 +34,12 @@ void ParallelPrefixScanDecoupledLookback::initialize_kernels()
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_Scan");
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 }
 
 void ParallelPrefixScanDecoupledLookback::resize(unsigned int element_count)
@@ -63,6 +65,9 @@ void ParallelPrefixScanDecoupledLookback::upload_input_data(const std::vector<un
 	resize(m_size);
 
 	m_input_buffer.upload_data(data);
+
+	m_input_data_pointer  = m_input_buffer.get_device_pointer();
+	m_output_data_pointer = m_output_buffer.get_device_pointer();
 }
 
 void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_buffer_pointer, unsigned int element_count)
@@ -75,7 +80,8 @@ void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_
 	if (m_last_resize_element_count != element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). This is "
+								"ParallelPrefixScanDecoupledLookback::set_data_pointers() called with an element_count (%u) that is different from the last "
+								"one used in resize() (%u). This is "
 								"invalid usage and will lead to undefined behavior.",
 								element_count, m_last_resize_element_count);
 
@@ -93,7 +99,7 @@ void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_
 		m_output_data_pointer = m_output_buffer.get_device_pointer();
 }
 
-void ParallelPrefixScanDecoupledLookback::scan()
+void ParallelPrefixScanDecoupledLookback::scan(bool auto_stream_synchronize)
 {
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
 	{
@@ -116,7 +122,16 @@ void ParallelPrefixScanDecoupledLookback::scan()
 								&m_size };
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
+	if (auto_stream_synchronize)
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
+}
+
+float ParallelPrefixScanDecoupledLookback::get_last_execution_time()
+{
+	m_block_descriptor_init_kernel.compute_execution_time();
+	m_scan_kernel.compute_execution_time();
+
+	return m_block_descriptor_init_kernel.get_last_execution_time() + m_scan_kernel.get_last_execution_time();
 }
 
 OrochiBuffer<unsigned int>& ParallelPrefixScanDecoupledLookback::get_output_buffer()

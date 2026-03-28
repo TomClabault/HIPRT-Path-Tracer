@@ -28,7 +28,9 @@ public:
 	void upload_input_data(const std::vector<unsigned int>& data);
 	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int* output_buffer_pointer, unsigned int element_count);
-	void scan();
+	void scan(bool auto_stream_synchronize = true);
+
+	float get_last_execution_time();
 
 	OrochiBuffer<unsigned int>& get_output_buffer();
 
