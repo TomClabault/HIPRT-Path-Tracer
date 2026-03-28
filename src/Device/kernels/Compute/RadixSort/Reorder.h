@@ -6,6 +6,7 @@
 #ifndef DEVICE_KERNELS_COMPUTE_RADIX_SORT_REORDER_H
 #define DEVICE_KERNELS_COMPUTE_RADIX_SORT_REORDER_H
 
+#include "Device/includes/Compute/RadixSortBlock.h"
 #include "Device/includes/Compute/RadixSortCommon.h"
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
@@ -20,46 +21,100 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 				  unsigned int size,
 				  int bit_offset)
 {
-	// const unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-
-	// if (thread_index >= size)
-	//	return;
-
-	//// Extract the radix digit from the key
-	// unsigned int key   = input_keys[thread_index];
-	// unsigned int value = input_values[thread_index];
-	// unsigned int radix = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
-
 	// Get the position for this element using atomic increment
+	//
 	// This gives us the exclusive prefix sum position
+	constexpr int warp_size		 = 32;
+	constexpr int warp_size_mask = warp_size - 1;
+	constexpr int warp_count	 = RADIX_SORT_INPUT_CHUNK_SIZE / warp_size;
+	unsigned int index			 = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int warp_index		 = threadIdx.x / warp_size;
+	unsigned int lane_index		 = threadIdx.x & warp_size_mask;
 
-	__shared__ unsigned int digit_count_in_block[RADIX_SORT_RADIX_SIZE];
-	if (threadIdx.x < RADIX_SORT_RADIX_SIZE)
-		digit_count_in_block[threadIdx.x] = 0;
+	unsigned int key   = index < size ? input_keys[index] : 0;
+	unsigned int value = index < size ? input_values[index] : 0;
+	unsigned int radix = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
+
+	unsigned int global_offset = index < size ? global_count_table_prefix_scanned[radix] : 0;
+	unsigned int block_offset  = index < size ? per_block_count_table_prefix_scanned[blockIdx.x * RADIX_SORT_RADIX_SIZE + radix] : 0;
+
+	__shared__ short int digit_count_per_warp[warp_count][RADIX_SORT_RADIX_SIZE];
+
+	for (int i = lane_index; i < RADIX_SORT_RADIX_SIZE; i += warp_size)
+		digit_count_per_warp[warp_index][i] = 0;
 	__syncthreads();
 
-	if (threadIdx.x == 0)
+	if (index < size)
+		hippt::atomic_fetch_add_gpu(&digit_count_per_warp[warp_index][radix], (short int)1);
+
+	__syncthreads(); // We now have the count of each radix digit for each warp, we can compute inter-warp offset by summing the counts of the previous warps
+					 // (prefix scan)
+
+	__shared__ short int digit_count_per_warp_prefix_summed[warp_count][RADIX_SORT_RADIX_SIZE];
+	for (int digit = warp_index; digit < RADIX_SORT_RADIX_SIZE; digit += warp_count)
 	{
-		for (int i = 0; i < blockDim.x; i++)
+		int my_digit_count			= digit_count_per_warp[lane_index][digit];
+		int my_digit_prefix_scanned = warp_prefix_scan_exclusive(my_digit_count);
+
+		digit_count_per_warp_prefix_summed[lane_index][digit] = my_digit_prefix_scanned;
+	}
+
+	__syncthreads();
+
+	// Brute force verification
+	/*if (threadIdx.x == 0 && blockIdx.x == 0)
+	{
+		for (int warp = 0; warp < warp_count; warp++)
 		{
-			unsigned int index = blockIdx.x * blockDim.x + i;
-			if (index >= size)
-				break;
+			for (int digit = 0; digit < RADIX_SORT_RADIX_SIZE; digit++)
+			{
+				short int expected_count = 0;
+				for (int w = 0; w < warp; w++)
+					expected_count += digit_count_per_warp[w][digit];
 
-			unsigned int key   = input_keys[index];
-			unsigned int value = input_values[index];
-			unsigned int radix = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
+				short int count = digit_count_per_warp_prefix_summed[warp][digit];
+				if (count != expected_count)
+				{
+					printf("Warp %d, digit %d: prefixed-count %d does not match expected count %d\n", warp, digit, count, expected_count);
 
-			unsigned int global_offset = global_count_table_prefix_scanned[radix];
-			unsigned int block_offset  = per_block_count_table_prefix_scanned[blockIdx.x * RADIX_SORT_RADIX_SIZE + radix];
-			unsigned int local_offset  = hippt::atomic_fetch_add(&digit_count_in_block[radix], 1u);
-
-			unsigned int position = global_offset + block_offset + local_offset;
-
-			// Scatter to the output position
-			output_keys[position]	= key;
-			output_values[position] = value;
+					return;
+				}
+			}
 		}
+	}*/
+
+	unsigned int inter_warp_offset = digit_count_per_warp_prefix_summed[warp_index][radix];
+
+	// And now computing the intra-warp offset by summing the counts of the previous threads with the same radix in the same warp
+	unsigned int intra_warp_offset = 0;
+	for (int l = 0; l < warp_size; l++)
+	{
+		// For each lane, ask the other threads in the warp (ballot) if they have the same value and count how many of them are before us (mask_lane_lt + popc)
+		unsigned int radix_lane		 = hippt::warp_shfl(radix, l);
+		unsigned int same_radix_mask = hippt::warp_ballot(0xFFFFFFFF, radix_lane == radix);
+		unsigned int mask_lane_lt	 = (1U << lane_index) - 1;
+		if (lane_index == l)
+			// For this thread, the intra-warp offset is the number of threads with the same radix that are before us in the warp, which is given by the
+			// population count of the mask of threads with the same radix that are before us
+			intra_warp_offset = hippt::popc(same_radix_mask & mask_lane_lt);
+	}
+
+	unsigned int sorted_position = global_offset + block_offset + inter_warp_offset + intra_warp_offset;
+
+	/*if (sorted_position >= size)
+	{
+		printf("Error: sorted position %u is out of bounds for size %u (global_offset %u, block_offset %u, inter_warp_offset %u, intra_warp_offset %u, tid: "
+			   "%u)\n",
+			   sorted_position, size, global_offset, block_offset, inter_warp_offset, intra_warp_offset, threadIdx.x);
+
+		return;
+	}*/
+
+	// Scatter to the output position
+	if (index < size)
+	{
+		output_keys[sorted_position]   = key;
+		output_values[sorted_position] = value;
 	}
 }
 

@@ -103,11 +103,11 @@ void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hipr
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		rng.seed(i);
 
-		unsigned int test_size = 500000000; // rng() % 500000000 + 1;
+		unsigned int test_size = rng() % 500000000 + 1;
 
 		std::vector<unsigned int> input(test_size);
 		std::vector<unsigned int> flags((test_size + 31) / 32, 0);

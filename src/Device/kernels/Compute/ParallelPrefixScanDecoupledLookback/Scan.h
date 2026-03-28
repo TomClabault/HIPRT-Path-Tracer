@@ -15,7 +15,7 @@ HIPRT_DEVICE unsigned int block_scan_early_publish(unsigned int thread_input_val
 												   ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
 {
 	// Per-warp scan
-	unsigned int warp_prefix = warp_scan_inclusive(thread_input_value);
+	unsigned int warp_prefix = warp_prefix_scan_inclusive(thread_input_value);
 
 	// The last lane of each warp holds the sum for that warp
 	unsigned int lane	 = tid % 32;
@@ -42,7 +42,7 @@ HIPRT_DEVICE unsigned int block_scan_early_publish(unsigned int thread_input_val
 			// Only load if the warp actually exists in this block
 			my_warp_sum = smem_warp_sums[tid];
 
-		unsigned int inclusive_warp_sum_scan = warp_scan_inclusive(my_warp_sum);
+		unsigned int inclusive_warp_sum_scan = warp_prefix_scan_inclusive(my_warp_sum);
 
 		// Write the inclusive scan back to smem so other warps can read their "base"
 		// Note: We shift by 1 index effectively, because Warp N needs the sum of Warps 0..N-1
@@ -88,7 +88,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
 
 	__shared__ unsigned int block_index;
 	if (tid == 0)
-		block_index = hippt::atomic_fetch_add(g_global_block_index_counter, 1u);
+		block_index = hippt::atomic_fetch_add_gpu(g_global_block_index_counter, 1u);
 	__syncthreads();
 
 	unsigned int bid		= block_index;

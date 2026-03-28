@@ -62,8 +62,8 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		{
 			if (warp_index == 0)
 			{
-				int bucket_base_value = warp_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0,
-															thread_id_in_block);
+				int bucket_base_value = warp_prefix_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0,
+																   thread_id_in_block);
 
 				if (thread_id_in_block < RadixSortBlockRadix)
 					bucket_base[thread_id_in_block] = bucket_base_value;
@@ -72,7 +72,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		else if (threads_per_block >= RadixSortBlockRadix)
 		{
 			int digit_count = thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0;
-			int digit_scan	= block_scan_exclusive<RadixSortBlockRadix>(digit_count, thread_id_in_block);
+			int digit_scan	= block_prefix_scan_exclusive<RadixSortBlockRadix>(digit_count, thread_id_in_block);
 			if (thread_id_in_block < RadixSortBlockRadix)
 				bucket_base[thread_id_in_block] = digit_scan;
 		}

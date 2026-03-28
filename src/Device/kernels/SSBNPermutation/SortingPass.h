@@ -56,7 +56,7 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 			int lane				= thread_index_in_block & 31;
 			int element_index		= warp_index_offsetted * 32 + lane;
 			int bn_value_count		= element_index < 256 ? values_counts[element_index] : 0;
-			int warp_inclusive_scan = warp_scan_inclusive(bn_value_count);
+			int warp_inclusive_scan = warp_prefix_scan_inclusive(bn_value_count);
 
 			if (lane == 31)
 				warps_inclusive_scans[warp_index_offsetted] = warp_inclusive_scan;
@@ -96,7 +96,7 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 		int warp_index			= thread_index_in_block >> 5;
 		int lane				= thread_index_in_block & 31;
 		int bn_value_count		= thread_index_in_block < 256 ? values_counts[thread_index_in_block] : 0;
-		int warp_inclusive_scan = warp_scan_inclusive(bn_value_count, thread_index_in_block);
+		int warp_inclusive_scan = warp_prefix_scan_inclusive(bn_value_count, thread_index_in_block);
 
 		if (lane == 31)
 			warps_inclusive_scans[warp_index] = warp_inclusive_scan;

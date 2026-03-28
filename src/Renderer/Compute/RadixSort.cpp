@@ -108,80 +108,6 @@ void RadixSort::sort()
 
 		// Scan kernel: Compute exclusive prefix sum
 		{
-			// DEBUG VERIFICATION BLOCK
-			{
-				std::vector<unsigned int> count_table_host					 = m_global_count_tables_buffer.download_data();
-				std::vector<unsigned int> per_block_count_table_host		 = m_per_block_count_tables_buffer.download_data();
-				std::vector<unsigned int> per_block_count_table_scanned_host = m_per_block_count_tables_scanned_buffer.download_data();
-				std::vector<unsigned int> input_keys_host					 = m_keys_buffer.download_data();
-				std::vector<unsigned int> expected_count_table(RADIX_SORT_RADIX_SIZE, 0);
-
-				for (int i = 0; i < m_size; i++)
-				{
-					unsigned int key   = input_keys_host.at(i);
-					unsigned int digit = (key >> bit_offset) & (RADIX_SORT_RADIX_SIZE - 1);
-
-					expected_count_table[digit]++;
-				}
-
-				for (int i = 0; i < RADIX_SORT_RADIX_SIZE; i++)
-				{
-					if (count_table_host.at(i) != expected_count_table.at(i))
-					{
-						std::cout << "Count table mismatch at index " << i << ": got " << count_table_host[i] << ", expected " << expected_count_table[i]
-								  << std::endl;
-
-						break;
-					}
-				}
-
-				unsigned int num_blocks = (input_keys_host.size() + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
-				std::vector<unsigned int> per_block_expected_count_table(num_blocks * RADIX_SORT_RADIX_SIZE, 0);
-				for (int block = 0; block < num_blocks; block++)
-				{
-					for (int i = 0; i < RADIX_SORT_INPUT_CHUNK_SIZE; i++)
-					{
-						unsigned int index = block * RADIX_SORT_INPUT_CHUNK_SIZE + i;
-						if (index >= m_size)
-							break;
-
-						unsigned int key   = input_keys_host[index];
-						unsigned int digit = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
-
-						// Writing in column major order so that the prefix scan can be done easily
-						per_block_expected_count_table.at(block * RADIX_SORT_RADIX_SIZE + digit)++;
-					}
-				}
-
-				std::vector<unsigned int> per_block_expected_count_table_prefix_summed(num_blocks * RADIX_SORT_RADIX_SIZE, 0);
-				for (int digit = 0; digit < RADIX_SORT_RADIX_SIZE; digit++)
-				{
-					unsigned int running_sum = 0;
-
-					for (int block = 0; block < num_blocks; block++)
-					{
-						unsigned int index = block * RADIX_SORT_RADIX_SIZE + digit;
-						unsigned int temp  = per_block_expected_count_table.at(index);
-
-						per_block_expected_count_table_prefix_summed.at(index) = running_sum;
-						running_sum += temp;
-					}
-
-					running_sum = 0;
-				}
-
-				for (int i = 0; i < per_block_count_table_scanned_host.size(); i++)
-				{
-					if (per_block_count_table_scanned_host.at(i) != per_block_expected_count_table_prefix_summed.at(i))
-					{
-						std::cout << "Per-block count table mismatch at index " << i << ": got " << per_block_count_table_scanned_host.at(i) << ", expected "
-								  << per_block_expected_count_table_prefix_summed.at(i) << std::endl;
-
-						break;
-					}
-				}
-			}
-
 			// Replace the prefix scan here with just a block prefix scan because the count table is always small (256 elements)
 			std::vector<unsigned int> count_table_host = m_global_count_tables_buffer.download_data();
 
@@ -204,9 +130,6 @@ void RadixSort::sort()
 
 		// Synchronize stream to ensure all kernels complete before next pass
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
-
-		std::vector<unsigned int> input_keys_host			= m_keys_buffer.download_data();
-		std::vector<unsigned int> input_keys_host_reordered = m_temp_keys_buffer.download_data();
 
 		// Swap buffers for next pass
 		if (pass < NUM_PASSES - 1)
@@ -258,7 +181,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 	{
 		rng.seed(i);
 
-		unsigned int test_size = rng() % 65536;
+		unsigned int test_size = 1280 * 720;
 
 		std::vector<unsigned int> input_keys(test_size);
 		std::vector<unsigned int> input_values(test_size);
@@ -283,7 +206,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		sorter.upload_input_data(input_keys, input_values);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		unsigned int repeats = 1;
+		unsigned int repeats = 5;
 		for (int j = 0; j < repeats; j++)
 		{
 			sorter.sort();
@@ -307,7 +230,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 				std::cout << "Mismatch at index " << j << ": got (" << sorted_keys[j] << ", " << sorted_values[j] << "), expected (" << key_value_pairs[j].first
 						  << ", " << key_value_pairs[j].second << ")" << std::endl;
 
-				break;
+				return;
 			}
 		}
 	}

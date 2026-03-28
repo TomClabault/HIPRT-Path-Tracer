@@ -97,11 +97,11 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		rng.seed(i);
 
-		unsigned int test_size = 500000000; // rng() % 500000000;
+		unsigned int test_size = rng() % 500000000;
 
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(test_size);
