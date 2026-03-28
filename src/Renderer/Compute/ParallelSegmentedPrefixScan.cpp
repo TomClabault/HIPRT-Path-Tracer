@@ -180,8 +180,9 @@ void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hipr
 										"ParallelSegmentedPrefixScan unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j,
 										test_size, output[j], expected_output[j]);
 
-				std::terminate();
-				break;
+				Debug::debugbreak();
+
+				return;
 			}
 		}
 	}

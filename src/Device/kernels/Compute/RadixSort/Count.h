@@ -47,9 +47,9 @@ RadixSort_Count(unsigned int* __restrict__ keys,
 	if (threadIdx.x < RADIX_SORT_RADIX_SIZE)
 	{
 		// Write back the scanned value to the per-block count table
-		unsigned int radix						  = threadIdx.x;
-		unsigned int count_table_index			  = blockIdx.x * RADIX_SORT_RADIX_SIZE + radix;
-		per_block_count_tables[count_table_index] = per_block_histogram[radix];
+		unsigned int radix							 = threadIdx.x;
+		unsigned int block_offset					 = blockIdx.x * RADIX_SORT_RADIX_SIZE;
+		per_block_count_tables[block_offset + radix] = per_block_histogram[radix];
 	}
 }
 

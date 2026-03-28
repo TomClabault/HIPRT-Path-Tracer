@@ -40,17 +40,57 @@ void ParallelPrefixScanDecoupledLookback::initialize_kernels()
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
+void ParallelPrefixScanDecoupledLookback::resize(unsigned int element_count)
+{
+	m_last_resize_element_count = element_count;
+
+	m_size = element_count;
+
+	m_input_buffer.resize(m_size);
+	m_output_buffer.resize(m_size);
+
+	m_input_data_pointer  = m_input_buffer.get_device_pointer();
+	m_output_data_pointer = m_output_buffer.get_device_pointer();
+
+	m_global_block_index_counter_buffer.resize(1);
+	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
+}
+
 void ParallelPrefixScanDecoupledLookback::upload_input_data(const std::vector<unsigned int>& data)
 {
 	m_size = data.size();
 
-	m_input_buffer.resize(m_size);
+	resize(m_size);
+
 	m_input_buffer.upload_data(data);
+}
 
-	m_output_buffer.resize(m_size);
+void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_buffer_pointer, unsigned int element_count)
+{
+	set_data_pointers(input_buffer_pointer, nullptr, element_count);
+}
 
-	m_global_block_index_counter_buffer.resize(1);
-	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
+void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_buffer_pointer, unsigned int* output_buffer_pointer, unsigned int element_count)
+{
+	if (m_last_resize_element_count != element_count)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). This is "
+								"invalid usage and will lead to undefined behavior.",
+								element_count, m_last_resize_element_count);
+
+		Debug::debugbreak();
+
+		return;
+	}
+
+	m_size = element_count;
+
+	m_input_data_pointer = input_buffer_pointer;
+	if (output_buffer_pointer)
+		m_output_data_pointer = output_buffer_pointer;
+	else
+		m_output_data_pointer = m_output_buffer.get_device_pointer();
 }
 
 void ParallelPrefixScanDecoupledLookback::scan()
@@ -70,8 +110,8 @@ void ParallelPrefixScanDecoupledLookback::scan()
 	void* block_descriptor_init_args[]				 = { &block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
-	unsigned int* input_buffer_pointer	= m_input_buffer.get_device_pointer();
-	unsigned int* output_buffer_pointer = m_output_buffer.get_device_pointer();
+	unsigned int* input_buffer_pointer	= m_input_data_pointer;
+	unsigned int* output_buffer_pointer = m_output_data_pointer;
 	void* block_scan_args[] = { &input_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer,
 								&m_size };
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
@@ -133,8 +173,9 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i,
-								test_size, elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
+								"\tParallelPrefixScanDecoupledLookback unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
+								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
 		std::vector<unsigned int> output = scanner.get_output_buffer().download_data();
 
@@ -145,7 +186,10 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 										"ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j,
 										test_size, output[j], expected_output[j]);
-				break;
+
+				Debug::debugbreak();
+
+				return;
 			}
 		}
 	}

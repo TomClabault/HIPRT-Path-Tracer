@@ -187,6 +187,10 @@ inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 template <typename T>
 void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 {
+	if (m_element_count == new_element_count)
+		// Nothing to resize
+		return;
+
 	if (m_data_pointer)
 		free();
 
@@ -276,18 +280,6 @@ T* OrochiBuffer<T>::get_device_pointer()
 }
 
 template <typename T>
-const AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer() const
-{
-	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
-}
-
-template <typename T>
-AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer()
-{
-	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
-}
-
-template <typename T>
 const T* OrochiBuffer<T>::get_host_pinned_pointer() const
 {
 	if (m_data_pointer == nullptr)
@@ -329,6 +321,18 @@ T* OrochiBuffer<T>::get_host_pinned_pointer()
 	}
 
 	return m_data_pointer;
+}
+
+template <typename T>
+const AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer() const
+{
+	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
+}
+
+template <typename T>
+AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer()
+{
+	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
 }
 
 template <typename T>

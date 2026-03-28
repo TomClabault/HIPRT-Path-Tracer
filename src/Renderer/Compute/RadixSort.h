@@ -22,7 +22,13 @@ public:
 
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
+	/**
+	 *
+	 */
+	void resize(unsigned int element_count);
+
 	void upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values);
+	void set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, size_t element_count);
 	void sort();
 
 	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
@@ -35,12 +41,16 @@ private:
 
 	OrochiBuffer<unsigned int> m_keys_buffer;
 	OrochiBuffer<unsigned int> m_values_buffer;
+	unsigned int* m_keys_data_pointer	= nullptr;
+	unsigned int* m_values_data_pointer = nullptr;
+
 	OrochiBuffer<unsigned int> m_temp_keys_buffer;
 	OrochiBuffer<unsigned int> m_temp_values_buffer;
 	OrochiBuffer<unsigned int> m_global_count_tables_buffer;
 	OrochiBuffer<unsigned int> m_per_block_count_tables_buffer;
 	OrochiBuffer<unsigned int> m_per_block_count_tables_scanned_buffer;
 
+	GPUKernel m_memset_0_kernel;
 	GPUKernel m_count_kernel;
 	ParallelPrefixScanDecoupledLookback m_prefix_scan;
 	GPUKernel m_per_block_prefix_scan_kernel;
@@ -50,6 +60,7 @@ private:
 	oroStream_t m_stream;
 
 	size_t m_size;
+	unsigned int m_last_resize_element_count = 0;
 };
 
 #endif
