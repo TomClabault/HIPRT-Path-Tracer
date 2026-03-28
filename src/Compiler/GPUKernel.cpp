@@ -215,7 +215,7 @@ float GPUKernel::compute_execution_time()
 	return out;
 }
 
-float GPUKernel::get_last_execution_time()
+float GPUKernel::get_last_execution_time() const
 {
 	return m_last_execution_time;
 }
@@ -254,9 +254,4 @@ void GPUKernel::launch_asynchronous_3D(int block_size_x,
 	launch_3D_block_size(block_size_x, block_size_y, block_size_z, nb_threads_x, nb_threads_y, nb_threads_z, launch_args, stream);
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
-
-	// TODO: There's an issue here on HIP 5.7 + Windows where without the oroLaunchHostFunc below,
-	// this oroEventRecord (or any event after a kernel launch) "blocks" the stream (only on a non-NULL stream)
-	// and oroStreamQuery always (kind of) returns hipErrorDeviceNotReady
-	oroLaunchHostFunc(stream, [](void*) {}, nullptr);
 }
