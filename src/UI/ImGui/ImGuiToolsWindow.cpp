@@ -406,9 +406,10 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 	}
 }
 
-#define USING_VIEWPORT_TEXT "Using viewport"
 void ImGuiToolsWindow::draw_image_difference_panel()
 {
+	static constexpr std::string USING_VIEWPORT_TEXT = "Using viewport";
+
 	if (ImGui::CollapsingHeader("Image difference"))
 	{
 		ImGui::TreePush("Image difference tree");
@@ -484,9 +485,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
 			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
-			{
 				status_text = "Error: Images must have the same dimensions!";
-			}
 			else
 			{
 				error_value = Utils::compute_image_mse(reference_image, subject_image);
@@ -502,9 +501,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
 			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
-			{
 				status_text = "Error: Images must have the same dimensions!";
-			}
 			else
 			{
 				error_value = Utils::compute_image_root_mse(reference_image, subject_image);

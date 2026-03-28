@@ -178,7 +178,7 @@ void ImGuiSettingsWindow::draw_header()
 	if (ImGui::Button("Save viewport to PNG"))
 		m_render_window->get_screenshoter()->write_to_png();
 	if (ImGui::Button("Copy viewport to clipboard"))
-		Utils::copy_image_to_clipboard(m_render_window->get_screenshoter()->get_image());
+		Utils::copy_image_to_clipboard(m_render_window->get_screenshoter()->get_image(), false);
 
 	ImGui::Separator();
 

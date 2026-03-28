@@ -121,6 +121,24 @@ bool Image8Bit::write_image_hdr(const std::string_view filename, const bool flip
 	return stbi_write_hdr(filename.data(), width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
+void Image8Bit::flip_vertically()
+{
+	std::vector<unsigned char> flipped_data(width * height * channels);
+
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int input_index	 = (x + y * width) * channels;
+			int output_index = (x + (height - 1 - y) * width) * channels;
+			for (int i = 0; i < channels; i++)
+				flipped_data[output_index + i] = m_pixel_data[input_index + i];
+		}
+	}
+
+	m_pixel_data = flipped_data;
+}
+
 float Image8Bit::luminance_of_pixel(int x, int y) const
 {
 	int start_pixel = (x + y * width) * channels;
@@ -504,6 +522,25 @@ Image32Bit Image32Bit::to_linear_rgb() const
 	}
 
 	return out;
+}
+
+void Image32Bit::flip_vertically()
+{
+	std::vector<float> flipped_data(width * height * channels);
+
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index_y_flipped = (x + (height - 1 - y) * width) * channels;
+			int index			= (x + y * width) * channels;
+
+			for (int i = 0; i < channels; i++)
+				flipped_data[index + i] = m_pixel_data[index_y_flipped + i];
+		}
+	}
+
+	m_pixel_data = flipped_data;
 }
 
 float Image32Bit::luminance_of_pixel(int x, int y) const

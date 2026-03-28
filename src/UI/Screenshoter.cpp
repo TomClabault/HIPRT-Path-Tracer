@@ -124,11 +124,11 @@ void Screenshoter::resize_output_image(int width, int height)
 void Screenshoter::write_to_png(std::string filepath)
 {
 	Image8Bit image = get_image();
-	if (image.write_image_png(filepath.c_str(), true))
+	if (image.write_image_png(filepath.c_str(), false))
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath.c_str());
 }
 
-Image8Bit Screenshoter::get_image()
+Image8Bit Screenshoter::get_image(bool flip_y)
 {
 	int width  = m_renderer->m_render_resolution.x;
 	int height = m_renderer->m_render_resolution.y;
@@ -164,5 +164,9 @@ Image8Bit Screenshoter::get_image()
 	std::vector<unsigned char> mapped_data(width * height * 4);
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
-	return Image8Bit(mapped_data, width, height, 4);
+	Image8Bit image(mapped_data, width, height, 4);
+	if (flip_y)
+		image.flip_vertically();
+
+	return image;
 }

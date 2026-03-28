@@ -36,7 +36,7 @@ public:
 	void write_to_png();
 	void write_to_png(std::string filepath);
 
-	Image8Bit get_image();
+	Image8Bit get_image(bool flip_y = true);
 
 private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;

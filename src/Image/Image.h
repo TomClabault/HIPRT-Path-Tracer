@@ -40,6 +40,8 @@ public:
 	bool write_image_png(const std::string_view filename, const bool flipY = true) const;
 	bool write_image_hdr(const std::string_view, const bool flipY = true) const;
 
+	void flip_vertically();
+
 	float luminance_of_pixel(int x, int y) const;
 	float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;
 	float luminance_of_area(const ImageBin& area) const;
@@ -104,6 +106,8 @@ public:
 	bool write_image_hdr(const char* filename, const bool flipY = true) const;
 
 	Image32Bit to_linear_rgb() const;
+
+	void flip_vertically();
 
 	float luminance_of_pixel(int x, int y) const;
 	float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;
