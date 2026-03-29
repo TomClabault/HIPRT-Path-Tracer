@@ -442,6 +442,8 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Can we do restir BSDF somehow? Sharing BSDF samples across neighbors, only BSDF samples and then use that into restir gi or whatever. Could be good for
+// layered BSDF where samping the BSDF is high-variance
 // - Another separate render graph for interactivity
 // - Use only packed material throughout the shaders to save registers?
 // - We can use incoming radiance radiance cache to sample BSDF directions for MIS: we would cache the incoming radiance only from emissives and use that with

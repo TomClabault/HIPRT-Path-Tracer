@@ -23,10 +23,23 @@ GPUKernel::GPUKernel()
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
 }
 
+GPUKernel::GPUKernel(const std::string& kernel_name) : GPUKernel()
+{
+	m_name = kernel_name;
+}
+
 GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name) : GPUKernel()
 {
 	m_kernel_file_path	   = kernel_file_path;
 	m_kernel_function_name = kernel_function_name;
+}
+
+std::string GPUKernel::get_kernel_name() const
+{
+	if (m_name != "")
+		return m_name;
+	else
+		return m_kernel_function_name;
 }
 
 std::string GPUKernel::get_kernel_file_path() const
@@ -37,6 +50,11 @@ std::string GPUKernel::get_kernel_file_path() const
 std::string GPUKernel::get_kernel_function_name() const
 {
 	return m_kernel_function_name;
+}
+
+void GPUKernel::set_kernel_name(const std::string& kernel_name)
+{
+	m_name = kernel_name;
 }
 
 void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path)

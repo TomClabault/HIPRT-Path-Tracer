@@ -9,8 +9,8 @@
 #include "Threads/ThreadManager.h"
 
 RenderPass::RenderPass() {}
-RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, "Unnamed render pass") {}
-RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name)
+RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass("Unnamed render pass", renderer, options) {}
+RenderPass::RenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: m_renderer(renderer), m_compiler_options(options), m_name(name)
 {
 }
@@ -127,4 +127,7 @@ const std::string& RenderPass::get_name()
 void RenderPass::set_name(const std::string& new_name)
 {
 	m_name = new_name;
+
+	for (auto& name_to_kernel : get_all_kernels())
+		name_to_kernel.second->set_kernel_name(m_name + "::" + name_to_kernel.first);
 }

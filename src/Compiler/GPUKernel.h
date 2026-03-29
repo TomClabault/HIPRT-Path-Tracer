@@ -24,11 +24,14 @@ public:
 	static const std::vector<std::string> COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 
 	GPUKernel();
+	GPUKernel(const std::string& kernel_name);
 	GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
 
+	std::string get_kernel_name() const;
 	std::string get_kernel_file_path() const;
 	std::string get_kernel_function_name() const;
 
+	void set_kernel_name(const std::string& kernel_name);
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
 
@@ -187,7 +190,11 @@ private:
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
 
-	std::string m_kernel_file_path	   = "";
+	// Custom name for the kernel
+	std::string m_name = "";
+	// Kernel file path
+	std::string m_kernel_file_path = "";
+	// Name of the __global__ function entry point of the kernel
 	std::string m_kernel_function_name = "";
 
 	// Whether or not the kernel has been launched at least once

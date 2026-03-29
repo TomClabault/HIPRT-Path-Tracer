@@ -128,8 +128,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 		int nb_local  = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
 
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %ldms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n",
-								kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared,
-								nb_local);
+								kernel.get_kernel_name().c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg,
+								nb_shared, nb_local);
 	}
 
 	return kernel_function;

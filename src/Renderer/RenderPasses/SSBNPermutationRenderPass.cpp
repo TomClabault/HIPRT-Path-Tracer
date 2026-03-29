@@ -18,20 +18,23 @@ const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS	 
 const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS = "SSBN Permutation Refresh Seeds Pass";
 
 SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(renderer, options, SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME)
+	: RenderPass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME, renderer, options)
 {
-	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] = std::make_shared<GPUKernel>();
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_function_name("SSBNPermutationSortingPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->synchronize_options_with(m_compiler_options, {});
 
-	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS] = std::make_shared<GPUKernel>();
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																								  "/SSBNPermutation/RetargetingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->set_kernel_function_name("SSBNPermutationRetargetingPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->synchronize_options_with(m_compiler_options, {});
 
-	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS] = std::make_shared<GPUKernel>();
+	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																									"/SSBNPermutation/RefreshSeedsPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_function_name("SSBNPermutationRefreshSeedsPass");

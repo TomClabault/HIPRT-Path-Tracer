@@ -9,16 +9,16 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
-const std::string GPURendererThread::RENDER_GRAPH_FULL_NAME			 = "FullRenderGraph";
-const std::string GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME = "InteractivityRenderGraph";
+const std::string GPURendererThread::RENDER_GRAPH_FULL_NAME			 = "Full render graph";
+const std::string GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME = "Interactivity render graph";
 
 void GPURendererThread::init(RenderWindow* render_window, GPURenderer* renderer)
 {
 	// Configuring the render passes
 	m_render_window									 = render_window;
 	m_renderer										 = renderer;
-	m_render_graphs[RENDER_GRAPH_FULL_NAME]			 = RenderGraph(renderer, std::make_shared<GPUKernelCompilerOptions>());
-	m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME] = RenderGraph(renderer, std::make_shared<GPUKernelCompilerOptions>());
+	m_render_graphs[RENDER_GRAPH_FULL_NAME]			 = RenderGraph(RENDER_GRAPH_FULL_NAME, renderer, std::make_shared<GPUKernelCompilerOptions>());
+	m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME] = RenderGraph(RENDER_GRAPH_INTERACTIVITY_NAME, renderer, std::make_shared<GPUKernelCompilerOptions>());
 
 	m_active_render_graph = &m_render_graphs[RENDER_GRAPH_FULL_NAME];
 }

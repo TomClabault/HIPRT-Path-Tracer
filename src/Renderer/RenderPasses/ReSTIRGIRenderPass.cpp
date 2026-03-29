@@ -33,12 +33,13 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FI
 };
 
 ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: MegaKernelRenderPass(renderer, options, ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME)
+	: MegaKernelRenderPass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME, renderer, options)
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_stop));
 
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_function_name(
@@ -50,7 +51,8 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(
@@ -62,7 +64,8 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_function_name(
@@ -74,7 +77,8 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_function_name(
@@ -85,7 +89,8 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 																									 8);
 
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(

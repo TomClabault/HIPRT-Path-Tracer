@@ -5,9 +5,9 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
-#include "UI/RenderWindow.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "UI/RenderWindow.h"
 
 #include <memory>
 
@@ -15,11 +15,11 @@ const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G
 const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL		   = "Fill G-Buffer";
 
 FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(renderer, options, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
+	: RenderPass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME, renderer, options)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
 
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>();
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + FillGBufferRenderPass::FILL_GBUFFER_KERNEL);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_function_name("CameraRays");
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
@@ -37,7 +37,7 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 	// We're compiling it serially so that we're sure that we can retrieve the RayVolumeState size on the GPU after the
 	// GPURenderer is constructed (because this renderer pass is compiled during the construction of the GPURenderer)
 
-	m_ray_volume_state_byte_size_kernel = std::make_shared<GPUKernel>();
+	m_ray_volume_state_byte_size_kernel = std::make_shared<GPUKernel>(this->get_name() + "::RayVolumeStateSize");
 	m_ray_volume_state_byte_size_kernel->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h");
 	m_ray_volume_state_byte_size_kernel->set_kernel_function_name("RayVolumeStateSize");
 	m_ray_volume_state_byte_size_kernel->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);

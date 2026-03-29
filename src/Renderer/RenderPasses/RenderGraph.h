@@ -17,7 +17,7 @@ class RenderGraph : public RenderPass
 {
 public:
 	RenderGraph();
-	RenderGraph(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions>);
+	RenderGraph(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions>);
 
 	void set_render_window(RenderWindow* render_window);
 
@@ -95,11 +95,7 @@ std::shared_ptr<RenderPassType> RenderGraph::create_render_pass()
 {
 	std::shared_ptr<RenderPassType> pass = std::make_shared<RenderPassType>(m_renderer, m_compiler_options);
 	pass->set_compiler_options(m_compiler_options);
-
-	// We need this commented otherwise kernels that set custom options in the constructor of the render pass get overriden by this (ReSTIR GI and the
-	// DirectionalReuseCompute kernel option for example)
-	/*for (auto& [kernel_name, kernel] : pass->get_all_kernels())
-		kernel->get_kernel_options() = *m_compiler_options;*/
+	pass->set_name(m_name + "::" + pass->get_name());
 
 	return pass;
 }

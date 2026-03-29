@@ -15,7 +15,7 @@ public:
 	static const std::string MEGAKERNEL_KERNEL;
 
 	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
-	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name);
+	MegaKernelRenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
 											  const std::vector<hiprtFuncNameSet>& func_name_sets,

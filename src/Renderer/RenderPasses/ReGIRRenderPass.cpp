@@ -54,7 +54,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 };
 
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(renderer, options, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
+	: RenderPass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME, renderer, options)
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_pre_integration_async_stream));
@@ -64,7 +64,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_stop));
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE] = std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_PRE_POPULATE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
@@ -72,7 +72,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																							  KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_function_name(
@@ -84,7 +85,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_function_name(
@@ -97,7 +99,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_function_name(
@@ -107,7 +110,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_function_name(
@@ -120,7 +124,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
@@ -131,7 +136,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION);
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>(
+							this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
@@ -143,7 +149,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
@@ -154,20 +161,22 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID);
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 
-	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_REHASH_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 
-	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_file_path(
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_function_name(

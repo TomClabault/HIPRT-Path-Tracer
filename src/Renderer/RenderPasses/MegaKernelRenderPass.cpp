@@ -13,13 +13,13 @@ const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Megakerne
 const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL			= "Megakernel (1 SPP)";
 
 MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: MegaKernelRenderPass(renderer, options, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME)
+	: MegaKernelRenderPass(MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME, renderer, options)
 {
 }
-MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name)
-	: RenderPass(renderer, options, name)
+MegaKernelRenderPass::MegaKernelRenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(name, renderer, options)
 {
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>();
+	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MegaKernelRenderPass::MEGAKERNEL_KERNEL);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_function_name("MegaKernel");
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);

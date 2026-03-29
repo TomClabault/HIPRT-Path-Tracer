@@ -5,8 +5,8 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
-#include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE = "NEE++ Pre-population";
@@ -22,12 +22,13 @@ const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL
 };
 
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(renderer, options, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME)
+	: RenderPass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME, renderer, options)
 {
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE] = std::make_shared<GPUKernel>();
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE] =
+							std::make_shared<GPUKernel>(this->get_name() + "::" + NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE);
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_file_path(
 							NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(

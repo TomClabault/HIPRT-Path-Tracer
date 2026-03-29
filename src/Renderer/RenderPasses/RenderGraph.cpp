@@ -6,9 +6,12 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 
-RenderGraph::RenderGraph() : RenderGraph(nullptr, nullptr) {}
+RenderGraph::RenderGraph() : RenderGraph("Default render graph", nullptr, nullptr) {}
 
-RenderGraph::RenderGraph(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, "Unnamed render graph") {}
+RenderGraph::RenderGraph(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(name, renderer, options)
+{
+}
 
 void RenderGraph::set_render_window(RenderWindow* render_window)
 {
@@ -223,7 +226,9 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 
 std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& render_pass_name)
 {
-	auto find = m_render_passes.find(render_pass_name);
+	std::string pass_name = m_name + "::" + render_pass_name;
+
+	auto find = m_render_passes.find(pass_name);
 	if (find == m_render_passes.end())
 		return nullptr;
 	else

@@ -29,7 +29,7 @@ class RenderPass
 public:
 	RenderPass();
 	RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
-	RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name);
+	RenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	void set_render_window(RenderWindow* render_window);
 
