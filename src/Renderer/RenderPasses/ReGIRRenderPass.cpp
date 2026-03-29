@@ -684,10 +684,24 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 		return;
 
+	// We're saving the random number and restoring it afterwards such that the random numbers that we generate in the for loop below only affect the
+	// correlation reduction grid fill. The random number will be restored afterwards such that other kernel launches of the frame that use
+	// render_data.render_settings.random_number do not end up using the same random number that we generated in the for loops (as that would be making the same
+	// random decisions in those kernel then and that's exactly what we don't want by using a random_number here).
+	unsigned int random_number_backup = render_data.render_settings.random_number;
+
 	for (int i = 0; i < render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor; i++)
 	{
+		// The random number will be used in the grid fill to randomize generated light samples such that the generated samples are different from the ones that
+		// the actual grid fill pass (not the grid fill pass here used just for filling the correlation reduction grid) will produce
+		render_data.render_settings.random_number = wang_hash(0xdeadbeef * i + 1);
+
 		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
-		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
+
+		// Another random number for the spatial reuse so we don't correlate initial candidates generation in the grid fill pass above with spatial reuse, this
+		// could be bad with RIS
+		render_data.render_settings.random_number = wang_hash(0xdeadbeef * i + 1 * 0xabacde);
+		ReGIRHashGridSoADevice spatial_output	  = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_correlation_reduction_copy(render_data, spatial_output);
 
 		m_hash_grid_storage.increment_correlation_reduction_counters(render_data);
@@ -697,6 +711,8 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 		render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available =
 								m_hash_grid_storage.get_correlation_reduction_frames_available();
 	}
+
+	render_data.render_settings.random_number = random_number_backup;
 }
 
 void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)

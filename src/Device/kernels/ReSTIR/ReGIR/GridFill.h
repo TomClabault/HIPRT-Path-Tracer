@@ -335,7 +335,8 @@ inline ReGIR_Grid_Fill(HIPRTRenderData render_data,
 		unsigned int hash_grid_cell_index	 = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
 		unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(primary_hit) + reservoir_index_in_cell;
 
-		Xorshift32Generator random_number_generator((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1));
+		Xorshift32Generator random_number_generator((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) *
+													render_data.render_settings.random_number);
 		ReGIRReservoir output_reservoir;
 
 		ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);

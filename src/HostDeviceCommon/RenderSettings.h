@@ -40,6 +40,11 @@ struct HIPRTRenderSettings
 	// resetting is done by the camera rays kernel
 	bool need_to_reset_random_seeds = true;
 
+	// This is a random number variable that can be set just before launching a kernel. That random number can then be used in that kernel to shuffle random
+	// seeds for example. This allows launching the same kernel 2 times in a row but with a different RNG if that random number is used to generate per pixel
+	// seeds for example
+	unsigned int random_number = 42;
+
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
 
