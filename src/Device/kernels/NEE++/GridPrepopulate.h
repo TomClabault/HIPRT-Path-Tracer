@@ -78,7 +78,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
+	Xorshift32Generator random_number_generator(pixel_index + 1);
 
 	// Direction to the center of the pixel
 	float x_ray_point_direction = (x + 0.5f);

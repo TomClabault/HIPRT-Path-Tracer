@@ -132,7 +132,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
@@ -298,7 +298,7 @@
  * If true, the normals used in the hash function of the hash grid will be jittered a little bit
  * to help hide grid artifacts caused by the discretization of normals
  */
-#define ReGIR_HashGridHashFuzzyNormals KERNEL_OPTION_FALSE
+#define ReGIR_HashGridHashFuzzyNormals KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use the surface normal in the hash function of the hash grid
