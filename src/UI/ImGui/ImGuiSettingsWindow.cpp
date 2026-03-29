@@ -2138,12 +2138,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
 
-	if (ImGui::CollapsingHeader("ReGIR Settings"))
+	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
 	{
 		ImGui::TreePush("ReGIR settings tree");
-
-		std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
 
 		ImGui::SeparatorText("Grid stats (primary cells | secondary cells)");
 		ImGui::Text("# of hash cells occupied: %u | %u", regir_render_pass->get_number_of_cells_alive(true),
