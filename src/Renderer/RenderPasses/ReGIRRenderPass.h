@@ -149,7 +149,7 @@ private:
 	// The grid that async compute last stored into
 	/*ReGIRHashGridSoADevice m_last_async_compute_store_buffers_first_hits;
 	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_secondary_hits;*/
-	// Stores the pointers to the buffers that the last spatial reues output into
+	// Stores the pointers to the buffers that the last spatial reuse output into
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_primary_hits;
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_secondary_hits;
 

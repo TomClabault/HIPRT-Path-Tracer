@@ -296,7 +296,7 @@ inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
 			return;
 		}
 
-		unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.get_updated_random_seed(0));
+		unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1));
 		Xorshift32Generator random_number_generator(seed);
 
 		unsigned int spatial_neighbor_rng_seed;

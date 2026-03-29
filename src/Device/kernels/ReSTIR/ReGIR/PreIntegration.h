@@ -44,7 +44,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 														? cell_alive_index
 														: regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
 
-		Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(0));
+		Xorshift32Generator random_number_generator(wang_hash(hash_grid_cell_index * ( render_data.render_settings.sample_number + 1)));
 
 		ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
