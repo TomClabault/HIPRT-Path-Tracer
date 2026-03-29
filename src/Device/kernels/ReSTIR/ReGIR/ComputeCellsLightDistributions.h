@@ -105,11 +105,14 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
  */
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_index_offset, bool primary_hit)
+ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
+										unsigned int* contributions_scratch_buffer_sort_keys,
+										unsigned int cell_index_offset,
+										bool primary_hit)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
-											   float* contributions_scratch_buffer,
+											   unsigned int* contributions_scratch_buffer_sort_keys,
 											   unsigned int cell_index_offset,
 											   bool primary_hit,
 											   unsigned int thread_index)
@@ -125,13 +128,16 @@ inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 	uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
-	// Cell index in [0, number of grid cells alive]
-	unsigned int cell_index = cell_index_offset + thread_index / render_data.buffers.emissive_meshes_data.meshes_alias_table.size;
-	if (cell_index >= hippt::atomic_load(regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count))
+	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
+	// Cell index within the dispatch
+	unsigned int local_cell_index = thread_index / emissive_mesh_count;
+	// Global cell index in [0, total number of grid cells in the scene]
+	unsigned int global_cell_index = cell_index_offset + local_cell_index;
+	if (global_cell_index >= hippt::atomic_load(regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count))
 		// Compute shader threads are outside the valid range
 		return;
-	unsigned int hash_grid_cell_index	  = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_index];
-	unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_data.alias_table_count;
+	unsigned int hash_grid_cell_index	  = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[global_cell_index];
+	unsigned int mesh_index_for_grid_cell = thread_index % emissive_mesh_count;
 
 	ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
@@ -139,8 +145,16 @@ inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 	Xorshift32Generator rng(seed);
 
 	float mesh_contribution = compute_mesh_contribution(render_data, cell_surface, mesh_index_for_grid_cell, primary_hit, rng);
+	// Using log luminance to compress very high values and help precision of fp16
+	float log_mesh_contribution		= hippt::intrin_logf(mesh_contribution + 1.0f);
+	fp16 log_mesh_contribution_fp16 = static_cast<fp16>(log_mesh_contribution);
 
-	contributions_scratch_buffer[thread_index] = mesh_contribution;
+	// We're producing a sort key here so that we can sort mesh indices by contribution after this kernel.
+	// The sort key is made of the contribution in the lower 16 bits and the local cell index in the upper 16 bits. We need the local cell index to be able to
+	// regroup the contributions by cell after sorting (since contributions of different cells are mixed together in the scratch buffer) and we need the
+	// contribution in the lower bits because we want to sort by contribution first.
+	contributions_scratch_buffer_sort_keys[thread_index] =
+							static_cast<unsigned int>(hippt::half_as_ushort(log_mesh_contribution_fp16)) | (local_cell_index << 16);
 }
 
 #endif

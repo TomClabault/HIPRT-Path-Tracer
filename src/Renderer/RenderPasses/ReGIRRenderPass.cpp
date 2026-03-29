@@ -861,8 +861,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 	unsigned int emissive_mesh_count			  = render_data.buffers.emissive_meshes_data.alias_table_count;
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive;
+	// Maximum of 65535 cells computed at a time because of how we pack the cell index as a short uint in the sorting key of the scratch buffer = maximum of
+	// 65535 for the packed short uint index
 	unsigned int max_number_of_cells_computed_per_iteration =
-							std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
+							hippt::min((unsigned int)((unsigned short int)-1),
+									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
 
@@ -871,9 +874,9 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	//
 	// The inner min() part on ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount is to round down the buffer on an integer number of
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
-	OrochiBuffer<float> contribution_scratch_buffer_GPU(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-																   total_number_of_cells_to_compute * emissive_mesh_count));
-	float* scratch_buffer_address = contribution_scratch_buffer_GPU.get_device_pointer();
+	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
+																		  total_number_of_cells_to_compute * emissive_mesh_count));
+	unsigned int* scratch_buffer_sorting_keys_address = contribution_scratch_buffer_GPU.get_device_pointer();
 
 	// clang-format off
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
@@ -889,7 +892,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
 	for (int iter = 0; iter < iteration_needed; iter++)
 	{
-		void* launch_args[] = { &render_data, &scratch_buffer_address, &cell_offset, &primary_hit };
+		void* launch_args[] = { &render_data, &scratch_buffer_sorting_keys_address, &cell_offset, &primary_hit };
 
 		// Computing the contributions of emissive meshes
 		unsigned int contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
@@ -905,8 +908,16 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		// We're actually not going to sort the contributions directly but rather sort the
 		// indices that point to the contributions because we're going to need the sorted indices later
 
-		std::vector<float> contributions_scratch_buffer = contribution_scratch_buffer_GPU.download_data();
-		std::vector<unsigned int> sorted_mesh_indices(contributions_scratch_buffer.size());
+		std::vector<unsigned int> contributions_scratch_buffer_sorting_keys = contribution_scratch_buffer_GPU.download_data();
+		std::vector<unsigned int> sorted_mesh_indices(contributions_scratch_buffer_sorting_keys.size());
+
+		auto get_float_contribution_from_scratch_buffer = [&](unsigned int index)
+		{
+			// The contribution is in the lower 16 bits encoded as an fp16
+			unsigned int contribution_bits = contributions_scratch_buffer_sorting_keys.at(index) & 0xFFFF;
+
+			return hippt::fp16_bits_to_fp32(contribution_bits);
+		};
 
 		start = std::chrono::high_resolution_clock::now();
 
@@ -924,8 +935,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			std::sort(first, last,
 					  [&](unsigned int a, unsigned int b)
 					  {
+						  float contribution_a = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + a);
+						  float contribution_b = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + b);
+
 						  // Sorting in descendant order
-						  return contributions_scratch_buffer.at(i * emissive_mesh_count + a) > contributions_scratch_buffer.at(i * emissive_mesh_count + b);
+						  return contribution_a > contribution_b;
 					  });
 		}
 
@@ -964,7 +978,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			std::vector<float> best_contributions(effective_light_distribution_size);
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 			{
-				float contribution = contributions_scratch_buffer.at(
+				float contribution = get_float_contribution_from_scratch_buffer(
 										cell_index_in_iteration * emissive_mesh_count +
 										sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
@@ -996,7 +1010,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 					float accumulated_contribution = 0.0f;
 					for (contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 					{
-						float contribution = contributions_scratch_buffer.at(
+						float contribution = get_float_contribution_from_scratch_buffer(
 												sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) +
 												cell_index_in_iteration * emissive_mesh_count);
 						accumulated_contribution += contribution;
