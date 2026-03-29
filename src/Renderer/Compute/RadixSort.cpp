@@ -96,7 +96,7 @@ void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const s
 	m_values_data_pointer = m_values_buffer.get_device_pointer();
 }
 
-void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, size_t element_count)
+void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, unsigned int element_count)
 {
 	if (m_last_resize_element_count < element_count)
 	{
@@ -137,17 +137,17 @@ void RadixSort::sort()
 		int bit_offset = pass * RADIX_SORT_RADIX_BITS;
 
 		// Zero the count tables before counting
-		unsigned int count_tables_size					 = m_global_count_tables_buffer.size();
+		unsigned int global_count_table_size					 = m_global_count_tables_buffer.size();
 		unsigned int per_block_count_tables_size		 = m_per_block_count_tables_buffer.size();
 		unsigned int per_block_count_tables_scanned_size = m_per_block_count_tables_scanned_buffer.size();
 		void* memset_0_args[]							 = { &count_tables,
-															 &per_block_count_tables_size,
+															 &global_count_table_size,
 															 &per_block_count_tables,
 															 &per_block_count_tables_size,
 															 &per_block_count_tables_scanned,
 															 &per_block_count_tables_scanned_size };
 		m_memset_0_kernel.launch_asynchronous(1024, 1,
-											  hippt::max(count_tables_size, hippt::max(per_block_count_tables_size, per_block_count_tables_scanned_size)), 1,
+											  hippt::max(global_count_table_size, hippt::max(per_block_count_tables_size, per_block_count_tables_scanned_size)), 1,
 											  memset_0_args, m_stream);
 
 		// Count kernel: Count occurrences of each radix digit

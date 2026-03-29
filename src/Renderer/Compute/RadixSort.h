@@ -28,7 +28,7 @@ public:
 	void resize(unsigned int element_count);
 
 	void upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values);
-	void set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, size_t element_count);
+	void set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, unsigned int element_count);
 	void sort();
 
 	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
