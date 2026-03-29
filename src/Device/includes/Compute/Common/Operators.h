@@ -5,6 +5,8 @@
 
 #include "Device/includes/FixIntellisense.h"
 
+#include "HostDeviceCommon/Maths/Math.h"
+
 #include <limits>
 
 #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_OPERATORS_H
