@@ -118,7 +118,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 			for (int d = 0; d < RadixSortBlockRadix; d++)
 			{
 				unsigned int warp_digit_count  = thread_id_in_block < warp_count ? warp_digit_counts[thread_id_in_block][d] : 0;
-				unsigned int warp_digit_prefix = warp_scan_exclusive(warp_digit_count, thread_id_in_block);
+				unsigned int warp_digit_prefix = warp_prefix_scan_exclusive(warp_digit_count, thread_id_in_block);
 
 				if (thread_id_in_block < warp_count)
 					warp_digit_bases[thread_id_in_block][d] = warp_digit_prefix;
