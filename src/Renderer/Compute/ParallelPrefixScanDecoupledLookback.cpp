@@ -77,7 +77,7 @@ void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_
 
 void ParallelPrefixScanDecoupledLookback::set_data_pointers(unsigned int* input_buffer_pointer, unsigned int* output_buffer_pointer, unsigned int element_count)
 {
-	if (m_last_resize_element_count != element_count)
+	if (m_last_resize_element_count < element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 								"ParallelPrefixScanDecoupledLookback::set_data_pointers() called with an element_count (%u) that is different from the last "

@@ -81,7 +81,7 @@ void ParallelSegmentedPrefixScan::set_data_pointers(unsigned int* device_data_po
 
 void ParallelSegmentedPrefixScan::set_data_pointers(unsigned int* device_data_pointer, unsigned int* device_flags_pointer, unsigned int element_count)
 {
-	if (m_last_resize_element_count != element_count)
+	if (m_last_resize_element_count < element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 								"ParallelSegmentedPrefixScan::set_data_pointers() called with an element_count (%u) that is different from the last one used "

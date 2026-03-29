@@ -26,8 +26,8 @@ public:
 	SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
-	void reload_blue_noise_texture(int new_width, int new_height);
-	void reload_retargeting_data(int new_max_retargeting_radius);
+	void reload_blue_noise_texture_and_retargeting_data(int new_width, int new_height);
+	void reload_retargeting_data_only(int new_max_retargeting_radius);
 	std::string get_permutation_file_path_no_extension(int retarget_radius = -1);
 
 	/**

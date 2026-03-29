@@ -40,8 +40,8 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_function_name("SSBNPermutationRefreshSeedsPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->synchronize_options_with(m_compiler_options, {});
 
-	reload_blue_noise_texture(m_blue_noise_texture_width, m_blue_noise_texture_height);
-	reload_retargeting_data(m_max_retargeting_radius);
+	reload_blue_noise_texture_and_retargeting_data(m_blue_noise_texture_width, m_blue_noise_texture_height);
+	reload_retargeting_data_only(m_max_retargeting_radius);
 }
 
 void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -65,7 +65,7 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 	m_just_resized = true;
 }
 
-void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new_height)
+void SSBNPermutationRenderPass::reload_blue_noise_texture_and_retargeting_data(int new_width, int new_height)
 {
 	if (!is_render_pass_used())
 		return;
@@ -93,10 +93,10 @@ void SSBNPermutationRenderPass::reload_blue_noise_texture(int new_width, int new
 
 	m_blue_noise_dither_texture_buffer = OrochiBuffer<unsigned char>(blue_noise_dither_data);
 
-	reload_retargeting_data(m_max_retargeting_radius);
+	reload_retargeting_data_only(m_max_retargeting_radius);
 }
 
-void SSBNPermutationRenderPass::reload_retargeting_data(int new_max_retargeting_radius)
+void SSBNPermutationRenderPass::reload_retargeting_data_only(int new_max_retargeting_radius)
 {
 	if (!is_render_pass_used())
 		return;
@@ -156,6 +156,12 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 			m_screen_space_hash_grid_cell_offsets_buffer.free();
 		}
 
+		if (m_blue_noise_dither_texture_buffer.size() > 0)
+			m_blue_noise_dither_texture_buffer.free();
+
+		if (m_blue_noise_retargeting_texture_buffer.size() > 0)
+			m_blue_noise_retargeting_texture_buffer.free();
+
 		updated = true;
 	}
 	else
@@ -172,6 +178,9 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 			m_screen_space_hash_grid_cell_offsets_buffer.resize(resolution_x * resolution_y);
 		}
 
+		if (m_blue_noise_dither_texture_buffer.size() == 0 || m_blue_noise_retargeting_texture_buffer.size() == 0)
+			reload_blue_noise_texture_and_retargeting_data(m_blue_noise_texture_width, m_blue_noise_texture_height);
+
 		updated = true;
 	}
 
@@ -185,7 +194,7 @@ bool SSBNPermutationRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return;
 
 	unsigned char* blue_noise_texture_buffer_pointer = m_blue_noise_dither_texture_buffer.get_device_pointer();

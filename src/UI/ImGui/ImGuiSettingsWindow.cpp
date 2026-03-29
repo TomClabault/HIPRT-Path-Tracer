@@ -4857,7 +4857,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 			if (max_retargeting_radius_changed)
 			{
-				ssbn_pass->reload_retargeting_data(ssbn_pass->get_max_retargeting_radius());
+				ssbn_pass->reload_retargeting_data_only(ssbn_pass->get_max_retargeting_radius());
 
 				m_render_window->set_render_dirty(true);
 			}

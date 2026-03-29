@@ -425,7 +425,7 @@ void GPURenderer::reload_ssbn_permutation_blue_noise_texture(unsigned int new_wi
 	if (!ssbn_permutation_render_pass)
 		return;
 
-	ssbn_permutation_render_pass->reload_blue_noise_texture(new_width, new_height);
+	ssbn_permutation_render_pass->reload_blue_noise_texture_and_retargeting_data(new_width, new_height);
 }
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)

@@ -98,7 +98,7 @@ void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const s
 
 void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, size_t element_count)
 {
-	if (!m_last_resize_element_count != element_count)
+	if (!m_last_resize_element_count < element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 								"RadixSort::set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). "
