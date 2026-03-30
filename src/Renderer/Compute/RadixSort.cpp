@@ -129,6 +129,7 @@ void RadixSort::sort()
 	unsigned int* count_tables					 = m_global_count_tables_buffer.get_device_pointer();
 	unsigned int* per_block_count_tables		 = m_per_block_count_tables_buffer.get_device_pointer();
 	unsigned int* per_block_count_tables_scanned = m_per_block_count_tables_scanned_buffer.get_device_pointer();
+	bool ascending_order						 = (m_ordering == Ordering::ASCENDING);
 
 	// Perform radix sort in multiple passes
 	static constexpr int NUM_PASSES = sizeof(unsigned int) * 8 / RADIX_SORT_RADIX_BITS;
@@ -137,7 +138,7 @@ void RadixSort::sort()
 		int bit_offset = pass * RADIX_SORT_RADIX_BITS;
 
 		// Zero the count tables before counting
-		unsigned int global_count_table_size					 = m_global_count_tables_buffer.size();
+		unsigned int global_count_table_size			 = m_global_count_tables_buffer.size();
 		unsigned int per_block_count_tables_size		 = m_per_block_count_tables_buffer.size();
 		unsigned int per_block_count_tables_scanned_size = m_per_block_count_tables_scanned_buffer.size();
 		void* memset_0_args[]							 = { &count_tables,
@@ -147,11 +148,11 @@ void RadixSort::sort()
 															 &per_block_count_tables_scanned,
 															 &per_block_count_tables_scanned_size };
 		m_memset_0_kernel.launch_asynchronous(1024, 1,
-											  hippt::max(global_count_table_size, hippt::max(per_block_count_tables_size, per_block_count_tables_scanned_size)), 1,
-											  memset_0_args, m_stream);
+											  hippt::max(global_count_table_size, hippt::max(per_block_count_tables_size, per_block_count_tables_scanned_size)),
+											  1, memset_0_args, m_stream);
 
 		// Count kernel: Count occurrences of each radix digit
-		void* count_args[] = { &input_keys, &count_tables, &per_block_count_tables, &m_size, &bit_offset };
+		void* count_args[] = { &input_keys, &count_tables, &per_block_count_tables, &m_size, &bit_offset, &ascending_order };
 		m_count_kernel.launch_asynchronous(RADIX_SORT_INPUT_CHUNK_SIZE, 1, m_size, 1, count_args, m_stream);
 
 		unsigned int num_blocks = (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
@@ -171,8 +172,8 @@ void RadixSort::sort()
 
 		// Reorder kernel: Scatter elements to sorted positions
 		void* reorder_args[] = {
-			&input_keys, &input_values, &output_keys, &output_values, &global_count_table_prefix_scanned, &per_block_count_table_prefix_scanned,
-			&m_size,	 &bit_offset
+			&input_keys, &input_values, &output_keys,	 &output_values, &global_count_table_prefix_scanned, &per_block_count_table_prefix_scanned,
+			&m_size,	 &bit_offset,	&ascending_order
 		};
 		m_reorder_kernel.launch_asynchronous(RADIX_SORT_INPUT_CHUNK_SIZE, 1, m_size, 1, reorder_args, m_stream);
 
@@ -206,81 +207,107 @@ OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
 	return m_values_buffer;
 }
 
+void RadixSort::set_ordering(Ordering order)
+{
+	m_ordering = order;
+}
+
 void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	RadixSort sorter(hiprt_ctx, stream);
-
-	std::mt19937 rng(42);
-
-	oroEvent_t scan_start;
-	oroEvent_t scan_end;
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
-	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
-
-	int iteration_count	   = 100;
-	double average_time_ms = 0.0;
-	// Tests with random sizes
-	for (int i = 0; i < iteration_count; i++)
+	for (int ordering = 0; ordering < 2; ordering++)
 	{
-		rng.seed(i);
+		if (ordering == 0)
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Testing RadixSort with ascending order...");
+		else
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Testing RadixSort with descending order...");
 
-		unsigned int test_size = 1280 * 720;
+		RadixSort::Ordering order = (ordering == 0) ? RadixSort::Ordering::ASCENDING : RadixSort::Ordering::DESCENDING;
+		RadixSort sorter(hiprt_ctx, stream);
+		sorter.set_ordering(order);
 
-		std::vector<unsigned int> input_keys(test_size);
-		std::vector<unsigned int> input_values(test_size);
+		std::mt19937 rng(42);
 
-		std::iota(input_values.begin(), input_values.end(), 0);
-		std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng(); });
+		oroEvent_t scan_start;
+		oroEvent_t scan_end;
 
-		std::vector<std::pair<unsigned int, unsigned int>> key_value_pairs(test_size);
+		OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
+		OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
-		for (size_t j = 0; j < test_size; j++)
-			key_value_pairs[j] = { input_keys[j], input_values[j] };
-
-		auto start = std::chrono::high_resolution_clock::now();
-		std::stable_sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
-		auto stop = std::chrono::high_resolution_clock::now();
-
-		std::cout << "CPU sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
-				  << std::endl;
-
-		sorter.upload_input_data(input_keys, input_values);
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(stream));
-
-		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		unsigned int repeats = 10;
-		for (int j = 0; j < repeats; j++)
+		int iteration_count	   = 25;
+		double average_time_ms = 0.0;
+		// Tests with random sizes ascending order
+		for (int i = 0; i < iteration_count; i++)
 		{
-			sorter.sort();
-		}
-		OROCHI_CHECK_ERROR(oroEventRecord(scan_end, stream));
+			rng.seed(i);
 
-		float elapsed_time_ms = 0.0f;
-		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
-		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
+			unsigned int test_size = rng() % 102400000;
 
-		double current_time_ms = elapsed_time_ms / repeats;
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tRadixSort unit test %d: sorted %u elements in %.3f ms. %.3fGItems/s", i, test_size,
-								current_time_ms, test_size / (elapsed_time_ms * 1e6f / repeats));
-		average_time_ms += current_time_ms;
+			std::vector<unsigned int> input_keys(test_size);
+			std::vector<unsigned int> input_values(test_size);
 
-		std::vector<unsigned int> sorted_keys	= sorter.get_sorted_keys_buffer().download_data();
-		std::vector<unsigned int> sorted_values = sorter.get_sorted_values_buffer().download_data();
+			std::iota(input_values.begin(), input_values.end(), 0);
+			std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng(); });
 
-		for (size_t j = 0; j < test_size; j++)
-		{
-			if (sorted_keys[j] != key_value_pairs[j].first || sorted_values[j] != key_value_pairs[j].second)
+			std::vector<std::pair<unsigned int, unsigned int>> key_value_pairs(test_size);
+
+			for (size_t j = 0; j < test_size; j++)
+				key_value_pairs[j] = { input_keys[j], input_values[j] };
+
+			auto start = std::chrono::high_resolution_clock::now();
+			if (order == RadixSort::Ordering::ASCENDING)
+				std::stable_sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+			else
+				std::stable_sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+			auto stop = std::chrono::high_resolution_clock::now();
+
+			std::cout << "CPU sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size
+					  << " elements." << std::endl;
+
+			sorter.upload_input_data(input_keys, input_values);
+			OROCHI_CHECK_ERROR(oroStreamSynchronize(stream));
+
+			OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+			unsigned int repeats = 10;
+			for (int j = 0; j < repeats; j++)
 			{
-				std::cout << "Mismatch at index " << j << ": got (" << sorted_keys[j] << ", " << sorted_values[j] << "), expected (" << key_value_pairs[j].first
-						  << ", " << key_value_pairs[j].second << ")" << std::endl;
+				sorter.sort();
+			}
+			OROCHI_CHECK_ERROR(oroEventRecord(scan_end, stream));
 
-				return;
+			float elapsed_time_ms = 0.0f;
+			OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
+			OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
+
+			double current_time_ms = elapsed_time_ms / repeats;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tRadixSort unit test %d: sorted %u elements in %.3f ms. %.3fGItems/s", i,
+									test_size, current_time_ms, test_size / (elapsed_time_ms * 1e6f / repeats));
+			average_time_ms += current_time_ms;
+
+			std::vector<unsigned int> sorted_keys	= sorter.get_sorted_keys_buffer().download_data();
+			std::vector<unsigned int> sorted_values = sorter.get_sorted_values_buffer().download_data();
+
+			for (size_t j = 0; j < test_size; j++)
+			{
+				if (sorted_keys[j] != key_value_pairs[j].first || sorted_values[j] != key_value_pairs[j].second)
+				{
+					std::cout << "Mismatch at index " << j << ": got (" << sorted_keys[j] << ", " << sorted_values[j] << "), expected ("
+							  << key_value_pairs[j].first << ", " << key_value_pairs[j].second << ")" << std::endl;
+
+					OROCHI_CHECK_ERROR(oroEventDestroy(scan_start));
+					OROCHI_CHECK_ERROR(oroEventDestroy(scan_end));
+
+					Debug::debugbreak();
+
+					return;
+				}
 			}
 		}
+
+		average_time_ms /= iteration_count;
+
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Average GPU time over %d iterations: %.3f ms", iteration_count, average_time_ms);
+
+		OROCHI_CHECK_ERROR(oroEventDestroy(scan_start));
+		OROCHI_CHECK_ERROR(oroEventDestroy(scan_end));
 	}
-
-	average_time_ms /= iteration_count;
-
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Average GPU time over %d iterations: %.3f ms", iteration_count, average_time_ms);
 }

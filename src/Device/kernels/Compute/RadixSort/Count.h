@@ -25,7 +25,8 @@ RadixSort_Count(unsigned int* __restrict__ keys,
 				unsigned int* __restrict__ count_tables,
 				unsigned int* __restrict__ per_block_count_tables,
 				unsigned int size,
-				int radix_offset)
+				int radix_offset,
+				bool ascending_order)
 {
 	__shared__ unsigned int per_block_histogram[RADIX_SORT_RADIX_SIZE];
 	if (threadIdx.x < RADIX_SORT_RADIX_SIZE)
@@ -36,7 +37,7 @@ RadixSort_Count(unsigned int* __restrict__ keys,
 	if (global_thread_index < size)
 	{
 		// Extract the radix digit (8 bits) from the key
-		unsigned int key   = keys[global_thread_index];
+		unsigned int key   = ascending_order ? keys[global_thread_index] : ~keys[global_thread_index];
 		unsigned int radix = (key >> radix_offset) & RADIX_SORT_RADIX_MASK;
 
 		// Atomic increment to count occurrences of each radix value

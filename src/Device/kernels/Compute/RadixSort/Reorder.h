@@ -19,7 +19,8 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 				  const unsigned int* __restrict__ global_count_table_prefix_scanned,
 				  const unsigned int* __restrict__ per_block_count_table_prefix_scanned,
 				  unsigned int size,
-				  int bit_offset)
+				  int bit_offset,
+				  bool ascending_order)
 {
 	// Get the position for this element using atomic increment
 	//
@@ -31,7 +32,7 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	unsigned int warp_index		 = threadIdx.x / warp_size;
 	unsigned int lane_index		 = threadIdx.x & warp_size_mask;
 
-	unsigned int key   = index < size ? input_keys[index] : 0;
+	unsigned int key   = index < size ? (ascending_order ? input_keys[index] : ~input_keys[index]) : 0;
 	unsigned int value = index < size ? input_values[index] : 0;
 	unsigned int radix = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
 
@@ -80,10 +81,11 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 
 	unsigned int sorted_position = global_offset + block_offset + inter_warp_offset + intra_warp_offset;
 
+	// TODO do sorting in shared memory before scattering to global memory such that writes are coalesced to global memory
 	// Scatter to the output position
 	if (index < size)
 	{
-		output_keys[sorted_position]   = key;
+		output_keys[sorted_position]   = ascending_order ? key : ~key;
 		output_values[sorted_position] = value;
 	}
 }

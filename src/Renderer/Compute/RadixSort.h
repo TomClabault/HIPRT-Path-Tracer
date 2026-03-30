@@ -17,6 +17,12 @@
 class RadixSort
 {
 public:
+	enum class Ordering
+	{
+		ASCENDING,
+		DESCENDING
+	};
+
 	RadixSort();
 	RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
@@ -33,6 +39,8 @@ public:
 
 	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
 	OrochiBuffer<unsigned int>& get_sorted_values_buffer();
+
+	void set_ordering(Ordering order);
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
@@ -61,6 +69,8 @@ private:
 
 	size_t m_size;
 	unsigned int m_last_resize_element_count = 0;
+
+	Ordering m_ordering = Ordering::ASCENDING;
 };
 
 #endif
