@@ -154,7 +154,7 @@ inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 	// regroup the contributions by cell after sorting (since contributions of different cells are mixed together in the scratch buffer) and we need the
 	// contribution in the lower bits because we want to sort by contribution first.
 	contributions_scratch_buffer_sort_keys[thread_index] =
-							static_cast<unsigned int>(hippt::half_as_ushort(log_mesh_contribution_fp16)) | (local_cell_index << 16);
+							static_cast<unsigned int>((~hippt::half_as_ushort(log_mesh_contribution_fp16)) & 0xFFFF) | (local_cell_index << 16);
 }
 
 #endif

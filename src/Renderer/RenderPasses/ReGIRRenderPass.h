@@ -6,6 +6,7 @@
 #ifndef REGIR_RENDER_PASS_H
 #define REGIR_RENDER_PASS_H
 
+#include "Renderer/Compute/RadixSort.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
 #include "Renderer/RenderPasses/RenderPass.h"
@@ -182,6 +183,8 @@ private:
 	// This is just used for debugging / measurements purposes
 	float m_last_light_distribution_compaction_vram_saving_primary_hits	  = 0.0f;
 	float m_last_light_distribution_compaction_vram_saving_secondary_hits = 0.0f;
+
+	RadixSort m_radix_sort;
 };
 
 #endif

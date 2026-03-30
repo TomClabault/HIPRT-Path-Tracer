@@ -11,12 +11,12 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/CellsLightDistributionsSoADevice.h"
-#include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
+#include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
-#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 struct ReGIRGridFillSettings
@@ -88,7 +88,7 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
 	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
 	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;

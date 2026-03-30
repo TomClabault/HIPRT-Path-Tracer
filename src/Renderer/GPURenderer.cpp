@@ -43,6 +43,7 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
 	m_power_sampling_data_structure			 = PowerSamplingDataStructure(this);
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
@@ -64,8 +65,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	setup_brdfs_data();
 	setup_filter_functions();
 	m_render_thread.setup_render_graphs();
-
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);

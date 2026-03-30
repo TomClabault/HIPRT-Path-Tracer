@@ -117,6 +117,7 @@ private:
 	int2_t m_resolution;
 
 	Image32Bit m_framebuffer;
+	std::vector<ColorRGB32F> m_last_frame_ray_colors;
 
 	std::vector<unsigned int> m_updated_random_seeds;
 	std::vector<unsigned int> m_input_random_seeds;

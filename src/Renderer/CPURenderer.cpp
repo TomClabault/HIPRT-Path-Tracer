@@ -48,7 +48,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -64,8 +64,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 627
-#define DEBUG_PIXEL_Y 513
+#define DEBUG_PIXEL_X 1089
+#define DEBUG_PIXEL_Y 221
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -102,6 +102,7 @@ void CPURenderer::resize_buffers()
 	unsigned int height = m_resolution.y;
 
 	m_framebuffer = Image32Bit(width, height, 3);
+	m_last_frame_ray_colors.resize(width * height);
 
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
@@ -360,6 +361,7 @@ void CPURenderer::update_render_data()
 	bsdfs_data_to_device();
 
 	m_render_data.buffers.accumulated_ray_colors		   = m_framebuffer.get_data_as_ColorRGB32F();
+	m_render_data.buffers.last_frame_ray_colors			   = m_last_frame_ray_colors.data();
 	m_render_data.aux_buffers.pixel_active				   = m_pixel_active_buffer.data();
 	m_render_data.aux_buffers.denoiser_albedo			   = m_denoiser_albedo.data();
 	m_render_data.aux_buffers.denoiser_normals			   = m_denoiser_normals.data();
@@ -916,7 +918,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 		auto get_float_contribution_from_scratch_buffer = [&](unsigned int index)
 		{
 			// The contribution is in the lower 16 bits encoded as an fp16
-			unsigned int contribution_bits = contribution_scratch_buffer_sorting_keys.at(index) & 0xFFFF;
+			// Contributions are written with bits flipped for the GPU radix sort so we're re-flipping them here to get the proper contribution
+			unsigned int contribution_bits = ~(contribution_scratch_buffer_sorting_keys.at(index) & 0xFFFF);
 
 			return hippt::fp16_bits_to_fp32(contribution_bits);
 		};

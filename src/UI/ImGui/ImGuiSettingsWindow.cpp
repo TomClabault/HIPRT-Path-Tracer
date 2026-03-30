@@ -2138,7 +2138,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
+	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= m_renderer->get_ReGIR_render_pass();
 
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
 	{
@@ -2570,7 +2570,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) ==
 									KERNEL_OPTION_TRUE;
 			if (base_light_sampling_strategy_disabled)
-				ImGuiRenderer::add_warning("Cell light distributions are being used as the main sampling strategy");
+				ImGuiRenderer::add_warning("Cell light distributions are being used as the main non-canonical sampling strategy");
 			ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
 			if (ImGuiRenderer::ComboWithTooltips("Non canonical",
 												 global_kernel_options->get_raw_pointer_to_macro_value(

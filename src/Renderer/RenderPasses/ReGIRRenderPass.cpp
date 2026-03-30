@@ -181,6 +181,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
+
+	m_radix_sort.set_context(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -866,6 +868,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	unsigned int max_number_of_cells_computed_per_iteration =
 							hippt::min((unsigned int)((unsigned short int)-1),
 									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
+	unsigned int scratch_buffer_size = hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
+												  total_number_of_cells_to_compute * emissive_mesh_count);
+	// Resizing the radix sort for the sorting step that happens after computing the contributions of the emissive meshes. This does not resize if the radix
+	// sort is already internally resized to the same size
+	m_radix_sort.resize(scratch_buffer_size);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
 
@@ -874,8 +881,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	//
 	// The inner min() part on ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount is to round down the buffer on an integer number of
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
-	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-																		  total_number_of_cells_to_compute * emissive_mesh_count));
+	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(scratch_buffer_size);
 	unsigned int* scratch_buffer_sorting_keys_address = contribution_scratch_buffer_GPU.get_device_pointer();
 
 	// clang-format off
@@ -908,18 +914,19 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		// We're actually not going to sort the contributions directly but rather sort the
 		// indices that point to the contributions because we're going to need the sorted indices later
 
+		auto start_sort = std::chrono::high_resolution_clock::now();
+
 		std::vector<unsigned int> contributions_scratch_buffer_sorting_keys = contribution_scratch_buffer_GPU.download_data();
 		std::vector<unsigned int> sorted_mesh_indices(contributions_scratch_buffer_sorting_keys.size());
 
 		auto get_float_contribution_from_scratch_buffer = [&](unsigned int index)
 		{
 			// The contribution is in the lower 16 bits encoded as an fp16
-			unsigned int contribution_bits = contributions_scratch_buffer_sorting_keys.at(index) & 0xFFFF;
+			// Contributions are written with bits flipped for the GPU radix sort so we're re-flipping them here to get the proper contribution
+			unsigned int contribution_bits = ~(contributions_scratch_buffer_sorting_keys.at(index) & 0xFFFF);
 
 			return hippt::fp16_bits_to_fp32(contribution_bits);
 		};
-
-		start = std::chrono::high_resolution_clock::now();
 
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 			// Filling the sorted indices with the original order (0, 1, 2, 3, ...) before sorting them based on the contributions
@@ -932,22 +939,58 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			auto first = sorted_mesh_indices.begin() + emissive_mesh_count * i;
 			auto last  = sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1);
 
-			std::sort(first, last,
-					  [&](unsigned int a, unsigned int b)
-					  {
-						  float contribution_a = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + a);
-						  float contribution_b = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + b);
+			std::stable_sort(first, last,
+							 [&](unsigned int a, unsigned int b)
+							 {
+								 float contribution_a = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + a);
+								 float contribution_b = get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + b);
 
-						  // Sorting in descendant order
-						  return contribution_a > contribution_b;
-					  });
+								 return contribution_a > contribution_b;
+							 });
 		}
 
-		stop = std::chrono::high_resolution_clock::now();
-		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
+		auto stop_sort = std::chrono::high_resolution_clock::now();
+		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
 
+		// if (false)
 		{
-			auto sorted_mesh_indices_reference = sorted_mesh_indices;
+			std::vector<unsigned int> sorted_mesh_indices_GPU(contributions_scratch_buffer_sorting_keys.size());
+			for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
+				// Filling the sorted indices with the original order (0, 1, 2, 3, ...) before sorting them based on the contributions
+				// That's one list of all emissive mesh indices for each cell
+				std::iota(sorted_mesh_indices_GPU.begin() + emissive_mesh_count * i, sorted_mesh_indices_GPU.begin() + emissive_mesh_count * (i + 1),
+						  0); // 0, 1, 2,...
+
+			std::vector<unsigned int> input_keys_GPU = contribution_scratch_buffer_GPU.download_data();
+			m_radix_sort.upload_input_data(input_keys_GPU, sorted_mesh_indices_GPU);
+			m_radix_sort.set_ordering(RadixSort::Ordering::ASCENDING);
+			m_radix_sort.sort();
+
+			std::vector<unsigned int> sorted_mesh_indices_GPU_downloaded = m_radix_sort.get_sorted_values_buffer().download_data();
+
+			bool matched = true;
+			for (int i = 0; i < sorted_mesh_indices_GPU_downloaded.size(); i++)
+			{
+				if (sorted_mesh_indices_GPU_downloaded.at(i) != sorted_mesh_indices.at(i))
+				{
+					matched = false;
+
+					std::cout << "Mismatch at index " << i << ": GPU = " << sorted_mesh_indices_GPU_downloaded.at(i) << ", CPU = " << sorted_mesh_indices.at(i)
+							  << std::endl;
+
+					break;
+				}
+			}
+
+			if (!matched)
+			{
+				std::cout << "Sorted indices do not match reference!" << std::endl;
+				assert(false);
+			}
+			else
+				std::cout << "Sorted indices match reference." << std::endl;
+
+			// sorted_mesh_indices = sorted_mesh_indices_GPU_downloaded;
 		}
 
 		unsigned int light_distribution_size	= render_data.render_settings.regir_settings.light_distribution_maximum_size;

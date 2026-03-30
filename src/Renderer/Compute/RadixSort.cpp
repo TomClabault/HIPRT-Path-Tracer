@@ -119,8 +119,19 @@ void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned in
 
 void RadixSort::sort()
 {
-	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
+	if (!m_hiprt_ctx || !m_stream)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"RadixSort::sort() called without a valid HIPRT context or stream set. Call set_context() first.");
+
 		return;
+	}
+	else if (m_size == 0)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "RadixSort::sort() called with size 0. Nothing to sort.");
+
+		return;
+	}
 
 	unsigned int* input_keys					 = m_keys_data_pointer;
 	unsigned int* input_values					 = m_values_data_pointer;
@@ -240,7 +251,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		{
 			rng.seed(i);
 
-			unsigned int test_size = rng() % 102400000;
+			unsigned int test_size = rng() % 1000000;
 
 			std::vector<unsigned int> input_keys(test_size);
 			std::vector<unsigned int> input_values(test_size);

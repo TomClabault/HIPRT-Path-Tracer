@@ -487,11 +487,6 @@ namespace hippt
 		return __uint_as_float(uint_num);
 	}
 
-	__device__ static unsigned short int half_as_ushort(fp16 half)
-	{
-		return __half_as_ushort(half);
-	}
-
 	__device__ float fp16_bits_to_fp32(unsigned short int half_bits)
 	{
 		// Source: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
@@ -514,6 +509,11 @@ namespace hippt
 		const unsigned int m = b & 0x007FFFFF; // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
 		return (b & 0x80000000) >> 16 | (e > 112) * ((((e - 112) << 10) & 0x7C00) | m >> 13) |
 			   ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) | (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
+	}
+
+	__device__ static unsigned short int half_as_ushort(fp16 half)
+	{
+		return __half_as_ushort(half);
 	}
 
 	/**
@@ -1293,14 +1293,6 @@ static
 		return std::bit_cast<float>(uint_num);
 	}
 
-	static unsigned short int half_as_ushort(fp16 half)
-	{
-		// This function isn't defined on the CPU
-		Debug::debugbreak();
-
-		return 0;
-	}
-
 	static float fp16_bits_to_fp32(unsigned short int half_bits)
 	{
 		// Source: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
@@ -1323,6 +1315,12 @@ static
 		const unsigned int m = b & 0x007FFFFF; // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
 		return (b & 0x80000000) >> 16 | (e > 112) * ((((e - 112) << 10) & 0x7C00) | m >> 13) |
 			   ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) | (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
+	}
+
+	static unsigned short int half_as_ushort(fp16 half)
+	{
+		// fp16 is just fp32 on the CPU , so we can just reinterpret the bits as a float and then convert to fp16 bits
+		return fp32_to_fp16_bits(half);
 	}
 
 	/**

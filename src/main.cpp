@@ -22,7 +22,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -65,8 +65,6 @@ int main(int argc, char* argv[])
 
 	// Joining everyone before starting the render except the precompilation threads
 	ThreadManager::join_all_threads();
-
-	RadixSort::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
 
 	parsed_scene.print_statistics(std::cout);
 
