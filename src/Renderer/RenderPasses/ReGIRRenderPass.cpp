@@ -391,7 +391,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
-	// Launching the computation of grid-cells light distributions at each frame in case new grid
+	// Launching the computation of grid-cells light distributions to update the distributions in case new grid
 	// cells have been added to the grid because of rays hitting unexplored parts of the scene
 	//
 	// NOTE: Without this, light distributions seem to be a bit biased. Probably because not all cells

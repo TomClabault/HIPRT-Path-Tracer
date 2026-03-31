@@ -220,7 +220,7 @@ HIPRT_DEVICE constexpr int DirectLightSampleCount()
 		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
 		return LightTreeATSSplittingMaxLightSamples;
 	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
-		return 2;
+		return 1;
 	else
 		// Other strategies just return 1 light sample per path vertex
 		return 1;

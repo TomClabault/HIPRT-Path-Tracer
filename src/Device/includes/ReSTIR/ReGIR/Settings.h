@@ -38,10 +38,12 @@ struct ReGIRGridFillSettings
 	{
 		return reservoirs_count_per_grid_cell_non_canonical;
 	}
+
 	HIPRT_DEVICE int get_canonical_reservoir_count_per_cell() const
 	{
 		return reservoirs_count_per_grid_cell_canonical;
 	}
+
 	HIPRT_DEVICE int get_total_reservoir_count_per_cell() const
 	{
 		return reservoirs_count_per_grid_cell_canonical + reservoirs_count_per_grid_cell_non_canonical;
@@ -51,6 +53,7 @@ struct ReGIRGridFillSettings
 	{
 		return &reservoirs_count_per_grid_cell_non_canonical;
 	}
+
 	HIPRT_DEVICE int* get_canonical_reservoir_count_per_cell_ptr()
 	{
 		return &reservoirs_count_per_grid_cell_canonical;
@@ -88,7 +91,7 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
 	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
 	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
@@ -145,6 +148,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid;
 	}
+
 	HIPRT_DEVICE ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit)
 	{
 		return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid;
@@ -154,6 +158,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid;
 	}
+
 	HIPRT_DEVICE ReGIRHashGridSoADevice& get_raw_spatial_output_reservoirs_grid(bool primary_hit)
 	{
 		return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid;
@@ -173,6 +178,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits;
 	}
+
 	HIPRT_DEVICE ReGIRHashCellDataSoADevice& get_hash_cell_data_soa(bool primary_hit)
 	{
 		return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits;
@@ -187,6 +193,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits;
 	}
+
 	HIPRT_DEVICE AtomicType<float>* get_non_canonical_pre_integration_factor_buffer(bool primary_hit)
 	{
 		return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits;
@@ -196,6 +203,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits;
 	}
+
 	HIPRT_DEVICE AtomicType<float>* get_canonical_pre_integration_factor_buffer(bool primary_hit)
 	{
 		return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits;
@@ -205,6 +213,7 @@ struct ReGIRSettings
 	{
 		return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index];
 	}
+
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const
 	{
 		return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index];
@@ -214,6 +223,7 @@ struct ReGIRSettings
 	{
 		return primary_hit ? cells_light_distributions_primary_hits : cells_light_distributions_secondary_hits;
 	}
+
 	HIPRT_DEVICE ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit)
 	{
 		return primary_hit ? cells_light_distributions_primary_hits : cells_light_distributions_secondary_hits;
