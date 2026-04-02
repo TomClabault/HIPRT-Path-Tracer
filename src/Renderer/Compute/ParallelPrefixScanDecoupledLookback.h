@@ -14,6 +14,7 @@
  * Reference: Single-pass Parallel Prefix Scan with Decoupled Look-back
  * https://research.nvidia.com/publication/2016-03_single-pass-parallel-prefix-scan-decoupled-look-back
  */
+template <typename T>
 class ParallelPrefixScanDecoupledLookback
 {
 public:
@@ -25,23 +26,29 @@ public:
 	void initialize_kernels();
 
 	void resize(unsigned int element_count);
-	void upload_input_data(const std::vector<unsigned int>& data);
-	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int element_count);
-	void set_data_pointers(unsigned int* input_buffer_pointer, unsigned int* output_buffer_pointer, unsigned int element_count);
+	void upload_input_data(const std::vector<T>& data);
+	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
+	void set_data_pointers(T* input_buffer_pointer, T* output_buffer_pointer, unsigned int element_count);
 	void scan(bool auto_stream_synchronize = true);
 
 	float get_last_execution_time();
 
-	OrochiBuffer<unsigned int>& get_output_buffer();
+	constexpr std::string get_data_type_as_string();
+
+	OrochiBuffer<T>& get_output_buffer();
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 private:
-	OrochiBuffer<unsigned int> m_input_buffer;
-	OrochiBuffer<unsigned int> m_output_buffer;
+	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
-	unsigned int* m_input_data_pointer	= nullptr;
-	unsigned int* m_output_data_pointer = nullptr;
+private:
+	OrochiBuffer<T> m_input_buffer;
+	OrochiBuffer<T> m_output_buffer;
+
+	T* m_input_data_pointer	 = nullptr;
+	T* m_output_data_pointer = nullptr;
 
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
 	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
@@ -55,5 +62,7 @@ private:
 	unsigned int m_size;
 	unsigned int m_last_resize_element_count = 0;
 };
+
+#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.inl"
 
 #endif

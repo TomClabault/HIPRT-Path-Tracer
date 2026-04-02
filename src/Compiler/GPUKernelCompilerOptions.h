@@ -200,6 +200,7 @@ public:
 	 * The addition of the -D prefix will be added internally.
 	 */
 	void set_macro_value(const std::string& name, int value);
+	void set_string_macro_value(const std::string& name, const std::string& value, bool with_quotes = false);
 
 	/**
 	 * Removes a macro from the list given to the compiler
@@ -215,6 +216,7 @@ public:
 	 * Gets the value of a macro or -1 if the macro isn't set
 	 */
 	int get_macro_value(const std::string& name) const;
+	std::string get_string_macro_value(const std::string& name) const;
 
 	/**
 	 * Returns a pointer to the value of a macro given its name.
@@ -225,6 +227,8 @@ public:
 	 */
 	const std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name) const;
 	int* get_raw_pointer_to_macro_value(const std::string& name);
+	const std::shared_ptr<std::string> get_pointer_to_string_macro_value(const std::string& name) const;
+	std::string* get_raw_pointer_to_string_macro_value(const std::string& name);
 
 	/**
 	 * Links the value of the macro 'name' with the given pointer such that if the value at the given
@@ -232,6 +236,7 @@ public:
 	 * will also be modified to the same value
 	 */
 	void set_pointer_to_macro(const std::string& name, std::shared_ptr<int> pointer_to_value);
+	void set_pointer_to_string_macro(const std::string& name, std::shared_ptr<std::string> pointer_to_value);
 
 	/**
 	 * Returns the map that stores the macro names with their associated values
@@ -242,6 +247,11 @@ public:
 	 * Returns the map that stores the custom macro names with their associated values
 	 */
 	const std::map<std::string, std::shared_ptr<int>>& get_custom_macro_map() const;
+
+	/**
+	 * Returns the map that stores the custom string macro names with their associated values
+	 */
+	const std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>>& get_custom_string_macro_map() const;
 
 	/**
 	 * Removes all options from this instance
@@ -272,6 +282,12 @@ private:
 	// This "custom macro" map contains the macros given by the user with set_macro_value().
 	// Any macro that isn't defined in KernelOptions.h will be found in this custom macro map
 	std::map<std::string, std::shared_ptr<int>> m_custom_macro_map;
+
+	// Same but for string values macros
+	//
+	// The pair contains the pointer to the string value and a boolean that is true if the string macro should be given to the compiler with quotes and false
+	// otherwise: <value, with quotes>
+	std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>> m_custom_string_macro_map;
 };
 
 #endif

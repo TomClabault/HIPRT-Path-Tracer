@@ -60,7 +60,7 @@ private:
 
 	GPUKernel m_memset_0_kernel;
 	GPUKernel m_count_kernel;
-	ParallelPrefixScanDecoupledLookback m_global_count_table_prefix_scan;
+	ParallelPrefixScanDecoupledLookback<unsigned int> m_global_count_table_prefix_scan;
 	ParallelSegmentedPrefixScan m_per_block_count_table_prefix_scan;
 	GPUKernel m_reorder_kernel;
 

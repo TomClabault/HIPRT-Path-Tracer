@@ -50,7 +50,7 @@ add_compile_definitions(SSBN_PERMUTATION_DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/dat
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
 
-file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
+file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h src/*.inl)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 # Selecting only what we need from the whole ImGui submodule

@@ -648,6 +648,12 @@ namespace hippt
 		return __int_as_float(atomicCAS((int*)p, __float_as_int(cmp), __float_as_int(val)));
 	}
 
+	template <typename T>
+	__device__ static T atomic_compare_exchange_gpu(T* address, T expected, T new_value)
+	{
+		return atomic_compare_exchange<T>(address, expected, new_value);
+	}
+
 	/**
 	 * For t=0, returns a
 	 */
@@ -1389,6 +1395,9 @@ static
 	template <typename T>
 	T atomic_fetch_add_gpu(T* atomic_address, T increment)
 	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
 		return 0;
 	}
 
@@ -1413,6 +1422,15 @@ static
 		atomic_address->compare_exchange_strong(expected, new_value);
 
 		return expected;
+	}
+
+	template <typename T>
+	T atomic_compare_exchange_gpu(T* address, T expected, T new_value)
+	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
+		return 0;
 	}
 
 	/**

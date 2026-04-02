@@ -404,8 +404,9 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOption
 
 GPUKernelCompilerOptions& GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
 {
-	m_options_macro_map = other.m_options_macro_map;
-	m_custom_macro_map	= other.m_custom_macro_map;
+	m_options_macro_map		  = other.m_options_macro_map;
+	m_custom_macro_map		  = other.m_custom_macro_map;
+	m_custom_string_macro_map = other.m_custom_string_macro_map;
 
 	return *this;
 }
@@ -423,6 +424,10 @@ GPUKernelCompilerOptions GPUKernelCompilerOptions::deep_copy() const
 		// Creating new shared ptr for the copy
 		out.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
 
+	for (auto& pair : m_custom_string_macro_map)
+		// Creating new shared ptr for the copy
+		out.m_custom_string_macro_map[pair.first] = std::make_pair(std::make_shared<std::string>(*pair.second.first), pair.second.second);
+
 	return out;
 }
 
@@ -435,6 +440,10 @@ std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_
 
 	for (auto macro_key_value : m_custom_macro_map)
 		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(*macro_key_value.second));
+
+	for (auto macro_key_value : m_custom_string_macro_map)
+		macros.push_back("-D " + macro_key_value.first + "=" + (macro_key_value.second.second ? "\"" : "") + (*macro_key_value.second.first) +
+						 (macro_key_value.second.second ? "\"" : ""));
 
 	return macros;
 }
@@ -452,6 +461,10 @@ std::vector<std::string> GPUKernelCompilerOptions::get_relevant_macros_as_std_ve
 	// Adding all the custom macros without conditions
 	for (auto macro_key_value : m_custom_macro_map)
 		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(*macro_key_value.second));
+
+	for (auto macro_key_value : m_custom_string_macro_map)
+		macros.push_back("-D " + macro_key_value.first + "=" + (macro_key_value.second.second ? "\"" : "") + (*macro_key_value.second.first) +
+						 (macro_key_value.second.second ? "\"" : ""));
 
 	std::vector<std::string> additional_macros = kernel->get_additional_compiler_macros();
 	for (const std::string& additional_macro : additional_macros)
@@ -483,10 +496,25 @@ void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int valu
 	}
 }
 
+void GPUKernelCompilerOptions::set_string_macro_value(const std::string& name, const std::string& value, bool with_quotes)
+{
+	// User defined string macro, putting it in the custom string macro map
+	if (m_custom_string_macro_map.find(name) != m_custom_string_macro_map.end())
+	{
+		// Updating the macro's value if it already exists
+		*m_custom_string_macro_map[name].first = value;
+		m_custom_string_macro_map[name].second = with_quotes;
+	}
+	else
+		// Creating it otherwise
+		m_custom_string_macro_map[name] = std::make_pair(std::make_shared<std::string>(value), with_quotes);
+}
+
 void GPUKernelCompilerOptions::remove_macro(const std::string& name)
 {
 	// Only removing from the custom macro map because we cannot remove the options-macro
 	m_custom_macro_map.erase(name);
+	m_custom_string_macro_map.erase(name);
 }
 
 bool GPUKernelCompilerOptions::has_macro(const std::string& name)
@@ -494,7 +522,7 @@ bool GPUKernelCompilerOptions::has_macro(const std::string& name)
 	// Only checking the custom macro map because we cannot remove the options-macro so it makes
 	// no sense to check whether this instance has the macro "InteriorStackStrategy"
 	// for example, it will always be yes
-	return m_custom_macro_map.find(name) != m_custom_macro_map.end();
+	return m_custom_macro_map.find(name) != m_custom_macro_map.end() || m_custom_string_macro_map.find(name) != m_custom_string_macro_map.end();
 }
 
 int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
@@ -514,6 +542,15 @@ int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
 		return *find->second;
 }
 
+std::string GPUKernelCompilerOptions::get_string_macro_value(const std::string& name) const
+{
+	auto find = m_custom_string_macro_map.find(name);
+	if (find == m_custom_string_macro_map.end())
+		return "";
+	else
+		return *find->second.first;
+}
+
 const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(const std::string& name) const
 {
 	auto find = m_options_macro_map.find(name);
@@ -531,12 +568,29 @@ const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(
 		return find->second;
 }
 
+const std::shared_ptr<std::string> GPUKernelCompilerOptions::get_pointer_to_string_macro_value(const std::string& name) const
+{
+	auto find = m_custom_string_macro_map.find(name);
+	if (find == m_custom_string_macro_map.end())
+		return nullptr;
+	else
+		return find->second.first;
+}
+
 int* GPUKernelCompilerOptions::get_raw_pointer_to_macro_value(const std::string& name)
 {
 	std::shared_ptr<int> pointer = get_pointer_to_macro_value(name);
 	if (pointer != nullptr)
 		return pointer.get();
 
+	return nullptr;
+}
+
+std::string* GPUKernelCompilerOptions::get_raw_pointer_to_string_macro_value(const std::string& name)
+{
+	std::shared_ptr<std::string> pointer = get_pointer_to_string_macro_value(name);
+	if (pointer != nullptr)
+		return pointer.get();
 	return nullptr;
 }
 
@@ -551,6 +605,12 @@ void GPUKernelCompilerOptions::set_pointer_to_macro(const std::string& name, std
 		m_options_macro_map[name] = pointer_to_value;
 }
 
+void GPUKernelCompilerOptions::set_pointer_to_string_macro(const std::string& name, std::shared_ptr<std::string> pointer_to_value)
+{
+	// Adding/setting it in the custom string macro map because the options-macro cannot contain string macros
+	m_custom_string_macro_map[name].first = pointer_to_value;
+}
+
 const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_options_macro_map() const
 {
 	return m_options_macro_map;
@@ -561,10 +621,16 @@ const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get
 	return m_custom_macro_map;
 }
 
+const std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>>& GPUKernelCompilerOptions::get_custom_string_macro_map() const
+{
+	return m_custom_string_macro_map;
+}
+
 void GPUKernelCompilerOptions::clear()
 {
-	m_custom_macro_map.clear();
 	m_options_macro_map.clear();
+	m_custom_macro_map.clear();
+	m_custom_string_macro_map.clear();
 }
 
 void GPUKernelCompilerOptions::apply_onto(GPUKernelCompilerOptions& other)
@@ -587,5 +653,15 @@ void GPUKernelCompilerOptions::apply_onto(GPUKernelCompilerOptions& other)
 		else
 			// No need to create a shared ptr, we can just copy the value
 			*other.m_custom_macro_map[pair.first] = *pair.second;
+	}
+
+	for (auto& pair : m_custom_string_macro_map)
+	{
+		if (other.m_custom_string_macro_map.find(pair.first) == other.m_custom_string_macro_map.end())
+			// The option doesn't exist, we need to create the shared ptr
+			other.m_custom_string_macro_map[pair.first] = std::make_pair(std::make_shared<std::string>(*pair.second.first), pair.second.second);
+		else
+			// No need to create a shared ptr, we can just copy the value
+			*other.m_custom_string_macro_map[pair.first].first = *pair.second.first;
 	}
 }

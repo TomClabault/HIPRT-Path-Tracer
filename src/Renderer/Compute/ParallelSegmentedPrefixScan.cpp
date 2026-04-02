@@ -34,11 +34,13 @@ void ParallelSegmentedPrefixScan::initialize_kernels()
 {
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedPrefixScan/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelSegmentedPrefixScanDecoupledLookback_Scan");
+	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", "unsigned int");
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("DataType", "unsigned int");
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 }

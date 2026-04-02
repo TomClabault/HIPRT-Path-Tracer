@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_H
 #define DEVICE_INCLUDES_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_H
 
+#include "Device/includes/Compute/Common/KernelDataType.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
 enum DecoupledLookbackStatus
@@ -29,13 +30,7 @@ struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 		{
 			assumed = old_value;
 
-			// This line doesn't compile on the CPU because it expects std::atomic<> values
-			// but we're only using raw unsigned long long int values here so just guarding
-			// that such that we don't get CPU compilation errors (this code is only meant
-			// to be compiled on the GPU anyways)
-#ifdef __KERNELCC__
-			old_value = hippt::atomic_compare_exchange(target_address, assumed, *reinterpret_cast<const unsigned long long int*>(&value));
-#endif
+			old_value = hippt::atomic_compare_exchange_gpu(target_address, assumed, *reinterpret_cast<const unsigned long long int*>(&value));
 		} while (assumed != old_value);
 	}
 
@@ -49,14 +44,21 @@ struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 		inclusive_sum_status = (inclusive_sum_status & 0x00000000FFFFFFFF) | ((unsigned long long int)status << 32);
 	}
 
-	HIPRT_DEVICE unsigned int get_inclusive_sum() const
+	HIPRT_DEVICE DataType get_inclusive_sum() const
 	{
-		return static_cast<unsigned int>(inclusive_sum_status & 0x00000000FFFFFFFF);
+		uint32_t bits = static_cast<uint32_t>(inclusive_sum_status & 0x00000000FFFFFFFF);
+
+		DataType inclusive_sum;
+		memcpy(&inclusive_sum, &bits, sizeof(DataType));
+		return inclusive_sum;
 	}
 
-	HIPRT_DEVICE void set_inclusive_sum(unsigned int inclusive_sum)
+	HIPRT_DEVICE void set_inclusive_sum(DataType inclusive_sum)
 	{
-		inclusive_sum_status = (inclusive_sum_status & 0xFFFFFFFF00000000) | (inclusive_sum & 0x00000000FFFFFFFF);
+		uint32_t bits = 0;
+		memcpy(&bits, &inclusive_sum, sizeof(DataType));
+
+		inclusive_sum_status = (inclusive_sum_status & 0xFFFFFFFF00000000ull) | static_cast<uint64_t>(bits);
 	}
 
 private:

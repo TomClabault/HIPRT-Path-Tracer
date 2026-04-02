@@ -221,6 +221,13 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 	if (m_data_pointer)
 		free();
 
+	if (new_element_count == 0)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Resizing an OrochiBuffer to 0 elements.");
+
+		Debug::debugbreak();
+	}
+
 	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size));
 

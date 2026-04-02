@@ -6,8 +6,8 @@
 #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_INIT_H
 #define DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_INIT_H
 
-#include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
+#include "Device/includes/FixIntellisense.h"
 
 GLOBAL_KERNEL_SIGNATURE(void)
 ParallelPrefixScanDecoupledLookback_BlockDescriptorInit(ParallelPrefixScanDecoupledLookbackBlockDescriptor* block_descs,

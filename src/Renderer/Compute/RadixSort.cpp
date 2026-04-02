@@ -269,7 +269,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		{
 			rng.seed(i);
 
-			unsigned int test_size = rng() % 10000000;
+			unsigned int test_size = rng() % 10000000 + 1;
 
 			std::vector<unsigned int> input_keys(test_size);
 			std::vector<unsigned int> input_values(test_size);
