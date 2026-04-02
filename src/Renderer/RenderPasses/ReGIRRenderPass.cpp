@@ -870,9 +870,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	unsigned int max_number_of_cells_computed_per_iteration =
 							hippt::min((unsigned int)((unsigned short int)-1),
 									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
-	unsigned int scratch_buffer_size = hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-												  total_number_of_cells_to_compute * emissive_mesh_count);
+	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
+	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
+	unsigned int scratch_buffer_size								 = hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
+																				  total_number_of_cells_to_compute * emissive_mesh_count);
+
 	// Resizing the radix sort for the sorting step that happens after computing the contributions of the emissive meshes. This does not resize if the radix
+	//
 	// sort is already internally resized to the same size
 	m_radix_sort.resize(scratch_buffer_size);
 
@@ -885,6 +889,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
 	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(scratch_buffer_size);
 	OrochiBuffer<unsigned int> mesh_indices_scratch_buffer_GPU(scratch_buffer_size);
+	OrochiBuffer<float> per_cell_sum_all_contributions_GPU(actual_number_of_cells_computed_per_iteration);
 
 	unsigned int* scratch_buffer_sorting_keys_address	= contribution_scratch_buffer_GPU.get_device_pointer();
 	unsigned int* scratch_buffer_sorting_values_address = mesh_indices_scratch_buffer_GPU.get_device_pointer();
@@ -898,9 +903,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 	// clang-format on
 
-	unsigned int cell_offset			= 0;
-	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
-	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
+	unsigned int cell_offset = 0;
 	for (int iter = 0; iter < iteration_needed; iter++)
 	{
 		void* launch_args[] = { &render_data, &scratch_buffer_sorting_keys_address, &scratch_buffer_sorting_values_address, &cell_offset, &primary_hit };
@@ -921,13 +924,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 		auto start_sort = std::chrono::high_resolution_clock::now();
 
-		std::vector<unsigned int> contributions_scratch_buffer_sorting_keys = contribution_scratch_buffer_GPU.download_data();
+		std::vector<unsigned int> contributions_scratch_buffer_sorting_keys_unsorted = contribution_scratch_buffer_GPU.download_data();
 
-		auto get_float_contribution_from_scratch_buffer = [&](unsigned int index)
+		auto get_float_contribution_from_scratch_buffer = [&](unsigned int sorted_index)
 		{
 			// The contribution is in the lower 16 bits encoded as an fp16
 			// Contributions are written with bits flipped for the GPU radix sort so we're re-flipping them here to get the proper contribution
-			unsigned int contribution_bits = ~(contributions_scratch_buffer_sorting_keys.at(index) & 0xFFFF);
+			unsigned int contribution_bits = ~(contributions_scratch_buffer_sorting_keys_unsorted.at(sorted_index) & 0xFFFF);
 
 			return hippt::fp16_bits_to_fp32(contribution_bits);
 		};
@@ -937,8 +940,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_radix_sort.set_ordering(RadixSort::Ordering::ASCENDING);
 		m_radix_sort.sort();
 
+		/*m_sum_all_contributions_parallel_segmented_reduction.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
+																			   per_cell_sum_all_contributions_GPU.get_device_pointer(),
+																			   contribution_scratch_buffer_GPU.size());
+		m_sum_all_contributions_parallel_segmented_reduction.reduce();*/
+
 		std::vector<unsigned int> sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
 																								  mesh_indices_scratch_buffer_GPU.size());
+		std::vector<unsigned int> sorted_contribution_buffer_GPU_downloaded = contribution_scratch_buffer_GPU.download_data();
+		std::vector<float> sum_all_contributions_buffer_GPU_downloaded		= per_cell_sum_all_contributions_GPU.download_data();
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
@@ -958,17 +968,16 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			// (number of contributions per cell), whichever is the smallest
 			unsigned int non_compacted_effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
 			unsigned int effective_light_distribution_size;
-			if (!compute_only_sizes)
-				effective_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
-			else
+			if (compute_only_sizes)
 				effective_light_distribution_size = non_compacted_effective_light_distribution_size;
+			else
+				effective_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
 
 			float sum_all_contributions = 0.0f;
 			// We're only going to keep the best 'light_distribution_size' contributing meshes
 			// in case there are more than that, i.e. the alias table is going to be built only on
 			// the 'light_distribution_size' meshes that contribute the most to the cell
 			float sum_best_contributions = 0.0f;
-			std::vector<float> best_contributions(effective_light_distribution_size);
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 			{
 				float contribution = get_float_contribution_from_scratch_buffer(
@@ -976,14 +985,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 										sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
 				if (contribution_index < effective_light_distribution_size)
-				{
-					best_contributions.at(contribution_index) = contribution;
 					sum_best_contributions += contribution;
-				}
 
 				sum_all_contributions += contribution;
 			}
 
+			// This if branch here computes the sizes of the light distribution for the current grid cell (outer for loop) such that it's going to cover the
+			// target amount of incoming light energy to the cell with the best contributing emissive meshes.
+			//
+			// For that, it uses the sum of the best contributions above as well as the total contribution of all the emissive meshes to the cell
 			if (compute_only_sizes)
 			{
 				unsigned short int final_distribution_size;
@@ -1025,7 +1035,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 				{
 					std::vector<float> normalized(effective_light_distribution_size);
 					for (int pdf_index = 0; pdf_index < effective_light_distribution_size; pdf_index++)
-						normalized.at(pdf_index) = best_contributions.at(pdf_index) / sum_best_contributions;
+					{
+						unsigned int packed_contribution =
+												sorted_contribution_buffer_GPU_downloaded.at(pdf_index + cell_index_in_iteration * emissive_mesh_count);
+						unsigned int contribution_bits = ~(packed_contribution & 0xFFFF);
+
+						float unpacked_contribution = hippt::fp16_bits_to_fp32(contribution_bits);
+
+						normalized.at(pdf_index) = unpacked_contribution / sum_best_contributions;
+					}
 
 					// And computing the alias tables from the contributions
 					std::vector<float> cdf(effective_light_distribution_size, 0.0f);
