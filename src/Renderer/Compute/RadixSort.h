@@ -69,6 +69,7 @@ private:
 
 	size_t m_size;
 	unsigned int m_last_resize_element_count = 0;
+	bool m_data_uploaded					 = false;
 
 	Ordering m_ordering = Ordering::ASCENDING;
 };

@@ -25,9 +25,11 @@ public:
 	OrochiBuffer() : m_data_pointer(nullptr) {}
 	OrochiBuffer(int element_count);
 	OrochiBuffer(const std::vector<T>& data);
+	OrochiBuffer(const OrochiBuffer<T>& other);
 	OrochiBuffer(OrochiBuffer<T>&& other);
 	~OrochiBuffer();
 
+	void operator=(const OrochiBuffer<T>& other);
 	void operator=(OrochiBuffer<T>&& other) noexcept;
 
 	void memset_whole_buffer(T value);
@@ -141,6 +143,16 @@ OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
 }
 
 template <typename T>
+OrochiBuffer<T>::OrochiBuffer(const OrochiBuffer<T>& other)
+{
+	if (other.m_element_count == 0)
+		return;
+
+	resize(other.m_element_count);
+	memcpy_from(other);
+}
+
+template <typename T>
 OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
 {
 	m_data_pointer	= other.m_data_pointer;
@@ -155,6 +167,21 @@ OrochiBuffer<T>::~OrochiBuffer()
 {
 	if (m_data_pointer)
 		free();
+}
+
+template <typename T>
+void OrochiBuffer<T>::operator=(const OrochiBuffer<T>& other)
+{
+	if (this == &other)
+		return;
+	if (m_data_pointer)
+		free();
+
+	if (other.m_element_count > 0)
+	{
+		resize(other.m_element_count);
+		memcpy_from(other);
+	}
 }
 
 template <typename T>

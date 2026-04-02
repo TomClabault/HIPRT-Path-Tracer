@@ -81,9 +81,18 @@ void RadixSort::resize(unsigned int element_count)
 void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values)
 {
 	if (keys.size() != values.size())
+	{
+		std::cerr << "RadixSort::upload_input_data() called with keys and values vectors of different sizes (" << keys.size() << " vs " << values.size()
+				  << "). This is invalid usage." << std::endl;
+
 		return; // Error: sizes don't match
+	}
 	else if (keys.size() == 0)
+	{
+		std::cerr << "RadixSort::upload_input_data() called with empty keys and values vectors. Nothing to upload." << std::endl;
+
 		return;
+	}
 
 	m_size = keys.size();
 
@@ -94,6 +103,8 @@ void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const s
 
 	m_keys_data_pointer	  = m_keys_buffer.get_device_pointer();
 	m_values_data_pointer = m_values_buffer.get_device_pointer();
+
+	m_data_uploaded = true;
 }
 
 void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, unsigned int element_count)
@@ -115,6 +126,8 @@ void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned in
 
 	m_keys_data_pointer	  = keys_device_pointer;
 	m_values_data_pointer = values_device_pointer;
+
+	m_data_uploaded = false;
 }
 
 void RadixSort::sort()
@@ -215,6 +228,11 @@ OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer()
 
 OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
 {
+	if (!m_data_uploaded)
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+								"RadixSort::get_sorted_values_buffer() called before any data has been uploaded. The returned buffer will be empty. Did you "
+								"mean to read from the buffer passed as input to set_data_pointers() instead?");
+
 	return m_values_buffer;
 }
 
@@ -251,7 +269,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		{
 			rng.seed(i);
 
-			unsigned int test_size = rng() % 1000000;
+			unsigned int test_size = rng() % 10000000;
 
 			std::vector<unsigned int> input_keys(test_size);
 			std::vector<unsigned int> input_values(test_size);

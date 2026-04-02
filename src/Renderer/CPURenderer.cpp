@@ -882,6 +882,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
 	std::vector<unsigned int> contribution_scratch_buffer_sorting_keys(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
 																				  total_number_of_cells_to_compute * emissive_mesh_count));
+	std::vector<unsigned int> contribution_scratch_buffer_mesh_indices(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
+																				  total_number_of_cells_to_compute * emissive_mesh_count));
 
 	std::vector<unsigned int> grid_cell_alive_list =
 							primary_hit ? m_regir_state.hash_cell_data_primary_hit.m_hash_cell_data
@@ -902,7 +904,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 #pragma omp parallel for
 		for (int thread_index = 0; thread_index < dispatch_size; thread_index++)
 		{
-			ReGIR_Compute_Cells_Light_Distributions(m_render_data, contribution_scratch_buffer_sorting_keys.data(), cell_offset, primary_hit, thread_index);
+			ReGIR_Compute_Cells_Light_Distributions(m_render_data, contribution_scratch_buffer_sorting_keys.data(),
+													contribution_scratch_buffer_mesh_indices.data(), cell_offset, primary_hit, thread_index);
 		}
 		auto stop_compute = std::chrono::high_resolution_clock::now();
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compute time: %ldms",

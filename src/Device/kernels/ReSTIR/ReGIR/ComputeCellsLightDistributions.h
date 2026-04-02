@@ -107,12 +107,14 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
 GLOBAL_KERNEL_SIGNATURE(void)
 ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 										unsigned int* contributions_scratch_buffer_sort_keys,
+										unsigned int* contributions_scratch_buffer_sort_values,
 										unsigned int cell_index_offset,
 										bool primary_hit)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 											   unsigned int* contributions_scratch_buffer_sort_keys,
+											   unsigned int* contributions_scratch_buffer_sort_values,
 											   unsigned int cell_index_offset,
 											   bool primary_hit,
 											   unsigned int thread_index)
@@ -155,6 +157,8 @@ inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
 	// contribution in the lower bits because we want to sort by contribution first.
 	contributions_scratch_buffer_sort_keys[thread_index] =
 							static_cast<unsigned int>((~hippt::half_as_ushort(log_mesh_contribution_fp16)) & 0xFFFF) | (local_cell_index << 16);
+	// This is just going to be mesh indices in [0, emissive_mesh_count - 1], per each grid cell
+	contributions_scratch_buffer_sort_values[thread_index] = mesh_index_for_grid_cell;
 }
 
 #endif
