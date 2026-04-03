@@ -25,23 +25,25 @@ public:
 	ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
-	void initialize_kernels();
+	void set_transform(std::unique_ptr<ComputeDataTransform> transform);
 	void compile();
 
 	void resize(unsigned int element_count);
 	void upload_input_data(const std::vector<T>& data);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(T* input_buffer_pointer, T* output_buffer_pointer, unsigned int element_count);
-	void set_transform(std::unique_ptr<ComputeDataTransform> transform);
 	void scan(bool auto_stream_synchronize = true);
 
 	float get_last_execution_time();
 
-	constexpr std::string get_data_type_as_string();
+	constexpr std::string get_data_type_as_string() const;
 
 	OrochiBuffer<T>& get_output_buffer();
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+
+private:
+	void initialize_kernels();
 
 private:
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);

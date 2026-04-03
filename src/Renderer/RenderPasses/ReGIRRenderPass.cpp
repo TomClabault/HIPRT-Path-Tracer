@@ -183,6 +183,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 
 	m_radix_sort.set_context(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
+	m_radix_sort.compile();
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,

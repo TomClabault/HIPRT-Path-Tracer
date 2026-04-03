@@ -28,6 +28,8 @@ public:
 
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
+	void compile();
+
 	/**
 	 *
 	 */
@@ -61,7 +63,7 @@ private:
 	GPUKernel m_memset_0_kernel;
 	GPUKernel m_count_kernel;
 	ParallelPrefixScanDecoupledLookback<unsigned int> m_global_count_table_prefix_scan;
-	ParallelSegmentedPrefixScan m_per_block_count_table_prefix_scan;
+	ParallelSegmentedPrefixScan<unsigned int> m_per_block_count_table_prefix_scan;
 	GPUKernel m_reorder_kernel;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_ctx;

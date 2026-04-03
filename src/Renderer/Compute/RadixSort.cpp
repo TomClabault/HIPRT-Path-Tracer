@@ -33,18 +33,25 @@ void RadixSort::initialize_kernels()
 {
 	m_memset_0_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Memset_0.h");
 	m_memset_0_kernel.set_kernel_function_name("RadixSort_Memset_0");
-	m_memset_0_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_memset_0_kernel.set_measure_execution_time(false);
 
 	m_count_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Count.h");
 	m_count_kernel.set_kernel_function_name("RadixSort_Count");
-	m_count_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_count_kernel.set_measure_execution_time(false);
 
 	m_reorder_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Reorder.h");
 	m_reorder_kernel.set_kernel_function_name("RadixSort_Reorder");
-	m_reorder_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_reorder_kernel.set_measure_execution_time(false);
+}
+
+void RadixSort::compile()
+{
+	m_memset_0_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_count_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_reorder_kernel.compile(m_hiprt_ctx, {}, true, false);
+
+	m_global_count_table_prefix_scan.compile();
+	m_per_block_count_table_prefix_scan.compile();
 }
 
 void RadixSort::resize(unsigned int element_count)
@@ -142,6 +149,13 @@ void RadixSort::sort()
 	else if (m_size == 0)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "RadixSort::sort() called with size 0. Nothing to sort.");
+
+		return;
+	}
+	else if (!m_reorder_kernel.has_been_compiled())
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"RadixSort::sort() called before the kernels have been compiled. Call compile() first.");
 
 		return;
 	}

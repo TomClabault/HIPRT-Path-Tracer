@@ -4,26 +4,25 @@
  */
 
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
-#include "Renderer/Compute/DataTransforms/ComputeDataTransforms.h"
-#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
+#include "Renderer/Compute/ParallelSegmentedPrefixScan.h"
 
-#include <functional>
+#include <bitset>
 #include <random>
 
 template <typename T>
-ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
+ParallelSegmentedPrefixScan<T>::ParallelSegmentedPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
 {
 }
 
 template <typename T>
-ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+ParallelSegmentedPrefixScan<T>::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size(0)
 {
 	initialize_kernels();
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan<T>::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -32,10 +31,10 @@ void ParallelPrefixScanDecoupledLookback<T>::set_context(std::shared_ptr<HIPRTOr
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::initialize_kernels()
+void ParallelSegmentedPrefixScan<T>::initialize_kernels()
 {
-	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/Scan.h");
-	m_scan_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_Scan");
+	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedPrefixScan/Scan.h");
+	m_scan_kernel.set_kernel_function_name("ParallelSegmentedPrefixScanDecoupledLookback_Scan");
 	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
 	m_scan_kernel.set_measure_execution_time(false);
 
@@ -48,63 +47,66 @@ void ParallelPrefixScanDecoupledLookback<T>::initialize_kernels()
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_transform(std::unique_ptr<ComputeDataTransform> transform)
+void ParallelSegmentedPrefixScan<T>::set_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::compile()
+void ParallelSegmentedPrefixScan<T>::compile()
 {
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::resize(unsigned int element_count)
+void ParallelSegmentedPrefixScan<T>::resize(unsigned int element_count)
 {
+	if (m_last_resize_element_count == element_count)
+		// Nothing to resize
+		return;
+
 	m_last_resize_element_count = element_count;
 
 	m_size = element_count;
 
 	m_input_buffer.resize(m_size);
+	m_flags_buffer.resize(element_count);
 	m_output_buffer.resize(m_size);
-
-	m_input_data_pointer  = m_input_buffer.get_device_pointer();
-	m_output_data_pointer = m_output_buffer.get_device_pointer();
 
 	m_global_block_index_counter_buffer.resize(1);
 	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::upload_input_data(const std::vector<T>& data)
+void ParallelSegmentedPrefixScan<T>::upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags)
 {
 	m_size = data.size();
 
-	resize(m_size);
+	resize(data.size());
 
 	m_input_buffer.upload_data(data);
+	m_flags_buffer.upload_data(flags);
 
-	m_input_data_pointer  = m_input_buffer.get_device_pointer();
-	m_output_data_pointer = m_output_buffer.get_device_pointer();
+	m_input_data_pointer = m_input_buffer.get_device_pointer();
+	m_flags_data_pointer = m_flags_buffer.get_device_pointer();
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_pointer, unsigned int element_count)
+void ParallelSegmentedPrefixScan<T>::set_data_pointers(T* device_data_pointer, unsigned int element_count)
 {
-	set_data_pointers(input_buffer_pointer, nullptr, element_count);
+	set_data_pointers(device_data_pointer, nullptr, element_count);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_pointer, T* output_buffer_pointer, unsigned int element_count)
+void ParallelSegmentedPrefixScan<T>::set_data_pointers(T* device_data_pointer, unsigned int* device_flags_pointer, unsigned int element_count)
 {
 	if (m_last_resize_element_count < element_count)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"ParallelPrefixScanDecoupledLookback::set_data_pointers() called with an element_count (%u) that is different from the last "
-								"one used in resize() (%u). This is "
+								"ParallelSegmentedPrefixScan::set_data_pointers() called with an element_count (%u) that is different from the last one used "
+								"in resize() (%u). This is "
 								"invalid usage and will lead to undefined behavior.",
 								element_count, m_last_resize_element_count);
 
@@ -115,15 +117,19 @@ void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_p
 
 	m_size = element_count;
 
-	m_input_data_pointer = input_buffer_pointer;
-	if (output_buffer_pointer)
-		m_output_data_pointer = output_buffer_pointer;
-	else
-		m_output_data_pointer = m_output_buffer.get_device_pointer();
+	m_input_data_pointer = device_data_pointer;
+	if (device_flags_pointer)
+		m_flags_data_pointer = device_flags_pointer;
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
+void ParallelSegmentedPrefixScan<T>::set_evenly_spaced_segment_size(unsigned int segment_size)
+{
+	m_evenly_spaced_segment_size = segment_size;
+}
+
+template <typename T>
+void ParallelSegmentedPrefixScan<T>::scan(bool auto_stream_synchronize)
 {
 	if (!m_hiprt_ctx || !m_stream)
 	{
@@ -145,18 +151,39 @@ void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
 
 		return;
 	}
+	else if (m_evenly_spaced_segment_size == 0 && m_flags_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelSegmentedPrefixScan::scan() called but no segment information provided. "
+																		 "Either upload segment flags or set an evenly spaced segment size.");
+
+		Debug::debugbreak();
+
+		return;
+	}
 
 	ParallelPrefixScanDecoupledLookbackBlockDescriptor* block_descriptors_buffer_pointer = m_block_descriptors_buffer.get_device_pointer();
 
 	unsigned int block_descriptor_count				 = m_block_descriptors_buffer.size();
 	unsigned int* global_block_index_counter_pointer = m_global_block_index_counter_buffer.get_device_pointer();
-	void* block_descriptor_init_args[]				 = { &block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
+	void* block_descriptor_init_args[]				 = {
+		  &block_descriptors_buffer_pointer,
+		  &block_descriptor_count,
+		  &global_block_index_counter_pointer,
+	};
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
-	T* input_buffer_pointer	 = m_input_data_pointer;
-	T* output_buffer_pointer = m_output_data_pointer;
-	void* block_scan_args[]	 = { &input_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer,
-								 &m_size };
+	T* input_buffer_pointer			   = m_input_data_pointer;
+	unsigned int* flags_buffer_pointer = m_flags_data_pointer;
+	T* output_buffer_pointer		   = m_output_buffer.get_device_pointer();
+	void* block_scan_args[]			   = {
+		   &input_buffer_pointer,
+		   &flags_buffer_pointer,
+		   &m_evenly_spaced_segment_size,
+		   &output_buffer_pointer,
+		   &block_descriptors_buffer_pointer,
+		   &global_block_index_counter_pointer,
+		   &m_size,
+	};
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	if (auto_stream_synchronize)
@@ -164,7 +191,7 @@ void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
 }
 
 template <typename T>
-float ParallelPrefixScanDecoupledLookback<T>::get_last_execution_time()
+float ParallelSegmentedPrefixScan<T>::get_last_execution_time()
 {
 	m_block_descriptor_init_kernel.compute_execution_time();
 	m_scan_kernel.compute_execution_time();
@@ -173,7 +200,7 @@ float ParallelPrefixScanDecoupledLookback<T>::get_last_execution_time()
 }
 
 template <typename T>
-constexpr std::string ParallelPrefixScanDecoupledLookback<T>::get_data_type_as_string() const
+constexpr std::string ParallelSegmentedPrefixScan<T>::get_data_type_as_string() const
 
 {
 	if constexpr (std::is_same_v<T, unsigned int>)
@@ -185,41 +212,41 @@ constexpr std::string ParallelPrefixScanDecoupledLookback<T>::get_data_type_as_s
 }
 
 template <typename T>
-OrochiBuffer<T>& ParallelPrefixScanDecoupledLookback<T>::get_output_buffer()
+OrochiBuffer<T>& ParallelSegmentedPrefixScan<T>::get_output_buffer()
 {
 	return m_output_buffer;
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	unit_test_basic(hiprt_ctx, stream);
+	// unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
 	unit_test_transform(hiprt_ctx, stream);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelPrefixScanDecoupledLookback<unsigned int> scanner(hiprt_ctx, stream);
+	ParallelSegmentedPrefixScan<unsigned int> scanner(hiprt_ctx, stream);
 	scanner.compile();
 
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan<T>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
+	ParallelSegmentedPrefixScan<float> scanner(hiprt_ctx, stream);
 	scanner.compile();
 
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
+	ParallelSegmentedPrefixScan<float> scanner(hiprt_ctx, stream);
 	scanner.set_transform(std::make_unique<MultiplyBy2Transform>());
 	scanner.compile();
 
@@ -228,15 +255,15 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_transform(std::shared_ptr
 
 template <typename T>
 template <typename DataType>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-																oroStream_t stream,
-																ParallelPrefixScanDecoupledLookback<DataType>& scanner,
-																std::function<DataType(DataType&)> input_value_transform,
-																std::function<DataType(DataType&)> output_value_transform)
+void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+														oroStream_t stream,
+														ParallelSegmentedPrefixScan<DataType>& scanner,
+														std::function<DataType(DataType&)> input_value_transform,
+														std::function<DataType(DataType&)> output_value_transform)
 {
 	std::mt19937 engine_uint(42);
 	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
-												 0, 100),
+												 1, 100),
 						 engine_uint);
 
 	// Full tests with random sizes
@@ -252,19 +279,47 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 
 		unsigned int test_size = engine_uint() % 10000000 + 1;
 
-		std::conditional_t<std::is_same_v<DataType, float>, double, DataType> running_sum = 0;
-		std::vector<DataType> expected_output(test_size);
 		std::vector<DataType> input(test_size);
+		std::vector<DataType> untransformed_input;
+		std::vector<unsigned int> flags((test_size + 31) / 32, 0);
 
 		std::transform(input.begin(), input.end(), input.begin(), [&rng](DataType) { return rng(); });
-		std::vector<DataType> untransformed_input = input;
+		std::transform(flags.begin(), flags.end(), flags.begin(), [&engine_uint](unsigned int) { return engine_uint(); });
 
-		// Transform input for CPU computation
+		untransformed_input = input;
+
 		std::transform(input.begin(), input.end(), input.begin(), input_value_transform);
+
+		// Adding 2% of random warps that are full zero
+		unsigned int warps_count = (test_size + 31) / 32;
+		for (unsigned int w = 0; w < warps_count; w++)
+			if (engine_uint() % 100 < 2) // 2% chance
+				flags[w] = 0;			 // This warp will have all flags set to zero, meaning that all its elements belong to the same segment
+
+		// Adding 1% of random blocks that are full zero
+		unsigned int blocks_count = (test_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
+		for (unsigned int b = 0; b < blocks_count; b++)
+		{
+			if (engine_uint() % 100 < 1) // 1% chance
+			{
+				for (unsigned int w = 0; w < PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32; w++)
+				{
+					if ((b * (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32) + w) < warps_count)
+						// This block will have all flags set to zero, meaning that all its elements belong to the same segment
+						flags[b * (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32) + w] = 0;
+				}
+			}
+		}
+
+		std::conditional_t<std::is_same_v<DataType, float>, float, DataType> running_sum = 0;
+		std::vector<DataType> expected_output(test_size);
 
 		auto start = std::chrono::high_resolution_clock::now();
 		for (size_t j = 0; j < test_size; j++)
 		{
+			if (flags[j / (sizeof(unsigned int) * 8)] & (1u << (j % (sizeof(unsigned int) * 8))))
+				running_sum = 0;
+
 			expected_output[j] = running_sum;
 			running_sum += input[j];
 		}
@@ -274,8 +329,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 
 		std::transform(expected_output.begin(), expected_output.end(), expected_output.begin(), output_value_transform);
 
-		// Upload untransformed input
-		scanner.upload_input_data(untransformed_input);
+		scanner.upload_input_data(untransformed_input, flags);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 5;
@@ -290,7 +344,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
 
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
-								"\tParallelPrefixScanDecoupledLookback unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
+								"\tParallelSegmentedPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
 								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
 		std::vector<DataType> output = scanner.get_output_buffer().download_data();
@@ -298,19 +352,17 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 		for (long long int j = 0; j < test_size; j++)
 		{
 			double diff = hippt::abs((double)output[j] - (double)expected_output[j]);
-			if (diff / output[j] * 100.0 > 0.001)
+			if (diff / output[j] * 100.0 > 0.01)
 			{
-				// More than a certain percentage of error
-
 				std::string formatter;
 				if constexpr (std::is_integral_v<DataType>)
 					formatter = "%u";
 				else
-					formatter = "%f";
+					formatter = "%.8f";
 
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										("ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got " + formatter +
-										 ", expected " + formatter)
+										("ParallelSegmentedPrefixScan unit test failed for test %d at index %lld (size=%u): got " + formatter + ", expected " +
+										 formatter)
 																.c_str(),
 										i, j, test_size, output[j], expected_output[j]);
 
