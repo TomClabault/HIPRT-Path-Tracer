@@ -25,7 +25,6 @@ public:
 	ParallelSegmentedPrefixScan();
 	ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
-	bool is_setup();
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void initialize_kernels();
 

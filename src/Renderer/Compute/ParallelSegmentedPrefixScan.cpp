@@ -17,11 +17,6 @@ ParallelSegmentedPrefixScan::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOr
 	initialize_kernels();
 }
 
-bool ParallelSegmentedPrefixScan::is_setup()
-{
-	return m_hiprt_ctx != nullptr && m_stream != nullptr;
-}
-
 void ParallelSegmentedPrefixScan::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;

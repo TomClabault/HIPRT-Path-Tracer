@@ -23,12 +23,6 @@ ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback(std:
 }
 
 template <typename T>
-bool ParallelPrefixScanDecoupledLookback<T>::is_setup()
-{
-	return m_hiprt_ctx != nullptr && m_stream != nullptr;
-}
-
-template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
