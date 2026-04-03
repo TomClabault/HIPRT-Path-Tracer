@@ -4,8 +4,10 @@
  */
 
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
+#include "Renderer/Compute/DataTransforms/ComputeDataTransforms.h"
 #include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 
+#include <functional>
 #include <random>
 
 template <typename T>
@@ -41,14 +43,22 @@ void ParallelPrefixScanDecoupledLookback<T>::initialize_kernels()
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_Scan");
 	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
-	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_scan_kernel.set_measure_execution_time(false);
+	set_transform(std::make_unique<IdentityTransform>());
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
 	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
-	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_block_descriptor_init_kernel.set_measure_execution_time(false);
+
+	compile();
+}
+
+template <typename T>
+void ParallelPrefixScanDecoupledLookback<T>::compile()
+{
+	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
+	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
 template <typename T>
@@ -113,12 +123,32 @@ void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_p
 }
 
 template <typename T>
+void ParallelPrefixScanDecoupledLookback<T>::set_transform(std::unique_ptr<ComputeDataTransform> transform)
+{
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
+}
+
+template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
 {
-	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
+	if (!m_hiprt_ctx || !m_stream)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"ParallelPrefixScanDecoupledLookback: scan() called but the class hasn't been setup properly or no data uploaded");
+								"ParallelPrefixScanDecoupledLookback::scan() called but the class hasn't been setup properly.");
+
+		return;
+	}
+	else if (m_size == 0)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScanDecoupledLookback::scan() called but no data uploaded.");
+
+		return;
+	}
+	else if (!m_scan_kernel.has_been_compiled())
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScanDecoupledLookback::scan() called but the kernels haven't been "
+																		 "compiled. Did you forget to call ::compile()?");
 
 		return;
 	}
@@ -172,81 +202,14 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test(std::shared_ptr<HIPRTOroc
 {
 	unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
+	unit_test_transform(hiprt_ctx, stream);
 }
 
 template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<unsigned int> scanner(hiprt_ctx, stream);
-
-	std::mt19937 rng(42);
-
-	// Full tests with random sizes
-	oroEvent_t scan_start;
-	oroEvent_t scan_end;
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
-	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
-
-	for (int i = 0; i < 10; i++)
-	{
-		rng.seed(i);
-
-		unsigned int test_size = rng() % 10000000;
-
-		unsigned int running_sum = 0;
-		std::vector<unsigned int> expected_output(test_size);
-		std::vector<unsigned int> input(test_size);
-
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 100; });
-
-		auto start = std::chrono::high_resolution_clock::now();
-		for (size_t j = 0; j < test_size; j++)
-		{
-			expected_output[j] = running_sum;
-			running_sum += input[j];
-		}
-		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
-				  << std::endl;
-
-		scanner.upload_input_data(input);
-
-		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		unsigned int repeats = 5;
-		for (int j = 0; j < repeats; j++)
-		{
-			scanner.scan();
-		}
-		OROCHI_CHECK_ERROR(oroEventRecord(scan_end, stream));
-
-		float elapsed_time_ms = 0.0f;
-		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
-		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
-
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
-								"\tParallelPrefixScanDecoupledLookback unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
-								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
-
-		std::vector<unsigned int> output = scanner.get_output_buffer().download_data();
-
-		for (long long int j = 0; j < test_size; j++)
-		{
-			if (output[j] != expected_output[j])
-			{
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										"ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j,
-										test_size, output[j], expected_output[j]);
-
-				Debug::debugbreak();
-
-				return;
-			}
-		}
-	}
-
-	OROCHI_CHECK_ERROR(oroEventDestroy(scan_start));
-	OROCHI_CHECK_ERROR(oroEventDestroy(scan_end));
+	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
 template <typename T>
@@ -254,6 +217,27 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr
 {
 	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
 
+	unit_test_template(hiprt_ctx, stream, scanner);
+}
+
+template <typename T>
+void ParallelPrefixScanDecoupledLookback<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+{
+	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
+	scanner.set_transform(std::make_unique<MultiplyBy2Transform>());
+	scanner.compile();
+
+	unit_test_template<float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
+}
+
+template <typename T>
+template <typename DataType>
+void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																oroStream_t stream,
+																ParallelPrefixScanDecoupledLookback<DataType>& scanner,
+																std::function<DataType(DataType&)> input_value_transform,
+																std::function<DataType(DataType&)> output_value_transform)
+{
 	std::mt19937 rng(42);
 
 	// Full tests with random sizes
@@ -269,11 +253,15 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr
 
 		unsigned int test_size = rng() % 10000000 + 1;
 
-		double running_sum = 0;
-		std::vector<float> expected_output(test_size);
-		std::vector<float> input(test_size);
+		std::conditional_t<std::is_same_v<DataType, float>, double, DataType> running_sum = 0;
+		std::vector<DataType> expected_output(test_size);
+		std::vector<DataType> input(test_size);
 
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](float) { return static_cast<float>(rng() % 100); });
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](DataType) { return static_cast<DataType>(rng() % 100); });
+		std::vector<DataType> untransformed_input = input;
+
+		// Transform input for CPU computation
+		std::transform(input.begin(), input.end(), input.begin(), input_value_transform);
 
 		auto start = std::chrono::high_resolution_clock::now();
 		for (size_t j = 0; j < test_size; j++)
@@ -285,7 +273,10 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
 				  << std::endl;
 
-		scanner.upload_input_data(input);
+		std::transform(expected_output.begin(), expected_output.end(), expected_output.begin(), output_value_transform);
+
+		// Upload untransformed input
+		scanner.upload_input_data(untransformed_input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 5;
@@ -303,7 +294,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr
 								"\tParallelPrefixScanDecoupledLookback unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
 								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
-		std::vector<float> output = scanner.get_output_buffer().download_data();
+		std::vector<DataType> output = scanner.get_output_buffer().download_data();
 
 		for (long long int j = 0; j < test_size; j++)
 		{

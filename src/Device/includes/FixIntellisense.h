@@ -56,6 +56,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define HIPRT_HOST_DEVICE __host__ __device__
 #define HIPRT_DEVICE	  __device__
 #define HIPRT_HOST		  __host__
+#define HIPRT_INLINE	  inline
 
 #define UNROLL_LOOP
 

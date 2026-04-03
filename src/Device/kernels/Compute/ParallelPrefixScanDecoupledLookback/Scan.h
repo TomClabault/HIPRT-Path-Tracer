@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Device/includes/Compute/Common/DataTransforms.h"
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
@@ -97,8 +98,9 @@ ParallelPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ input,
 		return;
 
 	// Input load
-	unsigned int global_tid		= bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
-	DataType thread_input_value = (global_tid < input_size) ? input[global_tid] : 0;
+	unsigned int global_tid				 = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
+	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
+	DataType thread_input_value			 = input_value_transform(thread_input_value_original);
 
 	// Inclusive block scan for this thread.
 	//
@@ -199,6 +201,9 @@ ParallelPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ input,
 	__syncthreads();
 
 	if (global_tid < input_size)
+	{
+		DataType output_value = output_value_transform(inclusive_sum - thread_input_value + block_prefix);
 		// - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
-		output[global_tid] = inclusive_sum - thread_input_value + block_prefix;
+		output[global_tid] = output_value;
+	}
 }
