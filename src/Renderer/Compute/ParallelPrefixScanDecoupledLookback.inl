@@ -61,7 +61,7 @@ void ParallelPrefixScanDecoupledLookback<T>::set_data_transform(std::unique_ptr<
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_exclusive_or_inclusive_scan(bool exclusive)
+void ParallelPrefixScanDecoupledLookback<T>::set_exclusive_scan(bool exclusive)
 {
 	m_exclusive_scan = exclusive;
 }
@@ -257,7 +257,7 @@ template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<unsigned int> scanner(hiprt_ctx, stream);
-	scanner.set_exclusive_or_inclusive_scan(false);
+	scanner.set_exclusive_scan(false);
 	scanner.compile();
 
 	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);

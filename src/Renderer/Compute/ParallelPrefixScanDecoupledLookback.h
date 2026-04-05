@@ -27,7 +27,7 @@ public:
 	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform);
 	void set_data_transform(std::unique_ptr<ComputeDataTransform> transform);
-	void set_exclusive_or_inclusive_scan(bool exclusive);
+	void set_exclusive_scan(bool exclusive);
 	void compile();
 
 	void resize(unsigned int element_count);

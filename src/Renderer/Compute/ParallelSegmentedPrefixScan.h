@@ -43,8 +43,11 @@ public:
 	void upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
-	void set_exclusive_or_inclusive_scan(bool exclusive);
+
+	bool get_exclusive_scan() const;
+	void set_exclusive_scan(bool exclusive);
 	void set_evenly_spaced_segment_size(unsigned int segment_size);
+
 	void scan(bool auto_stream_synchronize = true);
 
 	float get_last_execution_time();
@@ -64,8 +67,7 @@ public:
 							oroStream_t stream,
 							ParallelSegmentedPrefixScan<DataType>& scanner,
 							std::function<DataType(DataType&)> input_value_transform  = [](DataType val) { return val; },
-							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; },
-							bool exclusive_scan										  = true);
+							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; });
 
 private:
 	void initialize_kernels();

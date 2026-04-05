@@ -49,107 +49,69 @@ ParallelSegmentedReduction_Reduce(const DataType* __restrict__ input,
 	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
 	DataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
+#define NAIVE_ATOMIC		   0
+#define SHARED_MEM_ATOMIC	   1
+#define BLOCK_SEGMENTED_REDUCE 2
+
+#define COMPUTE_VARIANT NAIVE_ATOMIC
+
+#if COMPUTE_VARIANT == NAIVE_ATOMIC
+
+	unsigned int segment_id;
+	if (evenly_spaced_segment_size == 0)
+		segment_id = (global_tid < input_size) ? segment_ids[global_tid] : 0;
+	else
+		segment_id = global_tid / evenly_spaced_segment_size;
+	if (global_tid < input_size)
+		hippt::atomic_fetch_add_gpu(&output[segment_id], ComputeDataTransforms::output_value_transform(thread_input_value, global_tid));
+
+#elif COMPUTE_VARIANT == SHARED_MEM_ATOMIC
+
+	unsigned int segment_id_ = (global_tid < input_size) ? segment_ids[global_tid] : 0;
+
+	__shared__ DataType shared_mem_accumulations[PARALLEL_REDUCTION_CHUNK_SIZE];
+	__shared__ unsigned int first_segment_id;
+	if (tid == 0)
+		first_segment_id = segment_id_;
+	shared_mem_accumulations[tid] = 0;
+
+	__syncthreads();
+
+	hippt::atomic_fetch_add_gpu(&shared_mem_accumulations[segment_id_ - first_segment_id], thread_input_value);
+
+	__syncthreads();
+
+	unsigned int next_flag = load_flag(flags, global_tid + 1, input_size, evenly_spaced_segment_size);
+
+	bool end_of_segment		   = next_flag != 0;
+	bool last_element_of_block = (tid == PARALLEL_REDUCTION_CHUNK_SIZE - 1) || (global_tid == input_size - 1);
+	bool needs_to_accumulate   = end_of_segment || last_element_of_block;
+
+	if (needs_to_accumulate && global_tid < input_size)
+		hippt::atomic_fetch_add_gpu(&output[segment_id_],
+									ComputeDataTransforms::output_value_transform(shared_mem_accumulations[segment_id_ - first_segment_id], global_tid));
+
+#elif COMPUTE_VARIANT == BLOCK_SEGMENTED_REDUCE
+
 	unsigned int flag = load_flag(flags, global_tid, input_size, evenly_spaced_segment_size);
 
 	DataType reduced = block_segmented_reduce<PARALLEL_REDUCTION_CHUNK_SIZE>(thread_input_value, flag, tid);
 
-	unsigned int segment_id = (global_tid < input_size) ? segment_ids[global_tid] : 0;
 	if (global_tid < input_size)
 	{
 		unsigned int next_flag = load_flag(flags, global_tid + 1, input_size, evenly_spaced_segment_size);
 
-		bool end_of_segment = next_flag != 0;
-		bool last_element	= global_tid == input_size - 1;
+		bool end_of_segment		   = next_flag != 0;
+		bool last_element_of_block = (tid == PARALLEL_REDUCTION_CHUNK_SIZE - 1) || (global_tid == input_size - 1);
+		bool needs_to_accumulate   = end_of_segment || last_element_of_block;
 
-		hippt::atomic_fetch_add_gpu(&output[segment_id], ComputeDataTransforms::output_value_transform(reduced, global_tid));
-	}
-
-	// Output store
-	if (global_tid < input_size)
-		output[global_tid] = ComputeDataTransforms::output_value_transform(reduced, global_tid);
-
-	__shared__ DataType lane_input_values[PARALLEL_REDUCTION_CHUNK_SIZE];
-	__shared__ DataType lane_reduced_values[PARALLEL_REDUCTION_CHUNK_SIZE];
-	__shared__ unsigned int lane_flags[PARALLEL_REDUCTION_CHUNK_SIZE];
-
-	if (tid < PARALLEL_REDUCTION_CHUNK_SIZE)
-	{
-		lane_input_values[tid]	 = thread_input_value;
-		lane_reduced_values[tid] = reduced;
-		lane_flags[tid]			 = flag;
-	}
-
-	__syncthreads();
-
-	unsigned int warp_id = global_tid >> 5;
-	unsigned int lane_id = global_tid & 31;
-	if (bid == 0 && warp_id == 0 && lane_id == 0)
-	{
-		DataType reference_reduced_values[PARALLEL_REDUCTION_CHUNK_SIZE];
-
-		// Running a single threaded reference segmented reduction to compare with the warp segmented reduction result for debugging purposes
-		DataType running_sum = 0;
-		for (int i = 0; i < PARALLEL_REDUCTION_CHUNK_SIZE; i++)
+		if (needs_to_accumulate)
 		{
-			if (lane_flags[i] != 0)
-				running_sum = lane_input_values[i];
-			else
-				running_sum = OperatorSum<DataType>::apply(running_sum, lane_input_values[i]);
-			reference_reduced_values[i] = i >= input_size ? 0 : running_sum;
-		}
+			unsigned int segment_id = (global_tid < input_size) ? segment_ids[global_tid] : 0;
 
-		// Comparing the results
-		bool missed = false;
-		for (int i = 0; i < PARALLEL_REDUCTION_CHUNK_SIZE; i++)
-		{
-			if (reference_reduced_values[i] != lane_reduced_values[i])
-			{
-				printf("Mismatch at lane %d: expected %u, got %u\n", i, reference_reduced_values[i], lane_reduced_values[i]);
-				missed = true;
-
-				break;
-			}
-		}
-
-		// Printing all warps input values and flags, 32 by 32
-		if (missed)
-		{
-			// Printing the reference, 32 by 32
-			printf("Ref:\n");
-			for (int w = 0; w < PARALLEL_REDUCTION_CHUNK_SIZE / 32; w++)
-			{
-				printf("%4d - %4d [", w * 32, (w + 1) * 32);
-				for (int i = 0; i < 32; i++)
-					printf("%2u, ", reference_reduced_values[w * 32 + i]);
-				printf("]\n");
-			}
-
-			// Printing the warp segmented reduction result, 32 by 32
-			printf("Res:\n");
-			for (int w = 0; w < PARALLEL_REDUCTION_CHUNK_SIZE / 32; w++)
-			{
-				printf("%4d - %4d [", w * 32, (w + 1) * 32);
-				for (int i = 0; i < 32; i++)
-					printf("%2u, ", lane_reduced_values[w * 32 + i]);
-				printf("]\n");
-			}
-
-			printf("Input values and flags:\n");
-			for (int w = 0; w < PARALLEL_REDUCTION_CHUNK_SIZE / 32; w++)
-			{
-				printf("%4d - %4d Values [", w * 32, (w + 1) * 32);
-				for (int i = 0; i < 32; i++)
-					printf("%2u, ", lane_input_values[w * 32 + i]);
-				printf("]\n");
-			}
-
-			for (int w = 0; w < PARALLEL_REDUCTION_CHUNK_SIZE / 32; w++)
-			{
-				printf("%4d - %4d  Flags [", w * 32, (w + 1) * 32);
-				for (int i = 0; i < 32; i++)
-					printf("%2u, ", lane_flags[w * 32 + i] != 0);
-				printf("]\n");
-			}
+			hippt::atomic_fetch_add_gpu(&output[segment_id], ComputeDataTransforms::output_value_transform(reduced, global_tid));
 		}
 	}
+
+#endif
 }

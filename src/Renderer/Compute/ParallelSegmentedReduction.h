@@ -36,6 +36,7 @@ public:
 	void upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
+	unsigned int get_evenly_spaced_segment_size();
 	void set_evenly_spaced_segment_size(unsigned int segment_size);
 	void reduce(bool auto_stream_synchronize = true);
 
@@ -44,11 +45,13 @@ public:
 	constexpr std::string get_data_type_as_string() const;
 
 	OrochiBuffer<T>& get_output_buffer();
+	OrochiBuffer<T>& get_segment_ids_buffer();
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_evenly_spaced_flags(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename DataType>
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,

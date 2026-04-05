@@ -61,7 +61,13 @@ void ParallelSegmentedPrefixScan<T>::set_data_transform(std::unique_ptr<ComputeD
 }
 
 template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_exclusive_or_inclusive_scan(bool exclusive)
+bool ParallelSegmentedPrefixScan<T>::get_exclusive_scan() const
+{
+	return m_exclusive_scan;
+}
+
+template <typename T>
+void ParallelSegmentedPrefixScan<T>::set_exclusive_scan(bool exclusive)
 {
 	m_exclusive_scan = exclusive;
 }
@@ -285,10 +291,10 @@ template <typename T>
 void ParallelSegmentedPrefixScan<T>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelSegmentedPrefixScan<unsigned int> scanner(hiprt_ctx, stream);
-	scanner.set_exclusive_or_inclusive_scan(false);
+	scanner.set_exclusive_scan(false);
 	scanner.compile();
 
-	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
+	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; });
 }
 
 template <typename T>
@@ -297,8 +303,7 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 														oroStream_t stream,
 														ParallelSegmentedPrefixScan<DataType>& scanner,
 														std::function<DataType(DataType&)> input_value_transform,
-														std::function<DataType(DataType&)> output_value_transform,
-														bool exclusive_scan)
+														std::function<DataType(DataType&)> output_value_transform)
 {
 	std::mt19937 engine_uint(42);
 	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
@@ -312,6 +317,7 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
+	bool exclusive_scan = scanner.get_exclusive_scan();
 	for (int i = 0; i < 10; i++)
 	{
 		engine_uint.seed(i);
