@@ -27,6 +27,7 @@ public:
 	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform);
 	void set_data_transform(std::unique_ptr<ComputeDataTransform> transform);
+	void set_exclusive_or_inclusive_scan(bool exclusive);
 	void compile();
 
 	void resize(unsigned int element_count);
@@ -52,13 +53,15 @@ private:
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename DataType>
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 							oroStream_t stream,
 							ParallelPrefixScanDecoupledLookback<DataType>& scanner,
 							std::function<DataType(DataType&)> input_value_transform  = [](DataType val) { return val; },
-							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; });
+							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; },
+							bool exclusive_scan										  = true);
 
 private:
 	OrochiBuffer<T> m_input_buffer;
@@ -70,6 +73,7 @@ private:
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
 	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
 
+	bool m_exclusive_scan = true;
 	GPUKernel m_scan_kernel;
 	GPUKernel m_block_descriptor_init_kernel;
 

@@ -120,7 +120,8 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 												  DataType* __restrict__ output,
 												  ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
 												  unsigned int* __restrict__ g_global_block_index_counter,
-												  unsigned int input_size)
+												  unsigned int input_size,
+												  bool exclusive_scan)
 {
 	int tid = threadIdx.x;
 
@@ -257,7 +258,11 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 
 	if (global_tid < input_size)
 	{
-		DataType output_value = inclusive_sum - thread_input_value + prefix_contribution;
+		DataType output_value;
+		if (exclusive_scan)
+			output_value = inclusive_sum - thread_input_value + prefix_contribution;
+		else
+			output_value = inclusive_sum + prefix_contribution;
 		// - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
 		output[global_tid] = ComputeDataTransforms::output_value_transform(output_value, global_tid);
 	}

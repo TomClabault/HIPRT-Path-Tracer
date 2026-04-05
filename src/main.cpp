@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 	// Joining everyone before starting the render except the precompilation threads
 	ThreadManager::join_all_threads();
 
-	// ParallelSegmentedReduction<unsigned int>::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
+	ParallelSegmentedReduction<unsigned int>::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
 
 	parsed_scene.print_statistics(std::cout);
 

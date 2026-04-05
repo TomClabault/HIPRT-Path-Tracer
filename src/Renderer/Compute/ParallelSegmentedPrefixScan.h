@@ -43,6 +43,7 @@ public:
 	void upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
+	void set_exclusive_or_inclusive_scan(bool exclusive);
 	void set_evenly_spaced_segment_size(unsigned int segment_size);
 	void scan(bool auto_stream_synchronize = true);
 
@@ -56,13 +57,15 @@ public:
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename DataType>
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 							oroStream_t stream,
 							ParallelSegmentedPrefixScan<DataType>& scanner,
 							std::function<DataType(DataType&)> input_value_transform  = [](DataType val) { return val; },
-							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; });
+							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; },
+							bool exclusive_scan										  = true);
 
 private:
 	void initialize_kernels();
@@ -80,6 +83,7 @@ private:
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
 	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
 
+	bool m_exclusive_scan = true;
 	GPUKernel m_scan_kernel;
 	GPUKernel m_block_descriptor_init_kernel;
 

@@ -46,6 +46,7 @@ void ParallelSegmentedReduction<T>::initialize_kernels()
 
 	m_segment_ids_prefix_scan.set_input_id_transform(std::make_unique<ComputeInputIDTransformUnpackUintBits>());
 	m_segment_ids_prefix_scan.set_data_transform(std::make_unique<ComputeDataTransformUnpackUintBits>());
+	m_segment_ids_prefix_scan.set_exclusive_or_inclusive_scan(false);
 }
 
 template <typename T>
@@ -196,9 +197,7 @@ void ParallelSegmentedReduction<T>::reduce(bool auto_stream_synchronize)
 	std::vector<unsigned int> prefix_scan_output = m_segment_ids_prefix_scan.get_output_buffer().download_data();
 
 	T* output_buffer_pointer = m_output_buffer.get_device_pointer();
-	void* block_scan_args[]	 = {
-		 &input_buffer_pointer, &flags_buffer_pointer, &m_evenly_spaced_segment_size, &output_buffer_pointer, &m_size,
-	};
+	void* block_scan_args[]	 = { &input_buffer_pointer, &flags_buffer_pointer, &m_evenly_spaced_segment_size, &output_buffer_pointer, &m_size };
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	if (auto_stream_synchronize)

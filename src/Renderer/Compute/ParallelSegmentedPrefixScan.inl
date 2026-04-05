@@ -61,6 +61,12 @@ void ParallelSegmentedPrefixScan<T>::set_data_transform(std::unique_ptr<ComputeD
 }
 
 template <typename T>
+void ParallelSegmentedPrefixScan<T>::set_exclusive_or_inclusive_scan(bool exclusive)
+{
+	m_exclusive_scan = exclusive;
+}
+
+template <typename T>
 void ParallelSegmentedPrefixScan<T>::compile()
 {
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
@@ -197,15 +203,14 @@ void ParallelSegmentedPrefixScan<T>::scan(bool auto_stream_synchronize)
 	T* input_buffer_pointer			   = m_input_data_pointer;
 	unsigned int* flags_buffer_pointer = m_flags_data_pointer;
 	T* output_buffer_pointer		   = m_output_buffer.get_device_pointer();
-	void* block_scan_args[]			   = {
-		   &input_buffer_pointer,
-		   &flags_buffer_pointer,
-		   &m_evenly_spaced_segment_size,
-		   &output_buffer_pointer,
-		   &block_descriptors_buffer_pointer,
-		   &global_block_index_counter_pointer,
-		   &m_size,
-	};
+	void* block_scan_args[]			   = { &input_buffer_pointer,
+										   &flags_buffer_pointer,
+										   &m_evenly_spaced_segment_size,
+										   &output_buffer_pointer,
+										   &block_descriptors_buffer_pointer,
+										   &global_block_index_counter_pointer,
+										   &m_size,
+										   &m_exclusive_scan };
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	if (auto_stream_synchronize)
@@ -245,6 +250,7 @@ void ParallelSegmentedPrefixScan<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> h
 	unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
 	unit_test_transform(hiprt_ctx, stream);
+	unit_test_inclusive(hiprt_ctx, stream);
 }
 
 template <typename T>
@@ -276,12 +282,23 @@ void ParallelSegmentedPrefixScan<T>::unit_test_transform(std::shared_ptr<HIPRTOr
 }
 
 template <typename T>
+void ParallelSegmentedPrefixScan<T>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+{
+	ParallelSegmentedPrefixScan<unsigned int> scanner(hiprt_ctx, stream);
+	scanner.set_exclusive_or_inclusive_scan(false);
+	scanner.compile();
+
+	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
+}
+
+template <typename T>
 template <typename DataType>
 void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 														oroStream_t stream,
 														ParallelSegmentedPrefixScan<DataType>& scanner,
 														std::function<DataType(DataType&)> input_value_transform,
-														std::function<DataType(DataType&)> output_value_transform)
+														std::function<DataType(DataType&)> output_value_transform,
+														bool exclusive_scan)
 {
 	std::mt19937 engine_uint(42);
 	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
@@ -342,8 +359,16 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 			if (flags[j / (sizeof(unsigned int) * 8)] & (1u << (j % (sizeof(unsigned int) * 8))))
 				running_sum = 0;
 
-			expected_output[j] = running_sum;
-			running_sum += input[j];
+			if (exclusive_scan)
+			{
+				expected_output[j] = running_sum;
+				running_sum += input[j];
+			}
+			else
+			{
+				running_sum += input[j];
+				expected_output[j] = running_sum;
+			}
 		}
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
