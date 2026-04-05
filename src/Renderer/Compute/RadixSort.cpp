@@ -15,16 +15,16 @@ RadixSort::RadixSort() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
 
 RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	set_context(hiprt_ctx, stream);
+	init(hiprt_ctx, stream);
 }
 
-void RadixSort::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void RadixSort::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
 
-	m_global_count_table_prefix_scan.set_context(hiprt_ctx, stream);
-	m_per_block_count_table_prefix_scan.set_context(hiprt_ctx, stream);
+	m_global_count_table_prefix_scan.init(hiprt_ctx, stream);
+	m_per_block_count_table_prefix_scan.init(hiprt_ctx, stream);
 
 	initialize_kernels();
 }
@@ -85,6 +85,23 @@ void RadixSort::resize(unsigned int element_count)
 	m_per_block_count_table_prefix_scan.resize(per_block_count_table_size);
 }
 
+void RadixSort::free()
+{
+	m_keys_buffer.free_no_error();
+	m_temp_keys_buffer.free_no_error();
+	m_values_buffer.free_no_error();
+	m_temp_values_buffer.free_no_error();
+	m_global_count_tables_buffer.free_no_error();
+	m_per_block_count_tables_buffer.free_no_error();
+	m_per_block_count_tables_scanned_buffer.free_no_error();
+
+	m_global_count_table_prefix_scan.free();
+	m_per_block_count_table_prefix_scan.free();
+
+	m_size						= 0;
+	m_last_resize_element_count = 0;
+}
+
 void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values)
 {
 	if (keys.size() != values.size())
@@ -120,8 +137,7 @@ void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned in
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 								"RadixSort::set_data_pointers() called with an element_count (%u) that is different from the last one used in resize() (%u). "
-								"This is "
-								"invalid usage and will lead to undefined behavior.",
+								"This is invalid usage.",
 								element_count, m_last_resize_element_count);
 
 		Debug::debugbreak();
@@ -142,7 +158,7 @@ void RadixSort::sort()
 	if (!m_hiprt_ctx || !m_stream)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"RadixSort::sort() called without a valid HIPRT context or stream set. Call set_context() first.");
+								"RadixSort::sort() called without a valid HIPRT context or stream set. Call init() first.");
 
 		return;
 	}
@@ -267,6 +283,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		RadixSort::Ordering order = (ordering == 0) ? RadixSort::Ordering::ASCENDING : RadixSort::Ordering::DESCENDING;
 		RadixSort sorter(hiprt_ctx, stream);
 		sorter.set_ordering(order);
+		sorter.compile();
 
 		std::mt19937 rng(42);
 
@@ -276,7 +293,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
 		OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
-		int iteration_count	   = 25;
+		int iteration_count	   = 10;
 		double average_time_ms = 0.0;
 		// Tests with random sizes ascending order
 		for (int i = 0; i < iteration_count; i++)

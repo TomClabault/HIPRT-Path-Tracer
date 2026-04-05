@@ -26,14 +26,12 @@ public:
 	RadixSort();
 	RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
-	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 	void compile();
 
-	/**
-	 *
-	 */
 	void resize(unsigned int element_count);
+	void free();
 
 	void upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values);
 	void set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, unsigned int element_count);

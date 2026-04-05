@@ -16,7 +16,7 @@ ParallelPrefixScan::ParallelPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx
 	initialize_kernels();
 }
 
-void ParallelPrefixScan::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelPrefixScan::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;

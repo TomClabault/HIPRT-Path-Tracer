@@ -99,8 +99,9 @@ ParallelPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ input,
 
 	// Input load
 	unsigned int global_tid				 = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
-	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
-	DataType thread_input_value			 = input_value_transform(thread_input_value_original);
+	unsigned int input_read_id			 = ComputeDataTransforms::input_id_transform(global_tid, input_size);
+	DataType thread_input_value_original = (global_tid < input_size) ? input[input_read_id] : 0;
+	DataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
 	// Inclusive block scan for this thread.
 	//
@@ -202,7 +203,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ input,
 
 	if (global_tid < input_size)
 	{
-		DataType output_value = output_value_transform(inclusive_sum - thread_input_value + block_prefix);
+		DataType output_value = ComputeDataTransforms::output_value_transform(inclusive_sum - thread_input_value + block_prefix, global_tid);
 		// - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
 		output[global_tid] = output_value;
 	}

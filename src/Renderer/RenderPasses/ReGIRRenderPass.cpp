@@ -182,7 +182,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 
-	m_radix_sort.set_context(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
+	m_radix_sort.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 	m_radix_sort.compile();
 }
 
@@ -942,7 +942,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_radix_sort.sort();
 
 		/*m_sum_all_contributions_parallel_segmented_reduction.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
-																			   per_cell_sum_all_contributions_GPU.get_device_pointer(),
 																			   contribution_scratch_buffer_GPU.size());
 		m_sum_all_contributions_parallel_segmented_reduction.reduce();*/
 
@@ -1153,6 +1152,9 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 				  << std::endl
 				  << std::endl;
 	}
+
+	m_radix_sort.free();
+	m_sum_all_contributions_parallel_segmented_reduction.free();
 
 	return true;
 }

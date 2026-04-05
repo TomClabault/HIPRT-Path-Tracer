@@ -40,6 +40,32 @@ HIPRT_DEVICE T warp_prefix_scan_exclusive(T val, int thread_idx = threadIdx.x)
 	return warp_prefix_scan_inclusive<T, Operator>(val_shifted, thread_idx);
 }
 
+// Register-based warp inclusive scan
+// Flag here is an unsigned int type so that it can be used in shfl instructions but its value should be either 0 or 1.
+template <typename T, typename Operator = OperatorSum<T>>
+HIPRT_DEVICE T warp_segmented_scan_inclusive(T val, unsigned int flag, unsigned int& out_propagated_flag)
+{
+	unsigned int lane = threadIdx.x & 31;
+
+	UNROLL_LOOP
+	for (int i = 1; i <= 16; i *= 2)
+	{
+		T n			   = hippt::warp_shfl_up(val, i);
+		unsigned int f = hippt::warp_shfl_up(flag, i);
+
+		if (lane >= i)
+		{
+			// If this is a segment start (flag == true), we don't want to add the value from the previous lane, so we just keep our 'val'
+			val = flag ? val : Operator::apply(n, val);
+			flag |= f;
+		}
+	}
+
+	out_propagated_flag = flag;
+
+	return val;
+}
+
 /**
  * element_count must be a multiple of 32 and element count must be equal to the number of threads in the block
  */

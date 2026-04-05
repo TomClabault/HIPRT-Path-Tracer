@@ -1571,7 +1571,7 @@ static
 	}
 
 	/**
-	 * Copy from a lane with higher ID relative to caller
+	 * Copy from a lane with lower ID relative to caller
 	 */
 	template <typename T>
 	static T warp_shfl_up(T var, int delta, int width = 1)

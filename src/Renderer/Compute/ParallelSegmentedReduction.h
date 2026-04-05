@@ -3,32 +3,25 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_COMPUTE_PARALLEL_SEGMENTED_PREFIX_SCAN_ONE_PASS_H
-#define RENDERER_COMPUTE_PARALLEL_SEGMENTED_PREFIX_SCAN_ONE_PASS_H
+#ifndef RENDERER_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_H
+#define RENDERER_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_H
 
 #include "Compiler/GPUKernel.h"
-#include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/Compute/DataTransforms/ComputeDataTransforms.h"
+#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 
-/**
- * Reference: Single-pass Parallel Prefix Scan with Decoupled Look-back
- * https://research.nvidia.com/publication/2016-03_single-pass-parallel-prefix-scan-decoupled-look-back
- *
- * and
- *
- * Efficient Parallel Scan Algorithms for GPUs
- * https://research.nvidia.com/publication/2008-12_efficient-parallel-scan-algorithms-gpus
- */
+#include <functional>
+
 template <typename T>
-class ParallelSegmentedPrefixScan
+class ParallelSegmentedReduction
 {
 public:
-	ParallelSegmentedPrefixScan();
-	ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	ParallelSegmentedReduction();
+	ParallelSegmentedReduction(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
-	void set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform);
+	void set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> transform);
 	void set_data_transform(std::unique_ptr<ComputeDataTransform> transform);
 	void compile();
 
@@ -44,7 +37,7 @@ public:
 	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(T* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
 	void set_evenly_spaced_segment_size(unsigned int segment_size);
-	void scan(bool auto_stream_synchronize = true);
+	void reduce(bool auto_stream_synchronize = true);
 
 	float get_last_execution_time();
 
@@ -60,7 +53,7 @@ public:
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 							oroStream_t stream,
-							ParallelSegmentedPrefixScan<DataType>& scanner,
+							ParallelSegmentedReduction<DataType>& scanner,
 							std::function<DataType(DataType&)> input_value_transform  = [](DataType val) { return val; },
 							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; });
 
@@ -69,19 +62,15 @@ private:
 
 private:
 	OrochiBuffer<T> m_input_buffer;
+	OrochiBuffer<T> m_output_buffer;
 	OrochiBuffer<unsigned int> m_flags_buffer;
 
 	T* m_input_data_pointer					  = nullptr;
 	unsigned int* m_flags_data_pointer		  = nullptr;
 	unsigned int m_evenly_spaced_segment_size = 0;
 
-	OrochiBuffer<T> m_output_buffer;
-
-	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
-	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
-
 	GPUKernel m_scan_kernel;
-	GPUKernel m_block_descriptor_init_kernel;
+	ParallelPrefixScanDecoupledLookback<unsigned int> m_segment_ids_prefix_scan;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_ctx;
 	oroStream_t m_stream;
@@ -90,6 +79,6 @@ private:
 	unsigned int m_last_resize_element_count = 0;
 };
 
-#include "Renderer/Compute/ParallelSegmentedPrefixScan.inl"
+#include "Renderer/Compute/ParallelSegmentedReduction.inl"
 
 #endif

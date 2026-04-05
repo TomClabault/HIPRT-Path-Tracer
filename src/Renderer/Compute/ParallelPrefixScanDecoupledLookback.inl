@@ -16,14 +16,13 @@ ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback() : 
 }
 
 template <typename T>
-ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
-	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size(0)
+ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) : m_size(0)
 {
-	initialize_kernels();
+	init(hiprt_ctx, stream);
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelPrefixScanDecoupledLookback<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -44,11 +43,18 @@ void ParallelPrefixScanDecoupledLookback<T>::initialize_kernels()
 	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
 	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 
-	set_transform(std::make_unique<IdentityTransform>());
+	set_input_id_transform(std::make_unique<ComputeInputIDTransformIdentity>());
+	set_data_transform(std::make_unique<ComputeDataTransformIdentity>());
 }
 
 template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_transform(std::unique_ptr<ComputeDataTransform> transform)
+void ParallelPrefixScanDecoupledLookback<T>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform)
+{
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeInputIDTransform::INPUT_ID_TRANSFORM_STRING_STUB, id_transform->emit_input_id_transform());
+}
+
+template <typename T>
+void ParallelPrefixScanDecoupledLookback<T>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
@@ -79,6 +85,21 @@ void ParallelPrefixScanDecoupledLookback<T>::resize(unsigned int element_count)
 }
 
 template <typename T>
+void ParallelPrefixScanDecoupledLookback<T>::free()
+{
+	m_input_buffer.free_no_error();
+	m_output_buffer.free_no_error();
+	m_global_block_index_counter_buffer.free_no_error();
+	m_block_descriptors_buffer.free_no_error();
+
+	m_input_data_pointer  = nullptr;
+	m_output_data_pointer = nullptr;
+
+	m_size						= 0;
+	m_last_resize_element_count = 0;
+}
+
+template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::upload_input_data(const std::vector<T>& data)
 {
 	m_size = data.size();
@@ -104,8 +125,7 @@ void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_p
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 								"ParallelPrefixScanDecoupledLookback::set_data_pointers() called with an element_count (%u) that is different from the last "
-								"one used in resize() (%u). This is "
-								"invalid usage and will lead to undefined behavior.",
+								"one used in resize() (%u). This is invalid usage.",
 								element_count, m_last_resize_element_count);
 
 		Debug::debugbreak();
@@ -220,7 +240,7 @@ template <typename T>
 void ParallelPrefixScanDecoupledLookback<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
-	scanner.set_transform(std::make_unique<MultiplyBy2Transform>());
+	scanner.set_data_transform(std::make_unique<ComputeDataTransformMultiplyBy2>());
 	scanner.compile();
 
 	unit_test_template<float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });

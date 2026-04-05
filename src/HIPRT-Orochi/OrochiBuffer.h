@@ -116,6 +116,11 @@ public:
 	 */
 	void free();
 
+	/**
+	 * Frees the buffer without emitting any warning or error if the buffer is already freed / not allocated yet.
+	 */
+	void free_no_error();
+
 private:
 	bool m_pinned_memory = false;
 
@@ -603,6 +608,24 @@ void OrochiBuffer<T>::free()
 
 		return;
 	}
+
+	m_element_count = 0;
+	m_data_pointer	= nullptr;
+	m_pinned_memory = false;
+}
+
+template <typename T>
+void OrochiBuffer<T>::free_no_error()
+{
+	if (m_data_pointer)
+	{
+		if (m_pinned_memory)
+			OROCHI_CHECK_ERROR(oroHostFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
+		else
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
+	}
+	else
+		return;
 
 	m_element_count = 0;
 	m_data_pointer	= nullptr;

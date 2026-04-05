@@ -107,6 +107,8 @@ extern ImGuiLogger g_imgui_logger;
 // reservoir?
 
 // TODO ReGIR
+// - For visibility variance in a grid, can we just count how many shadows rays we shoot are occluded? If we get a lot of occluded, that's because our
+// importance sampling is bad and so we need more grid precision there. But what abouts complete shadows though where it's fair to have a lot of occluded?
 // - Maybe something we can do to keep track of visibility variance is to accumulate in each cell of NEE++ a running variance of the visibility of the samples
 //		that fall into that cell, and then use that variance to decide whether or not we want to use visibility in the target function for the samples of that
 //		cell

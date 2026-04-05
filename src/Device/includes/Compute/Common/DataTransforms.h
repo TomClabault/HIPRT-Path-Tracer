@@ -12,21 +12,31 @@
 #ifndef __KERNELCC__
 #define STR(x) #x
 
-#define INPUT_TRANSFORM(value)	return value;
-#define OUTPUT_TRANSFORM(value) return value;
+#define INPUT_ID_TRANSFORM(input_id, input_size)   return input_id;
+#define INPUT_TRANSFORM(value, global_element_id)  return value;
+#define OUTPUT_TRANSFORM(value, global_element_id) return value;
 
-#define INPUT_TRANSFORM_STRING	STR(INPUT_TRANSFORM(x))
-#define OUTPUT_TRANSFORM_STRING STR(OUTPUT_TRANSFORM(x))
+#define INPUT_ID_TRANSFORM_STRING STR(INPUT_ID_TRANSFORM(x, y))
+#define INPUT_TRANSFORM_STRING	  STR(INPUT_TRANSFORM(x, y))
+#define OUTPUT_TRANSFORM_STRING	  STR(OUTPUT_TRANSFORM(x, y))
 #endif
 
-HIPRT_DEVICE HIPRT_INLINE DataType input_value_transform(DataType value)
+namespace ComputeDataTransforms
 {
-	INPUT_TRANSFORM(value);
-}
+	HIPRT_DEVICE HIPRT_INLINE unsigned int input_id_transform(unsigned int input_id, unsigned int input_size)
+	{
+		INPUT_ID_TRANSFORM(input_id, input_size);
+	}
 
-HIPRT_DEVICE HIPRT_INLINE DataType output_value_transform(DataType value)
-{
-	OUTPUT_TRANSFORM(value);
-}
+	HIPRT_DEVICE HIPRT_INLINE DataType input_value_transform(DataType value, unsigned int global_element_id)
+	{
+		INPUT_TRANSFORM(value, global_element_id);
+	}
+
+	HIPRT_DEVICE HIPRT_INLINE DataType output_value_transform(DataType value, unsigned int global_element_id)
+	{
+		OUTPUT_TRANSFORM(value, global_element_id);
+	}
+} // namespace ComputeDataTransforms
 
 #endif

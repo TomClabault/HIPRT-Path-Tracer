@@ -6,6 +6,7 @@
 #ifndef REGIR_RENDER_PASS_H
 #define REGIR_RENDER_PASS_H
 
+#include "Renderer/Compute/ParallelSegmentedReduction.h"
 #include "Renderer/Compute/RadixSort.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
@@ -185,6 +186,7 @@ private:
 	float m_last_light_distribution_compaction_vram_saving_secondary_hits = 0.0f;
 
 	RadixSort m_radix_sort;
+	ParallelSegmentedReduction<unsigned int> m_sum_all_contributions_parallel_segmented_reduction;
 };
 
 #endif

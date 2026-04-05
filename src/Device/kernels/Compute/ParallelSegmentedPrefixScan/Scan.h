@@ -4,33 +4,11 @@
  */
 
 #include "Device/includes/Compute/Common/DataTransforms.h"
+#include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
-
-// Register-based warp inclusive scan
-// Flag here is an unsigned int type so that it can be used in shfl instructions but its value should be either 0 or 1.
-HIPRT_DEVICE DataType warp_segmented_scan_inclusive(DataType val, unsigned int flag, unsigned int& out_propagated_flag)
-{
-	unsigned int lane = threadIdx.x % 32;
-
-#pragma unroll
-	for (int i = 1; i <= 16; i *= 2)
-	{
-		DataType n	   = hippt::warp_shfl_up(val, i);
-		unsigned int f = hippt::warp_shfl_up(flag, i);
-
-		if (lane >= i)
-		{
-			val = flag ? val : val + n;
-			flag |= f;
-		}
-	}
-
-	out_propagated_flag = flag;
-	return val;
-}
 
 HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_value,
 														 unsigned int flag,
@@ -159,7 +137,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 	// Input load
 	unsigned int global_tid				 = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
 	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
-	DataType thread_input_value			 = input_value_transform(thread_input_value_original);
+	DataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
 	unsigned int warp_id = global_tid >> 5;
 	unsigned int lane_id = global_tid & 31;
@@ -281,6 +259,6 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 	{
 		DataType output_value = inclusive_sum - thread_input_value + prefix_contribution;
 		// - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
-		output[global_tid] = output_value_transform(output_value);
+		output[global_tid] = ComputeDataTransforms::output_value_transform(output_value, global_tid);
 	}
 }

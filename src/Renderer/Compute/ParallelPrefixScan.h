@@ -19,7 +19,7 @@ public:
 	ParallelPrefixScan();
 	ParallelPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
-	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void initialize_kernels();
 
 	void upload_input_data(const std::vector<unsigned int>& data);
