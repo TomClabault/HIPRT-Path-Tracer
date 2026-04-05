@@ -44,19 +44,19 @@ struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 		inclusive_sum_status = (inclusive_sum_status & 0x00000000FFFFFFFF) | ((unsigned long long int)status << 32);
 	}
 
-	HIPRT_DEVICE DataType get_inclusive_sum() const
+	HIPRT_DEVICE TransformedDataType get_inclusive_sum() const
 	{
 		uint32_t bits = static_cast<uint32_t>(inclusive_sum_status & 0x00000000FFFFFFFF);
 
-		DataType inclusive_sum;
-		memcpy(&inclusive_sum, &bits, sizeof(DataType));
+		TransformedDataType inclusive_sum;
+		memcpy(&inclusive_sum, &bits, sizeof(TransformedDataType));
 		return inclusive_sum;
 	}
 
-	HIPRT_DEVICE void set_inclusive_sum(DataType inclusive_sum)
+	HIPRT_DEVICE void set_inclusive_sum(TransformedDataType inclusive_sum)
 	{
 		uint32_t bits = 0;
-		memcpy(&bits, &inclusive_sum, sizeof(DataType));
+		memcpy(&bits, &inclusive_sum, sizeof(TransformedDataType));
 
 		inclusive_sum_status = (inclusive_sum_status & 0xFFFFFFFF00000000ull) | static_cast<uint64_t>(bits);
 	}

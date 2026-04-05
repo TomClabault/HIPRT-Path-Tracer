@@ -9,20 +9,20 @@
 #include <bitset>
 #include <random>
 
-template <typename T>
-ParallelSegmentedPrefixScan<T>::ParallelSegmentedPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::ParallelSegmentedPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
 {
 }
 
-template <typename T>
-ParallelSegmentedPrefixScan<T>::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size(0)
 {
 	initialize_kernels();
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -30,57 +30,61 @@ void ParallelSegmentedPrefixScan<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_
 	initialize_kernels();
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::initialize_kernels()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::initialize_kernels()
 {
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedPrefixScan/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelSegmentedPrefixScanDecoupledLookback_Scan");
-	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
 	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
-	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
 	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 
 	set_input_id_transform(std::make_unique<ComputeInputIDTransformIdentity>());
 	set_data_transform(std::make_unique<ComputeDataTransformIdentity>());
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeInputIDTransform::INPUT_ID_TRANSFORM_STRING_STUB, id_transform->emit_input_id_transform());
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
-template <typename T>
-bool ParallelSegmentedPrefixScan<T>::get_exclusive_scan() const
+template <typename InputType, typename TransformedType, typename OutputType>
+bool ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_exclusive_scan() const
 {
 	return m_exclusive_scan;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_exclusive_scan(bool exclusive)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_exclusive_scan(bool exclusive)
 {
 	m_exclusive_scan = exclusive;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::compile()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::compile()
 {
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::resize(unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::resize(unsigned int element_count)
 {
 	if (m_last_resize_element_count == element_count)
 		// Nothing to resize
@@ -98,8 +102,8 @@ void ParallelSegmentedPrefixScan<T>::resize(unsigned int element_count)
 	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::free()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::free()
 {
 	m_input_buffer.free_no_error();
 	m_flags_buffer.free_no_error();
@@ -114,8 +118,9 @@ void ParallelSegmentedPrefixScan<T>::free()
 	m_last_resize_element_count = 0;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::upload_input_data(const std::vector<InputType>& data,
+																							const std::vector<unsigned int>& flags)
 {
 	m_size = data.size();
 
@@ -128,14 +133,16 @@ void ParallelSegmentedPrefixScan<T>::upload_input_data(const std::vector<T>& dat
 	m_flags_data_pointer = m_flags_buffer.get_device_pointer();
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_data_pointers(T* device_data_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_data_pointers(InputType* device_data_pointer, unsigned int element_count)
 {
 	set_data_pointers(device_data_pointer, nullptr, element_count);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_data_pointers(T* device_data_pointer, unsigned int* device_flags_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_data_pointers(InputType* device_data_pointer,
+																							unsigned int* device_flags_pointer,
+																							unsigned int element_count)
 {
 	if (m_last_resize_element_count < element_count)
 	{
@@ -156,14 +163,14 @@ void ParallelSegmentedPrefixScan<T>::set_data_pointers(T* device_data_pointer, u
 		m_flags_data_pointer = device_flags_pointer;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::set_evenly_spaced_segment_size(unsigned int segment_size)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_evenly_spaced_segment_size(unsigned int segment_size)
 {
 	m_evenly_spaced_segment_size = segment_size;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::scan(bool auto_stream_synchronize)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::scan(bool auto_stream_synchronize)
 {
 	if (!m_hiprt_ctx || !m_stream)
 	{
@@ -206,9 +213,9 @@ void ParallelSegmentedPrefixScan<T>::scan(bool auto_stream_synchronize)
 	};
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
-	T* input_buffer_pointer			   = m_input_data_pointer;
+	InputType* input_buffer_pointer	   = m_input_data_pointer;
 	unsigned int* flags_buffer_pointer = m_flags_data_pointer;
-	T* output_buffer_pointer		   = m_output_buffer.get_device_pointer();
+	OutputType* output_buffer_pointer  = m_output_buffer.get_device_pointer();
 	void* block_scan_args[]			   = { &input_buffer_pointer,
 										   &flags_buffer_pointer,
 										   &m_evenly_spaced_segment_size,
@@ -223,8 +230,8 @@ void ParallelSegmentedPrefixScan<T>::scan(bool auto_stream_synchronize)
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-template <typename T>
-float ParallelSegmentedPrefixScan<T>::get_last_execution_time()
+template <typename InputType, typename TransformedType, typename OutputType>
+float ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_last_execution_time()
 {
 	m_block_descriptor_init_kernel.compute_execution_time();
 	m_scan_kernel.compute_execution_time();
@@ -232,35 +239,57 @@ float ParallelSegmentedPrefixScan<T>::get_last_execution_time()
 	return m_block_descriptor_init_kernel.get_last_execution_time() + m_scan_kernel.get_last_execution_time();
 }
 
-template <typename T>
-constexpr std::string ParallelSegmentedPrefixScan<T>::get_data_type_as_string() const
-
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_input_data_type_as_string() const
 {
-	if constexpr (std::is_same_v<T, unsigned int>)
+	if constexpr (std::is_same_v<InputType, unsigned int>)
 		return "unsigned int";
-	else if constexpr (std::is_same_v<T, float>)
+	else if constexpr (std::is_same_v<InputType, float>)
 		return "float";
 	else
-		static_assert(sizeof(T) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+		static_assert(sizeof(InputType) == 0 /* forces failure */, "Unsupported data type for ParallelSegmentedPrefixScanDecoupledLookback");
 }
 
-template <typename T>
-OrochiBuffer<T>& ParallelSegmentedPrefixScan<T>::get_output_buffer()
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_transformed_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<TransformedType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<TransformedType, float>)
+		return "float";
+	else
+		static_assert(sizeof(TransformedType) == 0 /* forces failure */, "Unsupported data type for ParallelSegmentedPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_output_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<OutputType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<OutputType, float>)
+		return "float";
+	else
+		static_assert(sizeof(OutputType) == 0 /* forces failure */, "Unsupported data type for ParallelSegmentedPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+OrochiBuffer<OutputType>& ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_output_buffer()
 {
 	return m_output_buffer;
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
+	unit_test_data_type_uint_to_float(hiprt_ctx, stream);
 	unit_test_transform(hiprt_ctx, stream);
 	unit_test_inclusive(hiprt_ctx, stream);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelSegmentedPrefixScan<unsigned int> scanner(hiprt_ctx, stream);
 	scanner.compile();
@@ -268,8 +297,8 @@ void ParallelSegmentedPrefixScan<T>::unit_test_basic(std::shared_ptr<HIPRTOrochi
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelSegmentedPrefixScan<float> scanner(hiprt_ctx, stream);
 	scanner.compile();
@@ -277,37 +306,65 @@ void ParallelSegmentedPrefixScan<T>::unit_test_data_type(std::shared_ptr<HIPRTOr
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_data_type_uint_to_float(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																											oroStream_t stream)
+{
+	class ComputeDataTransformUintToFloat : public ComputeDataTransform
+	{
+	public:
+		virtual std::string emit_input_transform() const override
+		{
+			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
+			return "return (float)(value & 0xAAAAAAAA);";
+		}
+
+		virtual std::string emit_output_transform() const override
+		{
+			return "return value;";
+		}
+	};
+
+	ParallelSegmentedPrefixScan<unsigned int, float, float> scanner(hiprt_ctx, stream);
+	scanner.set_data_transform(std::make_unique<ComputeDataTransformUintToFloat>());
+	scanner.compile();
+
+	unit_test_template<unsigned int, float, float>(hiprt_ctx, stream, scanner, [](unsigned int val) { return (float)(val & 0xAAAAAAAA); });
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelSegmentedPrefixScan<float> scanner(hiprt_ctx, stream);
 	scanner.set_data_transform(std::make_unique<ComputeDataTransformMultiplyBy2>());
 	scanner.compile();
 
-	unit_test_template<float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
+	unit_test_template<float, float, float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
 }
 
-template <typename T>
-void ParallelSegmentedPrefixScan<T>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelSegmentedPrefixScan<unsigned int> scanner(hiprt_ctx, stream);
 	scanner.set_exclusive_scan(false);
 	scanner.compile();
 
-	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; });
+	unit_test_template<unsigned int, unsigned int, unsigned int>(
+							hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; });
 }
 
-template <typename T>
-template <typename DataType>
-void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-														oroStream_t stream,
-														ParallelSegmentedPrefixScan<DataType>& scanner,
-														std::function<DataType(DataType&)> input_value_transform,
-														std::function<DataType(DataType&)> output_value_transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+template <typename InputDataType, typename TransformedDataType, typename OutputDataType>
+void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_test_template(
+						std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+						oroStream_t stream,
+						ParallelSegmentedPrefixScan<InputDataType, TransformedDataType, OutputDataType>& scanner,
+						std::function<TransformedDataType(InputDataType&)> input_value_transform,
+						std::function<OutputDataType(TransformedDataType&)> output_value_transform)
 {
 	std::mt19937 engine_uint(42);
-	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
-												 1, 100),
+	auto rng = std::bind(std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>,
+											std::uniform_real_distribution<float>>(1, 100),
 						 engine_uint);
 
 	// Full tests with random sizes
@@ -324,16 +381,17 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 
 		unsigned int test_size = engine_uint() % 10000000 + 1;
 
-		std::vector<DataType> input(test_size);
-		std::vector<DataType> untransformed_input;
+		std::vector<InputDataType> input(test_size);
+		std::vector<InputDataType> untransformed_input;
 		std::vector<unsigned int> flags((test_size + 31) / 32, 0);
 
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](DataType) { return rng(); });
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](InputDataType) { return rng(); });
 		std::transform(flags.begin(), flags.end(), flags.begin(), [&engine_uint](unsigned int) { return engine_uint(); });
 
 		untransformed_input = input;
 
-		std::transform(input.begin(), input.end(), input.begin(), input_value_transform);
+		std::vector<TransformedDataType> transformed_input(input.size());
+		std::transform(input.begin(), input.end(), transformed_input.begin(), input_value_transform);
 
 		// Adding 2% of random warps that are full zero
 		unsigned int warps_count = (test_size + 31) / 32;
@@ -356,8 +414,8 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 			}
 		}
 
-		std::conditional_t<std::is_same_v<DataType, float>, float, DataType> running_sum = 0;
-		std::vector<DataType> expected_output(test_size);
+		std::conditional_t<std::is_same_v<OutputDataType, float>, float, OutputDataType> running_sum = 0;
+		std::vector<OutputDataType> expected_output(test_size);
 
 		auto start = std::chrono::high_resolution_clock::now();
 		for (size_t j = 0; j < test_size; j++)
@@ -368,11 +426,11 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 			if (exclusive_scan)
 			{
 				expected_output[j] = running_sum;
-				running_sum += input[j];
+				running_sum += transformed_input[j];
 			}
 			else
 			{
-				running_sum += input[j];
+				running_sum += transformed_input[j];
 				expected_output[j] = running_sum;
 			}
 		}
@@ -400,7 +458,7 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 								"\tParallelSegmentedPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
 								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
-		std::vector<DataType> output = scanner.get_output_buffer().download_data();
+		std::vector<OutputDataType> output = scanner.get_output_buffer().download_data();
 
 		for (long long int j = 0; j < test_size; j++)
 		{
@@ -408,7 +466,7 @@ void ParallelSegmentedPrefixScan<T>::unit_test_template(std::shared_ptr<HIPRTOro
 			if (diff / output[j] * 100.0 > 0.01)
 			{
 				std::string formatter;
-				if constexpr (std::is_integral_v<DataType>)
+				if constexpr (std::is_integral_v<OutputDataType>)
 					formatter = "%u";
 				else
 					formatter = "%.8f";

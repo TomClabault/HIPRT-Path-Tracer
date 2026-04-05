@@ -37,7 +37,7 @@ public:
 	 * @param value The value read from memory that we want to transform before processing it in the kernel
 	 * @param global_element_id The global element ID corresponding to the value read.
 	 *
-	 * DataType input_transform(DataType value, unsigned int global_element_id)
+	 * TransformedDataType input_transform(InputDataType value, unsigned int global_element_id)
 	 * {
 	 *		// Transform 'value' here...
 	 *		// ...
@@ -48,7 +48,15 @@ public:
 	virtual std::string emit_input_transform() const = 0;
 
 	/**
-	 * Same signature as input transform but for output values
+	 * Similar signature as input transform but for output values and OutputDataType everywhere
+	 *
+	 * OutputDataType output_transform(TransformedDataType value, unsigned int global_element_id)
+	 * {
+	 *		// Transform 'value' here...
+	 *		// ...
+	 *
+	 *		return value;
+	 * }
 	 */
 	virtual std::string emit_output_transform() const = 0;
 };

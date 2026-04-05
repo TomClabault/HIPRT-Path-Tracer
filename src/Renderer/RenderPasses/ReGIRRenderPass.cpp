@@ -890,7 +890,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
 	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(scratch_buffer_size);
 	OrochiBuffer<unsigned int> mesh_indices_scratch_buffer_GPU(scratch_buffer_size);
-	OrochiBuffer<float> per_cell_sum_all_contributions_GPU(actual_number_of_cells_computed_per_iteration);
 
 	unsigned int* scratch_buffer_sorting_keys_address	= contribution_scratch_buffer_GPU.get_device_pointer();
 	unsigned int* scratch_buffer_sorting_values_address = mesh_indices_scratch_buffer_GPU.get_device_pointer();
@@ -941,14 +940,16 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_radix_sort.set_ordering(RadixSort::Ordering::ASCENDING);
 		m_radix_sort.sort();
 
-		/*m_sum_all_contributions_parallel_segmented_reduction.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
+		m_sum_all_contributions_parallel_segmented_reduction.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
 																			   contribution_scratch_buffer_GPU.size());
-		m_sum_all_contributions_parallel_segmented_reduction.reduce();*/
+		m_sum_all_contributions_parallel_segmented_reduction.set_evenly_spaced_segment_size(emissive_mesh_count);
+		m_sum_all_contributions_parallel_segmented_reduction.reduce();
+		std::vector<float> sum_all_contributions_buffer_GPU_downloaded;
+		//=m_sum_all_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
 
 		std::vector<unsigned int> sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
 																								  mesh_indices_scratch_buffer_GPU.size());
 		std::vector<unsigned int> sorted_contribution_buffer_GPU_downloaded = contribution_scratch_buffer_GPU.download_data();
-		std::vector<float> sum_all_contributions_buffer_GPU_downloaded		= per_cell_sum_all_contributions_GPU.download_data();
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
@@ -988,6 +989,14 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 					sum_best_contributions += contribution;
 
 				sum_all_contributions += contribution;
+			}
+
+			{
+				float sum_all_contrbis_GPU = sum_all_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
+				if (hippt::abs(sum_all_contributions - sum_all_contrbis_GPU) > 0.01f)
+				{
+					Debug::debugbreak();
+				}
 			}
 
 			// This if branch here computes the sizes of the light distribution for the current grid cell (outer for loop) such that it's going to cover the

@@ -10,19 +10,22 @@
 #include <functional>
 #include <random>
 
-template <typename T>
-ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::ParallelPrefixScanDecoupledLookback()
+	: m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
 {
 }
 
-template <typename T>
-ParallelPrefixScanDecoupledLookback<T>::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) : m_size(0)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																												 oroStream_t stream)
+	: m_size(0)
 {
 	init(hiprt_ctx, stream);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -30,51 +33,55 @@ void ParallelPrefixScanDecoupledLookback<T>::init(std::shared_ptr<HIPRTOrochiCtx
 	initialize_kernels();
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::initialize_kernels()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::initialize_kernels()
 {
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_Scan");
-	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
 	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
 	m_block_descriptor_init_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_BlockDescriptorInit");
-	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
+	m_block_descriptor_init_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
 	m_block_descriptor_init_kernel.set_measure_execution_time(false);
 
 	set_input_id_transform(std::make_unique<ComputeInputIDTransformIdentity>());
 	set_data_transform(std::make_unique<ComputeDataTransformIdentity>());
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> id_transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeInputIDTransform::INPUT_ID_TRANSFORM_STRING_STUB, id_transform->emit_input_id_transform());
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_exclusive_scan(bool exclusive)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_exclusive_scan(bool exclusive)
 {
 	m_exclusive_scan = exclusive;
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::compile()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::compile()
 {
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::resize(unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::resize(unsigned int element_count)
 {
 	m_last_resize_element_count = element_count;
 
@@ -90,8 +97,8 @@ void ParallelPrefixScanDecoupledLookback<T>::resize(unsigned int element_count)
 	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::free()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::free()
 {
 	m_input_buffer.free_no_error();
 	m_output_buffer.free_no_error();
@@ -105,8 +112,8 @@ void ParallelPrefixScanDecoupledLookback<T>::free()
 	m_last_resize_element_count = 0;
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::upload_input_data(const std::vector<T>& data)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::upload_input_data(const std::vector<InputType>& data)
 {
 	m_size = data.size();
 
@@ -118,14 +125,16 @@ void ParallelPrefixScanDecoupledLookback<T>::upload_input_data(const std::vector
 	m_output_data_pointer = m_output_buffer.get_device_pointer();
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_data_pointers(InputType* input_buffer_pointer, unsigned int element_count)
 {
 	set_data_pointers(input_buffer_pointer, nullptr, element_count);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_pointer, T* output_buffer_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_data_pointers(InputType* input_buffer_pointer,
+																									OutputType* output_buffer_pointer,
+																									unsigned int element_count)
 {
 	if (m_last_resize_element_count < element_count)
 	{
@@ -148,8 +157,8 @@ void ParallelPrefixScanDecoupledLookback<T>::set_data_pointers(T* input_buffer_p
 		m_output_data_pointer = m_output_buffer.get_device_pointer();
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::scan(bool auto_stream_synchronize)
 {
 	if (!m_hiprt_ctx || !m_stream)
 	{
@@ -179,18 +188,18 @@ void ParallelPrefixScanDecoupledLookback<T>::scan(bool auto_stream_synchronize)
 	void* block_descriptor_init_args[]				 = { &block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
-	T* input_buffer_pointer	 = m_input_data_pointer;
-	T* output_buffer_pointer = m_output_data_pointer;
-	void* block_scan_args[]	 = { &input_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer, &m_size,
-								 &m_exclusive_scan };
+	InputType* input_buffer_pointer	  = m_input_data_pointer;
+	OutputType* output_buffer_pointer = m_output_data_pointer;
+	void* block_scan_args[] = { &input_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer, &m_size,
+								&m_exclusive_scan };
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	if (auto_stream_synchronize)
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-template <typename T>
-float ParallelPrefixScanDecoupledLookback<T>::get_last_execution_time()
+template <typename InputType, typename TransformedType, typename OutputType>
+float ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_last_execution_time()
 {
 	m_block_descriptor_init_kernel.compute_execution_time();
 	m_scan_kernel.compute_execution_time();
@@ -198,35 +207,57 @@ float ParallelPrefixScanDecoupledLookback<T>::get_last_execution_time()
 	return m_block_descriptor_init_kernel.get_last_execution_time() + m_scan_kernel.get_last_execution_time();
 }
 
-template <typename T>
-constexpr std::string ParallelPrefixScanDecoupledLookback<T>::get_data_type_as_string() const
-
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_input_data_type_as_string() const
 {
-	if constexpr (std::is_same_v<T, unsigned int>)
+	if constexpr (std::is_same_v<InputType, unsigned int>)
 		return "unsigned int";
-	else if constexpr (std::is_same_v<T, float>)
+	else if constexpr (std::is_same_v<InputType, float>)
 		return "float";
 	else
-		static_assert(sizeof(T) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+		static_assert(sizeof(InputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
 }
 
-template <typename T>
-OrochiBuffer<T>& ParallelPrefixScanDecoupledLookback<T>::get_output_buffer()
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_transformed_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<TransformedType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<TransformedType, float>)
+		return "float";
+	else
+		static_assert(sizeof(TransformedType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_output_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<OutputType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<OutputType, float>)
+		return "float";
+	else
+		static_assert(sizeof(OutputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+OrochiBuffer<OutputType>& ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_output_buffer()
 {
 	return m_output_buffer;
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
+	unit_test_data_type_uint_to_float(hiprt_ctx, stream);
 	unit_test_transform(hiprt_ctx, stream);
 	unit_test_inclusive(hiprt_ctx, stream);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<unsigned int> scanner(hiprt_ctx, stream);
 	scanner.compile();
@@ -234,8 +265,9 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_basic(std::shared_ptr<HIP
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																									  oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
 	scanner.compile();
@@ -243,38 +275,68 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_data_type(std::shared_ptr
 	unit_test_template(hiprt_ctx, stream, scanner);
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_data_type_uint_to_float(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																													oroStream_t stream)
+{
+	class ComputeDataTransformUintToFloat : public ComputeDataTransform
+	{
+	public:
+		virtual std::string emit_input_transform() const override
+		{
+			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
+			return "return (float)(value & 0xAAAAAAAA);";
+		}
+
+		virtual std::string emit_output_transform() const override
+		{
+			return "return value;";
+		}
+	};
+
+	ParallelPrefixScanDecoupledLookback<unsigned int, float, float> scanner(hiprt_ctx, stream);
+	scanner.set_data_transform(std::make_unique<ComputeDataTransformUintToFloat>());
+	scanner.compile();
+
+	unit_test_template<unsigned int, float, float>(hiprt_ctx, stream, scanner, [](unsigned int val) { return (float)(val & 0xAAAAAAAA); });
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																									  oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<float> scanner(hiprt_ctx, stream);
 	scanner.set_data_transform(std::make_unique<ComputeDataTransformMultiplyBy2>());
 	scanner.compile();
 
-	unit_test_template<float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
+	unit_test_template<float, float, float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
 }
 
-template <typename T>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																									  oroStream_t stream)
 {
 	ParallelPrefixScanDecoupledLookback<unsigned int> scanner(hiprt_ctx, stream);
 	scanner.set_exclusive_scan(false);
 	scanner.compile();
 
-	unit_test_template<unsigned int>(hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
+	unit_test_template<unsigned int, unsigned int, unsigned int>(
+							hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
 }
 
-template <typename T>
-template <typename DataType>
-void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-																oroStream_t stream,
-																ParallelPrefixScanDecoupledLookback<DataType>& scanner,
-																std::function<DataType(DataType&)> input_value_transform,
-																std::function<DataType(DataType&)> output_value_transform,
-																bool exclusive_scan)
+template <typename InputType, typename TransformedType, typename OutputType>
+template <typename InputDataType, typename TransformedDataType, typename OutputDataType>
+void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_template(
+						std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+						oroStream_t stream,
+						ParallelPrefixScanDecoupledLookback<InputDataType, TransformedDataType, OutputDataType>& scanner,
+						std::function<TransformedDataType(InputDataType&)> input_value_transform,
+						std::function<OutputDataType(TransformedDataType&)> output_value_transform,
+						bool exclusive_scan)
 {
 	std::mt19937 engine_uint(42);
-	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
-												 0, 100),
+	auto rng = std::bind(std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>,
+											std::uniform_real_distribution<float>>(0, 100),
 						 engine_uint);
 
 	// Full tests with random sizes
@@ -290,27 +352,26 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 
 		unsigned int test_size = engine_uint() % 10000000 + 1;
 
-		std::conditional_t<std::is_same_v<DataType, float>, double, DataType> running_sum = 0;
-		std::vector<DataType> expected_output(test_size);
-		std::vector<DataType> input(test_size);
+		std::vector<InputDataType> input(test_size);
+		std::vector<OutputDataType> expected_output(test_size);
 
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](DataType) { return rng(); });
-		std::vector<DataType> untransformed_input = input;
-
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](InputDataType) { return rng(); });
+		std::vector<TransformedDataType> transformed_input(input.size());
 		// Transform input for CPU computation
-		std::transform(input.begin(), input.end(), input.begin(), input_value_transform);
+		std::transform(input.begin(), input.end(), transformed_input.begin(), input_value_transform);
 
-		auto start = std::chrono::high_resolution_clock::now();
+		auto start																					  = std::chrono::high_resolution_clock::now();
+		std::conditional_t<std::is_same_v<OutputDataType, float>, double, OutputDataType> running_sum = 0;
 		for (size_t j = 0; j < test_size; j++)
 		{
 			if (exclusive_scan)
 			{
 				expected_output[j] = running_sum;
-				running_sum += input[j];
+				running_sum += transformed_input[j];
 			}
 			else
 			{
-				running_sum += input[j];
+				running_sum += transformed_input[j];
 				expected_output[j] = running_sum;
 			}
 		}
@@ -321,7 +382,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 		std::transform(expected_output.begin(), expected_output.end(), expected_output.begin(), output_value_transform);
 
 		// Upload untransformed input
-		scanner.upload_input_data(untransformed_input);
+		scanner.upload_input_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 5;
@@ -339,7 +400,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 								"\tParallelPrefixScanDecoupledLookback unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
 								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
-		std::vector<DataType> output = scanner.get_output_buffer().download_data();
+		std::vector<OutputDataType> output = scanner.get_output_buffer().download_data();
 
 		for (long long int j = 0; j < test_size; j++)
 		{
@@ -349,7 +410,7 @@ void ParallelPrefixScanDecoupledLookback<T>::unit_test_template(std::shared_ptr<
 				// More than a certain percentage of error
 
 				std::string formatter;
-				if constexpr (std::is_integral_v<DataType>)
+				if constexpr (std::is_integral_v<OutputDataType>)
 					formatter = "%u";
 				else
 					formatter = "%f";

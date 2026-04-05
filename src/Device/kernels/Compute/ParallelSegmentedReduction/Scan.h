@@ -34,20 +34,20 @@ HIPRT_DEVICE unsigned int load_flag(const unsigned int* __restrict__ flags,
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
-ParallelSegmentedReduction_Reduce(const DataType* __restrict__ input,
+ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 								  const unsigned int* __restrict__ flags,
 								  const unsigned int* __restrict__ segment_ids,
 								  const unsigned int evenly_spaced_segment_size,
-								  DataType* __restrict__ output,
+								  OutputDataType* __restrict__ output,
 								  unsigned int input_size)
 {
 	int tid = threadIdx.x;
 
 	// Input load
-	unsigned int bid					 = blockIdx.x;
-	unsigned int global_tid				 = bid * PARALLEL_REDUCTION_CHUNK_SIZE + tid;
-	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
-	DataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
+	unsigned int bid						  = blockIdx.x;
+	unsigned int global_tid					  = bid * PARALLEL_REDUCTION_CHUNK_SIZE + tid;
+	InputDataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
+	TransformedDataType thread_input_value	  = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
 #define NAIVE_ATOMIC		   0
 #define SHARED_MEM_ATOMIC	   1

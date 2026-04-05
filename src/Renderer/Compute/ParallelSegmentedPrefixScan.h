@@ -20,7 +20,7 @@
  * Efficient Parallel Scan Algorithms for GPUs
  * https://research.nvidia.com/publication/2008-12_efficient-parallel-scan-algorithms-gpus
  */
-template <typename T>
+template <typename InputType, typename TransformedType = InputType, typename OutputType = InputType>
 class ParallelSegmentedPrefixScan
 {
 public:
@@ -40,9 +40,9 @@ public:
 	 * @param flags Segment flags. The prefix scans will be computed separately for each segment. This vector should contain packed bits, i.e. one unsigned int
 	 * contains 32 flags. This vector should therefore be of size ceil(data.size() / 32)
 	 */
-	void upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags);
-	void set_data_pointers(T* input_buffer_pointer, unsigned int element_count);
-	void set_data_pointers(T* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
+	void upload_input_data(const std::vector<InputType>& data, const std::vector<unsigned int>& flags);
+	void set_data_pointers(InputType* input_buffer_pointer, unsigned int element_count);
+	void set_data_pointers(InputType* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
 
 	bool get_exclusive_scan() const;
 	void set_exclusive_scan(bool exclusive);
@@ -52,36 +52,38 @@ public:
 
 	float get_last_execution_time();
 
-	constexpr std::string get_data_type_as_string() const;
+	constexpr std::string get_input_data_type_as_string() const;
+	constexpr std::string get_transformed_data_type_as_string() const;
+	constexpr std::string get_output_data_type_as_string() const;
 
-	OrochiBuffer<T>& get_output_buffer();
+	OrochiBuffer<OutputType>& get_output_buffer();
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_data_type_uint_to_float(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
-	template <typename DataType>
+	template <typename InputDataType, typename TransformedDataType = InputDataType, typename OutputDataType = InputDataType>
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 							oroStream_t stream,
-							ParallelSegmentedPrefixScan<DataType>& scanner,
-							std::function<DataType(DataType&)> input_value_transform  = [](DataType val) { return val; },
-							std::function<DataType(DataType&)> output_value_transform = [](DataType val) { return val; });
+							ParallelSegmentedPrefixScan<InputDataType, TransformedDataType, OutputDataType>& scanner,
+							std::function<TransformedDataType(InputDataType&)> input_value_transform   = [](InputDataType val) { return val; },
+							std::function<OutputDataType(TransformedDataType&)> output_value_transform = [](TransformedDataType val) { return val; });
 
 private:
 	void initialize_kernels();
 
 private:
-	OrochiBuffer<T> m_input_buffer;
+	OrochiBuffer<InputType> m_input_buffer;
 	OrochiBuffer<unsigned int> m_flags_buffer;
 
-	T* m_input_data_pointer					  = nullptr;
+	InputType* m_input_data_pointer			  = nullptr;
 	unsigned int* m_flags_data_pointer		  = nullptr;
 	unsigned int m_evenly_spaced_segment_size = 0;
 
-	OrochiBuffer<T> m_output_buffer;
-
+	OrochiBuffer<OutputType> m_output_buffer;
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
 	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
 

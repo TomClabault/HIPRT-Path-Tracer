@@ -11,19 +11,20 @@
 #include <functional>
 #include <random>
 
-template <typename T>
-ParallelSegmentedReduction<T>::ParallelSegmentedReduction() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelSegmentedReduction<InputType, TransformedType, OutputType>::ParallelSegmentedReduction() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
 {
 }
 
-template <typename T>
-ParallelSegmentedReduction<T>::ParallelSegmentedReduction(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) : m_size(0)
+template <typename InputType, typename TransformedType, typename OutputType>
+ParallelSegmentedReduction<InputType, TransformedType, OutputType>::ParallelSegmentedReduction(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+	: m_size(0)
 {
 	init(hiprt_ctx, stream);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -33,12 +34,14 @@ void ParallelSegmentedReduction<T>::init(std::shared_ptr<HIPRTOrochiCtx> hiprt_c
 	initialize_kernels();
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::initialize_kernels()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::initialize_kernels()
 {
 	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedReduction/Scan.h");
 	m_scan_kernel.set_kernel_function_name("ParallelSegmentedReduction_Reduce");
-	m_scan_kernel.get_kernel_options().set_string_macro_value("DataType", get_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
+	m_scan_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
 	m_scan_kernel.set_measure_execution_time(false);
 
 	set_input_id_transform(std::make_unique<ComputeInputIDTransformIdentity>());
@@ -63,29 +66,29 @@ void ParallelSegmentedReduction<T>::initialize_kernels()
 	m_segment_ids_prefix_scan.set_exclusive_scan(false);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_input_id_transform(std::unique_ptr<ComputeInputIDTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeInputIDTransform::INPUT_ID_TRANSFORM_STRING_STUB, transform->emit_input_id_transform());
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
 	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::compile()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::compile()
 {
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 
 	m_segment_ids_prefix_scan.compile();
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::resize(unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::resize(unsigned int element_count)
 {
 	if (m_last_resize_element_count == element_count)
 		// Nothing to resize
@@ -103,8 +106,8 @@ void ParallelSegmentedReduction<T>::resize(unsigned int element_count)
 	m_segment_ids_prefix_scan.resize(element_count);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::free()
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::free()
 {
 	m_input_buffer.free_no_error();
 	m_flags_buffer.free_no_error();
@@ -117,8 +120,9 @@ void ParallelSegmentedReduction<T>::free()
 	m_last_resize_element_count = 0;
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::upload_input_data(const std::vector<T>& data, const std::vector<unsigned int>& flags)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::upload_input_data(const std::vector<InputType>& data,
+																						   const std::vector<unsigned int>& flags)
 {
 	m_size = data.size();
 
@@ -133,14 +137,16 @@ void ParallelSegmentedReduction<T>::upload_input_data(const std::vector<T>& data
 	m_segment_ids_prefix_scan.set_data_pointers(m_flags_data_pointer, data.size());
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::set_data_pointers(T* device_data_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_data_pointers(InputType* device_data_pointer, unsigned int element_count)
 {
 	set_data_pointers(device_data_pointer, nullptr, element_count);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::set_data_pointers(T* device_data_pointer, unsigned int* device_flags_pointer, unsigned int element_count)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_data_pointers(InputType* device_data_pointer,
+																						   unsigned int* device_flags_pointer,
+																						   unsigned int element_count)
 {
 	if (m_last_resize_element_count < element_count)
 	{
@@ -162,20 +168,20 @@ void ParallelSegmentedReduction<T>::set_data_pointers(T* device_data_pointer, un
 	m_segment_ids_prefix_scan.set_data_pointers(device_flags_pointer, element_count);
 }
 
-template <typename T>
-unsigned int ParallelSegmentedReduction<T>::get_evenly_spaced_segment_size()
+template <typename InputType, typename TransformedType, typename OutputType>
+unsigned int ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_evenly_spaced_segment_size()
 {
 	return m_evenly_spaced_segment_size;
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::set_evenly_spaced_segment_size(unsigned int segment_size)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_evenly_spaced_segment_size(unsigned int segment_size)
 {
 	m_evenly_spaced_segment_size = segment_size;
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::reduce(bool auto_stream_synchronize)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::reduce(bool auto_stream_synchronize)
 {
 	if (!m_hiprt_ctx || !m_stream)
 	{
@@ -210,109 +216,160 @@ void ParallelSegmentedReduction<T>::reduce(bool auto_stream_synchronize)
 	if (m_evenly_spaced_segment_size == 0)
 		m_segment_ids_prefix_scan.scan(false);
 
-	T* input_buffer_pointer					 = m_input_data_pointer;
+	InputType* input_buffer_pointer			 = m_input_data_pointer;
 	unsigned int* flags_buffer_pointer		 = m_flags_data_pointer;
 	unsigned int* segment_ids_buffer_pointer = m_segment_ids_prefix_scan.get_output_buffer().get_device_pointer();
 
-	T* output_buffer_pointer = m_output_buffer.get_device_pointer();
-	void* block_scan_args[]	 = { &input_buffer_pointer,			&flags_buffer_pointer,	&segment_ids_buffer_pointer,
-								 &m_evenly_spaced_segment_size, &output_buffer_pointer, &m_size };
+	OutputType* output_buffer_pointer = m_output_buffer.get_device_pointer();
+	void* block_scan_args[]			  = { &input_buffer_pointer,		 &flags_buffer_pointer,	 &segment_ids_buffer_pointer,
+										  &m_evenly_spaced_segment_size, &output_buffer_pointer, &m_size };
 	m_scan_kernel.launch_asynchronous(PARALLEL_REDUCTION_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	if (auto_stream_synchronize)
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-template <typename T>
-float ParallelSegmentedReduction<T>::get_last_execution_time()
+template <typename InputType, typename TransformedType, typename OutputType>
+float ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_last_execution_time()
 {
 	m_scan_kernel.compute_execution_time();
 
 	return m_scan_kernel.get_last_execution_time();
 }
 
-template <typename T>
-constexpr std::string ParallelSegmentedReduction<T>::get_data_type_as_string() const
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_input_data_type_as_string() const
 
 {
-	if constexpr (std::is_same_v<T, unsigned int>)
+	if constexpr (std::is_same_v<InputType, unsigned int>)
 		return "unsigned int";
-	else if constexpr (std::is_same_v<T, float>)
+	else if constexpr (std::is_same_v<InputType, float>)
 		return "float";
 	else
-		static_assert(sizeof(T) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+		static_assert(sizeof(InputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
 }
 
-template <typename T>
-OrochiBuffer<T>& ParallelSegmentedReduction<T>::get_output_buffer()
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_transformed_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<TransformedType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<TransformedType, float>)
+		return "float";
+	else
+		static_assert(sizeof(TransformedType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+constexpr std::string ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_output_data_type_as_string() const
+{
+	if constexpr (std::is_same_v<OutputType, unsigned int>)
+		return "unsigned int";
+	else if constexpr (std::is_same_v<OutputType, float>)
+		return "float";
+	else
+		static_assert(sizeof(OutputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+OrochiBuffer<OutputType>& ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_output_buffer()
 {
 	return m_output_buffer;
 }
 
-template <typename T>
-OrochiBuffer<T>& ParallelSegmentedReduction<T>::get_segment_ids_buffer()
+template <typename InputType, typename TransformedType, typename OutputType>
+OrochiBuffer<unsigned int>& ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_segment_ids_buffer()
 {
 	return m_segment_ids_prefix_scan.get_output_buffer();
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	unit_test_basic(hiprt_ctx, stream);
 	unit_test_data_type(hiprt_ctx, stream);
+	unit_test_data_type_uint_to_float(hiprt_ctx, stream);
 	unit_test_transform(hiprt_ctx, stream);
 	unit_test_evenly_spaced_flags(hiprt_ctx, stream);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelSegmentedReduction<unsigned int> scanner(hiprt_ctx, stream);
-	scanner.compile();
+	ParallelSegmentedReduction<unsigned int> reducer(hiprt_ctx, stream);
+	reducer.compile();
 
-	unit_test_template(hiprt_ctx, stream, scanner);
+	unit_test_template(hiprt_ctx, stream, reducer);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelSegmentedReduction<float> scanner(hiprt_ctx, stream);
-	scanner.compile();
+	ParallelSegmentedReduction<float> reducer(hiprt_ctx, stream);
+	reducer.compile();
 
-	unit_test_template(hiprt_ctx, stream, scanner);
+	unit_test_template(hiprt_ctx, stream, reducer);
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_data_type_uint_to_float(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																										   oroStream_t stream)
 {
-	ParallelSegmentedReduction<float> scanner(hiprt_ctx, stream);
-	scanner.set_data_transform(std::make_unique<ComputeDataTransformMultiplyBy2>());
-	scanner.compile();
+	class ComputeDataTransformUintToFloat : public ComputeDataTransform
+	{
+	public:
+		virtual std::string emit_input_transform() const override
+		{
+			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
+			return "return (float)(value & 0xAAAAAAAA);";
+		}
 
-	unit_test_template<float>(hiprt_ctx, stream, scanner, [](float val) { return val * 2; });
+		virtual std::string emit_output_transform() const override
+		{
+			return "return value;";
+		}
+	};
+
+	ParallelSegmentedReduction<unsigned int, float, float> reducer(hiprt_ctx, stream);
+	reducer.set_data_transform(std::make_unique<ComputeDataTransformUintToFloat>());
+	reducer.compile();
+
+	unit_test_template<unsigned int, float, float>(hiprt_ctx, stream, reducer, [](unsigned int val) { return (float)(val & 0xAAAAAAAA); });
 }
 
-template <typename T>
-void ParallelSegmentedReduction<T>::unit_test_evenly_spaced_flags(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelSegmentedReduction<float> scanner(hiprt_ctx, stream);
-	scanner.set_evenly_spaced_segment_size(rand() % 50);
-	scanner.compile();
+	ParallelSegmentedReduction<float> reducer(hiprt_ctx, stream);
+	reducer.set_data_transform(std::make_unique<ComputeDataTransformMultiplyBy2>());
+	reducer.compile();
 
-	unit_test_template<float>(hiprt_ctx, stream, scanner);
+	unit_test_template<float, float, float>(hiprt_ctx, stream, reducer, [](float val) { return val * 2; });
 }
 
-template <typename T>
-template <typename DataType>
-void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-													   oroStream_t stream,
-													   ParallelSegmentedReduction<DataType>& scanner,
-													   std::function<DataType(DataType&)> input_value_transform,
-													   std::function<DataType(DataType&)> output_value_transform)
+template <typename InputType, typename TransformedType, typename OutputType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_evenly_spaced_flags(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+																									   oroStream_t stream)
+{
+	ParallelSegmentedReduction<float> reducer(hiprt_ctx, stream);
+	reducer.set_evenly_spaced_segment_size(rand() % 50);
+	reducer.compile();
+
+	unit_test_template<float>(hiprt_ctx, stream, reducer);
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
+template <typename InputDataType, typename TransformedDataType, typename OutputDataType>
+void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_test_template(
+						std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+						oroStream_t stream,
+						ParallelSegmentedReduction<InputDataType, TransformedDataType, OutputDataType>& reducer,
+						std::function<TransformedDataType(InputDataType&)> input_value_transform,
+						std::function<OutputDataType(TransformedDataType&)> output_value_transform)
 {
 	std::mt19937 engine_uint(42);
-	auto rng = std::bind(std::conditional_t<std::is_integral_v<DataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(
-												 1, 5),
+	auto rng = std::bind(std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>,
+											std::uniform_real_distribution<float>>(1, 5),
 						 engine_uint);
 
 	// Full tests with random sizes
@@ -326,15 +383,15 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 	{
 		engine_uint.seed(i);
 
-		unsigned int test_size = engine_uint() % 100000000 + 1;
+		unsigned int test_size = engine_uint() % 40000000 + 1;
 
-		std::vector<DataType> input(test_size);
-		std::vector<DataType> untransformed_input;
+		std::vector<InputDataType> input(test_size);
+		std::vector<TransformedDataType> transformed_input(test_size);
 		std::vector<unsigned int> flags((test_size + 31) / 32, 0);
 
-		unsigned int evenly_spaced_segment_size = scanner.get_evenly_spaced_segment_size();
+		unsigned int evenly_spaced_segment_size = reducer.get_evenly_spaced_segment_size();
 
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](DataType) { return rng(); });
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](InputDataType) { return rng(); });
 		if (evenly_spaced_segment_size == 0)
 			std::transform(flags.begin(), flags.end(), flags.begin(), [&engine_uint](unsigned int) { return engine_uint(); });
 		else
@@ -346,9 +403,7 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 			}
 		}
 
-		untransformed_input = input;
-
-		std::transform(input.begin(), input.end(), input.begin(), input_value_transform);
+		std::transform(input.begin(), input.end(), transformed_input.begin(), input_value_transform);
 
 		// Adding 2% of random warps that are full zero
 		if (evenly_spaced_segment_size == 0)
@@ -374,8 +429,8 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 			}
 		}
 
-		std::conditional_t<std::is_same_v<DataType, float>, float, DataType> running_sum = 0;
-		std::vector<DataType> expected_output(test_size);
+		std::conditional_t<std::is_same_v<OutputDataType, float>, float, OutputDataType> running_sum = 0;
+		std::vector<OutputDataType> expected_output(test_size);
 
 		auto start				= std::chrono::high_resolution_clock::now();
 		unsigned int segment_id = 0;
@@ -394,7 +449,7 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 					expected_output[j] = 0;
 			}
 
-			running_sum += input[j];
+			running_sum += transformed_input[j];
 		}
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
@@ -402,13 +457,13 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 
 		std::transform(expected_output.begin(), expected_output.end(), expected_output.begin(), output_value_transform);
 
-		scanner.upload_input_data(untransformed_input, flags);
+		reducer.upload_input_data(input, flags);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 1;
 		for (int j = 0; j < repeats; j++)
 		{
-			scanner.reduce();
+			reducer.reduce();
 		}
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_end, stream));
 
@@ -420,7 +475,7 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 								"\tParallelSegmentedReduction unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
 								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
-		std::vector<DataType> output = scanner.get_output_buffer().download_data();
+		std::vector<OutputDataType> output = reducer.get_output_buffer().download_data();
 
 		// The output is packed into the first 'segment_id' entries and the rest is undefined so we're only checking those
 		for (long long int j = 0; j < segment_id; j++)
@@ -429,7 +484,7 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 			if (diff / output[j] * 100.0 > 0.01)
 			{
 				std::string formatter;
-				if constexpr (std::is_integral_v<DataType>)
+				if constexpr (std::is_integral_v<OutputDataType>)
 					formatter = "%u";
 				else
 					formatter = "%.8f";
@@ -446,7 +501,7 @@ void ParallelSegmentedReduction<T>::unit_test_template(std::shared_ptr<HIPRTOroc
 			}
 		}
 
-		scanner.get_output_buffer().memset_whole_buffer(0);
+		reducer.get_output_buffer().memset_whole_buffer(0);
 	}
 
 	OROCHI_CHECK_ERROR(oroEventDestroy(scan_start));

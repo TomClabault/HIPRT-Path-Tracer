@@ -28,12 +28,12 @@ namespace ComputeDataTransforms
 		INPUT_ID_TRANSFORM(input_id, input_size);
 	}
 
-	HIPRT_DEVICE HIPRT_INLINE DataType input_value_transform(DataType value, unsigned int global_element_id)
+	HIPRT_DEVICE HIPRT_INLINE TransformedDataType input_value_transform(InputDataType value, unsigned int global_element_id)
 	{
 		INPUT_TRANSFORM(value, global_element_id);
 	}
 
-	HIPRT_DEVICE HIPRT_INLINE DataType output_value_transform(DataType value, unsigned int global_element_id)
+	HIPRT_DEVICE HIPRT_INLINE OutputDataType output_value_transform(TransformedDataType value, unsigned int global_element_id)
 	{
 		OUTPUT_TRANSFORM(value, global_element_id);
 	}

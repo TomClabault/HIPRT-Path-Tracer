@@ -7,7 +7,9 @@
 #define DEVICE_INCLUDES_COMPUTE_COMMON_KERNEL_DATA_TYPE_H
 
 #ifndef __KERNELCC__
-using DataType = unsigned int;
+using InputDataType		  = unsigned int;
+using TransformedDataType = unsigned int;
+using OutputDataType	  = unsigned int;
 #endif
 
 #endif

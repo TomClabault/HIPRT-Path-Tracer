@@ -10,13 +10,13 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_value,
-														 unsigned int flag,
-														 unsigned int bid,
-														 int tid,
-														 bool& out_thread_needs_block_prefix,
-														 bool& out_block_is_open,
-														 ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
+HIPRT_DEVICE TransformedDataType block_segmented_scan_early_publish(TransformedDataType thread_input_value,
+																	unsigned int flag,
+																	unsigned int bid,
+																	int tid,
+																	bool& out_thread_needs_block_prefix,
+																	bool& out_block_is_open,
+																	ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
 {
 	unsigned int lane_id = tid % 32;
 	unsigned int warp_id = tid >> 5;
@@ -24,10 +24,10 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 	// Per-warp scan
 	bool warp_is_open = hippt::warp_shfl(flag, 0) == 0; // Whether or not the warp begins with an open flag
 	unsigned int propagated_flag;
-	DataType warp_prefix = warp_segmented_scan_inclusive(thread_input_value, flag, propagated_flag);
+	TransformedDataType warp_prefix = warp_segmented_scan_inclusive(thread_input_value, flag, propagated_flag);
 
 	// Last value of the last segment of the warp.
-	DataType warp_total_sum = hippt::warp_shfl(warp_prefix, 31);
+	TransformedDataType warp_total_sum = hippt::warp_shfl(warp_prefix, 31);
 
 	// Encodes whether this warp is a homogeneous continuation of the previous warp
 	unsigned int warp_flag = (hippt::warp_shfl(propagated_flag, 31) != 0) || !warp_is_open;
@@ -37,7 +37,7 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 	// Shared memory to hold the sum of each warp
 	// (Size = Max Threads / 32). Assuming max 1024 threads -> 32 warps.
 	constexpr unsigned int num_warps = PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32;
-	__shared__ DataType smem_warp_sums[num_warps];
+	__shared__ TransformedDataType smem_warp_sums[num_warps];
 	__shared__ unsigned int smem_flags[num_warps];
 	__shared__ unsigned int smem_inclusive_flag_scan[num_warps];
 	__shared__ bool smem_block_is_open;
@@ -55,8 +55,8 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 	// This calculates the base value to add to each warp
 	if (warp_id == 0)
 	{
-		DataType my_warp_sum = 0;
-		unsigned int my_flag = 0;
+		TransformedDataType my_warp_sum = 0;
+		unsigned int my_flag			= 0;
 
 		if (tid < num_warps)
 		{
@@ -66,7 +66,7 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 		}
 
 		unsigned int propagated_all_warp_flags;
-		DataType inclusive_warp_sum_scan = warp_segmented_scan_inclusive(my_warp_sum, my_flag, propagated_all_warp_flags);
+		TransformedDataType inclusive_warp_sum_scan = warp_segmented_scan_inclusive(my_warp_sum, my_flag, propagated_all_warp_flags);
 
 		// Write the inclusive scan back to smem so other warps can read their "base"
 		if (tid < num_warps)
@@ -104,7 +104,7 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 	out_thread_needs_block_prefix	  = warp_open_up_to_current_lane && all_previous_warps_open;
 	out_block_is_open				  = smem_block_is_open;
 
-	DataType warp_base = 0;
+	TransformedDataType warp_base = 0;
 	// Add the base from previous warps to the local warp prefix
 	if (warp_id > 0 && accumulate_previous_warp)
 		warp_base = smem_warp_sums[warp_id - 1];
@@ -114,10 +114,10 @@ HIPRT_DEVICE DataType block_segmented_scan_early_publish(DataType thread_input_v
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
-ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ input,
+ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restrict__ input,
 												  const unsigned int* __restrict__ flags,
 												  const unsigned int evenly_spaced_segment_size,
-												  DataType* __restrict__ output,
+												  OutputDataType* __restrict__ output,
 												  ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
 												  unsigned int* __restrict__ g_global_block_index_counter,
 												  unsigned int input_size,
@@ -136,9 +136,9 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 		return;
 
 	// Input load
-	unsigned int global_tid				 = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
-	DataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
-	DataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
+	unsigned int global_tid					  = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
+	InputDataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
+	TransformedDataType thread_input_value	  = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
 	unsigned int warp_id = global_tid >> 5;
 	unsigned int lane_id = global_tid & 31;
@@ -161,9 +161,10 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 
 	bool thread_needs_block_prefix;
 	bool block_is_open;
-	DataType inclusive_sum = block_segmented_scan_early_publish(thread_input_value, flag, bid, tid, thread_needs_block_prefix, block_is_open, block_descs);
+	TransformedDataType inclusive_sum =
+							block_segmented_scan_early_publish(thread_input_value, flag, bid, tid, thread_needs_block_prefix, block_is_open, block_descs);
 
-	__shared__ DataType block_prefix;
+	__shared__ TransformedDataType block_prefix;
 	__shared__ int base_lookback_block_index;
 	if (tid == 0)
 	{
@@ -199,7 +200,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 			// This tells us we don't need to look further back than this lane.
 			unsigned int ballot_P = hippt::warp_ballot(active_mask, previous_block_descriptor.get_status() == DecoupledLookbackStatus::P);
 
-			DataType val_to_add = previous_block_descriptor.get_inclusive_sum();
+			TransformedDataType val_to_add = previous_block_descriptor.get_inclusive_sum();
 
 			// Filter out values we don't need
 			// We want to sum values from the "closest" block (highest TID)
@@ -254,11 +255,11 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const DataType* __restrict__ i
 
 	__syncthreads();
 
-	DataType prefix_contribution = thread_needs_block_prefix ? block_prefix : 0;
+	TransformedDataType prefix_contribution = thread_needs_block_prefix ? block_prefix : 0;
 
 	if (global_tid < input_size)
 	{
-		DataType output_value;
+		TransformedDataType output_value;
 		if (exclusive_scan)
 			output_value = inclusive_sum - thread_input_value + prefix_contribution;
 		else
