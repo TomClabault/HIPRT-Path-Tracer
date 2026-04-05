@@ -187,6 +187,7 @@ private:
 
 	RadixSort m_radix_sort;
 	ParallelSegmentedReduction<unsigned int, float, float> m_sum_all_contributions_parallel_segmented_reduction;
+	ParallelSegmentedReduction<unsigned int, float, float> m_sum_best_contributions_parallel_segmented_reduction;
 };
 
 #endif

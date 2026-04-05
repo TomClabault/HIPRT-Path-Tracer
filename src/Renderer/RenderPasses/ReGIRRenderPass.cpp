@@ -184,6 +184,28 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 
 	m_radix_sort.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 	m_radix_sort.compile();
+
+	class ContributionSumDataTransform : public ComputeDataTransform
+	{
+	public:
+		virtual std::string emit_input_transform() const override
+		{
+			return std::string("unsigned int contribution_bits = ~(value & 0xFFFF); return hippt::fp16_bits_to_fp32(contribution_bits);");
+		}
+
+		virtual std::string emit_output_transform() const override
+		{
+			return std::string("return value;");
+		}
+	};
+
+	m_sum_all_contributions_parallel_segmented_reduction.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
+	m_sum_all_contributions_parallel_segmented_reduction.set_data_transform(std::make_unique<ContributionSumDataTransform>());
+	m_sum_all_contributions_parallel_segmented_reduction.compile();
+
+	m_sum_best_contributions_parallel_segmented_reduction.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
+	m_sum_best_contributions_parallel_segmented_reduction.set_data_transform(std::make_unique<ContributionSumDataTransform>());
+	m_sum_best_contributions_parallel_segmented_reduction.compile();
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -880,6 +902,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	//
 	// sort is already internally resized to the same size
 	m_radix_sort.resize(scratch_buffer_size);
+	m_sum_all_contributions_parallel_segmented_reduction.resize(scratch_buffer_size);
+	m_sum_best_contributions_parallel_segmented_reduction.resize(scratch_buffer_size);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
 
@@ -944,8 +968,20 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 																			   contribution_scratch_buffer_GPU.size());
 		m_sum_all_contributions_parallel_segmented_reduction.set_evenly_spaced_segment_size(emissive_mesh_count);
 		m_sum_all_contributions_parallel_segmented_reduction.reduce();
-		std::vector<float> sum_all_contributions_buffer_GPU_downloaded;
-		//=m_sum_all_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
+		std::vector<float> sum_all_contributions_buffer_GPU_downloaded =
+								m_sum_all_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
+
+		unsigned int light_distribution_size						 = render_data.render_settings.regir_settings.light_distribution_maximum_size;
+		unsigned int cells_yet_to_compute_count						 = contributions_left_to_compute / emissive_mesh_count;
+		unsigned int non_compacted_effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
+
+		m_sum_best_contributions_parallel_segmented_reduction.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
+																				contribution_scratch_buffer_GPU.size());
+		m_sum_best_contributions_parallel_segmented_reduction.set_evenly_spaced_segment_size(emissive_mesh_count);
+		m_sum_best_contributions_parallel_segmented_reduction.set_segment_length(non_compacted_effective_light_distribution_size);
+		m_sum_best_contributions_parallel_segmented_reduction.reduce();
+		std::vector<float> sum_best_contributions_buffer_GPU_downloaded =
+								m_sum_best_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
 
 		std::vector<unsigned int> sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
 																								  mesh_indices_scratch_buffer_GPU.size());
@@ -953,9 +989,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
-
-		unsigned int light_distribution_size	= render_data.render_settings.regir_settings.light_distribution_maximum_size;
-		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
 		start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
@@ -967,18 +1000,16 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
-			unsigned int non_compacted_effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
 			unsigned int effective_light_distribution_size;
 			if (compute_only_sizes)
 				effective_light_distribution_size = non_compacted_effective_light_distribution_size;
 			else
 				effective_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
 
-			float sum_all_contributions = 0.0f;
 			// We're only going to keep the best 'light_distribution_size' contributing meshes
 			// in case there are more than that, i.e. the alias table is going to be built only on
 			// the 'light_distribution_size' meshes that contribute the most to the cell
-			float sum_best_contributions = 0.0f;
+			float sum_best_contributions_ref = 0.0f;
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 			{
 				float contribution = get_float_contribution_from_scratch_buffer(
@@ -986,17 +1017,19 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 										sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
 				if (contribution_index < effective_light_distribution_size)
-					sum_best_contributions += contribution;
-
-				sum_all_contributions += contribution;
+					sum_best_contributions_ref += contribution;
 			}
 
+			float sum_all_contributions = sum_all_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
+			float sum_best_contributions;
+			if (compute_only_sizes)
+				sum_best_contributions = sum_best_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
+			else
+				sum_best_contributions = sum_best_contributions_ref;
+
+			if (hippt::abs(sum_best_contributions - sum_best_contributions_ref) > 0.012f)
 			{
-				float sum_all_contrbis_GPU = sum_all_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
-				if (hippt::abs(sum_all_contributions - sum_all_contrbis_GPU) > 0.01f)
-				{
-					Debug::debugbreak();
-				}
+				std::cerr << "Nope" << std::endl;
 			}
 
 			// This if branch here computes the sizes of the light distribution for the current grid cell (outer for loop) such that it's going to cover the

@@ -37,8 +37,11 @@ public:
 	void set_data_pointers(InputType* input_buffer_pointer, unsigned int element_count);
 	void set_data_pointers(InputType* input_buffer_pointer, unsigned int* flags_buffer_pointer, unsigned int element_count);
 
-	unsigned int get_evenly_spaced_segment_size();
-	void set_evenly_spaced_segment_size(unsigned int segment_size);
+	unsigned int get_evenly_spaced_segment_size() const noexcept;
+	void set_evenly_spaced_segment_size(unsigned int segment_size) noexcept;
+
+	unsigned int get_segment_length() const noexcept;
+	void set_segment_length(unsigned int segment_length) noexcept;
 
 	void reduce(bool auto_stream_synchronize = true);
 
@@ -57,6 +60,7 @@ public:
 	static void unit_test_data_type_uint_to_float(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_transform(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_evenly_spaced_flags(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	static void unit_test_evenly_spaced_flags_segment_length(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename InputDataType, typename TransformedDataType = InputDataType, typename OutputDataType = InputDataType>
 	static void unit_test_template(
 							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
@@ -73,10 +77,15 @@ private:
 	OrochiBuffer<OutputType> m_output_buffer;
 	OrochiBuffer<unsigned int> m_flags_buffer;
 
-	InputType* m_input_data_pointer			  = nullptr;
-	unsigned int* m_flags_data_pointer		  = nullptr;
+	InputType* m_input_data_pointer	   = nullptr;
+	unsigned int* m_flags_data_pointer = nullptr;
+	// If not using a flag buffer, we can use this to just specify that the segments are evenly spaced with a fixed segment size
 	unsigned int m_evenly_spaced_segment_size = 0;
+	// If this is not 0, then the parallel primitive will only be computed over the first m_segment_length elements of each segment. Only used if
+	// m_evenly_spaced_segment_size is also used (is not 0).
+	unsigned int m_segment_length = 0;
 
+	GPUKernel m_memset_0_kernel;
 	GPUKernel m_scan_kernel;
 	ParallelPrefixScanDecoupledLookback<unsigned int> m_segment_ids_prefix_scan;
 

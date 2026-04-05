@@ -60,8 +60,8 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_in
 template <typename InputType, typename TransformedType, typename OutputType>
 void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
-	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
-	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_DATA_TRANSFORM_STRING_STUB, transform->emit_input_transform());
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_DATA_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>

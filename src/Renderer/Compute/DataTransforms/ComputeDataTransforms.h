@@ -28,8 +28,8 @@
 class ComputeDataTransform
 {
 public:
-	static inline std::string INPUT_TRANSFORM_STRING_STUB  = INPUT_TRANSFORM_STRING;
-	static inline std::string OUTPUT_TRANSFORM_STRING_STUB = OUTPUT_TRANSFORM_STRING;
+	static inline std::string INPUT_DATA_TRANSFORM_STRING_STUB	= INPUT_DATA_TRANSFORM_STRING;
+	static inline std::string OUTPUT_DATA_TRANSFORM_STRING_STUB = OUTPUT_DATA_TRANSFORM_STRING;
 
 	/**
 	 * Input data transform function signature:

@@ -8,17 +8,18 @@
 
 #include "Device/includes/Compute/Common/KernelDataType.h"
 #include "Device/includes/FixIntellisense.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #ifndef __KERNELCC__
 #define STR(x) #x
 
-#define INPUT_ID_TRANSFORM(input_id, input_size)   return input_id;
-#define INPUT_TRANSFORM(value, global_element_id)  return value;
-#define OUTPUT_TRANSFORM(value, global_element_id) return value;
+#define INPUT_ID_TRANSFORM(input_id, input_size)		return input_id;
+#define INPUT_DATA_TRANSFORM(value, global_element_id)	return value;
+#define OUTPUT_DATA_TRANSFORM(value, global_element_id) return value;
 
-#define INPUT_ID_TRANSFORM_STRING STR(INPUT_ID_TRANSFORM(x, y))
-#define INPUT_TRANSFORM_STRING	  STR(INPUT_TRANSFORM(x, y))
-#define OUTPUT_TRANSFORM_STRING	  STR(OUTPUT_TRANSFORM(x, y))
+#define INPUT_ID_TRANSFORM_STRING	 STR(INPUT_ID_TRANSFORM(x, y))
+#define INPUT_DATA_TRANSFORM_STRING	 STR(INPUT_DATA_TRANSFORM(x, y))
+#define OUTPUT_DATA_TRANSFORM_STRING STR(OUTPUT_DATA_TRANSFORM(x, y))
 #endif
 
 namespace ComputeDataTransforms
@@ -30,12 +31,12 @@ namespace ComputeDataTransforms
 
 	HIPRT_DEVICE HIPRT_INLINE TransformedDataType input_value_transform(InputDataType value, unsigned int global_element_id)
 	{
-		INPUT_TRANSFORM(value, global_element_id);
+		INPUT_DATA_TRANSFORM(value, global_element_id);
 	}
 
 	HIPRT_DEVICE HIPRT_INLINE OutputDataType output_value_transform(TransformedDataType value, unsigned int global_element_id)
 	{
-		OUTPUT_TRANSFORM(value, global_element_id);
+		OUTPUT_DATA_TRANSFORM(value, global_element_id);
 	}
 } // namespace ComputeDataTransforms
 

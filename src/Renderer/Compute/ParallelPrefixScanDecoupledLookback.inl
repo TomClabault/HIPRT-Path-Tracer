@@ -41,6 +41,7 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 	m_scan_kernel.get_kernel_options().set_string_macro_value("InputDataType", get_input_data_type_as_string());
 	m_scan_kernel.get_kernel_options().set_string_macro_value("TransformedDataType", get_transformed_data_type_as_string());
 	m_scan_kernel.get_kernel_options().set_string_macro_value("OutputDataType", get_output_data_type_as_string());
+
 	m_scan_kernel.set_measure_execution_time(false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
@@ -63,8 +64,8 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 template <typename InputType, typename TransformedType, typename OutputType>
 void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::set_data_transform(std::unique_ptr<ComputeDataTransform> transform)
 {
-	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_TRANSFORM_STRING_STUB, transform->emit_input_transform());
-	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_TRANSFORM_STRING_STUB, transform->emit_output_transform());
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::INPUT_DATA_TRANSFORM_STRING_STUB, transform->emit_input_transform());
+	m_scan_kernel.get_kernel_options().set_string_macro_value(ComputeDataTransform::OUTPUT_DATA_TRANSFORM_STRING_STUB, transform->emit_output_transform());
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>

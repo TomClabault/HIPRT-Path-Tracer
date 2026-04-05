@@ -3,6 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_SCAN_H
+#define DEVICE_KERNELS_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_SCAN_H
+
 #include "Device/includes/Compute/Common/DataTransforms.h"
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
@@ -38,6 +41,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 								  const unsigned int* __restrict__ flags,
 								  const unsigned int* __restrict__ segment_ids,
 								  const unsigned int evenly_spaced_segment_size,
+								  const unsigned int segment_length,
 								  OutputDataType* __restrict__ output,
 								  unsigned int input_size)
 {
@@ -48,6 +52,12 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 	unsigned int global_tid					  = bid * PARALLEL_REDUCTION_CHUNK_SIZE + tid;
 	InputDataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
 	TransformedDataType thread_input_value	  = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
+	if (segment_length > 0 && evenly_spaced_segment_size > 0)
+	{
+		unsigned int index_in_segment = global_tid % evenly_spaced_segment_size;
+		if (index_in_segment >= segment_length)
+			thread_input_value = 0;
+	}
 
 #define NAIVE_ATOMIC		   0
 #define SHARED_MEM_ATOMIC	   1
@@ -115,3 +125,5 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 
 #endif
 }
+
+#endif
