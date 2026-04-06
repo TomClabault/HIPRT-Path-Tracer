@@ -185,12 +185,17 @@ private:
 	float m_last_light_distribution_compaction_vram_saving_primary_hits	  = 0.0f;
 	float m_last_light_distribution_compaction_vram_saving_secondary_hits = 0.0f;
 
-	RadixSort m_radix_sort;
-	ParallelSegmentedReduction<unsigned int, float, float> m_sum_all_contributions_parallel_segmented_reduction;
-	ParallelSegmentedReduction<unsigned int, float, float> m_sum_best_contributions_parallel_segmented_reduction;
-	ParallelSegmentedPrefixScan<unsigned int, float, float> m_compute_light_distributions_CDFs_prefix_scan;
-	GPUKernel m_memset_ushort_kernel;
-	GPUKernel m_compute_light_distributions_size_kernel;
+	struct LightDistributionsBuildKernels
+	{
+		RadixSort m_radix_sort;
+		ParallelSegmentedReduction<unsigned int, float, float> sum_reduction_all_cell_contributions;
+		ParallelSegmentedReduction<unsigned int, float, float> sum_reduction_light_distrib_size_cell_contributions;
+		ParallelSegmentedPrefixScan<unsigned int, float, float> m_compute_light_distributions_CDFs_prefix_scan;
+		GPUKernel m_memset_ushort_kernel;
+		GPUKernel m_compute_light_distributions_size_kernel;
+		GPUKernel m_scatter_light_distributions_CDFs_elements;
+		GPUKernel m_build_compacted_light_distributions_CDFs;
+	} light_distributions_build_kernels;
 };
 
 #endif

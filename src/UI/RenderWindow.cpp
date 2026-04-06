@@ -107,6 +107,7 @@ extern ImGuiLogger g_imgui_logger;
 // reservoir?
 
 // TODO ReGIR
+// - Can we "compact" the hash grid into a perfect hash grid after a while when we stop adding new cells to the ReGIR grid?
 // - If we increase the grid resolution, can we get away with fewer reservoirs per cell and a larger jittering ardius to basically stay the same in terms of
 // correlations and memory usage and grid fill time but now we have better resolution?
 // - Jitter NEE++ to avoid grid artifacts a bit more?

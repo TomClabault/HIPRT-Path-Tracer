@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_HASH_GRID_H
 #define DEVICE_INCLUDES_HASH_GRID_H
 
+#include "Device/includes/Hash.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 

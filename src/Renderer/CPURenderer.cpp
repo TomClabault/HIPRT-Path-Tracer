@@ -11,10 +11,10 @@
 #include "Device/kernels/NEE++/GridPrepopulate.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"
 #include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
+#include "Device/kernels/ReSTIR/ReGIR/LightDistributionsBuild/ComputeCellsLightDistributions.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
