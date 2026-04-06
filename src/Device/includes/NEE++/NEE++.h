@@ -132,7 +132,7 @@ struct NEEPlusPlusDevice
 	// being unoccluded
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
-	float m_confidence_threshold	 = 0.025f;
+	float m_confidence_threshold	 = 0.0025f;
 	float m_minimum_unoccluded_proba = 0.0f;
 
 	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
