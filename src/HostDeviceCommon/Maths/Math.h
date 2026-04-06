@@ -542,6 +542,12 @@ namespace hippt
 		return atomicMax(address, value);
 	}
 
+	template <typename T>
+	__device__ static T atomic_max_gpu(T* address, T value)
+	{
+		return atomic_max(address, value);
+	}
+
 	/**
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
@@ -553,6 +559,72 @@ namespace hippt
 	__device__ static T atomic_min(T* address, T value)
 	{
 		return atomicMin(address, value);
+	}
+
+	template <>
+	__device__ short int atomic_min(short int* address, short int val)
+	{
+		// Address of the 32-bit word containing this 16-bit short.
+		unsigned int* word = reinterpret_cast<unsigned int*>(reinterpret_cast<size_t>(address) & ~size_t(3));
+
+		// Which half of the 32-bit word do we own? low = 0, high = 16.
+		const unsigned int shift = (reinterpret_cast<size_t>(address) & 0x2) ? 16u : 0u;
+		const unsigned int mask	 = 0xFFFFu << shift;
+
+		unsigned int old = *word;
+		unsigned int assumed;
+
+		do
+		{
+			assumed = old;
+
+			// Extract the current short as a signed value.
+			short current = static_cast<short>((assumed & mask) >> shift);
+
+			// Signed minimum.
+			short new_val = (current < val) ? current : val;
+
+			// Replace only our 16-bit lane; preserve the other lane.
+			unsigned int desired = (assumed & ~mask) | (static_cast<unsigned int>(static_cast<unsigned short>(new_val)) << shift);
+
+			old = atomicCAS(word, assumed, desired);
+		} while (old != assumed);
+
+		// Return the previous value of our short lane.
+		return static_cast<short>((old & mask) >> shift);
+	}
+
+	template <>
+	__device__ unsigned short int atomic_min(unsigned short int* address, unsigned short int val)
+	{
+		unsigned int* word = reinterpret_cast<unsigned int*>(reinterpret_cast<size_t>(address) & ~size_t(3));
+
+		const unsigned int shift = (reinterpret_cast<size_t>(address) & 0x2) ? 16u : 0u;
+		const unsigned int mask	 = 0xFFFFu << shift;
+
+		unsigned int old = *word;
+		unsigned int assumed;
+
+		do
+		{
+			assumed = old;
+
+			unsigned short current = static_cast<unsigned short>((assumed & mask) >> shift);
+
+			unsigned short new_val = (current < val) ? current : val;
+
+			unsigned int desired = (assumed & ~mask) | (static_cast<unsigned int>(static_cast<unsigned short>(new_val)) << shift);
+
+			old = atomicCAS(word, assumed, desired);
+		} while (old != assumed);
+
+		return static_cast<unsigned short>((old & mask) >> shift);
+	}
+
+	template <typename T>
+	__device__ static T atomic_min_gpu(T* address, T value)
+	{
+		return atomic_min(address, value);
 	}
 
 	/**
@@ -1361,6 +1433,15 @@ static
 		return prev_value;
 	}
 
+	template <typename T>
+	T atomic_max_gpu(T* address, T value)
+	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
+		return 0;
+	}
+
 	/**
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
@@ -1377,6 +1458,15 @@ static
 		}
 
 		return prev_value;
+	}
+
+	template <typename T>
+	T atomic_min_gpu(T* address, T value)
+	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
+		return 0;
 	}
 
 	/**

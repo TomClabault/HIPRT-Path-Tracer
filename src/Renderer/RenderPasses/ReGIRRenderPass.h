@@ -188,6 +188,9 @@ private:
 	RadixSort m_radix_sort;
 	ParallelSegmentedReduction<unsigned int, float, float> m_sum_all_contributions_parallel_segmented_reduction;
 	ParallelSegmentedReduction<unsigned int, float, float> m_sum_best_contributions_parallel_segmented_reduction;
+	ParallelSegmentedPrefixScan<unsigned int, float, float> m_compute_light_distributions_CDFs_prefix_scan;
+	GPUKernel m_memset_ushort_kernel;
+	GPUKernel m_compute_light_distributions_size_kernel;
 };
 
 #endif

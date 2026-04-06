@@ -206,6 +206,20 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_sum_best_contributions_parallel_segmented_reduction.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 	m_sum_best_contributions_parallel_segmented_reduction.set_data_transform(std::make_unique<ContributionSumDataTransform>());
 	m_sum_best_contributions_parallel_segmented_reduction.compile();
+
+	m_compute_light_distributions_CDFs_prefix_scan.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
+	m_compute_light_distributions_CDFs_prefix_scan.set_data_transform(std::make_unique<ContributionSumDataTransform>());
+	m_compute_light_distributions_CDFs_prefix_scan.compile();
+
+	m_memset_ushort_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/MemsetKernel.h");
+	m_memset_ushort_kernel.set_kernel_function_name("Memset");
+	m_memset_ushort_kernel.get_kernel_options().set_string_macro_value("DATA_TYPE", "unsigned short int");
+	m_memset_ushort_kernel.get_kernel_options().set_string_macro_value("VALUE", "65535"); // Max value because we're going to atomic_min on that
+	m_memset_ushort_kernel.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
+
+	m_compute_light_distributions_size_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsLightDistributionSizes.h");
+	m_compute_light_distributions_size_kernel.set_kernel_function_name("ReGIR_Compute_Cells_Light_Distribution_Sizes");
+	m_compute_light_distributions_size_kernel.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -904,6 +918,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	m_radix_sort.resize(scratch_buffer_size);
 	m_sum_all_contributions_parallel_segmented_reduction.resize(scratch_buffer_size);
 	m_sum_best_contributions_parallel_segmented_reduction.resize(scratch_buffer_size);
+	m_compute_light_distributions_CDFs_prefix_scan.resize(scratch_buffer_size);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
 
@@ -914,11 +929,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
 	OrochiBuffer<unsigned int> contribution_scratch_buffer_GPU(scratch_buffer_size);
 	OrochiBuffer<unsigned int> mesh_indices_scratch_buffer_GPU(scratch_buffer_size);
+	OrochiBuffer<unsigned short int> light_distribution_sizes_buffer_GPU(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
 
 	unsigned int* scratch_buffer_sorting_keys_address	= contribution_scratch_buffer_GPU.get_device_pointer();
 	unsigned int* scratch_buffer_sorting_values_address = mesh_indices_scratch_buffer_GPU.get_device_pointer();
 
 	// clang-format off
+	unsigned int* grid_cell_alive_list_GPU_buffer_pointer = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().get_device_pointer();
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 	std::vector<unsigned short int> light_distribution_sizes = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>() : std::vector<unsigned short int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
 	std::vector<unsigned int> light_distribution_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit), ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
@@ -926,6 +943,17 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	std::vector<unsigned long long int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().size());
 	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 	// clang-format on
+
+	// DEBUG
+	std::vector<float> accmuulated_contributions_debug(scratch_buffer_size, 0.f);
+
+	if (compute_only_sizes)
+	{
+		unsigned int distrib_sizes_buffer_size							= light_distribution_sizes_buffer_GPU.size();
+		unsigned short int* light_distribution_sizes_gpu_buffer_pointer = light_distribution_sizes_buffer_GPU.get_device_pointer();
+		void* memset_args[]												= { &light_distribution_sizes_gpu_buffer_pointer, &distrib_sizes_buffer_size };
+		m_memset_ushort_kernel.launch_synchronous(1024, 1, distrib_sizes_buffer_size, 1, memset_args);
+	}
 
 	unsigned int cell_offset = 0;
 	for (int iter = 0; iter < iteration_needed; iter++)
@@ -968,8 +996,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 																			   contribution_scratch_buffer_GPU.size());
 		m_sum_all_contributions_parallel_segmented_reduction.set_evenly_spaced_segment_size(emissive_mesh_count);
 		m_sum_all_contributions_parallel_segmented_reduction.reduce();
-		std::vector<float> sum_all_contributions_buffer_GPU_downloaded =
-								m_sum_all_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
 
 		unsigned int light_distribution_size						 = render_data.render_settings.regir_settings.light_distribution_maximum_size;
 		unsigned int cells_yet_to_compute_count						 = contributions_left_to_compute / emissive_mesh_count;
@@ -980,12 +1006,35 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_sum_best_contributions_parallel_segmented_reduction.set_evenly_spaced_segment_size(emissive_mesh_count);
 		m_sum_best_contributions_parallel_segmented_reduction.set_segment_length(non_compacted_effective_light_distribution_size);
 		m_sum_best_contributions_parallel_segmented_reduction.reduce();
-		std::vector<float> sum_best_contributions_buffer_GPU_downloaded =
-								m_sum_best_contributions_parallel_segmented_reduction.get_output_buffer().download_data();
+
+		m_compute_light_distributions_CDFs_prefix_scan.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
+																		 contribution_scratch_buffer_GPU.size());
+		m_compute_light_distributions_CDFs_prefix_scan.set_evenly_spaced_segment_size(emissive_mesh_count);
+		m_compute_light_distributions_CDFs_prefix_scan.set_exclusive_scan(false);
+		m_compute_light_distributions_CDFs_prefix_scan.scan();
 
 		std::vector<unsigned int> sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
 																								  mesh_indices_scratch_buffer_GPU.size());
 		std::vector<unsigned int> sorted_contribution_buffer_GPU_downloaded = contribution_scratch_buffer_GPU.download_data();
+
+		if (compute_only_sizes)
+		{
+			float* sum_all_contributions_gpu_buffer_pointer	  = m_sum_all_contributions_parallel_segmented_reduction.get_output_buffer().get_device_pointer();
+			float* sum_best_contributions_gpu_buffer_pointer  = m_sum_best_contributions_parallel_segmented_reduction.get_output_buffer().get_device_pointer();
+			float* light_distribution_CDFs_GPU_buffer_pointer = m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
+			unsigned short int* light_distribution_sizes_gpu_buffer_pointer = light_distribution_sizes_buffer_GPU.get_device_pointer();
+			void* compute_cell_sizes_launch_args[]							= { &sum_all_contributions_gpu_buffer_pointer,
+																				&sum_best_contributions_gpu_buffer_pointer,
+																				&light_distribution_CDFs_GPU_buffer_pointer,
+																				&light_distribution_sizes_gpu_buffer_pointer,
+																				&grid_cell_alive_list_GPU_buffer_pointer,
+																				&dispatch_size,
+																				&cell_offset,
+																				&emissive_mesh_count,
+																				&m_light_distribution_incoming_light_energy_target,
+																				&non_compacted_effective_light_distribution_size };
+			m_compute_light_distributions_size_kernel.launch_synchronous(1024, 1, dispatch_size, 1, compute_cell_sizes_launch_args);
+		}
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
@@ -1000,83 +1049,36 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
-			unsigned int effective_light_distribution_size;
-			if (compute_only_sizes)
-				effective_light_distribution_size = non_compacted_effective_light_distribution_size;
-			else
-				effective_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
-
-			// We're only going to keep the best 'light_distribution_size' contributing meshes
-			// in case there are more than that, i.e. the alias table is going to be built only on
-			// the 'light_distribution_size' meshes that contribute the most to the cell
-			float sum_best_contributions_ref = 0.0f;
-			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
-			{
-				float contribution = get_float_contribution_from_scratch_buffer(
-										cell_index_in_iteration * emissive_mesh_count +
-										sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
-
-				if (contribution_index < effective_light_distribution_size)
-					sum_best_contributions_ref += contribution;
-			}
-
-			float sum_all_contributions = sum_all_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
-			float sum_best_contributions;
-			if (compute_only_sizes)
-				sum_best_contributions = sum_best_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
-			else
-				sum_best_contributions = sum_best_contributions_ref;
-
-			if (hippt::abs(sum_best_contributions - sum_best_contributions_ref) > 0.012f)
-			{
-				std::cerr << "Nope" << std::endl;
-			}
+			// float sum_all_contributions = sum_all_contributions_buffer_GPU_downloaded.at(cell_index_in_iteration);
 
 			// This if branch here computes the sizes of the light distribution for the current grid cell (outer for loop) such that it's going to cover the
 			// target amount of incoming light energy to the cell with the best contributing emissive meshes.
 			//
 			// For that, it uses the sum of the best contributions above as well as the total contribution of all the emissive meshes to the cell
-			if (compute_only_sizes)
+			if (!compute_only_sizes)
 			{
-				unsigned short int final_distribution_size;
+				unsigned int compacted_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
 
-				// If only computing the sizes, we want to know how many lights from the scene to keep in the
-				// light distribution such that we cover X% of the total incoming energy to the grid cell
-				if (sum_best_contributions / sum_all_contributions * 100.0f < m_light_distribution_incoming_light_energy_target)
-					// If even with the maximum amount of lights allowed in the light distribution, we're not covering
-					// the target amount of incoming radiance, then we're going to use the full size of the light
-					// distribution
-					final_distribution_size = effective_light_distribution_size;
-				else
+				// We're only going to keep the best 'light_distribution_size' contributing meshes
+				// in case there are more than that, i.e. the alias table is going to be built only on
+				// the 'light_distribution_size' meshes that contribute the most to the cell
+				float sum_best_contributions = 0.0f;
+				for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 				{
-					unsigned int contribution_index;
-					// If the light distribution is covering more than necessary, compute just the right size
-					// such that we cover just the right amount of the total incoming radiance
-					float accumulated_contribution = 0.0f;
-					for (contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
-					{
-						float contribution = get_float_contribution_from_scratch_buffer(
-												sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) +
-												cell_index_in_iteration * emissive_mesh_count);
-						accumulated_contribution += contribution;
+					float contribution = get_float_contribution_from_scratch_buffer(
+											cell_index_in_iteration * emissive_mesh_count +
+											sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
-						if (accumulated_contribution / sum_all_contributions * 100.0f >= m_light_distribution_incoming_light_energy_target)
-							break;
-					}
-
-					final_distribution_size = hippt::min(non_compacted_effective_light_distribution_size, contribution_index + 1);
+					if (contribution_index < compacted_light_distribution_size)
+						sum_best_contributions += contribution;
 				}
 
-				light_distribution_sizes.at(hash_grid_cell_index) = final_distribution_size;
-			}
-			else
-			{
 				// Computing the PDFs
-				std::vector<unsigned short int> cdf_u16(effective_light_distribution_size, 0.0f);
+				std::vector<unsigned short int> cdf_u16(compacted_light_distribution_size, 0.0f);
 				if (sum_best_contributions > 0.0f)
 				{
-					std::vector<float> normalized(effective_light_distribution_size);
-					for (int pdf_index = 0; pdf_index < effective_light_distribution_size; pdf_index++)
+					std::vector<float> normalized(compacted_light_distribution_size);
+					for (int pdf_index = 0; pdf_index < compacted_light_distribution_size; pdf_index++)
 					{
 						unsigned int packed_contribution =
 												sorted_contribution_buffer_GPU_downloaded.at(pdf_index + cell_index_in_iteration * emissive_mesh_count);
@@ -1088,7 +1090,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 					}
 
 					// And computing the alias tables from the contributions
-					std::vector<float> cdf(effective_light_distribution_size, 0.0f);
+					std::vector<float> cdf(compacted_light_distribution_size, 0.0f);
 					Utils::compute_prefix_sum(normalized, cdf);
 
 					for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
@@ -1097,7 +1099,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 					std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed =
 											ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(
 																	sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count,
-																	emissive_mesh_count, effective_light_distribution_size);
+																	emissive_mesh_count, compacted_light_distribution_size);
 
 					unsigned int emissive_mesh_indices_packed_offset = mesh_indices_offsets.at(hash_grid_cell_index);
 					std::copy(sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.end(),
@@ -1108,6 +1110,10 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 				std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16.begin() + light_distribution_offset);
 			}
 		}
+
+		if (compute_only_sizes)
+			light_distribution_sizes = light_distribution_sizes_buffer_GPU.download_data();
+
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. "
 				  << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
@@ -1197,6 +1203,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 	m_radix_sort.free();
 	m_sum_all_contributions_parallel_segmented_reduction.free();
+	m_sum_best_contributions_parallel_segmented_reduction.free();
+	m_compute_light_distributions_CDFs_prefix_scan.free();
 
 	return true;
 }
