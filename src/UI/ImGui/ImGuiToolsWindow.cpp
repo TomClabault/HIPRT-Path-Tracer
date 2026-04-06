@@ -575,7 +575,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		{
 			const char* filters[]	   = { "*.png", "*.jpg" };
 			std::string ref_image_path = Utils::open_file_dialog(filters, 2);
-			ref_image				   = Image32Bit::read_image(ref_image_path, 3, false);
+			ref_image				   = Image32Bit::read_image(ref_image_path, 3, true);
 			ref_image_text			   = std::filesystem::path(ref_image_path).filename().string();
 		}
 		if (ref_image_text != "")
@@ -762,7 +762,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			last_captured_ratio = current_ratio;
 			captures_taken++;
 
-			Image32Bit current_image(m_render_window->get_screenshoter()->get_image(), 3);
+			Image32Bit current_image(m_render_window->get_screenshoter()->get_image(false), 3);
 
 			float error;
 			switch (error_metric_type)
