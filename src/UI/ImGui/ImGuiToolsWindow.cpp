@@ -824,12 +824,14 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		static std::string legend = "Data legend";
 		ImGui::InputText("Legend", &legend);
+		ImGui::BeginDisabled(current_recorded_xs.size() == 0);
 		if (ImGui::Button("Add Step 4 captured data"))
 		{
 			recorded_legends.push_back(legend);
 			recorded_xs_list.push_back(current_recorded_xs);
 			recorded_ys_list.push_back(current_recorded_ys);
 		}
+		ImGui::EndDisabled();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ImGui::SeparatorText("Recorded data");

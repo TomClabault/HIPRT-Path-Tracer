@@ -107,6 +107,10 @@ extern ImGuiLogger g_imgui_logger;
 // reservoir?
 
 // TODO ReGIR
+// - If we increase the grid resolution, can we get away with fewer reservoirs per cell and a larger jittering ardius to basically stay the same in terms of
+// correlations and memory usage and grid fill time but now we have better resolution?
+// - Jitter NEE++ to avoid grid artifacts a bit more?
+// - Increasing both NEE++ and ReGIR resolution looks quite good, but one without the other not so much
 // - For visibility variance in a grid, can we just count how many shadows rays we shoot are occluded? If we get a lot of occluded, that's because our
 // importance sampling is bad and so we need more grid precision there. But what abouts complete shadows though where it's fair to have a lot of occluded?
 // - Maybe something we can do to keep track of visibility variance is to accumulate in each cell of NEE++ a running variance of the visibility of the samples

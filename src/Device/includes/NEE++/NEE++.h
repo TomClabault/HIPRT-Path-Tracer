@@ -62,10 +62,7 @@ struct NEEPlusPlusDevice
 	// Whether or not to do russian roulette with NEE++ on envmap samples
 	bool m_enable_nee_plus_plus_RR_for_envmap = false;
 
-	unsigned int m_total_number_of_cells = 0;
-	/*float m_grid_cell_min_size = 0.25f;
-	float m_grid_cell_target_projected_size = 25.0f;*/
-
+	unsigned int m_total_number_of_cells	= 0;
 	float m_grid_cell_min_size				= 0.25f;
 	float m_grid_cell_target_projected_size = 1.0f;
 

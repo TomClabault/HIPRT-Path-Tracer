@@ -3901,9 +3901,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options	 = m_renderer->get_global_compiler_options();
+	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = m_renderer->get_NEE_plus_plus_render_pass();
 
-	if (ImGui::CollapsingHeader("Next Event Estimation++"))
+	if (ImGui::CollapsingHeader("Next Event Estimation++") && nee_plus_plus_render_pass)
 	{
 		ImGui::TreePush("Use NEE++ Tree");
 
@@ -3914,19 +3915,19 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 		{
 			ImGui::TreePush("NEE++ Settings Tree");
 
-			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_NEE_plus_plus_render_pass()->get_vram_usage_bytes() / 1000000.0f);
+			ImGui::Text("VRAM Usage: %.3fMB", nee_plus_plus_render_pass->get_vram_usage_bytes() / 1000000.0f);
 			static bool display_load_factor = false;
 			if (display_load_factor)
 			{
-				m_renderer->get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage().update_cell_alive_count();
-				ImGui::Text("Load factor: %.3f%%", m_renderer->get_NEE_plus_plus_render_pass()->get_load_factor() * 100.0f);
+				nee_plus_plus_render_pass->get_nee_plus_plus_storage().update_cell_alive_count();
+				ImGui::Text("Load factor: %.3f%%", nee_plus_plus_render_pass->get_load_factor() * 100.0f);
 			}
 			else
 				ImGui::Text("Load factor: ---");
 			ImGui::SameLine();
 			ImGui::Checkbox("Display load factor", &display_load_factor);
 
-			if (ImGui::InputFloat("Max VRAM usage (MB)", &m_renderer->get_NEE_plus_plus_render_pass()->get_max_vram_usage()))
+			if (ImGui::InputFloat("Max VRAM usage (MB)", &nee_plus_plus_render_pass->get_max_vram_usage()))
 				m_render_window->set_render_dirty(true);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -4064,7 +4065,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 				if (ImGui::Button("Clear visibility map"))
 				{
-					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
+					nee_plus_plus_render_pass->reset(false);
 					m_render_window->set_render_dirty(true);
 				}
 

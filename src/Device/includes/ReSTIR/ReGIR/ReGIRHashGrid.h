@@ -355,7 +355,7 @@ struct ReGIRHashGrid
 
 	HashGrid m_hash_grid;
 
-	float m_grid_cell_min_size				= ReGIR_HashGridConstantGridCellSize ? 0.75f : 0.25f;
+	float m_grid_cell_min_size				= ReGIR_HashGridConstantGridCellSize ? 0.75f : 0.1f;
 	float m_grid_cell_target_projected_size = 10.0f;
 
 	float fuzzy_normals_strength	= 0.2f;

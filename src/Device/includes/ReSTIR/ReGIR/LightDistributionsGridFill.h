@@ -94,8 +94,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
 	const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-
-	float mesh_sampling_PDF = 0.0f;
+	float mesh_sampling_PDF				 = 0.0f;
 	// TODO absolutely need to replace that with a perfect hash table (or any fast membership data structure)
 	// for performance instead of brute forcing
 	for (int i = 0; i < cell_light_distribution.size; i++)
