@@ -14,7 +14,7 @@
 #include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
-#include "Device/kernels/ReSTIR/ReGIR/LightDistributionsBuild/ComputeCellsLightDistributions.h"
+#include "Device/kernels/ReSTIR/ReGIR/LightDistributionsBuild/ComputeContributions.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
@@ -870,9 +870,6 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 							hippt::min((unsigned int)((unsigned short int)-1),
 									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
-	if (only_compute_sizes)
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Computing ReGIR light distributions sizes...");
-
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
@@ -904,8 +901,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 #pragma omp parallel for
 		for (int thread_index = 0; thread_index < dispatch_size; thread_index++)
 		{
-			ReGIR_Compute_Cells_Light_Distributions(m_render_data, contribution_scratch_buffer_sorting_keys.data(),
-													contribution_scratch_buffer_mesh_indices.data(), cell_offset, primary_hit, thread_index);
+			ReGIR_LightDistributionsBuildComputeContributions(m_render_data, contribution_scratch_buffer_sorting_keys.data(),
+															  contribution_scratch_buffer_mesh_indices.data(), cell_offset, primary_hit, thread_index);
 		}
 		auto stop_compute = std::chrono::high_resolution_clock::now();
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compute time: %ldms",

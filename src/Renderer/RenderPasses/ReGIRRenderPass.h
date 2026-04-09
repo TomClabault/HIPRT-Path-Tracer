@@ -193,9 +193,9 @@ private:
 		ParallelSegmentedPrefixScan<unsigned int, float, float> m_compute_light_distributions_CDFs_prefix_scan;
 		GPUKernel m_memset_ushort_kernel;
 		GPUKernel m_compute_light_distributions_size_kernel;
-		GPUKernel m_scatter_light_distributions_CDFs_elements;
-		GPUKernel m_build_compacted_light_distributions_CDFs;
-	} light_distributions_build_kernels;
+		GPUKernel m_build_packed_light_distributions_CDFs;
+		GPUKernel m_pack_distributions_mesh_indices_kernel;
+	} m_light_distributions_build_kernels;
 };
 
 #endif

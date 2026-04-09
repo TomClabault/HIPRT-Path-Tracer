@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_H
-#define DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_H
+#ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_COMPUTE_CONTRIBUTIONS_H
+#define DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_COMPUTE_CONTRIBUTIONS_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
@@ -105,19 +105,19 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
  */
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
-										unsigned int* contributions_scratch_buffer_sort_keys,
-										unsigned int* contributions_scratch_buffer_sort_values,
-										unsigned int cell_index_offset,
-										bool primary_hit)
+ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_data,
+												  unsigned int* contributions_scratch_buffer_sort_keys,
+												  unsigned int* contributions_scratch_buffer_sort_values,
+												  unsigned int cell_index_offset,
+												  bool primary_hit)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data,
-											   unsigned int* contributions_scratch_buffer_sort_keys,
-											   unsigned int* contributions_scratch_buffer_sort_values,
-											   unsigned int cell_index_offset,
-											   bool primary_hit,
-											   unsigned int thread_index)
+inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_data,
+														 unsigned int* contributions_scratch_buffer_sort_keys,
+														 unsigned int* contributions_scratch_buffer_sort_values,
+														 unsigned int cell_index_offset,
+														 bool primary_hit,
+														 unsigned int thread_index)
 #endif
 {
 	if (render_data.buffers.emissive_triangles_count == 0)

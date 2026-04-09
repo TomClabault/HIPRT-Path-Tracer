@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_SCATTER_CDF_ELEMENTS_H
-#define DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_SCATTER_CDF_ELEMENTS_H
+#ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_PACKED_CDFS_BUILD_H
+#define DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_PACKED_CDFS_BUILD_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HashGrid.h"
@@ -13,15 +13,15 @@
  * This kernel is dispatched with 1 block per cell / light distribution
  */
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReGIR_Cell_Light_Distributions_Scatter_CDFs_Elements(const unsigned short int* __restrict__ light_distribution_sizes,
-															const unsigned int* __restrict__ light_distribution_offsets,
-															const float* __restrict__ prefix_scanned_CDFs_device_pointer,
-															const unsigned int* __restrict__ grid_cell_alive_list,
-															const unsigned int nb_cells_alive,
-															const unsigned int cell_offset,
-															const unsigned int max_cells_per_iteration,
-															const unsigned int emissive_mesh_count,
-															unsigned short int* __restrict__ output_CDF_elements)
+inline ReGIR_LightDistributionsBuildPackedCDFsBuild(const unsigned short int* __restrict__ light_distribution_sizes,
+													const unsigned int* __restrict__ light_distribution_offsets,
+													const float* __restrict__ prefix_scanned_CDFs_device_pointer,
+													const unsigned int* __restrict__ grid_cell_alive_list,
+													const unsigned int nb_cells_alive,
+													const unsigned int cell_offset,
+													const unsigned int max_cells_per_iteration,
+													const unsigned int emissive_mesh_count,
+													unsigned short int* __restrict__ output_CDF_elements)
 {
 	unsigned int dispatch_local_cell_index = blockIdx.x;
 	if (dispatch_local_cell_index >= max_cells_per_iteration)

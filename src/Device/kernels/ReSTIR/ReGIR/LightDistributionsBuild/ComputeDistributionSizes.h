@@ -3,23 +3,23 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_RESTIR_REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTION_SIZES_H
-#define DEVICE_KERNELS_RESTIR_REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTION_SIZES_H
+#ifndef DEVICE_KERNELS_RESTIR_REGIR_COMPUTE_DISTRIBUTIONS_SIZES_H
+#define DEVICE_KERNELS_RESTIR_REGIR_COMPUTE_DISTRIBUTIONS_SIZES_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReGIR_Compute_Cells_Light_Distribution_Sizes(const float* __restrict__ sum_all_contributions_per_cell,
-													const float* __restrict__ sum_best_contributions_per_cell,
-													const float* __restrict__ light_distribution_CDFs_per_cell,
-													unsigned short int* __restrict__ out_sizes_buffer,
-													const unsigned int* __restrict__ grid_cell_alive_list,
-													unsigned int dispatch_size,
-													unsigned int cell_offset,
-													unsigned int emissive_mesh_count_per_cell,
-													float light_distribution_incoming_light_energy_target,
-													unsigned int non_compacted_effective_light_distribution_size)
+inline ReGIR_LightDistributionsBuildComputeDistributionsSizes(const float* __restrict__ sum_all_contributions_per_cell,
+															  const float* __restrict__ sum_best_contributions_per_cell,
+															  const float* __restrict__ light_distribution_CDFs_per_cell,
+															  unsigned short int* __restrict__ out_sizes_buffer,
+															  const unsigned int* __restrict__ grid_cell_alive_list,
+															  unsigned int dispatch_size,
+															  unsigned int cell_offset,
+															  unsigned int emissive_mesh_count_per_cell,
+															  float light_distribution_incoming_light_energy_target,
+															  unsigned int non_compacted_effective_light_distribution_size)
 {
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (thread_index >= dispatch_size)
