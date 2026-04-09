@@ -981,7 +981,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		auto start								   = std::chrono::high_resolution_clock::now();
 		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
 		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
+		std::cout << "\tCompute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
 		// Sorting the contributions because we're only going to build the alias table on the best
 		// emissives meshes
@@ -990,17 +990,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		// indices that point to the contributions because we're going to need the sorted indices later
 
 		auto start_sort = std::chrono::high_resolution_clock::now();
-
-		std::vector<unsigned int> contributions_scratch_buffer_sorting_keys_unsorted = contribution_scratch_buffer_GPU.download_data();
-
-		auto get_float_contribution_from_scratch_buffer = [&](unsigned int sorted_index)
-		{
-			// The contribution is in the lower 16 bits encoded as an fp16
-			// Contributions are written with bits flipped for the GPU radix sort so we're re-flipping them here to get the proper contribution
-			unsigned int contribution_bits = ~(contributions_scratch_buffer_sorting_keys_unsorted.at(sorted_index) & 0xFFFF);
-
-			return hippt::fp16_bits_to_fp32(contribution_bits);
-		};
 
 		light_distributions_build_kernels.m_radix_sort.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
 																		 mesh_indices_scratch_buffer_GPU.get_device_pointer(),
@@ -1034,14 +1023,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.set_exclusive_scan(false);
 		light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.scan();
 
-		// DEBUG
-		std::vector<float> CDFs_downloaded =
-								light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().download_data();
-
-		std::vector<unsigned int> sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
-																								  mesh_indices_scratch_buffer_GPU.size());
-		std::vector<unsigned int> sorted_contribution_buffer_GPU_downloaded = contribution_scratch_buffer_GPU.download_data();
-
 		if (compute_only_sizes)
 		{
 			float* sum_all_contributions_gpu_buffer_pointer =
@@ -1066,67 +1047,53 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 																										   compute_cell_sizes_launch_args);
 		}
 
-		// DEBUG
-		std::vector<unsigned short int> CDFs_downlaoded_DEBYUG;
-		// DEBUG
+		std::vector<unsigned int> sorted_mesh_indices;
 		if (!compute_only_sizes)
 		{
-			OrochiBuffer<unsigned int> light_distribution_offsets_GPU(light_distribution_offsets);
+			// Only needed below when not computing sizes
+			sorted_mesh_indices = OrochiBuffer<unsigned int>::download_data(mesh_indices_scratch_buffer_GPU.get_device_pointer(),
+																			mesh_indices_scratch_buffer_GPU.size());
 
 			// clang-format off
 			unsigned short int* light_distribution_sizes_device_pointer = m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
 				.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>()
 				.get_device_pointer();
 
-			unsigned int* light_distribution_offsets_device_pointer =
-				m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
+			unsigned int* light_distribution_offsets_device_pointer = m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
 				.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>()
+				.get_device_pointer();
+
+			unsigned int* light_distribution_offsets_GPU_buffer_pointer = m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
+				.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>()
+				.get_device_pointer();
+
+			unsigned short int* light_distribution_CDFs_device_pointer = m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
+				.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>()
 				.get_device_pointer();
 			// clang-format on
 
 			float* prefix_scanned_CDFs_device_pointer =
 									light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
-			unsigned int* light_distribution_offsets_GPU_buffer_pointer = light_distribution_offsets_GPU.get_device_pointer();
-			unsigned short int* light_distribution_CDFs_device_pointer =
-									m_hash_grid_storage.get_cell_light_distributions(primary_hit)
-															.soa
-															.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::
-																										 REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>()
-															.get_device_pointer();
 
-			unsigned int DEBUGSIZE = light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().size();
 			unsigned int nb_cells_to_compute_this_iteration = hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count);
-			std::cerr << "\tCDF SIZE: " << DEBUGSIZE << std::endl;
-			std::cerr << "\tCells left to compute: " << contributions_left_to_compute / (double)emissive_mesh_count << std::endl;
-			std::cerr << "\tNb cells alive: " << nb_cells_alive << std::endl;
-			std::cerr << "\tCell compute this iteration: " << nb_cells_to_compute_this_iteration << std::endl;
-
-			void* scatter_elements_launch_args[] = { &light_distribution_sizes_device_pointer,
-													 &light_distribution_offsets_device_pointer,
-													 &prefix_scanned_CDFs_device_pointer,
-													 &DEBUGSIZE,
-													 &grid_cell_alive_list_GPU_buffer_pointer,
-													 &nb_cells_alive,
-													 &cell_offset,
-													 &nb_cells_to_compute_this_iteration,
-													 &emissive_mesh_count,
-													 &light_distribution_CDFs_device_pointer };
+			void* scatter_elements_launch_args[]			= { &light_distribution_sizes_device_pointer,
+																&light_distribution_offsets_device_pointer,
+																&prefix_scanned_CDFs_device_pointer,
+																&grid_cell_alive_list_GPU_buffer_pointer,
+																&nb_cells_alive,
+																&cell_offset,
+																&nb_cells_to_compute_this_iteration,
+																&emissive_mesh_count,
+																&light_distribution_CDFs_device_pointer };
 
 			light_distributions_build_kernels.m_scatter_light_distributions_CDFs_elements.launch_synchronous(1024, 1, 1024 * nb_cells_to_compute_this_iteration,
 																											 1, scatter_elements_launch_args);
-
-			CDFs_downlaoded_DEBYUG = m_hash_grid_storage.get_cell_light_distributions(primary_hit)
-															 .soa
-															 .template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::
-																										  REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>()
-															 .download_data();
 		}
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
-		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
+		std::cout << "\tSort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
 
-		start = std::chrono::high_resolution_clock::now();
-		// #pragma omp parallel for
+#pragma omp parallel for
 		for (int cell_index_in_iteration = 0; cell_index_in_iteration < hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count);
 			 cell_index_in_iteration++)
 		{
@@ -1145,32 +1112,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			{
 				unsigned int compacted_light_distribution_size = light_distribution_sizes.at(hash_grid_cell_index);
 
-				// float sum_best_contributions = CDFs_downloaded.at(cell_index_in_iteration * emissive_mesh_count + compacted_light_distribution_size - 1);
-
-				//// Computing the PDFs
-				// std::vector<unsigned short int> cdf_u16(compacted_light_distribution_size, 0.0f);
-				// if (sum_best_contributions > 0.0f)
-				//{
-				//	std::vector<float> normalized(compacted_light_distribution_size);
-				//	for (int pdf_index = 0; pdf_index < compacted_light_distribution_size; pdf_index++)
-				//	{
-				//		unsigned int packed_contribution =
-				//								sorted_contribution_buffer_GPU_downloaded.at(pdf_index + cell_index_in_iteration * emissive_mesh_count);
-				//		unsigned int contribution_bits = ~(packed_contribution & 0xFFFF);
-
-				//		float unpacked_contribution = hippt::fp16_bits_to_fp32(contribution_bits);
-
-				//		normalized.at(pdf_index) = unpacked_contribution / sum_best_contributions;
-				//	}
-
-				//	// And computing the alias tables from the contributions
-				//	std::vector<float> cdf(compacted_light_distribution_size, 0.0f);
-				//	Utils::compute_prefix_sum(normalized, cdf);
-
-				//	for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
-				//		cdf_u16.at(proba_index) = cdf.at(proba_index) * 65535.0f;
-				//}
-
 				std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed =
 										ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(
 																sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count,
@@ -1179,42 +1120,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 				unsigned int emissive_mesh_indices_packed_offset = mesh_indices_offsets.at(hash_grid_cell_index);
 				std::copy(sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.end(),
 						  meshes_indices_staging.begin() + emissive_mesh_indices_packed_offset);
-
-				/*unsigned int light_distribution_offset = light_distribution_offsets.at(hash_grid_cell_index);
-				std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16_cpu.begin() + light_distribution_offset);*/
 			}
 		}
-
-		// CDF U16 VERIFICATION
-		/*{
-			if (!compute_only_sizes)
-			{
-				std::vector<unsigned short int> downloaded_from_GPU =
-										m_hash_grid_storage.get_cell_light_distributions(primary_hit)
-																.soa
-																.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::
-																											 REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>()
-																.download_data();
-
-				for (int i = 0; i < CDF_staging_u16_cpu.size(); i++)
-				{
-					if (hippt::abs(downloaded_from_GPU.at(i) - CDF_staging_u16_cpu.at(i)) >= 2)
-					{
-						std::cout << "CDF mismatch at index " << i << " GPU: " << downloaded_from_GPU.at(i) << " CPU: " << CDF_staging_u16_cpu.at(i)
-								  << std::endl;
-
-						std::terminate();
-					}
-				}
-			}
-		}*/
 
 		if (compute_only_sizes)
 			light_distribution_sizes = light_distribution_sizes_buffer_GPU.download_data();
 
-		stop = std::chrono::high_resolution_clock::now();
-		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. "
-				  << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
+		std::cout << std::endl << "\t" << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
 
@@ -1267,7 +1179,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	else
 	{
 		// clang-format off
-		// m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(CDF_staging_u16_cpu);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(meshes_indices_staging);
 		// clang-format on
 	}

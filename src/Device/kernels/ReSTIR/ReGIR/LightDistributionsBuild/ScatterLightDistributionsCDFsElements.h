@@ -16,7 +16,6 @@ GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Cell_Light_Distributions_Scatter_CDFs_Elements(const unsigned short int* __restrict__ light_distribution_sizes,
 															const unsigned int* __restrict__ light_distribution_offsets,
 															const float* __restrict__ prefix_scanned_CDFs_device_pointer,
-															unsigned int DEBUGCDFSIZE,
 															const unsigned int* __restrict__ grid_cell_alive_list,
 															const unsigned int nb_cells_alive,
 															const unsigned int cell_offset,
@@ -29,7 +28,7 @@ inline ReGIR_Cell_Light_Distributions_Scatter_CDFs_Elements(const unsigned short
 		// Greater than the number of cells we can compute at once per iteration in ReGIRRenderPass.cpp
 		return;
 
-	unsigned int global_cell_index		   = blockIdx.x + cell_offset;
+	unsigned int global_cell_index = blockIdx.x + cell_offset;
 	if (global_cell_index >= nb_cells_alive)
 		return;
 
@@ -40,16 +39,9 @@ inline ReGIR_Cell_Light_Distributions_Scatter_CDFs_Elements(const unsigned short
 	unsigned int light_distribution_size   = light_distribution_sizes[hash_grid_cell_index];
 	unsigned int light_distribution_offset = light_distribution_offsets[hash_grid_cell_index];
 
-	if ((dispatch_local_cell_index * emissive_mesh_count + light_distribution_size - 1) >= DEBUGCDFSIZE)
-	{
-		printf("Debug size: %u | global cell index: %u | dispatch_local_cell_index * emissive_mesh_count + light_distribution_size - 1 = %u * %u + %u - 1 = %u\n\tnb_cells_alive: %u\n", DEBUGCDFSIZE, global_cell_index, dispatch_local_cell_index, emissive_mesh_count, light_distribution_size, dispatch_local_cell_index * emissive_mesh_count + light_distribution_size - 1, nb_cells_alive);
-
-		return;
-	}
-
 	float cell_best_contribution_sum = prefix_scanned_CDFs_device_pointer[dispatch_local_cell_index * emissive_mesh_count + light_distribution_size - 1];
 	if (cell_best_contribution_sum <= 0.0f)
-				return;
+		return;
 
 	float normalization_factor = 1.0f / cell_best_contribution_sum;
 
@@ -58,21 +50,6 @@ inline ReGIR_Cell_Light_Distributions_Scatter_CDFs_Elements(const unsigned short
 		float prefix_sum_contribution	= prefix_scanned_CDFs_device_pointer[dispatch_local_cell_index * emissive_mesh_count + tid];
 		unsigned int contribution_index = light_distribution_offset + tid;
 
-		// if (contribution_index > 6800 && contribution_index < 6900)
-		// {
-		// 	// DEBUG VARIABLES
-		// 	printf("local_cell_index: %u, global_cell %u, hash grid cell index: %u, tid %u, contribution_index %u, cell_best_contribution_sum %f, "
-		// 		   "prefix_sum_contribution %f, "
-		// 		   "normalization_factor %f\n",
-		// 		   dispatch_local_cell_index, global_cell_index, hash_grid_cell_index, tid, contribution_index, cell_best_contribution_sum,
-		// 		   prefix_sum_contribution, normalization_factor);
-		// 	if (!hippt::is_finite(normalization_factor))
-		// 	{
-		// 		printf("Cell best contrib <= 0.0f: %d\n", cell_best_contribution_sum <= 0.0f);
-		// 	}
-		// }
-				if (contribution_index == 0)
-				printf("\ttid %u, Setting %u to %d\n", tid, contribution_index, (unsigned short int)(prefix_sum_contribution * normalization_factor * 65535.0f));
 		output_CDF_elements[contribution_index] = (unsigned short int)(prefix_sum_contribution * normalization_factor * 65535.0f);
 	}
 }
