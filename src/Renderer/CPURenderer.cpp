@@ -15,7 +15,6 @@
 #include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
 #include "Device/kernels/ReSTIR/ReGIR/LightDistributionsBuild/ComputeContributions.h"
-#include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 

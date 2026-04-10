@@ -16,7 +16,6 @@ const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KER
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID		= "ReGIR Grid fill 2nd hits";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID						= "ReGIR Spatial reuse 1st hits";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID					= "ReGIR Spatial reuse 2nd hits";
-const std::string ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID								= "ReGIR Pre-integration";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration grid fill";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID			= "ReGIR Pre-integration spatial reuse";
 const std::string ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID					= "ReGIR Compute cells alias tables";
@@ -31,7 +30,6 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Grid_Fill" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Spatial_Reuse" },
-	{ REGIR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Pre_integration" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill" },
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID, "ReGIR_LightDistributionsBuildComputeContributions" },
@@ -45,7 +43,6 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
-	{ REGIR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/PreIntegration.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightDistributionsBuild/ComputeContributions.h" },
@@ -123,16 +120,6 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 																												   BSDF_LAMBERTIAN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID);
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
-																									  KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION);
@@ -276,12 +263,6 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	{
 		updated = true;
 		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-	}
-
-	if (!m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->has_been_compiled())
-	{
-		updated = true;
-		m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
 	if (!m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->has_been_compiled())
@@ -973,11 +954,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		// Computing the contributions of emissive meshes
 		unsigned int contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
 		unsigned int dispatch_size				   = hippt::min(contributions_left_to_compute, (unsigned int)contribution_scratch_buffer_GPU.size());
-		auto start								   = std::chrono::high_resolution_clock::now();
 		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->launch_asynchronous(64, 1, dispatch_size, 1, launch_args,
 																									m_renderer->get_main_stream());
-		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "\tCompute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
 		// Sorting the contributions because we're only going to build the alias table on the best
 		// emissives meshes
@@ -1107,9 +1085,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 									1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, pack_mesh_indices_args, m_renderer->get_main_stream());
 		}
 
-		auto stop_sort = std::chrono::high_resolution_clock::now();
-		std::cout << "\tSort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
-		std::cout << "\t" << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl << std::endl;
+		std::cout << "ReGIR light distributions build: " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
 
@@ -1267,23 +1243,22 @@ void ReGIRRenderPass::compute_render_times()
 		else if (kernel_name == ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID ||
 				 kernel_name == ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID)
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_secondary_hit_grid + 1;
-		else if (kernel_name == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID && m_pre_integration_executed)
-		{
-			// Special case for the pre integration where we want to take into account the whole time
-			// including the grid fill / spatial reuse passes of the pre integration and all the
-			// pre integration passes at the same time.
-			//
-			// If we didn't override that behavior, the pre integration time would just be the time that the
-			// last pre integration kernel took which is clearly inaccurate
-
-			float duration;
-			OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
-			render_pass_times[name_to_kernel.first] = duration;
-
-			continue;
-		}
 
 		render_pass_times[name_to_kernel.first] = execution_time;
+	}
+
+	if (m_pre_integration_executed)
+	{
+		// Special case for the pre integration where we want to take into account the whole time
+		// including the grid fill / spatial reuse passes of the pre integration and all the
+		// pre integration passes at the same time.
+		//
+		// If we didn't override that behavior, the pre integration time would just be the time that the
+		// last pre integration kernel took which is clearly inaccurate
+
+		float duration;
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
+		render_pass_times["ReGIR Pre-integration"] = duration;
 	}
 }
 
@@ -1307,23 +1282,22 @@ void ReGIRRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComp
 		else if (kernel_name == ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID ||
 				 kernel_name == ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID)
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_secondary_hit_grid + 1;
-		else if (kernel_name == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID && m_pre_integration_executed)
-		{
-			// Special case for the pre integration where we want to take into account the whole time
-			// including the grid fill / spatial reuse passes of the pre integration and all the
-			// pre integration passes at the same time.
-			//
-			// If we didn't override that behavior, the pre integration time would just be the time that the
-			// last pre integration kernel took which is clearly inaccurate
-
-			float duration;
-			OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
-			perf_metrics->add_value(name_to_kernel.first, duration);
-
-			continue;
-		}
 
 		perf_metrics->add_value(name_to_kernel.first, execution_time);
+	}
+
+	if (m_pre_integration_executed)
+	{
+		// Special case for the pre integration where we want to take into account the whole time
+		// including the grid fill / spatial reuse passes of the pre integration and all the
+		// pre integration passes at the same time.
+		//
+		// If we didn't override that behavior, the pre integration time would just be the time that the
+		// last pre integration kernel took which is clearly inaccurate
+
+		float duration;
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
+		perf_metrics->add_value("ReGIR Pre-integration", duration);
 	}
 }
 
@@ -1333,7 +1307,7 @@ float ReGIRRenderPass::get_full_frame_time()
 
 	for (auto& name_to_kernel : get_all_kernels())
 	{
-		if (name_to_kernel.first == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID || name_to_kernel.first == ReGIRRenderPass::REGIR_GRID_PRE_POPULATE ||
+		if (name_to_kernel.first == ReGIRRenderPass::REGIR_GRID_PRE_POPULATE ||
 			name_to_kernel.first == ReGIRRenderPass::REGIR_REHASH_KERNEL_ID)
 			// Pre integration and pre population passes are a bit exceptional
 			// so we don't want to include them in the frame time
