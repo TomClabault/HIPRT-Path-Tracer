@@ -38,9 +38,9 @@
  * Maximum size in bytes of the scratch buffer that is going to be used to compute
  * the contribution of all the lights in the scene to each cell of the ReGIR grid
  *
- * The bigger the size, the faster the precomputation but obviously the more memory is used
+ * The bigger the size, the faster the precomputation (not even obvious that it works like that... 200M is slower than 25M for some reason)
  */
-#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes 200000000u
+#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes 10000000u
 // This one is just an helper constant computed from the one above and should not be modified directly
 #define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount                                                                                 \
 	(static_cast<unsigned int>(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes / sizeof(float)))
@@ -230,7 +230,7 @@
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 /**
  * If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene,

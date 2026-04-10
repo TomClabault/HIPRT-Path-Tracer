@@ -951,25 +951,18 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	unsigned int* scratch_buffer_sorting_values_address = mesh_indices_scratch_buffer_GPU.get_device_pointer();
 
 	// clang-format off
-	unsigned int* grid_cell_alive_list_GPU_buffer_pointer = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().get_device_pointer();
-	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
-	std::vector<unsigned short int> light_distribution_sizes = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>() : std::vector<unsigned short int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
-	std::vector<unsigned int> light_distribution_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit), ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
-	std::vector<unsigned int> mesh_indices_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
-	std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().size());
-	std::vector<unsigned short int> CDF_staging_u16_cpu(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
+	unsigned int* grid_cell_alive_list_GPU_buffer_pointer = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.
+		template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>()
+		.get_device_pointer();
 	// clang-format on
-
-	m_hash_grid_storage.get_cell_light_distributions(primary_hit)
-							.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>()
-							.memset_whole_buffer(0);
 
 	if (compute_only_sizes)
 	{
 		unsigned int distrib_sizes_buffer_size							= light_distribution_sizes_buffer_GPU.size();
 		unsigned short int* light_distribution_sizes_gpu_buffer_pointer = light_distribution_sizes_buffer_GPU.get_device_pointer();
 		void* memset_args[]												= { &light_distribution_sizes_gpu_buffer_pointer, &distrib_sizes_buffer_size };
-		m_light_distributions_build_kernels.m_memset_ushort_kernel.launch_synchronous(1024, 1, distrib_sizes_buffer_size, 1, memset_args);
+		m_light_distributions_build_kernels.m_memset_ushort_kernel.launch_asynchronous(1024, 1, distrib_sizes_buffer_size, 1, memset_args,
+																					   m_renderer->get_main_stream());
 	}
 
 	unsigned int cell_offset = 0;
@@ -981,7 +974,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		unsigned int contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
 		unsigned int dispatch_size				   = hippt::min(contributions_left_to_compute, (unsigned int)contribution_scratch_buffer_GPU.size());
 		auto start								   = std::chrono::high_resolution_clock::now();
-		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
+		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->launch_asynchronous(64, 1, dispatch_size, 1, launch_args,
+																									m_renderer->get_main_stream());
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "\tCompute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
@@ -1115,10 +1109,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 		auto stop_sort = std::chrono::high_resolution_clock::now();
 		std::cout << "\tSort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_sort - start_sort).count() << "ms. " << std::endl;
-
-		if (compute_only_sizes)
-			light_distribution_sizes = light_distribution_sizes_buffer_GPU.download_data();
-
 		std::cout << "\t" << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
@@ -1131,6 +1121,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 	if (compute_only_sizes)
 	{
+		// clang-format off
+		std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
+		std::vector<unsigned int> mesh_indices_offsets = std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
+		std::vector<unsigned int> light_distribution_offsets = std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit), ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
+		std::vector<unsigned short int> light_distribution_sizes = light_distribution_sizes_buffer_GPU.download_data();
+		// clang-format on
+
 		// Now that we have the sizes of all the light distributions, we can compute the offset of each light distribution
 		// in the global light distribution buffer, and also the offsets for the packed emissive meshes indices
 		unsigned int light_distributions_sizes_sum			 = 0;
@@ -1168,12 +1165,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(light_distribution_sizes);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(light_distribution_offsets);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>(mesh_indices_offsets);
-		// clang-format on
-	}
-	else
-	{
-		// clang-format off
-		// m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(meshes_indices_staging);
 		// clang-format on
 	}
 
