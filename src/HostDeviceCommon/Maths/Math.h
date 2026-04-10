@@ -695,6 +695,30 @@ namespace hippt
 	}
 
 	template <typename T>
+	__device__ T atomic_or(T* address, T value)
+	{
+		return atomicOr(address, value);
+	}
+
+	template <typename T>
+	__device__ T atomic_or_gpu(T* address, T value)
+	{
+		return atomic_or(address, value);
+	}
+
+	template <typename T>
+	__device__ T atomic_and(T* address, T value)
+	{
+		return atomicAnd(address, value);
+	}
+
+	template <typename T>
+	__device__ T atomic_and_gpu(T* address, T value)
+	{
+		return atomic_and(address, value);
+	}
+
+	template <typename T>
 	__device__ static T atomic_load(T* address)
 	{
 		return *address;
@@ -1484,6 +1508,36 @@ static
 	 */
 	template <typename T>
 	T atomic_fetch_add_gpu(T* atomic_address, T increment)
+	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
+		return 0;
+	}
+
+	template <typename T>
+	T atomic_or(std::atomic<T>* address, T value)
+	{
+		return address->fetch_or(value);
+	}
+
+	template <typename T>
+	T atomic_or_gpu(T* address, T value)
+	{
+		// Should not be used on the CPU
+
+		Debug::debugbreak();
+		return 0;
+	}
+
+	template <typename T>
+	T atomic_and(std::atomic<T>* address, T value)
+	{
+		return address->fetch_and(value);
+	}
+
+	template <typename T>
+	T atomic_and_gpu(T* address, T value)
 	{
 		// Should not be used on the CPU
 

@@ -35,11 +35,13 @@ public:
 							unsigned int emissive_mesh_count,
 							unsigned int light_distribution_size)
 	{
-		std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> packed(
+		using PackingType = ReGIRCellsLightDistributionsMeshIndicesPackingType;
+
+		std::vector<PackingType> packed(
 								ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size), 0);
 
 		unsigned int bits_per_mesh_index		= ReGIRCellsLightDistributionsHostUtils::get_bits_per_packed_mesh_index(emissive_mesh_count);
-		constexpr unsigned int BITS_PER_ELEMENT = sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8;
+		constexpr unsigned int BITS_PER_ELEMENT = sizeof(PackingType) * 8;
 		for (int mesh_index = 0; mesh_index < light_distribution_size; mesh_index++)
 		{
 			unsigned int sorted_mesh_index = *(sorted_mesh_indices_start + mesh_index);
@@ -57,10 +59,8 @@ public:
 				unsigned int bits_in_first_element_mask	 = (1 << bits_in_first_element) - 1;
 				unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
 
-				ReGIRCellsLightDistributionsMeshIndicesPackingType first_part =
-										static_cast<ReGIRCellsLightDistributionsMeshIndicesPackingType>(sorted_mesh_index & bits_in_first_element_mask)
-										<< bit_offset_start_in_element;
-				ReGIRCellsLightDistributionsMeshIndicesPackingType second_part = (sorted_mesh_index >> bits_in_first_element) & bits_in_second_element_mask;
+				PackingType first_part	= static_cast<PackingType>(sorted_mesh_index & bits_in_first_element_mask) << bit_offset_start_in_element;
+				PackingType second_part = (sorted_mesh_index >> bits_in_first_element) & bits_in_second_element_mask;
 
 				packed[element_index] |= first_part;
 				packed[element_index + 1] |= second_part;
@@ -69,8 +69,8 @@ public:
 			{
 				// If the mesh index is fully contained in a single element
 
-				ReGIRCellsLightDistributionsMeshIndicesPackingType bitmask = (1 << bits_per_mesh_index) - 1;
-				ReGIRCellsLightDistributionsMeshIndicesPackingType bits	   = (sorted_mesh_index & bitmask) << bit_offset_start_in_element;
+				PackingType bitmask = (1 << bits_per_mesh_index) - 1;
+				PackingType bits	= (sorted_mesh_index & bitmask) << bit_offset_start_in_element;
 
 				packed[element_index] |= bits;
 			}
@@ -80,8 +80,6 @@ public:
 	}
 };
 
-// TODO maybe a CDF would be fast enough and would use less memory (probably? because with all the packing we can do on the alias table this may not be true /
-// worth it)
 template <template <typename> typename DataContainer>
 using ReGIRCellsLightDistributionsSoAHostInternal =
 						GenericSoA<DataContainer,

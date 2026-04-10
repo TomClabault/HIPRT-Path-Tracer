@@ -153,7 +153,7 @@ void RadixSort::set_data_pointers(unsigned int* keys_device_pointer, unsigned in
 	m_data_uploaded = false;
 }
 
-void RadixSort::sort()
+void RadixSort::sort(bool auto_stream_synchronize)
 {
 	if (!m_hiprt_ctx || !m_stream)
 	{
@@ -231,9 +231,6 @@ void RadixSort::sort()
 		};
 		m_reorder_kernel.launch_asynchronous(RADIX_SORT_INPUT_CHUNK_SIZE, 1, m_size, 1, reorder_args, m_stream);
 
-		// Synchronize stream to ensure all kernels complete before the next pass
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
-
 		// Swap buffers for the next pass
 		if (pass < NUM_PASSES - 1)
 		{
@@ -242,6 +239,10 @@ void RadixSort::sort()
 			std::swap(input_values, output_values);
 		}
 	}
+
+	// Synchronize if asked for
+	if (auto_stream_synchronize)
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 
 	// If we had an odd number of passes, the final result is in temp buffers, so copy back
 	if (NUM_PASSES % 2 == 1)

@@ -36,14 +36,16 @@ struct ReGIRCellsLightDistributionsSoADevice
 		// so we need to extract the right bits from the right element and this function
 		// does the unpacking
 
-		unsigned int bit_offset_start_in_element = (CDF_table_index * bits_per_mesh_index) % (sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8);
-		unsigned int element_index				 = CDF_table_index * bits_per_mesh_index / (sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8);
+		using PackingType = ReGIRCellsLightDistributionsMeshIndicesPackingType;
 
-		if (bit_offset_start_in_element + bits_per_mesh_index > sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8)
+		unsigned int bit_offset_start_in_element = (CDF_table_index * bits_per_mesh_index) % (sizeof(PackingType) * 8);
+		unsigned int element_index				 = CDF_table_index * bits_per_mesh_index / (sizeof(PackingType) * 8);
+
+		if (bit_offset_start_in_element + bits_per_mesh_index > sizeof(PackingType) * 8)
 		{
 			// If the mesh index is straddling two differents elements
 
-			unsigned int bits_in_first_element	= sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8 - bit_offset_start_in_element;
+			unsigned int bits_in_first_element	= sizeof(PackingType) * 8 - bit_offset_start_in_element;
 			unsigned int bits_in_second_element = bits_per_mesh_index - bits_in_first_element;
 
 			unsigned int bits_in_first_element_mask	 = (1 << bits_in_first_element) - 1;

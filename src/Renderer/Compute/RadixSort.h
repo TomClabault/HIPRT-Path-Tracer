@@ -35,7 +35,7 @@ public:
 
 	void upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values);
 	void set_data_pointers(unsigned int* keys_device_pointer, unsigned int* values_device_pointer, unsigned int element_count);
-	void sort();
+	void sort(bool auto_stream_synchronize = true);
 
 	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
 	OrochiBuffer<unsigned int>& get_sorted_values_buffer();
