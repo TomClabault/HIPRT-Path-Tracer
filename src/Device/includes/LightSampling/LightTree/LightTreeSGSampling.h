@@ -12,8 +12,59 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 
-HIPRT_DEVICE float light_tree_sg_node_importance(
-	const LightTreeSGNodeDevice& node, float3_t shading_point, float3_t view_direction, float3_t shading_normal, float specular, float alpha_x, float alpha_y)
+// For precomputing some data that doesn't change for the shading point and thus is the same for the whole traversal of the tree
+struct SGSpecularImportanceData
+{
+	HIPRT_DEVICE SGSpecularImportanceData() = default;
+	HIPRT_DEVICE SGSpecularImportanceData(float3_t ws_view_direction, float3_t ws_shading_normal, float alpha_x, float alpha_y)
+	{
+		build_ONB(ws_shading_normal, T, B);
+
+		wi = world_to_local_frame(T, B, ws_shading_normal, ws_view_direction);
+
+		const float vlen = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
+		const float2_t v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
+		const float2x2 jacobian_matrix =
+			float2x2(v.x, -v.y, v.y, v.x) * float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
+
+		// Compute JJ^T for NDF filtering.
+		jj_matrix = jacobian_matrix * transpose(jacobian_matrix);
+
+		// Convert the roughness parameter from slope space to the orthographically projected space.
+		// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
+		const float2_t roughness_2 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
+
+		// Preprocess for the lobe visibility.
+		// Approximate the reflection lobe with an SG whose axis is a dominant reflection vector.
+		// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
+		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
+		// Unlike the paper, we use a dominant visible microfacet normal instead of the shading normal to obtain the dominant reflection vector.
+		const float roughness_max_2 = hippt::max(roughness_2.x, roughness_2.y);
+		reflection_sharpness		= (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
+
+		projected_roughness_2 =
+			make_float2(roughness_2.x / hippt::max(1.0f - roughness_2.x, 1.0e-8f), roughness_2.y / hippt::max(1.0f - roughness_2.y, 1.0e-8f));
+	}
+
+	// Local view direction
+	float3_t wi;
+	// Local shading frame tangent and bitangent
+	float3_t T, B;
+
+	float2x2 jj_matrix;
+
+	float reflection_sharpness;
+	float2_t projected_roughness_2;
+};
+
+HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
+												 const SGSpecularImportanceData& spec_data,
+												 float3_t shading_point,
+												 float3_t view_direction,
+												 float3_t shading_normal,
+												 float specular,
+												 float alpha_x,
+												 float alpha_y)
 {
 	if (node.total_power == 0.0f)
 		return 0.0f;
@@ -62,48 +113,21 @@ HIPRT_DEVICE float light_tree_sg_node_importance(
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	if (specular)
 	{
-		float3_t T, B;
-		build_ONB(shading_normal, T, B);
-
-		// Compute the Jacobian matrix J for the transformation between halfvetors and reflection vectors at halfvector = normal.
-		const float3_t wi = world_to_local_frame(T, B, shading_normal, view_direction);
-
-		// Convert the roughness parameter from slope space to the orthographically projected space.
-		// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
-		const float2_t roughness_2 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
-
-		// Preprocess for the lobe visibility.
-		// Approximate the reflection lobe with an SG whose axis is a dominant reflection vector.
-		// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
-		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
-		// Unlike the paper, we use a dominant visible microfacet normal instead of the shading normal to obtain the dominant reflection vector.
-		const float roughness_max_2		 = hippt::max(roughness_2.x, roughness_2.y);
-		const float reflection_sharpness = (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
-
-		const float vlen = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
-		const float2_t v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
-		const float2x2 jacobian_matrix =
-			float2x2(v.x, -v.y, v.y, v.x) * float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
-
-		// Compute JJ^T for NDF filtering.
-		const float2x2 jj_matrix = jacobian_matrix * transpose(jacobian_matrix);
-
-		const float2_t projected_roughness_2 =
-			make_float2(roughness_2.x / hippt::max(1.0f - roughness_2.x, 1.0e-8f), roughness_2.y / hippt::max(1.0f - roughness_2.y, 1.0e-8f));
-
 		// Glossy SG lighting.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5]
 		const float light_lobe_variance = 1.0f / lightLobe.sharpness;
 		const float2x2 filtered_proj_roughness_mat =
-			float2x2(projected_roughness_2.x, 0.0f, 0.0f, projected_roughness_2.y) + 2.0f * light_lobe_variance * jj_matrix;
+			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		// Compute the determinant of JJ^T without catastrophic cancellation.
-		const float det_JJ4 = 1.0f / (4.0f * wi.z * wi.z); // = 4 * determiant(JJ^T).
+		const float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z); // = 4 * determiant(JJ^T).
 		// Compute the determinant of filtered_proj_roughness_mat in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
-		const float det = projected_roughness_2.x * projected_roughness_2.y +
-						  2.0f * light_lobe_variance * (projected_roughness_2.x * jj_matrix.m[0][0] + projected_roughness_2.y * jj_matrix.m[1][1]) +
-						  light_lobe_variance * light_lobe_variance * det_JJ4;
+		const float det =
+			spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+			2.0f * light_lobe_variance *
+				(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
+			light_lobe_variance * light_lobe_variance * det_JJ4;
 
 		// NDF filtering in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
@@ -117,12 +141,13 @@ HIPRT_DEVICE float light_tree_sg_node_importance(
 															 hippt::min(filtered_proj_roughness_mat.m[1][1] + 1.0f, hippt::FLOAT_MAX));
 
 		// Evaluate the filtered reflection lobe.
-		const float3_t half_vector_unormalized = wi + world_to_local_frame(T, B, shading_normal, lightLobe.axis);
+		const float3_t half_vector_unormalized = spec_data.wi + world_to_local_frame(spec_data.T, spec_data.B, shading_normal, lightLobe.axis);
 		const float3_t half_vector			   = half_vector_unormalized / hippt::max(hippt::length(half_vector_unormalized), hippt::FLOAT_MIN);
-		const float pdf						   = SGGX_reflection_PDF(wi, half_vector, filtered_roughness_matrix);
+		const float pdf						   = SGGX_reflection_PDF(spec_data.wi, half_vector, filtered_roughness_matrix);
 
-		const float3_t dominant_normal	 = local_to_world_frame(T, B, shading_normal, GGX_dominant_visible_normal(wi, make_float2(alpha_x, alpha_y)));
-		const float3_t reflection_vector = reflect_ray(view_direction, dominant_normal) * reflection_sharpness;
+		const float3_t dominant_normal =
+			local_to_world_frame(spec_data.T, spec_data.B, shading_normal, GGX_dominant_visible_normal(spec_data.wi, make_float2(alpha_x, alpha_y)));
+		const float3_t reflection_vector = reflect_ray(view_direction, dominant_normal) * spec_data.reflection_sharpness;
 
 		// Visibility of the SG light in the upper hemisphere.
 		const float3_t product_vector	 = reflection_vector + lightLobe.axis * lightLobe.sharpness; // Axis of the SG product lobe.
@@ -165,15 +190,23 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
 
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
+#else
+	SGSpecularImportanceData spec_data;
+	;
+#endif
+
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
 		LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		float right_importance =
-			light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return LightSampleInformation();
 
@@ -228,8 +261,15 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
 
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
+#else
+	SGSpecularImportanceData spec_data;
+	;
+#endif
+
 	float root_node_importance =
-		light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -242,9 +282,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		float right_importance =
-			light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
