@@ -246,8 +246,8 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 		// Buffer isn't allocated
 		buffer_needs_update |= m_renderer->get_render_data().global_traversal_stack_buffer.stackData == nullptr;
 		// Buffer is allocated but the stack size has been changed (through ImGui probably)
-		buffer_needs_update |= m_renderer->get_render_data().global_traversal_stack_buffer_size !=
-							   m_renderer->get_render_data().global_traversal_stack_buffer.stackSize;
+		buffer_needs_update |=
+			m_renderer->get_render_data().global_traversal_stack_buffer_size != m_renderer->get_render_data().global_traversal_stack_buffer.stackSize;
 
 		if (buffer_needs_update)
 			m_renderer->recreate_global_bvh_stack_buffer();
@@ -257,8 +257,8 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 		if (m_renderer->get_render_data().global_traversal_stack_buffer.stackData != nullptr)
 		{
 			// Freeing if the buffer already exists
-			HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_renderer->m_hiprt_orochi_ctx->hiprt_ctx,
-															m_renderer->get_render_data().global_traversal_stack_buffer));
+			HIPRT_CHECK_ERROR(
+				hiprtDestroyGlobalStackBuffer(m_renderer->m_hiprt_orochi_ctx->hiprt_ctx, m_renderer->get_render_data().global_traversal_stack_buffer));
 			m_renderer->get_render_data().global_traversal_stack_buffer.stackData = nullptr;
 		}
 	}
@@ -350,17 +350,17 @@ void GPURendererThread::render_internal()
 	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(
-							m_renderer->get_main_stream(),
-							[](void* payload)
-							{
-								CallbackPayload* payload_struct		 = reinterpret_cast<CallbackPayload*>(payload);
-								*payload_struct->frame_rendered		 = true;
-								*payload_struct->currently_rendering = false;
-								payload_struct->render_completed_condition_variable->notify_all();
+		m_renderer->get_main_stream(),
+		[](void* payload)
+		{
+			CallbackPayload* payload_struct		 = reinterpret_cast<CallbackPayload*>(payload);
+			*payload_struct->frame_rendered		 = true;
+			*payload_struct->currently_rendering = false;
+			payload_struct->render_completed_condition_variable->notify_all();
 
-								delete payload_struct;
-							},
-							payload));
+			delete payload_struct;
+		},
+		payload));
 
 	m_renderer->m_was_last_frame_low_resolution = m_renderer->get_render_data().render_settings.do_render_low_resolution();
 	// We just rendered a new frame so we're setting this flag to true
@@ -370,9 +370,9 @@ void GPURendererThread::render_internal()
 	m_renderer->m_animation_state.can_step_animation = false;
 }
 
-void GPURendererThread::set_active_render_graph(RenderGraph& graph)
+void GPURendererThread::set_active_render_graph(RenderGraph* graph)
 {
-	m_active_render_graph = &graph;
+	m_active_render_graph = graph;
 }
 
 RenderGraph& GPURendererThread::get_active_render_graph()
@@ -398,7 +398,7 @@ std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass() const
 std::shared_ptr<SSBNPermutationRenderPass> GPURendererThread::get_ssbn_permutation_render_pass()
 {
 	return std::dynamic_pointer_cast<SSBNPermutationRenderPass>(
-							m_active_render_graph->get_render_pass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
+		m_active_render_graph->get_render_pass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReGIRRenderPass> GPURendererThread::get_ReGIR_render_pass()

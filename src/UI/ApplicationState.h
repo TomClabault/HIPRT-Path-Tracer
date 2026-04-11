@@ -23,6 +23,11 @@ struct ApplicationState
 	// at last frame
 	bool interacting_last_frame = false;
 
+	// Whether or not the last reset occured while the user was interacting with an ImGui widget. This is only set to true for "held" widgets such as sliders or
+	// such, not buttons for example
+	bool m_render_resetted_with_imgui_item_held			   = false;
+	bool m_render_resetted_with_imgui_item_held_last_frame = false;
+
 	// How long in milliseconds do we still have to stall the GPU for
 	float GPU_stall_duration_left = 0;
 

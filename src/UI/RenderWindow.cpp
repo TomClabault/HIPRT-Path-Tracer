@@ -1010,6 +1010,11 @@ bool RenderWindow::is_interacting()
 	return m_mouse_interactor->is_interacting() || m_keyboard_interactor.is_interacting();
 }
 
+bool RenderWindow::render_resetted_with_imgui_item_held()
+{
+	return m_application_state->m_render_resetted_with_imgui_item_held;
+}
+
 RenderWindowKeyboardInteractor& RenderWindow::get_keyboard_interactor()
 {
 	return m_keyboard_interactor;
@@ -1023,6 +1028,11 @@ std::shared_ptr<RenderWindowMouseInteractor> RenderWindow::get_mouse_interactor(
 std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
 {
 	return m_application_settings;
+}
+
+std::shared_ptr<ApplicationState> RenderWindow::get_application_state()
+{
+	return m_application_state;
 }
 
 std::shared_ptr<DisplayViewSystem> RenderWindow::get_display_view_system()
@@ -1099,10 +1109,10 @@ bool RenderWindow::is_rendering_done()
 	// stop noise threshold feature) --> (enabled & adaptive sampling enabled)
 	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.use_pixel_stop_noise_threshold) ||
 											 (render_settings.use_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
-	bool minimum_sample_count_reached = render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count ||
-										render_settings.enable_adaptive_sampling;
-	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition &&
-					  minimum_sample_count_reached;
+	bool minimum_sample_count_reached =
+		render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count || render_settings.enable_adaptive_sampling;
+	rendering_done |=
+		proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition && minimum_sample_count_reached;
 
 	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
@@ -1182,13 +1192,15 @@ float RenderWindow::get_viewport_refresh_delay_ms()
 
 float RenderWindow::get_time_ms_before_viewport_refresh()
 {
-	float time_since_last_refresh = (glfwGetTimerValue() - m_application_state->last_viewport_refresh_timestamp) / static_cast<float>(glfwGetTimerFrequency()) *
-									1000.0f;
+	float time_since_last_refresh =
+		(glfwGetTimerValue() - m_application_state->last_viewport_refresh_timestamp) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
 	return get_viewport_refresh_delay_ms() - time_since_last_refresh;
 }
 
 void RenderWindow::reset_render()
 {
+	m_application_state->m_render_resetted_with_imgui_item_held = ImGui::IsAnyItemActive();
+
 	m_application_settings->last_denoised_sample_count = -1;
 
 	m_application_state->current_render_time_ms = 0.0f;
@@ -1329,6 +1341,13 @@ void RenderWindow::run()
 		m_application_state->render_dirty |= is_interacting();
 		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
+		bool held_this_frame = ImGui::IsAnyItemActive();
+		static bool held_last_frame;
+
+		m_application_state->render_dirty |= render_resetted_with_imgui_item_held() && held_last_frame != held_this_frame;
+
+		held_last_frame = held_this_frame;
+
 		render();
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
@@ -1446,9 +1465,8 @@ void RenderWindow::render()
 				// "exactly" as fast as the 'm_application_settings->target_GPU_framerate'
 				//
 				// This is to keep the GPU busy and improve rendering performance
-				render_settings.samples_per_frame = std::min(
-										std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)),
-										65536);
+				render_settings.samples_per_frame =
+					std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
 
 			if (m_application_state->render_dirty)
 				reset_render();
@@ -1464,6 +1482,8 @@ void RenderWindow::render()
 			m_application_state->last_GPU_submit_time = current_timestamp;
 
 			m_renderer->render(delta_time_gpu, this);
+
+			m_application_state->m_render_resetted_with_imgui_item_held_last_frame = m_application_state->m_render_resetted_with_imgui_item_held;
 
 			buffer_upload_necessary = true;
 		}
@@ -1551,8 +1571,8 @@ bool RenderWindow::denoise()
 		bool denoise_rendering_done = rendering_done && denoise_when_done;
 		// Have we rendered enough samples since last time we denoised that we need to denoise again?
 		bool sample_skip_threshold_reached =
-								!denoise_when_done && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >=
-													   m_application_settings->denoiser_sample_skip);
+			!denoise_when_done &&
+			(render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
 		// We're also going to denoise if we changed the denoiser settings
 		// (because we need to denoise to reflect the new settings)
 		bool denoiser_settings_changed = m_application_settings->denoiser_settings_changed;

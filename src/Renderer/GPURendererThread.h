@@ -98,7 +98,7 @@ public:
 	 */
 	void render_internal();
 
-	void set_active_render_graph(RenderGraph& graph);
+	void set_active_render_graph(RenderGraph* graph);
 	RenderGraph& get_active_render_graph();
 
 	std::unordered_map<std::string, RenderGraph>& get_render_graphs();

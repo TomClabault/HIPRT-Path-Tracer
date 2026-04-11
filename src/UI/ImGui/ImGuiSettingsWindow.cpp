@@ -341,24 +341,23 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 					ImGui::TreePush("Number of samples not divisible GMoN tree");
 
 					// But the maximum number of samples isn't divisible by the number of sets
-					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
-											   "maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
-											   "what's displayed in the viewport will only be " +
-											   std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) +
-											   " samples instead of " + std::to_string(m_application_settings->max_sample_count) +
-											   ".\n\n"
-											   ""
-											   "You click the button to the right to round up the maximum number of samples to one that is "
-											   "divisible by the number of GMoN sets (" +
-											   std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(
-																	   GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) +
-											   ")";
+					std::string warning_text =
+						"Currently using GMoN (\"Post-processing\" panel) but the number of "
+						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
+						"what's displayed in the viewport will only be " +
+						std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) + " samples instead of " +
+						std::to_string(m_application_settings->max_sample_count) +
+						".\n\n"
+						""
+						"You click the button to the right to round up the maximum number of samples to one that is "
+						"divisible by the number of GMoN sets (" +
+						std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
 					ImGuiRenderer::add_warning(warning_text);
 
 					ImGui::SameLine();
 					if (ImGui::Button("Round up"))
 						m_application_settings->max_sample_count =
-												std::ceil(m_application_settings->max_sample_count / static_cast<float>(number_of_sets)) * number_of_sets;
+							std::ceil(m_application_settings->max_sample_count / static_cast<float>(number_of_sets)) * number_of_sets;
 
 					ImGui::TreePop();
 				}
@@ -700,7 +699,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count	   = 3;
 		// Reuse radius 1% of the resolution
 		render_settings.restir_di_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
 		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
@@ -733,7 +732,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count	   = 8;
 		// Reuse radius 1% of the resolution
 		render_settings.restir_di_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
 		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
@@ -768,7 +767,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count	   = 8;
 		// Reuse radius 1% of the resolution
 		render_settings.restir_di_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
 		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
@@ -783,7 +782,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count	   = 8;
 		// Reuse radius 1% of the resolution
 		render_settings.restir_gi_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
 		render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
@@ -825,7 +824,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count	   = 8;
 		// Reuse radius 1% of the resolution
 		render_settings.restir_gi_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
 		render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
@@ -1131,9 +1130,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips(
-									"Light sampling strategy",
-									global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY),
-									items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
+				"Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY),
+				items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
 
 			const char* items[]	   = { "- No direct light sampling",
 									   "- Light sampling",
@@ -1161,7 +1159,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			const bool no_direct_light_sampling_disabled = false;
 			const bool uniform_one_light_disabled =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool bsdf_sampling_disabled = false;
 
 			const bool regir		= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
@@ -1196,8 +1194,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
 			{
-				int preferred_base_strategy = preferred_fallback_technique[global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)];
+				int preferred_base_strategy =
+					preferred_fallback_technique[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)];
 				if (disabled_items[preferred_base_strategy])
 				{
 					// If also the preferred technique is disabled, choosing the first enabled one
@@ -1252,9 +1250,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"account on top of the geometry term."
 			};
 			if (ImGuiRenderer::ComboWithTooltips(
-										"Triangle sampling strategy",
-										global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY),
-										items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
+					"Triangle sampling strategy",
+					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY), items_triangle_sampling,
+					IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1273,9 +1271,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) ==
-										TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+					TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) ==
-										TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
+					TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
 			{
 				ImGui::TreePush("Solid angle triangle sampling use LTC tree");
 
@@ -1289,10 +1287,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 				ImGuiRenderer::show_help_marker(
-										"If checked, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used "
-										"for sampling a point on emissive triangle.This has for effect of taking the BRDF into account "
-										"when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.\n\n"
-										"Warning: LTC-based sampling may be slightly biased due to the BRDF approximation error of LTCs.");
+					"If checked, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used "
+					"for sampling a point on emissive triangle.This has for effect of taking the BRDF into account "
+					"when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.\n\n"
+					"Warning: LTC-based sampling may be slightly biased due to the BRDF approximation error of LTCs.");
 
 				ImGui::TreePop();
 			}
@@ -1300,10 +1298,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC) == KERNEL_OPTION_TRUE &&
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) ==
-																TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) ==
+						TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) ==
-										TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
+					TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
 				draw_ltc_settings_panel();
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
@@ -1501,19 +1499,17 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 				draw_ReSTIR_temporal_reuse_panel<true>(
-										[&render_settings, this]()
-										{
-											if (ImGui::Checkbox("Do Temporal Reuse",
-																&render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
-												m_render_window->set_render_dirty(true);
-										});
+					[&render_settings, this]()
+					{
+						if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
+							m_render_window->set_render_dirty(true);
+					});
 				draw_ReSTIR_spatial_reuse_panel<true>(
-										[&render_settings, this]()
-										{
-											if (ImGui::Checkbox("Do spatial reuse",
-																&render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
-												m_render_window->set_render_dirty(true);
-										});
+					[&render_settings, this]()
+					{
+						if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
+							m_render_window->set_render_dirty(true);
+					});
 				ImGui::PopItemWidth();
 
 				draw_ReSTIR_bias_correction_panel<true>();
@@ -1533,16 +1529,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						ImGui::Text("Debug reuse direction");
 						bool reuse_direction_changed = false;
 						reuse_direction_changed |= ImGui::RadioButton(
-												"Horizontally",
-												((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
+							"Horizontally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
 						ImGui::SameLine();
 						reuse_direction_changed |= ImGui::RadioButton(
-												"Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction),
-												1);
+							"Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
 						ImGui::SameLine();
 						reuse_direction_changed |= ImGui::RadioButton(
-												"Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction),
-												2);
+							"Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
 
 						if (reuse_direction_changed)
 							m_render_window->set_render_dirty(true);
@@ -1620,7 +1613,7 @@ void ImGuiSettingsWindow::draw_material_settings_panel()
 			ImGui::TreePush("Principled bsdf metallic lobe tree");
 
 			static bool sample_cosine_weighted =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED);
 			if (ImGui::Checkbox("Sample cosine weighted##metallic", &sample_cosine_weighted))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED,
@@ -1654,7 +1647,7 @@ void ImGuiSettingsWindow::draw_material_settings_panel()
 			ImGui::TreePush("Principled bsdf glossy lobe tree");
 
 			bool sample_glossy_based_on_fresnel =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL);
 			if (ImGui::Checkbox("Fresnel-based sampling##glossy", &sample_glossy_based_on_fresnel))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL,
@@ -1700,7 +1693,7 @@ void ImGuiSettingsWindow::draw_material_settings_panel()
 		std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
 		if (ImGui::Combo("GGX Sampling Method",
 						 m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(
-												 GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION),
+							 GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION),
 						 ggx_sampling_items.data(), ggx_sampling_items.size()))
 		{
 			m_renderer->recompile_kernels();
@@ -1825,7 +1818,9 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
-	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = m_renderer->get_ReSTIR_DI_render_pass();
+	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::dynamic_pointer_cast<ReSTIRDIRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME));
+
 	ImGui::BeginDisabled(!restir_di_render_pass);
 	if (ImGui::CollapsingHeader("ReSTIR DI Settings") && restir_di_render_pass)
 	{
@@ -1863,7 +1858,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 
 			{
 				bool use_initial_target_function_visibility =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
 				if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY,
@@ -1876,7 +1871,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 												"resampling initial candidates");
 
 				const bool bsdf_samples_disabled_regir =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 				const bool bsdf_samples_disabled = bsdf_samples_disabled_regir;
 				if (bsdf_samples_disabled_regir)
 					ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
@@ -1887,7 +1882,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 				{
 					// Clamping to 0
 					render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates =
-											std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
+						std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -1898,7 +1893,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 				{
 					// Clamping to 0
 					render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates =
-											std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
+						std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -1908,7 +1903,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 									   0.0f, 1.0f))
 				{
 					render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability =
-											hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
+						hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -1941,67 +1936,67 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 		}
 
 		draw_ReSTIR_temporal_reuse_panel<false>(
-								[this, &render_settings]()
-								{
-									if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass &&
-										render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-									{
-										if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-										{
-											m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
+			[this, &render_settings]()
+			{
+				if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass &&
+					render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+				{
+					if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+					{
+						m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
 
-											m_render_window->set_render_dirty(true);
-										}
-										ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-																		"This avoids a synchronization barrier between the temporal pass and the spatial pass "
-																		"and increases performance. Because the spatial must then resample without the output "
-																		"of the temporal pass, the spatial "
-																		"pass only resamples on the temporal reservoir buffer, not the temporal + initial "
-																		"candidates reservoir "
-																		"(which is the output of the temporal pass). This is usually imperceptible.");
-									}
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+													"This avoids a synchronization barrier between the temporal pass and the spatial pass "
+													"and increases performance. Because the spatial must then resample without the output "
+													"of the temporal pass, the spatial "
+													"pass only resamples on the temporal reservoir buffer, not the temporal + initial "
+													"candidates reservoir "
+													"(which is the output of the temporal pass). This is usually imperceptible.");
+				}
 
-									if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
-									{
-										m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
+				{
+					m_render_window->set_render_dirty(true);
 
-										if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-											// Disabling fused spatiotemporal if we just disabled the temporal reuse
-											render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-									}
-								});
+					if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+						// Disabling fused spatiotemporal if we just disabled the temporal reuse
+						render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+				}
+			});
 
 		ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 		draw_ReSTIR_spatial_reuse_panel<false>(
-								[&render_settings, this]()
-								{
-									if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass &&
-										render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-									{
-										if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-										{
-											m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
+			[&render_settings, this]()
+			{
+				if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass &&
+					render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+				{
+					if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+					{
+						m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
 
-											m_render_window->set_render_dirty(true);
-										}
-										ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-																		"This avois a synchronization barrier between the temporal pass and the spatial pass "
-																		"and increases performance. Because the spatial must then resample without the output "
-																		"of the temporal pass, the spatial "
-																		"pass only resamples on the temporal reservoir buffer, not the temporal + initial "
-																		"candidates reservoir "
-																		"(which is the output of the temporal pass). This is usually imperceptible.");
-									}
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+													"This avois a synchronization barrier between the temporal pass and the spatial pass "
+													"and increases performance. Because the spatial must then resample without the output "
+													"of the temporal pass, the spatial "
+													"pass only resamples on the temporal reservoir buffer, not the temporal + initial "
+													"candidates reservoir "
+													"(which is the output of the temporal pass). This is usually imperceptible.");
+				}
 
-									if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
-									{
-										m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+				{
+					m_render_window->set_render_dirty(true);
 
-										if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-											// Disabling fused spatiotemporal if we just disabled the spatial reuse
-											render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-									}
-								});
+					if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+						// Disabling fused spatiotemporal if we just disabled the spatial reuse
+						render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+				}
+			});
 		ImGui::PopItemWidth();
 
 		draw_ReSTIR_bias_correction_panel<false>();
@@ -2019,14 +2014,14 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 
 				ImGui::Text("Debug reuse direction");
 				bool reuse_direction_changed = false;
-				reuse_direction_changed |= ImGui::RadioButton(
-										"Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
+				reuse_direction_changed |=
+					ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
 				ImGui::SameLine();
-				reuse_direction_changed |= ImGui::RadioButton(
-										"Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
+				reuse_direction_changed |=
+					ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
 				ImGui::SameLine();
-				reuse_direction_changed |= ImGui::RadioButton(
-										"Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+				reuse_direction_changed |=
+					ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
 
 				if (reuse_direction_changed)
 					m_render_window->set_render_dirty(true);
@@ -2066,7 +2061,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 				case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
 				{
 					bool use_visibility_ris_target_function =
-											global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
 					if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 					{
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
@@ -2138,8 +2133,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= m_renderer->get_ReGIR_render_pass();
+	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
+	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
 	{
 		ImGui::TreePush("ReGIR settings tree");
@@ -2154,8 +2151,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", regir_render_pass->get_VRAM_usage_bytes() / 1000000.0f,
-					regir_render_pass->get_VRAM_usage_bytes() / ((float)regir_render_pass->get_total_number_of_cells_alive(true) +
-																 regir_render_pass->get_total_number_of_cells_alive(false)));
+					regir_render_pass->get_VRAM_usage_bytes() /
+						((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
 		ImGui::Text("VRAM Usage breakdown: ");
 		std::vector<char> tooltip_buffer(2048);
 		snprintf(tooltip_buffer.data(), 2048,
@@ -2184,7 +2181,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				 regir_render_pass->get_hash_grid_storage().get_async_compute_staging_buffer(true).get_byte_size() / 1000000.0f,
 				 (regir_render_pass->get_hash_grid_storage().get_non_canonical_factors(true).get_byte_size() +
 				  regir_render_pass->get_hash_grid_storage().get_canonical_factors(true).get_byte_size()) /
-										 1000000.0f,
+					 1000000.0f,
 				 regir_render_pass->get_light_distibutions_VRAM_usage_bytes(true) / 1000000.0f,
 
 				 regir_render_pass->get_reservoirs_VRAM_usage_bytes(false) / 1000000.0f,
@@ -2194,7 +2191,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				 regir_render_pass->get_hash_grid_storage().get_async_compute_staging_buffer(false).get_byte_size() / 1000000.0f,
 				 (regir_render_pass->get_hash_grid_storage().get_non_canonical_factors(false).get_byte_size() +
 				  regir_render_pass->get_hash_grid_storage().get_canonical_factors(false).get_byte_size()) /
-										 1000000.0f,
+					 1000000.0f,
 				 regir_render_pass->get_light_distibutions_VRAM_usage_bytes(false) / 1000000.0f);
 		ImGuiRenderer::show_help_marker(tooltip_buffer.data());
 
@@ -2222,7 +2219,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 											"quality initial light samples");
 
 			static bool only_use_cell_light_distributions =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS);
 			if (ImGui::Checkbox("Only use cell light distributions", &only_use_cell_light_distributions))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS,
@@ -2238,8 +2235,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (regir_settings.use_per_cell_light_distributions)
 			{
 				const char* items[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS", "- SG light tree" };
-				static int light_distributions_defensive_sampling_technique = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE);
+				static int light_distributions_defensive_sampling_technique =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE);
 				if (ImGui::Combo("Defensive sampling technique", &light_distributions_defensive_sampling_technique, items, IM_ARRAYSIZE(items)))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE,
@@ -2271,14 +2268,14 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					m_render_window->set_render_dirty(true);
 				}
 				ImGuiRenderer::show_help_marker(
-										"If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
-										"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
-										""
-										"If this is false, NEE++ won't be used in the target function with makes the grid fill "
-										"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
-										""
-										"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
-										"actually is very small so this is a worthy optimization imo.");
+					"If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
+					"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
+					""
+					"If this is false, NEE++ won't be used in the target function with makes the grid fill "
+					"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
+					""
+					"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
+					"actually is very small so this is a worthy optimization imo.");
 				static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
 				if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
 				{
@@ -2430,9 +2427,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker(
-									"Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.\n\n"
-									""
-									"Probably too expensive to be efficient.");
+				"Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.\n\n"
+				""
+				"Probably too expensive to be efficient.");
 
 			static bool nee_plus_plus_visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation;
 			if (ImGui::Checkbox("Use NEE++ visibility in target function", &nee_plus_plus_visibility_grid_fill_target_function))
@@ -2446,7 +2443,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.");
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE &&
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION) ==
-										KERNEL_OPTION_TRUE)
+					KERNEL_OPTION_TRUE)
 			{
 				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
 
@@ -2466,10 +2463,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker(
-									"Whether or not to use a the cosine term between the direction to the light sample and the "
-									"representative normal of the grid cell in the target function used to resample the reservoirs of the grid cells.\n\n"
-									""
-									"This has no effect is representative points are not being used.");
+				"Whether or not to use a the cosine term between the direction to the light sample and the "
+				"representative normal of the grid cell in the target function used to resample the reservoirs of the grid cells.\n\n"
+				""
+				"This has no effect is representative points are not being used.");
 
 			static bool cosine_term_light_source_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTermLightSource;
 			if (ImGui::Checkbox("Use cosine term light source in target function", &cosine_term_light_source_grid_fill_target_function))
@@ -2567,15 +2564,14 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			};
 
 			bool base_light_sampling_strategy_disabled =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) ==
-									KERNEL_OPTION_TRUE;
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
 			if (base_light_sampling_strategy_disabled)
 				ImGuiRenderer::add_warning("Cell light distributions are being used as the main non-canonical sampling strategy");
 			ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
-			if (ImGuiRenderer::ComboWithTooltips("Non canonical",
-												 global_kernel_options->get_raw_pointer_to_macro_value(
-																		 GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL),
-												 items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_non_canonical))
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Non canonical",
+					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL),
+					items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_non_canonical))
 			{
 				// Will recompute the alias table if necessary
 				m_renderer->recompute_emissives_sampling_data_structure();
@@ -2586,10 +2582,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::EndDisabled();
 
 			static int canonical_candidates_strategy = 0;
-			if (ImGuiRenderer::ComboWithTooltips("Canonical",
-												 global_kernel_options->get_raw_pointer_to_macro_value(
-																		 GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL),
-												 items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_canonical))
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Canonical",
+					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL),
+					items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_canonical))
 			{
 				// Will recompute the alias table if necessary
 				m_renderer->recompute_emissives_sampling_data_structure();
@@ -2675,7 +2671,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 											"shading such that reservoirs that are likely to be occluded will have a lower resampling probability");
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE &&
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY) ==
-										KERNEL_OPTION_TRUE)
+					KERNEL_OPTION_TRUE)
 			{
 				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
 
@@ -2702,8 +2698,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			{
 				ImGui::TreePush("Do canonical candidatres tree ReGIR");
 
-				static bool regir_shading_light_tree_canonical_candidates = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS);
+				static bool regir_shading_light_tree_canonical_candidates =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS);
 				if (ImGui::Checkbox("Use light tree", &regir_shading_light_tree_canonical_candidates))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS,
@@ -2978,10 +2974,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"new candidate location. Continue doing so until an empty location\n"
 				"is found or the maximum number of steps is exceeded.",
 			};
-			if (ImGuiRenderer::ComboWithTooltips("Mode",
-												 global_kernel_options->get_raw_pointer_to_macro_value(
-																		 GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE),
-												 items, IM_ARRAYSIZE(items), tooltips))
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE), items,
+					IM_ARRAYSIZE(items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -3045,9 +3040,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
+	ImGui::EndDisabled(); // ImGui::BeginDisabled(!regir_render_pass);
 
 	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(
-							m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
+		m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
 	if (light_tree_used_by_regir)
 		draw_light_tree_ATS_settings_panel();
 }
@@ -3160,7 +3156,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 											" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
 
 			static int splitting_max_light_samples_count =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES);
 			ImGui::SliderInt("Max light samples", &splitting_max_light_samples_count, 1, 16);
 			ImGuiRenderer::show_help_marker("If splitting is enabled, how many light samples, at most, per shading point is allowed.\n"
 											"Higher values result in higher quality but at a higher performance cost.");
@@ -3189,7 +3185,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Importance function");
 		static bool importance_function_use_orientation =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION);
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION);
 		if (ImGui::Checkbox("Use orientation", &importance_function_use_orientation))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION,
@@ -3270,7 +3266,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Importance function");
 		static bool importance_function_do_specular =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);
 		if (ImGui::Checkbox("Do specular", &importance_function_do_specular))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE,
@@ -3369,7 +3365,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 									   "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
 				{
 					common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp =
-											std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
+						std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -3414,7 +3410,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 				if (ImGui::SliderFloat("Jacobian threshold", render_settings.restir_gi_settings.get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
 				{
 					render_settings.restir_gi_settings.set_jacobian_heuristic_threshold(
-											hippt::max(1.001f, render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+						hippt::max(1.001f, render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
 					m_render_window->set_render_dirty(true);
 				}
 			}
@@ -3424,12 +3420,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			if (ImGui::Checkbox("Use sample point roughness heuristic", &render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
-									"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
-									"won't be reused\n"
-									"If the neighbor's sample point's roughness is higher than the threshold, it can be reused.\n"
-									"This is pretty much necessary to avoid \"bias\" (although this isn't stricly bias, more like extremely "
-									"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
-									"specular surface: a rough primary hit bouncing into a window / mirror for example.");
+				"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
+				"won't be reused\n"
+				"If the neighbor's sample point's roughness is higher than the threshold, it can be reused.\n"
+				"This is pretty much necessary to avoid \"bias\" (although this isn't stricly bias, more like extremely "
+				"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
+				"specular surface: a rough primary hit bouncing into a window / mirror for example.");
 
 			ImGui::TreePush("Sample point roughness heuristic tree");
 			if (render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic)
@@ -3496,8 +3492,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 												" to add temporal variations.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				int& m_cap = IsReSTIRGI ? m_renderer->get_render_settings().restir_gi_settings.m_cap
-										: m_renderer->get_render_settings().restir_di_settings.m_cap;
+				int& m_cap =
+					IsReSTIRGI ? m_renderer->get_render_settings().restir_gi_settings.m_cap : m_renderer->get_render_settings().restir_di_settings.m_cap;
 				if (ImGui::SliderInt("M-cap", &m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					m_cap = std::max(0, m_cap);
@@ -3518,7 +3514,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	ReSTIRCommonSpatialPassSettings& restir_settings =
-							IsReSTIRGI ? render_settings.restir_gi_settings.common_spatial_pass : render_settings.restir_di_settings.common_spatial_pass;
+		IsReSTIRGI ? render_settings.restir_gi_settings.common_spatial_pass : render_settings.restir_di_settings.common_spatial_pass;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
@@ -3534,10 +3530,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				bool use_spatial_target_function_visibility;
 				if constexpr (IsReSTIRGI)
 					use_spatial_target_function_visibility =
-											global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
 				else
 					use_spatial_target_function_visibility =
-											global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
 				if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
 				{
 					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY
@@ -3644,7 +3640,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 						bool bitcount_changed = false;
 						static int spatial_reuse_directional_masks_bitcount =
-												IsReSTIRGI ? ReSTIR_GI_SpatialDirectionalReuseBitCount : ReSTIR_DI_SpatialDirectionalReuseBitCount;
+							IsReSTIRGI ? ReSTIR_GI_SpatialDirectionalReuseBitCount : ReSTIR_DI_SpatialDirectionalReuseBitCount;
 						bitcount_changed |= ImGui::RadioButton("32 Bits", &spatial_reuse_directional_masks_bitcount, 32);
 						ImGui::SameLine();
 						bitcount_changed |= ImGui::RadioButton("64 Bits", &spatial_reuse_directional_masks_bitcount, 64);
@@ -3753,9 +3749,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						// Making sure that the buffers are indeed allocated
 
 						unsigned long long int spatial_reuse_total = OrochiBuffer<unsigned long long int>::download_data(
-												reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_total), 1)[0];
+							reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_total), 1)[0];
 						unsigned long long int spatial_reuse_hit = OrochiBuffer<unsigned long long int>::download_data(
-												reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_hits), 1)[0];
+							reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_hits), 1)[0];
 
 						ImGui::Text("Hit rate: %f", spatial_reuse_hit * 100.0f / spatial_reuse_total);
 					}
@@ -3831,8 +3827,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 									   "Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]" };
 
 			int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-									IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS
-											   : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE);
+				IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE);
 			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items, IM_ARRAYSIZE(mis_weights_types_items),
 												 tooltips))
 			{
@@ -3843,8 +3838,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
 			bool disable_confidence_weights =
-									*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M) ||
-									*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z);
+				*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M) ||
+				*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z);
 
 			if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
 				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
@@ -3861,7 +3856,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			if (ImGui::Checkbox("Use confidence weights", &restir_settings->use_confidence_weights))
 				m_render_window->set_render_dirty(true);
 			std::string confidence_weight_help_string =
-									"Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
+				"Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
 			if (disable_confidence_weights)
 				confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
 			ImGuiRenderer::show_help_marker(confidence_weight_help_string);
@@ -3869,7 +3864,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 			// No visibility for 1/M weights
 			bool bias_correction_visibility_disabled =
-									*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M);
+				*mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M);
 			bool mis_weights_use_visibility;
 			if constexpr (IsReSTIRGI)
 				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
@@ -3878,9 +3873,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGui::BeginDisabled(bias_correction_visibility_disabled);
 			if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
 			{
-				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-										IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY
-												   : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
+				int* bias_correction_use_visibility_option_pointer =
+					global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY
+																					 : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
 				*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
 
 				m_renderer->recompile_kernels();
@@ -3902,8 +3897,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options	 = m_renderer->get_global_compiler_options();
-	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = m_renderer->get_NEE_plus_plus_render_pass();
+	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = std::dynamic_pointer_cast<NEEPlusPlusRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME));
 
+	ImGui::BeginDisabled(!nee_plus_plus_render_pass);
 	if (ImGui::CollapsingHeader("Next Event Estimation++") && nee_plus_plus_render_pass)
 	{
 		ImGui::TreePush("Use NEE++ Tree");
@@ -3961,9 +3958,9 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 												"stochastically determine whether or not attempt at all to trace a shadow at "
 												"a light during next-event-estimation.");
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE) == KERNEL_OPTION_TRUE)
-					ImGui::Text("Shadow rays traced: %.3f%%",
-								m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() /
-														(float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() * 100.0f);
+					ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() /
+																  (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() *
+																  100.0f);
 
 				if (use_nee_plus_plus_rr)
 				{
@@ -3983,7 +3980,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 						std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
 						if (ImGui::Button(button_text.c_str()))
 							render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics =
-													!render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
+								!render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
 
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
@@ -4029,12 +4026,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.",
 				};
 
-				if (ImGuiRenderer::ComboWithTooltips(
-											"Light sampling strategy",
-											global_kernel_options->get_raw_pointer_to_macro_value(
-																	GPUKernelCompilerOptions::
-																							DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY),
-											items_lss, IM_ARRAYSIZE(items_lss), tooltips_lss))
+				if (ImGuiRenderer::ComboWithTooltips("Light sampling strategy",
+													 global_kernel_options->get_raw_pointer_to_macro_value(
+														 GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY),
+													 items_lss, IM_ARRAYSIZE(items_lss), tooltips_lss))
 				{
 					// Will recompute the alias table if necessary
 					m_renderer->recompute_emissives_sampling_data_structure();
@@ -4063,20 +4058,14 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::Button("Clear visibility map"))
-				{
-					nee_plus_plus_render_pass->reset(false);
-					m_render_window->set_render_dirty(true);
-				}
-
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				bool display_shadow_rays = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
+				bool display_shadow_rays =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
 				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
 				{
 					m_renderer->get_global_compiler_options()->set_macro_value(
-											GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
-											display_shadow_rays ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
+						display_shadow_rays ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -4092,8 +4081,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					if (ImGui::SliderInt("Bounce to display", &shadow_ray_bounce_to_display, 0, m_renderer->get_render_settings().nb_bounces))
 					{
 						m_renderer->get_global_compiler_options()->set_macro_value(
-												GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE,
-												shadow_ray_bounce_to_display);
+							GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE, shadow_ray_bounce_to_display);
 						m_renderer->recompile_kernels();
 					}
 
@@ -4108,6 +4096,8 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 		ImGui::TreePop();
 	}
+
+	ImGui::EndDisabled(); // ImGui::BeginDisabled(!nee_plus_plus_render_pass);
 }
 
 bool ImGuiSettingsWindow::use_nee_plus_plus_checkbox(const std::string& text)
@@ -4166,10 +4156,9 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			};
 
 			ImGui::SeparatorText("Energy compensation method");
-			if (ImGuiRenderer::ComboWithTooltips("Method",
-												 global_kernel_options->get_raw_pointer_to_macro_value(
-																		 GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE),
-												 energy_compensation_mode, IM_ARRAYSIZE(energy_compensation_mode), tooltips_energy_compensation_mode))
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Method", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE),
+					energy_compensation_mode, IM_ARRAYSIZE(energy_compensation_mode), tooltips_energy_compensation_mode))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -4180,8 +4169,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			{
 				ImGui::TreePush("Invariance cui settings tree");
 
-				static int max_microsurface_bounces = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES);
+				static int max_microsurface_bounces =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES);
 				ImGui::SliderInt("Max microsurface bounces", &max_microsurface_bounces, 1, 15);
 				if (max_microsurface_bounces !=
 					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES))
@@ -4202,8 +4191,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					ImGui::TreePop();
 				}
 
-				static bool variable_bounce = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_VARIABLE_BOUNCES);
+				static bool variable_bounce =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_VARIABLE_BOUNCES);
 				if (ImGui::Checkbox("Variable number of bounces", &variable_bounce))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_VARIABLE_BOUNCES,
@@ -4222,8 +4211,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 												"\troughness >= 0.4 --> 4 bounces\n"
 												"\troughness  < 0.4 --> 3 bounces");
 
-				static bool do_russian_roulette = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE);
+				static bool do_russian_roulette =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE);
 				if (ImGui::Checkbox("Do russian roulette", &do_russian_roulette))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE,
@@ -4275,7 +4264,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			ImGui::SeparatorText("Lobes compensation");
 			{
 				bool do_glass_energy_compensation =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION);
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION);
 				if (ImGui::Checkbox("Do glass lobe energy compensation", &do_glass_energy_compensation))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION,
@@ -4291,7 +4280,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 			{
 				bool do_clearcoat_energy_compensation =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION);
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION);
 				if (ImGui::Checkbox("Do clearcoat lobe energy compensation", &do_clearcoat_energy_compensation))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION,
@@ -4307,7 +4296,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 			{
 				bool do_specular_energy_compensation =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION);
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION);
 				if (ImGui::Checkbox("Do specular/diffuse lobe energy compensation", &do_specular_energy_compensation))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION,
@@ -4323,7 +4312,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 			{
 				bool do_metallic_energy_compensation =
-										global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION);
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION);
 				if (ImGui::Checkbox("Do metallic lobe energy compensation", &do_metallic_energy_compensation))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION,
@@ -4341,11 +4330,11 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					ImGui::TreePush("Fresnel multiscatter tree");
 
 					bool multiple_scattering_fresnel_disabled =
-											global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE) !=
-											ENERGY_COMPENSATION_MODE_LUTS_TURQUIN;
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE) !=
+						ENERGY_COMPENSATION_MODE_LUTS_TURQUIN;
 					ImGui::BeginDisabled(multiple_scattering_fresnel_disabled);
-					bool use_multiple_scattering_fresnel = global_kernel_options->get_macro_value(
-											GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION);
+					bool use_multiple_scattering_fresnel =
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION);
 					if (ImGui::Checkbox("Do GGX Multiple scattering fresnel", &use_multiple_scattering_fresnel))
 					{
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION,
@@ -4359,11 +4348,11 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 														"methods other than LUTs.");
 					else
 						ImGuiRenderer::show_help_marker(
-												"Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-												" for GGX energy compensation. The multiple scattering fresnel term takes into account the Fresnel "
-												"reflection/transmission effect when the rays bounce multiple times on the microsurface. This is responsible "
-												"for the increase in saturation of the color of conductors due to multiple scattering in-between the "
-												"microfacets.");
+							"Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
+							" for GGX energy compensation. The multiple scattering fresnel term takes into account the Fresnel "
+							"reflection/transmission effect when the rays bounce multiple times on the microsurface. This is responsible "
+							"for the increase in saturation of the color of conductors due to multiple scattering in-between the "
+							"microfacets.");
 
 					ImGui::TreePop();
 				}
@@ -4374,12 +4363,12 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			if (ImGui::SliderFloat("", &render_data.bsdfs_data.energy_compensation_roughness_threshold, 0.0f, 1.0f))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
-									"Below this roughness, energy compensation will not be applied.\n\n"
-									""
-									"Generally speaking, the darkening of the material due to missing energy compensation is barely visible below 0.15f "
-									"roughness.\n\n"
-									""
-									"0.0f disables the threshold and energy compensation will always be applied.");
+				"Below this roughness, energy compensation will not be applied.\n\n"
+				""
+				"Generally speaking, the darkening of the material due to missing energy compensation is barely visible below 0.15f "
+				"roughness.\n\n"
+				""
+				"0.0f disables the threshold and energy compensation will always be applied.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Use hardware texture interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
@@ -4389,7 +4378,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker(
-									"Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
+				"Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
 		}
 
 		ImGui::TreePop();
@@ -4636,8 +4625,9 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	}
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= m_renderer->get_gmon_render_pass();
-	GMoNGPUData& gmon_data											= gmon_render_pass->get_gmon_data();
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
 	{
@@ -4645,7 +4635,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		ImGuiRenderer::add_warning("GMoN cannot be used without enabling accumulation.");
 	}
-	ImGui::BeginDisabled(!render_data.render_settings.accumulate || gmon_render_pass == nullptr);
+
+	ImGui::BeginDisabled(!render_data.render_settings.accumulate || !gmon_render_pass);
 	if (ImGui::CollapsingHeader("GMoN") && gmon_render_pass)
 	{
 		ImGui::TreePush("GMoN tree post processing");
@@ -4654,14 +4645,14 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			toggle_gmon();
 
 		ImGuiRenderer::show_help_marker(
-								"Use GMoN for fireflies elimination.\n"
-								"The algorithm computes the median of means of the pixels as an estimator "
-								"that is more robust than the simple mean usually used to average samples.\n"
-								"The algorithm is unbiased as long as enough samples are accumulated. If not "
-								"enough samples are accumulated, the firefly elimination tends to be a bit too "
-								"strong and the image will probably end up darker than expected, especially on high-variance scenes.\n\n"
-								""
-								"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
+			"Use GMoN for fireflies elimination.\n"
+			"The algorithm computes the median of means of the pixels as an estimator "
+			"that is more robust than the simple mean usually used to average samples.\n"
+			"The algorithm is unbiased as long as enough samples are accumulated. If not "
+			"enough samples are accumulated, the firefly elimination tends to be a bit too "
+			"strong and the image will probably end up darker than expected, especially on high-variance scenes.\n\n"
+			""
+			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
 		if (gmon_data.use_gmon)
 		{
@@ -4689,18 +4680,18 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					number_of_sets--;
 			}
 			ImGuiRenderer::show_help_marker(
-									"How many sets (M variable in the GMoN paper, [Buisine et al., 2021]) to use.\n\n"
-									""
-									"A simple way to choose that number is: keep that number as low as possible as long as it removes the fireflies.\n\n"
-									""
-									"As a general rule: more sets eliminate fireflies the best but more sets require more samples per "
-									"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
-									"easy to render, you probably don't need many sets (less than 15, maybe even less than 11). If your scene has high "
-									"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
-									"number of sets will be fine anyways.\n\n"
-									""
-									"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
-									"try accumulating more samples per pixel.\n\n");
+				"How many sets (M variable in the GMoN paper, [Buisine et al., 2021]) to use.\n\n"
+				""
+				"A simple way to choose that number is: keep that number as low as possible as long as it removes the fireflies.\n\n"
+				""
+				"As a general rule: more sets eliminate fireflies the best but more sets require more samples per "
+				"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
+				"easy to render, you probably don't need many sets (less than 15, maybe even less than 11). If your scene has high "
+				"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
+				"number of sets will be fine anyways.\n\n"
+				""
+				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
+				"try accumulating more samples per pixel.\n\n");
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{
@@ -4734,9 +4725,13 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
-	ImGui::EndDisabled();
 
-	std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass = m_renderer->get_ssbn_permutation_render_pass();
+	ImGui::EndDisabled(); // ImGui::BeginDisabled(!render_data.render_settings.accumulate || !gmon_render_pass);
+
+	std::shared_ptr<SSBNPermutationRenderPass> ssbn_pass =
+		std::dynamic_pointer_cast<SSBNPermutationRenderPass>(m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(
+			SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
+
 	ImGui::BeginDisabled(!ssbn_pass);
 	if (ImGui::CollapsingHeader("SSBN Permutation") && ssbn_pass)
 	{
@@ -4810,9 +4805,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			{
 				ssbn_pass->get_max_retargeting_radius() = SSBNPermutationRenderPass::DEFAULT_MAX_RETARGETING_RADIUS;
 
-				unsigned int permutation_block_size_clamping =
-										hippt::min(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE),
-												   ssbn_pass->get_blue_noise_texture_width());
+				unsigned int permutation_block_size_clamping = hippt::min(
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE), ssbn_pass->get_blue_noise_texture_width());
 				if (permutation_block_size_clamping != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE))
 				{
 					block_size = permutation_block_size_clamping;
@@ -4850,8 +4844,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			std::vector<int> radii = { 2, 3, 4, 5, 6, 7, 15, 32 };
 			for (int i = 0; i < radii.size(); i++)
 			{
-				max_retargeting_radius_changed |= ImGui::RadioButton((std::to_string(radii[i]) + "##retargeting_max_radius").c_str(),
-																	 &ssbn_pass->get_max_retargeting_radius(), radii[i]);
+				max_retargeting_radius_changed |=
+					ImGui::RadioButton((std::to_string(radii[i]) + "##retargeting_max_radius").c_str(), &ssbn_pass->get_max_retargeting_radius(), radii[i]);
 				if (i != radii.size() - 1)
 					ImGui::SameLine();
 			}
@@ -4869,12 +4863,12 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			if (ImGui::SliderInt("Refresh seeds interval", &ssbn_pass->get_refresh_seeds_sample_interval(), 0, 64))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
-									"Refreshing the seeds used for rendering once in a while. This is needed to ensure convergence because otherwise, the "
-									"sorting/retargeting pass keep shuffling around the same seeds forever. This is fine for a few samples but eventually "
-									"pixels will run out of fresh seeds to integrate their pixel value and we'll lose convergence. We thus need to refresh the "
-									"seeds eventually. Lower values mean more frequent refreshes and better MSE convergence (but not perceptual convergence!) "
-									"but also more noise because each frame rendered with refreshed seeds is basically a white noise frame. Higher values mean "
-									"better blue noise but worse convergence / more bias on the whole image. 0 never refreshes seeds.");
+				"Refreshing the seeds used for rendering once in a while. This is needed to ensure convergence because otherwise, the "
+				"sorting/retargeting pass keep shuffling around the same seeds forever. This is fine for a few samples but eventually "
+				"pixels will run out of fresh seeds to integrate their pixel value and we'll lose convergence. We thus need to refresh the "
+				"seeds eventually. Lower values mean more frequent refreshes and better MSE convergence (but not perceptual convergence!) "
+				"but also more noise because each frame rendered with refreshed seeds is basically a white noise frame. Higher values mean "
+				"better blue noise but worse convergence / more bias on the whole image. 0 never refreshes seeds.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Debug");
@@ -4900,7 +4894,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		ImGui::TreePop();
 	}
-	ImGui::EndDisabled(); // !ssbn_pass
+	ImGui::EndDisabled(); // ImGui::BeginDisabled(!ssbn_pass);
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
@@ -4908,8 +4902,10 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 void ImGuiSettingsWindow::toggle_gmon()
 {
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
-	bool gmon_now_enabled							 = gmon_render_pass->get_gmon_data().use_gmon;
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = std::dynamic_pointer_cast<GMoNRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+
+	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().use_gmon;
 	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
@@ -5014,7 +5010,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			ImGui::TreePush("Use material texture base color texture override");
 
 			bool use_material_textures_base_color_override =
-									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE);
 			if (ImGui::Checkbox("Use base color texture anyway", &use_material_textures_base_color_override))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE,
@@ -5042,10 +5038,10 @@ void ImGuiSettingsWindow::draw_quality_panel()
 													 "Implementation of[A Low - Distortion Map Between Triangle and Square, Heitz, 2019]\n"
 													 "It is faster than Turk method's and better perserves the stratification of the random "
 													 "number samplers" };
-		if (ImGuiRenderer::ComboWithTooltips("Triangle point sampling strategy",
-											 global_kernel_options->get_raw_pointer_to_macro_value(
-																	 GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY),
-											 items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
+		if (ImGuiRenderer::ComboWithTooltips(
+				"Triangle point sampling strategy",
+				global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY),
+				items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
 		{
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
@@ -5127,8 +5123,8 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 
 	if (regularize_bsdf)
 	{
-		bool do_consistent_tau = global_kernel_options->get_macro_value(
-								GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
+		bool do_consistent_tau =
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
 		if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION,
@@ -5147,7 +5143,7 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 			ImGui::TreePop();
 		}
 		bool do_diffusion_heuristic =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
 		if (ImGui::Checkbox("Use diffusion heuristic", &do_diffusion_heuristic))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC,
@@ -5200,9 +5196,9 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
 		ImGuiRenderer::show_help_marker(
-								"How much percent of the time the GPU will be forced to be idle (not rendering anything)."
-								" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
-								" time to spare.");
+			"How much percent of the time the GPU will be forced to be idle (not rendering anything)."
+			" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
+			" time to spare.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		draw_russian_roulette_options();
@@ -5239,7 +5235,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		}
 
 		bool direct_light_delta_distrib_opti =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION);
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION);
 		if (ImGui::Checkbox("NEE delta distribution optimization", &direct_light_delta_distrib_opti))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION,
@@ -5376,7 +5372,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			static std::unordered_map<std::string, bool> use_shared_stack_traversal;
 			if (use_shared_stack_traversal.find(selected_kernel_name) == use_shared_stack_traversal.end())
 				use_shared_stack_traversal[selected_kernel_name] =
-										selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
+					selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
 			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal[selected_kernel_name];
 
 			if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal_bool))
@@ -5395,7 +5391,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				static std::unordered_map<std::string, int> pending_stack_size_changes;
 				if (pending_stack_size_changes.find(selected_kernel_name) == pending_stack_size_changes.end())
 					pending_stack_size_changes[selected_kernel_name] =
-											selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
+						selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
 				int& pending_stack_size = pending_stack_size_changes[selected_kernel_name];
 
 				ImGui::PushItemWidth(8 * ImGui::GetFontSize());
@@ -5438,19 +5434,19 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
 		{
 			m_renderer->get_render_data().global_traversal_stack_buffer_size =
-									hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
+				hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGui::PopItemWidth();
 
 		ImGuiRenderer::show_help_marker(
-								"Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
-								"A good value for this parameter is scene-complexity dependent.\n\n"
-								"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
-								"to insufficient stack size for the BVH traversal.\n\n"
-								"16 seems to be a good value to start with. If lowering this value improves performance, then that "
-								"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
-								"and rendering artifacts will start to show up.");
+			"Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
+			"A good value for this parameter is scene-complexity dependent.\n\n"
+			"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
+			"to insufficient stack size for the BVH traversal.\n\n"
+			"16 seems to be a good value to start with. If lowering this value improves performance, then that "
+			"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
+			"and rendering artifacts will start to show up.");
 
 		std::string size_string = "Global Stack Buffer VRAM Usage: ";
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) *
@@ -5562,9 +5558,9 @@ void ImGuiSettingsWindow::draw_perf_metric_specific_panel(std::shared_ptr<Perfor
 				1000.0f / perf_metrics->get_average(perf_metrics_key));
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		std::string line_1 = format_perf_metrics_tooltip_line(label, " (avg):", " (min / max):", " %.3fms (%.1f FPS)",
-															  perf_metrics->get_average(perf_metrics_key),
-															  1000.0f / perf_metrics->get_average(perf_metrics_key));
+		std::string line_1 =
+			format_perf_metrics_tooltip_line(label, " (avg):", " (min / max):", " %.3fms (%.1f FPS)", perf_metrics->get_average(perf_metrics_key),
+											 1000.0f / perf_metrics->get_average(perf_metrics_key));
 		std::string line_2 = format_perf_metrics_tooltip_line(label, " (var):", " (min / max):", " %.3fms", variance);
 		std::string line_3 = format_perf_metrics_tooltip_line(label, " (std dev):", " (min / max):", " %.3fms", std::sqrt(variance));
 		std::string line_4 = format_perf_metrics_tooltip_line(label, " (min / max):", " (min / max):", " %.3fms / %.3fms", min, max);
@@ -5762,9 +5758,9 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::InputInt("Debug index", &debug_index))
 			debug_index = hippt::clamp(0, 1023, debug_index);
 		unsigned long long int sum_count = OrochiBuffer<unsigned long long int>::download_data(
-								reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_1) + debug_index, 1)[0];
+			reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_1) + debug_index, 1)[0];
 		unsigned long long int sums = OrochiBuffer<unsigned long long int>::download_data(
-								reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_2) + debug_index, 1)[0];
+			reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_2) + debug_index, 1)[0];
 		ImGui::Text("Debug sum count / sums / ratio:"
 					"\n\t%llu"
 					"\n\t%llu"

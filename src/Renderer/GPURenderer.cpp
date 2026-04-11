@@ -131,10 +131,10 @@ void GPURenderer::load_ltc_textures()
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
-	Image32Bit GGXEss_image			   = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" +
-																							GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(
-																											m_render_data.bsdfs_data.GGX_masking_shadowing),
-																	1, true);
+	Image32Bit GGXEss_image =
+		Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" +
+									   GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing),
+								   1, true);
 	m_GGX_conductor_directional_albedo = OrochiTexture(GGXEss_image, filtering_mode, hipAddressModeClamp);
 
 	m_render_data_buffers_invalidated = true;
@@ -147,13 +147,13 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GlossyDielectrics/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_glossy_dielectric_directional_albedo = OrochiTexture3D(
-							images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_glossy_dielectric_directional_albedo =
+		OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
@@ -165,34 +165,34 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT,
-													 ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_glass_directional_albedo =
+		OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_glass_inverse_directional_albedo = OrochiTexture3D(
-							images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_glass_inverse_directional_albedo =
+		OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_thin_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT,
-														  ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_thin_glass_directional_albedo =
+		OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
@@ -326,8 +326,8 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 	for (const auto& name_to_kernel : m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_tracing_kernels())
 	{
 		bool global_stack_buffer_needed = false;
-		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) ==
-									  KERNEL_OPTION_TRUE;
+		global_stack_buffer_needed |=
+			name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
 
 		if (global_stack_buffer_needed)
 			return true;
@@ -431,12 +431,19 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
 	RenderGraph* active_render_graph;
 
-	if (render_window->is_interacting())
+	bool regir = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+	bool light_distributions =
+		get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
+	bool regir_light_distributions								= regir && light_distributions;
+	bool imgui_item_held										= render_window->render_resetted_with_imgui_item_held();
+	bool interactivity_render_graph_when_interacting_with_imgui = imgui_item_held && regir_light_distributions;
+
+	if ((render_window->is_interacting() || interactivity_render_graph_when_interacting_with_imgui) && m_render_data.render_settings.accumulate)
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
 	else
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
 
-	m_render_thread.set_active_render_graph(*active_render_graph);
+	m_render_thread.set_active_render_graph(active_render_graph);
 	m_render_thread.update_is_render_pass_used();
 
 	pre_render_update(delta_time_gpu);
@@ -775,10 +782,10 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices =
-									reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
+				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
-									reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
+				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_meshes_data = m_hiprt_scene.emissive_meshes_data.to_device();
 		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
@@ -928,9 +935,9 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 										m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
 
 										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(
-																scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
+											scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
 										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(
-																scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
+											scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
 									}
 
 									// Uploading emissive meshes
@@ -1128,7 +1135,7 @@ void GPURenderer::resize_g_buffer_ray_volume_states()
 {
 	for (auto& [rg_name, render_graph] : m_render_thread.get_render_graphs())
 		std::dynamic_pointer_cast<FillGBufferRenderPass>(render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))
-								->resize_g_buffer_ray_volume_states();
+			->resize_g_buffer_ray_volume_states();
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)

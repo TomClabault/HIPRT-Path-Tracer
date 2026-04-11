@@ -1109,8 +1109,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 				1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, pack_mesh_indices_args, m_renderer->get_main_stream());
 		}
 
-		std::cout << "ReGIR light distributions build: " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
-
 		cell_offset += max_number_of_cells_computed_per_iteration;
 
 		std::string text = std::format("ReGIR light distributions build: {:.2f}%", (iter + 1) / (float)iteration_needed * 100.0f);

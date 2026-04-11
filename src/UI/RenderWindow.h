@@ -44,11 +44,13 @@ public:
 	int get_width();
 	int get_height();
 	bool is_interacting();
+	bool render_resetted_with_imgui_item_held();
 
 	RenderWindowKeyboardInteractor& get_keyboard_interactor();
 	std::shared_ptr<RenderWindowMouseInteractor> get_mouse_interactor();
 
 	std::shared_ptr<ApplicationSettings> get_application_settings();
+	std::shared_ptr<ApplicationState> get_application_state();
 	std::shared_ptr<GPURenderer> get_renderer();
 	std::shared_ptr<GPUBaker> get_baker();
 	std::shared_ptr<OpenImageDenoiser> get_denoiser();
