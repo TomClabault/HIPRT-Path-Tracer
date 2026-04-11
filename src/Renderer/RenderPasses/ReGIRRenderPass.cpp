@@ -64,7 +64,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE] = std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_PRE_POPULATE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																							  KERNEL_OPTION_TRUE);
@@ -72,128 +72,127 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	// Disabling cui microsurface multiple scattering because this is just too expensive for a grid fill and not worth it at all
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	// Always using a Lambertian BRDF for filling the secondary hits of the grid fill pass because we don't
 	// want to use the BSDF of the surface for that since we don't have the proper view direction
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
+		GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
 	// Disabling cui microsurface multiple scattering because this is just too expensive for a grid fill and not worth it at all
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	// Always using a Lambertian BRDF for filling the secondary hits of the grid fill pass/spatial reuse because we don't
 	// want to use the BSDF of the surface for that since we don't have the proper view direction
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE,
 																												   BSDF_LAMBERTIAN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION);
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>(
-							this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																													   options_not_synchronized);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID);
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
+		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
 
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_REHASH_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID);
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_file_path(
-							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_function_name(
-							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
+		ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 
 	m_light_distributions_build_kernels.m_radix_sort.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
-	m_light_distributions_build_kernels.m_radix_sort.compile();
 
 	class ContributionSumDataTransform : public ComputeDataTransform
 	{
@@ -211,41 +210,34 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 
 	m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 	m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.set_data_transform(std::make_unique<ContributionSumDataTransform>());
-	m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.compile();
 
 	m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.init(renderer->get_hiprt_orochi_ctx(),
 																								 m_renderer->get_main_stream());
 	m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.set_data_transform(
-							std::make_unique<ContributionSumDataTransform>());
-	m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.compile();
+		std::make_unique<ContributionSumDataTransform>());
 
 	m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.init(renderer->get_hiprt_orochi_ctx(), m_renderer->get_main_stream());
 	m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.set_data_transform(std::make_unique<ContributionSumDataTransform>());
-	m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.compile();
 
 	m_light_distributions_build_kernels.m_memset_ushort_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/MemsetKernel.h");
 	m_light_distributions_build_kernels.m_memset_ushort_kernel.set_kernel_function_name("Memset");
 	m_light_distributions_build_kernels.m_memset_ushort_kernel.get_kernel_options().set_string_macro_value("DATA_TYPE", "unsigned short int");
 	m_light_distributions_build_kernels.m_memset_ushort_kernel.get_kernel_options().set_string_macro_value(
-							"VALUE", "65535"); // Max value because we're going to atomic_min on that
-	m_light_distributions_build_kernels.m_memset_ushort_kernel.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
+		"VALUE", "65535"); // Max value because we're going to atomic_min on that
 
 	m_light_distributions_build_kernels.m_compute_light_distributions_size_kernel.set_kernel_file_path(
-							DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightDistributionsBuild/ComputeDistributionSizes.h");
+		DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightDistributionsBuild/ComputeDistributionSizes.h");
 	m_light_distributions_build_kernels.m_compute_light_distributions_size_kernel.set_kernel_function_name(
-							"ReGIR_LightDistributionsBuildComputeDistributionsSizes");
-	m_light_distributions_build_kernels.m_compute_light_distributions_size_kernel.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
+		"ReGIR_LightDistributionsBuildComputeDistributionsSizes");
 
 	m_light_distributions_build_kernels.m_build_packed_light_distributions_CDFs.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																									 "/ReSTIR/ReGIR/LightDistributionsBuild/PackedCDFsBuild.h");
 	m_light_distributions_build_kernels.m_build_packed_light_distributions_CDFs.set_kernel_function_name("ReGIR_LightDistributionsBuildPackedCDFsBuild");
-	m_light_distributions_build_kernels.m_build_packed_light_distributions_CDFs.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
 
 	m_light_distributions_build_kernels.m_pack_distributions_mesh_indices_kernel.set_kernel_file_path(
-							DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightDistributionsBuild/PackDistributionsMeshIndices.h");
+		DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightDistributionsBuild/PackDistributionsMeshIndices.h");
 	m_light_distributions_build_kernels.m_pack_distributions_mesh_indices_kernel.set_kernel_function_name(
-							"ReGIR_LightDistributionsBuildPackDistributionsMeshIndices");
-	m_light_distributions_build_kernels.m_pack_distributions_mesh_indices_kernel.compile(renderer->get_hiprt_orochi_ctx(), {}, true);
+		"ReGIR_LightDistributionsBuildPackDistributionsMeshIndices");
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -316,6 +308,21 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	{
 		updated = true;
 		m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+	}
+
+	if (!m_light_distributions_build_kernels.compiled && m_renderer->get_global_compiler_options()->get_macro_value(
+															 GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE)
+	{
+		m_light_distributions_build_kernels.m_radix_sort.compile();
+		m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.compile();
+		m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.compile();
+		m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.compile();
+		m_light_distributions_build_kernels.m_memset_ushort_kernel.compile(m_renderer->get_hiprt_orochi_ctx(), {}, true);
+		m_light_distributions_build_kernels.m_compute_light_distributions_size_kernel.compile(m_renderer->get_hiprt_orochi_ctx(), {}, true);
+		m_light_distributions_build_kernels.m_build_packed_light_distributions_CDFs.compile(m_renderer->get_hiprt_orochi_ctx(), {}, true);
+		m_light_distributions_build_kernels.m_pack_distributions_mesh_indices_kernel.compile(m_renderer->get_hiprt_orochi_ctx(), {}, true);
+
+		m_light_distributions_build_kernels.compiled = true;
 	}
 
 	return updated;
@@ -463,7 +470,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	//}
 
 	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid =
-							m_hash_grid_storage.get_correlation_reduction_current_frame();
+		m_hash_grid_storage.get_correlation_reduction_current_frame();
 	render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
 
 	// If this is the first sample, we have no frame before that that could fill the grid asynchronously
@@ -504,7 +511,7 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool b
 	// Execute a full grid fill synchronously (from the point of view of the GPU
 	// CUDA/HIP streams, this is still asynchronous for the CPU: not blocking for the CPU)
 	bool skip_frame_primary_hits =
-							render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
+		render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_primary_hits > 0 && (!skip_frame_primary_hits || bypass_skip_frame))
 	{
 		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
@@ -512,7 +519,7 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool b
 	}
 
 	bool skip_frame_secondary_hits =
-							render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
+		render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_secondary_hits > 0 && (!skip_frame_secondary_hits || bypass_skip_frame))
 	{
 		launch_grid_fill(render_data, false, false, m_renderer->get_main_stream());
@@ -565,13 +572,13 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 			//
 			// In any case, what we want to do is simple: the async compute should fill in the buffer that is not being used
 			// by the path tracing kernels which is the buffer that the spatial reuse passes did not fill at the end
-			ReGIRHashGridSoADevice buffer_used_by_pt_kernels =
-									primary_hit ? render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits
-												: render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits;
+			ReGIRHashGridSoADevice buffer_used_by_pt_kernels = primary_hit
+																   ? render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits
+																   : render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits;
 			;
-			ReGIRHashGridSoADevice output_reservoirs_async_grid_fill = get_non_equal_buffer(
-									render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
-									render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit), buffer_used_by_pt_kernels);
+			ReGIRHashGridSoADevice output_reservoirs_async_grid_fill =
+				get_non_equal_buffer(render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
+									 render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit), buffer_used_by_pt_kernels);
 
 			launch_grid_fill(render_data, output_reservoirs_async_grid_fill, primary_hit, false, async_stream);
 
@@ -579,16 +586,16 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 			// and that is not the buffer that is input to the spatial reuse (because we don't want to store into the buffer which we're reading
 			// from in the spatial reuse pass, that would be a race condition)
 			ReGIRHashGridSoADevice output_reservoirs_async_spatial_reuse =
-									get_non_equal_buffer(render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
-														 render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
-														 m_hash_grid_storage.get_async_compute_staging_buffer_device(primary_hit),
+				get_non_equal_buffer(render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
+									 render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
+									 m_hash_grid_storage.get_async_compute_staging_buffer_device(primary_hit),
 
-														 buffer_used_by_pt_kernels, output_reservoirs_async_grid_fill);
+									 buffer_used_by_pt_kernels, output_reservoirs_async_grid_fill);
 
 			ReGIRHashGridSoADevice& last_spatial_output_buffer =
-									primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits;
-			last_spatial_output_buffer = launch_spatial_reuse(render_data, output_reservoirs_async_grid_fill, output_reservoirs_async_spatial_reuse,
-															  primary_hit, false, async_stream);
+				primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits;
+			last_spatial_output_buffer =
+				launch_spatial_reuse(render_data, output_reservoirs_async_grid_fill, output_reservoirs_async_spatial_reuse, primary_hit, false, async_stream);
 		}
 	}
 }
@@ -607,8 +614,8 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 		//
 		// We just need some rays bouncing around the scene but that's it
 		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_synchronous(
-								KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x / ReGIR_GridPrepopulationResolutionDownscale,
-								m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale, launch_args);
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x / ReGIR_GridPrepopulationResolutionDownscale,
+			m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale, launch_args);
 
 		has_rehashed = rehash(render_data);
 	} while (has_rehashed);
@@ -632,11 +639,8 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 	return false;
 }
 
-void ReGIRRenderPass::launch_grid_fill(HIPRTRenderData& render_data,
-									   ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid,
-									   bool primary_hit,
-									   bool for_pre_integration,
-									   oroStream_t stream)
+void ReGIRRenderPass::launch_grid_fill(
+	HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream)
 {
 	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int reservoirs_per_cell   = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
@@ -766,9 +770,9 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 		m_hash_grid_storage.increment_correlation_reduction_counters(render_data);
 
 		render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid =
-								m_hash_grid_storage.get_correlation_reduction_current_frame();
+			m_hash_grid_storage.get_correlation_reduction_current_frame();
 		render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available =
-								m_hash_grid_storage.get_correlation_reduction_frames_available();
+			m_hash_grid_storage.get_correlation_reduction_frames_available();
 	}
 
 	render_data.render_settings.random_number = random_number_backup;
@@ -814,9 +818,9 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	// correct PDF?
 	unsigned int backup = render_data.render_settings.regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir;
 	render_data.render_settings.regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir =
-							render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
+		render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 	render_data.render_settings.regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir =
-							render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
+		render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 
 	// Clearing the pre integration buffer before accumulating new pre integration data into them
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(true);
@@ -853,8 +857,8 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream)
 {
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
-	unsigned int nb_threads		= hippt::min(nb_cells_alive,
-											 (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	unsigned int nb_threads =
+		hippt::min(nb_cells_alive, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 
 	if (nb_cells_alive == 0)
 		return;
@@ -927,12 +931,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	// Maximum of 65535 cells computed at a time because of how we pack the cell index as a short uint in the sorting key of the scratch buffer = maximum of
 	// 65535 for the packed short uint index
 	unsigned int max_number_of_cells_computed_per_iteration =
-							hippt::min((unsigned int)((unsigned short int)-1),
-									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
+		hippt::min((unsigned int)((unsigned short int)-1), ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
-	unsigned int scratch_buffer_size								 = hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-																				  total_number_of_cells_to_compute * emissive_mesh_count);
+	unsigned int scratch_buffer_size =
+		hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count, total_number_of_cells_to_compute * emissive_mesh_count);
 
 	// Resizing the radix sort for the sorting step that happens after computing the contributions of the emissive meshes. This does not resize if the radix
 	//
@@ -988,9 +991,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 		auto start_sort = std::chrono::high_resolution_clock::now();
 
-		m_light_distributions_build_kernels.m_radix_sort.set_data_pointers(contribution_scratch_buffer_GPU.get_device_pointer(),
-																		   mesh_indices_scratch_buffer_GPU.get_device_pointer(),
-																		   contribution_scratch_buffer_GPU.size());
+		m_light_distributions_build_kernels.m_radix_sort.set_data_pointers(
+			contribution_scratch_buffer_GPU.get_device_pointer(), mesh_indices_scratch_buffer_GPU.get_device_pointer(), contribution_scratch_buffer_GPU.size());
 		m_light_distributions_build_kernels.m_radix_sort.set_ordering(RadixSort::Ordering::ASCENDING);
 		m_light_distributions_build_kernels.m_radix_sort.sort(false);
 
@@ -1007,15 +1009,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.reduce(false);
 
 			m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.set_data_pointers(
-									contribution_scratch_buffer_GPU.get_device_pointer(), contribution_scratch_buffer_GPU.size());
+				contribution_scratch_buffer_GPU.get_device_pointer(), contribution_scratch_buffer_GPU.size());
 			m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.set_evenly_spaced_segment_size(emissive_mesh_count);
 			m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.set_segment_length(
-									non_compacted_effective_light_distribution_size);
+				non_compacted_effective_light_distribution_size);
 			m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.reduce(false);
 		}
 
 		m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.set_data_pointers(
-								contribution_scratch_buffer_GPU.get_device_pointer(), contribution_scratch_buffer_GPU.size());
+			contribution_scratch_buffer_GPU.get_device_pointer(), contribution_scratch_buffer_GPU.size());
 		m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.set_evenly_spaced_segment_size(emissive_mesh_count);
 		m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.set_exclusive_scan(false);
 		m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.scan(false);
@@ -1023,12 +1025,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		if (compute_only_sizes)
 		{
 			float* sum_all_contributions_gpu_buffer_pointer =
-									m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.get_output_buffer().get_device_pointer();
+				m_light_distributions_build_kernels.sum_reduction_all_cell_contributions.get_output_buffer().get_device_pointer();
 			float* sum_best_contributions_gpu_buffer_pointer =
-									m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.get_output_buffer()
-															.get_device_pointer();
+				m_light_distributions_build_kernels.sum_reduction_light_distrib_size_cell_contributions.get_output_buffer().get_device_pointer();
 			float* light_distribution_CDFs_GPU_buffer_pointer =
-									m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
+				m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
 			unsigned short int* light_distribution_sizes_gpu_buffer_pointer = light_distribution_sizes_buffer_GPU.get_device_pointer();
 			void* compute_cell_sizes_launch_args[]							= { &sum_all_contributions_gpu_buffer_pointer,
 																				&sum_best_contributions_gpu_buffer_pointer,
@@ -1041,7 +1042,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 																				&m_light_distribution_incoming_light_energy_target,
 																				&non_compacted_effective_light_distribution_size };
 			m_light_distributions_build_kernels.m_compute_light_distributions_size_kernel.launch_asynchronous(
-									1024, 1, dispatch_size, 1, compute_cell_sizes_launch_args, m_renderer->get_main_stream());
+				1024, 1, dispatch_size, 1, compute_cell_sizes_launch_args, m_renderer->get_main_stream());
 		}
 
 		if (!compute_only_sizes)
@@ -1065,7 +1066,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 			// clang-format on
 
 			float* prefix_scanned_CDFs_device_pointer =
-									m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
+				m_light_distributions_build_kernels.m_compute_light_distributions_CDFs_prefix_scan.get_output_buffer().get_device_pointer();
 
 			unsigned int nb_cells_to_compute_this_iteration = hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count);
 			void* build_packed_CDFs_args[]					= { &light_distribution_sizes_device_pointer,
@@ -1079,7 +1080,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 																&light_distribution_CDFs_device_pointer };
 
 			m_light_distributions_build_kernels.m_build_packed_light_distributions_CDFs.launch_asynchronous(
-									1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, build_packed_CDFs_args, m_renderer->get_main_stream());
+				1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, build_packed_CDFs_args, m_renderer->get_main_stream());
 
 			// clang-format off
 			unsigned int* packed_mesh_indices_offset_device_pointer = m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa
@@ -1105,7 +1106,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 												 &bits_per_mesh_index,
 												 &packed_mesh_indices_device_pointer };
 			m_light_distributions_build_kernels.m_pack_distributions_mesh_indices_kernel.launch_asynchronous(
-									1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, pack_mesh_indices_args, m_renderer->get_main_stream());
+				1024, 1, 1024 * nb_cells_to_compute_this_iteration, 1, pack_mesh_indices_args, m_renderer->get_main_stream());
 		}
 
 		std::cout << "ReGIR light distributions build: " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
@@ -1141,17 +1142,16 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 			light_distributions_sizes_sum += light_distribution_size;
 			emissive_mesh_indices_element_count_sum +=
-									ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size);
+				ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size);
 		}
 
 		unsigned int total_nb_cells = m_hash_grid_storage.get_total_number_of_cells(primary_hit);
-		float& VRAM_saving			= primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits
-												  : m_last_light_distribution_compaction_vram_saving_secondary_hits;
-		VRAM_saving					= 100.0f - light_distributions_sizes_sum /
-													   ((float)total_nb_cells *
-														hippt::min(emissive_mesh_count,
-																   (unsigned int)render_data.render_settings.regir_settings.light_distribution_maximum_size)) *
-													   100.0f;
+		float& VRAM_saving =
+			primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits : m_last_light_distribution_compaction_vram_saving_secondary_hits;
+		VRAM_saving = 100.0f - light_distributions_sizes_sum /
+								   ((float)total_nb_cells *
+									hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.light_distribution_maximum_size)) *
+								   100.0f;
 
 		// clang-format off
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
@@ -1185,8 +1185,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 		return;
 
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit)
-																.m_hash_cell_data
-																.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
+											.m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int old_cell_count		  = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).size();
 	unsigned int old_cell_alive_count = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 
@@ -1411,13 +1410,13 @@ GPURenderer* ReGIRRenderPass::get_renderer()
 void ReGIRRenderPass::update_all_cell_alive_count(HIPRTRenderData& render_data)
 {
 	m_hash_grid_storage.get_hash_cell_data_soa(true).m_grid_cells_alive_count.download_data_into(
-							m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+		m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_number_of_cells_alive_primary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
 	if (render_data.render_settings.nb_bounces > 0)
 	{
 		m_hash_grid_storage.get_hash_cell_data_soa(false).m_grid_cells_alive_count.download_data_into(
-								m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+			m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 		m_number_of_cells_alive_secondary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 	}
 	else

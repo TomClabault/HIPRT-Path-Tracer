@@ -94,7 +94,7 @@ struct ReGIRSpatialReuseSettings
 	bool do_spatial_reuse = true;
 	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
 	// This has the effect of coalescing neighbors memory accesses which improves performance
-	bool do_coalesced_spatial_reuse = false;
+	bool do_coalesced_spatial_reuse = true;
 
 	// How many successive spatial reuse to perform
 	int spatial_reuse_pass_count = 2;
@@ -257,7 +257,7 @@ struct ReGIRSettings
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(
-							float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		return hash_grid.get_hash_grid_cell_index_from_world_pos(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position,
 																 surface_normal, current_camera, roughness, primary_hit);
@@ -479,7 +479,7 @@ struct ReGIRSettings
 				float UCW;
 				if (spatial_reuse.do_spatial_reuse)
 					UCW = get_actual_spatial_output_reservoirs_grid(primary_hit)
-												  .reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
+							  .reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
 				else
 					UCW = get_initial_reservoirs_grid(primary_hit).reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
 
@@ -560,7 +560,7 @@ struct ReGIRSettings
 			// If we have grid_index == 1 here for example, this is going to be grid index 0 of the correlation_reduction grid
 			// so we have grid_index - 1
 			unsigned int reservoir_index_in_correlation_reduction_grid =
-									reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid(primary_hit);
+				reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid(primary_hit);
 
 			return hash_grid.read_full_reservoir(correlation_reduction.correlation_reduction_grid, reservoir_index_in_correlation_reduction_grid);
 		}
@@ -652,8 +652,8 @@ struct ReGIRSettings
 	get_random_cell_color(float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		unsigned int cell_index =
-								hash_grid.get_hash_grid_cell_index_from_world_pos(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit),
-																				  world_position, surface_normal, current_camera, roughness, primary_hit);
+			hash_grid.get_hash_grid_cell_index_from_world_pos(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position,
+															  surface_normal, current_camera, roughness, primary_hit);
 		if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			return ColorRGB32F(0.0f);
 
@@ -724,8 +724,8 @@ struct ReGIRSettings
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 
 		// Trying to insert the new key atomically
-		unsigned int existing_checksum = hippt::atomic_compare_exchange(&hash_cell_data_to_update.checksums[hash_grid_cell_index],
-																		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+		unsigned int existing_checksum =
+			hippt::atomic_compare_exchange(&hash_cell_data_to_update.checksums[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
 		if (existing_checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// We tried inserting in our cell but there is something else there already
@@ -735,9 +735,8 @@ struct ReGIRSettings
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps, true>(hash_cell_data_to_update.checksums,
-																								  hash_grid_to_update.m_total_number_of_cells,
-																								  new_hash_cell_index, checksum, existing_checksum))
+				if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps, true>(
+						hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
 					// Could not resolve the collision, we can't insert our data
 					return;
 				else

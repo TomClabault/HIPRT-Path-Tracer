@@ -68,11 +68,8 @@ public:
 	void launch_grid_pre_population(HIPRTRenderData& render_data);
 	bool rehash(HIPRTRenderData& render_data);
 
-	void launch_grid_fill(HIPRTRenderData& render_data,
-						  ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid,
-						  bool primary_hit,
-						  bool for_pre_integration,
-						  oroStream_t stream);
+	void launch_grid_fill(
+		HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_grid_fill(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	/**
 	 * Returns the hash grid buffer into which the spatial reuse output the result
@@ -186,6 +183,8 @@ private:
 
 	struct LightDistributionsBuildKernels
 	{
+		bool compiled = false;
+
 		RadixSort m_radix_sort;
 		ParallelSegmentedReduction<unsigned int, float, float> sum_reduction_all_cell_contributions;
 		ParallelSegmentedReduction<unsigned int, float, float> sum_reduction_light_distrib_size_cell_contributions;
