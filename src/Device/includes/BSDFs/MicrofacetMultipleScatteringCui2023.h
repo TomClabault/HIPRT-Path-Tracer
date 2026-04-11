@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_BSDFS_MICROFACET_MULTIPLE_SCATTERING_CUI2023_H
 
 #include "Device/includes/BSDFs/Fresnel.h"
+#include "Device/includes/Sampling.h"
 #include "Device/includes/BSDFs/MicrofacetCommon.h"
 #include "Device/includes/BSDFs/MicrofacetGGX.h"
 #include "Device/includes/BSDFs/MicrofacetMultipleScatteringCui2023Macros.h"
@@ -27,9 +28,6 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpacked
 															float incident_ior,
 															float3_t local_to_light_direction,
 															float3_t local_half_vector);
-
-// TODO perf:
-// Variable number of bounces depending on roughness and anisotropy
 
 /**
  * Implementation of [Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle, Cui et al., 2023]

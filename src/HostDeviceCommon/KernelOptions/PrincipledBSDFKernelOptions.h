@@ -80,7 +80,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_LAMBERTIAN
+#define BSDFOverride BSDF_NONE
 
 /**
  * What diffuse lobe to use in the principled BSDF.

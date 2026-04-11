@@ -2687,7 +2687,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::EndDisabled();
 
 			static bool include_canonical = ReGIR_ShadingResamplingIncludeCanonicalCandidates;
-			if (ImGui::Checkbox("Do canonical candidates", &include_canonical))
+			if (ImGui::Checkbox("Include canonical candidates", &include_canonical))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES,
 													   include_canonical ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);

@@ -99,17 +99,18 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 				  /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
 					 We don't need that in RIS*/
 									ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation &&
-															ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus >
-																					(render_data, surface, primary_hit, light_point_sample.emission,
-																						light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
+															ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus > (render_data, surface, primary_hit,
+																												  light_point_sample.emission,
+																												  light_point_sample.light_source_normal,
+																												  light_point_sample.point_on_light, rng);
 
 			float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(
 									render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point),
 									surface.cell_normal, material, light_point_sample.point_on_light, light_point_sample.light_source_normal,
 									light_point_sample.emissive_triangle_global_index, light_point_sample.light_area, light_point_sample.emission);
 			float mis_weight = balance_heuristic(
-				light_point_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir,
-									simple_strategy_PDF,
+									light_point_sample.area_measure_pdf,
+									regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF,
 									ReGIR_GridFillCellDistributionsCanonicalSampleCount *
 															DirectLightIntegrationFactor<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>());
 
@@ -358,11 +359,9 @@ inline ReGIR_Grid_Fill(HIPRTRenderData render_data,
 #endif
 		output_reservoir = grid_fill<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell,
 																		cell_surface, primary_hit, random_number_generator);
-
 		// Normalizing the reservoir
 		output_reservoir.finalize_resampling(1.0f, 1.0f);
 		sanity_check<true>(render_data, output_reservoir.UCW, -1, -1);
-
 
 		regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 

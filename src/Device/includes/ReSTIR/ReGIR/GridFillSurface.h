@@ -62,7 +62,7 @@ HIPRT_DEVICE ReGIRGridFillSurface ReGIR_get_cell_surface(const HIPRTRenderData& 
 	surface.cell_primitive_index = cell_primitive_index;
 	surface.cell_point			 = cell_point;
 	surface.cell_normal			 = cell_normal;
-	surface.cell_roughness		 = cell_roughness;
+	surface.cell_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, cell_roughness);
 	surface.cell_metallic		 = cell_metallic;
 	surface.cell_specular		 = cell_specular;
 
