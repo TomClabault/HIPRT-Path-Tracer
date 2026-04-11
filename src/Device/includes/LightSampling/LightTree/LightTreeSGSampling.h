@@ -12,13 +12,8 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 
-HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
-												 float3_t shading_point,
-												 float3_t view_direction,
-												 float3_t shading_normal,
-												 float specular,
-												 float alpha_x,
-												 float alpha_y)
+HIPRT_DEVICE float light_tree_sg_node_importance(
+	const LightTreeSGNodeDevice& node, float3_t shading_point, float3_t view_direction, float3_t shading_normal, float specular, float alpha_x, float alpha_y)
 {
 	if (node.total_power == 0.0f)
 		return 0.0f;
@@ -75,9 +70,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 		// Convert the roughness parameter from slope space to the orthographically projected space.
 		// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
-		const float2_t roughness_2			 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
-		const float2_t projected_roughness_2 = make_float2(roughness_2.x / hippt::max(1.0f - roughness_2.x, 1.0e-8f),
-														   roughness_2.y / hippt::max(1.0f - roughness_2.y, 1.0e-8f));
+		const float2_t roughness_2 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
 
 		// Preprocess for the lobe visibility.
 		// Approximate the reflection lobe with an SG whose axis is a dominant reflection vector.
@@ -87,23 +80,25 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 		const float roughness_max_2		 = hippt::max(roughness_2.x, roughness_2.y);
 		const float reflection_sharpness = (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
 
-		const float vlen			   = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
-		const float2_t v			   = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
-		const float2x2 jacobian_matrix = float2x2(v.x, -v.y, v.y, v.x) *
-										 float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
+		const float vlen = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
+		const float2_t v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
+		const float2x2 jacobian_matrix =
+			float2x2(v.x, -v.y, v.y, v.x) * float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
 
 		// Compute JJ^T for NDF filtering.
 		const float2x2 jj_matrix = jacobian_matrix * transpose(jacobian_matrix);
 
-		// Compute the determinant of JJ^T without catastrophic cancellation.
-		const float det_JJ4 = 1.0f / (4.0f * wi.z * wi.z); // = 4 * determiant(JJ^T).
+		const float2_t projected_roughness_2 =
+			make_float2(roughness_2.x / hippt::max(1.0f - roughness_2.x, 1.0e-8f), roughness_2.y / hippt::max(1.0f - roughness_2.y, 1.0e-8f));
 
 		// Glossy SG lighting.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5]
 		const float light_lobe_variance = 1.0f / lightLobe.sharpness;
 		const float2x2 filtered_proj_roughness_mat =
-								float2x2(projected_roughness_2.x, 0.0f, 0.0f, projected_roughness_2.y) + 2.0f * light_lobe_variance * jj_matrix;
+			float2x2(projected_roughness_2.x, 0.0f, 0.0f, projected_roughness_2.y) + 2.0f * light_lobe_variance * jj_matrix;
 
+		// Compute the determinant of JJ^T without catastrophic cancellation.
+		const float det_JJ4 = 1.0f / (4.0f * wi.z * wi.z); // = 4 * determiant(JJ^T).
 		// Compute the determinant of filtered_proj_roughness_mat in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
 		const float det = projected_roughness_2.x * projected_roughness_2.y +
@@ -114,19 +109,12 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
 		const float tr = filtered_proj_roughness_mat.m[0][0] + filtered_proj_roughness_mat.m[1][1];
 		const float2x2 filtered_roughness_matrix =
-								hippt::is_finite(1.0f + tr + det) ?
-
-																  hippt::min(filtered_proj_roughness_mat + float2x2(det, 0.0f, 0.0f, det), hippt::FLOAT_MAX) /
-																						  (1.0f + tr + det)
-																  :
-
-																  float2x2(hippt::min(filtered_proj_roughness_mat.m[0][0], hippt::FLOAT_MAX) /
-																								   hippt::min(filtered_proj_roughness_mat.m[0][0] + 1.0f,
-																											  hippt::FLOAT_MAX),
-																		   0.0f, 0.0f,
-																		   hippt::min(filtered_proj_roughness_mat.m[1][1], hippt::FLOAT_MAX) /
-																								   hippt::min(filtered_proj_roughness_mat.m[1][1] + 1.0f,
-																											  hippt::FLOAT_MAX));
+			hippt::is_finite(1.0f + tr + det) ? hippt::min(filtered_proj_roughness_mat + float2x2(det, 0.0f, 0.0f, det), hippt::FLOAT_MAX) / (1.0f + tr + det)
+											  : float2x2(hippt::min(filtered_proj_roughness_mat.m[0][0], hippt::FLOAT_MAX) /
+															 hippt::min(filtered_proj_roughness_mat.m[0][0] + 1.0f, hippt::FLOAT_MAX),
+														 0.0f, 0.0f,
+														 hippt::min(filtered_proj_roughness_mat.m[1][1], hippt::FLOAT_MAX) /
+															 hippt::min(filtered_proj_roughness_mat.m[1][1] + 1.0f, hippt::FLOAT_MAX));
 
 		// Evaluate the filtered reflection lobe.
 		const float3_t half_vector_unormalized = wi + world_to_local_frame(T, B, shading_normal, lightLobe.axis);
@@ -165,7 +153,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	LightTreeSGNodeDevice current_node = nodes[0];
 
 	float material_specular_weight =
-							(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
+		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
@@ -185,7 +173,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 
 		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		float right_importance =
-								light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return LightSampleInformation();
 
@@ -228,7 +216,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	LightTreeSGNodeDevice current_node = nodes[0];
 
 	float material_specular_weight =
-							(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
+		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
@@ -241,7 +229,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
 
 	float root_node_importance =
-							light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -256,7 +244,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		float right_importance =
-								light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 

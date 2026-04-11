@@ -17,7 +17,7 @@ NamespaceIndentation: All
 PointerAlignment: Left
 ReflowComments: 'true'
 SortIncludes: 'false'
-ContinuationIndentWidth: '24'
+ContinuationIndentWidth: '4'
 InsertNewlineAtEOF: true
 TabWidth: '4'
 UseTab: Always

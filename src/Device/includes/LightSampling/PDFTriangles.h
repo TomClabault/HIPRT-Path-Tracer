@@ -179,7 +179,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 
 	float light_pdf = pdf_of_emissive_triangle<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, material,
 																	  emissive_triangle_global_index, light_area, light_emission);
-	;
+	
 	float full_pdf = point_on_light_pdf * light_pdf;
 
 	return full_pdf;
