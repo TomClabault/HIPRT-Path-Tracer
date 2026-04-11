@@ -41,7 +41,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ![LayeredBSDF](README_data/img/specular-diffuse-energy.png)
 ### Sampling
 - Light sampling techniques:
-	- Uniform light sampling for direct lighting estimation + MIS
+	- Uniform light sampling for direct lighting estimation
 	- Power-proportional light sampling
 	- Light hierarchies:
 		- Importance Sampling of Many Lights with Adaptive Tree Splitting [\[Conty et al., 2018\]](https://dl.acm.org/doi/10.1145/3233305)
@@ -49,12 +49,13 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 			- Adaptive tree splitting
 		- Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
 	- ReGIR
-	- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
+		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
+	- All light sampling techniques support MIS with BSDF samples
 - Area light sampling strategies:
-		- Uniform area sampling
-		- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
-		- Projected solid angle [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
-		- BSDF * (projected) solid angle product sampling with LTCs \[[Heitz et al., 2016](https://eheitzresearch.wordpress.com/415-2/)\], [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
+	- Uniform area sampling
+	- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
+	- Projected solid angle [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
+	- BSDF * (projected) solid angle product sampling with LTCs \[[Heitz et al., 2016](https://eheitzresearch.wordpress.com/415-2/)\], [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 	
 - NEE estimators (built on-top of base techniques):
 	- Naive NEE (light sampling only)
