@@ -111,12 +111,7 @@ HIPRT_DEVICE static float2x2 operator/(const float2x2& a, const float k)
 
 HIPRT_DEVICE static float2x2 transpose(const float2x2& m)
 {
-	float2x2 result;
-
-	result.m[0][1] = m.m[1][0];
-	result.m[1][0] = m.m[0][1];
-
-	return result;
+	return float2x2(m.m[0][0], m.m[1][0], m.m[0][1], m.m[1][1]);
 }
 
 HIPRT_DEVICE static float determinant(const float2x2& m)
