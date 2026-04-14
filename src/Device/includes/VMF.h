@@ -1,0 +1,64 @@
+/*
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef DEVICE_INCLUDES_VMF_H
+#define DEVICE_INCLUDES_VMF_H
+
+#include "HostDeviceCommon/Maths/VecTypes.h"
+
+/**
+ * Reference: [Numerically Stable Implementation of the von Mises–Fisher Distribution on S2, Tokuyoshi, 2024]
+ */
+struct VMF
+{
+	float3_t axis	= make_float3(0.0f, 0.0f, 0.0f);
+	float sharpness = 0.0f;
+
+	HIPRT_DEVICE float density_evaluation(float3_t direction) const
+	{
+		float3_t d = direction - axis;
+
+		if (sharpness < 1.0e-4f)
+			return hippt::M_INV_TWO_PI;
+
+		return hippt::max(1.0e-30f, hippt::intrin_expf(-0.5f * sharpness * hippt::dot(d, d)) * hippt::x_over_expm1(-2.0f * sharpness) / (4.0f * hippt::M_Pi));
+	}
+
+	HIPRT_DEVICE float3_t sample(Xorshift32Generator& random_number_generator) const
+	{
+		float rand_1 = random_number_generator();
+		float rand_2 = random_number_generator();
+
+		constexpr float THRESHOLD = hippt::FLOAT_EPSILON / 4.0f;
+		float phi		= 2.0f * hippt::M_Pi * rand_1;
+		float r			= sharpness > THRESHOLD ? hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)) / sharpness : -2.0f * rand_2;
+
+		if (!hippt::is_finite(r))
+		if (hippt::thread_idx_x() < 50 && hippt::thread_idx_y() < 50)
+		{
+			printf("r NaNs:\n\t%f / %f\n", hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)), sharpness);
+		}
+
+		float cos_theta = 1.0f + r;
+		float sin_theta = hippt::sqrt(-hippt::fma(r, r, 2.0f * r));
+		float3_t dir	= { hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta };
+
+		if (!hippt::is_finite(dir.x) || !hippt::is_finite(dir.y) || !hippt::is_finite(dir.z))
+		if (hippt::thread_idx_x() < 50 && hippt::thread_idx_y() < 50)
+		{
+			printf("DIR NAN: %f %f ---> %f %f %f\n", cos_theta, phi, hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta);
+		}
+
+		return local_to_world_frame(axis, dir);
+	}
+};
+
+struct VMFMixtureComponent
+{
+	VMF vmf;
+	float weight = 0.0f;
+};
+
+#endif

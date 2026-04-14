@@ -41,10 +41,8 @@ struct HashGrid
 			// This is refering to a hash cell that hasn't been populated yet
 
 			if (!isInsertion)
-			{
 				// If we're not inserting, this means that we're querrying an empty cell
 				return false;
-			}
 			else
 			{
 				// This is refering to a hash cell that hasn't been populated yet and we're
@@ -134,12 +132,9 @@ struct HashGrid
 						}
 					}
 					else
-					{
 						// This is a query but we've hit an empty cell during probing which means that we're querrying
 						// a cell that has never been populated
-
 						return false;
-					}
 				}
 			}
 
@@ -156,13 +151,9 @@ struct HashGrid
 																		  unsigned int total_number_of_cells)
 	{
 		if constexpr (collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING)
-		{
 			return (current_cell_index_collision_resolution + 1) % total_number_of_cells;
-		}
 		else if constexpr (collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING)
-		{
 			return wang_hash(current_cell_index_collision_resolution) % total_number_of_cells;
-		}
 	}
 };
 

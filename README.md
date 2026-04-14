@@ -51,6 +51,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- ReGIR
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
 	- All light sampling techniques support MIS with BSDF samples
+	
 - Area light sampling strategies:
 	- Uniform area sampling
 	- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
@@ -70,6 +71,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- RIS (Resampled Importance Sampling) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)with Weighted Reservoir Sampling (WRS) [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- RISLTC [\[Shash et al., 2023\]](https://ishaanshah.xyz/risltc/)
 	- ReSTIR DI
+	
 - Other light sampling features
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
 	- NEE for HDR environment maps using:
@@ -85,11 +87,14 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- BSDF Sampling:
 		- One sample MIS for lobe sampling [\[Hery et al., 2017\]](https://graphics.pixar.com/library/PxrMaterialsCourse2017/paper.pdf)
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)
+	
 - ReSTIR Samplers:
 	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/)
 		- Supports envmap sampling
 		- Fused Spatiotemporal Reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)
 	- Many bias correction weighting schemes:
 		- 1/M
 		- 1/Z

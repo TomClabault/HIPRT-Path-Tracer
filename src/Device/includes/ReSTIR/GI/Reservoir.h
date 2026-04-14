@@ -51,6 +51,10 @@ struct ReSTIRGIReservoirSample
 
 	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
 
+	// Index of the pixel that produced this sample/reservoir during the initial candidates sampling
+	// Used by some algorithms such as ReSTIR PG
+	unsigned int pixel_index = static_cast<unsigned int>(-1);
+
 	HIPRT_DEVICE bool is_envmap_path() const
 	{
 		return sample_point_primitive_index == -1;

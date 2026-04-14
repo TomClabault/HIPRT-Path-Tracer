@@ -20,6 +20,7 @@
 #include <atomic>
 // For std::bit_cast in hippt::
 #include <bit>
+#include <cmath>
 #endif
 
 #include "HostDeviceCommon/AtomicType.h"
@@ -38,6 +39,7 @@
 namespace hippt
 {
 #ifdef __KERNELCC__
+	constexpr float M_INV_FOUR_PI	 = 0.07957747154594766788f;	 // 1.0f / (4.0f * M_PI)
 	constexpr float M_INV_TWO_PI	 = 0.15915494309189533577f;	 // 1.0f / (2.0f * M_PI)
 	constexpr float M_INV_PI		 = 0.31830988618379067154f;	 // 1.0f / M_PI
 	constexpr float M_PI_TWO		 = 1.57079632679489661923f;	 // pi/2
@@ -342,6 +344,11 @@ namespace hippt
 		return __logf(x);
 	}
 
+	__device__ static float intrin_log1pf(float x)
+	{
+		return log1pf(x);
+	}
+
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
 	__device__ static float expm1_over_x_precise(const float x)
@@ -367,6 +374,20 @@ namespace hippt
 			return 1.0f;
 
 		return (exp_x - 1.0f) / x;
+	}
+
+	__device__ float x_over_expm1(float x)
+	{
+		float u = hippt::intrin_expf(x);
+		if (u == 1.0f)
+			return 1.0f;
+
+		float y = u - 1.0f;
+
+		if (hippt::abs(x) < 1.0f)
+			return hippt::intrin_logf(u) / y;
+
+		return x / y;
 	}
 
 	__device__ static float erfcf_fast(float x)
@@ -955,6 +976,7 @@ namespace hippt
 	}
 
 #else
+	constexpr float M_INV_FOUR_PI	 = 0.07957747154594766788f;	 // 1.0f / (4.0f * M_PI)
 	constexpr float M_INV_TWO_PI	 = 0.15915494309189533577f;	 // 1.0f / (2.0f * M_PI)
 	constexpr float M_INV_PI		 = 0.31830988618379067154f;	 // 1.0f / M_PI
 	constexpr float M_PI_TWO		 = 1.57079632679489661923;	 // pi/2
@@ -981,27 +1003,27 @@ namespace hippt
 		return 1;
 	}
 
-	static unsigned int thread_idx_x()
+	static constexpr unsigned int thread_idx_x()
 	{
 		return 0u;
 	}
 
-	static unsigned int thread_idx_y()
+	static constexpr unsigned int thread_idx_y()
 	{
 		return 0u;
 	}
 
-	static unsigned int thread_idx_global()
+	static constexpr unsigned int thread_idx_global()
 	{
 		return 0u;
 	}
 
-	static bool is_pixel_index(int x, int y)
+	static constexpr bool is_pixel_index(int x, int y)
 	{
 		return true;
 	}
 
-	static int current_warp_lane()
+	static constexpr int current_warp_lane()
 	{
 		return 0;
 	}
@@ -1017,16 +1039,12 @@ namespace hippt
 		return make_float3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
 	}
 
-	/*static float3_t cross(hiprtFloat3 u, float3_t v) { return make_float3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x); }
-
-static
-	 * float3_t cross(float3_t u, hiprtFloat3 v) { return make_float3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x); }*/
-	static float dot(float3_t u, float3_t v)
+	static constexpr float dot(float3_t u, float3_t v)
 	{
 		return u.x * v.x + u.y * v.y + u.z * v.z;
 	}
 
-	static float dot(float2_t u, float2_t v)
+	static constexpr float dot(float2_t u, float2_t v)
 	{
 		return u.x * v.x + u.y * v.y;
 	}
@@ -1053,17 +1071,17 @@ static
 
 	static float length(float3_t u)
 	{
-		return hippt::sqrt(dot(u, u));
+		return hippt::sqrt(hippt::dot(u, u));
 	}
 
 	static float length(float2_t u)
 	{
-		return hippt::sqrt(dot(u, u));
+		return hippt::sqrt(hippt::dot(u, u));
 	}
 
-	static float length2(float3_t u)
+	static constexpr float length2(float3_t u)
 	{
-		return dot(u, u);
+		return hippt::dot(u, u);
 	}
 
 	static float3_t abs(float3_t u)
@@ -1072,12 +1090,12 @@ static
 	}
 
 	template <typename T>
-	static T abs(T a)
+	static constexpr T abs(T a)
 	{
 		return std::abs(a);
 	}
 
-	static float fma(float a, float b, float c)
+	static constexpr float fma(float a, float b, float c)
 	{
 		return a * b + c;
 	}
@@ -1097,13 +1115,13 @@ static
 	spots. Credit to Fabian Giessen's blog, see:
 	https://fgiesen.wordpress.com/2012/08/15/linear-interpolation-past-present-and-future/
 	*/
-	static float mix_fma(float x, float y, float a)
+	static constexpr float mix_fma(float x, float y, float a)
 	{
 		return hippt::fma(a, y, hippt::fma(-a, x, x));
 	}
 
 	template <typename T>
-	static T max(T a, T b)
+	static constexpr T max(T a, T b)
 	{
 		return a > b ? a : b;
 	}
@@ -1124,7 +1142,7 @@ static
 	}
 
 	template <typename T>
-	static T min(T a, T b)
+	static constexpr T min(T a, T b)
 	{
 		return a < b ? a : b;
 	}
@@ -1171,9 +1189,9 @@ static
 	}
 
 	template <typename T>
-	static T clamp(T min_val, T max_val, T val)
+	static constexpr T clamp(T min_val, T max_val, T val)
 	{
-		return min(max_val, max(min_val, val));
+		return hippt::min(max_val, hippt::max(min_val, val));
 	}
 
 	static float2_t cos(float2_t x)
@@ -1213,17 +1231,22 @@ static
 
 	static float intrin_expf(float x)
 	{
-		return expf(x);
+		return std::exp(x);
 	}
 
 	static float3_t intrin_expf(float3_t x)
 	{
-		return make_float3(expf(x.x), expf(x.y), expf(x.z));
+		return make_float3(std::exp(x.x), std::exp(x.y), std::exp(x.z));
 	}
 
 	static float intrin_logf(float x)
 	{
-		return logf(x);
+		return std::log(x);
+	}
+
+	static float intrin_log1pf(float x)
+	{
+		return std::log1pf(x);
 	}
 
 	static float3_t atan2(float3_t y, float3_t x)
@@ -1277,7 +1300,21 @@ static
 		return (exp_x - 1.0f) / x;
 	}
 
-	static float erfcf_fast(float x)
+	static float x_over_expm1(float x)
+	{
+		float u = hippt::intrin_expf(x);
+		if (u == 1.0f)
+			return 1.0f;
+
+		float y = u - 1.0f;
+
+		if (hippt::abs(x) < 1.0f)
+			return hippt::intrin_logf(u) / y;
+
+		return x / y;
+	}
+
+	static constexpr float erfcf_fast(float x)
 	{
 		constexpr float TWO_OVER_ROOT_PI = 1.1283791670955125738961589031215f;
 		constexpr float ERFC_SMALL		 = 0.0053854f;
@@ -1308,7 +1345,7 @@ static
 	}
 
 	template <typename T>
-	static T square(T x)
+	static constexpr T square(T x)
 	{
 		return x * x;
 	}
@@ -1375,7 +1412,7 @@ static
 		return std::isinf(v);
 	}
 
-	static bool is_zero(float x)
+	static constexpr bool is_zero(float x)
 	{
 		return x < NEAR_ZERO && x > -NEAR_ZERO;
 	}
@@ -1385,17 +1422,17 @@ static
 		return std::isfinite(x);
 	}
 
-	static unsigned int float_as_uint(float float_num)
+	static constexpr unsigned int float_as_uint(float float_num)
 	{
 		return std::bit_cast<unsigned int>(float_num);
 	}
 
-	static float uint_as_float(unsigned int uint_num)
+	static constexpr float uint_as_float(unsigned int uint_num)
 	{
 		return std::bit_cast<float>(uint_num);
 	}
 
-	static float fp16_bits_to_fp32(unsigned short int half_bits)
+	static constexpr float fp16_bits_to_fp32(unsigned short int half_bits)
 	{
 		// Source: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
 
@@ -1408,7 +1445,7 @@ static
 	}
 
 	// IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
-	static unsigned short int fp32_to_fp16_bits(const float x)
+	static constexpr unsigned short int fp32_to_fp16_bits(const float x)
 	{
 		// Source: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
 
@@ -1419,7 +1456,7 @@ static
 			   ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) | (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
 	}
 
-	static unsigned short int half_as_ushort(fp16 half)
+	static constexpr unsigned short int half_as_ushort(fp16 half)
 	{
 		// fp16 is just fp32 on the CPU , so we can just reinterpret the bits as a float and then convert to fp16 bits
 		return fp32_to_fp16_bits(half);
@@ -1581,7 +1618,7 @@ static
 	 * For t=0, returns a
 	 */
 	template <typename T>
-	static T lerp(T a, T b, float t)
+	static constexpr T lerp(T a, T b, float t)
 	{
 		return (1.0f - t) * a + t * b;
 	}
@@ -1594,7 +1631,7 @@ static
 	 * For 'value' == 'b', returns 1.0f
 	 */
 	template <typename T>
-	static float inverse_lerp(T value, T a, T b)
+	static constexpr float inverse_lerp(T value, T a, T b)
 	{
 		// Clamping
 		value = hippt::max(a, hippt::min(value, b));
@@ -1610,7 +1647,7 @@ static
 	 * Smoothstep interpolation in between
 	 */
 	template <typename T>
-	static T smoothstep(T min, T max, float x)
+	static constexpr T smoothstep(T min, T max, float x)
 	{
 		float t = hippt::clamp(0.0f, 1.0f, (x - min) / (max - min));
 
@@ -1623,7 +1660,7 @@ static
 	}
 
 	template <typename T>
-	static unsigned int popc(T bitmask)
+	static constexpr unsigned int popc(T bitmask)
 	{
 		return std::popcount(bitmask);
 	}
@@ -1634,7 +1671,7 @@ static
 	 *
 	 * Returns 0 if all bits are zero
 	 */
-	static unsigned int ffs(unsigned int bitmask)
+	static constexpr unsigned int ffs(unsigned int bitmask)
 	{
 		for (int i = 0; i < sizeof(unsigned int) * 8; i++)
 			if (bitmask & (1 << i))
@@ -1644,12 +1681,12 @@ static
 	}
 
 	template <typename T>
-	static T clz(T bitfield)
+	static constexpr T clz(T bitfield)
 	{
 		std::countl_zero(bitfield);
 	}
 
-	static bool warp_any(unsigned int thread_mask, bool predicate)
+	static constexpr bool warp_any(unsigned int thread_mask, bool predicate)
 	{
 		return predicate;
 	}
@@ -1657,12 +1694,12 @@ static
 	/**
 	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
 	 */
-	static unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate)
+	static constexpr unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate)
 	{
 		return predicate ? 1 : 0;
 	}
 
-	static unsigned long long int warp_activemask()
+	static constexpr unsigned long long int warp_activemask()
 	{
 		return 1;
 	}
@@ -1682,7 +1719,7 @@ static
 	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
 	 */
 	template <typename T>
-	static T warp_shfl(T var, int srcLane, int width = 1)
+	static constexpr T warp_shfl(T var, int srcLane, int width = 1)
 	{
 		return var;
 	}
@@ -1700,7 +1737,7 @@ static
 	 * undefined. The implementation includes a static assert to check that the program source uses the correct type for the mask.
 	 */
 	template <typename T>
-	static T warp_shfl_sync(unsigned long long int mask, T var, int srcLane, int width = 1)
+	static constexpr T warp_shfl_sync(unsigned long long int mask, T var, int srcLane, int width = 1)
 	{
 		return var;
 	}
@@ -1709,7 +1746,7 @@ static
 	 * Copy from a lane with higher ID relative to caller
 	 */
 	template <typename T>
-	static T warp_shfl_down(T var, int delta, int width = 1)
+	static constexpr T warp_shfl_down(T var, int delta, int width = 1)
 	{
 		return var;
 	}
@@ -1718,25 +1755,25 @@ static
 	 * Copy from a lane with lower ID relative to caller
 	 */
 	template <typename T>
-	static T warp_shfl_up(T var, int delta, int width = 1)
+	static constexpr T warp_shfl_up(T var, int delta, int width = 1)
 	{
 		return var;
 	}
 
 	template <typename T>
-	static T warp_reduce_max(unsigned long long int mask, T variable)
+	static constexpr T warp_reduce_max(unsigned long long int mask, T variable)
 	{
 		return variable;
 	}
 
-	static void syncwarp(unsigned int mask) {}
+	static constexpr void syncwarp(unsigned int mask) {}
 
 	/**
 	 * Returns the index within its warp (not group) of the calling thread
 	 *
 	 * Warp sizes of 1 on the CPU
 	 */
-	static unsigned int warp_2D_thread_index()
+	static constexpr unsigned int warp_2D_thread_index()
 	{
 		return 1;
 	}
@@ -1746,7 +1783,7 @@ static
 		Debug::debugbreak();
 	}
 
-	static float idx(float3_t v, int index)
+	static constexpr float idx(float3_t v, int index)
 	{
 		return *(&v.x + index);
 	}

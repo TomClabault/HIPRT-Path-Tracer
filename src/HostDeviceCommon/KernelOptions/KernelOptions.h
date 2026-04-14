@@ -15,6 +15,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
 /**
@@ -159,7 +160,7 @@
  *
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
@@ -176,9 +177,9 @@
  * to the framebuffer.
  *
  * Useful for debugging features that may take effect after the first sample and we only want to see what
- * the second sample looks like without the accumulation
+ * the second sample (or any other sample) looks like without being accumulated with the previous samples
  */
-#define DisplayOnlySampleN KERNEL_OPTION_FALSE
+#define DisplayOnlySampleN KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 
@@ -189,6 +190,7 @@
 #define ViewportColorOverriden                                                                                                                                 \
 	((NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG || DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE) ||                  \
 	 (DirectLightSamplingStrategy == LSS_BASE_REGIR && ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG) ||                                                        \
+	 (ReSTIRPGEnable == KERNEL_OPTION_TRUE && ReSTIRPGDebugMode != RESTIR_PG_NO_DEBUG) ||                                                                      \
 	 (SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE || SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE))
 
 #endif

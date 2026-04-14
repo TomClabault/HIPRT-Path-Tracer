@@ -93,7 +93,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	//
 	// This value can be precomputed in the SG light generation if we don't clamp the variance.
 	//
-	// 'emissive' should be divided by SG_integral(node.vmf_sharpness) but this is already baked in
+	// 'emissive' should be divided by SG_integral(node.vmf.sharpness) but this is already baked in
 	// node.total_power
 	const float emissive = node.total_power / variance;
 
@@ -101,7 +101,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	const float light_sharpness = squaredDistance / variance;
 
 	// Light lobe given by the product of the light distribution viewed from the shading point and the directional distribution of the SG light.
-	const SGLobe lightLobe = SG_product(-node.vmf_axis, node.vmf_sharpness, to_light_direction, light_sharpness);
+	const SGLobe lightLobe = SG_product(-node.vmf.axis, node.vmf.sharpness, to_light_direction, light_sharpness);
 
 	// Diffuse SG lighting.
 	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 4]

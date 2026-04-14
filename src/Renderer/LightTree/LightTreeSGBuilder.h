@@ -54,12 +54,12 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
-		device_data_out.nodes_device[i].vmf_axis				  = m_nodes[i].vmf_axis;
-		device_data_out.nodes_device[i].vmf_sharpness			  = m_nodes[i].vmf_sharpness;
+		device_data_out.nodes_device[i].vmf.axis				  = m_nodes[i].vmf.axis;
+		device_data_out.nodes_device[i].vmf.sharpness			  = m_nodes[i].vmf.sharpness;
 		device_data_out.nodes_device[i].gaussian_spatial_mean	  = m_nodes[i].spatial_mean;
 		device_data_out.nodes_device[i].gaussian_spatial_variance = m_nodes[i].spatial_variance;
 		device_data_out.nodes_device[i].bounding_sphere_radius	  = m_nodes[i].bounding_sphere_radius;
-		device_data_out.nodes_device[i].total_power				  = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf_sharpness);
+		device_data_out.nodes_device[i].total_power				  = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf.sharpness);
 		/*device_data_out.nodes_device[i].bounds_min = m_nodes[i].bounds.mini;
 		device_data_out.nodes_device[i].bounds_max = m_nodes[i].bounds.maxi;*/
 		device_data_out.nodes_device[i].triangle_count = m_nodes[i].triangle_count;
@@ -84,7 +84,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	std::vector<unsigned int> converted_bit_trails(total_scene_triangle_count, 0xFFFFFFFF);
 	for (int i = 0; i < m_light_tree_ats_builder.get_bit_trails().size(); i++)
 		converted_bit_trails[emissive_triangles_primitive_indices[m_light_tree_ats_builder.get_triangle_indices()[i]]] =
-								m_light_tree_ats_builder.get_bit_trails()[i];
+			m_light_tree_ats_builder.get_bit_trails()[i];
 
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{

@@ -99,15 +99,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 				if (bounce > 0 || render_data.render_settings.enable_direct)
 				{
 					ray_payload.ray_color +=
-											estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator);
+						estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator);
 
 					sanity_check<true>(render_data, ray_payload.ray_color, x, y);
 				}
 
-				BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF
-														  // sampled
+				BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
+																						   // so that we know what the BSDF sampled
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
-																					   random_number_generator, &sampled_light_info);
+																					   random_number_generator, sampled_light_info);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;
@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
 		return;
 
-	path_tracing_accumulate_debug_view_color(render_data, ray_payload, pixel_index, random_number_generator);
+	path_tracing_debug_view_modify_ray_color(render_data, ray_payload, pixel_index, random_number_generator, ray_payload.ray_color);
 
 	// If we got here, this means that we still have at least one ray active
 	// This is a concurrent write by the way but we don't really care, everyone is writing

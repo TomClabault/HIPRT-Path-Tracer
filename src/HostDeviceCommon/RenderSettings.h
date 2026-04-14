@@ -16,6 +16,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
 #include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
 
@@ -51,7 +52,7 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
-	bool enable_direct = true;
+	bool enable_direct = false;
 
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
 	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;
@@ -138,9 +139,9 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 2;
 
-	bool do_russian_roulette = true;
+	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to being terminated by russian roulette
@@ -246,6 +247,8 @@ struct HIPRTRenderSettings
 	ReSTIRDISettings restir_di_settings;
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
+	// Settings for ReSTIR Path Guiding
+	ReSTIRPGSettings restir_pg_settings;
 	// Settings for ReGIR
 	ReGIRSettings regir_settings;
 

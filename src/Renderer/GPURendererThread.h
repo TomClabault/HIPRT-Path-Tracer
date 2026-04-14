@@ -13,6 +13,7 @@
 #include "RenderPasses/ReGIRRenderPass.h"
 #include "RenderPasses/ReSTIRDIRenderPass.h"
 #include "RenderPasses/ReSTIRGIRenderPass.h"
+#include "RenderPasses/ReSTIRPGRenderPass.h"
 #include "RenderPasses/SSBNPermutationRenderPass.h"
 
 #include "HostDeviceCommon/RenderData.h"

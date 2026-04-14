@@ -132,6 +132,10 @@ public:
 	static const std::string RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS;
 	static const std::string RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING;
 
+	static const std::string RESTIR_PG_ENABLE;
+	static const std::string RESTIR_PG_MIXTURE_COMPONENT_COUNT;
+	static const std::string RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS;
+
 	static const std::string GMON_M_SETS_COUNT;
 
 	static const std::string SSBN_PERMUTATION_BLOCK_SIZE;

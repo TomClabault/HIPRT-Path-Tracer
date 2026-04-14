@@ -30,6 +30,12 @@
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
 
+#include "Device/kernels/ReSTIR/PG/Fitting.h"
+#include "Device/kernels/ReSTIR/PG/ResetDistributions.h"
+#include "Device/kernels/ReSTIR/PG/ResetHashGrid.h"
+#include "Device/kernels/ReSTIR/PG/ResetSufficientStatistics.h"
+#include "Device/kernels/ReSTIR/PG/Splatting.h"
+
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
@@ -63,8 +69,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 716
-#define DEBUG_PIXEL_Y 406
+#define DEBUG_PIXEL_X 184
+#define DEBUG_PIXEL_Y 232
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -88,14 +94,14 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 150
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
 	m_render_data.render_settings.render_resolution = m_resolution;
 }
 
-void CPURenderer::resize_buffers()
+void CPURenderer::setup_buffers()
 {
 	unsigned int width	= m_resolution.x;
 	unsigned int height = m_resolution.y;
@@ -116,20 +122,16 @@ void CPURenderer::resize_buffers()
 	unsigned int new_cell_count_primary_hits   = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
 	unsigned int new_cell_count_secondary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS;
 
-	m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits,
-												 m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true),
-												 m_triangle_buffer.size());
-	m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits,
-														 m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true),
-														 m_triangle_buffer.size());
+	m_regir_state.grid_buffer_primary_hit.resize(
+		new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
+	m_regir_state.spatial_grid_buffer_primary_hit.resize(
+		new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
 	m_regir_state.hash_cell_data_primary_hit.resize(new_cell_count_primary_hits);
 
-	m_regir_state.grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits,
-												   m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false),
-												   m_triangle_buffer.size());
-	m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits,
-														   m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false),
-														   m_triangle_buffer.size());
+	m_regir_state.grid_buffer_secondary_hit.resize(
+		new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false), m_triangle_buffer.size());
+	m_regir_state.spatial_grid_buffer_secondary_hit.resize(
+		new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false), m_triangle_buffer.size());
 	m_regir_state.hash_cell_data_secondary_hit.resize(new_cell_count_secondary_hits);
 
 	m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits);
@@ -154,12 +156,12 @@ void CPURenderer::resize_buffers()
 	std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
 
 	if (m_render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
-		m_regir_state.correlation_reduction_grid.resize(
-								new_cell_count_primary_hits,
-								m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) *
-														m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor,
-								m_triangle_buffer.size());
+		m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits,
+														m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) *
+															m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor,
+														m_triangle_buffer.size());
 
+#if DirectLightNEEEstimator == LSS_RESTIR_DI
 	m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
 	m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
@@ -170,7 +172,9 @@ void CPURenderer::resize_buffers()
 	m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
 #endif
 	m_restir_di_state.per_pixel_spatial_reuse_radius.resize(width * height);
+#endif
 
+#if PathSamplingStrategy == PSS_RESTIR_GI
 	m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_gi_state.temporal_reservoirs.resize(width * height);
 	m_restir_gi_state.spatial_reservoirs.resize(width * height);
@@ -180,6 +184,22 @@ void CPURenderer::resize_buffers()
 	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
 #endif
 	m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
+#endif
+
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	m_restir_pg_state.splatting_samples.resize(width * height * m_render_data.render_settings.nb_bounces);
+
+	m_restir_pg_state.hash_grid_distributions.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+	m_restir_pg_state.hash_grid_checksums = std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+
+	m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT,
+																					  ReSTIRPGDistributionComponentCount);
+	m_restir_pg_state.hash_grid_distributions_sufficient_statistics_lock =
+		std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+
+	m_restir_pg_state.grid_cell_alive = std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+	m_restir_pg_state.grid_cell_alive_list.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+#endif
 
 	m_g_buffer.resize(width * height);
 	m_g_buffer_prev_frame.resize(width * height);
@@ -266,7 +286,7 @@ void CPURenderer::ReGIR_post_sample_update()
 
 #pragma omp parallel for
 		for (int x = 0; x < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count *
-													m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
+								m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
 			 x++)
 		{
 			ReGIR_Correlation_Reduction_Copy(m_render_data, to_copy, x);
@@ -274,12 +294,12 @@ void CPURenderer::ReGIR_post_sample_update()
 
 		m_render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid++;
 		m_render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid %=
-								m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor;
+			m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor;
 
 		m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available++;
 		m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available =
-								hippt::min(m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available,
-										   m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
+			hippt::min(m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available,
+					   m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
 	}
 }
 
@@ -316,7 +336,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.buffers.emissive_triangles_count			   = parsed_scene.emissive_triangles_primitive_indices.size();
 	m_render_data.buffers.emissive_triangles_primitive_indices = parsed_scene.emissive_triangles_primitive_indices.data();
 	m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
-							parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
+		parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
 
 	m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
 
@@ -328,16 +348,15 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
 
 #if DirectLightSamplingStrategy == LSS_BASE_POWER ||                                                                                                           \
-						(DirectLightSamplingStrategy == LSS_BASE_REGIR && (ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER ||            \
-																		   ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||               \
-																		   (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE &&                \
-																			ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
+	(DirectLightSamplingStrategy == LSS_BASE_REGIR &&                                                                                                          \
+	 (ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER || ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||           \
+	  (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building scene's power alias table");
 	compute_emissives_power_alias_table(parsed_scene);
 #endif
 
 #if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingStrategy == LSS_BASE_REGIR ||                                                 \
-						(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
+	(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
 	m_light_tree_builder_ats.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices,
 											  parsed_scene.vertices_positions, parsed_scene.material_indices, parsed_scene.materials);
 	m_light_tree_ats_device_data = m_light_tree_builder_ats.compute_device_data<std::vector>();
@@ -346,7 +365,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_light_tree_builder_ats.cleanup();
 #endif
 #if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG ||                                                                                                   \
-						(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+	(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	m_light_tree_builder_sg.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices,
 											 parsed_scene.vertices_positions, parsed_scene.material_indices, parsed_scene.materials);
 	m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
@@ -396,26 +415,29 @@ void CPURenderer::update_render_data()
 	m_regir_state.correlation_reduction_grid.to_device(m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_grid);
 
 	m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits =
-							m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
+		m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
 	m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits =
-							m_regir_state.canonical_pre_integration_factors_primary_hit.data();
+		m_regir_state.canonical_pre_integration_factors_primary_hit.data();
 
 	m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits =
-							m_regir_state.non_canonical_pre_integration_factors_secondary_hit.data();
+		m_regir_state.non_canonical_pre_integration_factors_secondary_hit.data();
 	m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits =
-							m_regir_state.canonical_pre_integration_factors_secondary_hit.data();
+		m_regir_state.canonical_pre_integration_factors_secondary_hit.data();
 
+#if DirectLightNEEEstimator == LSS_RESTIR_DI
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_di_settings.restir_output_reservoirs			  = m_restir_di_state.spatial_output_reservoirs_1.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
-							m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.data();
+		m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-							m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.data();
+		m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-							m_restir_di_state.per_pixel_spatial_reuse_radius.data();
+		m_restir_di_state.per_pixel_spatial_reuse_radius.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_di_state.spatial_reuse_hit_rate_total;
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_di_state.spatial_reuse_hit_rate_hits;
+#endif
 
+#if PathSamplingStrategy == PSS_RESTIR_GI
 	m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs				  = m_restir_gi_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs			  = m_restir_gi_state.temporal_reservoirs.data();
@@ -425,20 +447,38 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_gi_reservoir_buffer_2										  = m_restir_gi_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_gi_reservoir_buffer_3										  = m_restir_gi_state.temporal_reservoirs.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
-							m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.data();
+		m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-							m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.data();
+		m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-							m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
+		m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
+#endif
+
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	m_render_data.render_settings.restir_pg_settings.splatting_samples = m_restir_pg_state.splatting_samples.data();
+
+	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions = m_restir_pg_state.hash_grid_distributions.data();
+	m_render_data.render_settings.restir_pg_settings.hash_grid_checksums	 = m_restir_pg_state.hash_grid_checksums.data();
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive		 = m_restir_pg_state.grid_cell_alive.data();
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_count	 = &m_restir_pg_state.grid_cell_alive_count;
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_list	 = m_restir_pg_state.grid_cell_alive_list.data();
+
+	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
+		m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
+	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_lock =
+		m_restir_pg_state.hash_grid_distributions_sufficient_statistics_lock.data();
+
+	m_render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT;
+#endif
 
 	m_render_data.buffers.emissive_meshes_data = m_emissive_meshes_alias_tables.to_device();
 #if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE
 	m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits =
-							m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
+		m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
 	m_render_data.render_settings.regir_settings.cells_light_distributions_secondary_hits =
-							m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
+		m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
 #endif
 
 	m_render_data.cpu_only.bvh		 = m_bvh.get();
@@ -575,6 +615,10 @@ void CPURenderer::render()
 	auto start = std::chrono::high_resolution_clock::now();
 
 	nee_plus_plus_cache_visibility_pass();
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	ReSTIR_PG_reset_hash_grid();
+	ReSTIR_PG_reset_distributions();
+#endif
 
 	// Using 'samples_per_frame' as the number of samples to render on the CPU
 	for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
@@ -599,6 +643,10 @@ void CPURenderer::render()
 		tracing_pass();
 #elif PathSamplingStrategy == PSS_RESTIR_GI
 		ReSTIR_GI_pass();
+#endif
+
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+		ReSTIR_PG_pass();
 #endif
 
 		post_sample_update(frame_number);
@@ -762,7 +810,7 @@ void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 {
 #pragma omp parallel for
 	for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count *
-														m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
+									m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 		 index++)
 	{
 		ReGIR_Grid_Fill<accumulatePreIntegration>(m_render_data, m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
@@ -786,14 +834,12 @@ ReGIRHashGridSoADevice CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 
 #pragma omp parallel for
 		for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count *
-															m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
+										m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 			 index++)
 		{
 			ReGIR_Spatial_Reuse<accumulatePreIntegration>(
-									m_render_data, input_reservoirs, output_reservoirs,
-									m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
-									*m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit,
-									index);
+				m_render_data, input_reservoirs, output_reservoirs, m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
+				*m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit, index);
 		}
 
 		std::swap(input_reservoirs, output_reservoirs);
@@ -867,8 +913,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive;
 	unsigned int emissive_mesh_count			  = m_render_data.buffers.emissive_meshes_data.alias_table_count;
 	unsigned int max_number_of_cells_computed_per_iteration =
-							hippt::min((unsigned int)((unsigned short int)-1),
-									   ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
+		hippt::min((unsigned int)((unsigned short int)-1), ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -877,16 +922,15 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 	//
 	// The inner min() part on ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount is to round down the buffer on an integer number of
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
-	std::vector<unsigned int> contribution_scratch_buffer_sorting_keys(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-																				  total_number_of_cells_to_compute * emissive_mesh_count));
-	std::vector<unsigned int> contribution_scratch_buffer_mesh_indices(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count,
-																				  total_number_of_cells_to_compute * emissive_mesh_count));
+	std::vector<unsigned int> contribution_scratch_buffer_sorting_keys(
+		hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count, total_number_of_cells_to_compute * emissive_mesh_count));
+	std::vector<unsigned int> contribution_scratch_buffer_mesh_indices(
+		hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count, total_number_of_cells_to_compute * emissive_mesh_count));
 
 	std::vector<unsigned int> grid_cell_alive_list =
-							primary_hit ? m_regir_state.hash_cell_data_primary_hit.m_hash_cell_data
-																			.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>()
-										: m_regir_state.hash_cell_data_secondary_hit.m_hash_cell_data.template get_buffer<
-																  ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
+		primary_hit
+			? m_regir_state.hash_cell_data_primary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>()
+			: m_regir_state.hash_cell_data_secondary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 
 	unsigned int cell_offset			= 0;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
@@ -954,7 +998,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 			assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
 			ReGIRCellsLightDistributionsSoAHost<std::vector>& soa_host =
-									primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
+				primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
 
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
@@ -962,8 +1006,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 			unsigned int effective_light_distribution_size;
 			if (!only_compute_sizes)
 				effective_light_distribution_size =
-										soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>()
-																.at(hash_grid_cell_index);
+					soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>().at(
+						hash_grid_cell_index);
 			else
 				effective_light_distribution_size = non_compacted_effective_light_distribution_size;
 
@@ -976,8 +1020,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 			{
 				float contribution = get_float_contribution_from_scratch_buffer(
-										sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) +
-										cell_index_in_iteration * emissive_mesh_count);
+					sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
 
 				if (contribution_index < effective_light_distribution_size)
 				{
@@ -1008,8 +1051,8 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 					for (contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 					{
 						float contribution = get_float_contribution_from_scratch_buffer(
-												sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) +
-												cell_index_in_iteration * emissive_mesh_count);
+							sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) +
+							cell_index_in_iteration * emissive_mesh_count);
 						accumulated_contribution += contribution;
 
 						if (accumulated_contribution / sum_all_contributions * 100.0f >= m_regir_state.m_light_distribution_incoming_light_energy_target)
@@ -1020,7 +1063,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 				}
 
 				soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>().at(hash_grid_cell_index) =
-										final_distribution_size;
+					final_distribution_size;
 			}
 			else
 			{
@@ -1040,24 +1083,22 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 						cdf_u16.at(proba_index) = cdf.at(proba_index) * 65535.0f;
 
 					std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed =
-											ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(
-																	sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count,
-																	emissive_mesh_count, effective_light_distribution_size);
+						ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count,
+																				 emissive_mesh_count, effective_light_distribution_size);
 
 					unsigned int emissive_mesh_indices_packed_offset =
-											soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::
-																									 REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>()
-																	.at(hash_grid_cell_index);
-					soa_host.soa.template upload_to_buffer_partial<
-											ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(
-											emissive_mesh_indices_packed_offset, sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.size());
+						soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>().at(
+							hash_grid_cell_index);
+					soa_host.soa
+						.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(
+							emissive_mesh_indices_packed_offset, sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.size());
 				}
 
 				unsigned int light_distribution_offset =
-										soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>()
-																.at(hash_grid_cell_index);
+					soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>().at(
+						hash_grid_cell_index);
 				soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(
-										light_distribution_offset, cdf_u16, effective_light_distribution_size);
+					light_distribution_offset, cdf_u16, effective_light_distribution_size);
 			}
 		}
 
@@ -1071,7 +1112,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 		// Now that we have the sizes of all the light distributions, we can compute the offset of each light distribution
 		// in the global light distribution buffer, and also the offsets for the packed emissive meshes indices
 		ReGIRCellsLightDistributionsSoAHost<std::vector>& soa_host =
-								primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
+			primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
 
 		unsigned int light_distributions_sizes_sum			 = 0;
 		unsigned int emissive_mesh_indices_element_count_sum = 0;
@@ -1079,31 +1120,29 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 		{
 			unsigned int hash_grid_cell_index = grid_cell_alive_list.at(light_distribution_index);
 			unsigned int light_distribution_size =
-									soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>().at(
-															hash_grid_cell_index);
+				soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>().at(hash_grid_cell_index);
 
 			soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>().at(hash_grid_cell_index) =
-									light_distributions_sizes_sum;
+				light_distributions_sizes_sum;
 			soa_host.soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>().at(
-									hash_grid_cell_index) = emissive_mesh_indices_element_count_sum;
+				hash_grid_cell_index) = emissive_mesh_indices_element_count_sum;
 
 			light_distributions_sizes_sum += light_distribution_size;
 			emissive_mesh_indices_element_count_sum +=
-									ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size);
+				ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size);
 		}
 
 		unsigned int total_nb_cells = soa_host.soa.get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size();
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum,
-								100.0f - light_distributions_sizes_sum /
-																				((float)total_nb_cells *
-																				 hippt::min(emissive_mesh_count,
-																							(unsigned int)m_render_data.render_settings.regir_settings
-																													.light_distribution_maximum_size)) *
-																				100.0f);
+		g_imgui_logger.add_line(
+			ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum,
+			100.0f - light_distributions_sizes_sum /
+						 ((float)total_nb_cells *
+						  hippt::min(emissive_mesh_count, (unsigned int)m_render_data.render_settings.regir_settings.light_distribution_maximum_size)) *
+						 100.0f);
 
 		soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
 		soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(
-								emissive_mesh_indices_element_count_sum);
+			emissive_mesh_indices_element_count_sum);
 	}
 	else
 	{
@@ -1157,19 +1196,36 @@ void CPURenderer::ReSTIR_GI_pass()
 	launch_ReSTIR_GI_shading_pass();
 }
 
+void CPURenderer::ReSTIR_PG_pass()
+{
+	// Splatting
+	debug_render_pass([this](int x, int y) { ReSTIR_PG_Splatting(m_render_data, x, y); });
+
+	// Fitting
+	unsigned int grid_cell_alive_count = m_restir_pg_state.grid_cell_alive_count.load();
+	// #pragma omp parallel for
+	for (int index = 0; index < grid_cell_alive_count; index++)
+	{
+		ReSTIR_PG_Fitting(m_render_data, index);
+	}
+
+	// #pragma omp parallel for
+	for (int index = 0; index < grid_cell_alive_count * ReSTIRPGDistributionComponentCount; index++)
+	{
+		ReSTIR_PG_ResetSufficientStatistics(m_render_data, index);
+	}
+}
+
 void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 {
 	debug_render_pass(
-							[this](int x, int y)
-							{
-								ReSTIR_Directional_Reuse_Compute<false>(
-														m_render_data, x, y,
-														m_render_data.render_settings.restir_di_settings.common_spatial_pass
-																				.per_pixel_spatial_reuse_directions_mask_u,
-														m_render_data.render_settings.restir_di_settings.common_spatial_pass
-																				.per_pixel_spatial_reuse_directions_mask_ull,
-														m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
-							});
+		[this](int x, int y)
+		{
+			ReSTIR_Directional_Reuse_Compute<false>(
+				m_render_data, x, y, m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
+				m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
+		});
 }
 
 void CPURenderer::configure_ReSTIR_DI_initial_pass()
@@ -1240,11 +1296,11 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 		if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_output_reservoirs_1'
 			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs =
-									m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+				m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
 		else
 			// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
 			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs =
-									m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+				m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 
 		m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 	}
@@ -1280,7 +1336,7 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int 
 		// 'm_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs'
 		// is the proper pointer
 		m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs =
-								m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
+			m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
 
 		if (m_restir_di_state.odd_frame)
 			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
@@ -1307,15 +1363,15 @@ void CPURenderer::configure_ReSTIR_DI_output_buffer()
 		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
 		// pass of next frame
 		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
 	else if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 		// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
 		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
 	else
 		// No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
 		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+			m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 }
 
 void CPURenderer::launch_ReSTIR_DI_temporal_reuse_pass()
@@ -1347,16 +1403,13 @@ void CPURenderer::tracing_pass()
 void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
 {
 	debug_render_pass(
-							[this](int x, int y)
-							{
-								ReSTIR_Directional_Reuse_Compute<true>(
-														m_render_data, x, y,
-														m_render_data.render_settings.restir_gi_settings.common_spatial_pass
-																				.per_pixel_spatial_reuse_directions_mask_u,
-														m_render_data.render_settings.restir_gi_settings.common_spatial_pass
-																				.per_pixel_spatial_reuse_directions_mask_ull,
-														m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
-							});
+		[this](int x, int y)
+		{
+			ReSTIR_Directional_Reuse_Compute<true>(
+				m_render_data, x, y, m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
+				m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
+		});
 }
 
 void CPURenderer::configure_ReSTIR_GI_initial_candidates_pass()
@@ -1379,11 +1432,11 @@ void CPURenderer::configure_ReSTIR_GI_temporal_reuse_pass()
 	if (m_render_data.render_settings.sample_number == 0)
 		// First frame, using the initial candidates as the input
 		m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs =
-								m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+			m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 	else
 		// Not the first frame, the input to the temporal pass is the output of the last frame ReSTIR
 		m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs =
-								m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs;
+			m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs;
 
 	// For the output, using whatever buffer isn't the one we're reading from (the input buffer)
 	if (m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs == m_restir_gi_state.temporal_reservoirs.data())
@@ -1445,18 +1498,38 @@ void CPURenderer::configure_ReSTIR_GI_shading_pass()
 {
 	if (m_render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
 		m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
+			m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
 	else if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 		m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+			m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
 	else
 		m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
-								m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+			m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 }
 
 void CPURenderer::launch_ReSTIR_GI_shading_pass()
 {
 	debug_render_pass([this](int x, int y) { ReSTIR_GI_Shading(m_render_data, x, y); });
+}
+
+void CPURenderer::ReSTIR_PG_reset_hash_grid()
+{
+	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions.size(); index++)
+	{
+		ReSTIR_PG_ResetHashGrid(m_render_data, index);
+	}
+}
+
+void CPURenderer::ReSTIR_PG_reset_distributions()
+{
+#if ReSTIRPGEnable == KERNEL_OPTION_FALSE
+	return;
+#endif
+
+	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions.size() * ReSTIRPGDistributionComponentCount; index++)
+	{
+		ReSTIR_PG_ResetDistributions(m_render_data, index);
+	}
 }
 
 void CPURenderer::gmon_compute_median_of_means()

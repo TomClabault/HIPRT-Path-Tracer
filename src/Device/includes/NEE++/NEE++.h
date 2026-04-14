@@ -232,8 +232,9 @@ struct NEEPlusPlusDevice
 	{
 		float3_t second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
 
-		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size,
-										   m_grid_cell_min_size, out_checksum);
+		return hash_double_position_camera(context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size,
+										   out_checksum) %
+			   m_total_number_of_cells;
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_visibility_map_index(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const

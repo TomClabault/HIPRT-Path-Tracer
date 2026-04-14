@@ -28,8 +28,8 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 	if (is_render_pass_used())
 	{
-		unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(
-								GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+		unsigned int number_of_sets =
+			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
@@ -89,7 +89,7 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
 
 	unsigned int number_of_sets =
-							m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
 	// Adding +1 to sample_number here because this launch() function is called after the renderer has accumulated
 	// one more sample but before render_settings.sample_number is incremented
@@ -180,7 +180,7 @@ void GMoNRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (m_gmon.sets.is_allocated())
+	if (m_gmon.sets.size() != 0)
 		render_data.buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
 	else
 		render_data.buffers.gmon_estimator.sets = nullptr;

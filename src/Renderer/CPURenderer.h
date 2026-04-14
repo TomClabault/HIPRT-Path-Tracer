@@ -23,6 +23,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -48,7 +49,7 @@ public:
 	void set_envmap(Image32Bit& envmap_image);
 	void set_camera(Camera& camera);
 
-	void resize_buffers();
+	void setup_buffers();
 	void update_render_data();
 	void bsdfs_data_to_device();
 
@@ -70,6 +71,7 @@ public:
 	void ReGIR_pass();
 	void ReSTIR_DI_pass();
 	void ReSTIR_GI_pass();
+	void ReSTIR_PG_pass();
 
 	template <bool accumulatePreIntegration>
 	void ReGIR_grid_fill_pass(bool primary_hit);
@@ -108,6 +110,9 @@ public:
 	void launch_ReSTIR_GI_temporal_reuse_pass();
 	void launch_ReSTIR_GI_spatial_reuse_pass();
 	void launch_ReSTIR_GI_shading_pass();
+
+	void ReSTIR_PG_reset_hash_grid();
+	void ReSTIR_PG_reset_distributions();
 
 	void gmon_compute_median_of_means();
 
@@ -198,6 +203,21 @@ private:
 		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
 		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
 	} m_restir_gi_state;
+
+	struct ReSTIRPGState
+	{
+		std::vector<ReSTIRPGSplattingSample> splatting_samples;
+
+		std::vector<ReSTIRPGDistribution> hash_grid_distributions;
+		std::vector<AtomicType<unsigned int>> hash_grid_checksums;
+		std::vector<AtomicType<unsigned int>> grid_cell_alive;
+		AtomicType<unsigned int> grid_cell_alive_count;
+		std::vector<unsigned int> grid_cell_alive_list;
+
+		// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
+		std::vector<AtomicType<unsigned int>> hash_grid_distributions_sufficient_statistics_lock;
+		ReSTIRPGSufficientStatisticsSoAHost<std::vector> hash_grid_distributions_sufficient_statistics_soa_buffer;
+	} m_restir_pg_state;
 
 	struct ReGIRState
 	{

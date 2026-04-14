@@ -15,11 +15,8 @@
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data,
-																 hiprtRay ray,
-																 RayPayload& out_ray_payload,
-																 HitInfo& out_closest_hit_info,
-																 Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
+	HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
 {
 	return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce,
 							   random_number_generator);
@@ -30,22 +27,22 @@ HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData
  * but without evaluating the contribution of the BSDF or the PDF.
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data,
-														   RayPayload& ray_payload,
-														   HitInfo& closest_hit_info,
-														   float3_t view_direction,
-														   ColorRGB32F& out_bsdf_color,
-														   float3_t& out_bounce_direction,
-														   float& out_bsdf_pdf,
-														   Xorshift32Generator& random_number_generator,
-														   BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
+HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData& render_data,
+																RayPayload& ray_payload,
+																const HitInfo& closest_hit_info,
+																const float3_t view_direction,
+																ColorRGB32F& out_bsdf_color,
+																float3_t& out_bounce_direction,
+																float& out_bsdf_pdf,
+																Xorshift32Generator& random_number_generator,
+																BSDFIncidentLightInfo& out_sampled_light_info)
 {
 	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-							 *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.accumulated_roughness);
+							 out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.accumulated_roughness);
 
 	out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
 
-	ray_payload.accumulate_roughness(*out_sampled_light_info);
+	ray_payload.accumulate_roughness(out_sampled_light_info);
 }
 
 /**
@@ -113,13 +110,13 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 															float3_t view_direction,
 															hiprtRay& out_ray,
 															Xorshift32Generator& random_number_generator,
-															BSDFIncidentLightInfo* incident_light_info = nullptr)
+															BSDFIncidentLightInfo incident_light_info)
 {
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
-	path_tracing_sample_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction,
-																  bsdf_pdf, random_number_generator, incident_light_info);
+	path_tracing_sample_bsdf_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction,
+																	   bsdf_pdf, random_number_generator, incident_light_info);
 
 	// Terminate ray if bad sampling
 	if (bsdf_pdf <= 0.0f && !sampleDirectionOnly)
@@ -143,18 +140,17 @@ HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pix
 		render_data.aux_buffers.denoiser_albedo[pixel_index] = base_color;
 	else
 		render_data.aux_buffers.denoiser_albedo[pixel_index] =
-								(render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter +
-								 base_color) /
-								(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+			(render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + base_color) /
+			(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
 
 	if (render_data.render_settings.sample_number == 0)
 		render_data.aux_buffers.denoiser_normals[pixel_index] = shading_normal;
 	else
 	{
-		float3_t accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] *
-															   static_cast<float>(render_data.render_settings.denoiser_AOV_accumulation_counter) +
-									   shading_normal) /
-									  (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+		float3_t accumulated_normal =
+			(render_data.aux_buffers.denoiser_normals[pixel_index] * static_cast<float>(render_data.render_settings.denoiser_AOV_accumulation_counter) +
+			 shading_normal) /
+			(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
 		float normal_length = hippt::length(accumulated_normal);
 		if (!hippt::is_zero(normal_length))
 			// Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
@@ -202,8 +198,8 @@ path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F&
 	// Only clamping with the indirect lighting clamp value if
 	// this is bounce > 0 (thanks to /* clamp condition */ bounce > 0)
 	ColorRGB32F clamped_indirect_lighting_contribution =
-							clamp_light_contribution(indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp,
-													 /* clamp condition */ bounce > 0);
+		clamp_light_contribution(indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp,
+								 /* clamp condition */ bounce > 0);
 
 	if (bounce == 0)
 		// The camera ray missed so we don't have the normals but we have the base color
@@ -222,11 +218,11 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 	render_data.buffers.last_frame_ray_colors[pixel_index] = ray_color;
 
 #if DisplayOnlySampleN == KERNEL_OPTION_TRUE
-	int sampleIndex = render_data.render_settings.output_debug_sample_N;
+	int debutg_sample_index = render_data.render_settings.output_debug_sample_N;
 
 	if (render_data.render_settings.sample_number == 0)
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-	else if (render_data.render_settings.sample_number == sampleIndex)
+	else if (render_data.render_settings.sample_number == debutg_sample_index)
 	{
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
 #if ViewportColorOverriden == 0
@@ -255,7 +251,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		// GMoN is in use, accumulating in the GMoN sets
 
 		unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y *
-													  render_data.buffers.gmon_estimator.next_set_to_accumulate +
+								  render_data.buffers.gmon_estimator.next_set_to_accumulate +
 							  pixel_index;
 
 		if (render_data.render_settings.sample_number == 0)
@@ -266,10 +262,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 #endif
 }
 
-HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data,
-														   RayPayload& ray_payload,
-														   int pixel_index,
-														   Xorshift32Generator& rng)
+HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
+	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
 #if ViewportColorOverriden == 1
 	// Modifying the ray color such that we display some debug color to the screen
@@ -290,9 +284,9 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		context.point_on_light = make_float3(0, 0, 0);
 		context.shaded_point   = primary_hit;
 
-		ray_payload.ray_color = ColorRGB32F::random_color(render_data.nee_plus_plus.hash_context(context, render_data.current_camera, trash_checksum));
-		ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
-		ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
+		out_debug_color = ColorRGB32F::random_color(render_data.nee_plus_plus.hash_context(context, render_data.current_camera, trash_checksum));
+		out_debug_color *= (render_data.render_settings.sample_number + 1);
+		out_debug_color *= hippt::dot(shading_normal, view_direction);
 	}
 #elif ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG
 #if ReGIR_DebugMode == REGIR_DEBUG_MODE_GRID_CELLS
@@ -304,10 +298,10 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		float3_t view_direction		= render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-		ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, normal, render_data.current_camera,
-																								 primary_hit_roughness, true);
-		ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
-		ray_payload.ray_color *= hippt::dot(normal, view_direction);
+		out_debug_color =
+			render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
+		out_debug_color *= (render_data.render_settings.sample_number + 1);
+		out_debug_color *= hippt::dot(normal, view_direction);
 	}
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -330,7 +324,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		// Scaling by SPP
 		average_contribution *= (render_data.render_settings.sample_number + 1);
 
-		ray_payload.ray_color = ColorRGB32F(average_contribution);
+		out_debug_color = ColorRGB32F(average_contribution);
 	}
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -353,7 +347,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		// Scaling by SPP
 		average_contribution *= (render_data.render_settings.sample_number + 1);
 
-		ray_payload.ray_color = ColorRGB32F(average_contribution);
+		out_debug_color = ColorRGB32F(average_contribution);
 	}
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -363,7 +357,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
 		unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(
-								primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
+			primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
 
 		ColorRGB32F color;
 		float3_t rep_point = ReGIR_get_cell_world_point(render_data, cell_index, true);
@@ -374,7 +368,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		// Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
 		color *= render_data.render_settings.sample_number + 1;
 
-		ray_payload.ray_color = ColorRGB32F(color);
+		out_debug_color = ColorRGB32F(color);
 	}
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -384,14 +378,14 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
 		unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(
-								primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
+			primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
 
 		ColorRGB32F color = (ColorRGB32F(ReGIR_get_cell_world_normal(render_data, cell_index, true)) + ColorRGB32F(1.0f)) * 0.5f;
 
 		// Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
 		color *= render_data.render_settings.sample_number + 1;
 
-		ray_payload.ray_color = ColorRGB32F(color);
+		out_debug_color = ColorRGB32F(color);
 	}
 #endif // ReGIR debug mode
 
@@ -399,12 +393,43 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 	ColorRGB32F color = ColorRGB32F::random_color(render_data.ssbn_settings.screen_space_hash_grid[pixel_index].x);
 	color *= render_data.render_settings.sample_number + 1;
 
-	ray_payload.ray_color = ColorRGB32F(color);
+	out_debug_color = ColorRGB32F(color);
 #elif SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE
 	ColorRGB32F color = ColorRGB32F(render_data.get_input_random_seed(pixel_index) / (float)((unsigned int)(-1)));
 	color *= render_data.render_settings.sample_number + 1;
 
-	ray_payload.ray_color = ColorRGB32F(color);
+	out_debug_color = ColorRGB32F(color);
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_GRID_CELLS
+	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+
+	ColorRGB32F color;
+
+	unsigned int checksum;
+	unsigned int cell_index = render_data.render_settings.restir_pg_settings.hash_position_data(primary_hit, render_data.current_camera, checksum) %
+							  render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
+	if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(
+			render_data.render_settings.restir_pg_settings.hash_grid_checksums, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,
+			cell_index, checksum))
+		color = ColorRGB32F();
+	else
+		color = ColorRGB32F::random_color(cell_index);
+
+	out_debug_color = color * (render_data.render_settings.sample_number + 1);
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION
+	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+	ColorRGB32F color;
+
+	ReSTIRPGDistribution distribution =
+		render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
+
+	if (distribution.distribution_components[0].weight == 0.0f)
+		color = ColorRGB32F(0.0f);
+	else
+		color = ColorRGB32F(hippt::normalize(distribution.get_average_axis())).abs();
+
+	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option
 #endif // ViewportColorsOverriden == 1
 }

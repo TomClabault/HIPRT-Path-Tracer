@@ -40,7 +40,7 @@
 /**
  * Whether or not to use NEE++ features at all
  */
-#define DirectLightUseNEEPlusPlus KERNEL_OPTION_TRUE
+#define DirectLightUseNEEPlusPlus KERNEL_OPTION_FALSE
 
 /**
  * What light sampling strategy is going to be used to sample light

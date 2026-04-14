@@ -95,6 +95,9 @@ void GPURendererThread::setup_render_graphs()
 	restir_gi_render_pass->add_dependency(restir_di_render_pass);
 	restir_gi_render_pass->add_dependency(regir_render_pass);
 
+	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass = render_graph_full.create_render_pass<ReSTIRPGRenderPass>();
+	restir_pg_render_pass->add_dependency(restir_gi_render_pass);
+
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = render_graph_full.create_render_pass<GMoNRenderPass>();
 	// GMoN depends on the main path tracing pass which
 	// is the megakernel pass or ReSTIR GI, whichever is active
@@ -113,6 +116,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(restir_di_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_gi_render_pass);
+	render_graph_full.add_render_pass(restir_pg_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
 

@@ -22,9 +22,11 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 												   bool primary_hit,
 												   const DeviceUnpackedEffectiveMaterial& material)
 {
-	if (DirectLightSamplingStrategy != LSS_BASE_REGIR)
-		return;
-	else if (primitive_index == -1)
+#if DirectLightSamplingStrategy != LSS_BASE_REGIR
+	return;
+#endif
+
+	if (primitive_index == -1)
 		return;
 	else if (render_data.buffers.emissive_triangles_count == 0)
 		return;

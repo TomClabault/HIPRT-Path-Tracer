@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
 	cpu_renderer.set_camera(parsed_scene.camera);
 
 	cpu_renderer.set_scene(parsed_scene);
-	cpu_renderer.resize_buffers();
+	cpu_renderer.setup_buffers();
 	cpu_renderer.update_render_data();
 
 	ThreadManager::join_all_threads();

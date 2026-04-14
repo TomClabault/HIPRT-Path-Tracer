@@ -6,21 +6,21 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 
+#include "Device/includes/VMF.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "Renderer/LightTree/LightTreeATSConstants.h"
 
 struct LightTreeSGNodeDevice
 {
-	float3_t vmf_axis	= make_float3(0.0f, 0.0f, 0.0f);
-	float vmf_sharpness = 0.0f;
+	VMF vmf;
 
 	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
 	float gaussian_spatial_variance = 0.0f;
 
 	float bounding_sphere_radius = 0.0f;
 
-	// This contains a baked in division by SG_integral(node.vmf_sharpness)
+	// This contains a baked in division by SG_integral(node.vmf.sharpness)
 	float total_power = 0.0f;
 
 	// If triangle count is 0, this contains the left child index

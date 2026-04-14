@@ -42,8 +42,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
 		y_ray_point_direction += random_number_generator() - 0.5f;
 	}
 
-	hiprtRay camera_ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction,
-																	render_data.render_settings.render_resolution);
+	hiprtRay camera_ray =
+		render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, render_data.render_settings.render_resolution);
 	RayPayload ray_payload;
 
 	HitInfo closest_hit_info;
@@ -61,8 +61,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
 		if (ray_payload.next_ray_state != RayState::MISSED)
 		{
 			if (bounce > 0)
-				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, camera_ray, ray_payload, closest_hit_info,
-																					random_number_generator);
+				intersection_found =
+					path_tracing_find_indirect_bounce_intersection(render_data, camera_ray, ray_payload, closest_hit_info, random_number_generator);
 
 			if (intersection_found)
 			{
@@ -75,10 +75,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
 													 closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
 				}
 
-				BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF
-														  // sampled
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce<true>(render_data, ray_payload, closest_hit_info, -camera_ray.direction,
-																							 camera_ray, random_number_generator, &sampled_light_info);
+																							 camera_ray, random_number_generator, incident_light_info);
+
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;

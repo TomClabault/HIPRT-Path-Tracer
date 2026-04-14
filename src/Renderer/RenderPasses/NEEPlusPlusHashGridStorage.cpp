@@ -108,7 +108,7 @@ void NEEPlusPlusHashGridStorage::reset()
 	render_data.nee_plus_plus.m_update_visibility_map = true;
 
 	// Resetting the counters
-	if (m_total_shadow_ray_queries.is_allocated())
+	if (m_total_shadow_ray_queries.size() != 0)
 	{
 		m_total_shadow_ray_queries.memset_whole_buffer(1);
 		m_shadow_rays_actually_traced.memset_whole_buffer(1);

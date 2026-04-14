@@ -58,8 +58,6 @@ public:
 	const T* data() const;
 	T* data();
 
-	bool is_allocated() const;
-
 	/**
 	 * Static function for downloading from a device buffer when we
 	 * only have the address of the buffer (and not the OrochiBuffer object)
@@ -228,7 +226,7 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 
 	if (new_element_count == 0)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Resizing an OrochiBuffer to 0 elements.");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Resizing an OrochiBuffer to 0 elements. That's invalid, use free() instead.");
 
 		Debug::debugbreak();
 	}
@@ -384,12 +382,6 @@ template <typename T>
 T* OrochiBuffer<T>::data()
 {
 	return get_device_pointer();
-}
-
-template <typename T>
-bool OrochiBuffer<T>::is_allocated() const
-{
-	return m_data_pointer != nullptr;
 }
 
 // Static function

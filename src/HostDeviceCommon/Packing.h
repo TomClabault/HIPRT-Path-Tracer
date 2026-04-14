@@ -447,8 +447,8 @@ struct RGBE9995Packed
 	HIPRT_DEVICE void pack(ColorRGB32F rgb)
 	{
 		// To determine the shared exponent, we must clamp the channels to an expressible range
-		const float kMaxVal = hippt::uint_as_float(0x477F8000); // 1.FF x 2^+15
-		const float kMinVal = hippt::uint_as_float(0x37800000); // 1.00 x 2^-16
+		float kMaxVal = hippt::uint_as_float(0x477F8000); // 1.FF x 2^+15
+		float kMinVal = hippt::uint_as_float(0x37800000); // 1.00 x 2^-16
 
 		// Non-negative and <= kMaxVal
 		rgb.clamp(0.0f, kMaxVal);

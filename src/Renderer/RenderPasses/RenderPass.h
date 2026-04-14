@@ -133,6 +133,9 @@ public:
 	virtual bool pre_render_update(float delta_time) = 0;
 
 	/**
+	 * *** Do not use this function in *_async function! ***
+	 * Use the member variable 'm_render_pass_used_this_frame' instead
+	 *
 	 * This function may be overriden by render passes that can be enabled/disabled at runtime.
 	 *
 	 * This is the case of ReSTIR render passes for example: the ReSTIR render passes are not always used for rendering.
@@ -144,6 +147,7 @@ public:
 	 * If the render pass is not active, launch() and post_render_update() will not be called after is_render_pass_used() is called.
 	 */
 	virtual bool is_render_pass_used() const;
+
 	/**
 	 * Sets the 'm_render_pass_used_this_frame' boolean
 	 */

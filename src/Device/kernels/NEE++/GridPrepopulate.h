@@ -18,11 +18,8 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data,
-										   const hiprtRay& ray,
-										   const HitInfo& closest_hit_info,
-										   RayPayload& ray_payload,
-										   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void accumulate_NEE_plus_plus(
+	HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
 	// Just making sure that this is not set to false
 	render_data.nee_plus_plus.m_update_visibility_map = true;
@@ -30,8 +27,8 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data,
 	for (int sample = 0; sample < render_data.nee_plus_plus.grid_prepopulate_sample_count; sample++)
 	{
 		LightSamplePointArray light_samples = sample_one_point_on_light<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(
-								render_data, closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								closest_hit_info.primitive_index, ray_payload, random_number_generator);
+			render_data, closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+			closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(); i++)
 		{
@@ -111,10 +108,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 			{
 				accumulate_NEE_plus_plus(render_data, ray, closest_hit_info, ray_payload, random_number_generator);
 
-				BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF
-														  // sampled
+				BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
+																						   // so that we know what the BSDF sampled
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
-																					   random_number_generator, &sampled_light_info);
+																					   random_number_generator, sampled_light_info);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;
