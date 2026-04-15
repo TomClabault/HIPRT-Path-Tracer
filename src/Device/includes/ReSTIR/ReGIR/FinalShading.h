@@ -64,7 +64,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 	}
 	else
 	{
-#if ReGIR_DebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
+#if ReGIRDebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
 		return ColorRGB32F(1.0e10f, 0.0f, 1.0e10f);
 #endif
 

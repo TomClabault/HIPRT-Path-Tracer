@@ -13,6 +13,7 @@
 #include "Device/includes/RussianRoulette.h"
 
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
@@ -265,6 +266,10 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
+	if (hippt::thread_idx_x() == 50)
+	{
+		printf("ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION ---> %d == %d. VPOverriden: %d\n", ReSTIRPGDebugMode, RESTIR_PG_DEBUG_AVERAGE_DIRECTION, ViewportColorOverriden);
+	}
 #if ViewportColorOverriden == 1
 	// Modifying the ray color such that we display some debug color to the screen
 
@@ -288,8 +293,8 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 		out_debug_color *= (render_data.render_settings.sample_number + 1);
 		out_debug_color *= hippt::dot(shading_normal, view_direction);
 	}
-#elif ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG
-#if ReGIR_DebugMode == REGIR_DEBUG_MODE_GRID_CELLS
+#elif ReGIRDebugMode != REGIR_DEBUG_MODE_NO_DEBUG
+#if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
@@ -303,7 +308,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 		out_debug_color *= (render_data.render_settings.sample_number + 1);
 		out_debug_color *= hippt::dot(normal, view_direction);
 	}
-#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -326,7 +331,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 
 		out_debug_color = ColorRGB32F(average_contribution);
 	}
-#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -349,7 +354,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 
 		out_debug_color = ColorRGB32F(average_contribution);
 	}
-#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
@@ -370,7 +375,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 
 		out_debug_color = ColorRGB32F(color);
 	}
-#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];

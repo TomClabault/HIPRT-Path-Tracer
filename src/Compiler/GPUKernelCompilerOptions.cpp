@@ -89,7 +89,7 @@ const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES = "ReGIR_ShadingJitterRetries";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION = "ReGIR_HashGridAdaptiveRoughnessGridPrecision";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE = "ReGIR_HashGridConstantGridCellSize";
-const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
+const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIRDebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR = "DirectLightNEEEstimator";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
@@ -135,6 +135,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMP
 const std::string GPUKernelCompilerOptions::RESTIR_PG_ENABLE = "ReSTIRPGEnable";
 const std::string GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT = "ReSTIRPGDistributionComponentCount";
 const std::string GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS = "ReSTIRPGHashGridCollisionResolveSteps";
+const std::string GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE = "ReSTIRPGDebugMode";
 
 const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount";
 
@@ -263,6 +264,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_PG_ENABLE,
 	GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS,
+	GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::GMON_M_SETS_COUNT,
 
@@ -349,7 +351,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES] = std::make_shared<int>(ReGIR_ShadingJitterRetries);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION] = std::make_shared<int>(ReGIR_HashGridAdaptiveRoughnessGridPrecision);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE] = std::make_shared<int>(ReGIR_HashGridConstantGridCellSize);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIRDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR] = std::make_shared<int>(DirectLightNEEEstimator);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
@@ -395,6 +397,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_ENABLE] = std::make_shared<int>(ReSTIRPGEnable);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT] = std::make_shared<int>(ReSTIRPGDistributionComponentCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS] = std::make_shared<int>(ReSTIRPGHashGridCollisionResolveSteps);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE] = std::make_shared<int>(ReSTIRPGDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
 
