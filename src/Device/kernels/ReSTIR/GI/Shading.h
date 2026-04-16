@@ -94,7 +94,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	{
 		// Geometry miss, directly into the envmap
 		ColorRGB32F envmap_radiance = path_tracing_miss_gather_envmap(render_data, ColorRGB32F(1.0f), ray.direction, 0, pixel_index);
-		path_tracing_accumulate_color(render_data, envmap_radiance, pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index, envmap_radiance);
 
 		return;
 	}
@@ -165,18 +165,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 		return;
 
 	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::FINAL_RESERVOIR_UCW)
-		path_tracing_accumulate_color(
-			render_data, ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index,
+									  ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::TARGET_FUNCTION)
-		path_tracing_accumulate_color(
-			render_data, ColorRGB32F(resampling_reservoir.sample.target_function) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor,
-			pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index,
+									  ColorRGB32F(resampling_reservoir.sample.target_function) *
+										  render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::WEIGHT_SUM)
-		path_tracing_accumulate_color(
-			render_data, ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index,
+									  ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
-		path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor,
-									  pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index,
+									  ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::PER_PIXEL_REUSE_RADIUS &&
 			 render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
@@ -197,10 +197,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	}
 	else
 	{
-		path_tracing_debug_view_modify_ray_color(render_data, ray_payload, pixel_index, random_number_generator, camera_outgoing_radiance);
+		ColorRGB32F debug_color;
+		path_tracing_compute_debug_view_debug_color(render_data, ray_payload, pixel_index, random_number_generator, debug_color);
 
 		// Regular output
-		path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+		path_tracing_accumulate_color(render_data, pixel_index, camera_outgoing_radiance, debug_color);
 	}
 }
 

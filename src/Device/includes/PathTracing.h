@@ -213,17 +213,27 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 	return path_tracing_miss_gather_envmap(render_data, ray_payload.throughput, ray_direction, ray_payload.bounce, pixel_index);
 }
 
-HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
+#define DEFAULT_DEBUG_COLOR ColorRGB32F(-42.0f, -42.0f, -42.0f)
+
+HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data,
+												uint32_t pixel_index,
+												const ColorRGB32F& ray_color,
+												const ColorRGB32F& debug_color = DEFAULT_DEBUG_COLOR)
 {
 	render_data.buffers.last_frame_ray_colors[pixel_index] = ray_color;
 
 #if DisplayOnlySampleN == KERNEL_OPTION_TRUE
-	int debutg_sample_index = render_data.render_settings.output_debug_sample_N;
+	int debug_sample_index = render_data.render_settings.output_debug_sample_N;
 
-	if (render_data.render_settings.sample_number == 0)
-		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-	else if (render_data.render_settings.sample_number == debutg_sample_index)
-		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
+	if (render_data.render_settings.sample_number >= debug_sample_index)
+	{
+		if (debug_color == DEFAULT_DEBUG_COLOR)
+			render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (render_data.render_settings.sample_number + 1);
+		else
+			render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+	}
+	else
+		render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
 
 #else // DisplayOnlySampleN
 
@@ -257,10 +267,10 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 #endif
 }
 
-HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
+HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
-	ColorRGB32F input_color = out_debug_color;
+	out_debug_color = DEFAULT_DEBUG_COLOR;
 
 	// Modifying the ray color such that we display some debug color to the screen
 
@@ -395,7 +405,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 	color *= render_data.render_settings.sample_number + 1;
 
 	out_debug_color = ColorRGB32F(color);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_GRID_CELLS
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_GRID_CELLS && ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
@@ -412,7 +422,7 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 		color = ColorRGB32F::random_color(cell_index);
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 	ColorRGB32F color;
@@ -427,9 +437,6 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option
-
-	if (input_color != out_debug_color)
-		render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F(0.0f);
 }
 
 #endif

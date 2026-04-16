@@ -91,9 +91,14 @@ struct ColorRGBA32F
 		a /= k;
 	}
 
-	HIPRT_DEVICE bool operator!=(const ColorRGBA32F& other)
+	HIPRT_DEVICE bool operator==(const ColorRGBA32F& other) const
 	{
-		return r != other.r || g != other.g || b != other.g || a != other.a;
+		return r == other.r || g == other.g || b == other.g || a == other.a;
+	}
+
+	HIPRT_DEVICE bool operator!=(const ColorRGBA32F& other) const
+	{
+		return !(*this == other);
 	}
 
 	HIPRT_DEVICE float length() const
@@ -377,9 +382,14 @@ struct ColorRGB32F
 		b /= k;
 	}
 
-	HIPRT_DEVICE bool operator!=(const ColorRGB32F& other)
+	HIPRT_DEVICE bool operator==(const ColorRGB32F& other) const
 	{
-		return r != other.r || g != other.g || b != other.g;
+		return r == other.r || g == other.g || b == other.g;
+	}
+
+	HIPRT_DEVICE bool operator!=(const ColorRGB32F& other) const
+	{
+		return !(*this == other);
 	}
 
 	HIPRT_DEVICE float length() const
