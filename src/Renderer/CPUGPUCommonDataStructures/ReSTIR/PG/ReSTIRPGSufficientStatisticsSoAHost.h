@@ -42,6 +42,8 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 
 		m_sufficient_statistics_data.template resize_one_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_SAMPLE_COUNT>(new_number_of_cells);
 		m_sufficient_statistics_data.template memset_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_SAMPLE_COUNT>(0u);
+
+		m_last_resize_component_count = distributions_component_count;
 	}
 
 	void free()
@@ -57,6 +59,11 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 	unsigned int size() const
 	{
 		return m_sufficient_statistics_data.size();
+	}
+
+	unsigned int get_last_resize_component_count() const
+	{
+		return m_last_resize_component_count;
 	}
 
 	ReSTIRPGDistributionSufficientStatisticsSoADevice to_device()
@@ -79,6 +86,8 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 	}
 
 	ReSTIRPGSufficientStatisticsSoAHostInternal<DataContainer> m_sufficient_statistics_data;
+
+	unsigned int m_last_resize_component_count = 0;
 };
 
 #endif

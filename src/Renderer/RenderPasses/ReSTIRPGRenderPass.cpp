@@ -115,6 +115,8 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
+	bool updated = false;
+
 	if (!is_render_pass_used())
 	{
 		if (m_splatting_samples_buffer.size() != 0)
@@ -132,37 +134,45 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			m_hash_grid_distributions_sufficient_statistics_lock_buffer.free();
 		}
 
-		return true;
-	}
-
-	bool updated = false;
-	if (m_splatting_samples_buffer.size() !=
-		render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.render_settings.nb_bounces)
-	{
-		m_splatting_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y *
-										  render_data.render_settings.nb_bounces);
-
 		updated = true;
 	}
-
-	if (m_hash_grid_distributions_buffer.size() != HASH_GRID_INITIAL_CELL_COUNT)
+	else
 	{
-		m_hash_grid_distributions_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
-		m_hash_grid_checksums_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
-		m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
-		m_grid_cell_alive_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
-		m_grid_cell_alive_buffer.memset_whole_buffer(0);
-		m_grid_cell_alive_count_buffer.resize(1);
-		m_grid_cell_alive_count_buffer.memset_whole_buffer(0);
-		m_grid_cell_alive_list_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+		if (m_splatting_samples_buffer.size() !=
+			render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.render_settings.nb_bounces)
+		{
+			m_splatting_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y *
+											  render_data.render_settings.nb_bounces);
 
-		m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(
-			HASH_GRID_INITIAL_CELL_COUNT,
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT));
-		m_hash_grid_distributions_sufficient_statistics_lock_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
-		m_hash_grid_distributions_sufficient_statistics_lock_buffer.memset_whole_buffer(0);
+			updated = true;
+		}
 
-		updated = true;
+		if (m_hash_grid_distributions_buffer.size() != HASH_GRID_INITIAL_CELL_COUNT)
+		{
+			m_hash_grid_distributions_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+			m_hash_grid_checksums_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+			m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+			m_grid_cell_alive_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+			m_grid_cell_alive_buffer.memset_whole_buffer(0);
+			m_grid_cell_alive_count_buffer.resize(1);
+			m_grid_cell_alive_count_buffer.memset_whole_buffer(0);
+			m_grid_cell_alive_list_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+
+			m_hash_grid_distributions_sufficient_statistics_lock_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
+			m_hash_grid_distributions_sufficient_statistics_lock_buffer.memset_whole_buffer(0);
+
+			updated = true;
+		}
+
+		if (m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_last_resize_component_count() !=
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
+		{
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(
+				HASH_GRID_INITIAL_CELL_COUNT,
+				m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT));
+
+			updated = true;
+		}
 	}
 
 	return updated;
@@ -184,8 +194,10 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 																				 m_renderer->get_main_stream());
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
-		256, 1, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells  * compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT), 1, launch_args,
-		m_renderer->get_main_stream());
+		256, 1,
+		render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells *
+			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
+		1, launch_args, m_renderer->get_main_stream());
 
 	return true;
 }

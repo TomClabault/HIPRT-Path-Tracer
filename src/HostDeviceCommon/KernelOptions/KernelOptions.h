@@ -57,6 +57,9 @@
 
 #define PSS_BSDF	  0
 #define PSS_RESTIR_GI 1
+#define PSS_RESTIR_PG                                                                                                                                          \
+	2 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR GI + ReSTIRPGEnable. ReSTIR PG is not its
+	  // own "path sampling" strategy, it has to be piggy backing on a ReSTIR path sampler
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

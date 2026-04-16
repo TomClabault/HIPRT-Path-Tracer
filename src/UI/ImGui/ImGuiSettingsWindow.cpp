@@ -1444,119 +1444,188 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Path sampling tree");
 
-			const char* items[]	   = { "- BSDF sampling", "- ReSTIR GI" };
+			const char* items[]	   = { "- BSDF sampling", "- ReSTIR GI", "- ReSTIR PG" };
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
 				"Uses ReSTIR GI to resample a path to shade for the pixel.",
+				"Uses ReSTIR Path Guiding piggy-backing on another ReSTIR path sampler to improve path sampling distributions over time with guiding.",
 			};
 			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy",
 												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items,
 												 IM_ARRAYSIZE(items), tooltips))
 			{
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_PG)
+				{
+					// This is ReSTIR PG. Its enabled through ReSTIR GI, the options for PG are in the ReSTIR GI collapsing header so let's just switch back to
+					// ReSTIR GI
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
+
+					// Automatically enabling ReSTIR PG still for convenience
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, KERNEL_OPTION_TRUE);
+				}
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE)
+			{
+				if (ImGui::CollapsingHeader("ReSTIR PG"))
+				{
+					ImGui::TreePush("ReSTIR PG options tree");
+
+					bool use_pg = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
+					if (ImGui::Checkbox("Enable ReSTIR PG", &use_pg))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, use_pg ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					static int distribution_component_count =
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
+					ImGui::SliderInt("Mixture Distribution Component Count", &distribution_component_count, 1, 16);
+
+					if (distribution_component_count !=
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
+					{
+						ImGui::TreePush("ReSTIR PG distribution component count apply button");
+
+						if (ImGui::Button("Apply##ReSTIR PG distribution component count"))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT,
+																   distribution_component_count);
+
+							m_renderer->recompile_kernels();
+							m_render_window->set_render_dirty(true);
+						}
+
+						ImGui::TreePop();
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Average distribution direction" };
+
+					if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE),
+									 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+					{
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					ImGui::TreePop(); // ReSTIR PG Tree
+				}
 			}
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
 			{
 			case PSS_RESTIR_GI:
 			{
-				ImGui::TreePush("ReSTIR GI options tree");
-
-				static float last_VRAM_usage = 0.0f;
-				if (m_renderer->get_ReSTIR_GI_render_pass())
-					last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
-				ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) ==
-					KERNEL_OPTION_FALSE)
-					ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
-											   "are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
-											   "\nThis will manifest as some darkening (somewhat similar to rendering with less bounces) on perfectly specular "
-											   "surfaces (delta distributions).\n\n"
-											   ""
-											   "Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get "
-											   "rid of this issue.");
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
+				if (ImGui::CollapsingHeader("ReSTIR GI"))
 				{
-					render_settings.restir_gi_settings.m_cap = std::max(0, render_settings.restir_gi_settings.m_cap);
-					if (render_settings.accumulate)
-						m_render_window->set_render_dirty(true);
-				}
+					static float last_VRAM_usage = 0.0f;
+					if (m_renderer->get_ReSTIR_GI_render_pass())
+						last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
+					ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
+					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) ==
+						KERNEL_OPTION_FALSE)
+						ImGuiRenderer::add_warning(
+							"Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+							"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
+							"\nThis will manifest as some darkening (somewhat similar to rendering with less bounces) on perfectly specular "
+							"surfaces (delta distributions).\n\n"
+							""
+							"Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get "
+							"rid of this issue.");
 
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-				if (ImGui::CollapsingHeader("Rejection Heuristics"))
-				{
-					ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
-
-					draw_ReSTIR_neighbor_heuristics_panel<true>();
-
-					ImGui::TreePop();
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
-
-				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-				draw_ReSTIR_temporal_reuse_panel<true>(
-					[&render_settings, this]()
+					if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 					{
-						if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
+						render_settings.restir_gi_settings.m_cap = std::max(0, render_settings.restir_gi_settings.m_cap);
+						if (render_settings.accumulate)
 							m_render_window->set_render_dirty(true);
-					});
-				draw_ReSTIR_spatial_reuse_panel<true>(
-					[&render_settings, this]()
-					{
-						if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
-							m_render_window->set_render_dirty(true);
-					});
-				ImGui::PopItemWidth();
-
-				draw_ReSTIR_bias_correction_panel<true>();
-
-				if (ImGui::CollapsingHeader("Debug"))
-				{
-					ImGui::TreePush("ReSTIR GI options tree");
-
-					if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-													"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-					if (render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location)
-					{
-						ImGui::TreePush("Debug neighbor location vertical tree");
-
-						ImGui::Text("Debug reuse direction");
-						bool reuse_direction_changed = false;
-						reuse_direction_changed |= ImGui::RadioButton(
-							"Horizontally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
-						ImGui::SameLine();
-						reuse_direction_changed |= ImGui::RadioButton(
-							"Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
-						ImGui::SameLine();
-						reuse_direction_changed |= ImGui::RadioButton(
-							"Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
-
-						if (reuse_direction_changed)
-							m_render_window->set_render_dirty(true);
-
-						ImGui::TreePop();
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					const char* debug_view_items[] = {
-						"No debug view",	   "- Final reservoir UCW",	   "- Final reservoir target function", "- Final reservoir weight sum",
-						"- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"
-					};
-					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
-						m_render_window->set_render_dirty(true);
 
-					ImGui::TreePop();
+					if (ImGui::CollapsingHeader("Rejection Heuristics"))
+					{
+						ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
+
+						draw_ReSTIR_neighbor_heuristics_panel<true>();
+
+						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
+
+					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
+					draw_ReSTIR_temporal_reuse_panel<true>(
+						[&render_settings, this]()
+						{
+							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
+								m_render_window->set_render_dirty(true);
+						});
+					draw_ReSTIR_spatial_reuse_panel<true>(
+						[&render_settings, this]()
+						{
+							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
+								m_render_window->set_render_dirty(true);
+						});
+					ImGui::PopItemWidth();
+
+					draw_ReSTIR_bias_correction_panel<true>();
+
+					if (ImGui::CollapsingHeader("Debug"))
+					{
+						ImGui::TreePush("ReSTIR GI options tree");
+
+						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+														"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+						if (render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location)
+						{
+							ImGui::TreePush("Debug neighbor location vertical tree");
+
+							ImGui::Text("Debug reuse direction");
+							bool reuse_direction_changed = false;
+							reuse_direction_changed |= ImGui::RadioButton(
+								"Horizontally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
+							ImGui::SameLine();
+							reuse_direction_changed |= ImGui::RadioButton(
+								"Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
+							ImGui::SameLine();
+							reuse_direction_changed |= ImGui::RadioButton(
+								"Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+							if (reuse_direction_changed)
+								m_render_window->set_render_dirty(true);
+
+							ImGui::TreePop();
+						}
+
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						const char* debug_view_items[] = {
+							"No debug view",	   "- Final reservoir UCW",	   "- Final reservoir target function", "- Final reservoir weight sum",
+							"- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"
+						};
+						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+							m_render_window->set_render_dirty(true);
+						if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop(); // Debug tree
+					}
 				}
-				ImGui::TreePop();
 			}
+
 			default:
 				break;
 			}
