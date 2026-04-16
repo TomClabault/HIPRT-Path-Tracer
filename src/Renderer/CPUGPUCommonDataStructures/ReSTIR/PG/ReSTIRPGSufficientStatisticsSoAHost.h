@@ -49,6 +49,7 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 	void free()
 	{
 		m_sufficient_statistics_data.free();
+		m_last_resize_component_count = 0;
 	}
 
 	std::size_t get_byte_size() const

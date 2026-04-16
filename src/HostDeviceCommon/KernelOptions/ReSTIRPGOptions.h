@@ -35,7 +35,7 @@
 
 #define ReSTIRPGHashGridCollisionResolveSteps 4
 
-#define ReSTIRPGDebugMode RESTIR_PG_DEBUG_AVERAGE_DIRECTION
+#define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
 
 #endif
 
