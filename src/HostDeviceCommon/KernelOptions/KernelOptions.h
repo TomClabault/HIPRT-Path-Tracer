@@ -183,14 +183,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-/**
- * This is a handy macro that tells us whether or not we have any other kernel option
- * that overrides the color of the framebuffer
- */
-#define ViewportColorOverriden                                                                                                                                 \
-	((NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG || DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE) ||                  \
-	 (DirectLightSamplingStrategy == LSS_BASE_REGIR && ReGIRDebugMode != REGIR_DEBUG_MODE_NO_DEBUG) ||                                                        \
-	 (ReSTIRPGEnable == KERNEL_OPTION_TRUE && ReSTIRPGDebugMode != RESTIR_PG_NO_DEBUG) ||                                                                      \
-	 (SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE || SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE))
-
 #endif

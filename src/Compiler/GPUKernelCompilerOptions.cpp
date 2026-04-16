@@ -133,7 +133,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS =
 const std::string GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING = "ReSTIR_GI_DoOptimalVisibilitySampling";
 
 const std::string GPUKernelCompilerOptions::RESTIR_PG_ENABLE = "ReSTIRPGEnable";
-const std::string GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT = "ReSTIRPGDistributionComponentCount";
+const std::string GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT = "ReSTIRPGDistributionComponentCount";
 const std::string GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS = "ReSTIRPGHashGridCollisionResolveSteps";
 const std::string GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE = "ReSTIRPGDebugMode";
 
@@ -262,7 +262,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING,
 
 	GPUKernelCompilerOptions::RESTIR_PG_ENABLE,
-	GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT,
+	GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS,
 	GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE,
 
@@ -395,7 +395,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING] = std::make_shared<int>(ReSTIR_GI_DoOptimalVisibilitySampling);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_ENABLE] = std::make_shared<int>(ReSTIRPGEnable);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT] = std::make_shared<int>(ReSTIRPGDistributionComponentCount);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT] = std::make_shared<int>(ReSTIRPGDistributionComponentCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS] = std::make_shared<int>(ReSTIRPGHashGridCollisionResolveSteps);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE] = std::make_shared<int>(ReSTIRPGDebugMode);
 

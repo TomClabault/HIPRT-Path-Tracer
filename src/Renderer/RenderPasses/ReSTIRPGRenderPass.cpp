@@ -158,7 +158,7 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 		m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(
 			HASH_GRID_INITIAL_CELL_COUNT,
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT));
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT));
 		m_hash_grid_distributions_sufficient_statistics_lock_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
 		m_hash_grid_distributions_sufficient_statistics_lock_buffer.memset_whole_buffer(0);
 
@@ -184,7 +184,7 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 																				 m_renderer->get_main_stream());
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
-		256, 1, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells  * compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT), 1, launch_args,
+		256, 1, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells  * compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT), 1, launch_args,
 		m_renderer->get_main_stream());
 
 	return true;
@@ -231,7 +231,7 @@ void ReSTIRPGRenderPass::reset(bool reset_by_camera_movement)
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
 		256, 1,
 		m_hash_grid_distributions_buffer.size() *
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_MIXTURE_COMPONENT_COUNT),
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
 		1, launch_args, m_renderer->get_main_stream());
 }
 

@@ -13,7 +13,6 @@
 #include "Device/includes/RussianRoulette.h"
 
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
-#include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
@@ -224,12 +223,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 	if (render_data.render_settings.sample_number == 0)
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
 	else if (render_data.render_settings.sample_number == debutg_sample_index)
-	{
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-#if ViewportColorOverriden == 0
-		render_data.buffers.accumulated_ray_colors[pixel_index] *= (render_data.render_settings.sample_number + 1);
-#endif
-	}
 
 #else // DisplayOnlySampleN
 
@@ -266,11 +260,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
-	if (hippt::thread_idx_x() == 50)
-	{
-		printf("ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION ---> %d == %d. VPOverriden: %d\n", ReSTIRPGDebugMode, RESTIR_PG_DEBUG_AVERAGE_DIRECTION, ViewportColorOverriden);
-	}
-#if ViewportColorOverriden == 1
+	ColorRGB32F input_color = out_debug_color;
+
 	// Modifying the ray color such that we display some debug color to the screen
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
@@ -436,7 +427,9 @@ HIPRT_DEVICE void path_tracing_debug_view_modify_ray_color(
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option
-#endif // ViewportColorsOverriden == 1
+
+	if (input_color != out_debug_color)
+		render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F(0.0f);
 }
 
 #endif

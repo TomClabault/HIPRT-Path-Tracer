@@ -42,12 +42,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 		// for better interactivity
 		render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
 
-#if ViewportColorOverriden == 1
-	// If some kernel option is going to debug some color in the viewport,
-	// then we're clearing the viewport buffer here. This needs to be done early to make sure that every pixel is cleared
-	render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
-#endif
-
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	// Initializing the closest hit info the information from the camera ray pass
