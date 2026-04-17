@@ -23,6 +23,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
@@ -208,7 +209,7 @@ private:
 	{
 		std::vector<ReSTIRPGSplattingSample> splatting_samples;
 
-		std::vector<ReSTIRPGDistribution> hash_grid_distributions;
+		ReSTIRPGDistributionSoAHost<std::vector> hash_grid_distributions_soa_buffer;
 		std::vector<AtomicType<unsigned int>> hash_grid_checksums;
 		std::vector<AtomicType<unsigned int>> grid_cell_alive;
 		AtomicType<unsigned int> grid_cell_alive_count;

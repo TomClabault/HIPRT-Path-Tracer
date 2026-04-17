@@ -11,12 +11,12 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float compute_sample_responsibility(ReSTIRPGDistribution& hash_grid_cell_distribution,
+HIPRT_DEVICE float compute_sample_responsibility(const ReSTIRPGDistribution& hash_grid_cell_distribution,
 												 float3_t sample_direction,
 												 int distribution_component,
 												 const ReSTIRPGSettings& restir_pg_settings)
 {
-	VMFMixtureComponent& vmf_mixture_component = hash_grid_cell_distribution.distribution_components[distribution_component];
+	const VMFMixtureComponent& vmf_mixture_component = hash_grid_cell_distribution.distribution_components[distribution_component];
 
 	float component_weight = vmf_mixture_component.weight;
 	return component_weight * vmf_mixture_component.vmf.density_evaluation(sample_direction);
@@ -101,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		/**
 		 * Inserting the sample into the sufficient statistics of the hash grid cell, in each component for the expectation step of the EM algorithm
 		 */
-		ReSTIRPGDistribution& distribution = restir_pg_settings.hash_grid_distributions[sample_hash_grid_index];
+		ReSTIRPGDistribution distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(sample_hash_grid_index);
 
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
 		float sum_responsibilities = 0.0f;

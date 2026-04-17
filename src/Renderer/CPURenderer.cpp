@@ -189,7 +189,7 @@ void CPURenderer::setup_buffers()
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	m_restir_pg_state.splatting_samples.resize(width * height * m_render_data.render_settings.nb_bounces);
 
-	m_restir_pg_state.hash_grid_distributions.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
+	m_restir_pg_state.hash_grid_distributions_soa_buffer.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT, ReSTIRPGDistributionComponentCount);
 	m_restir_pg_state.hash_grid_checksums = std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
 
 	m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT,
@@ -457,11 +457,11 @@ void CPURenderer::update_render_data()
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	m_render_data.render_settings.restir_pg_settings.splatting_samples = m_restir_pg_state.splatting_samples.data();
 
-	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions = m_restir_pg_state.hash_grid_distributions.data();
-	m_render_data.render_settings.restir_pg_settings.hash_grid_checksums	 = m_restir_pg_state.hash_grid_checksums.data();
-	m_render_data.render_settings.restir_pg_settings.grid_cell_alive		 = m_restir_pg_state.grid_cell_alive.data();
-	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_count	 = &m_restir_pg_state.grid_cell_alive_count;
-	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_list	 = m_restir_pg_state.grid_cell_alive_list.data();
+	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa = m_restir_pg_state.hash_grid_distributions_soa_buffer.to_device();
+	m_render_data.render_settings.restir_pg_settings.hash_grid_checksums		 = m_restir_pg_state.hash_grid_checksums.data();
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive			 = m_restir_pg_state.grid_cell_alive.data();
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_count		 = &m_restir_pg_state.grid_cell_alive_count;
+	m_render_data.render_settings.restir_pg_settings.grid_cell_alive_list		 = m_restir_pg_state.grid_cell_alive_list.data();
 
 	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
 		m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
@@ -1510,7 +1510,7 @@ void CPURenderer::launch_ReSTIR_GI_shading_pass()
 
 void CPURenderer::ReSTIR_PG_reset_hash_grid()
 {
-	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions.size(); index++)
+	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions_soa_buffer.get_total_element_count(); index++)
 	{
 		ReSTIR_PG_ResetHashGrid(m_render_data, index);
 	}
@@ -1522,7 +1522,7 @@ void CPURenderer::ReSTIR_PG_reset_distributions()
 	return;
 #endif
 
-	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions.size() * ReSTIRPGDistributionComponentCount; index++)
+	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions_soa_buffer.get_total_element_count() * ReSTIRPGDistributionComponentCount; index++)
 	{
 		ReSTIR_PG_ResetDistributions(m_render_data, index);
 	}

@@ -24,7 +24,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 
 	ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
 
-	unsigned int cell_index			  = x;
+	unsigned int cell_index = x;
 	if (cell_index >= restir_pg_settings.hash_grid_total_number_of_cells)
 		return;
 
@@ -34,7 +34,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		return;
 
 	ReSTIRPGDistributionSufficientStatisticsSoADevice sufficient_statistics_soa = restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa;
-	ReSTIRPGDistribution current_distribution									= restir_pg_settings.hash_grid_distributions[hash_grid_cell_index];
+	ReSTIRPGDistribution current_distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(hash_grid_cell_index);
 
 	float sum_responsibilities_weight_sum = 0.0f;
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
@@ -73,7 +73,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		new_vmf.vmf.sharpness = new_vmf_sharpness;
 		new_vmf.weight		  = new_mixture_component_weight;
 
-		restir_pg_settings.hash_grid_distributions[hash_grid_cell_index].distribution_components[component_index] = new_vmf;
+		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_vmf(hash_grid_cell_index, component_index, new_vmf.vmf);
+		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(hash_grid_cell_index, component_index, new_vmf.weight);
 	}
 }
 

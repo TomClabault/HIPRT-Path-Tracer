@@ -22,9 +22,7 @@ struct ReSTIRPGDistribution
 			cdf += distribution_components[i].weight;
 			if (random_value < cdf)
 			{
-				float3_t DEBUGOUT =  distribution_components[i].vmf.sample(random_number_generator);
-
-				
+				float3_t DEBUGOUT = distribution_components[i].vmf.sample(random_number_generator);
 
 				return DEBUGOUT;
 			}
@@ -54,7 +52,7 @@ struct ReSTIRPGDistribution
 		return hippt::normalize(average_axis);
 	}
 
-	VMFMixtureComponent* distribution_components = nullptr;
+	VMFMixtureComponent distribution_components[ReSTIRPGDistributionComponentCount];
 };
 
 #endif

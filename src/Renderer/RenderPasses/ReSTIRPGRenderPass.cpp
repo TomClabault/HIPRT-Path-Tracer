@@ -122,9 +122,9 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 		if (m_splatting_samples_buffer.size() != 0)
 			m_splatting_samples_buffer.free();
 
-		if (m_hash_grid_distributions_buffer.size() != 0)
+		if (m_hash_grid_distributions_soa_buffer.get_last_resize_component_count() != 0)
 		{
-			m_hash_grid_distributions_buffer.free();
+			m_hash_grid_distributions_soa_buffer.free();
 			m_hash_grid_checksums_buffer.free();
 			m_grid_cell_alive_buffer.free();
 			m_grid_cell_alive_count_buffer.free();
@@ -137,6 +137,9 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 	}
 	else
 	{
+		unsigned int component_count =
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
+
 		if (m_splatting_samples_buffer.size() !=
 			render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.render_settings.nb_bounces)
 		{
@@ -146,9 +149,8 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_hash_grid_distributions_buffer.size() != HASH_GRID_INITIAL_CELL_COUNT)
+		if (m_hash_grid_checksums_buffer.size() != HASH_GRID_INITIAL_CELL_COUNT)
 		{
-			m_hash_grid_distributions_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
 			m_hash_grid_checksums_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
 			m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 			m_grid_cell_alive_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
@@ -160,12 +162,16 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_last_resize_component_count() !=
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
+		if (m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_last_resize_component_count() != component_count)
 		{
-			m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(
-				HASH_GRID_INITIAL_CELL_COUNT,
-				m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT));
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT, component_count);
+
+			updated = true;
+		}
+
+		if (m_hash_grid_distributions_soa_buffer.get_total_element_count() != HASH_GRID_INITIAL_CELL_COUNT * component_count)
+		{
+			m_hash_grid_distributions_soa_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT, component_count);
 
 			updated = true;
 		}
@@ -179,33 +185,32 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-		// Resetting everything
-		if (render_data.render_settings.sample_number == 0)
-		{
-			void* launch_args[] = { &render_data };
-			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(256, 1, m_hash_grid_distributions_buffer.size(), 1, launch_args,
-																					m_renderer->get_main_stream());
-			std::vector<unsigned int> checksums = m_hash_grid_checksums_buffer.download_data();
-			for (unsigned int checksum : checksums)
-				if (checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-				{
-					std::cerr << "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
-							<< HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
-							<< " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
-								"for example) or a problem with the kernel that resets the hash grid."
-							<< std::endl;
-	
-					break;
-				}
-	
-			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
-				256, 1,
-				m_hash_grid_distributions_buffer.size() *
-					m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
-				1, launch_args, m_renderer->get_main_stream());
-	
-			m_grid_cell_alive_buffer.memset_whole_buffer(0);
-	m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	// Resetting everything
+	if (render_data.render_settings.sample_number == 0)
+	{
+		void* launch_args[] = { &render_data };
+		m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(
+			256, 1, m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
+		std::vector<unsigned int> checksums = m_hash_grid_checksums_buffer.download_data();
+		for (unsigned int checksum : checksums)
+			if (checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+			{
+				std::cerr << "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
+						  << HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
+						  << " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
+							 "for example) or a problem with the kernel that resets the hash grid."
+						  << std::endl;
+
+				break;
+			}
+
+		m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
+			256, 1,
+			m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() * m_hash_grid_distributions_soa_buffer.get_last_resize_component_count(), 1,
+			launch_args, m_renderer->get_main_stream());
+
+		m_grid_cell_alive_buffer.memset_whole_buffer(0);
+		m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 	}
 
 	void* launch_args[] = { &render_data };
@@ -235,18 +240,18 @@ void ReSTIRPGRenderPass::update_render_data()
 
 	render_data.render_settings.restir_pg_settings.splatting_samples = m_splatting_samples_buffer.get_device_pointer();
 
-	render_data.render_settings.restir_pg_settings.hash_grid_distributions = m_hash_grid_distributions_buffer.get_device_pointer();
-	render_data.render_settings.restir_pg_settings.hash_grid_checksums	   = m_hash_grid_checksums_buffer.get_atomic_device_pointer();
-	render_data.render_settings.restir_pg_settings.grid_cell_alive		   = m_grid_cell_alive_buffer.get_atomic_device_pointer();
-	render_data.render_settings.restir_pg_settings.grid_cell_alive_count   = m_grid_cell_alive_count_buffer.get_atomic_device_pointer();
-	render_data.render_settings.restir_pg_settings.grid_cell_alive_list	   = m_grid_cell_alive_list_buffer.get_device_pointer();
+	render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa = m_hash_grid_distributions_soa_buffer.to_device();
+	render_data.render_settings.restir_pg_settings.hash_grid_checksums		   = m_hash_grid_checksums_buffer.get_atomic_device_pointer();
+	render_data.render_settings.restir_pg_settings.grid_cell_alive			   = m_grid_cell_alive_buffer.get_atomic_device_pointer();
+	render_data.render_settings.restir_pg_settings.grid_cell_alive_count	   = m_grid_cell_alive_count_buffer.get_atomic_device_pointer();
+	render_data.render_settings.restir_pg_settings.grid_cell_alive_list		   = m_grid_cell_alive_list_buffer.get_device_pointer();
 
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
 		m_hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
 
 	printf("Updated ren,der data with size! %u\n", m_hash_grid_distributions_sufficient_statistics_soa_buffer.size());
 
-	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = m_hash_grid_distributions_buffer.size();
+	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells();
 }
 
 bool ReSTIRPGRenderPass::is_render_pass_used() const

@@ -10,8 +10,6 @@ struct ReSTIRPGDistributionSufficientStatisticsSoADevice
 	HIPRT_DEVICE float3_t read_directions_sum(unsigned int component_index, unsigned int hash_grid_cell_index, unsigned int total_number_of_cells)
 	{
 		unsigned int index = component_index * total_number_of_cells + hash_grid_cell_index;
-		if (index >= 100000)
-			printf("%u * %u + %u\n", component_index, total_number_of_cells, hash_grid_cell_index);
 
 		return make_float3(directions_sum_x[index], directions_sum_y[index], directions_sum_z[index]);
 	}

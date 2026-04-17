@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_PG_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_PG_SETTINGS_H
 
-#include "Device/includes/ReSTIR/PG/Distribution.h"
+#include "Device/includes/ReSTIR/PG/DistributionSoADevice.h"
 #include "Device/includes/ReSTIR/PG/DistributionSufficientStatisticsSoADevice.h"
 #include "Device/includes/ReSTIR/PG/SplattingSample.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
@@ -18,7 +18,7 @@ struct ReSTIRPGSettings
 	// Screen space size * (number of bounces - 1)
 	ReSTIRPGSplattingSample* splatting_samples = nullptr;
 
-	ReSTIRPGDistributionSoADevice* hash_grid_distributions_soa	= nullptr;
+	ReSTIRPGDistributionSoADevice hash_grid_distributions_soa;
 	AtomicType<unsigned int>* hash_grid_checksums	= nullptr;
 	AtomicType<unsigned int>* grid_cell_alive		= nullptr;
 	AtomicType<unsigned int>* grid_cell_alive_count = nullptr;
@@ -45,7 +45,7 @@ struct ReSTIRPGSettings
 																					   checksum))
 			return ReSTIRPGDistribution();
 
-		return hash_grid_distributions[cell_index];
+		return hash_grid_distributions_soa.get_distribution(cell_index);
 	}
 };
 

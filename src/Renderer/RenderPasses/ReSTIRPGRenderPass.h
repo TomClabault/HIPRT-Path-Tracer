@@ -6,6 +6,7 @@
 #ifndef RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H
 #define RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H
 
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -43,7 +44,7 @@ public:
 private:
 	OrochiBuffer<ReSTIRPGSplattingSample> m_splatting_samples_buffer;
 
-	OrochiBuffer<ReSTIRPGDistribution> m_hash_grid_distributions_buffer;
+	ReSTIRPGDistributionSoAHost<OrochiBuffer> m_hash_grid_distributions_soa_buffer;
 	OrochiBuffer<unsigned int> m_hash_grid_checksums_buffer;
 	OrochiBuffer<unsigned int> m_grid_cell_alive_buffer;
 	OrochiBuffer<unsigned int> m_grid_cell_alive_count_buffer;
