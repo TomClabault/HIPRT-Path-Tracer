@@ -1351,7 +1351,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				draw_restir_di_settings_panel();
+				draw_ReSTIR_DI_settings_panel();
 
 				break;
 			}
@@ -1469,67 +1469,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE)
-			{
-				if (ImGui::CollapsingHeader("ReSTIR PG"))
-				{
-					ImGui::TreePush("ReSTIR PG options tree");
-
-					bool use_pg = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
-					if (ImGui::Checkbox("Enable ReSTIR PG", &use_pg))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, use_pg ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					static int distribution_component_count =
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
-					ImGui::SliderInt("Mixture Distribution Component Count", &distribution_component_count, 1, 16);
-
-					if (distribution_component_count !=
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
-					{
-						ImGui::TreePush("ReSTIR PG distribution component count apply button");
-
-						if (ImGui::Button("Apply##ReSTIR PG distribution component count"))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT,
-																   distribution_component_count);
-
-							m_renderer->recompile_kernels();
-							m_render_window->set_render_dirty(true);
-						}
-
-						ImGui::TreePop();
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Average distribution direction" };
-
-					if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE),
-									 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
-					{
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					ImGui::TreePop(); // ReSTIR PG Tree
-				}
-			}
-
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
 			{
 			case PSS_RESTIR_GI:
 			{
 				if (ImGui::CollapsingHeader("ReSTIR GI"))
 				{
+					ImGui::TreePush("ReSTIR GI tree");
+
 					static float last_VRAM_usage = 0.0f;
 					if (m_renderer->get_ReSTIR_GI_render_pass())
 						last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
@@ -1623,7 +1570,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 						ImGui::TreePop(); // Debug tree
 					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop(); // ReSTIR GI Tree
 				}
+
+				draw_ReSTIR_PG_settings_panel();
 			}
 
 			default:
@@ -1881,7 +1833,7 @@ void ImGuiSettingsWindow::draw_risltc_settings_panel()
 	}
 }
 
-void ImGuiSettingsWindow::draw_restir_di_settings_panel()
+void ImGuiSettingsWindow::draw_ReSTIR_DI_settings_panel()
 {
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
@@ -2170,6 +2122,62 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 		ImGui::TreePop(); // ReSTIR DI Settings tree
 	}
 	ImGui::EndDisabled(); // !restir_di_render_pass
+}
+
+void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
+{
+	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
+	HIPRTRenderData& render_data									= m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("ReSTIR PG"))
+	{
+		ImGui::TreePush("ReSTIR PG options tree");
+
+		bool use_pg = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
+		if (ImGui::Checkbox("Enable ReSTIR PG", &use_pg))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, use_pg ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		static int distribution_component_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
+		ImGui::SliderInt("Mixture Distribution Component Count", &distribution_component_count, 1, 16);
+
+		if (distribution_component_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
+		{
+			ImGui::TreePush("ReSTIR PG distribution component count apply button");
+
+			if (ImGui::Button("Apply##ReSTIR PG distribution component count"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT, distribution_component_count);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Average distribution direction" };
+
+		if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE), debug_view_items,
+						 IM_ARRAYSIZE(debug_view_items)))
+		{
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::TreePop(); // ReSTIR PG Tree
+	}
 }
 
 void ImGuiSettingsWindow::draw_ltc_settings_panel()

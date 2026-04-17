@@ -42,13 +42,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetDistributions(HIPRTRenderDat
 	unsigned int cell_index		 = x / ReSTIRPGDistributionComponentCount;
 	unsigned int component_index = x % ReSTIRPGDistributionComponentCount;
 
+	if (cell_index >= render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells)
+		return;
+
 	ReSTIRPGDistribution& distribution = render_data.render_settings.restir_pg_settings.hash_grid_distributions[cell_index];
 
 	distribution.distribution_components[component_index].vmf.axis		= fibonacci_sphere(component_index, ReSTIRPGDistributionComponentCount);
 	distribution.distribution_components[component_index].vmf.sharpness = 50.0f;
 	distribution.distribution_components[component_index].weight		= 1.0f / (float)ReSTIRPGDistributionComponentCount;
-	if (component_index == 0)
-		render_data.render_settings.restir_pg_settings.grid_cell_alive[cell_index] = 0;
 }
 
 #endif

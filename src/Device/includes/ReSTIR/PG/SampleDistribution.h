@@ -20,13 +20,6 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 {
 	// For one sample MIS between BSDF and the ReSTIR PG distribution
 	float bsdf_probability = 0.5f;
-	unsigned int DEBUGchecksum;
-	unsigned int DEBUGcell_index =
-		render_data.render_settings.restir_pg_settings.hash_position_data(closest_hit_info.inter_point, render_data.current_camera, DEBUGchecksum) %
-		render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
-	HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(render_data.render_settings.restir_pg_settings.hash_grid_checksums,
-																			  render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,
-																			  DEBUGcell_index, DEBUGchecksum);
 	ReSTIRPGDistribution distribution = render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(
 		closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera);
 	if (distribution.distribution_components[0].weight == 0.0f)
@@ -45,14 +38,6 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 	}
 	else
 		out_bounce_direction = distribution.sample(random_number_generator);
-
-	// if (!hippt::is_finite(out_bounce_direction.x) || !hippt::is_finite(out_bounce_direction.y) || !hippt::is_finite(out_bounce_direction.z))
-	// {
-	// 	if (hippt::thread_idx_x() < 50 && hippt::thread_idx_y() < 50)
-	// 	{
-	// 		printf("NaN. Distribution\n\tWeight %f, Dir (%f %f %f), sharpness %f\n", distribution.distribution_components[0].weight, distribution.distribution_components[0].vmf.axis.x, distribution.distribution_components[0].vmf.axis.y, distribution.distribution_components[0].vmf.axis.z, distribution.distribution_components[0].vmf.sharpness);
-	// 	}
-	// }
 
 	// TODO THIS IS BROKEN AND THE RAY VOLUME STACK WILL NOT BE PROPERLY UPDATED IN CASE THE PATH GUIDING SAMPLES A REFRACTION. If a glass reflection is
 	// sampled, we need to pop the stack, just as the principled_glass_sample function would do. Use this opportunity to maybe remove the pop/push stack logic

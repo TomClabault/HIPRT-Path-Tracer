@@ -54,7 +54,7 @@ struct ReSTIRPGDistribution
 		return hippt::normalize(average_axis);
 	}
 
-	VMFMixtureComponent distribution_components[ReSTIRPGDistributionComponentCount];
+	VMFMixtureComponent* distribution_components = nullptr;
 };
 
 #endif

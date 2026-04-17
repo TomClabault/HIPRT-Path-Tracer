@@ -36,7 +36,7 @@ public:
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override {};
 
 	virtual void update_render_data() override;
-	virtual void reset(bool reset_by_camera_movement) override;
+	virtual void reset(bool reset_by_camera_movement) override {};
 
 	virtual bool is_render_pass_used() const override;
 
@@ -50,7 +50,6 @@ private:
 	OrochiBuffer<unsigned int> m_grid_cell_alive_list_buffer;
 
 	// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
-	OrochiBuffer<unsigned int> m_hash_grid_distributions_sufficient_statistics_lock_buffer;
 	ReSTIRPGSufficientStatisticsSoAHost<OrochiBuffer> m_hash_grid_distributions_sufficient_statistics_soa_buffer;
 };
 

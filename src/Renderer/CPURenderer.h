@@ -215,7 +215,6 @@ private:
 		std::vector<unsigned int> grid_cell_alive_list;
 
 		// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
-		std::vector<AtomicType<unsigned int>> hash_grid_distributions_sufficient_statistics_lock;
 		ReSTIRPGSufficientStatisticsSoAHost<std::vector> hash_grid_distributions_sufficient_statistics_soa_buffer;
 	} m_restir_pg_state;
 

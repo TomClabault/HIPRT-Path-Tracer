@@ -131,7 +131,6 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			m_grid_cell_alive_list_buffer.free();
 
 			m_hash_grid_distributions_sufficient_statistics_soa_buffer.free();
-			m_hash_grid_distributions_sufficient_statistics_lock_buffer.free();
 		}
 
 		updated = true;
@@ -158,9 +157,6 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			m_grid_cell_alive_count_buffer.memset_whole_buffer(0);
 			m_grid_cell_alive_list_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
 
-			m_hash_grid_distributions_sufficient_statistics_lock_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT);
-			m_hash_grid_distributions_sufficient_statistics_lock_buffer.memset_whole_buffer(0);
-
 			updated = true;
 		}
 
@@ -183,8 +179,36 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	void* launch_args[] = { &render_data };
+		// Resetting everything
+		if (render_data.render_settings.sample_number == 0)
+		{
+			void* launch_args[] = { &render_data };
+			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(256, 1, m_hash_grid_distributions_buffer.size(), 1, launch_args,
+																					m_renderer->get_main_stream());
+			std::vector<unsigned int> checksums = m_hash_grid_checksums_buffer.download_data();
+			for (unsigned int checksum : checksums)
+				if (checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+				{
+					std::cerr << "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
+							<< HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
+							<< " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
+								"for example) or a problem with the kernel that resets the hash grid."
+							<< std::endl;
+	
+					break;
+				}
+	
+			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
+				256, 1,
+				m_hash_grid_distributions_buffer.size() *
+					m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
+				1, launch_args, m_renderer->get_main_stream());
+	
+			m_grid_cell_alive_buffer.memset_whole_buffer(0);
+	m_hash_grid_checksums_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	}
 
+	void* launch_args[] = { &render_data };
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
 		KernelBlockWidthHeight, KernelBlockWidthHeight, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
 		launch_args, m_renderer->get_main_stream());
@@ -219,32 +243,10 @@ void ReSTIRPGRenderPass::update_render_data()
 
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
 		m_hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
-	render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_lock =
-		m_hash_grid_distributions_sufficient_statistics_lock_buffer.get_atomic_device_pointer();
+
+	printf("Updated ren,der data with size! %u\n", m_hash_grid_distributions_sufficient_statistics_soa_buffer.size());
 
 	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = m_hash_grid_distributions_buffer.size();
-}
-
-void ReSTIRPGRenderPass::reset(bool reset_by_camera_movement)
-{
-	if (!is_render_pass_used())
-		return;
-
-	if (m_hash_grid_distributions_buffer.size() == 0)
-		// Buffers not yet ready, nothing to reset
-		return;
-
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	void* launch_args[] = { &render_data };
-	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(256, 1, m_hash_grid_distributions_buffer.size(), 1, launch_args,
-																				  m_renderer->get_main_stream());
-
-	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
-		256, 1,
-		m_hash_grid_distributions_buffer.size() *
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
-		1, launch_args, m_renderer->get_main_stream());
 }
 
 bool ReSTIRPGRenderPass::is_render_pass_used() const

@@ -24,11 +24,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetHashGrid(HIPRTRenderData ren
 #endif
 
 	unsigned int cell_index = x;
+	if (cell_index >= render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells)
+		return;
 
 	if (cell_index == 0)
 		*render_data.render_settings.restir_pg_settings.grid_cell_alive_count = 0;
-	render_data.render_settings.restir_pg_settings.hash_grid_checksums[cell_index]								  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-	render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_lock[cell_index] = 0;
+
+	render_data.render_settings.restir_pg_settings.hash_grid_checksums[cell_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 	const ReSTIRPGDistributionSufficientStatisticsSoADevice& soa_device =
 		render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa;

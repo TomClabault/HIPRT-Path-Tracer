@@ -18,7 +18,7 @@ struct ReSTIRPGSettings
 	// Screen space size * (number of bounces - 1)
 	ReSTIRPGSplattingSample* splatting_samples = nullptr;
 
-	ReSTIRPGDistribution* hash_grid_distributions	= nullptr;
+	ReSTIRPGDistributionSoADevice* hash_grid_distributions_soa	= nullptr;
 	AtomicType<unsigned int>* hash_grid_checksums	= nullptr;
 	AtomicType<unsigned int>* grid_cell_alive		= nullptr;
 	AtomicType<unsigned int>* grid_cell_alive_count = nullptr;

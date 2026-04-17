@@ -194,8 +194,6 @@ void CPURenderer::setup_buffers()
 
 	m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT,
 																					  ReSTIRPGDistributionComponentCount);
-	m_restir_pg_state.hash_grid_distributions_sufficient_statistics_lock =
-		std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
 
 	m_restir_pg_state.grid_cell_alive = std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
 	m_restir_pg_state.grid_cell_alive_list.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
@@ -467,8 +465,6 @@ void CPURenderer::update_render_data()
 
 	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
 		m_restir_pg_state.hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
-	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_lock =
-		m_restir_pg_state.hash_grid_distributions_sufficient_statistics_lock.data();
 
 	m_render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT;
 #endif
