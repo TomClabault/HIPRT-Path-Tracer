@@ -35,21 +35,9 @@ struct VMF
 		float phi		= 2.0f * hippt::M_Pi * rand_1;
 		float r			= sharpness > THRESHOLD ? hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)) / sharpness : -2.0f * rand_2;
 
-		if (!hippt::is_finite(r))
-		if (hippt::thread_idx_x() < 50 && hippt::thread_idx_y() < 50)
-		{
-			printf("r NaNs:\n\t%f / %f\n", hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)), sharpness);
-		}
-
 		float cos_theta = 1.0f + r;
 		float sin_theta = hippt::sqrt(-hippt::fma(r, r, 2.0f * r));
 		float3_t dir	= { hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta };
-
-		if (!hippt::is_finite(dir.x) || !hippt::is_finite(dir.y) || !hippt::is_finite(dir.z))
-		if (hippt::thread_idx_x() < 50 && hippt::thread_idx_y() < 50)
-		{
-			printf("DIR NAN: %f %f ---> %f %f %f\n", cos_theta, phi, hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta);
-		}
 
 		return local_to_world_frame(axis, dir);
 	}

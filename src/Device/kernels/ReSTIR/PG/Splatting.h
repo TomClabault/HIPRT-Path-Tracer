@@ -78,31 +78,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 				restir_pg_settings.hash_grid_checksums, restir_pg_settings.hash_grid_total_number_of_cells, sample_hash_grid_index, checksum))
 		{
 			// If the collision resolution failed, then we just skip this sample and don't insert it into the hash grid
-			if (sample_hash_grid_index < 10 && ReSTIRPGDistributionComponentCount == 2 && render_data.render_settings.sample_number == 0)
-				printf("Collision not resolved, existing checksum: %u, hash grid index: %u, checksum: %u\n",
-					   hippt::atomic_load(&restir_pg_settings.hash_grid_checksums[sample_hash_grid_index]), sample_hash_grid_index_before, checksum);
-
 			continue;
 		}
-
-		if (ReSTIRPGDistributionComponentCount == 2 && sample_hash_grid_index < 10)
-			printf("gone through\n");
 
 		if (!hippt::atomic_compare_exchange(&restir_pg_settings.grid_cell_alive[sample_hash_grid_index], 0u, 1u))
 		{
 			// Setting the grid cell as alive
 			unsigned int grid_cell_alive_index							   = hippt::atomic_fetch_add(restir_pg_settings.grid_cell_alive_count, 1u);
 			restir_pg_settings.grid_cell_alive_list[grid_cell_alive_index] = sample_hash_grid_index;
-
-			if (ReSTIRPGDistributionComponentCount == 2 && sample_hash_grid_index < 10)
-				printf("+1\n");
 		}
 
 		/**
 		 * Inserting the sample into the sufficient statistics of the hash grid cell, in each component for the expectation step of the EM algorithm
 		 */
 		ReSTIRPGDistribution distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(sample_hash_grid_index);
-
+		
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
 		float sum_responsibilities = 0.0f;
 		float responsibilities[ReSTIRPGDistributionComponentCount];

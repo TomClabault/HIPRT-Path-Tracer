@@ -36,7 +36,7 @@ struct ReSTIRPGDistributionSoAHost
 		m_distribution_data.template memset_buffer<ReSTIRPGDistributionSoAHostBuffers::RESTIR_PG_DISTRIBUTION_VMF_COMPONENT_WEIGHT>(0.0f);
 
 		m_last_resize_component_count = distributions_component_count;
-		m_last_resize_number_of_cells = distributions_component_count;
+		m_last_resize_number_of_cells = new_number_of_cells;
 	}
 
 	void free()

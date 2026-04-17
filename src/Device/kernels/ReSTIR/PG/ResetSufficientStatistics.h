@@ -38,9 +38,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetSufficientStatistics(HIPRTRe
 		// want to start accumulating new sufficient statistics for the new render and not keep the old ones that were accumulated for the previous render.
 
 		unsigned int index										= component_index * restir_pg_settings.hash_grid_total_number_of_cells + cell_index;
-		if (index >= ReSTIRPGDistributionComponentCount * restir_pg_settings.hash_grid_total_number_of_cells)
-			printf("NOPE: %u * %u + %u = %u\n", component_index, restir_pg_settings.hash_grid_total_number_of_cells, cell_index, index);
-
 		sufficient_statistics.directions_sum_x[index]			= 0.0f;
 		sufficient_statistics.directions_sum_y[index]			= 0.0f;
 		sufficient_statistics.directions_sum_z[index]			= 0.0f;

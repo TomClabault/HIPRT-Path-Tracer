@@ -165,9 +165,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				// Not the last bounce
 				if (bounce != render_data.render_settings.nb_bounces)
 				{
-					/*if (hippt::is_pixel_index(11, 624))
-						printf("Splatting\n");*/
-
 					unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
 					render_data.render_settings.restir_pg_settings.splatting_samples[pixel_index + bounce * pixel_count] = ReSTIRPGSplattingSample{
 						.position			= closest_hit_info.inter_point,
