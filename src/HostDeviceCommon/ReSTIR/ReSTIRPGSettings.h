@@ -32,15 +32,15 @@ struct ReSTIRPGSettings
 	float hash_grid_target_projected_size		 = 10.0f;
 	float hash_grid_cell_min_size				 = 0.1f;
 
-	HIPRT_DEVICE unsigned int hash_position_data(float3_t position, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
+	HIPRT_DEVICE unsigned int hash_position_data(float3_t position, float3_t surface_normal, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
 	{
-		return hash_pos_distance_to_camera(position, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, out_checksum);
+		return hash_pos_distance_to_camera(position, surface_normal, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, 2, out_checksum);
 	}
 
-	HIPRT_DEVICE ReSTIRPGDistribution get_distribution_from_position_data(float3_t position, float3_t normal, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE ReSTIRPGDistribution get_distribution_from_position_data(float3_t position, float3_t surface_normal, const HIPRTCamera& current_camera) const
 	{
 		unsigned int checksum;
-		unsigned int cell_index = hash_position_data(position, current_camera, checksum) % hash_grid_total_number_of_cells;
+		unsigned int cell_index = hash_position_data(position, surface_normal, current_camera, checksum) % hash_grid_total_number_of_cells;
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(hash_grid_checksums, hash_grid_total_number_of_cells, cell_index,
 																					   checksum))
 			return ReSTIRPGDistribution();

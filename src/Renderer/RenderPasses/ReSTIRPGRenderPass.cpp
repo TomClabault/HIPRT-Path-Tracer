@@ -182,8 +182,8 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 		if (render_data.render_settings.sample_number == 0)
 		{
 			if (updated)
-			update_render_data();
-			
+				update_render_data();
+
 			void* launch_args[] = { &render_data };
 			std::cerr << "Resetting hash grid with " << m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() << " threads" << std::endl;
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(

@@ -52,7 +52,7 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
-	bool enable_direct = false;
+	bool enable_direct = true;
 
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
 	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;
@@ -131,7 +131,7 @@ struct HIPRTRenderSettings
 	// This is the sum of samples_per_frame for all frames that have been rendered.
 	unsigned int sample_number = 0;
 	// See the DisplayOnlySampleN kernel option
-	int output_debug_sample_N = 1;
+	int output_debug_sample_N = 15;
 
 	// How many samples to compute per pixel per frame
 	// Higher values reduce CPU overhead since the GPU spends
@@ -139,7 +139,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 2;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?

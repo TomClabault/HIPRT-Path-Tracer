@@ -71,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 		unsigned int checksum;
 		unsigned int sample_hash_grid_index =
-			restir_pg_settings.hash_position_data(sample.position, render_data.current_camera, checksum) % restir_pg_settings.hash_grid_total_number_of_cells;
+			restir_pg_settings.hash_position_data(sample.position, sample.normal, render_data.current_camera, checksum) % restir_pg_settings.hash_grid_total_number_of_cells;
 		unsigned int sample_hash_grid_index_before = sample_hash_grid_index;
 
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, true>(

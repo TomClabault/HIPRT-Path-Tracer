@@ -144,7 +144,7 @@ HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position,
  * The hash key for resolving collision is given in 'out_checksum'
  */
 HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(
-	float3_t world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+	float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int hash_normal_precision, unsigned int& out_checksum)
 {
 	float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 
@@ -155,10 +155,12 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(
 	unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
 	unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
 
-	// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
-	out_checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
+	unsigned int normal_hashed = hash_quantize_normal(surface_normal, hash_normal_precision);
 
-	unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x))));
+	// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
+	out_checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x + h2_xxhash32(normal_hashed)))));
+
+	unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x + h1_pcg(normal_hashed)))));
 
 	return cell_hash;
 }
