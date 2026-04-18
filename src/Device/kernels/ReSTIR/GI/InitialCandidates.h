@@ -196,10 +196,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
-	// Checking for NaNs / negative value samples. Output
-	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
-		return;
-
 	// If we got here, this means that we still have at least one ray active
 	// This is a concurrent write by the way but we don't really care, everyone is writing
 	// the same value
@@ -222,6 +218,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 	restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
 
 	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
+
+	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES)
+	{
+		render_data.buffers.accumulated_ray_colors[pixel_index] = incoming_radiance_to_visible_point;
+	}
 }
 
 #endif

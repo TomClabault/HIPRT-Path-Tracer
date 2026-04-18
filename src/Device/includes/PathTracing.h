@@ -245,7 +245,9 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
 	}
 
-	if (render_data.render_settings.sample_number == 0)
+	if (debug_color != DEFAULT_DEBUG_COLOR)
+		render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+	else if (render_data.render_settings.sample_number == 0)
 		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
 	else
 		// If we are at a sample that is not 0, this means that we are accumulating

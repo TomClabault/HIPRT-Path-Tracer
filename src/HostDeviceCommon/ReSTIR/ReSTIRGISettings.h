@@ -36,12 +36,13 @@ struct ReSTIRGISpatialPassSettings
 enum ReSTIRGIDebugView
 {
 	NO_DEBUG							  = 0,
-	FINAL_RESERVOIR_UCW					  = 1,
-	TARGET_FUNCTION						  = 2,
-	WEIGHT_SUM							  = 3,
-	M_COUNT								  = 4,
-	PER_PIXEL_REUSE_RADIUS				  = 5,
-	PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 6,
+	SHADE_ONLY_INITIAL_CANDIDATES					  = 1,
+	FINAL_RESERVOIR_UCW					  = 2,
+	TARGET_FUNCTION						  = 3,
+	WEIGHT_SUM							  = 4,
+	M_COUNT								  = 5,
+	PER_PIXEL_REUSE_RADIUS				  = 6,
+	PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 7,
 };
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings

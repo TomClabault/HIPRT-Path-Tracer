@@ -1560,7 +1560,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 						const char* debug_view_items[] = {
-							"No debug view",	   "- Final reservoir UCW",	   "- Final reservoir target function", "- Final reservoir weight sum",
+							"- No debug view", "- Shade only initial candidates",	   "- Final reservoir UCW",	   "- Final reservoir target function", "- Final reservoir weight sum",
 							"- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"
 						};
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
