@@ -71,15 +71,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 		unsigned int checksum;
 		unsigned int sample_hash_grid_index =
-			restir_pg_settings.hash_position_data(sample.position, sample.normal, render_data.current_camera, checksum) % restir_pg_settings.hash_grid_total_number_of_cells;
+			restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
 		unsigned int sample_hash_grid_index_before = sample_hash_grid_index;
 
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, true>(
 				restir_pg_settings.hash_grid_checksums, restir_pg_settings.hash_grid_total_number_of_cells, sample_hash_grid_index, checksum))
-		{
 			// If the collision resolution failed, then we just skip this sample and don't insert it into the hash grid
 			continue;
-		}
 
 		if (!hippt::atomic_compare_exchange(&restir_pg_settings.grid_cell_alive[sample_hash_grid_index], 0u, 1u))
 		{

@@ -50,7 +50,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		float responsibility_weights_sum =
 			sufficient_statistics_soa.responsibility_weights_sum[component_index * restir_pg_settings.hash_grid_total_number_of_cells + hash_grid_cell_index];
 
-		if (responsibility_weights_sum <= 1e-8f || directions_sum_length <= 1e-8f)
+		if (responsibility_weights_sum <= 1e-15f || directions_sum_length <= 1e-15f)
 			continue;
 
 		float3_t new_mean_vmf_direction	  = directions_sum / directions_sum_length;
@@ -58,7 +58,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 
 		constexpr float Nprior					  = 0.2f;
 		float current_mixture_component_weight	  = current_distribution.distribution_components[component_index].weight;
-		unsigned int current_mixture_sample_count = sufficient_statistics_soa.responsibility_weights_sum[hash_grid_cell_index];
+		unsigned int current_mixture_sample_count = sufficient_statistics_soa.sample_count[hash_grid_cell_index];
 		float rpriork							  = (normalized_resultant_length * current_mixture_component_weight * current_mixture_sample_count) /
 						(current_mixture_component_weight * current_mixture_sample_count + Nprior);
 

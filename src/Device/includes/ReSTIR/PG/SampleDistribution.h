@@ -19,18 +19,22 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 										  BSDFIncidentLightInfo out_sampled_light_info)
 {
 	// For one sample MIS between BSDF and the ReSTIR PG distribution
-	float bsdf_probability = 0.5f;
+	float bsdf_probability			  = 0.5f;
 	ReSTIRPGDistribution distribution = render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(
 		closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera);
-	{
+	/*{
 		if (render_data.render_settings.sample_number <= 1 && hippt::is_pixel_index(150, 150))
 		{
 			unsigned int checksum;
-			unsigned int cell_index = render_data.render_settings.restir_pg_settings.hash_position_data(closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera, checksum) % render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
+			unsigned int cell_index = render_data.render_settings.restir_pg_settings.get_hash_grid_cell_index_from_position_data(closest_hit_info.inter_point,
+	closest_hit_info.geometric_normal, render_data.current_camera, checksum);
 
-			printf("Sample %d, %f %f %f, %f, %f @ %u %% %u\n", render_data.render_settings.sample_number, distribution.distribution_components[0].vmf.axis.x, distribution.distribution_components[0].vmf.axis.y, distribution.distribution_components[0].vmf.axis.z, distribution.distribution_components[0].vmf.sharpness, distribution.distribution_components[0].weight, cell_index, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells);
+			printf("Sample %d, %f %f %f, %f, %f @ %u %% %u\n", render_data.render_settings.sample_number, distribution.distribution_components[0].vmf.axis.x,
+	distribution.distribution_components[0].vmf.axis.y, distribution.distribution_components[0].vmf.axis.z,
+	distribution.distribution_components[0].vmf.sharpness, distribution.distribution_components[0].weight, cell_index,
+	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells);
 		}
-	}
+	}*/
 	if (distribution.distribution_components[0].weight == 0.0f)
 		// No distribution, full BSDF sampling then
 		bsdf_probability = 1.0f;

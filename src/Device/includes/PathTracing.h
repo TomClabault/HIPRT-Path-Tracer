@@ -412,7 +412,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	ColorRGB32F color;
 
 	unsigned int checksum;
-	unsigned int cell_index = render_data.render_settings.restir_pg_settings.hash_position_data(primary_hit, normal, render_data.current_camera, checksum) %
+	unsigned int cell_index = render_data.render_settings.restir_pg_settings.get_hash_grid_cell_index_from_position_data(primary_hit, normal, render_data.current_camera, checksum) %
 							  render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
 	if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(
 			render_data.render_settings.restir_pg_settings.hash_grid_checksums, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,

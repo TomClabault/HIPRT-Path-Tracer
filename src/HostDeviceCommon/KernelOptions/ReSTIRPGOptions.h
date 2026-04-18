@@ -31,7 +31,7 @@
  */
 #define ReSTIRPGEnable KERNEL_OPTION_TRUE
 
-#define ReSTIRPGDistributionComponentCount 2
+#define ReSTIRPGDistributionComponentCount 4
 
 #define ReSTIRPGHashGridCollisionResolveSteps 4
 
