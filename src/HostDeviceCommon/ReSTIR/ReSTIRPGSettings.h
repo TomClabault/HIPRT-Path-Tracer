@@ -32,9 +32,14 @@ struct ReSTIRPGSettings
 	float hash_grid_target_projected_size		 = 10.0f;
 	float hash_grid_cell_min_size				 = 0.1f;
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_position_data(float3_t position, float3_t surface_normal, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_position_data(float3_t position,
+																		  float3_t surface_normal,
+																		  const HIPRTCamera& current_camera,
+																		  unsigned int& out_checksum) const
 	{
-		return hash_pos_distance_to_camera(position, surface_normal, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, 2, out_checksum) % hash_grid_total_number_of_cells;
+		return hash_pos_distance_to_camera(position, surface_normal, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, 2,
+										   out_checksum) %
+			   hash_grid_total_number_of_cells;
 	}
 
 	HIPRT_DEVICE ReSTIRPGDistribution get_distribution_from_position_data(float3_t position, float3_t surface_normal, const HIPRTCamera& current_camera) const

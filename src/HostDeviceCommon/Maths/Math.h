@@ -1020,6 +1020,7 @@ namespace hippt
 
 	static constexpr bool is_pixel_index(int x, int y)
 	{
+		// We don't have that information on the CPU, always returning true
 		return true;
 	}
 

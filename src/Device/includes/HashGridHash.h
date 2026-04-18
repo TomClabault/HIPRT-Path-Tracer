@@ -67,6 +67,25 @@ HIPRT_DEVICE static float3_t jitter_normal_in_tangent_plane(float3_t surface_nor
 	return hippt::normalize(jittered);
 }
 
+HIPRT_DEVICE static float3_t jitter_world_position_tangent_plane(
+	float3_t original_world_position, float3_t surface_normal, Xorshift32Generator& rng, float jittering_scaling, float jittering_radius = 0.5f)
+{
+	// Getting the tangent plane vectors from the normal
+	float3_t T, B;
+	build_ONB(surface_normal, T, B);
+
+	// Offsets X and Y in the tangent plane
+	float random_offset_x = rng() * 2.0f - 1.0f;
+	float random_offset_y = rng() * 2.0f - 1.0f;
+
+	// Scaling by the grid size
+	float scaling = jittering_scaling * jittering_radius;
+	random_offset_x *= scaling;
+	random_offset_y *= scaling;
+
+	return original_world_position + random_offset_x * T + random_offset_y * B;
+}
+
 /**
  * Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
  */
@@ -143,8 +162,13 @@ HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position,
  * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
  * The hash key for resolving collision is given in 'out_checksum'
  */
-HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(
-	float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int hash_normal_precision, unsigned int& out_checksum)
+HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(float3_t world_position,
+															 float3_t surface_normal,
+															 const HIPRTCamera& current_camera,
+															 float target_projected_size,
+															 float grid_cell_min_size,
+															 unsigned int hash_normal_precision,
+															 unsigned int& out_checksum)
 {
 	float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 

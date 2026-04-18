@@ -39,50 +39,50 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_stop));
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
-							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_function_name(
-							ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																									GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(
-							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(
-							ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																								GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(
-							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_function_name(
-							ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																							   GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-							GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_file_path(
-							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_function_name(
-							ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																									 KERNEL_OPTION_TRUE);
@@ -90,14 +90,14 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 																									 8);
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_file_path(
-							ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(
-							ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
+		ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->get_kernel_options().set_macro_value(
-							ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME, KERNEL_OPTION_TRUE);
+		ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME, KERNEL_OPTION_TRUE);
 }
 
 void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -180,8 +180,8 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
 		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<true>(
-								render_data, m_renderer, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u,
-								m_per_pixel_spatial_reuse_direction_mask_ull, m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
+			render_data, m_renderer, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
+			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
 		m_last_temporal_output_reservoirs = m_initial_candidates_buffer.get_device_pointer();
@@ -211,15 +211,15 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		}
 
 		render_data_invalidated |= ReSTIRRenderPassCommon::free_directional_reuse_buffers<true>(
-								m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
-								m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
+			m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
+			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 	}
 
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.auto_reuse_radius)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
 		render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius =
-								hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) *
-								ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) *
+			ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
 
 	return render_data_invalidated;
 }
@@ -241,19 +241,17 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 		//
 		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
 
-		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.size() > 0
-																						 ? m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer()
-																						 : nullptr;
+		unsigned int* per_pixel_spatial_reuse_direction_mask_u =
+			m_per_pixel_spatial_reuse_direction_mask_u.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer() : nullptr;
 		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull =
-								m_per_pixel_spatial_reuse_direction_mask_ull.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer()
-																						: nullptr;
+			m_per_pixel_spatial_reuse_direction_mask_ull.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer() : nullptr;
 		unsigned char* per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
 		void* launch_args[]							  = { &render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull,
 														  &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(
-								KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-								launch_args, m_renderer->get_main_stream());
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			m_renderer->get_main_stream());
 	}
 }
 
@@ -270,8 +268,8 @@ void ReSTIRGIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
-								KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-								launch_args, m_renderer->get_main_stream());
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			m_renderer->get_main_stream());
 }
 
 void ReSTIRGIRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_data)
@@ -306,8 +304,8 @@ void ReSTIRGIRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data
 
 	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(
-								KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-								launch_args, m_renderer->get_main_stream());
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			m_renderer->get_main_stream());
 }
 
 void ReSTIRGIRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index)
@@ -352,8 +350,8 @@ void ReSTIRGIRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data)
 
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
-								KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-								launch_args, m_renderer->get_main_stream());
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			m_renderer->get_main_stream());
 }
 
 void ReSTIRGIRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
@@ -362,10 +360,10 @@ void ReSTIRGIRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
 	else if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
-								render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+			render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
 	else
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs =
-								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+			render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 
 	m_last_restir_output_reservoirs = render_data.render_settings.restir_gi_settings.restir_output_reservoirs;
 }
@@ -428,8 +426,8 @@ void ReSTIRGIRenderPass::update_render_data()
 		render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
 		ReSTIRRenderPassCommon::update_render_data_common_buffers<true>(
-								render_data, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u,
-								m_per_pixel_spatial_reuse_direction_mask_ull, m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
+			render_data, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
+			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 	}
 	else
 	{

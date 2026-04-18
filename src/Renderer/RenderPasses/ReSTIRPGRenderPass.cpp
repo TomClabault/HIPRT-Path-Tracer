@@ -164,7 +164,6 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 		if (m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_last_resize_component_count() != component_count)
 		{
-			std::cerr << "Resizing sufficient statistics to: " << HASH_GRID_INITIAL_CELL_COUNT << ", " << component_count << std::endl;
 			m_hash_grid_distributions_sufficient_statistics_soa_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT, component_count);
 
 			updated = true;
@@ -172,7 +171,6 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 		if (m_hash_grid_distributions_soa_buffer.get_total_element_count() != HASH_GRID_INITIAL_CELL_COUNT * component_count)
 		{
-			std::cerr << "Resizing distribtion SoA to: " << HASH_GRID_INITIAL_CELL_COUNT << ", " << component_count << std::endl;
 			m_hash_grid_distributions_soa_buffer.resize(HASH_GRID_INITIAL_CELL_COUNT, component_count);
 
 			updated = true;
@@ -185,27 +183,26 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 				update_render_data();
 
 			void* launch_args[] = { &render_data };
-			std::cerr << "Resetting hash grid with " << m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() << " threads" << std::endl;
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(
 				256, 1, m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
 			std::vector<unsigned int> checksums = m_hash_grid_checksums_buffer.download_data();
 			for (unsigned int checksum : checksums)
 				if (checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 				{
-					std::cerr << "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
-							<< HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
-							<< " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
-								"for example) or a problem with the kernel that resets the hash grid."
-							<< std::endl;
+					std::cerr
+						<< "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
+						<< HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
+						<< " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
+						   "for example) or a problem with the kernel that resets the hash grid."
+						<< std::endl;
 
 					break;
 				}
 
-			std::cerr << "Resetting distributions with " << m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() << " * " << m_hash_grid_distributions_soa_buffer.get_last_resize_component_count() << " threads" << std::endl;
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
 				256, 1,
-				m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() * m_hash_grid_distributions_soa_buffer.get_last_resize_component_count(), 1,
-				launch_args, m_renderer->get_main_stream());
+				m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() * m_hash_grid_distributions_soa_buffer.get_last_resize_component_count(),
+				1, launch_args, m_renderer->get_main_stream());
 
 			m_grid_cell_alive_buffer.memset_whole_buffer(0);
 		}
@@ -254,9 +251,6 @@ void ReSTIRPGRenderPass::update_render_data()
 
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa =
 		m_hash_grid_distributions_sufficient_statistics_soa_buffer.to_device();
-
-	printf("Updated ren,der data with size! %u\n", m_hash_grid_distributions_sufficient_statistics_soa_buffer.size());
-	printf("Total number of cells updated to %u\n", m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells());
 
 	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells();
 }

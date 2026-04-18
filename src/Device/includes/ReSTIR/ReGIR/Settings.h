@@ -447,12 +447,16 @@ struct ReGIRSettings
 		{
 			float3_t jittered;
 			if (do_jittering)
+			{
 #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
-				jittered = hash_grid.jitter_world_position_tangent_plane(world_position, shading_normal, current_camera, roughness, primary_hit, rng,
-																		 jittering_radius);
+				float grid_cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(
+					world_position, current_camera, roughness, primary_hit, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
+
+				jittered = jitter_world_position_tangent_plane(world_position, shading_normal, rng, grid_cell_size, jittering_radius);
 #else
 				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, primary_hit, rng, jittering_radius);
 #endif
+			}
 			else
 				jittered = world_position;
 
