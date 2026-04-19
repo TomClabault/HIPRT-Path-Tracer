@@ -221,7 +221,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES)
 	{
-		render_data.buffers.accumulated_ray_colors[pixel_index] = incoming_radiance_to_visible_point;
+		render_data.buffers.accumulated_ray_colors[pixel_index] = restir_gi_initial_sample.target_function / initial_surface.material.base_color.luminance() *
+																  initial_surface.material.base_color / source_pdf *
+																  render_data.render_settings.restir_gi_settings.debug_view_scale_factor;
 	}
 }
 

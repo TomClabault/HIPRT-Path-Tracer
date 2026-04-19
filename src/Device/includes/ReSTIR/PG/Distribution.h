@@ -21,11 +21,7 @@ struct ReSTIRPGDistribution
 		{
 			cdf += distribution_components[i].weight;
 			if (random_value < cdf)
-			{
-				float3_t DEBUGOUT = distribution_components[i].vmf.sample(random_number_generator);
-
-				return DEBUGOUT;
-			}
+				return distribution_components[i].vmf.sample(random_number_generator);
 		}
 
 		// Should never happen, this would mean that the CDF does not sum to 1.0f
@@ -42,14 +38,13 @@ struct ReSTIRPGDistribution
 		return pdf;
 	}
 
-	HIPRT_DEVICE float3_t get_average_axis() const
+	HIPRT_DEVICE bool is_valid() const
 	{
-		float3_t average_axis = make_float3(0.0f, 0.0f, 0.0f);
+		float sum_of_weights = 0.0f;
+		for (int i = 0; i < ReSTIRPGDistributionComponentCount; i++)
+			sum_of_weights += distribution_components[i].weight;
 
-		for (int i = 0; i < ReSTIRPGDistributionComponentCount; ++i)
-			average_axis += distribution_components[i].vmf.axis * distribution_components[i].weight;
-
-		return hippt::normalize(average_axis);
+		return hippt::abs(sum_of_weights - 1.0f) < 1.0e-2f;
 	}
 
 	VMFMixtureComponent distribution_components[ReSTIRPGDistributionComponentCount];

@@ -52,7 +52,7 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
-	bool enable_direct = false;
+	bool enable_direct = true;
 
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
 	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;

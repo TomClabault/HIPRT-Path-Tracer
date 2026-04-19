@@ -25,13 +25,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 	ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
 
 	unsigned int cell_index = x;
-	if (cell_index >= restir_pg_settings.hash_grid_total_number_of_cells)
+	if (cell_index >= hippt::atomic_load(restir_pg_settings.grid_cell_alive_count))
 		return;
 
 	unsigned int hash_grid_cell_index = restir_pg_settings.grid_cell_alive_list[cell_index];
 	if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		// Should never happen
 		return;
+
+	if (hash_grid_cell_index >= restir_pg_settings.hash_grid_total_number_of_cells)
+		printf("Fitting.h: hash_grid_cell_index >= : %u >= %u, cell_index = %u\n", hash_grid_cell_index, restir_pg_settings.hash_grid_total_number_of_cells,
+			   cell_index);
 
 	ReSTIRPGDistributionSufficientStatisticsSoADevice sufficient_statistics_soa = restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa;
 	ReSTIRPGDistribution current_distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(hash_grid_cell_index);

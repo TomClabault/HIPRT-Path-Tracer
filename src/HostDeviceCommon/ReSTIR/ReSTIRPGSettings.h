@@ -32,6 +32,9 @@ struct ReSTIRPGSettings
 	float hash_grid_target_projected_size		 = 10.0f;
 	float hash_grid_cell_min_size				 = 0.1f;
 
+	// For RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
+	int debug_distribution_component_direction_number = 0;
+
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_position_data(float3_t position,
 																		  float3_t surface_normal,
 																		  const HIPRTCamera& current_camera,

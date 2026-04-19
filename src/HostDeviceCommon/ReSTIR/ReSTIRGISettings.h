@@ -36,7 +36,7 @@ struct ReSTIRGISpatialPassSettings
 enum ReSTIRGIDebugView
 {
 	NO_DEBUG							  = 0,
-	SHADE_ONLY_INITIAL_CANDIDATES					  = 1,
+	SHADE_ONLY_INITIAL_CANDIDATES		  = 1,
 	FINAL_RESERVOIR_UCW					  = 2,
 	TARGET_FUNCTION						  = 3,
 	WEIGHT_SUM							  = 4,

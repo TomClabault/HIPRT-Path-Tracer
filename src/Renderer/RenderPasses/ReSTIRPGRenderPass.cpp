@@ -225,6 +225,19 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, 1, grid_cell_alive_count, 1, launch_args,
 																				 m_renderer->get_main_stream());
 
+	std::vector<unsigned int> grid_cell_alist_list = m_grid_cell_alive_list_buffer.download_data();
+	for (unsigned int index = 0; index < grid_cell_alive_count; index++)
+	{
+		unsigned int grid_cell_index = grid_cell_alist_list[index];
+
+		if (grid_cell_index >= render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells)
+		{
+			std::cerr << "Alive index in the list: " << grid_cell_index << " @ " << index << " for " << grid_cell_alive_count << " cells alive" << std::endl;
+
+			break;
+		}
+	}
+
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
 		256, 1,
 		render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells *

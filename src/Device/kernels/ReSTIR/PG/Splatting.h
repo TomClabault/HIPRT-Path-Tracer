@@ -32,7 +32,6 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 	hippt::atomic_fetch_add(&sufficient_statistics.directions_sum_y[index], sample_direction.y * responsibility);
 	hippt::atomic_fetch_add(&sufficient_statistics.directions_sum_z[index], sample_direction.z * responsibility);
 	hippt::atomic_fetch_add(&sufficient_statistics.responsibility_weights_sum[index], responsibility);
-	hippt::atomic_fetch_add(&sufficient_statistics.sample_count[hash_grid_cell_index], 1u);
 }
 
 #ifdef __KERNELCC__
@@ -85,7 +84,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		if (!hippt::atomic_compare_exchange(&restir_pg_settings.grid_cell_alive[sample_hash_grid_index], 0u, 1u))
 		{
 			// Setting the grid cell as alive
-			unsigned int grid_cell_alive_index							   = hippt::atomic_fetch_add(restir_pg_settings.grid_cell_alive_count, 1u);
+			unsigned int grid_cell_alive_index = hippt::atomic_fetch_add(restir_pg_settings.grid_cell_alive_count, 1u);
+			if (sample_hash_grid_index >= restir_pg_settings.hash_grid_total_number_of_cells)
+				printf("Writing in grid_cell_alive_list %u @ %u\n", sample_hash_grid_index, grid_cell_alive_index);
 			restir_pg_settings.grid_cell_alive_list[grid_cell_alive_index] = sample_hash_grid_index;
 		}
 
@@ -95,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		ReSTIRPGDistribution distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(sample_hash_grid_index);
 
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
-		float sum_responsibilities = 0.0f;
+		float sum_responsibilities = 1.0e-8f;
 		float responsibilities[ReSTIRPGDistributionComponentCount];
 		for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
 		{
@@ -115,6 +116,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 			atomic_accumulate_sample(restir_pg_settings, sample.incident_direction, responsibility, component, sample_hash_grid_index);
 		}
+
+		hippt::atomic_fetch_add(&restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa.sample_count[sample_hash_grid_index], 1u);
 
 		// That sample is done, invalidating it such that if it doesn't get replaced in the next frame, it doesn't contribute to distributions again (that would
 		// be duplicating that sample)

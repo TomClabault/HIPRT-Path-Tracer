@@ -414,8 +414,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	ColorRGB32F color;
 
 	unsigned int checksum;
-	unsigned int cell_index = render_data.render_settings.restir_pg_settings.get_hash_grid_cell_index_from_position_data(primary_hit, normal, render_data.current_camera, checksum) %
-							  render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
+	unsigned int cell_index =
+		render_data.render_settings.restir_pg_settings.get_hash_grid_cell_index_from_position_data(primary_hit, normal, render_data.current_camera, checksum) %
+		render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells;
 	if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(
 			render_data.render_settings.restir_pg_settings.hash_grid_checksums, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,
 			cell_index, checksum))
@@ -424,7 +425,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		color = ColorRGB32F::random_color(cell_index);
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_AVERAGE_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 	ColorRGB32F color;
@@ -435,7 +436,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	if (distribution.distribution_components[0].weight == 0.0f)
 		color = ColorRGB32F(0.0f);
 	else
-		color = ColorRGB32F(hippt::normalize(distribution.get_average_axis())).abs();
+		color =
+			ColorRGB32F(hippt::normalize(
+							distribution.distribution_components[render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number]
+								.vmf.axis))
+				.abs();
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option

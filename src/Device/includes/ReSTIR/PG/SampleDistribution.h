@@ -24,12 +24,13 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 	ReSTIRPGDistribution distribution = render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(
 		closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera);
 
-	if (distribution.distribution_components[0].weight == 0.0f)
+	// The sum of weights should be equal to 1 so if we don't even have 0.5f sum, we definitely don't have a distribution here
+	if (!distribution.is_valid())
 		// No distribution, full BSDF sampling then
 		bsdf_probability = 1.0f;
-	else
-		// DEBUG BRANCH
-		bsdf_probability = 0.0f;
+	// else
+	// 	// DEBUG BRANCH
+	// 	bsdf_probability = 0.0f;
 
 	float random_value = random_number_generator();
 	if (random_value < bsdf_probability)

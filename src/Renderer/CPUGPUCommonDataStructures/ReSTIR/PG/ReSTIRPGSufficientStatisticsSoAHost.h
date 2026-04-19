@@ -84,6 +84,8 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 		soa_device.sample_count =
 			m_sufficient_statistics_data.template get_buffer_data_atomic_ptr<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_SAMPLE_COUNT>();
 
+			soa_device.DEBUGSIZE = m_sufficient_statistics_data.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_DIRECTIONS_SUMS_Z>().size();
+
 		return soa_device;
 	}
 

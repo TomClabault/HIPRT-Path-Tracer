@@ -1559,10 +1559,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						}
 
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						const char* debug_view_items[] = {
-							"- No debug view", "- Shade only initial candidates",	   "- Final reservoir UCW",	   "- Final reservoir target function", "- Final reservoir weight sum",
-							"- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"
-						};
+						const char* debug_view_items[] = { "- No debug view",
+														   "- Shade only initial candidates",
+														   "- Final reservoir UCW",
+														   "- Final reservoir target function",
+														   "- Final reservoir weight sum",
+														   "- Final reservoir M",
+														   "- Per pixel reuse radius",
+														   "- Valid directions percentage" };
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 							m_render_window->set_render_dirty(true);
 						if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
@@ -2165,13 +2169,24 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Average distribution direction" };
+		const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Distribution component direction" };
 
 		if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE), debug_view_items,
 						 IM_ARRAYSIZE(debug_view_items)))
 		{
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
+		}
+
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION)
+		{
+			ImGui::TreePush("Distribution component direction tree");
+
+			if (ImGui::SliderInt("Component number", &render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number, 0,
+								 global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT) - 1))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
