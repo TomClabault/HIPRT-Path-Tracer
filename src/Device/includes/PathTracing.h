@@ -225,7 +225,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 #if DisplayOnlySampleN == KERNEL_OPTION_TRUE
 	int debug_sample_index = render_data.render_settings.output_debug_sample_N;
 
-	if (render_data.render_settings.sample_number >= debug_sample_index)
+	if (render_data.render_settings.sample_number >= debug_sample_index || render_data.render_settings.sample_number == 0)
 	{
 		if (debug_color == DEFAULT_DEBUG_COLOR)
 			render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (render_data.render_settings.sample_number + 1);

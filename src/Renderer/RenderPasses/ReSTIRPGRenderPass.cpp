@@ -245,6 +245,9 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 		KernelBlockWidthHeight, KernelBlockWidthHeight, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
 		launch_args, m_renderer->get_main_stream());
 
+	ReSTIRPGSplattingSample empty_sample;
+	m_splatting_samples_buffer.memset_whole_buffer(empty_sample);
+
 	{
 		std::vector<float> sufficient_statistics_direction_x_CPU =
 			m_hash_grid_distributions_sufficient_statistics_soa_buffer.m_sufficient_statistics_data
@@ -263,7 +266,9 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 				.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_RESPONSIBILITY_WEIGHTS_SUM>()
 				.download_data();
 
-		unsigned int DEBUGcell_index = 83482;
+		std::vector<unsigned long long int> debug1_CPU = OrochiBuffer<unsigned long long int>::download_data(
+			reinterpret_cast<unsigned long long int*>(render_data.render_settings.DEBUG_BUFFER_ULL_1), 1024);
+		unsigned int DEBUGcell_index = 0; // debug1_CPU[0];
 
 		std::cerr << "Sufficient statistics for cell " << DEBUGcell_index << ": direction sum = (" << sufficient_statistics_direction_x_CPU[DEBUGcell_index]
 				  << ", " << sufficient_statistics_direction_y_CPU[DEBUGcell_index] << ", " << sufficient_statistics_direction_z_CPU[DEBUGcell_index] << ")"

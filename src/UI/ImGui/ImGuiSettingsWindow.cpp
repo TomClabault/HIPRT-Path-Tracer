@@ -2132,6 +2132,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 {
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
+	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
@@ -2169,22 +2170,46 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Distribution component direction" };
-
-		if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE), debug_view_items,
-						 IM_ARRAYSIZE(debug_view_items)))
+		if (ImGui::CollapsingHeader("Hash grid"))
 		{
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
+			ImGui::TreePush("ReSTIR PG Hash grid tree");
+
+			if (ImGui::SliderFloat("Grid cell target projected size", &restir_pg_settings.hash_grid_target_projected_size, 5, 25))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
+											"This has the effect of making the grid cells larger in the distance so that the projected size stays "
+											"approximately constant.");
+
+			if (ImGui::SliderFloat("Grid cell minimum size", &restir_pg_settings.hash_grid_cell_min_size, 0.1, 0.5))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
 		}
 
-		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION)
+		if (ImGui::CollapsingHeader("Debug"))
 		{
-			ImGui::TreePush("Distribution component direction tree");
+			ImGui::TreePush("ReSTIR PG Debug tree");
 
-			if (ImGui::SliderInt("Component number", &render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number, 0,
-								 global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT) - 1))
+			const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Distribution component direction" };
+			if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE),
+							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+			{
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION)
+			{
+				ImGui::TreePush("Distribution component direction tree");
+
+				if (ImGui::SliderInt("Component number", &render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number, 0,
+									 global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT) - 1))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::TreePop();
+			}
 
 			ImGui::TreePop();
 		}

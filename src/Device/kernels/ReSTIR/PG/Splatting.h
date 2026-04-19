@@ -56,11 +56,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		restir_reservoir_pixel_index = pixel_index;
 
 	const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
-	if (hippt::atomic_compare_exchange(&restir_pg_settings.already_splatted_samples[restir_reservoir_pixel_index], 0u, 1u))
-		// The sample at this pixel has already been splatted, not splatting it again
-		return;
+	// if (hippt::atomic_compare_exchange(&restir_pg_settings.already_splatted_samples[restir_reservoir_pixel_index], 0u, 1u))
+	//	// The sample at this pixel has already been splatted, not splatting it again
+	//	return;
 
-	// For each bouncen, splatting the sample of that bounce (for the current pixel) into the hash grid
+	//	if (hippt::is_pixel_index(872, render_data.render_settings.render_resolution.y - 1 - 466))
+	//	{
+	//		unsigned int checksum;
+	//		unsigned int sample_hash_grid_index =
+	//			restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
+
+	//		render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = sample_hash_grid_index;
+	//		printf("\tHash grid cell index: %u\n", sample_hash_grid_index);
+	//	}
+
+	// For each bounce, splatting the sample of that bounce (for the current pixel) into the hash grid
 	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
 	{
 		ReSTIRPGSplattingSample sample = restir_pg_settings.splatting_samples[restir_reservoir_pixel_index + bounce * pixel_count];
@@ -78,7 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		{
 			// That sample is done, invalidating it such that if it doesn't get replaced in the next frame, it doesn't contribute to distributions again (that
 			// would be duplicating that sample)
-			restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
+			// restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
 
 			// If the collision resolution failed, then we just skip this sample and don't insert it into the hash grid
 			continue;
@@ -122,7 +132,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 		// That sample is done, invalidating it such that if it doesn't get replaced in the next frame, it doesn't contribute to distributions again (that would
 		// be duplicating that sample)
-		restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
+		// restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
 	}
 }
 
