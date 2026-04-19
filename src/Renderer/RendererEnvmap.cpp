@@ -185,7 +185,8 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 	world_settings.envmap_to_world_matrix = envmap_to_world_matrix;
 	world_settings.world_to_envmap_matrix = world_to_envmap_matrix;
 
-	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
+	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING ||
+		world_settings.ambient_light_type == AmbientLightType::NONE || world_settings.ambient_light_type == AmbientLightType::UNIFORM)
 	{
 		world_settings.envmap_cdf = nullptr;
 
@@ -205,8 +206,6 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 		world_settings.envmap_alias_table.sum_elements		 = 0;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
-	// TODO we've got a bug here with no envmap given on the commandline but with the ESS_ALIAS_TABLE option, this is going into that branch but we don't have
-	// an envmap
 	{
 		world_settings.envmap_cdf		= nullptr;
 		world_settings.envmap_total_sum = m_luminance_total_sum;
