@@ -2167,25 +2167,50 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		static int distribution_component_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
-		ImGui::SliderInt("Mixture component count", &distribution_component_count, 1, 8);
-
-		if (distribution_component_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
+		if (ImGui::CollapsingHeader("VMF Mixture"))
 		{
-			ImGui::TreePush("ReSTIR PG distribution component count apply button");
+			ImGui::TreePush("ReSTIR VMF Mixture tree");
 
-			if (ImGui::Button("Apply##ReSTIR PG distribution component count"))
+			static int distribution_component_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
+			ImGui::SliderInt("Mixture component count", &distribution_component_count, 1, 8);
+
+			if (distribution_component_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT, distribution_component_count);
+				ImGui::TreePush("ReSTIR PG distribution component count apply button");
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				if (ImGui::Button("Apply##ReSTIR PG distribution component count"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT, distribution_component_count);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
 			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::TreePop();
 		}
 
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::CollapsingHeader("Sampling"))
+		{
+			ImGui::TreePush("ReSTIR PG Sampling tree");
+
+			if (ImGui::SliderFloat("BSDF sampling proba", &render_data.render_settings.restir_pg_settings.bsdf_sampling_probability, 0.0f, 1.0f, "%.3f",
+								   ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("The probability of sampling the BSDF when sampling the next path vertex direction with ReSTIR PG.\n\n"
+											"ReSTIR PG samples the next path vertex direction from a mixture of the BSDF and the path guiding distribution. "
+											"This slider controls the balance between those two distributions.\n\n"
+											"A value of 1.0f means that only the BSDF will be sampled, so no path guiding, while a value of 0.0f means that "
+											"only the path guiding distribution will be sampled.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::TreePop();
+		}
 
 		if (ImGui::CollapsingHeader("Hash grid"))
 		{

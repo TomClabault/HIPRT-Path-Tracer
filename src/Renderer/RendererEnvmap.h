@@ -14,7 +14,7 @@ class RendererEnvmap
 {
 public:
 	float rotation_X = 0.0f;
-	float rotation_Y = 0.0f;
+	float rotation_Y = 0.24f;
 	float rotation_Z = 0.0f;
 
 	bool animate = false;
