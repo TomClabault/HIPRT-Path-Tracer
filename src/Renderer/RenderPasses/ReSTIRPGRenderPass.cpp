@@ -221,22 +221,11 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	{
-		std::vector<ReSTIRPGSplattingSample> splatting_samples_CPU = m_splatting_samples_buffer.download_data();
+	/*render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 1171;
+	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 488;*/
 
-		unsigned int DEBUGx			  = 142;
-		unsigned int DEBUGy			  = 245;
-		unsigned int DEBUGpixel_index = DEBUGx + DEBUGy * render_data.render_settings.render_resolution.x;
-
-		std::cerr << "Splatting sample at " << DEBUGx << ", " << DEBUGy << " (pixel index " << DEBUGpixel_index << "): "
-				  << "position = (" << splatting_samples_CPU[DEBUGpixel_index].position.x << ", " << splatting_samples_CPU[DEBUGpixel_index].position.y << ", "
-				  << splatting_samples_CPU[DEBUGpixel_index].position.z << ")"
-				  << ", normal = (" << splatting_samples_CPU[DEBUGpixel_index].normal.x << ", " << splatting_samples_CPU[DEBUGpixel_index].normal.y << ", "
-				  << splatting_samples_CPU[DEBUGpixel_index].normal.z << ")"
-				  << ", incident_direction = (" << splatting_samples_CPU[DEBUGpixel_index].incident_direction.x << ", "
-				  << splatting_samples_CPU[DEBUGpixel_index].incident_direction.y << ", " << splatting_samples_CPU[DEBUGpixel_index].incident_direction.z
-				  << std::endl;
-	}
+	render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 1202;
+	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 542;
 
 	m_already_splatted_samples_buffer.memset_whole_buffer(0);
 
@@ -268,16 +257,37 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 		std::vector<unsigned long long int> debug1_CPU = OrochiBuffer<unsigned long long int>::download_data(
 			reinterpret_cast<unsigned long long int*>(render_data.render_settings.DEBUG_BUFFER_ULL_1), 1024);
-		unsigned int DEBUGcell_index = 0; // debug1_CPU[0];
-
-		std::cerr << "Sufficient statistics for cell " << DEBUGcell_index << ": direction sum = (" << sufficient_statistics_direction_x_CPU[DEBUGcell_index]
-				  << ", " << sufficient_statistics_direction_y_CPU[DEBUGcell_index] << ", " << sufficient_statistics_direction_z_CPU[DEBUGcell_index] << ")"
-				  << ", responsibility weights sum = " << sufficient_statistics_responsibility_weights_CPU[DEBUGcell_index] << std::endl;
+		unsigned int DEBUGcell_index = debug1_CPU[0];
+		if (DEBUGcell_index != HIPRTRenderSettings::DEBUG_DEFAULT_ULL)
+		{
+			std::cerr << "CPU: Sufficient statistics for cell " << DEBUGcell_index << ": direction sum = ("
+					  << sufficient_statistics_direction_x_CPU[DEBUGcell_index] << ", " << sufficient_statistics_direction_y_CPU[DEBUGcell_index] << ", "
+					  << sufficient_statistics_direction_z_CPU[DEBUGcell_index] << ")"
+					  << ", responsibility weights sum = " << sufficient_statistics_responsibility_weights_CPU[DEBUGcell_index] << std::endl;
+		}
 	}
 
 	unsigned int grid_cell_alive_count = m_grid_cell_alive_count_buffer.download_data()[0];
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, 1, grid_cell_alive_count, 1, launch_args,
 																				 m_renderer->get_main_stream());
+	{
+		std::vector<unsigned long long int> debug1_CPU = OrochiBuffer<unsigned long long int>::download_data(
+			reinterpret_cast<unsigned long long int*>(render_data.render_settings.DEBUG_BUFFER_ULL_1), 1024);
+		unsigned int DEBUGcell_index = debug1_CPU[0];
+
+		if (DEBUGcell_index != HIPRTRenderSettings::DEBUG_DEFAULT_ULL)
+		{
+			float3_t axis = m_hash_grid_distributions_soa_buffer.m_distribution_data
+								.template get_buffer<ReSTIRPGDistributionSoAHostBuffers::RESTIR_PG_DISTRIBUTION_VMF_AXIS>()
+								.download_data()[DEBUGcell_index];
+			float sharpness = m_hash_grid_distributions_soa_buffer.m_distribution_data
+								  .template get_buffer<ReSTIRPGDistributionSoAHostBuffers::RESTIR_PG_DISTRIBUTION_VMF_SHARPNESS>()
+								  .download_data()[DEBUGcell_index];
+
+			std::cerr << "CPU: Distribution for cell " << DEBUGcell_index << ": axis = (" << axis.x << ", " << axis.y << ", " << axis.z
+					  << "), sharpness = " << sharpness << std::endl;
+		}
+	}
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
 		256, 1,

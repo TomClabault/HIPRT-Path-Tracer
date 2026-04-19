@@ -433,14 +433,25 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	ReSTIRPGDistribution distribution =
 		render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
 
-	if (distribution.distribution_components[0].weight == 0.0f)
-		color = ColorRGB32F(0.0f);
+	if (render_data.render_settings.sample_number == 0)
+	{
+		// At sample 0 we don't have the distributions yet so we can't fetch the directions from the distributions themselves but we can just display the
+		// directions that the directions are initialized with which are directions on the fibonacci sphere
+		color = ColorRGB32F(fibonacci_sphere_direction(render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number,
+													   ReSTIRPGDistributionComponentCount))
+					.abs();
+	}
 	else
-		color =
-			ColorRGB32F(hippt::normalize(
+	{
+		if (distribution.distribution_components[0].weight == 0.0f)
+			color = ColorRGB32F(0.0f);
+		else
+			color = ColorRGB32F(
+						hippt::normalize(
 							distribution.distribution_components[render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number]
 								.vmf.axis))
-				.abs();
+						.abs();
+	}
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option

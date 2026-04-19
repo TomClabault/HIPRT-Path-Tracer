@@ -33,10 +33,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		// Should never happen
 		return;
 
-	if (hash_grid_cell_index >= restir_pg_settings.hash_grid_total_number_of_cells)
-		printf("Fitting.h: hash_grid_cell_index >= : %u >= %u, cell_index = %u\n", hash_grid_cell_index, restir_pg_settings.hash_grid_total_number_of_cells,
-			   cell_index);
-
 	ReSTIRPGDistributionSufficientStatisticsSoADevice sufficient_statistics_soa = restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa;
 	ReSTIRPGDistribution current_distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(hash_grid_cell_index);
 
@@ -54,7 +50,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		float responsibility_weights_sum =
 			sufficient_statistics_soa.responsibility_weights_sum[component_index * restir_pg_settings.hash_grid_total_number_of_cells + hash_grid_cell_index];
 
-		if (responsibility_weights_sum <= 1e-15f || directions_sum_length <= 1e-15f)
+		if (responsibility_weights_sum <= 1e-25f || directions_sum_length <= 1e-25f)
 			continue;
 
 		float3_t new_mean_vmf_direction	  = directions_sum / directions_sum_length;
@@ -76,6 +72,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		new_vmf.vmf.axis	  = new_mean_vmf_direction;
 		new_vmf.vmf.sharpness = new_vmf_sharpness;
 		new_vmf.weight		  = new_mixture_component_weight;
+
+		if ((!hippt::is_finite(new_vmf.vmf.axis.x) || !hippt::is_finite(new_vmf.vmf.axis.y) || !hippt::is_finite(new_vmf.vmf.axis.z) ||
+			 !hippt::is_finite(new_vmf.vmf.sharpness) || !hippt::is_finite(new_vmf.weight)) &&
+			hash_grid_cell_index < 1000)
+		{
+			printf("Not finite: new_vmf.sharpness = %f, new_vmf.weight = %f @ %u\n\tSum responsibilities: %f, "
+				   "\n\tresponsibility_weights_sum = %f, \n\tdirections_sum_length: %f\n\tnormalized_resultant_length: %f, "
+				   "\n\tcurrent_mixture_component_weight = %f, \n\tcurrent_mixture_sample_count = "
+				   "%u\n\t, rpriork = %f\n",
+				   new_vmf.vmf.sharpness, new_vmf.weight, hash_grid_cell_index, sum_responsibilities_weight_sum, responsibility_weights_sum,
+				   directions_sum_length, normalized_resultant_length, current_mixture_component_weight, current_mixture_sample_count, rpriork);
+		}
 
 		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_vmf(hash_grid_cell_index, component_index, new_vmf.vmf);
 		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(hash_grid_cell_index, component_index, new_vmf.weight);

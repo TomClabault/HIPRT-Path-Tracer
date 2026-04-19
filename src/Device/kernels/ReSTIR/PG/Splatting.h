@@ -56,19 +56,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		restir_reservoir_pixel_index = pixel_index;
 
 	const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
-	// if (hippt::atomic_compare_exchange(&restir_pg_settings.already_splatted_samples[restir_reservoir_pixel_index], 0u, 1u))
-	//	// The sample at this pixel has already been splatted, not splatting it again
-	//	return;
-
-	//	if (hippt::is_pixel_index(872, render_data.render_settings.render_resolution.y - 1 - 466))
-	//	{
-	//		unsigned int checksum;
-	//		unsigned int sample_hash_grid_index =
-	//			restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
-
-	//		render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = sample_hash_grid_index;
-	//		printf("\tHash grid cell index: %u\n", sample_hash_grid_index);
-	//	}
 
 	// For each bounce, splatting the sample of that bounce (for the current pixel) into the hash grid
 	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
@@ -85,14 +72,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, true>(
 				restir_pg_settings.hash_grid_checksums, restir_pg_settings.hash_grid_total_number_of_cells, sample_hash_grid_index, checksum))
-		{
-			// That sample is done, invalidating it such that if it doesn't get replaced in the next frame, it doesn't contribute to distributions again (that
-			// would be duplicating that sample)
-			// restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
-
 			// If the collision resolution failed, then we just skip this sample and don't insert it into the hash grid
 			continue;
-		}
 
 		if (!hippt::atomic_compare_exchange(&restir_pg_settings.grid_cell_alive[sample_hash_grid_index], 0u, 1u))
 		{
@@ -105,6 +86,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		 * Inserting the sample into the sufficient statistics of the hash grid cell, in each component for the expectation step of the EM algorithm
 		 */
 		ReSTIRPGDistribution distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(sample_hash_grid_index);
+
+		// if (sample_hash_grid_index == 86263 && render_data.render_settings.sample_number == 5)
+		///*hippt::is_pixel_index(restir_pg_settings.DEBUG_pixel_x, render_data.render_settings.render_resolution.y - 1 - restir_pg_settings.DEBUG_pixel_y) &&
+		// render_data.render_settings.sample_number == 5)*/
+		//{
+		//	unsigned int checksum;
+		//	unsigned int sample_hash_grid_index =
+		//		restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
+
+		//	render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = sample_hash_grid_index;
+		//	// printf("\tSplatting.h: Pixel (%d ,%d), hash grid cell index: %u\n", x, y, sample_hash_grid_index);
+		//	printf("\tSplatting.h: Sample incident direction: (%f, %f, %f)\n", sample.incident_direction.x, sample.incident_direction.y,
+		//		   sample.incident_direction.z);
+		//	printf("\tSplatting.h: Distribution: \n");
+		//	for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
+		//	{
+		//		const VMFMixtureComponent& vmf_mixture_component = distribution.distribution_components[component];
+		//		printf("\t\tSplatting.h: Component %d: weight = %f, vmf mean direction = (%f, %f, %f), vmf concentration = %f\n", component,
+		//			   vmf_mixture_component.weight, vmf_mixture_component.vmf.axis.x, vmf_mixture_component.vmf.axis.y, vmf_mixture_component.vmf.axis.z,
+		//			   vmf_mixture_component.vmf.sharpness);
+		//	}
+		//}
 
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
 		float sum_responsibilities = 1.0e-8f;

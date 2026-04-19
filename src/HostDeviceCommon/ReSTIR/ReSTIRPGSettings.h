@@ -39,6 +39,9 @@ struct ReSTIRPGSettings
 	// For RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
 	int debug_distribution_component_direction_number = 0;
 
+	unsigned int DEBUG_pixel_x = 1171;
+	unsigned int DEBUG_pixel_y = 488;
+
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_position_data(float3_t position,
 																		  float3_t surface_normal,
 																		  const HIPRTCamera& current_camera,

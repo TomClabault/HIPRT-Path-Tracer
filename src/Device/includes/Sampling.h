@@ -204,4 +204,20 @@ HIPRT_DEVICE static float cosine_weighted_pdf(float NoL)
 	return NoL * hippt::M_INV_PI;
 }
 
+// Reference: https://codesandbox.io/p/sandbox/fibonacci-sphere-forked-yhvclc?file=%2Fsrc%2Findex.ts%3A19%2C1-36%2C1
+HIPRT_DEVICE float3_t fibonacci_sphere_direction(int i, int N)
+{
+	float golden_angle = hippt::M_Pi * (1.0f + hippt::sqrt(5.0f));
+	// http://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/
+	constexpr float epsilon = 0.36f;
+
+	const float y	  = (1.0f - ((i + epsilon) / (N - 1.0f + 2.0f * epsilon)) * 2.0f);
+	const float r	  = hippt::sqrt(1.0f - y * y);
+	const float theta = golden_angle * i;
+	const float x	  = hippt::intrin_cosf(theta) * r;
+	const float z	  = hippt::intrin_sinf(theta) * r;
+
+	return hippt::normalize(make_float3(x, y, z));
+}
+
 #endif
