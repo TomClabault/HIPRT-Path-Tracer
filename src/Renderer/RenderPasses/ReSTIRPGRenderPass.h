@@ -43,6 +43,7 @@ public:
 
 private:
 	OrochiBuffer<ReSTIRPGSplattingSample> m_splatting_samples_buffer;
+	OrochiBuffer<unsigned int> m_already_splatted_samples_buffer;
 
 	ReSTIRPGDistributionSoAHost<OrochiBuffer> m_hash_grid_distributions_soa_buffer;
 	OrochiBuffer<unsigned int> m_hash_grid_checksums_buffer;

@@ -17,6 +17,10 @@ struct ReSTIRPGSettings
 	//
 	// Screen space size * (number of bounces - 1)
 	ReSTIRPGSplattingSample* splatting_samples = nullptr;
+	// TODO this can be unsigned char
+	// Whether or not the samples of the path at the pixel in this buffer has already been splatted to the grid (this buffer is width * heigth in size, one
+	// entry per pixel)
+	AtomicType<unsigned int>* already_splatted_samples = nullptr;
 
 	ReSTIRPGDistributionSoADevice hash_grid_distributions_soa;
 	AtomicType<unsigned int>* hash_grid_checksums	= nullptr;

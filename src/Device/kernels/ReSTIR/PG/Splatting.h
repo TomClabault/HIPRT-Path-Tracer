@@ -56,6 +56,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		restir_reservoir_pixel_index = pixel_index;
 
 	const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
+	if (hippt::atomic_compare_exchange(&restir_pg_settings.already_splatted_samples[restir_reservoir_pixel_index], 0u, 1u))
+		// The sample at this pixel has already been splatted, not splatting it again
+		return;
+
 	// For each bouncen, splatting the sample of that bounce (for the current pixel) into the hash grid
 	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
 	{
@@ -68,7 +72,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		unsigned int checksum;
 		unsigned int sample_hash_grid_index =
 			restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
-		unsigned int sample_hash_grid_index_before = sample_hash_grid_index;
 
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, true>(
 				restir_pg_settings.hash_grid_checksums, restir_pg_settings.hash_grid_total_number_of_cells, sample_hash_grid_index, checksum))
@@ -84,9 +87,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		if (!hippt::atomic_compare_exchange(&restir_pg_settings.grid_cell_alive[sample_hash_grid_index], 0u, 1u))
 		{
 			// Setting the grid cell as alive
-			unsigned int grid_cell_alive_index = hippt::atomic_fetch_add(restir_pg_settings.grid_cell_alive_count, 1u);
-			if (sample_hash_grid_index >= restir_pg_settings.hash_grid_total_number_of_cells)
-				printf("Writing in grid_cell_alive_list %u @ %u\n", sample_hash_grid_index, grid_cell_alive_index);
+			unsigned int grid_cell_alive_index							   = hippt::atomic_fetch_add(restir_pg_settings.grid_cell_alive_count, 1u);
 			restir_pg_settings.grid_cell_alive_list[grid_cell_alive_index] = sample_hash_grid_index;
 		}
 

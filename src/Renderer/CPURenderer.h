@@ -208,6 +208,7 @@ private:
 	struct ReSTIRPGState
 	{
 		std::vector<ReSTIRPGSplattingSample> splatting_samples;
+		std::vector<AtomicType<unsigned int>> already_splatted_samples;
 
 		ReSTIRPGDistributionSoAHost<std::vector> hash_grid_distributions_soa_buffer;
 		std::vector<AtomicType<unsigned int>> hash_grid_checksums;

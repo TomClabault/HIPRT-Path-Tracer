@@ -649,7 +649,7 @@ namespace hippt
 	}
 
 	/**
-	 * The function returns the value at 'address' because the increment
+	 * The function returns the value at 'address' before the increment
 	 */
 	template <typename T>
 	__device__ static T atomic_fetch_add(T* address, T increment)
@@ -1532,7 +1532,7 @@ namespace hippt
 	}
 
 	/**
-	 * The function returns the value at 'address' because the increment
+	 * The function returns the value at 'address' before the increment
 	 */
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment)

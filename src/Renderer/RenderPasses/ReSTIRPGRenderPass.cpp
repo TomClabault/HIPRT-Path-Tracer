@@ -109,6 +109,7 @@ void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	unsigned int nb_bounces = m_renderer->get_render_data().render_settings.nb_bounces;
 
 	m_splatting_samples_buffer.resize(new_width * new_height * nb_bounces);
+	m_already_splatted_samples_buffer.resize(new_width * new_height);
 }
 
 bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
@@ -120,7 +121,10 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 	if (!is_render_pass_used())
 	{
 		if (m_splatting_samples_buffer.size() != 0)
+		{
 			m_splatting_samples_buffer.free();
+			m_already_splatted_samples_buffer.free();
+		}
 
 		if (m_hash_grid_distributions_soa_buffer.get_last_resize_component_count() != 0)
 		{
@@ -145,6 +149,7 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 		{
 			m_splatting_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y *
 											  render_data.render_settings.nb_bounces);
+			m_already_splatted_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y);
 
 			updated = true;
 		}
@@ -216,27 +221,58 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
+	{
+		std::vector<ReSTIRPGSplattingSample> splatting_samples_CPU = m_splatting_samples_buffer.download_data();
+
+		unsigned int DEBUGx			  = 142;
+		unsigned int DEBUGy			  = 245;
+		unsigned int DEBUGpixel_index = DEBUGx + DEBUGy * render_data.render_settings.render_resolution.x;
+
+		std::cerr << "Splatting sample at " << DEBUGx << ", " << DEBUGy << " (pixel index " << DEBUGpixel_index << "): "
+				  << "position = (" << splatting_samples_CPU[DEBUGpixel_index].position.x << ", " << splatting_samples_CPU[DEBUGpixel_index].position.y << ", "
+				  << splatting_samples_CPU[DEBUGpixel_index].position.z << ")"
+				  << ", normal = (" << splatting_samples_CPU[DEBUGpixel_index].normal.x << ", " << splatting_samples_CPU[DEBUGpixel_index].normal.y << ", "
+				  << splatting_samples_CPU[DEBUGpixel_index].normal.z << ")"
+				  << ", incident_direction = (" << splatting_samples_CPU[DEBUGpixel_index].incident_direction.x << ", "
+				  << splatting_samples_CPU[DEBUGpixel_index].incident_direction.y << ", " << splatting_samples_CPU[DEBUGpixel_index].incident_direction.z
+				  << std::endl;
+	}
+
+	m_already_splatted_samples_buffer.memset_whole_buffer(0);
+
 	void* launch_args[] = { &render_data };
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
 		KernelBlockWidthHeight, KernelBlockWidthHeight, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
 		launch_args, m_renderer->get_main_stream());
 
+	{
+		std::vector<float> sufficient_statistics_direction_x_CPU =
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.m_sufficient_statistics_data
+				.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_DIRECTIONS_SUMS_X>()
+				.download_data();
+		std::vector<float> sufficient_statistics_direction_y_CPU =
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.m_sufficient_statistics_data
+				.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_DIRECTIONS_SUMS_Y>()
+				.download_data();
+		std::vector<float> sufficient_statistics_direction_z_CPU =
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.m_sufficient_statistics_data
+				.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_DIRECTIONS_SUMS_Z>()
+				.download_data();
+		std::vector<float> sufficient_statistics_responsibility_weights_CPU =
+			m_hash_grid_distributions_sufficient_statistics_soa_buffer.m_sufficient_statistics_data
+				.template get_buffer<ReSTIRPGSufficientStatisticsSoAHostBuffers::RESTIR_PG_RESPONSIBILITY_WEIGHTS_SUM>()
+				.download_data();
+
+		unsigned int DEBUGcell_index = 83482;
+
+		std::cerr << "Sufficient statistics for cell " << DEBUGcell_index << ": direction sum = (" << sufficient_statistics_direction_x_CPU[DEBUGcell_index]
+				  << ", " << sufficient_statistics_direction_y_CPU[DEBUGcell_index] << ", " << sufficient_statistics_direction_z_CPU[DEBUGcell_index] << ")"
+				  << ", responsibility weights sum = " << sufficient_statistics_responsibility_weights_CPU[DEBUGcell_index] << std::endl;
+	}
+
 	unsigned int grid_cell_alive_count = m_grid_cell_alive_count_buffer.download_data()[0];
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, 1, grid_cell_alive_count, 1, launch_args,
 																				 m_renderer->get_main_stream());
-
-	std::vector<unsigned int> grid_cell_alist_list = m_grid_cell_alive_list_buffer.download_data();
-	for (unsigned int index = 0; index < grid_cell_alive_count; index++)
-	{
-		unsigned int grid_cell_index = grid_cell_alist_list[index];
-
-		if (grid_cell_index >= render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells)
-		{
-			std::cerr << "Alive index in the list: " << grid_cell_index << " @ " << index << " for " << grid_cell_alive_count << " cells alive" << std::endl;
-
-			break;
-		}
-	}
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
 		256, 1,
@@ -254,7 +290,8 @@ void ReSTIRPGRenderPass::update_render_data()
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	render_data.render_settings.restir_pg_settings.splatting_samples = m_splatting_samples_buffer.get_device_pointer();
+	render_data.render_settings.restir_pg_settings.splatting_samples		= m_splatting_samples_buffer.get_device_pointer();
+	render_data.render_settings.restir_pg_settings.already_splatted_samples = m_already_splatted_samples_buffer.get_atomic_device_pointer();
 
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa = m_hash_grid_distributions_soa_buffer.to_device();
 	render_data.render_settings.restir_pg_settings.hash_grid_checksums		   = m_hash_grid_checksums_buffer.get_atomic_device_pointer();

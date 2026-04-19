@@ -17,14 +17,14 @@ struct ReSTIRPGDistributionSufficientStatisticsSoADevice
 	}
 
 	// Number of cells * ReSTIRPGDistributionComponentCount in size
-	// 
+	//
 	// Should be indexed with [component_index * total_number_of_cells + hash_grid_cell_index]
 	//
 	// Directions sums * responsibility, accumulated by the splatting pass
 	AtomicType<float>* directions_sum_x = nullptr;
 	AtomicType<float>* directions_sum_y = nullptr;
 	AtomicType<float>* directions_sum_z = nullptr;
-	unsigned int DEBUGSIZE = 0;
+	unsigned int DEBUGSIZE				= 0;
 
 	// Should be indexed with [component_index * total_number_of_cells + hash_grid_cell_index]
 	AtomicType<float>* responsibility_weights_sum = nullptr;
