@@ -37,7 +37,7 @@
 
 #define ReSTIRPGHashGridCollisionResolveSteps 4
 
-#define ReSTIRPGDebugMode RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT
+#define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
 
 #endif
 

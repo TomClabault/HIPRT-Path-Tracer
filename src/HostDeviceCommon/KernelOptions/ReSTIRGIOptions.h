@@ -103,6 +103,12 @@
  */
 #define ReSTIR_GI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
 
+/**
+ * This is a compile time switch to enable the debug view that only outputs initial candidates to the viewport. Other debug views generally don't have compile
+ * time switch but because this option can performance implications even if not selected, it's guarded by a compile time switch
+ */
+#define ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

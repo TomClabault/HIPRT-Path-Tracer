@@ -1568,7 +1568,24 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 														   "- Per pixel reuse radius",
 														   "- Valid directions percentage" };
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+						{
+							int macro_value_before =
+								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
+							if (render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES)
+								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
+																	   KERNEL_OPTION_TRUE);
+							else
+								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
+																	   KERNEL_OPTION_FALSE);
+							int macro_value_after =
+								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
+
+							bool macro_option_changed = macro_value_before != macro_value_after;
+							if (macro_option_changed)
+								m_renderer->recompile_kernels();
+
 							m_render_window->set_render_dirty(true);
+						}
 						if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
 							m_render_window->set_render_dirty(true);
 
@@ -2151,7 +2168,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		static int distribution_component_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
-		ImGui::SliderInt("Mixture Distribution Component Count", &distribution_component_count, 1, 16);
+		ImGui::SliderInt("Mixture component count", &distribution_component_count, 1, 8);
 
 		if (distribution_component_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT))
 		{

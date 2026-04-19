@@ -238,11 +238,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 
-	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES)
+	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES &&
+		ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled)
 	{
-		render_data.buffers.accumulated_ray_colors[pixel_index] = restir_gi_initial_sample.target_function / initial_surface.material.base_color.luminance() *
-																  initial_surface.material.base_color / source_pdf *
-																  render_data.render_settings.restir_gi_settings.debug_view_scale_factor;
+		BSDFContext eval_context(initial_surface.view_direction, initial_surface.shading_normal, initial_surface.geometric_normal,
+								 hippt::normalize(restir_gi_initial_sample.sample_point - initial_surface.shading_point),
+								 restir_gi_initial_sample.incident_light_info_at_visible_point, initial_surface.ray_volume_state, false,
+								 initial_surface.material, 0.0f);
+
+		float trash_pdf;
+		ColorRGB32F radiance_to_camera =
+			bsdf_dispatcher_eval(render_data, eval_context, trash_pdf, random_number_generator) * incoming_radiance_to_visible_point;
+
+		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_gi_initial_reservoir.UCW;
 	}
 }
 

@@ -51,8 +51,6 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
-	bool enable_direct = true;
-
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
 	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;
 	static constexpr int DEBUG_STRING_MAX_LENGTH			  = 96;
@@ -138,7 +136,10 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 1;
+	int nb_bounces = 2;
+
+	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
+	bool enable_direct = false;
 
 	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?

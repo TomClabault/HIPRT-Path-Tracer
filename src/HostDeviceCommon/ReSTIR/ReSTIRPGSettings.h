@@ -13,6 +13,22 @@
 
 struct ReSTIRPGSettings
 {
+	// When sampling the next path continuation direction at a path vertex, what's the probability of sampling from the BSDF (and sampling from the PG mixture
+	// is then 1.0f - bsdf_sampling_probability) BSDF sampling and path guiding are combined with one sample MIS
+	float bsdf_sampling_probability = 0.5f;
+
+	unsigned int hash_grid_total_number_of_cells = 0;
+	float hash_grid_target_projected_size		 = 20.0f;
+	float hash_grid_cell_min_size				 = 0.1f;
+
+	// For RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
+	int debug_distribution_component_direction_number = 0;
+	// For some other debug options
+	float debug_normalization_factor = 1.0f;
+
+	unsigned int DEBUG_pixel_x = 1171;
+	unsigned int DEBUG_pixel_y = 488;
+
 	// Splatting samples buffer. This is used to store the samples that are going to be splatted into the grid in the splatting pass of ReSTIR PG.
 	//
 	// Screen space size * (number of bounces - 1)
@@ -31,18 +47,6 @@ struct ReSTIRPGSettings
 	// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
 	AtomicType<unsigned int>* hash_grid_distributions_sufficient_statistics_lock = nullptr;
 	ReSTIRPGDistributionSufficientStatisticsSoADevice hash_grid_distributions_sufficient_statistics_soa;
-
-	unsigned int hash_grid_total_number_of_cells = 0;
-	float hash_grid_target_projected_size		 = 20.0f;
-	float hash_grid_cell_min_size				 = 0.1f;
-
-	// For RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
-	int debug_distribution_component_direction_number = 0;
-	// For some other debug options
-	float debug_normalization_factor = 1.0f;
-
-	unsigned int DEBUG_pixel_x = 1171;
-	unsigned int DEBUG_pixel_y = 488;
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_position_data(float3_t position,
 																		  float3_t surface_normal,

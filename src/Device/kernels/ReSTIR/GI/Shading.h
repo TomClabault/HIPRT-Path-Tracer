@@ -195,10 +195,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
 		debug_set_final_color(render_data, x, y, debug_color);
 	}
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES)
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES &&
+			 ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled)
 	{
 		// The initial candidate's color is set into accumulated_ray_colors by the InitialCandidatesPass for this debug view so we just reuse that color
-		ray_payload.ray_color = render_data.buffers.accumulated_ray_colors[pixel_index] * (render_data.render_settings.sample_number + 1);
+		ray_payload.ray_color = render_data.buffers.accumulated_ray_colors[pixel_index];
 
 		ColorRGB32F debug_color;
 		path_tracing_compute_debug_view_debug_color(render_data, ray_payload, pixel_index, random_number_generator, debug_color);
