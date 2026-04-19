@@ -426,12 +426,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE
-	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-	float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 	ColorRGB32F color;
-
-	ReSTIRPGDistribution distribution =
-		render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
 
 	if (render_data.render_settings.sample_number == 0)
 	{
@@ -443,6 +438,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 	else
 	{
+		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+		ReSTIRPGDistribution distribution =
+			render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
+
 		if (distribution.distribution_components[0].weight == 0.0f)
 			color = ColorRGB32F(0.0f);
 		else
@@ -452,6 +452,48 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 								.vmf.axis))
 						.abs();
 	}
+
+	out_debug_color = color * (render_data.render_settings.sample_number + 1);
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS && ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	ColorRGB32F color;
+
+	if (render_data.render_settings.sample_number == 0)
+		// At sample 0 all distributions are at sharpness 50
+		color = ColorRGB32F(50.0f);
+	else
+	{
+		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+		ReSTIRPGDistribution distribution =
+			render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
+
+		color = ColorRGB32F(distribution.distribution_components[render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number]
+								.vmf.sharpness)
+					.abs();
+	}
+
+	color /= render_data.render_settings.restir_pg_settings.debug_normalization_factor;
+
+	out_debug_color = color * (render_data.render_settings.sample_number + 1);
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT && ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	ColorRGB32F color;
+
+	if (render_data.render_settings.sample_number == 0)
+		// At sample 0 all distributions are at sharpness 50
+		color = ColorRGB32F(0.25f);
+	else
+	{
+		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+		ReSTIRPGDistribution distribution =
+			render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
+
+		color = ColorRGB32F(
+					distribution.distribution_components[render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number].weight)
+					.abs();
+	}
+
+	color *= render_data.render_settings.restir_pg_settings.debug_normalization_factor;
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option

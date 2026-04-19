@@ -38,6 +38,8 @@ struct ReSTIRPGSettings
 
 	// For RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
 	int debug_distribution_component_direction_number = 0;
+	// For some other debug options
+	float debug_normalization_factor = 1.0f;
 
 	unsigned int DEBUG_pixel_x = 1171;
 	unsigned int DEBUG_pixel_y = 488;

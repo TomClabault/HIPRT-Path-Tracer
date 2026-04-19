@@ -2192,7 +2192,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 		{
 			ImGui::TreePush("ReSTIR PG Debug tree");
 
-			const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Distribution component direction" };
+			const char* debug_view_items[] = { "- No debug view", "- Grid cells", "- Distribution direction", "- Distribution sharpness",
+											   "- Distribution weight" };
 			if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 			{
@@ -2200,13 +2201,22 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT)
 			{
 				ImGui::TreePush("Distribution component direction tree");
 
-				if (ImGui::SliderInt("Component number", &render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number, 0,
+				if (ImGui::SliderInt("Component index", &render_data.render_settings.restir_pg_settings.debug_distribution_component_direction_number, 0,
 									 global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT) - 1))
 					m_render_window->set_render_dirty(true);
+
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DEBUG_MODE) == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS)
+				{
+					if (ImGui::SliderFloat("Sharpness normalize factor", &render_data.render_settings.restir_pg_settings.debug_normalization_factor, 0.5f,
+										   50.0f))
+						m_render_window->set_render_dirty(true);
+				}
 
 				ImGui::TreePop();
 			}
