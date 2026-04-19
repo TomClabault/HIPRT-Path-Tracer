@@ -332,6 +332,7 @@ public:
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
 	void reset(bool reset_by_camera_movement);
+	bool reset_when_holding_imgui_items();
 
 	Xorshift32Generator& get_rng_generator();
 

@@ -432,12 +432,8 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
 	RenderGraph* active_render_graph;
 
-	bool regir = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
-	bool light_distributions =
-		get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
-	bool regir_light_distributions								= regir && light_distributions;
-	bool imgui_item_held										= render_window->render_resetted_with_imgui_item_held();
-	bool interactivity_render_graph_when_interacting_with_imgui = imgui_item_held && regir_light_distributions;
+	bool imgui_item_held										= reset_when_holding_imgui_items();
+	bool interactivity_render_graph_when_interacting_with_imgui = imgui_item_held && reset_when_holding_imgui_items();
 
 	if ((render_window->is_interacting() || interactivity_render_graph_when_interacting_with_imgui) && m_render_data.render_settings.accumulate)
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
@@ -750,6 +746,16 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		m_render_data.render_settings.need_to_reset = true;
 
 	m_render_thread.reset(reset_by_camera_movement);
+}
+
+bool GPURenderer::reset_when_holding_imgui_items()
+{
+	bool regir = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+	bool light_distributions =
+		get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
+	bool regir_light_distributions = regir && light_distributions;
+
+	return regir_light_distributions;
 }
 
 Xorshift32Generator& GPURenderer::get_rng_generator()

@@ -1012,6 +1012,11 @@ bool RenderWindow::is_interacting()
 
 bool RenderWindow::render_resetted_with_imgui_item_held()
 {
+	// TODO this is a bit scuffed, this is just to avoid a bug that resets the render too often when holding ImGui widgets but that bug should be fixed in the
+	// first place, this is just a band aid
+	if (!m_renderer->reset_when_holding_imgui_items())
+		return false;
+
 	return m_application_state->m_render_resetted_with_imgui_item_held;
 }
 
