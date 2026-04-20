@@ -200,6 +200,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	{
 		// The initial candidate's color is set into accumulated_ray_colors by the InitialCandidatesPass for this debug view so we just reuse that color
 		ray_payload.ray_color = render_data.buffers.accumulated_ray_colors[pixel_index];
+#if DisplayOnlySampleN == KERNEL_OPTION_FALSE
+		// If not only displaying sample n, we need to scale that, otherwise it's the debug code of display only sample N that does the scaling
+		ray_payload.ray_color *= render_data.render_settings.sample_number + 1;
+#endif
 
 		ColorRGB32F debug_color;
 		path_tracing_compute_debug_view_debug_color(render_data, ray_payload, pixel_index, random_number_generator, debug_color);

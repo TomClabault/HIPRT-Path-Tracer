@@ -34,16 +34,19 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 	hippt::atomic_fetch_add(&sufficient_statistics.responsibility_weights_sum[index], responsibility);
 }
 
+// Dispatched as 1D render_resolution.x * render_resolution.y threads to facilitate mapping thread indices to proper warps for coalescing
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Splatting(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_data, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_data, uint32_t index)
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	const uint32_t index = threadIdx.x + blockIdx.x * blockDim.x;
 #endif
+
+	const uint32_t x = index % render_data.render_settings.render_resolution.x;
+	const uint32_t y = index / render_data.render_settings.render_resolution.x;
 
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
@@ -89,26 +92,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		 * Inserting the sample into the sufficient statistics of the hash grid cell, in each component for the expectation step of the EM algorithm
 		 */
 		ReSTIRPGDistribution distribution = restir_pg_settings.hash_grid_distributions_soa.get_distribution(sample_hash_grid_index);
-
-		// if (sample_hash_grid_index == 86263 && render_data.render_settings.sample_number == 12)
-		//{
-		//	unsigned int checksum;
-		//	unsigned int sample_hash_grid_index =
-		//		restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
-
-		//	render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = sample_hash_grid_index;
-		//	// printf("\tSplatting.h: Pixel (%d ,%d), hash grid cell index: %u\n", x, y, sample_hash_grid_index);
-		//	printf("\tSplatting.h: Sample incident direction: (%f, %f, %f)\n", sample.incident_direction.x, sample.incident_direction.y,
-		//		   sample.incident_direction.z);
-		//	printf("\tSplatting.h: Distribution: \n");
-		//	for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
-		//	{
-		//		const VMFMixtureComponent& vmf_mixture_component = distribution.distribution_components[component];
-		//		printf("\t\tSplatting.h: Component %d: weight = %f, vmf mean direction = (%f, %f, %f), vmf concentration = %f\n", component,
-		//			   vmf_mixture_component.weight, vmf_mixture_component.vmf.axis.x, vmf_mixture_component.vmf.axis.y, vmf_mixture_component.vmf.axis.z,
-		//			   vmf_mixture_component.vmf.sharpness);
-		//	}
-		//}
 
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
 		float sum_responsibilities = 1.0e-8f;

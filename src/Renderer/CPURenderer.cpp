@@ -1195,17 +1195,21 @@ void CPURenderer::ReSTIR_GI_pass()
 void CPURenderer::ReSTIR_PG_pass()
 {
 	// Splatting
-	debug_render_pass([this](int x, int y) { ReSTIR_PG_Splatting(m_render_data, x, y); });
+#pragma omp parallel for
+	for (int index = 0; index < m_render_data.render_settings.render_resolution.x * m_render_data.render_settings.render_resolution.y; index++)
+	{
+		ReSTIR_PG_Splatting(m_render_data, index);
+	}
 
 	// Fitting
 	unsigned int grid_cell_alive_count = m_restir_pg_state.grid_cell_alive_count.load();
-	// #pragma omp parallel for
+#pragma omp parallel for
 	for (int index = 0; index < grid_cell_alive_count; index++)
 	{
 		ReSTIR_PG_Fitting(m_render_data, index);
 	}
 
-	// #pragma omp parallel for
+#pragma omp parallel for
 	for (int index = 0; index < grid_cell_alive_count * ReSTIRPGDistributionComponentCount; index++)
 	{
 		ReSTIR_PG_ResetSufficientStatistics(m_render_data, index);

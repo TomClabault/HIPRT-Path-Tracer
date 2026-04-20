@@ -209,8 +209,8 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 	void* launch_args[] = { &render_data };
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
-		KernelBlockWidthHeight, KernelBlockWidthHeight, render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
-		launch_args, m_renderer->get_main_stream());
+		512, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, launch_args,
+		m_renderer->get_main_stream());
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, 1,
 																				 render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,
