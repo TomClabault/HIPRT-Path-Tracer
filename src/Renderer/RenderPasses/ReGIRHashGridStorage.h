@@ -9,9 +9,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRCellsLightDistributionsSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashGridSoAHost.h"
 
 class ReGIRRenderPass;
 

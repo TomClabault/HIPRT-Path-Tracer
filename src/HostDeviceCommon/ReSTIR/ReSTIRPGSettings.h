@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/PG/DistributionSoADevice.h"
 #include "Device/includes/ReSTIR/PG/DistributionSufficientStatisticsSoADevice.h"
 #include "Device/includes/ReSTIR/PG/SplattingSample.h"
+#include "Device/includes/ReSTIR/PG/SplattingSampleSoADevice.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 
 struct ReSTIRPGSettings
@@ -32,11 +33,7 @@ struct ReSTIRPGSettings
 	// Splatting samples buffer. This is used to store the samples that are going to be splatted into the grid in the splatting pass of ReSTIR PG.
 	//
 	// Screen space size * (number of bounces - 1)
-	ReSTIRPGSplattingSample* splatting_samples = nullptr;
-	// TODO REMOVE ALREADY SPLATTED LOGIC, NO GOOD
-	// Whether or not the samples of the path at the pixel in this buffer has already been splatted to the grid (this buffer is width * heigth in size, one
-	// entry per pixel)
-	AtomicType<unsigned int>* already_splatted_samples = nullptr;
+	ReSTIRPGSplattingSampleSoADevice splatting_samples_soa;
 
 	ReSTIRPGDistributionSoADevice hash_grid_distributions_soa;
 	AtomicType<unsigned int>* hash_grid_checksums	= nullptr;
@@ -71,10 +68,7 @@ struct ReSTIRPGSettings
 
 	HIPRT_DEVICE void invalidate_splatting_sample(int2_t render_resolution, unsigned int pixel_x, unsigned int pixel_y, unsigned int bounce) const
 	{
-		unsigned int pixel_count = render_resolution.x * render_resolution.y;
-		unsigned int index		 = pixel_x + pixel_y * render_resolution.x + bounce * pixel_count;
-
-		splatting_samples[index].normal = make_float3(0.0f, 0.0f, 0.0f);
+		splatting_samples_soa.invalidate_sample(render_resolution, pixel_x, pixel_y, bounce);
 	}
 };
 

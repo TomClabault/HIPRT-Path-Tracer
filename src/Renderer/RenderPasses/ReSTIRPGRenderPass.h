@@ -7,6 +7,7 @@
 #define RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H
 
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -42,8 +43,7 @@ public:
 	virtual bool is_render_pass_used() const override;
 
 private:
-	OrochiBuffer<ReSTIRPGSplattingSample> m_splatting_samples_buffer;
-	OrochiBuffer<unsigned int> m_already_splatted_samples_buffer;
+	ReSTIRPGSplattingSampleSoAHost<OrochiBuffer> m_splatting_samples_soa_buffer;
 
 	ReSTIRPGDistributionSoAHost<OrochiBuffer> m_hash_grid_distributions_soa_buffer;
 	OrochiBuffer<unsigned int> m_hash_grid_checksums_buffer;

@@ -8,7 +8,7 @@
 
 #include "Renderer/Compute/ParallelSegmentedReduction.h"
 #include "Renderer/Compute/RadixSort.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 

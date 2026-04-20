@@ -6,8 +6,6 @@
 #ifndef DEVICE_INCLUDES_RESTIR_PG_SPLATTING_SAMPLE_H
 #define DEVICE_INCLUDES_RESTIR_PG_SPLATTING_SAMPLE_H
 
-#include "Device/includes/HashGridHash.h"
-
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 struct ReSTIRPGSplattingSample

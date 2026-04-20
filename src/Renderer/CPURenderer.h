@@ -20,11 +20,12 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRCellsLightDistributionsSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashGridSoAHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -207,8 +208,7 @@ private:
 
 	struct ReSTIRPGState
 	{
-		std::vector<ReSTIRPGSplattingSample> splatting_samples;
-		std::vector<AtomicType<unsigned int>> already_splatted_samples;
+		ReSTIRPGSplattingSampleSoAHost<std::vector> splatting_samples_soa_buffer;
 
 		ReSTIRPGDistributionSoAHost<std::vector> hash_grid_distributions_soa_buffer;
 		std::vector<AtomicType<unsigned int>> hash_grid_checksums;

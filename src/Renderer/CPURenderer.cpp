@@ -187,8 +187,7 @@ void CPURenderer::setup_buffers()
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
-	m_restir_pg_state.splatting_samples.resize(width * height * m_render_data.render_settings.nb_bounces);
-	m_restir_pg_state.already_splatted_samples = std::vector<AtomicType<unsigned int>>(width * height);
+	m_restir_pg_state.splatting_samples_soa_buffer.resize(width, height, m_render_data.render_settings.nb_bounces);
 
 	m_restir_pg_state.hash_grid_distributions_soa_buffer.resize(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT, ReSTIRPGDistributionComponentCount);
 	m_restir_pg_state.hash_grid_checksums = std::vector<AtomicType<unsigned int>>(ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT);
@@ -456,8 +455,7 @@ void CPURenderer::update_render_data()
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
-	m_render_data.render_settings.restir_pg_settings.splatting_samples		  = m_restir_pg_state.splatting_samples.data();
-	m_render_data.render_settings.restir_pg_settings.already_splatted_samples = m_restir_pg_state.already_splatted_samples.data();
+	m_render_data.render_settings.restir_pg_settings.splatting_samples_soa = m_restir_pg_state.splatting_samples_soa_buffer.to_device();
 
 	m_render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa = m_restir_pg_state.hash_grid_distributions_soa_buffer.to_device();
 	m_render_data.render_settings.restir_pg_settings.hash_grid_checksums		 = m_restir_pg_state.hash_grid_checksums.data();

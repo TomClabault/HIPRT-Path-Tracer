@@ -106,10 +106,11 @@ void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	if (!is_render_pass_used())
 		return;
 
-	unsigned int nb_bounces = m_renderer->get_render_data().render_settings.nb_bounces;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	unsigned int nb_bounces		 = render_data.render_settings.nb_bounces;
 
-	m_splatting_samples_buffer.resize(new_width * new_height * nb_bounces);
-	m_already_splatted_samples_buffer.resize(new_width * new_height);
+	ReSTIRPGSplattingSample empty_sample;
+	m_splatting_samples_soa_buffer.resize(new_width, new_height, nb_bounces);
 }
 
 bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
@@ -120,11 +121,8 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 	if (!is_render_pass_used())
 	{
-		if (m_splatting_samples_buffer.size() != 0)
-		{
-			m_splatting_samples_buffer.free();
-			m_already_splatted_samples_buffer.free();
-		}
+		if (m_splatting_samples_soa_buffer.get_byte_size() != 0)
+			m_splatting_samples_soa_buffer.free();
 
 		if (m_hash_grid_distributions_soa_buffer.get_last_resize_component_count() != 0)
 		{
@@ -144,13 +142,11 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 		unsigned int component_count =
 			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
 
-		if (m_splatting_samples_buffer.size() !=
+		if (m_splatting_samples_soa_buffer.size() !=
 			render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.render_settings.nb_bounces)
 		{
-			m_splatting_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y *
-											  render_data.render_settings.nb_bounces);
-			m_already_splatted_samples_buffer.resize(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y);
-
+			m_splatting_samples_soa_buffer.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,
+												  render_data.render_settings.nb_bounces);
 			updated = true;
 		}
 
@@ -190,19 +186,6 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 			void* launch_args[] = { &render_data };
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(
 				256, 1, m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
-			std::vector<unsigned int> checksums = m_hash_grid_checksums_buffer.download_data();
-			for (unsigned int checksum : checksums)
-				if (checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-				{
-					std::cerr
-						<< "Error: During the first sample of the first frame, the hash grid checksums buffer should be initialized to "
-						<< HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
-						<< " but it is not. This may indicate a problem with the GPU memory management (buffers not being properly cleared after resizing "
-						   "for example) or a problem with the kernel that resets the hash grid."
-						<< std::endl;
-
-					break;
-				}
 
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
 				256, 1,
@@ -221,13 +204,8 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	/*render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 1171;
-	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 488;*/
-
-	render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 1202;
-	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 542;
-
-	m_already_splatted_samples_buffer.memset_whole_buffer(0);
+	render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 657;
+	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 164;
 
 	void* launch_args[] = { &render_data };
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
@@ -254,8 +232,7 @@ void ReSTIRPGRenderPass::update_render_data()
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	render_data.render_settings.restir_pg_settings.splatting_samples		= m_splatting_samples_buffer.get_device_pointer();
-	render_data.render_settings.restir_pg_settings.already_splatted_samples = m_already_splatted_samples_buffer.get_atomic_device_pointer();
+	render_data.render_settings.restir_pg_settings.splatting_samples_soa = m_splatting_samples_soa_buffer.to_device();
 
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa = m_hash_grid_distributions_soa_buffer.to_device();
 	render_data.render_settings.restir_pg_settings.hash_grid_checksums		   = m_hash_grid_checksums_buffer.get_atomic_device_pointer();

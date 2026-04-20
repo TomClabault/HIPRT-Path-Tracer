@@ -73,18 +73,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		new_vmf.vmf.sharpness = new_vmf_sharpness;
 		new_vmf.weight		  = new_mixture_component_weight;
 
-		/*if ((!hippt::is_finite(new_vmf.vmf.axis.x) || !hippt::is_finite(new_vmf.vmf.axis.y) || !hippt::is_finite(new_vmf.vmf.axis.z) ||
-			 !hippt::is_finite(new_vmf.vmf.sharpness) || !hippt::is_finite(new_vmf.weight)) &&
-			hash_grid_cell_index < 1000)
-		{
-			printf("Not finite: new_vmf.sharpness = %f, new_vmf.weight = %f @ %u\n\tSum responsibilities: %f, "
-				   "\n\tresponsibility_weights_sum = %f, \n\tdirections_sum_length: %f\n\tnormalized_resultant_length: %f, "
-				   "\n\tcurrent_mixture_component_weight = %f, \n\tcurrent_mixture_sample_count = "
-				   "%u\n\t, rpriork = %f\n",
-				   new_vmf.vmf.sharpness, new_vmf.weight, hash_grid_cell_index, sum_responsibilities_weight_sum, responsibility_weights_sum,
-				   directions_sum_length, normalized_resultant_length, current_mixture_component_weight, current_mixture_sample_count, rpriork);
-		}*/
-
 		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_vmf(hash_grid_cell_index, component_index, new_vmf.vmf);
 		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(hash_grid_cell_index, component_index, new_vmf.weight);
 	}

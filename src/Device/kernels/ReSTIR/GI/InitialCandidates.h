@@ -171,31 +171,32 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				// Not the last bounce
 				if (bounce != render_data.render_settings.nb_bounces)
 				{
-					// DEBUG BLOCK
-					{
-						const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
-						if (hippt::is_pixel_index(restir_pg_settings.DEBUG_pixel_x,
-												  render_data.render_settings.render_resolution.y - 1 - restir_pg_settings.DEBUG_pixel_y) &&
-							render_data.render_settings.sample_number == 5)
-						{
-							unsigned int checksum;
-							unsigned int sample_hash_grid_index = restir_pg_settings.get_hash_grid_cell_index_from_position_data(
-								closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera, checksum);
+					//// DEBUG BLOCK
+					//{
+					//	const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
+					//	if (hippt::is_pixel_index(restir_pg_settings.DEBUG_pixel_x,
+					//							  render_data.render_settings.render_resolution.y - 1 - restir_pg_settings.DEBUG_pixel_y) &&
+					//		render_data.render_settings.sample_number == 5)
+					//	{
+					//		unsigned int checksum;
+					//		unsigned int sample_hash_grid_index = restir_pg_settings.get_hash_grid_cell_index_from_position_data(
+					//			closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera, checksum);
 
-							printf("Splatting sample at %d, %d, position = (%f, %f, %f), normal = (%f, %f, %f), incident direction = (%f, %f, %f) @ %u\n",
-								   restir_pg_settings.DEBUG_pixel_x, restir_pg_settings.DEBUG_pixel_y, closest_hit_info.inter_point.x,
-								   closest_hit_info.inter_point.y, closest_hit_info.inter_point.z, closest_hit_info.geometric_normal.x,
-								   closest_hit_info.geometric_normal.y, closest_hit_info.geometric_normal.z, ray.direction.x, ray.direction.y, ray.direction.z,
-								   sample_hash_grid_index);
-						}
-					}
+					//		printf("Splatting sample at %d, %d, position = (%f, %f, %f), normal = (%f, %f, %f), incident direction = (%f, %f, %f) @ %u\n",
+					//			   restir_pg_settings.DEBUG_pixel_x, restir_pg_settings.DEBUG_pixel_y, closest_hit_info.inter_point.x,
+					//			   closest_hit_info.inter_point.y, closest_hit_info.inter_point.z, closest_hit_info.geometric_normal.x,
+					//			   closest_hit_info.geometric_normal.y, closest_hit_info.geometric_normal.z, ray.direction.x, ray.direction.y, ray.direction.z,
+					//			   sample_hash_grid_index);
+					//	}
+					//}
 
-					unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
-					render_data.render_settings.restir_pg_settings.splatting_samples[pixel_index + bounce * pixel_count] = ReSTIRPGSplattingSample{
-						.position			= closest_hit_info.inter_point,
-						.normal				= closest_hit_info.geometric_normal,
-						.incident_direction = ray.direction,
-					};
+					ReSTIRPGSplattingSample sample;
+					sample.position			  = closest_hit_info.inter_point;
+					sample.normal			  = closest_hit_info.geometric_normal;
+					sample.incident_direction = ray.direction;
+
+					render_data.render_settings.restir_pg_settings.splatting_samples_soa.store_sample(sample, render_data.render_settings.render_resolution, x,
+																									  y, bounce);
 				}
 #endif
 			}
