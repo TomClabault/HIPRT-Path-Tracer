@@ -69,9 +69,12 @@ struct ReSTIRPGSettings
 		return hash_grid_distributions_soa.get_distribution(cell_index);
 	}
 
-	HIPRT_DEVICE void invalidate_sample(unsigned int sample_index) const
+	HIPRT_DEVICE void invalidate_splatting_sample(int2_t render_resolution, unsigned int pixel_x, unsigned int pixel_y, unsigned int bounce) const
 	{
-		splatting_samples[sample_index].normal = make_float3(0.0f, 0.0f, 0.0f);
+		unsigned int pixel_count = render_resolution.x * render_resolution.y;
+		unsigned int index		 = pixel_x + pixel_y * render_resolution.x + bounce * pixel_count;
+
+		splatting_samples[index].normal = make_float3(0.0f, 0.0f, 0.0f);
 	}
 };
 

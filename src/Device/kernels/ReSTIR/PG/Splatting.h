@@ -132,10 +132,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		}
 
 		hippt::atomic_fetch_add(&restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa.sample_count[sample_hash_grid_index], 1u);
-
-		// That sample is done, invalidating it such that if it doesn't get replaced in the next frame, it doesn't contribute to distributions again (that would
-		// be duplicating that sample)
-		// restir_pg_settings.invalidate_sample(restir_reservoir_pixel_index + bounce * pixel_count);
 	}
 }
 

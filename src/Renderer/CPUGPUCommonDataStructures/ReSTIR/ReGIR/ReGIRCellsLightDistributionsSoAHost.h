@@ -1,0 +1,184 @@
+/**
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_HOST_H
+#define REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_HOST_H
+
+#include "Device/includes/ReSTIR/ReGIR/CellsLightDistributionsSoADevice.h"
+
+#include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
+
+using ReGIRCellsLightDistributionsMeshIndicesPackingType = ReGIRCellsLightDistributionsSoADevice::ReGIRCellsLightDistributionsMeshIndicesPackingType;
+
+class ReGIRCellsLightDistributionsHostUtils
+{
+public:
+	static unsigned int get_bits_per_packed_mesh_index(unsigned int emissive_mesh_count)
+	{
+		return std::ceil(std::log2(emissive_mesh_count)) + 1;
+	}
+
+	static unsigned int get_packed_mesh_indices_count_per_cell(unsigned int emissive_mesh_count, unsigned int light_distribution_size)
+	{
+		unsigned int bits_per_mesh_index = get_bits_per_packed_mesh_index(emissive_mesh_count);
+		// How many ReGIRCellsLightDistributionsMeshIndicesPackingType elements do we need per cell to store all the mesh indices of that cell
+		unsigned int mesh_indices_count_per_cell = std::ceil(bits_per_mesh_index * light_distribution_size /
+															 (float)(sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8));
+
+		return mesh_indices_count_per_cell;
+	}
+
+	static std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> pack_mesh_indices(
+							const std::vector<unsigned int>::const_iterator& sorted_mesh_indices_start,
+							unsigned int emissive_mesh_count,
+							unsigned int light_distribution_size)
+	{
+		using PackingType = ReGIRCellsLightDistributionsMeshIndicesPackingType;
+
+		std::vector<PackingType> packed(
+								ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, light_distribution_size), 0);
+
+		unsigned int bits_per_mesh_index		= ReGIRCellsLightDistributionsHostUtils::get_bits_per_packed_mesh_index(emissive_mesh_count);
+		constexpr unsigned int BITS_PER_ELEMENT = sizeof(PackingType) * 8;
+		for (int mesh_index = 0; mesh_index < light_distribution_size; mesh_index++)
+		{
+			unsigned int sorted_mesh_index = *(sorted_mesh_indices_start + mesh_index);
+
+			// Which element we're going to pack that mesh index into
+			unsigned int element_index				 = mesh_index * bits_per_mesh_index / BITS_PER_ELEMENT;
+			unsigned int bit_offset_start_in_element = (mesh_index * bits_per_mesh_index) % BITS_PER_ELEMENT;
+
+			if (bit_offset_start_in_element + bits_per_mesh_index > BITS_PER_ELEMENT)
+			{
+				// If the mesh index is straddling two differents elements
+
+				unsigned int bits_in_first_element		 = BITS_PER_ELEMENT - bit_offset_start_in_element;
+				unsigned int bits_in_second_element		 = bits_per_mesh_index - bits_in_first_element;
+				unsigned int bits_in_first_element_mask	 = (1 << bits_in_first_element) - 1;
+				unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
+
+				PackingType first_part	= static_cast<PackingType>(sorted_mesh_index & bits_in_first_element_mask) << bit_offset_start_in_element;
+				PackingType second_part = (sorted_mesh_index >> bits_in_first_element) & bits_in_second_element_mask;
+
+				packed[element_index] |= first_part;
+				packed[element_index + 1] |= second_part;
+			}
+			else
+			{
+				// If the mesh index is fully contained in a single element
+
+				PackingType bitmask = (1 << bits_per_mesh_index) - 1;
+				PackingType bits	= (sorted_mesh_index & bitmask) << bit_offset_start_in_element;
+
+				packed[element_index] |= bits;
+			}
+		}
+
+		return packed;
+	}
+};
+
+template <template <typename> typename DataContainer>
+using ReGIRCellsLightDistributionsSoAHostInternal =
+						GenericSoA<DataContainer,
+								   unsigned short int,								   // CDF as normalized unsigned short int (0-65535)
+								   ReGIRCellsLightDistributionsMeshIndicesPackingType, // Indices of the emissive meshes associated with each entries of the CDF
+								   // Only the right number of bits are used (so if we have 1000 emissive meshes,
+								   // only 10 bits are used). These bits are tightly packed in 64 bit integer
+								   // (so we may have some mesh index striding two differents 64 bit integers
+								   // sometimes)
+								   unsigned int,	   // Emissive mesh indices offsets
+								   unsigned short int, // Light distribution sizes
+								   unsigned int		   // Light distribution offsets
+								   >;
+
+enum ReGIRCellsLightDistributionsSoAHostBuffers
+{
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF,
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED,
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS,
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES,
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS,
+};
+
+template <template <typename> typename DataContainer>
+struct ReGIRCellsLightDistributionsSoAHost
+{
+	constexpr static bool IsCPUBuffer = std::is_same_v<std::vector<int>, DataContainer<int>>;
+
+	void resize(size_t new_number_of_cells, unsigned int light_distribution_size, unsigned int emissive_meshes_count)
+	{
+		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().resize(new_number_of_cells * light_distribution_size);
+		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().resize(
+								new_number_of_cells *
+								ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_meshes_count, light_distribution_size));
+		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>().resize(new_number_of_cells);
+
+		if constexpr (IsCPUBuffer)
+		{
+			// Only resizing this correctly on the CPU because the resizing is done during light distribution
+			// computation on the GPU
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(new_number_of_cells);
+			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(0);
+
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(new_number_of_cells);
+			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
+		}
+		else
+		{
+			// On the GPU
+
+			// Just resizing with a dummy size of 1 because the buffers are going to be properly resized anyways
+			// during light distribution build
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(1);
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(1);
+		}
+
+		m_light_distribution_size = light_distribution_size;
+		m_emissive_mesh_count	  = emissive_meshes_count;
+	}
+
+	void free()
+	{
+		soa.free();
+	}
+
+	std::size_t get_byte_size() const
+	{
+		return soa.get_byte_size();
+	}
+
+	unsigned int size() const
+	{
+		return soa.size();
+	}
+
+	ReGIRCellsLightDistributionsSoADevice to_device(const HIPRTRenderData& render_data, bool only_pointers = false)
+	{
+		ReGIRCellsLightDistributionsSoADevice cells_light_distributions;
+
+		cells_light_distributions.all_cdfs =
+								soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>();
+		cells_light_distributions.emissive_meshes_indices_packed = soa.template get_buffer_data_ptr<
+								ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>();
+		cells_light_distributions.light_distribution_sizes =
+								soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>();
+		cells_light_distributions.light_distribution_offsets =
+								soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>();
+
+		cells_light_distributions.mesh_indices_offsets = soa.template get_buffer_data_ptr<
+								ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>();
+		cells_light_distributions.bits_per_mesh_index = ReGIRCellsLightDistributionsHostUtils::get_bits_per_packed_mesh_index(m_emissive_mesh_count);
+
+		return cells_light_distributions;
+	}
+
+	ReGIRCellsLightDistributionsSoAHostInternal<DataContainer> soa;
+
+	unsigned int m_light_distribution_size = 0;
+	unsigned int m_emissive_mesh_count	   = 0;
+};
+
+#endif

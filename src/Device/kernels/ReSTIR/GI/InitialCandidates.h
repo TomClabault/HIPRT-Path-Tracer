@@ -63,6 +63,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 		// for better interactivity
 		render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
 
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+	// Resetting splatting samples
+	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
+		render_data.render_settings.restir_pg_settings.invalidate_splatting_sample(render_data.render_settings.render_resolution, x, y, bounce);
+#endif
+
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	// Initializing the closest hit info the information from the camera ray pass
