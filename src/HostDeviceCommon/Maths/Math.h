@@ -865,6 +865,12 @@ namespace hippt
 		return __ballot(predicate);
 	}
 
+	template <typename T>
+	__device__ static unsigned long long int warp_match_any_sync(unsigned int mask, T value)
+	{
+		return __match_any_sync(static_cast<unsigned long long int>(mask), value);
+	}
+
 	__device__ static unsigned long long int warp_activemask()
 	{
 		return hippt::warp_ballot(0xFFFFFFFF, true);
@@ -919,10 +925,16 @@ namespace hippt
 	__device__ T warp_shfl_down(T var, int delta, int width = warpSize)
 	{
 #ifdef __CUDACC__
-		return __shfl_down_sync(0xFFFFFFFF, var, delta, width);
+		return warp_shfl_down_sync(0xFFFFFFFF, var, delta, width);
 #else
 		return __shfl_down(var, delta, width);
 #endif
+	}
+
+	template <typename T>
+	static constexpr T warp_shfl_down_sync(unsigned int mask, T var, int delta, int width = warpSize)
+	{
+		return __shfl_down_sync(static_cast<unsigned long long int>(mask), var, delta, width);
 	}
 
 	/**
@@ -932,10 +944,16 @@ namespace hippt
 	__device__ T warp_shfl_up(T var, int delta, int width = warpSize)
 	{
 #ifdef __CUDACC__
-		return __shfl_up_sync(0xFFFFFFFF, var, delta, width);
+		return warp_shfl_up_sync(0xFFFFFFFF, var, delta, width);
 #else
 		return __shfl_up(var, delta, width);
 #endif
+	}
+
+	template <typename T>
+	static constexpr T warp_shfl_up_sync(unsigned int mask, T var, int delta, int width = warpSize)
+	{
+		return __shfl_up_sync(static_cast<unsigned long long int>(mask), var, delta, width);
 	}
 
 	template <typename T>
@@ -1700,6 +1718,11 @@ namespace hippt
 		return predicate ? 1 : 0;
 	}
 
+	static constexpr unsigned long long int warp_match_any_sync(unsigned int thread_mask, unsigned int value)
+	{
+		return 0xFFFFFFFFFFFFFFFF; // All threads match the value since we don't have that information on the CPU
+	}
+
 	static constexpr unsigned long long int warp_activemask()
 	{
 		return 1;
@@ -1752,11 +1775,23 @@ namespace hippt
 		return var;
 	}
 
+	template <typename T>
+	static constexpr T warp_shfl_down_sync(unsigned int mask, T var, int delta, int width = 1)
+	{
+		return var;
+	}
+
 	/**
 	 * Copy from a lane with lower ID relative to caller
 	 */
 	template <typename T>
 	static constexpr T warp_shfl_up(T var, int delta, int width = 1)
+	{
+		return var;
+	}
+
+	template <typename T>
+	static constexpr T warp_shfl_up_sync(unsigned int mask, T var, int delta, int width = 1)
 	{
 		return var;
 	}
