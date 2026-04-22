@@ -2226,6 +2226,21 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
+			static int linear_probing_steps = ReSTIRPGHashGridCollisionResolveSteps;
+			ImGui::SliderInt("Collision resolution steps", &linear_probing_steps, 1, 32);
+			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS))
+			{
+				ImGui::TreePush("ReSTIR PG linear probing steps apply button");
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_HASH_GRID_COLLISION_RESOLVE_STEPS, linear_probing_steps);
+
+					m_render_window->set_render_dirty(true);
+					m_renderer->recompile_kernels();
+				}
+				ImGui::TreePop();
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}

@@ -10,8 +10,6 @@ struct ReSTIRPGDistributionSufficientStatisticsSoADevice
 	HIPRT_DEVICE float3_t read_directions_sum(unsigned int component_index, unsigned int hash_grid_cell_index, unsigned int total_number_of_cells)
 	{
 		unsigned int index = component_index * total_number_of_cells + hash_grid_cell_index;
-		if (index >= DEBUGSIZE)
-			printf("Nope, index >= DEBUGSIZE : %u >= %u\n", index, DEBUGSIZE);
 
 		return make_float3(directions_sum_x[index], directions_sum_y[index], directions_sum_z[index]);
 	}
@@ -24,11 +22,9 @@ struct ReSTIRPGDistributionSufficientStatisticsSoADevice
 	AtomicType<float>* directions_sum_x = nullptr;
 	AtomicType<float>* directions_sum_y = nullptr;
 	AtomicType<float>* directions_sum_z = nullptr;
-	unsigned int DEBUGSIZE				= 0;
 
 	// Should be indexed with [component_index * total_number_of_cells + hash_grid_cell_index]
 	AtomicType<float>* responsibility_weights_sum = nullptr;
-
 	// How many samples were accumulated in this sufficient statistics. This is the same for all components
 	// Number of cells in size
 	//

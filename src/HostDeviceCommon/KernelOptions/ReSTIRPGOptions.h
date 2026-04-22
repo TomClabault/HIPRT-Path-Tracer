@@ -35,7 +35,7 @@
 
 #define ReSTIRPGDistributionComponentCount 4
 
-#define ReSTIRPGHashGridCollisionResolveSteps 4
+#define ReSTIRPGHashGridCollisionResolveSteps 12
 
 #define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
 

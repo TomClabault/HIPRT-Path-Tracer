@@ -50,7 +50,7 @@ struct ReSTIRPGSettings
 																		  const HIPRTCamera& current_camera,
 																		  unsigned int& out_checksum) const
 	{
-		return hash_pos_distance_to_camera(position, surface_normal, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, 2,
+		return hash_pos_distance_to_camera(position, surface_normal, current_camera, hash_grid_target_projected_size, hash_grid_cell_min_size, 4,
 										   out_checksum) %
 			   hash_grid_total_number_of_cells;
 	}

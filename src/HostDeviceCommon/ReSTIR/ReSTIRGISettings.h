@@ -102,7 +102,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		m_cap				   = 1;
 		use_confidence_weights = true;
 
-		debug_view				= ReSTIRGIDebugView::NO_DEBUG;
+		debug_view				= ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES;
 		debug_view_scale_factor = 1.0f;
 	}
 
