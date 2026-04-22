@@ -188,19 +188,19 @@ struct GenericSoA
 	{
 		// Applies clear() on each buffer in the tuple
 		std::apply(
-								[](auto&... buffer)
-								{
-									if constexpr (IsCPUBuffer::value)
-										// decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
-										// **with** the reference type
-										//
-										// But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
-										// the reference, hence the use of std::decay_t
-										((buffer = std::decay_t<decltype(buffer)>{}), ...);
-									else
-										((buffer.free()), ...);
-								},
-								buffers);
+			[](auto&... buffer)
+			{
+				if constexpr (IsCPUBuffer::value)
+					// decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
+					// **with** the reference type
+					//
+					// But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
+					// the reference, hence the use of std::decay_t
+					((buffer = std::decay_t<decltype(buffer)>{}), ...);
+				else
+					((buffer.free()), ...);
+			},
+			buffers);
 	}
 
 private:
@@ -214,13 +214,7 @@ private:
 	template <typename BufferType>
 	void resize_buffer_internal(BufferType& buffer, std::size_t new_element_count)
 	{
-		if constexpr (IsStdAtomic<typename BufferType::value_type>::value)
-			// If the buffer is a buffer of std::atomic on the CPU, we cannot use resize
-			// (because std::atomic are missing some operators used by
-			// std::vector.resize() so we have to recreate the buffer instead
-			buffer = std::decay_t<decltype(buffer)>(new_element_count);
-		else
-			buffer.resize(new_element_count);
+		buffer = std::decay_t<decltype(buffer)>(new_element_count);
 	}
 
 	std::tuple<Container<Types>...> buffers;
@@ -256,13 +250,7 @@ namespace GenericSoAHelpers
 	template <template <typename> class BufferContainer, typename T>
 	void resize(BufferContainer<T>& buffer, std::size_t new_size)
 	{
-		if constexpr (IsStdAtomic<T>::value)
-			// If the buffer is a buffer of std::atomic on the CPU, we cannot use resize
-			// (because std::atomic are missing some operators used by
-			// std::vector.resize() so we have to recreate the buffer instead
-			buffer = std::decay_t<decltype(buffer)>(new_size);
-		else
-			buffer.resize(new_size);
+		buffer = std::decay_t<decltype(buffer)>(new_size);
 	}
 } // namespace GenericSoAHelpers
 
