@@ -47,6 +47,19 @@ struct ReSTIRPGDistribution
 		return hippt::abs(sum_of_weights - 1.0f) < 1.0e-2f;
 	}
 
+	HIPRT_DEVICE bool is_finite() const
+	{
+		for (int i = 0; i < ReSTIRPGDistributionComponentCount; i++)
+		{
+			if (!hippt::is_finite(distribution_components[i].weight) || !hippt::is_finite(distribution_components[i].vmf.axis.x) ||
+				!hippt::is_finite(distribution_components[i].vmf.axis.y) || !hippt::is_finite(distribution_components[i].vmf.axis.z) ||
+				!hippt::is_finite(distribution_components[i].vmf.sharpness))
+				return false;
+		}
+
+		return true;
+	}
+
 	VMFMixtureComponent distribution_components[ReSTIRPGDistributionComponentCount];
 };
 

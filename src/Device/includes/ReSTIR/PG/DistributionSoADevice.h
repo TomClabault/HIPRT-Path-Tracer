@@ -37,6 +37,18 @@ struct ReSTIRPGDistributionSoADevice
 		return out_distribution;
 	}
 
+	HIPRT_DEVICE void set_distribution(unsigned int hash_grid_cell_index, const ReSTIRPGDistribution& distribution)
+	{
+		for (int i = 0; i < ReSTIRPGDistributionComponentCount; ++i)
+		{
+			unsigned int component_index = index_buffer(hash_grid_cell_index, i);
+
+			axis[component_index]			  = distribution.distribution_components[i].vmf.axis;
+			sharpness[component_index]		  = distribution.distribution_components[i].vmf.sharpness;
+			component_weight[component_index] = distribution.distribution_components[i].weight;
+		}
+	}
+
 	HIPRT_DEVICE void set_distribution_component_vmf(unsigned int hash_grid_cell_index, unsigned int component_index, const VMF& vmf)
 	{
 		unsigned int buffer_index = index_buffer(hash_grid_cell_index, component_index);

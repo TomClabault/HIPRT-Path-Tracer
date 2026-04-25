@@ -252,3 +252,23 @@ bool ReSTIRPGRenderPass::is_render_pass_used() const
 
 	return restir_path_sampling_used && using_restir_pg && bounces;
 }
+
+float ReSTIRPGRenderPass::get_VRAM_usage() const
+{
+	return (m_splatting_samples_soa_buffer.get_byte_size() + m_hash_grid_distributions_soa_buffer.get_byte_size() +
+			m_hash_grid_checksums_buffer.get_byte_size() + m_grid_cell_alive_buffer.get_byte_size() + m_grid_cell_alive_count_buffer.get_byte_size() +
+			m_grid_cell_alive_list_buffer.get_byte_size() + m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_byte_size()) /
+		   1000000.0f;
+}
+
+float ReSTIRPGRenderPass::get_hash_grid_load_factor() const
+{
+	if (!is_render_pass_used())
+		return 0.0f;
+
+	if (m_grid_cell_alive_count_buffer.size() == 0)
+		// This can happen just after the PG render pass is enabled but pre_render_update hasn't been called yet
+		return 0.0f;
+
+	return (float)m_grid_cell_alive_count_buffer.download_data()[0] / (float)m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells();
+}

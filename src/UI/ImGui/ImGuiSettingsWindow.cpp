@@ -2151,6 +2151,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2278,7 +2280,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 				ImGui::TreePop();
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Statistics"))
+		{
+			ImGui::TreePush("ReSTIR PG Statistics tree");
+
+			ImGui::Text("VRAM Usage: %.3fMB", restir_pg_render_pass->get_VRAM_usage());
+
+			float load_factor = restir_pg_render_pass->get_hash_grid_load_factor();
+			ImGui::Text("Hash grid load factor: %.3f%%", load_factor * 100.0f);
+
+			ImGui::TreePop(); // ReSTIR PG Statistics Tree
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

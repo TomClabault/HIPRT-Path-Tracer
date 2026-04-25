@@ -21,7 +21,7 @@ public:
 	static const std::string RESTIR_PG_RESET_HASH_GRID;
 	static const std::string RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL;
 
-	static constexpr unsigned int HASH_GRID_INITIAL_CELL_COUNT = 100000;
+	static constexpr unsigned int HASH_GRID_INITIAL_CELL_COUNT = 500000;
 
 	ReSTIRPGRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 	ReSTIRPGRenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
@@ -41,6 +41,9 @@ public:
 	virtual void reset(bool reset_by_camera_movement) override {};
 
 	virtual bool is_render_pass_used() const override;
+
+	float get_VRAM_usage() const;
+	float get_hash_grid_load_factor() const;
 
 private:
 	ReSTIRPGSplattingSampleSoAHost<OrochiBuffer> m_splatting_samples_soa_buffer;
