@@ -276,11 +276,16 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		if (skipping_volume_boundary)
 		{
 			// If we're skipping, the boundary, the ray just keeps going on its way
-			ray.origin = out_hit_info.inter_point;
+			ray.origin				 = out_hit_info.inter_point;
+			last_hit_primitive_index = out_hit_info.primitive_index;
 
 			// Don't forget to increment the distance traveled
 			// TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
 			in_out_ray_payload.volume_state.distance_in_volume += hit.t;
+
+			if (in_out_ray_payload.volume_state.inside_material)
+				// We're inside and we're skipping the boundary. This means that we're leaving a dielectric by skipping it, popping
+				in_out_ray_payload.volume_state.interior_stack.pop(true);
 		}
 
 	} while ((skipping_volume_boundary && hit.hasHit()));

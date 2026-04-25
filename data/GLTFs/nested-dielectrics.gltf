@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.4.55",
+		"generator":"Khronos glTF Blender I/O v5.1.19",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
@@ -43,10 +43,10 @@
 			"mesh":2,
 			"name":"Plane",
 			"rotation":[
+				-0.3502073585987091,
+				-0.9366722106933594,
 				0,
-				0,
-				-0.3826834559440613,
-				0.9238795638084412
+				2.397353604521868e-08
 			],
 			"translation":[
 				2.1114394664764404,
@@ -101,10 +101,10 @@
 			"mesh":5,
 			"name":"Torus.001",
 			"rotation":[
-				-0.9547613859176636,
+				-0.9547613263130188,
 				0,
 				0,
-				0.29737329483032227
+				0.2973732650279999
 			]
 		}
 	],
@@ -206,7 +206,7 @@
 					"transmissionFactor":1
 				}
 			},
-			"name":"Material",
+			"name":"Material.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
 					1,
@@ -228,7 +228,7 @@
 					"ior":2
 				}
 			},
-			"name":"Material.001",
+			"name":"Material.002",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
 					0,
@@ -293,20 +293,20 @@
 						"NORMAL":13,
 						"TEXCOORD_0":14
 					},
-					"indices":11
+					"indices":15
 				}
 			]
 		},
 		{
-			"name":"Cube",
+			"name":"Cube.001",
 			"primitives":[
 				{
 					"attributes":{
-						"POSITION":15,
-						"NORMAL":16,
-						"TEXCOORD_0":17
+						"POSITION":16,
+						"NORMAL":17,
+						"TEXCOORD_0":18
 					},
-					"indices":18,
+					"indices":19,
 					"material":3
 				}
 			]
@@ -316,11 +316,11 @@
 			"primitives":[
 				{
 					"attributes":{
-						"POSITION":19,
-						"NORMAL":20,
-						"TEXCOORD_0":21
+						"POSITION":20,
+						"NORMAL":21,
+						"TEXCOORD_0":22
 					},
-					"indices":22,
+					"indices":23,
 					"material":4
 				}
 			]
@@ -459,6 +459,12 @@
 		},
 		{
 			"bufferView":15,
+			"componentType":5123,
+			"count":6,
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":16,
 			"componentType":5126,
 			"count":24,
 			"max":[
@@ -474,25 +480,25 @@
 			"type":"VEC3"
 		},
 		{
-			"bufferView":16,
+			"bufferView":17,
 			"componentType":5126,
 			"count":24,
 			"type":"VEC3"
 		},
 		{
-			"bufferView":17,
+			"bufferView":18,
 			"componentType":5126,
 			"count":24,
 			"type":"VEC2"
 		},
 		{
-			"bufferView":18,
+			"bufferView":19,
 			"componentType":5123,
 			"count":36,
 			"type":"SCALAR"
 		},
 		{
-			"bufferView":19,
+			"bufferView":20,
 			"componentType":5126,
 			"count":637,
 			"max":[
@@ -508,19 +514,19 @@
 			"type":"VEC3"
 		},
 		{
-			"bufferView":20,
+			"bufferView":21,
 			"componentType":5126,
 			"count":637,
 			"type":"VEC3"
 		},
 		{
-			"bufferView":21,
+			"bufferView":22,
 			"componentType":5126,
 			"count":637,
 			"type":"VEC2"
 		},
 		{
-			"bufferView":22,
+			"bufferView":23,
 			"componentType":5123,
 			"count":3456,
 			"type":"SCALAR"
@@ -619,56 +625,62 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":288,
+			"byteLength":12,
 			"byteOffset":47564,
+			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":288,
+			"byteOffset":47576,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":288,
-			"byteOffset":47852,
+			"byteOffset":47864,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":192,
-			"byteOffset":48140,
+			"byteOffset":48152,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":72,
-			"byteOffset":48332,
+			"byteOffset":48344,
 			"target":34963
 		},
 		{
 			"buffer":0,
 			"byteLength":7644,
-			"byteOffset":48404,
+			"byteOffset":48416,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":7644,
-			"byteOffset":56048,
+			"byteOffset":56060,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":5096,
-			"byteOffset":63692,
+			"byteOffset":63704,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":6912,
-			"byteOffset":68788,
+			"byteOffset":68800,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":75700,
+			"byteLength":75712,
 			"uri":"nested-dielectrics.bin"
 		}
 	]
