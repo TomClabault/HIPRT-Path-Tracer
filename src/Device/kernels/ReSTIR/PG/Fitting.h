@@ -71,13 +71,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		constexpr float prior = 1.0e-2f;
 		float new_mixture_component_weight =
 			(responsibility_weights_sum + prior) / (sum_responsibilities_weight_sum + prior * ReSTIRPGDistributionComponentCount);
+		if (new_mixture_component_weight < 0.05f / (ReSTIRPGDistributionComponentCount - 1))
+			// Killing off not very relevant components to same performance and also reduce fireflies
+			new_mixture_component_weight = 0.0f;
+
+		component_new_weights[component_index] = new_mixture_component_weight;
+		component_weights_sum += new_mixture_component_weight;
 
 		VMFMixtureComponent new_vmf;
 		new_vmf.vmf.axis	  = new_mean_vmf_direction;
 		new_vmf.vmf.sharpness = new_vmf_sharpness;
-
-		component_new_weights[component_index] = new_mixture_component_weight;
-		component_weights_sum += new_mixture_component_weight;
 
 		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_vmf(hash_grid_cell_index, component_index, new_vmf.vmf);
 	}
@@ -85,8 +88,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 	// Normalize components weights, this is useful to help with precision issues but also to re-normalize components that were not updated by the fitting pass
 	// because they had too few samples assigned to them (and thus we kept their old parameters/weights but we want to make sure that the weights sum to 1.0f)
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
-		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(hash_grid_cell_index, component_index,
-																						 component_new_weights[component_index] / component_weights_sum);
+	{
+		float normalized_weight = component_new_weights[component_index] / component_weights_sum;
+		restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(hash_grid_cell_index, component_index, normalized_weight);
+	}
 }
 
 #endif
