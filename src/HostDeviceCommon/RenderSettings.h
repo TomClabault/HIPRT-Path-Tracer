@@ -279,7 +279,7 @@ struct HIPRTRenderSettings
 	{
 		bool has_access = false;
 
-		has_access |= stop_pixel_noise_threshold > 0.0f;
+		has_access |= (stop_pixel_noise_threshold > 0.0f && use_pixel_stop_noise_threshold);
 		has_access |= enable_adaptive_sampling;
 		// Cannot use adaptive sampling without accumulation
 		has_access &= accumulate;
