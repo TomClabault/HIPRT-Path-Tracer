@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_RESTIR_PG_SAMPLPE_DISTRIBUTION_H
 #define DEVICE_INCLUDES_RESTIR_PG_SAMPLPE_DISTRIBUTION_H
 
+#include "Device/includes/PathGuiding/PathSampling.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
@@ -27,23 +28,32 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 		// No distribution, full BSDF sampling then
 		bsdf_probability = 1.0f;
 
+	bool path_guiding_sampled;
 	float random_value = random_number_generator();
 	if (random_value < bsdf_probability)
 	{
-		float trash;
+		float trash_pdf;
 		path_tracing_sample_bsdf_next_indirect_bounce<true>(render_data, ray_payload, closest_hit_info, view_direction, out_bsdf_color, out_bounce_direction,
-															trash, random_number_generator, out_sampled_light_info);
+															trash_pdf, random_number_generator, out_sampled_light_info);
+
+		path_guiding_sampled = false;
 	}
 	else
+	{
 		out_bounce_direction = distribution.sample(random_number_generator);
+		path_guiding_update_volume_stack_after_sampling(out_bounce_direction, closest_hit_info, ray_payload);
+
+		out_sampled_light_info = BSDFIncidentLightInfo::NO_INFO;
+
+		path_guiding_sampled = true;
+	}
 
 	// TODO THIS IS BROKEN AND THE RAY VOLUME STACK WILL NOT BE PROPERLY UPDATED IN CASE THE PATH GUIDING SAMPLES A REFRACTION. If a glass reflection is
 	// sampled, we need to pop the stack, just as the principled_glass_sample function would do. Use this opportunity to maybe remove the pop/push stack logic
 	// from Principled.h and do it externally or something
 	// This sampled light info is unused because we're evaluating the BSDF
-	BSDFIncidentLightInfo trash_sampled_light_info;
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, out_bounce_direction, trash_sampled_light_info,
-							 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness);
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, out_bounce_direction, out_sampled_light_info,
+							 ray_payload.volume_state, true, ray_payload.material, ray_payload.accumulated_roughness);
 
 	float bsdf_pdf;
 	out_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
@@ -58,7 +68,8 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 
 	out_sample_pdf = chosen_pdf / one_sample_mis_weight;
 
-	ray_payload.accumulate_roughness(out_sampled_light_info);
+	if (path_guiding_sampled)
+		path_guiding_compute_sampled_lobe(render_data, bsdf_context, ray_payload, out_bounce_direction, out_sampled_light_info, random_number_generator);
 }
 
 #endif

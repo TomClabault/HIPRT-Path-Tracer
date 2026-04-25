@@ -111,6 +111,11 @@ struct DeviceUnpackedEffectiveMaterial
 													roughness_threshold);
 	}
 
+	HIPRT_HOST_DEVICE bool allows_refraction() const
+	{
+		return specular_transmission > 0.0f || diffuse_transmission > 0.0f;
+	}
+
 	/**
 	 * Returns the minimum roughness of the material looking at all the active lobes
 	 */

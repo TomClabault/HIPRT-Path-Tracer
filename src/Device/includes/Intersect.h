@@ -7,8 +7,8 @@
 #define DEVICE_INTERSECT_H
 
 #include "Device/functions/FilterFunction.h"
+#include "Device/includes/BSDFs/BSDFSampleHitInfo.h"
 #include "Device/includes/BSDFs/Dispersion.h"
-#include "Device/includes/BSDFSampleHitInfo.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/ONB.h"
@@ -146,8 +146,8 @@ HIPRT_DEVICE float3_t get_shading_normal(const HIPRTRenderData& render_data,
 	int material_index							= render_data.buffers.material_indices[primitive_index];
 	unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer_soa.get_normal_map_texture_index(material_index);
 	if (normal_map_texture_index != MaterialConstants::NO_TEXTURE)
-		surface_normal = normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords,
-										surface_normal);
+		surface_normal =
+			normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
 
 	return surface_normal;
 }
@@ -187,7 +187,7 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3_t& view
 		constexpr float epsilon = 0.01f;
 
 		perfect_reflected_direction -=
-								hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
+			hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
 
 		// The new shading normal is the half vector between the pulled up reflected direction
 		// and the view direction
@@ -197,11 +197,8 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3_t& view
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data,
-										  BVH* bvh,
-										  const hiprtRay& ray,
-										  int last_hit_primitive_index,
-										  Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE hiprtHit intersect_scene_cpu(
+	const HIPRTRenderData& render_data, BVH* bvh, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 	FilterFunctionPayload filter_function_payload;
 	filter_function_payload.simplified_light_ray	= bvh == render_data.cpu_only.light_bvh;
@@ -267,8 +264,8 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
 		skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-								in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
-								in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
+			in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
+			in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
 
 		if (in_out_ray_payload.volume_state.inside_material)
 			// If we're traveling inside a volume, accumulating the distance for Beer's law
@@ -306,12 +303,8 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
  * Returns true if in shadow (a hit was found before 't_max' distance)
  * Returns false if unoccluded
  */
-HIPRT_DEVICE bool evaluate_shadow_ray_occluded(const HIPRTRenderData& render_data,
-											   hiprtRay ray,
-											   float t_max,
-											   int last_hit_primitive_index,
-											   int bounce,
-											   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
+	const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
 	if (render_data.GPU_BVH == nullptr)
@@ -406,8 +399,8 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 	unsigned int seed_before = random_number_generator.m_state.seed;
 
 	unsigned int nee_plus_plus_hash_grid_cell_index;
-	float visible_probability = nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(
-							nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
+	float visible_probability = nee_plus_plus_context.unoccluded_probability =
+		render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
 	bool likely_visible = random_number_generator() < visible_probability;
 
 	if (likely_visible)

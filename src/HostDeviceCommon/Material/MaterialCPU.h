@@ -305,7 +305,7 @@ struct CPUMaterial
 	float alpha_opacity = 1.0f;
 
 	// Nested dielectric parameter
-	int dielectric_priority = 0;
+	int dielectric_priority = 1;
 
 	int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
 

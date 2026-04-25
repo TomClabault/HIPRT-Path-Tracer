@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 
-#include "Device/includes/VMF.h"
+#include "Device/includes/PathGuiding/VMF.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "Renderer/LightTree/LightTreeATSConstants.h"

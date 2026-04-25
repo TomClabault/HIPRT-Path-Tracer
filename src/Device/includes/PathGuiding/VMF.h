@@ -32,8 +32,8 @@ struct VMF
 		float rand_2 = random_number_generator();
 
 		constexpr float THRESHOLD = hippt::FLOAT_EPSILON / 4.0f;
-		float phi		= 2.0f * hippt::M_Pi * rand_1;
-		float r			= sharpness > THRESHOLD ? hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)) / sharpness : -2.0f * rand_2;
+		float phi				  = 2.0f * hippt::M_Pi * rand_1;
+		float r					  = sharpness > THRESHOLD ? hippt::intrin_log1pf(rand_2 * hippt::intrin_expm1f(-2.0f * sharpness)) / sharpness : -2.0f * rand_2;
 
 		float cos_theta = 1.0f + r;
 		float sin_theta = hippt::sqrt(-hippt::fma(r, r, 2.0f * r));
@@ -41,12 +41,6 @@ struct VMF
 
 		return local_to_world_frame(axis, dir);
 	}
-};
-
-struct VMFMixtureComponent
-{
-	VMF vmf;
-	float weight = 0.0f;
 };
 
 #endif

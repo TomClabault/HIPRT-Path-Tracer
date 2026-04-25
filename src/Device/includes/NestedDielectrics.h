@@ -10,26 +10,8 @@
 
 #include <hiprt/hiprt_common.h>
 
-#ifdef __KERNELCC__
-// On the GPU, the nested dielectrics stack is allocated in shared memory.
-// This means that all the entries of the nested dielectrics stacks are in shared memory.
-//
-// For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
-// a shared memory array of 3*64 = 192 entries.
-//
-// We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
-//
-// That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
-// and maps it to the index to use in the shared memory array by using the threadIdx.
-//
-// Note that the mapping is written to minimize shared memory bank conflicts
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
-
-#else
-// This macro is used to offset the index used to index the priority stack.
-// On the CPU, there is nothing to do, just use the given index, there is really nothing
-// special. The special case is for the GPU, explained above the GPU macro definition
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
+#ifndef __KERNELCC__
+#include <array>
 #endif
 
 /**
@@ -57,7 +39,7 @@ struct StackPriorityEntry
 	// and its shift to locate the bits in the packed 32bits integer
 	// This is the rest of the bits after we've added the other flags
 	static constexpr unsigned int COMBINED_OTHER_FLAGS =
-							(PRIORITY_BIT_MASK << PRIORITY_BIT_SHIFT) | (TOPMOST_BIT_MASK << TOPMOST_BIT_SHIFT) | (ODD_PARTIY_BIT_MASK << ODD_PARTIY_BIT_SHIFT);
+		(PRIORITY_BIT_MASK << PRIORITY_BIT_SHIFT) | (TOPMOST_BIT_MASK << TOPMOST_BIT_SHIFT) | (ODD_PARTIY_BIT_MASK << ODD_PARTIY_BIT_SHIFT);
 	static constexpr unsigned int MATERIAL_INDEX_BIT_SHIFT = ODD_PARTIY_BIT_SHIFT + 1;
 	static constexpr unsigned int MATERIAL_INDEX_BIT_MASK  = (0xffffffff & (~COMBINED_OTHER_FLAGS)) >> MATERIAL_INDEX_BIT_SHIFT;
 	// This 'MATERIAL_INDEX_MAXIMUM' is just an alias basically
@@ -139,11 +121,8 @@ struct NestedDielectricsInteriorStack
 	 *
 	 * Returns false if that intersection should not be skipped
 	 */
-	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index,
-								int& out_outgoing_material_index,
-								bool& out_inside_material,
-								int material_index,
-								int material_priority)
+	HIPRT_HOST_DEVICE bool push(
+		int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
 	{
 		if (stack_position == NestedDielectricsStackSize - 1)
 			// The stack is already at the maximum
@@ -159,9 +138,8 @@ struct NestedDielectricsInteriorStack
 			//	- The entry of that material in the stack is odd_parity = we've entered that material but haven't left it yet
 			//
 			//	= the last entered material
-			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index() != material_index &&
-				stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_topmost() &&
-				stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_odd_parity())
+			if (stack_entries[last_entered_mat_index].get_material_index() != material_index && stack_entries[last_entered_mat_index].get_topmost() &&
+				stack_entries[last_entered_mat_index].get_odd_parity())
 				break;
 
 		// Parity of the material we're inserting in the stack
@@ -171,7 +149,7 @@ struct NestedDielectricsInteriorStack
 		int previous_same_mat_index;
 		for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
 		{
-			int stack_index = NESTED_DIELECTRICS_STACK_INDEX_SHIFT(previous_same_mat_index);
+			int stack_index = previous_same_mat_index;
 			if (stack_entries[stack_index].get_material_index() == material_index)
 			{
 				// The previous stack entry of the same material is not the topmost anymore
@@ -189,13 +167,13 @@ struct NestedDielectricsInteriorStack
 		if (stack_position < NestedDielectricsStackSize - 1)
 			stack_position++;
 
-		int new_stack_index = NESTED_DIELECTRICS_STACK_INDEX_SHIFT(stack_position);
+		int new_stack_index = stack_position;
 		stack_entries[new_stack_index].set_material_index(material_index);
 		stack_entries[new_stack_index].set_odd_parity(odd_parity);
 		stack_entries[new_stack_index].set_topmost(true);
 		stack_entries[new_stack_index].set_priority(material_priority);
 
-		if (material_priority < stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_priority())
+		if (material_priority < stack_entries[last_entered_mat_index].get_priority())
 		{
 			// Skipping the boundary because the intersected material has a
 			// lower priority than the material we're currently in
@@ -206,14 +184,14 @@ struct NestedDielectricsInteriorStack
 			if (odd_parity)
 			{
 				// We are entering the material
-				out_incident_material_index = stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index();
+				out_incident_material_index = stack_entries[last_entered_mat_index].get_material_index();
 				out_outgoing_material_index = material_index;
 			}
 			else
 			{
 				// Exiting material
 				out_incident_material_index = material_index;
-				out_outgoing_material_index = stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index();
+				out_outgoing_material_index = stack_entries[last_entered_mat_index].get_material_index();
 			}
 
 			// Not skipping the boundary
@@ -223,7 +201,7 @@ struct NestedDielectricsInteriorStack
 
 	HIPRT_HOST_DEVICE void pop(const bool inside_material)
 	{
-		int stack_top_mat_index = stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(stack_position)].get_material_index();
+		int stack_top_mat_index = stack_entries[stack_position].get_material_index();
 		if (stack_position > 0)
 			// Checking that we have room to pop.
 			// For a very small stack (size of 2) that overflown
@@ -236,12 +214,12 @@ struct NestedDielectricsInteriorStack
 		{
 			int previous_same_mat_index;
 			for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
-				if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(previous_same_mat_index)].get_material_index() == stack_top_mat_index)
+				if (stack_entries[previous_same_mat_index].get_material_index() == stack_top_mat_index)
 					break;
 
 			if (previous_same_mat_index >= 0)
 				for (int i = previous_same_mat_index + 1; i <= stack_position; i++)
-					stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i - 1)] = stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)];
+					stack_entries[i - 1] = stack_entries[i];
 
 			// For very small stacks (2 for example), we may not be able to pop twice
 			// at all so we check the position on the stack first
@@ -251,9 +229,10 @@ struct NestedDielectricsInteriorStack
 
 		for (int i = stack_position; i >= 0; i--)
 		{
-			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index() == stack_top_mat_index)
+			if (stack_entries[i].get_material_index() == stack_top_mat_index)
 			{
-				stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_topmost(true);
+				stack_entries[i].set_topmost(true);
+
 				break;
 			}
 		}
@@ -262,7 +241,11 @@ struct NestedDielectricsInteriorStack
 	// We only need all of this if the stack size is actually > 0,
 	// otherwise, we're just not going to do the nested dielectrics handling at all
 
+#ifdef __KERNELCC__
 	StackPriorityEntry stack_entries[NestedDielectricsStackSize];
+#else
+	std::array<StackPriorityEntry, NestedDielectricsStackSize> stack_entries;
+#endif
 
 	static constexpr unsigned int MAX_MATERIAL_INDEX = StackPriorityEntry::MATERIAL_INDEX_MAXIMUM;
 

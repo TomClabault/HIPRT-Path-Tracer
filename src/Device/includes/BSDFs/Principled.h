@@ -60,8 +60,8 @@ HIPRT_DEVICE static ColorRGB32F principled_coat_eval(const HIPRTRenderData& rend
 	// The coat lobe is just a microfacet lobe
 	float HoL					= hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
 	// We're only evaluating the coat lobe if, either:
 	// - The incident light direction was sampled from the clearcoat lobe
@@ -73,7 +73,7 @@ HIPRT_DEVICE static ColorRGB32F principled_coat_eval(const HIPRTRenderData& rend
 	//
 	// All the conditions are handled in 'is_specular_delta_reflection_sampled'
 	SpecularDeltaReflectionSampled coat_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-							regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
+		regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
 
 	ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_medium_ior, bsdf_context.material.coat_ior));
 
@@ -91,8 +91,8 @@ HIPRT_DEVICE static float principled_coat_pdf(const HIPRTRenderData& render_data
 	// The coat lobe is just a microfacet lobe
 	float HoL					= hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
 	// We're only evaluating the coat lobe if, either:
 	// - The incident light direction was sampled from the clearcoat lobe
@@ -104,7 +104,7 @@ HIPRT_DEVICE static float principled_coat_pdf(const HIPRTRenderData& render_data
 	//
 	// All the conditions are handled in 'is_specular_delta_reflection_sampled'
 	SpecularDeltaReflectionSampled coat_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-							regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
+		regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
 
 	return microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.coat_anisotropy, local_view_direction, local_to_light_direction,
 									  local_halfway_vector, coat_delta_direction_sampled);
@@ -119,8 +119,8 @@ HIPRT_DEVICE static float3_t principled_coat_sample(const HIPRTRenderData& rende
 													Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 	return microfacet_GGX_sample_reflection(regularized_roughness, bsdf_context.material.coat_anisotropy, local_view_direction, random_number_generator);
 }
 
@@ -158,8 +158,8 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpacked
 {
 	float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_or_view_direction));
 
-	ColorRGB32F F_metal		= adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent,
-													 HoL);
+	ColorRGB32F F_metal =
+		adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
 	ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
 
 	return hippt::lerp(F_metal, F_thin_film, material.thin_film);
@@ -176,12 +176,12 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 														 float& pdf,
 														 Xorshift32Generator& rng)
 {
-	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+	float regularized_roughness =
+		MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
+														bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
 	SpecularDeltaReflectionSampled metal_delta_direction_sampled =
-							bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
+		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
 	if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
 	{
 		// The distribution isn't worth evaluating because it's specular but we the incident
@@ -214,12 +214,12 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 												  const float3_t& local_to_light_direction,
 												  const float3_t& local_half_vector)
 {
-	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+	float regularized_roughness =
+		MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
+														bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
 	SpecularDeltaReflectionSampled metal_delta_direction_sampled =
-							bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
+		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
 	if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
 		// The distribution isn't worth evaluating because it's specular but we the incident
 		// light direction wasn't sampled from a specular distribution
@@ -251,9 +251,9 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 														const float3_t& local_view_direction,
 														Xorshift32Generator& random_number_generator)
 {
-	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+	float regularized_roughness =
+		MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
+														bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
@@ -399,10 +399,10 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& 
 														 Xorshift32Generator& rng)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-	SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-							regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+	SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled =
+		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
 	// The specular lobe is just another GGX lobe
 	//
@@ -428,10 +428,10 @@ HIPRT_DEVICE static float principled_specular_pdf(const HIPRTRenderData& render_
 												  const float3_t& local_half_vector)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-	SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-							regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+	SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled =
+		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
 	return microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.anisotropy, local_view_direction, local_to_light_direction,
 									  local_half_vector, is_specular_delta_reflection_sampled);
@@ -445,8 +445,8 @@ HIPRT_DEVICE static float3_t principled_specular_sample(const HIPRTRenderData& r
 														Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
-							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
+		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
@@ -470,8 +470,8 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
 		// Remapping the absorption coefficient so that it is more intuitive to manipulate
 		// according to Burley, 2015 [5].
 		// This effectively gives us a "at distance" absorption coefficient.
-		ColorRGB32F absorption_coefficient = intrin_logf(absorption_color) /
-											 render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
+		ColorRGB32F absorption_coefficient =
+			intrin_logf(absorption_color) / render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
 		return intrin_expf(absorption_coefficient * ray_volume_state.distance_in_volume);
 	}
 
@@ -499,11 +499,11 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 	// Relative eta = eta_t / eta_i
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
 	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
 	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
@@ -624,23 +624,23 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights (computed from the PDFs which are
 			// themselves computed from the roughness) are correct
 			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 		}
 		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
 				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 		{
 			regularized_roughness = MicrofacetRegularization::regularize_reflection(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 		}
 
-		SpecularDeltaReflectionSampled delta_glass_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-								scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+		SpecularDeltaReflectionSampled delta_glass_direction_sampled =
+			bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
-		color = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i, false,
-													 F, local_view_direction, local_to_light_direction, local_half_vector, pdf, delta_glass_direction_sampled,
-													 rng);
+		color =
+			torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i, false, F,
+												 local_view_direction, local_to_light_direction, local_half_vector, pdf, delta_glass_direction_sampled, rng);
 
 		// Note: for specular (roughness 0.0f) glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
@@ -659,13 +659,13 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
 			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
 				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			regularized_roughness = MicrofacetRegularization::regularize_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
 		color = torrance_sparrow_GGX_eval_refract(bsdf_context.material, regularized_roughness, relative_eta, F, local_view_direction, local_to_light_direction,
 												  local_half_vector, pdf, bsdf_context.incident_light_info);
@@ -674,9 +674,9 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 		// Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
-		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, regularized_roughness,
-																	bsdf_context.volume_state.inside_material, eta_t, eta_i, relative_eta,
-																	local_view_direction.z);
+		float compensation_term =
+			get_GGX_energy_compensation_glass(render_data, bsdf_context.material, regularized_roughness, bsdf_context.volume_state.inside_material, eta_t,
+											  eta_i, relative_eta, local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
 
@@ -699,9 +699,10 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 			{
 				// We changed volume so we're resetting the distance
 				bsdf_context.volume_state.distance_in_volume = 0.0f;
+
 				if (bsdf_context.volume_state.inside_material)
 					// We refracting out of a volume so we're poping the stack
-					bsdf_context.volume_state.interior_stack.pop(bsdf_context.volume_state.inside_material);
+					bsdf_context.volume_state.interior_stack.pop(true);
 			}
 		}
 	}
@@ -728,11 +729,11 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 
 	// Relative eta = eta_t / eta_i
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
 	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
 	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
@@ -850,16 +851,16 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
 			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
 				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			regularized_roughness = MicrofacetRegularization::regularize_reflection(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-		SpecularDeltaReflectionSampled delta_glass_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-								scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+		SpecularDeltaReflectionSampled delta_glass_direction_sampled =
+			bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
 		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.anisotropy, local_view_direction, local_to_light_direction,
 										 local_half_vector, delta_glass_direction_sampled);
@@ -874,13 +875,13 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
 			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
 				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 			regularized_roughness = MicrofacetRegularization::regularize_refraction(
-									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
+				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
 		pdf = torrance_sparrow_GGX_pdf_refract(bsdf_context.material, regularized_roughness, relative_eta, local_view_direction, local_to_light_direction,
 											   local_half_vector, bsdf_context.incident_light_info);
@@ -900,11 +901,11 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 													 Xorshift32Generator& random_number_generator)
 {
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-										  ? 1.0f
-										  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  ? 1.0f
+					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
 	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
 	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
@@ -928,11 +929,11 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 		// So we take the average. This is going to be over-roughened for reflection and under-roughened
 		// for refractions but this should still be effective
 		thin_walled_scaled_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-								render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, thin_walled_scaled_roughness,
-								bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+			render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, thin_walled_scaled_roughness,
+			bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
-	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, thin_walled_scaled_roughness, bsdf_context.material.anisotropy,
-																   random_number_generator);
+	float3_t microfacet_normal =
+		GGX_anisotropic_sample_microfacet(local_view_direction, thin_walled_scaled_roughness, bsdf_context.material.anisotropy, random_number_generator);
 
 	float HoV		= hippt::dot(local_view_direction, microfacet_normal);
 	float thin_film = bsdf_context.material.thin_film;
@@ -993,12 +994,6 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 			float3_t reflected = reflect_ray(local_view_direction, microfacet_normal);
 			// Now flipping
 			reflected.z *= -1.0f;
-
-			// Refraction through the thin walled material.
-			// We're poping the stack because we're not inside the material even
-			// though this is a refraction. A thin material has no inside
-			if (bsdf_context.update_ray_volume_state)
-				bsdf_context.volume_state.interior_stack.pop(false);
 
 			return reflected;
 		}
@@ -1162,8 +1157,8 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& 
 		{
 			// The coat layer only contribtues for light direction in the same
 			// hemisphere as the view direction (so reflections only, not refractions)
-			contribution = principled_coat_eval(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, incident_ior,
-												coat_pdf, rng);
+			contribution =
+				principled_coat_eval(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_pdf, rng);
 			contribution *= coat_weight;
 			contribution *= layers_throughput;
 		}
@@ -1225,16 +1220,16 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& 
 			//
 			// It can happen that 'incident_refracted_angle' or 'outgoing_refracted_angle'
 			// are 0.0f
-			float incident_refracted_angle = hippt::max(
-									1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (coat_ior * coat_ior)));
+			float incident_refracted_angle =
+				hippt::max(1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (coat_ior * coat_ior)));
 			float outgoing_refracted_angle =
-									hippt::max(1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (coat_ior * coat_ior)));
+				hippt::max(1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (coat_ior * coat_ior)));
 
 			// Reference: [11], [13]
 			float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
 			ColorRGB32F coat_absorption =
-									intrin_expf(-(ColorRGB32F(1.0f) - intrin_pow(sqrt(bsdf_context.material.coat_medium_absorption), traveled_distance_angle)) *
-												bsdf_context.material.coat_medium_thickness);
+				intrin_expf(-(ColorRGB32F(1.0f) - intrin_pow(sqrt(bsdf_context.material.coat_medium_absorption), traveled_distance_angle)) *
+							bsdf_context.material.coat_medium_thickness);
 			layer_below_attenuation *= coat_absorption;
 		}
 
@@ -1384,8 +1379,8 @@ HIPRT_DEVICE static float internal_pdf_metal_layer(const HIPRTRenderData& render
 {
 	if (metal_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
 	{
-		float metal_pdf = principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction,
-												  local_half_vector);
+		float metal_pdf =
+			principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector);
 
 		return metal_pdf * metal_proba;
 	}
@@ -1452,8 +1447,8 @@ HIPRT_DEVICE static float internal_pdf_retro_reflection_layer(const HIPRTRenderD
 
 	if (retro_reflection_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
 	{
-		float metal_pdf = principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction,
-												  local_half_vector);
+		float metal_pdf =
+			principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector);
 
 		return metal_pdf * retro_reflection_proba;
 	}
@@ -1646,8 +1641,8 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderDa
 												local_half_vector, specular_pdf, rng);
 
 		// Tinting the specular reflection color
-		contribution *= hippt::lerp(ColorRGB32F(1.0f), bsdf_context.material.specular_tint * bsdf_context.material.specular_color,
-									bsdf_context.material.specular);
+		contribution *=
+			hippt::lerp(ColorRGB32F(1.0f), bsdf_context.material.specular_tint * bsdf_context.material.specular_color, bsdf_context.material.specular);
 		contribution *= specular_weight;
 		contribution *= layers_throughput;
 
@@ -1748,8 +1743,8 @@ HIPRT_DEVICE static float internal_pdf_specular_layer(const HIPRTRenderData& ren
 	{
 		float relative_ior = principled_specular_relative_ior(bsdf_context.material, incident_medium_ior);
 
-		float specular_pdf = principled_specular_pdf(render_data, bsdf_context, relative_ior, local_view_direction, local_to_light_direction,
-													 local_half_vector);
+		float specular_pdf =
+			principled_specular_pdf(render_data, bsdf_context, relative_ior, local_view_direction, local_to_light_direction, local_half_vector);
 
 		return specular_pdf * specular_proba;
 	}
@@ -1833,11 +1828,11 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData&
 															 local_half_vector_rotated, shading_normal, incident_medium_ior, specular_weight, refracting,
 															 specular_proba_norm, layers_throughput, out_cumulative_pdf, rng);
 	glossy_base_contribution +=
-							internal_eval_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction,
-														diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
+		internal_eval_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction, diffuse_weight,
+									diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
 	float glossy_base_energy_compensation =
-							get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z);
+		get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z);
 	return glossy_base_contribution / glossy_base_energy_compensation;
 }
 
@@ -2005,6 +2000,48 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 	out_diffuse_transmission_sampling_proba = diffuse_transmission_weight * normalize_factor;
 }
 
+HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
+																  const DeviceUnpackedEffectiveMaterial& material,
+																  float NoV,
+																  const RayVolumeState& volume_state,
+
+																  float& out_coat_sampling_proba,
+																  float& out_sheen_sampling_proba,
+																  float& out_metal_1_sampling_proba,
+																  float& out_metal_2_sampling_proba,
+																  float& out_retro_reflection_sampling_proba,
+																  float& out_specular_sampling_proba,
+																  float& out_diffuse_sampling_proba,
+																  float& out_glass_sampling_proba,
+																  float& out_diffuse_transmission_sampling_proba)
+{
+	// Computing the weights for sampling the lobes
+	bool is_outside_object = !volume_state.inside_material;
+
+	float coat_sampling_weight;
+	float sheen_sampling_weight;
+	float metal_1_sampling_weight;
+	float metal_2_sampling_weight;
+	float retro_reflection_sampling_weight;
+	float specular_sampling_weight;
+	float diffuse_sampling_weight;
+	float glass_sampling_weight;
+	float diffuse_transmission_weight;
+	principled_bsdf_get_lobes_weights(material, is_outside_object, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight,
+									  metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight,
+									  glass_sampling_weight, diffuse_transmission_weight);
+
+	float incident_medium_ior = volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
+									? 1.0f
+									: render_data.buffers.materials_buffer_soa.get_ior(volume_state.incident_mat_index);
+	principled_bsdf_get_lobes_sampling_proba(
+		render_data, material, NoV, incident_medium_ior, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
+		retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
+
+		out_coat_sampling_proba, out_sheen_sampling_proba, out_metal_1_sampling_proba, out_metal_2_sampling_proba, out_retro_reflection_sampling_proba,
+		out_specular_sampling_proba, out_diffuse_sampling_proba, out_glass_sampling_proba, out_diffuse_transmission_sampling_proba);
+}
+
 HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& rng)
 {
 	pdf = 0.0f;
@@ -2033,8 +2070,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 	float3_t local_half_vector_rotated		  = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-														? 1.0f
-														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+									? 1.0f
+									: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
 	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
@@ -2043,12 +2080,11 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 
 	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba;
 	float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight,
-											 metal_1_weight, metal_2_weight, retro_reflection_weight, specular_weight, diffuse_weight, glass_weight,
-											 diffuse_transmission_weight,
+	principled_bsdf_get_lobes_sampling_proba(
+		render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
+		retro_reflection_weight, specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
 
-											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba,
-											 glass_proba, diffuse_transmission_proba);
+		coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba);
 
 	// Keeps track of the remaining light's energy as we traverse layers
 	ColorRGB32F layers_throughput = ColorRGB32F(1.0f);
@@ -2068,10 +2104,10 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 	final_color += internal_eval_metal_layer(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
 											 local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
 											 metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf, rng);
-	final_color += internal_eval_retro_reflection_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
-														local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated,
-														incident_medium_ior, retro_reflection_weight * !refracting, retro_reflection_proba, layers_throughput,
-														pdf, rng);
+	final_color +=
+		internal_eval_retro_reflection_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+											 local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
+											 retro_reflection_weight * !refracting, retro_reflection_proba, layers_throughput, pdf, rng);
 
 	// Careful here to evaluate the glass layer before the glossy
 	// base otherwise, layers_throughput is going to be modified
@@ -2083,10 +2119,10 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 	// there
 	final_color += internal_eval_glass_layer(render_data, bsdf_context, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight,
 											 glass_proba, layers_throughput, pdf, rng);
-	final_color += internal_eval_glossy_base(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector,
-											 local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated,
-											 bsdf_context.shading_normal, incident_medium_ior, diffuse_weight * !refracting, specular_weight, refracting,
-											 diffuse_proba, specular_proba, layers_throughput, pdf, rng);
+	final_color +=
+		internal_eval_glossy_base(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, local_view_direction_rotated,
+								  local_to_light_direction_rotated, local_half_vector_rotated, bsdf_context.shading_normal, incident_medium_ior,
+								  diffuse_weight * !refracting, specular_weight, refracting, diffuse_proba, specular_proba, layers_throughput, pdf, rng);
 	final_color += internal_eval_diffuse_transmission_layer(render_data, bsdf_context.material, bsdf_context.volume_state, bsdf_context.update_ray_volume_state,
 															local_view_direction, local_to_light_direction, diffuse_transmission_weight,
 															diffuse_transmission_proba, layers_throughput, pdf);
@@ -2131,8 +2167,8 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 	float3_t local_half_vector_rotated		  = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-														? 1.0f
-														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+									? 1.0f
+									: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
 	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
@@ -2141,12 +2177,11 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 
 	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba;
 	float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight,
-											 metal_1_weight, metal_2_weight, retro_reflection_weight, specular_weight, diffuse_weight, glass_weight,
-											 diffuse_transmission_weight,
+	principled_bsdf_get_lobes_sampling_proba(
+		render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
+		retro_reflection_weight, specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
 
-											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba,
-											 glass_proba, diffuse_transmission_proba);
+		coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba);
 
 	// In the 'internal_eval_coat_layer' function calls below, we're passing
 	// 'weight * !refracting' so that lobes that do not allow refractions
@@ -2155,9 +2190,9 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 	pdf += internal_pdf_coat_layer(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, refracting, coat_weight,
 								   coat_proba);
 	pdf += internal_pdf_sheen_layer(render_data, bsdf_context.material, local_view_direction, local_to_light_direction, refracting, sheen_weight, sheen_proba);
-	pdf += internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated,
-									local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior, metal_1_weight * !refracting,
-									metal_1_proba);
+	pdf +=
+		internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated,
+								 local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior, metal_1_weight * !refracting, metal_1_proba);
 	pdf += internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
 									local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
 									metal_2_weight * !refracting, metal_2_proba);
@@ -2188,46 +2223,51 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data,
-													   BSDFContext& bsdf_context,
-													   float3_t& output_direction,
-													   float& pdf,
-													   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
+	const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3_t& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
 	pdf = 0.0f;
 
-	// Computing the weights for sampling the lobes
-	bool is_outside_object = !bsdf_context.volume_state.inside_material;
+	//// Computing the weights for sampling the lobes
+	// bool is_outside_object = !bsdf_context.volume_state.inside_material;
 
-	float coat_sampling_weight;
-	float sheen_sampling_weight;
-	float metal_1_sampling_weight;
-	float metal_2_sampling_weight;
-	float retro_reflection_sampling_weight;
-	float specular_sampling_weight;
-	float diffuse_sampling_weight;
-	float glass_sampling_weight;
-	float diffuse_transmission_weight;
-	principled_bsdf_get_lobes_weights(bsdf_context.material, is_outside_object, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight,
-									  metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight,
-									  glass_sampling_weight, diffuse_transmission_weight);
+	// float coat_sampling_weight;
+	// float sheen_sampling_weight;
+	// float metal_1_sampling_weight;
+	// float metal_2_sampling_weight;
+	// float retro_reflection_sampling_weight;
+	// float specular_sampling_weight;
+	// float diffuse_sampling_weight;
+	// float glass_sampling_weight;
+	// float diffuse_transmission_weight;
+	// principled_bsdf_get_lobes_weights(bsdf_context.material, is_outside_object, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight,
+	//								  metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight,
+	//								  glass_sampling_weight, diffuse_transmission_weight);
+
+	// float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
+	// float metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
+	// float glass_sampling_proba, diffuse_transmission_sampling_proba;
+	// float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
+	//								? 1.0f
+	//								: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+	// principled_bsdf_get_lobes_sampling_proba(
+	//	render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior, coat_sampling_weight,
+	//	sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight,
+	//	diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
+
+	//	coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba,
+	//	diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
 
 	float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
 	float metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
 	float glass_sampling_proba, diffuse_transmission_sampling_proba;
-	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-														? 1.0f
-														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
-	principled_bsdf_get_lobes_sampling_proba(
-							render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
-							coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight, retro_reflection_sampling_weight,
-							specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
-
-							coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba, retro_reflection_sampling_proba,
-							specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
+	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal),
+											 bsdf_context.volume_state, coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba,
+											 metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba,
+											 glass_sampling_proba, diffuse_transmission_sampling_proba);
 
 	// Not using a float[] array here because array[] are super poorly handled
-	// in general by the HIP compiler on AMD
+	// in general by the HIP compiler on AMD, it's a spill fest
 	float cdf0 = coat_sampling_proba;
 	float cdf1 = cdf0 + sheen_sampling_proba;
 	float cdf2 = cdf1 + metal_1_sampling_proba;
@@ -2243,11 +2283,13 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 	bool sampling_glass_lobe				= rand_1 > cdf7;
 
 	if (bsdf_context.update_ray_volume_state)
+	{
 		if (!sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
 			// We're going to sample a reflective lobe so we're poping the stack
 			//
 			// Note that we may also reflect from glass but the popping for that is done in glass_sample()
 			bsdf_context.volume_state.interior_stack.pop(false);
+	}
 
 	// Rotated ONB for the anisotropic GGX evaluation
 	float3_t TR, BR;
@@ -2264,7 +2306,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		float3_t local_view_direction_rotated_coat = world_to_local_frame(TR_coat, BR_coat, bsdf_context.shading_normal, bsdf_context.view_direction);
 
 		// Giving some information about what the BSDF sampled to the caller
-		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE;
+		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 		output_direction				 = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
 																principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
 	}
@@ -2276,46 +2318,47 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		build_ONB(bsdf_context.shading_normal, T, B);
 		float3_t local_view_direction = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
 
-		output_direction = local_to_world_frame(T, B, bsdf_context.shading_normal,
-												principled_sheen_sample(render_data, bsdf_context.material, local_view_direction, bsdf_context.shading_normal,
-																		random_number_generator));
+		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE;
+		output_direction				 = local_to_world_frame(
+			T, B, bsdf_context.shading_normal,
+			principled_sheen_sample(render_data, bsdf_context.material, local_view_direction, bsdf_context.shading_normal, random_number_generator));
 	}
 	else if (rand_1 < cdf2)
 	{
 		// First metallic lobe sample
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE;
 
-		output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
-												principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness,
-																		   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																		   random_number_generator));
+		output_direction =
+			local_to_world_frame(TR, BR, bsdf_context.shading_normal,
+								 principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+															local_view_direction_rotated, random_number_generator));
 	}
 	else if (rand_1 < cdf3)
 	{
 		// Second metallic lobe sample
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE;
-		output_direction				 = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
-																principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.second_roughness,
-																						   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																						   random_number_generator));
+		output_direction =
+			local_to_world_frame(TR, BR, bsdf_context.shading_normal,
+								 principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
+															local_view_direction_rotated, random_number_generator));
 	}
 	else if (rand_1 < cdf4)
 	{
 		// Retro-reflection lobe sample
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE;
-		output_direction				 = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
-																principled_retro_reflection_sample(render_data, bsdf_context, bsdf_context.material.roughness,
-																								   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																								   random_number_generator));
+		output_direction =
+			local_to_world_frame(TR, BR, bsdf_context.shading_normal,
+								 principled_retro_reflection_sample(render_data, bsdf_context, bsdf_context.material.roughness,
+																	bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator));
 	}
 	else if (rand_1 < cdf5)
 	{
 		// Sampling the specular lobe
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE;
-		output_direction				 = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
-																principled_specular_sample(render_data, bsdf_context, bsdf_context.material.roughness,
-																						   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																						   random_number_generator));
+		output_direction =
+			local_to_world_frame(TR, BR, bsdf_context.shading_normal,
+								 principled_specular_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+															local_view_direction_rotated, random_number_generator));
 	}
 	else if (rand_1 < cdf6)
 	{

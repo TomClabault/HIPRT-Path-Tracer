@@ -6,8 +6,8 @@
 #ifndef DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_SOA_DEVICE_H
 #define DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_SOA_DEVICE_H
 
+#include "Device/includes/PathGuiding/VMF.h"
 #include "Device/includes/ReSTIR/PG/Distribution.h"
-#include "Device/includes/VMF.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 
 struct ReSTIRPGDistributionSoADevice

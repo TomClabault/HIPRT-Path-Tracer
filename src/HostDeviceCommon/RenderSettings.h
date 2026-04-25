@@ -136,7 +136,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 2;
+	int nb_bounces = 10;
 
 	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
 	bool enable_direct = false;

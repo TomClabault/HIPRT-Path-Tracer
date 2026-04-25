@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_H
 #define DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_H
 
-#include "Device/includes/VMF.h"
+#include "Device/includes/PathGuiding/VMFMixtureComponent.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 
 struct ReSTIRPGDistribution
