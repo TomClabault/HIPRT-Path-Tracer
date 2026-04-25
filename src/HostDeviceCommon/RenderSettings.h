@@ -248,6 +248,11 @@ struct HIPRTRenderSettings
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
 	// Settings for ReSTIR Path Guiding
+	//
+	// TODO
+	// Roughness based MIS weight
+	// Stop training after N samples
+	// Fix everything for principled BSDF
 	ReSTIRPGSettings restir_pg_settings;
 	// Settings for ReGIR
 	ReGIRSettings regir_settings;

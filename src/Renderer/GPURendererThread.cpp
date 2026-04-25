@@ -420,6 +420,11 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass
 	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_active_render_graph->get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
 }
 
+std::shared_ptr<ReSTIRPGRenderPass> GPURendererThread::get_ReSTIR_PG_render_pass()
+{
+	return std::dynamic_pointer_cast<ReSTIRPGRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+}
+
 std::shared_ptr<NEEPlusPlusRenderPass> GPURendererThread::get_NEE_plus_plus_render_pass()
 {
 	return std::dynamic_pointer_cast<NEEPlusPlusRenderPass>(m_active_render_graph->get_render_pass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME));

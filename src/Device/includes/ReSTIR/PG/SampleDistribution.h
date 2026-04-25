@@ -18,13 +18,11 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 										  Xorshift32Generator& random_number_generator,
 										  BSDFIncidentLightInfo out_sampled_light_info)
 {
-	// For one sample MIS between BSDF and the ReSTIR PG distribution
-	float bsdf_probability = render_data.render_settings.restir_pg_settings.bsdf_sampling_probability;
-
 	ReSTIRPGDistribution distribution = render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(
 		closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera);
 
-	// The sum of weights should be equal to 1 so if we don't even have 0.5f sum, we definitely don't have a distribution here
+	// For one sample MIS between BSDF and the ReSTIR PG distribution
+	float bsdf_probability = render_data.render_settings.restir_pg_settings.bsdf_sampling_probability;
 	if (!distribution.is_valid())
 		// No distribution, full BSDF sampling then
 		bsdf_probability = 1.0f;

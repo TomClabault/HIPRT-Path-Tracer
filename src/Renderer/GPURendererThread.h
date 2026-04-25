@@ -111,6 +111,7 @@ public:
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
+	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
 
 	/**
 	 * Returns false if the frame queued asynchronously by a previous call to render()

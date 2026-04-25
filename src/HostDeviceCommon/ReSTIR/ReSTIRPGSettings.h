@@ -16,7 +16,7 @@ struct ReSTIRPGSettings
 {
 	// When sampling the next path continuation direction at a path vertex, what's the probability of sampling from the BSDF (and sampling from the PG mixture
 	// is then 1.0f - bsdf_sampling_probability) BSDF sampling and path guiding are combined with one sample MIS
-	float bsdf_sampling_probability = 0.5f;
+	float bsdf_sampling_probability = 0.0f;
 
 	unsigned int hash_grid_total_number_of_cells = 0;
 	float hash_grid_target_projected_size		 = 20.0f;
@@ -26,9 +26,6 @@ struct ReSTIRPGSettings
 	int debug_distribution_component_direction_number = 0;
 	// For some other debug options
 	float debug_normalization_factor = 1.0f;
-
-	unsigned int DEBUG_pixel_x = 1171;
-	unsigned int DEBUG_pixel_y = 488;
 
 	// Splatting samples buffer. This is used to store the samples that are going to be splatted into the grid in the splatting pass of ReSTIR PG.
 	//

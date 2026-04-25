@@ -204,10 +204,8 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	render_data.render_settings.restir_pg_settings.DEBUG_pixel_x = 657;
-	render_data.render_settings.restir_pg_settings.DEBUG_pixel_y = 164;
-
 	void* launch_args[] = { &render_data };
+
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
 		512, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, launch_args,
 		m_renderer->get_main_stream());

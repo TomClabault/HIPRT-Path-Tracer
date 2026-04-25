@@ -276,6 +276,11 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 	return m_render_thread.get_ReSTIR_GI_render_pass();
 }
 
+std::shared_ptr<ReSTIRPGRenderPass> GPURenderer::get_ReSTIR_PG_render_pass()
+{
+	return m_render_thread.get_ReSTIR_PG_render_pass();
+}
+
 NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage()
 {
 	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage();
