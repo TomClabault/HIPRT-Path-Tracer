@@ -81,9 +81,9 @@
  *		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
  *		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
  *
- *       Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
+ *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_POWER
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
 
 /**
  * What direct lighting sampling strategy to use.
@@ -204,6 +204,41 @@
  * performance/sampling quality as backfacing lights will not be sampled anymore (depending on the sampling strategy)
  */
 #define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
+
+/**
+ * What envmap sampling strategy to use
+ *
+ * Possible values (the prefix ESS stands for "Envmap Sampling Strategy"):
+ *
+ *	- ESS_NO_SAMPLING
+ *		No importance sampling of the envmap
+ *
+ *	- ESS_BINARY_SEARCH
+ *		Importance samples a texel of the environment map proportionally to its
+ *		luminance using a binary search on the CDF distributions of the envmap luminance.
+ *		Good convergence.
+ *
+ * - ESS_ALIAS_TABLE
+ *		Importance samples a texel of the environment map proportionally to its
+ *		luminance using an alias table for constant time sampling
+ *		Good convergence and faster than ESS_BINARY_SEARCH
+ */
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
+
+/**
+ * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
+ * sample when importance sampling direct lighting contribution from the envmap
+ */
+#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
+
+/**
+ * Whether or not to do bilinear filtering when sampling the envmap.
+ *
+ * This is mostly useful when the camera is looking straigth at the envmap and we don't
+ * have camera ray jittering on: in this case, bilinear filtering will hide the
+ * pixelated look of the envmap.
+ */
+#define EnvmapSamplingDoBilinearFiltering KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

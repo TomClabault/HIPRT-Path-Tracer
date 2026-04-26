@@ -112,41 +112,6 @@
 #define UseMaterialBaseColorTextureOverride KERNEL_OPTION_TRUE
 
 /**
- * What envmap sampling strategy to use
- *
- * Possible values (the prefix ESS stands for "Envmap Sampling Strategy"):
- *
- *	- ESS_NO_SAMPLING
- *		No importance sampling of the envmap
- *
- *	- ESS_BINARY_SEARCH
- *		Importance samples a texel of the environment map proportionally to its
- *		luminance using a binary search on the CDF distributions of the envmap luminance.
- *		Good convergence.
- *
- * - ESS_ALIAS_TABLE
- *		Importance samples a texel of the environment map proportionally to its
- *		luminance using an alias table for constant time sampling
- *		Good convergence and faster than ESS_BINARY_SEARCH
- */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
-
-/**
- * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
- * sample when importance sampling direct lighting contribution from the envmap
- */
-#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
-
-/**
- * Whether or not to do bilinear filtering when sampling the envmap.
- *
- * This is mostly useful when the camera is looking straigth at the envmap and we don't
- * have camera ray jittering on: in this case, bilinear filtering will hide the
- * pixelated look of the envmap.
- */
-#define EnvmapSamplingDoBilinearFiltering KERNEL_OPTION_FALSE
-
-/**
  * What sampling strategy to use for sampling the bounces during path tracing.
  *
  *	- PSS_BSDF
@@ -169,7 +134,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
