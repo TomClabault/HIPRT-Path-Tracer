@@ -16,6 +16,7 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
 /**
@@ -57,9 +58,10 @@
 
 #define PSS_BSDF	  0
 #define PSS_RESTIR_GI 1
+#define PSS_RESTIR_PT 2
 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR GI + ReSTIRPGEnable. ReSTIR PG is not its
 // own "path sampling" strategy, it has to be piggy backing on a ReSTIR path sampler
-#define PSS_RESTIR_PG 2
+#define PSS_RESTIR_PG 3
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -124,9 +126,13 @@
  *		[ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
  *		but is adapted almost full unbiasedness (full unbiasedness while resampling full path trees as in ReSTIR GI paper isn't supported
  *		by the GRIS theory. Fully unbiased path resampling with the current RIS theory can only be achieved by resampling "paths" and not full "path trees" as
- *proposed in the ReSTIR GI paper and as implemented here)
+ *		proposed in the ReSTIR GI paper and as implemented here)
  *
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
+ *
+ *	- PSS_RESTIR_PT
+ *		Implementation of [Generalized Resampled Importance Sampling: Foundations of ReSTIR, Lin et al. 2022], resampling paths and not full path trees (as in
+ *ReSTIR GI).
  *
  *	- PSS_RESTIR_PG
  *		Implementation of [ReSTIR PG: Path Guiding with Spatiotemporally Resampled Paths, Zeng et al. 2025]
@@ -134,7 +140,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_RESTIR_PT
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

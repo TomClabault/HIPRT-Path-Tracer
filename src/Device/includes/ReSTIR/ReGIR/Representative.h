@@ -46,4 +46,13 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 	render_data.render_settings.regir_settings.insert_hash_cell_data(shading_point, surface_normal, current_camera, primary_hit, primitive_index, material);
 }
 
+HIPRT_DEVICE void ReGIR_representative_points_update(HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info)
+{
+	bool ReGIR_primary_hit = render_data.render_settings.regir_settings.compute_is_primary_hit(ray_payload);
+
+	// Storing data for ReGIR representative points
+	ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera,
+									 closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
+}
+
 #endif

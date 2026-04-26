@@ -3,11 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_SURFACE_H
-#define DEVICE_RESTIR_DI_SURFACE_H
+#ifndef DEVICE_RESTIR_SURFACE_H
+#define DEVICE_RESTIR_SURFACE_H
 
-#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
+#include "HostDeviceCommon/RenderData.h"
 
 struct ReSTIRSurface
 {

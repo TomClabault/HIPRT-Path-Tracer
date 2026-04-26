@@ -14,7 +14,8 @@
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSamplingReGIR.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -23,12 +24,12 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> sample_light_candidate_array(
-						const HIPRTRenderData& render_data,
-						float envmap_candidate_probability,
-						const float3_t& view_direction,
-						const HitInfo& closest_hit_info,
-						RayPayload& ray_payload,
-						Xorshift32Generator& random_number_generator)
+	const HIPRTRenderData& render_data,
+	float envmap_candidate_probability,
+	const float3_t& view_direction,
+	const HitInfo& closest_hit_info,
+	RayPayload& ray_payload,
+	Xorshift32Generator& random_number_generator)
 {
 	ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples;
 
@@ -36,9 +37,9 @@ HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrat
 
 	if (random_number_generator() > envmap_candidate_probability)
 	{
-		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(
-								render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								closest_hit_info.primitive_index, ray_payload, random_number_generator);
+		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+			sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+									  closest_hit_info.geometric_normal, closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 		{
@@ -90,8 +91,8 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 {
 	for (int i = 0; i < nb_light_candidates; i++)
 	{
-		ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples = sample_light_candidate_array(
-								render_data, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
+		ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples =
+			sample_light_candidate_array(render_data, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
 
 		for (int sample_index = 0; sample_index < DirectLightSampleCount<DirectLightSamplingStrategy>(); sample_index++)
 		{
@@ -132,8 +133,8 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 				surface.shading_point	 = closest_hit_info.inter_point;
 				surface.view_direction	 = view_direction;
 
-				float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample.to_reservoir_sample(), surface,
-																				  random_number_generator);
+				float target_function =
+					ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample.to_reservoir_sample(), surface, random_number_generator);
 				float light_pdf_solid_angle;
 				if (light_sample.is_envmap_sample())
 					// For envmap sample, the PDF is already in solid angle
@@ -217,7 +218,7 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
 								 sampled_lobe_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness);
 		ColorRGB32F bsdf_color =
-								bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_direction, bsdf_sample_pdf_solid_angle, random_number_generator);
+			bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_direction, bsdf_sample_pdf_solid_angle, random_number_generator);
 
 		if (bsdf_sample_pdf_solid_angle > 0.0f)
 		{
@@ -249,8 +250,8 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 				bsdf_RIS_sample.point_on_light_source		   = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
 				bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 				bsdf_RIS_sample.flags |= ReSTIRDIInitialSample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
-				bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface,
-																							random_number_generator);
+				bsdf_RIS_sample.target_function =
+					ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface, random_number_generator);
 
 				float light_pdf_solid_angle = 0.0f;
 				bool refraction_sampled		= hippt::dot(bsdf_sampled_direction, closest_hit_info.shading_normal) < 0.0f;
@@ -273,9 +274,9 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 					// will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
 					// and this is going to cause darkening as the number of light samples grows)
 
-					light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction,
-																					 closest_hit_info.shading_normal, ray_payload.material,
-																					 shadow_light_ray_hit_info, bsdf_sampled_direction);
+					light_pdf_solid_angle =
+						pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																 ray_payload.material, shadow_light_ray_hit_info, bsdf_sampled_direction);
 				}
 
 				// Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'
@@ -322,8 +323,8 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 					bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 					bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
 					bsdf_RIS_sample.flags |= ReSTIRDIInitialSample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
-					bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface,
-																								random_number_generator);
+					bsdf_RIS_sample.target_function =
+						ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface, random_number_generator);
 
 					// Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
 					// (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
@@ -438,7 +439,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	// Producing and storing the reservoir
 	ReSTIRDIReservoir initial_candidates_reservoir =
-							sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
+		sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
 	ReSTIR_DI_visibility_test_kill_reservoir(render_data, initial_candidates_reservoir, hit_info.inter_point, hit_info.primitive_index,

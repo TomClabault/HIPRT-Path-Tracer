@@ -73,6 +73,7 @@ public:
 	void ReGIR_pass();
 	void ReSTIR_DI_pass();
 	void ReSTIR_GI_pass();
+	void ReSTIR_PT_pass();
 	void ReSTIR_PG_pass();
 
 	template <bool accumulatePreIntegration>
@@ -112,6 +113,17 @@ public:
 	void launch_ReSTIR_GI_temporal_reuse_pass();
 	void launch_ReSTIR_GI_spatial_reuse_pass();
 	void launch_ReSTIR_GI_shading_pass();
+
+	void compute_ReSTIR_PT_optimal_spatial_reuse_radii();
+	void configure_ReSTIR_PT_initial_candidates_pass();
+	void configure_ReSTIR_PT_temporal_reuse_pass();
+	void configure_ReSTIR_PT_spatial_reuse_pass(int spatial_reuse_pass_index);
+	void configure_ReSTIR_PT_shading_pass();
+
+	void launch_ReSTIR_PT_initial_candidates_pass();
+	void launch_ReSTIR_PT_temporal_reuse_pass();
+	void launch_ReSTIR_PT_spatial_reuse_pass();
+	void launch_ReSTIR_PT_shading_pass();
 
 	void ReSTIR_PG_reset_hash_grid();
 	void ReSTIR_PG_reset_distributions();
@@ -205,6 +217,20 @@ private:
 		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
 		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
 	} m_restir_gi_state;
+
+	struct ReSTIRPTState
+	{
+		std::vector<ReSTIRPTReservoir> initial_candidates_reservoirs;
+		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
+		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
+
+		std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
+		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
+		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
+
+		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
+		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
+	} m_restir_pt_state;
 
 	struct ReSTIRPGState
 	{

@@ -57,13 +57,13 @@ private:
 	void draw_light_tree_ATS_settings_panel();
 	void draw_light_tree_SG_settings_panel();
 
-	template <bool IsReSTIRGI>
+	template <int ReSTIRVariant, bool DEBUG>
 	void draw_ReSTIR_neighbor_heuristics_panel();
-	template <bool IsReSTIRGI>
+	template <int ReSTIRVariant, bool DEBUG>
 	void draw_ReSTIR_temporal_reuse_panel(std::function<void(void)> draw_before_panel = {});
-	template <bool IsReSTIRGI>
+	template <int ReSTIRVariant, bool DEBUG>
 	void draw_ReSTIR_spatial_reuse_panel(std::function<void(void)> draw_before_panel = {});
-	template <bool IsReSTIRGI>
+	template <int ReSTIRVariant, bool DEBUG>
 	void draw_ReSTIR_bias_correction_panel();
 	void draw_next_event_estimation_plus_plus_panel();
 	bool use_nee_plus_plus_checkbox(const std::string& text = "Use NEE++");

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_RESTIR_GI_INITIAL_CANDIDATES_UTILS_H
-#define DEVICE_INCLUDES_RESTIR_GI_INITIAL_CANDIDATES_UTILS_H
+#ifndef DEVICE_INCLUDES_RESTIR_GI_PT_INITIAL_CANDIDATES_UTILS_H
+#define DEVICE_INCLUDES_RESTIR_GI_PT_INITIAL_CANDIDATES_UTILS_H
 
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/PG/SampleDistribution.h"
@@ -72,15 +72,15 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data,
-															  RayPayload& ray_payload,
-															  ColorRGB32F& ray_throughput_to_visible_point,
-															  HitInfo& closest_hit_info,
-															  float3_t view_direction,
-															  hiprtRay& out_ray,
-															  Xorshift32Generator& random_number_generator,
-															  BSDFIncidentLightInfo& incident_light_info,
-															  float* out_bsdf_pdf						 = nullptr)
+HIPRT_HOST_DEVICE bool restir_gi_pt_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+																 RayPayload& ray_payload,
+																 ColorRGB32F& ray_throughput_to_visible_point,
+																 HitInfo& closest_hit_info,
+																 float3_t view_direction,
+																 hiprtRay& out_ray,
+																 Xorshift32Generator& random_number_generator,
+																 BSDFIncidentLightInfo& incident_light_info,
+																 float* out_bsdf_pdf = nullptr)
 {
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;

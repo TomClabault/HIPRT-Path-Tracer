@@ -100,7 +100,8 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 
 bool MegaKernelRenderPass::is_render_pass_used() const
 {
-	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
+	// Only active if we're not using ReSTIR GI/PT because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_GI;
+	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_GI &&
+		   m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_PT;
 }

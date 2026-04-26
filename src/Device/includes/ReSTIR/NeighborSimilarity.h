@@ -9,7 +9,7 @@
 #include "Device/includes/ReSTIR/Jacobian.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
@@ -60,7 +60,7 @@ HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimil
 	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
-template <bool IsReSTIRGI>
+template <int ReSTIRVariant, bool DEBUG>
 HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
 													   int neighbor_pixel_index,
 													   int center_pixel_index,
@@ -86,7 +86,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 	}
 
 	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings =
-							ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
+		ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<ReSTIRVariant, DEBUG>(render_data);
 
 	float3_t neighbor_world_space_point;
 	float neighbor_roughness		 = 0.0f;
@@ -113,8 +113,8 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 		current_material_roughness = render_data.g_buffer.materials[center_pixel_index].get_roughness();
 
 	float3_t neighbor_normal		 = neighbor_similarity_settings.reject_using_geometric_normals
-															   ? render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack()
-															   : render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack();
+										   ? render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack()
+										   : render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack();
 	bool plane_distance_passed		 = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal,
 																neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed	 = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, neighbor_normal,

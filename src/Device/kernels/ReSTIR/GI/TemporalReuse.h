@@ -3,18 +3,19 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_GI_SPATIAL_REUSE_H
-#define DEVICE_RESTIR_GI_SPATIAL_REUSE_H
+#ifndef DEVICE_RESTIR_GI_TEMPORAL_REUSE_H
+#define DEVICE_RESTIR_GI_TEMPORAL_REUSE_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/DI_GI/TemporalMISWeight.h"
+#include "Device/includes/ReSTIR/DI_GI/TemporalNormalizationWeight.h"
+#include "Device/includes/ReSTIR/DI_GI/UtilsTemporal.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "Device/includes/ReSTIR/Surface.h"
-#include "Device/includes/ReSTIR/TemporalMISWeight.h"
-#include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
-#include "Device/includes/ReSTIR/Utils.h"
-#include "Device/includes/ReSTIR/UtilsTemporal.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -56,18 +57,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	if (render_data.render_settings.sample_number == 0 && render_data.render_settings.accumulate)
 		// First frame of accumulation, no temporal history, just outputting the initial candidates
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] =
-								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+			render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 	// Initializing the random generator
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	int temporal_neighbor_pixel_index  = find_temporal_neighbor_index<true>(render_data, center_pixel_surface.shading_point,
-																			ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<true>(render_data,
-																																		   center_pixel_surface),
-																			center_pixel_index, random_number_generator)
-																.x;
+	int temporal_neighbor_pixel_index =
+		find_temporal_neighbor_index<ReSTIR_VARIANT_GI, false>(
+			render_data, center_pixel_surface.shading_point,
+			ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_GI, false>(render_data, center_pixel_surface), center_pixel_index,
+			random_number_generator)
+			.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -80,7 +82,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 		// The output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] =
-								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+			render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 		return;
 	}
@@ -90,28 +92,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		return;
 
 	ReSTIRGIReservoir temporal_neighbor_reservoir =
-							render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
+		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	if (temporal_neighbor_reservoir.M == 0)
 	{
 		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] =
-								render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+			render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 		return;
 	}
 
 	ReSTIRGIReservoir temporal_reuse_output_reservoir;
-	ReSTIRSurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index,
-																render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+	ReSTIRSurface temporal_neighbor_surface =
+		get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_MISWeightsType, true> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> mis_weight_function;
 
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
 
 	ReSTIRGIReservoir initial_candidates_reservoir =
-							render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+		render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 	if (temporal_neighbor_reservoir.M > 0)
 	{
 		float target_function_at_center = 0.0f;
@@ -137,9 +139,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel),
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
-									temporal_neighbor_reservoir.sample.sample_point, temporal_neighbor_reservoir.sample.sample_point_geometric_normal.unpack(),
-									center_pixel_surface.shading_point, render_data.g_buffer_prev_frame.primary_hit_position[temporal_neighbor_pixel_index],
-									render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+				temporal_neighbor_reservoir.sample.sample_point, temporal_neighbor_reservoir.sample.sample_point_geometric_normal.unpack(),
+				center_pixel_surface.shading_point, render_data.g_buffer_prev_frame.primary_hit_position[temporal_neighbor_pixel_index],
+				render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 		}
 
 #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
@@ -149,18 +151,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
-		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
-								render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
-								temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+		float temporal_neighbor_resampling_mis_weight =
+			mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
+														  center_pixel_surface, temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
-								render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
-								target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
+			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
-								render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
+			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 
-								target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
 #error "Unsupported mis weight type"
 #endif
@@ -182,9 +184,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
-	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(
-							render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
-							temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
+	float initial_candidates_mis_weight =
+		mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
+													  center_pixel_surface, temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
@@ -207,7 +209,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_MISWeightsType, true> normalization_function;
+	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> normalization_function;
 #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS

@@ -21,6 +21,13 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO ReSTIR PT & refactor
+// Remove Halton sequence support for spatial reuse
+// Remove spatiotemporal reuse code
+// Remove optimimal visibility sampling support
+// ReSTIR PT is going to be fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off)
+// Remove disocclusion reuse boost
+
 // TODO known bugs / incorrectness:
 // - ImGui Material editor crash with 0 materials in the scene (only default material when blender export for example)
 // - Adaptive sampling broken in furance test?
@@ -47,13 +54,11 @@ extern ImGuiLogger g_imgui_logger;
 // https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
-// TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large,
-// let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we
 // can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for GI reconnection
-// - Alpah tests darkening ReSTIR DI
+// - Alpha tests darkening ReSTIR DI & ReSTIR GI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR

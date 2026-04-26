@@ -14,6 +14,7 @@
 #include "RenderPasses/ReSTIRDIRenderPass.h"
 #include "RenderPasses/ReSTIRGIRenderPass.h"
 #include "RenderPasses/ReSTIRPGRenderPass.h"
+#include "RenderPasses/ReSTIRPTRenderPass.h"
 #include "RenderPasses/SSBNPermutationRenderPass.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -111,6 +112,7 @@ public:
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
+	std::shared_ptr<ReSTIRPTRenderPass> get_ReSTIR_PT_render_pass();
 	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
 
 	/**

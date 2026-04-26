@@ -95,8 +95,14 @@ void GPURendererThread::setup_render_graphs()
 	restir_gi_render_pass->add_dependency(restir_di_render_pass);
 	restir_gi_render_pass->add_dependency(regir_render_pass);
 
+	std::shared_ptr<ReSTIRPTRenderPass> restir_pt_render_pass = render_graph_full.create_render_pass<ReSTIRPTRenderPass>();
+	restir_pt_render_pass->add_dependency(camera_rays_render_pass);
+	restir_pt_render_pass->add_dependency(restir_di_render_pass);
+	restir_pt_render_pass->add_dependency(regir_render_pass);
+
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass = render_graph_full.create_render_pass<ReSTIRPGRenderPass>();
 	restir_pg_render_pass->add_dependency(restir_gi_render_pass);
+	restir_pg_render_pass->add_dependency(restir_pt_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = render_graph_full.create_render_pass<GMoNRenderPass>();
 	// GMoN depends on the main path tracing pass which
@@ -105,10 +111,12 @@ void GPURendererThread::setup_render_graphs()
 	// so far
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
+	gmon_render_pass->add_dependency(restir_pt_render_pass);
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
 	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_gi_render_pass);
+	ssbn_permutation_render_pass->add_dependency(restir_pt_render_pass);
 
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
@@ -116,6 +124,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(restir_di_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_gi_render_pass);
+	render_graph_full.add_render_pass(restir_pt_render_pass);
 	render_graph_full.add_render_pass(restir_pg_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
@@ -419,6 +428,11 @@ std::shared_ptr<ReSTIRDIRenderPass> GPURendererThread::get_ReSTIR_DI_render_pass
 std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass()
 {
 	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_active_render_graph->get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
+}
+
+std::shared_ptr<ReSTIRPTRenderPass> GPURendererThread::get_ReSTIR_PT_render_pass()
+{
+	return std::dynamic_pointer_cast<ReSTIRPTRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRPGRenderPass> GPURendererThread::get_ReSTIR_PG_render_pass()

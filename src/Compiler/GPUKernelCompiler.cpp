@@ -67,6 +67,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	// compiler_options.push_back("-O0");
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
+	compiler_options.push_back("-Wno-constant-logical-operand");
+	compiler_options.push_back("-Wno-tautological-compare");
 #else
 	// Adding CUDA toolkit includes for device side includes such as cuda_fp16
 	compiler_options.push_back(std::string("-I") + CUDA_TOOLKIT_PATH + "/include");
@@ -92,9 +94,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	else
 		use_shader_cache = use_cache;
 
-	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
-																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
-																	 function_name_sets, additional_cache_key);
+	hiprtError compile_status =
+		HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs,
+											 compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key);
 	if (compile_status != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());

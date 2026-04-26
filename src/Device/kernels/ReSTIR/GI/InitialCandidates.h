@@ -11,21 +11,13 @@
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
-#include "Device/includes/ReSTIR/GI/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
+#include "Device/includes/ReSTIR/GI_PT/InitialCandidatesUtils.h"
+#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
-
-HIPRT_DEVICE void ReGIR_representative_points_update(HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info)
-{
-	bool ReGIR_primary_hit = render_data.render_settings.regir_settings.compute_is_primary_hit(ray_payload);
-
-	// Storing data for ReGIR representative points
-	ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera,
-									 closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
-}
 
 HIPRT_DEVICE void ReSTIRGI_sample_point_fill(const HIPRTRenderData& render_data,
 											 const RayPayload& ray_payload,
@@ -155,8 +147,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
 				bool valid_indirect_bounce =
-					restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
-														   random_number_generator, incident_light_info, &bsdf_pdf);
+					restir_gi_pt_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
+															  random_number_generator, incident_light_info, &bsdf_pdf);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;
@@ -226,8 +218,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 
-	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES &&
-		ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled)
+	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_SHADE_ONLY_INITIAL_CANDIDATES &&
+		ReSTIR_GI_DebugViewShadeOnlyInitialCandidatesEnabled)
 	{
 		float3_t to_light_direction = restir_gi_initial_reservoir.sample.is_envmap_path()
 										  ? restir_gi_initial_sample.sample_point

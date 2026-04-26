@@ -6,23 +6,27 @@
 #ifndef DEVICE_RESTIR_OPTIMAL_VISIBILITY_SAMPLING_H
 #define DEVICE_RESTIR_OPTIMAL_VISIBILITY_SAMPLING_H
 
-#include "Device/includes/ReSTIR/MISWeightsCommon.h" // For the ReSTIRReservoirType
-#include "Device/includes/ReSTIR/Utils.h"			 // For the ReSTIRReservoirType
+#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/DI_GI/ReservoirsForwardDeclaration.h"
+#include "Device/includes/ReSTIR/GI/Utils.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-template <bool IsReSTIRGI>
+template <int ReSTIRVariant, bool DEBUG>
 HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data,
-													 ReSTIRReservoirType<IsReSTIRGI>& spatial_reuse_output_reservoir,
-													 const ReSTIRReservoirType<IsReSTIRGI>& center_pixel_reservoir,
+													 ReSTIRReservoirType<ReSTIRVariant, DEBUG>& spatial_reuse_output_reservoir,
+													 const ReSTIRReservoirType<ReSTIRVariant, DEBUG>& center_pixel_reservoir,
 													 ReSTIRSurface& center_pixel_surface,
 													 int neighbor_index,
 													 int reused_neighbors_count,
 													 Xorshift32Generator& random_number_generator)
 {
 #if ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE || ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE
+	constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
+
 	bool at_least_one_neighbor_resampled = spatial_reuse_output_reservoir.weight_sum > 0.0f;
 	bool last_neighbor_before_canonical	 = neighbor_index == reused_neighbors_count - 1;
 	constexpr bool ovs_enabled			 = (!IsReSTIRGI && ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE) ||

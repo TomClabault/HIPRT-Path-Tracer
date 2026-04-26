@@ -17,6 +17,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
 #include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
 
@@ -247,6 +248,8 @@ struct HIPRTRenderSettings
 	ReSTIRDISettings restir_di_settings;
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
+	// Settings for ReSTIR PT
+	ReSTIRPTSettings restir_pt_settings;
 	// Settings for ReSTIR Path Guiding
 	//
 	// TODO
@@ -312,6 +315,7 @@ struct HIPRTRenderSettings
 		bool need_g_buffer = false;
 		need_g_buffer |= DirectLightNEEEstimator == LSS_RESTIR_DI && restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
 		need_g_buffer |= PathSamplingStrategy == PSS_RESTIR_GI && restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass;
+		need_g_buffer |= PathSamplingStrategy == PSS_RESTIR_PT && restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass;
 
 		return need_g_buffer;
 	}

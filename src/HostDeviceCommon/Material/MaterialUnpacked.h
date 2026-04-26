@@ -8,6 +8,7 @@
 
 #include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 
+#include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 
 /**

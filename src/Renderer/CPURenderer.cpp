@@ -30,6 +30,11 @@
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
 
+#include "Device/kernels/ReSTIR/PT/InitialCandidates.h"
+#include "Device/kernels/ReSTIR/PT/Shading.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
+#include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
+
 #include "Device/kernels/ReSTIR/PG/Fitting.h"
 #include "Device/kernels/ReSTIR/PG/ResetDistributions.h"
 #include "Device/kernels/ReSTIR/PG/ResetHashGrid.h"
@@ -184,6 +189,16 @@ void CPURenderer::setup_buffers()
 	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
 #endif
 	m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
+#elif PathSamplingStrategy == PSS_RESTIR_PT
+	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
+	m_restir_pt_state.temporal_reservoirs.resize(width * height);
+	m_restir_pt_state.spatial_reservoirs.resize(width * height);
+#if ReSTIR_PT_SpatialDirectionalReuseBitCount > 32
+	m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
+#else
+	m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
+#endif
+	m_restir_pt_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -455,6 +470,23 @@ void CPURenderer::update_render_data()
 		m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
+#elif PathSamplingStrategy == PSS_RESTIR_PT
+	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs				  = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs			  = m_restir_pt_state.temporal_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs				  = m_restir_pt_state.temporal_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs				  = m_restir_pt_state.spatial_reservoirs.data();
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_1										  = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2										  = m_restir_pt_state.spatial_reservoirs.data();
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3										  = m_restir_pt_state.temporal_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
+		m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_u.data();
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
+		m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.data();
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
+		m_restir_pt_state.per_pixel_spatial_reuse_radius.data();
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_pt_state.spatial_reuse_hit_rate_total;
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_pt_state.spatial_reuse_hit_rate_hits;
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -642,6 +674,8 @@ void CPURenderer::render()
 		tracing_pass();
 #elif PathSamplingStrategy == PSS_RESTIR_GI
 		ReSTIR_GI_pass();
+#elif PathSamplingStrategy == PSS_RESTIR_PT
+		ReSTIR_PT_pass();
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -1195,6 +1229,26 @@ void CPURenderer::ReSTIR_GI_pass()
 	launch_ReSTIR_GI_shading_pass();
 }
 
+void CPURenderer::ReSTIR_PT_pass()
+{
+	compute_ReSTIR_PT_optimal_spatial_reuse_radii();
+
+	configure_ReSTIR_PT_initial_candidates_pass();
+	launch_ReSTIR_PT_initial_candidates_pass();
+
+	configure_ReSTIR_PT_temporal_reuse_pass();
+	launch_ReSTIR_PT_temporal_reuse_pass();
+
+	for (int i = 0; i < m_render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; i++)
+	{
+		configure_ReSTIR_PT_spatial_reuse_pass(i);
+		launch_ReSTIR_PT_spatial_reuse_pass();
+	}
+
+	configure_ReSTIR_PT_shading_pass();
+	launch_ReSTIR_PT_shading_pass();
+}
+
 void CPURenderer::ReSTIR_PG_pass()
 {
 	// Splatting
@@ -1420,8 +1474,6 @@ void CPURenderer::configure_ReSTIR_GI_initial_candidates_pass()
 	m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
 }
 
-static unsigned int seed;
-
 void CPURenderer::launch_ReSTIR_GI_initial_candidates_pass()
 {
 	if (m_render_data.render_settings.nb_bounces > 0)
@@ -1513,6 +1565,116 @@ void CPURenderer::configure_ReSTIR_GI_shading_pass()
 void CPURenderer::launch_ReSTIR_GI_shading_pass()
 {
 	debug_render_pass([this](int x, int y) { ReSTIR_GI_Shading(m_render_data, x, y); });
+}
+
+void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
+{
+	debug_render_pass(
+		[this](int x, int y)
+		{
+			ReSTIR_Directional_Reuse_Compute<true>(
+				m_render_data, x, y, m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
+				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
+		});
+}
+
+void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
+{
+	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
+}
+
+void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
+{
+	if (m_render_data.render_settings.nb_bounces > 0)
+	{
+		debug_render_pass([this](int x, int y) { ReSTIR_PT_InitialCandidates(m_render_data, x, y); });
+	}
+}
+
+void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
+{
+	if (m_render_data.render_settings.sample_number == 0)
+		// First frame, using the initial candidates as the input
+		m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs =
+			m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer;
+	else
+		// Not the first frame, the input to the temporal pass is the output of the last frame ReSTIR
+		m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs =
+			m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs;
+
+	// For the output, using whatever buffer isn't the one we're reading from (the input buffer)
+	if (m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs == m_restir_pt_state.temporal_reservoirs.data())
+		m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs = m_restir_pt_state.spatial_reservoirs.data();
+	else
+		m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs = m_restir_pt_state.temporal_reservoirs.data();
+}
+
+void CPURenderer::launch_ReSTIR_PT_temporal_reuse_pass()
+{
+	if (m_render_data.render_settings.nb_bounces > 0 && m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+	{
+		debug_render_pass([this](int x, int y) { ReSTIR_PT_TemporalReuse(m_render_data, x, y); });
+	}
+}
+
+void CPURenderer::configure_ReSTIR_PT_spatial_reuse_pass(int spatial_pass_index)
+{
+	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
+
+	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
+	// stores in the 'spatial buffer'
+
+	ReSTIRPTReservoir* input_reservoirs;
+	ReSTIRPTReservoir* output_reservoirs;
+
+	if (spatial_pass_index > 0)
+		// If this is the second spatial reuse pass or more, reading from the output of the previous pass
+		input_reservoirs = m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
+	else
+	{
+		// This is the first spatial reuse pass, reading from the output of the temporal pass
+		// or the initial candidates depending on whether or not we have a temporal reuse pass at all
+
+		if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+			// and we have a temporal reuse pass so we're going to read from the temporal reservoirs
+			input_reservoirs = m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
+		else
+			// and we do not have a temporal reuse pass so we're just going to read from the initial candidates
+			input_reservoirs = m_restir_pt_state.initial_candidates_reservoirs.data();
+	}
+
+	// Outputting to whichever reservoir we're not reading from to avoid race conditions
+	if (input_reservoirs == m_restir_pt_state.temporal_reservoirs.data())
+		output_reservoirs = m_restir_pt_state.spatial_reservoirs.data();
+	else
+		output_reservoirs = m_restir_pt_state.temporal_reservoirs.data();
+
+	m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs	= input_reservoirs;
+	m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs = output_reservoirs;
+}
+
+void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
+{
+	debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuse(m_render_data, x, y); });
+}
+
+void CPURenderer::configure_ReSTIR_PT_shading_pass()
+{
+	if (m_render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
+		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+			m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
+	else if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+			m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
+	else
+		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+			m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer;
+}
+
+void CPURenderer::launch_ReSTIR_PT_shading_pass()
+{
+	debug_render_pass([this](int x, int y) { ReSTIR_PT_Shading(m_render_data, x, y); });
 }
 
 void CPURenderer::ReSTIR_PG_reset_hash_grid()

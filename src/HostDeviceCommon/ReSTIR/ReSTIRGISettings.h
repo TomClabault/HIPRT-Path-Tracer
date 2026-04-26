@@ -35,14 +35,14 @@ struct ReSTIRGISpatialPassSettings
 
 enum ReSTIRGIDebugView
 {
-	NO_DEBUG							  = 0,
-	SHADE_ONLY_INITIAL_CANDIDATES		  = 1,
-	FINAL_RESERVOIR_UCW					  = 2,
-	TARGET_FUNCTION						  = 3,
-	WEIGHT_SUM							  = 4,
-	M_COUNT								  = 5,
-	PER_PIXEL_REUSE_RADIUS				  = 6,
-	PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 7,
+	GI_NO_DEBUG								 = 0,
+	GI_SHADE_ONLY_INITIAL_CANDIDATES		 = 1,
+	GI_FINAL_RESERVOIR_UCW					 = 2,
+	GI_TARGET_FUNCTION						 = 3,
+	GI_WEIGHT_SUM							 = 4,
+	GI_M_COUNT								 = 5,
+	GI_PER_PIXEL_REUSE_RADIUS				 = 6,
+	GI_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 7,
 };
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings
@@ -59,7 +59,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 		common_temporal_pass.temporal_buffer_clear_requested = false;
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index	 = 0;
 		common_spatial_pass.number_of_passes	 = 2;
@@ -102,7 +102,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		m_cap				   = 1;
 		use_confidence_weights = true;
 
-		debug_view				= ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES;
+		debug_view				= ReSTIRGIDebugView::GI_NO_DEBUG;
 		debug_view_scale_factor = 1.0f;
 	}
 

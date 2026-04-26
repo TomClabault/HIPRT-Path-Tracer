@@ -23,7 +23,6 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 {
 	if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
 	{
-		// Same for ReSTIR GI
 		if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
 			render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
 
@@ -32,6 +31,18 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 
 		if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
 			render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
+	}
+
+	if (render_data.aux_buffers.restir_pt_reservoir_buffer_1 != nullptr)
+	{
+		if (render_data.aux_buffers.restir_pt_reservoir_buffer_1)
+			render_data.aux_buffers.restir_pt_reservoir_buffer_1[pixel_index] = ReSTIRPTReservoir();
+
+		if (render_data.aux_buffers.restir_pt_reservoir_buffer_2)
+			render_data.aux_buffers.restir_pt_reservoir_buffer_2[pixel_index] = ReSTIRPTReservoir();
+
+		if (render_data.aux_buffers.restir_pt_reservoir_buffer_3)
+			render_data.aux_buffers.restir_pt_reservoir_buffer_3[pixel_index] = ReSTIRPTReservoir();
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -75,7 +86,7 @@ HIPRT_DEVICE void rescale_samples_for_display(HIPRTRenderData& render_data, uint
 
 	float float_sample_number = static_cast<float>(render_data.render_settings.sample_number);
 	render_data.buffers.accumulated_ray_colors[pixel_index] =
-							render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
+		render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
 	if (render_data.buffers.gmon_estimator.sets != nullptr)
 	{
 		int2_t res = render_data.render_settings.render_resolution;
@@ -83,8 +94,8 @@ HIPRT_DEVICE void rescale_samples_for_display(HIPRTRenderData& render_data, uint
 		for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
 			// TODO this is slow
 			render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] =
-									render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] / float_sample_number *
-									(render_data.render_settings.sample_number + 1);
+				render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] / float_sample_number *
+				(render_data.render_settings.sample_number + 1);
 	}
 }
 

@@ -12,9 +12,9 @@
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
-#include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -164,20 +164,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
 		return;
 
-	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::FINAL_RESERVOIR_UCW)
+	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_FINAL_RESERVOIR_UCW)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::TARGET_FUNCTION)
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_TARGET_FUNCTION)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.sample.target_function) *
 										  render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::WEIGHT_SUM)
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_WEIGHT_SUM)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_M_COUNT)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor);
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::PER_PIXEL_REUSE_RADIUS &&
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_PER_PIXEL_REUSE_RADIUS &&
 			 render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
 		float radius_percentage = (render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius[pixel_index] /
@@ -186,17 +186,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
 		debug_set_final_color(render_data, x, y, debug_color);
 	}
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
 			 render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
-		unsigned char accepted_directions = hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<true>(render_data, pixel_index));
-		float accepted_percentage		  = accepted_directions / 32.0f;
-		ColorRGB32F debug_color			  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
+		unsigned char accepted_directions =
+			hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<ReSTIR_VARIANT_GI, true>(render_data, pixel_index));
+		float accepted_percentage = accepted_directions / 32.0f;
+		ColorRGB32F debug_color	  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
 
 		debug_set_final_color(render_data, x, y, debug_color);
 	}
-	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES &&
-			 ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled)
+	else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_SHADE_ONLY_INITIAL_CANDIDATES &&
+			 ReSTIR_GI_DebugViewShadeOnlyInitialCandidatesEnabled)
 	{
 		// The initial candidate's color is set into accumulated_ray_colors by the InitialCandidatesPass for this debug view so we just reuse that color
 		ray_payload.ray_color = render_data.buffers.accumulated_ray_colors[pixel_index];

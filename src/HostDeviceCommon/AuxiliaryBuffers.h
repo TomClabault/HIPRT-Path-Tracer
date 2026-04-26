@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_AUXILIARY_BUFFERS_H
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HostDeviceCommon/Color.h"
 
 struct AuxiliaryBuffers
@@ -53,10 +54,13 @@ struct AuxiliaryBuffers
 	// noise threshold.
 	AtomicType<unsigned int>* pixel_count_converged_so_far = nullptr;
 
-	// Same for ReSTIR GI
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_1 = nullptr;
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_2 = nullptr;
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_3 = nullptr;
+
+	ReSTIRPTReservoir* restir_pt_reservoir_buffer_1 = nullptr;
+	ReSTIRPTReservoir* restir_pt_reservoir_buffer_2 = nullptr;
+	ReSTIRPTReservoir* restir_pt_reservoir_buffer_3 = nullptr;
 };
 
 #endif
