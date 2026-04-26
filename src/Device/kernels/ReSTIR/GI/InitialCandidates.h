@@ -229,14 +229,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 	if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::SHADE_ONLY_INITIAL_CANDIDATES &&
 		ReSTIRGIDebugViewShadeOnlyInitialCandidatesEnabled)
 	{
-		BSDFContext eval_context(initial_surface.view_direction, initial_surface.shading_normal, initial_surface.geometric_normal,
-								 hippt::normalize(restir_gi_initial_sample.sample_point - initial_surface.shading_point),
+		float3_t to_light_direction = restir_gi_initial_reservoir.sample.is_envmap_path()
+										  ? restir_gi_initial_sample.sample_point
+										  : hippt::normalize(restir_gi_initial_sample.sample_point - initial_surface.shading_point);
+		BSDFContext eval_context(initial_surface.view_direction, initial_surface.shading_normal, initial_surface.geometric_normal, to_light_direction,
 								 restir_gi_initial_sample.incident_light_info_at_visible_point, initial_surface.ray_volume_state, false,
 								 initial_surface.material, 0.0f);
 
 		float trash_pdf;
-		ColorRGB32F radiance_to_camera =
-			bsdf_dispatcher_eval(render_data, eval_context, trash_pdf, random_number_generator) * incoming_radiance_to_visible_point;
+		ColorRGB32F radiance_to_camera = bsdf_dispatcher_eval(render_data, eval_context, trash_pdf, random_number_generator) *
+										 incoming_radiance_to_visible_point * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction));
 
 		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_gi_initial_reservoir.UCW;
 	}
