@@ -121,6 +121,10 @@ struct DeviceUnpackedEffectiveMaterial
 	 */
 	HIPRT_HOST_DEVICE float minimum_roughness() const
 	{
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+		return 1.0f;
+#endif
+
 		float coat_roughness_	   = coat > 0.0f ? coat_roughness : 1.0f;
 		float specular_roughness   = specular > 0.0f ? roughness : 1.0f;
 		float glass_roughness	   = specular_transmission > 0.0f ? roughness : 1.0f;

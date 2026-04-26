@@ -141,7 +141,7 @@ struct ReGIRSettings
 		// cell (hit by the mirror bounce) is a first hit grid cell and by assuming that it is a primary hit grid cell,
 		// a higher number of reservoirs will be used for the grid fill and we'll avoid the artifacts.
 
-		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness < 0.1f;
+		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness_specular_path_spread();
 	}
 
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const

@@ -31,7 +31,7 @@
  *
  * This is an implementation of ["ReSTIR PG: Path Guiding with Spatiotemporally Resampled Paths", Zeng et al., 2025]
  */
-#define ReSTIRPGEnable KERNEL_OPTION_FALSE
+#define ReSTIRPGEnable KERNEL_OPTION_TRUE
 
 #define ReSTIRPGDistributionComponentCount 6
 

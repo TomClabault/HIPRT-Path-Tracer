@@ -17,15 +17,25 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 										  float3_t& out_bounce_direction,
 										  float& out_sample_pdf,
 										  Xorshift32Generator& random_number_generator,
-										  BSDFIncidentLightInfo out_sampled_light_info)
+										  BSDFIncidentLightInfo& out_sampled_light_info)
 {
 	ReSTIRPGDistribution distribution = render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(
 		closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera);
 
 	// For one sample MIS between BSDF and the ReSTIR PG distribution
 	float bsdf_probability = render_data.render_settings.restir_pg_settings.bsdf_sampling_probability;
-	if (!distribution.is_valid())
-		// No distribution, full BSDF sampling then
+
+	// No distribution, full BSDF sampling then
+	bool no_distribution = !distribution.is_valid();
+	// Full BSDF sampling for refractions because ReSTIR PG doesn't seem to be doing good at all (or there is a bug, most likely)
+	bool bad_material = ray_payload.material.allows_refraction() || !ray_payload.material.can_do_light_sampling();
+	// ReSTIR PG isn't view directional. This leads it to sample directions on specular surfaces that are pretty much never aligned with the specular lobe for
+	// GI bounces and this leads to way worse variance so we're disabling path guiding then
+
+	// TODO this one disabled because it's worse than without in some cases, not ideal
+	bool view_directional_gi  = false; // ray_payload.material.minimum_roughness() < 0.7f || ray_payload.accumulated_roughness_specular_path_spread();
+	bool disable_path_guiding = no_distribution || bad_material || view_directional_gi;
+	if (disable_path_guiding)
 		bsdf_probability = 1.0f;
 
 	bool path_guiding_sampled;
@@ -59,8 +69,12 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 	out_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	bsdf_pdf *= bsdf_probability;
 
-	float distribution_pdf = distribution.pdf(out_bounce_direction);
-	distribution_pdf *= (1.0f - bsdf_probability);
+	float distribution_pdf = 0.0f;
+	if (bsdf_probability < 1.0f)
+	{
+		distribution_pdf = distribution.pdf(out_bounce_direction);
+		distribution_pdf *= (1.0f - bsdf_probability);
+	}
 
 	float chosen_pdf			= random_value < bsdf_probability ? bsdf_pdf : distribution_pdf;
 	float other_pdf				= random_value < bsdf_probability ? distribution_pdf : bsdf_pdf;

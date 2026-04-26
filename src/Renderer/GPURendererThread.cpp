@@ -336,6 +336,7 @@ void GPURendererThread::render_internal()
 			m_render_data_for_frame.render_settings.do_update_status_buffers = true;
 
 		m_active_render_graph->launch_async(m_render_data_for_frame, m_compiler_options_for_frame);
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		post_sample_update(m_render_data_for_frame, m_compiler_options_for_frame);
 	}

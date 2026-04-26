@@ -98,6 +98,15 @@ struct RayPayload
 			break;
 		}
 	}
+
+	/**
+	 * Returns true if the ray hasn't accumulated enough roughness to hide grid artifacts of some grid-based algorithms or for any other purpose. Said
+	 * otherwise, this returns true if the path spread (roughly estimated with accumulated roughness) so far is low enough.
+	 */
+	HIPRT_DEVICE float accumulated_roughness_specular_path_spread() const
+	{
+		return accumulated_roughness < 0.1f;
+	}
 };
 
 #endif

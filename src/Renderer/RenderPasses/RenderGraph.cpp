@@ -130,7 +130,6 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 	// Launching all the dependencies first
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
 		launch_render_pass_with_dependencies(dependency, render_data, compiler_options);
-
 	// Now launching the render pass itself since all dependencies have been launched
 	bool effectively_launched								 = render_pass->launch_async(render_data, compiler_options);
 	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
