@@ -190,11 +190,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
 			responsibilities[component] /= sum_responsibilities;
 
-		for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
+#ifndef __KERNELCC__
+		// On the GPU, we're going to do some warp intrinsic stuff to accumulate samples so all threads need to go in there otherwise that's going to be UB. On
+		// the CPU though we only want to accumulate samples for actually valid sample so we do check for should_participate
+		if (should_participate)
+#endif
 		{
-			float responsibility = responsibilities[component];
+			for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
+			{
+				float responsibility = responsibilities[component];
 
-			atomic_accumulate_sample(restir_pg_settings, sample.incident_direction, responsibility, component, sample_hash_grid_index);
+				atomic_accumulate_sample(restir_pg_settings, sample.incident_direction, responsibility, component, sample_hash_grid_index);
+			}
 		}
 
 		if (should_participate)
