@@ -13,7 +13,6 @@
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
-#include "Device/includes/ReSTIR/DI_GI/OptimalVisibilitySampling.h"
 #include "Device/includes/ReSTIR/DI_GI/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/DI_GI/SpatialNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
@@ -232,9 +231,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		}
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
-
-		/*ReSTIR_optimal_visibility_sampling<ReSTIR_VARIANT_DI, false>(render_data, spatial_reuse_output_reservoir, center_pixel_reservoir,
-		   center_pixel_surface, neighbor_index, reused_neighbors_count, random_number_generator);*/
 	}
 
 	float normalization_numerator	= 1.0f;

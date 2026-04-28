@@ -142,13 +142,6 @@
  */
 #define ReSTIR_DI_SpatialDirectionalReuseBitCount (RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT)
 
-/**
- * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
- *
- * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
- */
-#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
-
 #endif // #ifndef __KERNELCC__
 
 #endif

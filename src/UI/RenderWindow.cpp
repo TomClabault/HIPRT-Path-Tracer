@@ -22,9 +22,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO ReSTIR PT & refactor
-// Remove Halton sequence support for spatial reuse
-// Remove optimimal visibility sampling support
 // ReSTIR PT is going to be fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off)
+// Remove Halton sequence support for spatial reuse
 // Remove disocclusion reuse boost
 // Remove permutation sampling
 

@@ -3845,21 +3845,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				if (restir_settings.do_disocclusion_reuse_boost)
 					max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
 
-				static bool do_optimal_vis_sampling = ReSTIRVariant == ReSTIR_VARIANT_DI   ? ReSTIR_DI_DoOptimalVisibilitySampling
-													  : ReSTIRVariant == ReSTIR_VARIANT_GI ? ReSTIR_GI_DoOptimalVisibilitySampling
-																						   : ReSTIR_PT_DoOptimalVisibilitySampling;
-				if (ImGui::Checkbox("Do optimal visibility sampling", &do_optimal_vis_sampling))
-				{
-					global_kernel_options->set_macro_value(
-						ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING
-						: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING
-															 : GPUKernelCompilerOptions::RESTIR_PT_DO_OPTIMAL_VISIBILITY_SAMPLING,
-						do_optimal_vis_sampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
 				{
