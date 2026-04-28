@@ -25,7 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 // ReSTIR PT is going to be fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off)
 // Remove Halton sequence support for spatial reuse
 // Remove disocclusion reuse boost
-// Remove permutation sampling
 
 // TODO known bugs / incorrectness:
 // - ImGui Material editor crash with 0 materials in the scene (only default material when blender export for example)

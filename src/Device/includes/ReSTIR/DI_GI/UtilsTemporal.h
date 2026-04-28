@@ -9,18 +9,6 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
-HIPRT_DEVICE int2_t apply_permutation_sampling(int2_t pixel_position, int random_bits)
-{
-	int2_t offset = make_int2(random_bits & 3, (random_bits >> 2) & 3);
-	pixel_position += offset;
-
-	pixel_position.x ^= 3;
-	pixel_position.y ^= 3;
-
-	pixel_position -= offset;
-
-	return pixel_position;
-}
 /**
  * Returns a triplet (x, y, z) with
  *	x the linear index that can be used directly to index a buffer
@@ -71,12 +59,6 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 					 static_cast<float>(temporal_pass_settings.neighbor_search_radius);
 
 		int2_t temporal_neighbor_screen_pixel_pos = make_int2(round(prev_pixel_float.x + offset.x), round(prev_pixel_float.y + offset.y));
-		if (temporal_pass_settings.use_permutation_sampling && i == 0)
-			// If we're looking at the direct temporal neighbor (without random offset), applying
-			// permutation sampling if enabled
-			temporal_neighbor_screen_pixel_pos =
-				apply_permutation_sampling(temporal_neighbor_screen_pixel_pos, temporal_pass_settings.permutation_sampling_random_bits);
-
 		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 ||
 			temporal_neighbor_screen_pixel_pos.y >= resolution.y)
 			// Previous pixel is out of the current viewport

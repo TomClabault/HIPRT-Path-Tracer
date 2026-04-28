@@ -342,8 +342,7 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 
 void ReSTIRDIRenderPass::configure_temporal_pass(HIPRTRenderData& render_data)
 {
-	render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
-	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested	 = m_temporal_buffer_clear_requested;
+	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 
 	if (m_last_restir_output_reservoirs == nullptr)
 		m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();

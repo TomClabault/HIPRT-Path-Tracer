@@ -15,12 +15,6 @@ struct ReSTIRCommonTemporalPassSettings
 {
 	bool do_temporal_reuse_pass;
 
-	// If true, the position of the canonical temporal neighbor will be shuffled to increase
-	// variation between frames and make the render more denoiser friendly
-	bool use_permutation_sampling;
-	// Random bits used for all the pixels in the image for the permutation sampling
-	int permutation_sampling_random_bits;
-
 	// How many neighbors at most to check around the temporal back-projected pixel location
 	// to find a valid neighbor
 	int max_neighbor_search_count;

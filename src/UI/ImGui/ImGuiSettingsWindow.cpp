@@ -3767,8 +3767,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::Checkbox("Use Permutation Sampling", &restir_common_temporal_settings.use_permutation_sampling))
-					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
 												" to add temporal variations.");
 

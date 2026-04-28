@@ -48,9 +48,6 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	{
 		common_temporal_pass.do_temporal_reuse_pass = true;
 
-		common_temporal_pass.use_permutation_sampling		  = false;
-		common_temporal_pass.permutation_sampling_random_bits = 42;
-
 		common_temporal_pass.max_neighbor_search_count = 8;
 		common_temporal_pass.neighbor_search_radius	   = 4;
 
