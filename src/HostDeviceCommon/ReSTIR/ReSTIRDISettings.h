@@ -60,9 +60,6 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		common_spatial_pass.reuse_radius		 = 16;
 		common_spatial_pass.reuse_neighbor_count = 5;
 
-		common_spatial_pass.do_disocclusion_reuse_boost = false;
-		common_spatial_pass.disocclusion_reuse_count	= 5;
-
 		common_spatial_pass.debug_neighbor_location			  = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 

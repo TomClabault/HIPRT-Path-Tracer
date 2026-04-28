@@ -3839,10 +3839,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 												"resampling spatial neighbors.");
 
-				int max_neighbor_count = restir_settings.reuse_neighbor_count;
-				if (restir_settings.do_disocclusion_reuse_boost)
-					max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
 				{
@@ -3855,24 +3851,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				// Checking the value before the "Neighbor Reuse Count" slider is modified
 				// so that we know whether or not we'll have to keep the
 				// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
+				int max_neighbor_count = restir_settings.reuse_neighbor_count;
 				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 16))
-				{
-					// Updating the maximum
-					max_neighbor_count = restir_settings.reuse_neighbor_count;
-					if (restir_settings.do_disocclusion_reuse_boost)
-						max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-
-					bool reuse_count_is_the_max = max_neighbor_count == restir_settings.reuse_neighbor_count;
-					reuse_count_is_the_max |= !restir_settings.do_disocclusion_reuse_boost;
-
-					if (restir_settings.disocclusion_reuse_count < restir_settings.reuse_neighbor_count)
-						// If disocclusion boost is now below the spatial neighbor count, bumping it up
-						// because it makes no sense to have the disocclusion boost below the base
-						// spatial neighbor count
-						restir_settings.disocclusion_reuse_count = restir_settings.reuse_neighbor_count;
-
 					m_render_window->set_render_dirty(true);
-				}
 
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
 				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
@@ -3952,39 +3933,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
-				{
-					m_render_window->set_render_dirty(true);
-					if (restir_settings.do_disocclusion_reuse_boost)
-						// We just enabled disocclusion boost
-						//
-						// Recomputing the max neighbor with the disocclusion boost taken into account
-						max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-				}
-				ImGuiRenderer::show_help_marker("If checked, the given number of neighbors will be reused for pixels that just got "
-												"disoccluded due to camera movement (and thus that have no temporal history). This helps "
-												"reduce noise in disoccluded regions.");
-				if (restir_settings.do_disocclusion_reuse_boost)
-				{
-					{
-						ImGui::TreePush("Disocclusion boost tree");
-
-						if (ImGui::SliderInt("Disoccluded Neighbor Reuse Count", &restir_settings.disocclusion_reuse_count,
-											 restir_settings.reuse_neighbor_count, 16 + restir_settings.reuse_neighbor_count))
-						{
-							m_render_window->set_render_dirty(true);
-
-							// Updating the maximum
-							max_neighbor_count = restir_settings.reuse_neighbor_count;
-							if (restir_settings.do_disocclusion_reuse_boost)
-								max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-						}
-						ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
-
-						ImGui::TreePop();
-					}
-				}
 
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 				if (ImGui::Checkbox("Allow reuse of converged neighbors", &restir_settings.allow_converged_neighbors_reuse))

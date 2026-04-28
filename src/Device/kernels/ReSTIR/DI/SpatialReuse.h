@@ -68,12 +68,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int2_t center_pixel_coords = make_int2(x, y);
 
 	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
-	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-		// Increasing the number of spatial samples for disocclusions
-		render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count =
-			render_data.render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count;
-
-	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+	ReSTIRSurface center_pixel_surface		 = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
 	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_DI, false>(render_data, center_pixel_index, random_number_generator);
 

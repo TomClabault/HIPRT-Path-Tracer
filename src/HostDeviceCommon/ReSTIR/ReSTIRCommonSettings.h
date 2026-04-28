@@ -43,13 +43,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// How many neighbors to reuse during the spatial pass
 	int reuse_neighbor_count;
 
-	// Whether or not to increase the number of spatially resampled neighbor
-	// for disoccluded pixels (that have no temporal history)
-	bool do_disocclusion_reuse_boost;
-	// How many neighbors to spatially reuse when a disocclusion is detected.
-	// This reduces the increased variance of disoccluded regions
-	int disocclusion_reuse_count;
-
 	// If true, reused neighbors will be hardcoded to always be 'reuse_radius' pixels to the right,
 	// not in a circle around the center pixel.
 	bool debug_neighbor_location;
