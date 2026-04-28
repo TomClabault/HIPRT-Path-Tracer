@@ -20,7 +20,6 @@
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 
-#include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -1190,20 +1189,13 @@ void CPURenderer::ReSTIR_DI_pass()
 {
 	launch_ReSTIR_DI_initial_candidates_pass();
 
-	if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
-		// If fused-spatiotemporal
-		// Also not doing it on the very first frame as we would get no samples through
-		launch_ReSTIR_DI_spatiotemporal_reuse_pass();
-	else
-	{
-		if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-			launch_ReSTIR_DI_temporal_reuse_pass();
+	if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+		launch_ReSTIR_DI_temporal_reuse_pass();
 
-		if (m_render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes;
-				 spatial_reuse_pass++)
-				launch_ReSTIR_DI_spatial_reuse_pass(spatial_reuse_pass);
-	}
+	if (m_render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+		for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes;
+			 spatial_reuse_pass++)
+			launch_ReSTIR_DI_spatial_reuse_pass(spatial_reuse_pass);
 
 	configure_ReSTIR_DI_output_buffer();
 	m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
@@ -1330,22 +1322,6 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 	}
 }
 
-void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
-{
-	m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
-
-	// The input of the temporal pass is the output of last frame's
-	// ReSTIR (and also the initial candidates but this is implicit
-	// and hardcoded in the shader)
-	if (m_restir_di_state.odd_frame)
-		m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-	else
-		m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
-
-	// Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
-	m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
-}
-
 void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 {
 	if (spatial_pass_index == 0)
@@ -1381,37 +1357,6 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 	}
 }
 
-void CPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
-{
-	if (spatial_pass_index == 0)
-	{
-		// The input of the spatial resampling in the fused spatiotemporal pass is the
-		// temporal buffer of the last frame i.e. the input to the temporal pass
-		//
-		// Note, this line of code below assumes that the temporal pass was configured
-		// prior to calling this function such that
-		// 'm_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs'
-		// is the proper pointer
-		m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs =
-			m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
-
-		if (m_restir_di_state.odd_frame)
-			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
-		else
-			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-	}
-}
-
-void CPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
-{
-	// The buffers of the temporal pass are going to be configured in the same way
-	configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
-
-	// But the spatial pass is going to read from the input of the temporal pass i.e. the temporal buffer of the last frame, it's not going to read from the
-	// output of the temporal pass
-	configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(0);
-}
-
 void CPURenderer::configure_ReSTIR_DI_output_buffer()
 {
 	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
@@ -1443,13 +1388,6 @@ void CPURenderer::launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_ind
 	configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass_index);
 
 	debug_render_pass([this](int x, int y) { ReSTIR_DI_SpatialReuse(m_render_data, x, y); });
-}
-
-void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
-{
-	configure_ReSTIR_DI_spatiotemporal_pass();
-
-	debug_render_pass([this](int x, int y) { ReSTIR_DI_SpatiotemporalReuse(m_render_data, x, y); });
 }
 
 void CPURenderer::tracing_pass()

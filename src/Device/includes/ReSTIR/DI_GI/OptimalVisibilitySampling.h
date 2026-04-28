@@ -9,49 +9,50 @@
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/ReservoirsForwardDeclaration.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
+#include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-template <int ReSTIRVariant, bool DEBUG>
-HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data,
-													 ReSTIRReservoirType<ReSTIRVariant, DEBUG>& spatial_reuse_output_reservoir,
-													 const ReSTIRReservoirType<ReSTIRVariant, DEBUG>& center_pixel_reservoir,
-													 ReSTIRSurface& center_pixel_surface,
-													 int neighbor_index,
-													 int reused_neighbors_count,
-													 Xorshift32Generator& random_number_generator)
-{
-#if ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE || ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE
-	constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
-
-	bool at_least_one_neighbor_resampled = spatial_reuse_output_reservoir.weight_sum > 0.0f;
-	bool last_neighbor_before_canonical	 = neighbor_index == reused_neighbors_count - 1;
-	constexpr bool ovs_enabled			 = (!IsReSTIRGI && ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE) ||
-								 (IsReSTIRGI && ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE);
-	if (at_least_one_neighbor_resampled && last_neighbor_before_canonical && ovs_enabled)
-	{
-		// If the spatial neighbors resampled up until now are occluded, they will be discarded by this
-		// visiblity test and so the canonical sample will be the resulting reservoir
-
-		bool reservoir_killed;
-		if constexpr (IsReSTIRGI)
-			reservoir_killed = ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point,
-															   center_pixel_surface.last_hit_primitive_index, random_number_generator);
-		else
-			reservoir_killed = ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point,
-																		center_pixel_surface.last_hit_primitive_index, random_number_generator);
-
-		if (reservoir_killed)
-			spatial_reuse_output_reservoir.weight_sum = 0.0f;
-
-		return reservoir_killed;
-	}
-#endif
-
-	return false;
-}
+// template <int ReSTIRVariant, bool DEBUG>
+// HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data,
+//													 ReSTIRReservoirType<ReSTIRVariant, DEBUG>& spatial_reuse_output_reservoir,
+//													 const ReSTIRReservoirType<ReSTIRVariant, DEBUG>& center_pixel_reservoir,
+//													 ReSTIRSurface& center_pixel_surface,
+//													 int neighbor_index,
+//													 int reused_neighbors_count,
+//													 Xorshift32Generator& random_number_generator)
+//{
+// #if ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE || ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE
+//	constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
+//
+//	bool at_least_one_neighbor_resampled = spatial_reuse_output_reservoir.weight_sum > 0.0f;
+//	bool last_neighbor_before_canonical	 = neighbor_index == reused_neighbors_count - 1;
+//	constexpr bool ovs_enabled			 = (!IsReSTIRGI && ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE) ||
+//								 (IsReSTIRGI && ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE);
+//	if (at_least_one_neighbor_resampled && last_neighbor_before_canonical && ovs_enabled)
+//	{
+//		// If the spatial neighbors resampled up until now are occluded, they will be discarded by this
+//		// visiblity test and so the canonical sample will be the resulting reservoir
+//
+//		bool reservoir_killed;
+//		if constexpr (IsReSTIRGI)
+//			reservoir_killed = ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point,
+//															   center_pixel_surface.last_hit_primitive_index, random_number_generator);
+//		else
+//			reservoir_killed = ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point,
+//																		center_pixel_surface.last_hit_primitive_index, random_number_generator);
+//
+//		if (reservoir_killed)
+//			spatial_reuse_output_reservoir.weight_sum = 0.0f;
+//
+//		return reservoir_killed;
+//	}
+// #endif
+//
+//	return false;
+// }
 
 #endif

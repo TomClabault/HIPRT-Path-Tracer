@@ -91,15 +91,11 @@ public:
 
 	void compute_ReSTIR_DI_optimal_spatial_reuse_radii();
 	void configure_ReSTIR_DI_temporal_pass();
-	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
 	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
-	void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
-	void configure_ReSTIR_DI_spatiotemporal_pass();
 	void configure_ReSTIR_DI_output_buffer();
 
 	void launch_ReSTIR_DI_temporal_reuse_pass();
 	void launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_index);
-	void launch_ReSTIR_DI_spatiotemporal_reuse_pass();
 
 	void tracing_pass();
 

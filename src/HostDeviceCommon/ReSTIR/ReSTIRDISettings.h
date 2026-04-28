@@ -100,14 +100,6 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	// Settings for the spatial reuse pass
 	ReSTIRDISpatialPassSettings spatial_pass;
 
-	// If true, the spatial and temporal pass will be fused into a single kernel call.
-	// This avois a synchronization barrier between the temporal pass and the spatial pass
-	// and increases performance.
-	// Because the spatial must then resample without the output of the temporal pass, the spatial
-	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
-	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = false;
-
 	// Whether or not to trace a visibility ray when evaluating the final light sample produced by ReSTIR.
 	// This is strongly biased but allows good performance.
 	bool do_final_shading_visibility = true;

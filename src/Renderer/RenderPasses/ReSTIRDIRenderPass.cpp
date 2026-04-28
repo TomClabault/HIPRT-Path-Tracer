@@ -13,7 +13,6 @@
 const std::string ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID		= "ReSTIR DI Initial candidates";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID			= "ReSTIR DI Temporal reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID				= "ReSTIR DI Spatial reuse";
-const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID		= "ReSTIR DI Spatiotemporal reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID = "ReSTIR DI Directional reuse compute";
 
 const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME = "ReSTIR DI Render Pass";
@@ -22,7 +21,6 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FU
 	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_DI_InitialCandidates" },
 	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_TemporalReuse" },
 	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatialReuse" },
-	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatiotemporalReuse" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
 };
 
@@ -30,7 +28,6 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/InitialCandidates.h" },
 	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/TemporalReuse.h" },
 	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/SpatialReuse.h" },
-	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/FusedSpatiotemporalReuse.h" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
 };
 
@@ -78,19 +75,6 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(
-		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(
-		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
-																									  GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
-		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 24);
 
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID);
@@ -218,15 +202,7 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 
 	bool recompiled = false;
 
-	bool need_spatiotemporal = m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal &&
-							   !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
-	recompiled |= need_spatiotemporal;
-	if (need_spatiotemporal)
-		// Spatiotemporal is needed but hasn't been compiled yet
-		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-
 	bool need_temporal = m_renderer->get_render_settings().restir_di_settings.common_temporal_pass.do_temporal_reuse_pass &&
-						 !m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal &&
 						 !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_temporal;
 	if (need_temporal)
@@ -297,19 +273,11 @@ bool ReSTIRDIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 	launch_initial_candidates_pass(render_data);
 
-	if (render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
-		// Launching the fused spatiotemporal kernel
-		launch_spatiotemporal_pass(render_data);
-	else
-	{
-		// Launching the temporal and spatial passes separately
+	if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+		launch_temporal_reuse_pass(render_data);
 
-		if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-			launch_temporal_reuse_pass(render_data);
-
-		if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-			launch_spatial_reuse_passes(render_data);
-	}
+	if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+		launch_spatial_reuse_passes(render_data);
 
 	configure_output_buffer(render_data);
 
@@ -423,20 +391,6 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data
 																						   launch_args, m_renderer->get_main_stream());
 }
 
-void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data)
-{
-	render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
-	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested	 = m_temporal_buffer_clear_requested;
-
-	// The input of the temporal pass is the output of last frame's
-	// ReSTIR (and also the initial candidates but this is implicit
-	// and hardcoded in the shader)
-	render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_last_restir_output_reservoirs;
-
-	// Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
-	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
-}
-
 void ReSTIRDIRenderPass::configure_spatial_pass(HIPRTRenderData& render_data, int spatial_pass_index)
 {
 	render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
@@ -478,37 +432,6 @@ void ReSTIRDIRenderPass::configure_spatial_pass(HIPRTRenderData& render_data, in
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_pass_output_reservoirs;
 }
 
-void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data, int spatial_pass_index)
-{
-	ReSTIRDISettings& restir_settings					   = render_data.render_settings.restir_di_settings;
-	restir_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
-
-	ReSTIRDIReservoir* spatial_pass_input_reservoirs  = nullptr;
-	ReSTIRDIReservoir* spatial_pass_output_reservoirs = nullptr;
-
-	if (spatial_pass_index == 0)
-		// The input of the spatial resampling in the fused spatiotemporal pass is the
-		// temporal buffer of the last frame i.e. the input to the temporal pass
-		//
-		// Note, this line of code below assumes that the temporal pass was configured
-		// prior to calling this function such that
-		// 'restir_settings.temporal_pass.input_reservoirs'
-		// is the proper pointer
-		spatial_pass_input_reservoirs = restir_settings.temporal_pass.input_reservoirs;
-	else
-		// If this is not the first spatial reuse pass, the input is the output of the previous pass
-		spatial_pass_input_reservoirs = restir_settings.spatial_pass.output_reservoirs;
-
-	// Outputting in whichever isn't the input
-	if (spatial_pass_input_reservoirs == m_spatial_output_reservoirs_1.get_device_pointer())
-		spatial_pass_output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
-	else
-		spatial_pass_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
-
-	restir_settings.spatial_pass.input_reservoirs  = spatial_pass_input_reservoirs;
-	restir_settings.spatial_pass.output_reservoirs = spatial_pass_output_reservoirs;
-}
-
 void ReSTIRDIRenderPass::launch_spatial_reuse_passes(HIPRTRenderData& render_data)
 {
 	void* launch_args[] = { &render_data };
@@ -530,58 +453,13 @@ void ReSTIRDIRenderPass::launch_spatial_reuse_passes(HIPRTRenderData& render_dat
 	m_spatial_reuse_events_recorded = true;
 }
 
-void ReSTIRDIRenderPass::configure_spatiotemporal_pass(HIPRTRenderData& render_data)
-{
-	// The buffers of the temporal pass are going to be configured in the same way
-	configure_temporal_pass_for_fused_spatiotemporal(render_data);
-
-	// But the spatial pass is going to read from the input of the temporal pass i.e. the temporal buffer of the last frame, it's not going to read from the
-	// output of the temporal pass
-	configure_spatial_pass_for_fused_spatiotemporal(render_data, 0);
-}
-
-void ReSTIRDIRenderPass::launch_spatiotemporal_pass(HIPRTRenderData& render_data)
-{
-	configure_spatiotemporal_pass(render_data);
-
-	void* launch_args[] = { &render_data };
-
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
-		m_renderer->get_main_stream());
-
-	if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1)
-	{
-		// We have some more spatial reuse passes to do
-
-		OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_start, m_renderer->get_main_stream()));
-
-		for (int spatial_pass_index = 1; spatial_pass_index < render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes;
-			 spatial_pass_index++)
-		{
-			configure_spatial_pass_for_fused_spatiotemporal(render_data, spatial_pass_index);
-			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
-				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
-				m_renderer->get_main_stream());
-		}
-
-		// Emitting the stop event
-		OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_stop, m_renderer->get_main_stream()));
-		m_spatial_reuse_events_recorded = true;
-	}
-}
-
 void ReSTIRDIRenderPass::configure_output_buffer(HIPRTRenderData& render_data)
 {
 	ReSTIRDISettings& restir_di_settings = render_data.render_settings.restir_di_settings;
 
 	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
 	// we're going to use as the input to the temporal reuse pass of the next frame
-	if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass || restir_di_settings.do_fused_spatiotemporal)
-		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
-		// pass of next frame
-		restir_di_settings.restir_output_reservoirs = restir_di_settings.spatial_pass.output_reservoirs;
-	else if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+	if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 		// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
 		restir_di_settings.restir_output_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
 	else
@@ -603,52 +481,13 @@ void ReSTIRDIRenderPass::compute_render_times()
 
 	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] =
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->compute_execution_time();
-	if (restir_di_settings.do_fused_spatiotemporal)
-	{
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] =
-			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
+	if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] =
+			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
 
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
-			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start,
-												   m_spatial_reuse_time_stop));
-	}
-	else
-	{
-		if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-			ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] =
-				m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
-
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
-			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start,
-												   m_spatial_reuse_time_stop));
-	}
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_kernels()
-{
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	if (!is_render_pass_used())
-		return {};
-
-	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
-
-	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
-	if (restir_di_settings.do_fused_spatiotemporal)
-	{
-		// If using spatiotemporal, these two kernels aren't active so we're not returning them
-		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID);
-
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes == 1)
-			// If we only have one spatial reuse pass, it's already handled by the fused spatiotemporal
-			// pass so we need the spatial kernels
-			active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID);
-	}
-	else
-		// Not using fused spatiotemporal
-		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID);
-
-	return active_kernels;
+	if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start,
+											   m_spatial_reuse_time_stop));
 }
 
 bool ReSTIRDIRenderPass::is_render_pass_used() const

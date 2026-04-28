@@ -300,7 +300,7 @@ public:
 	 *
 	 * This function also should not return inactive kernels of a render pass if
 	 * the render pass has more than 1 kernel. For example, the ReSTIR DI render
-	 * pass has multiple kernels: spatio-temporal, spatial, temporal.
+	 * pass has multiple kernels: spatio-temporal (although this one has been removed so this is just for the example), spatial, temporal.
 	 * If spatiotemporal is being used, the spatial and temporal are not being used and
 	 * so they will not be in the map returned by this function. This is also to avoid
 	 * ImGui from displaying the performance metrics about kernels that are not in use
@@ -327,7 +327,7 @@ public:
 	 *
 	 * This function also should not return inactive kernels of a render pass if
 	 * the render pass has more than 1 kernel. For example, the ReSTIR DI render
-	 * pass has multiple kernels: spatio-temporal, spatial, temporal.
+	 * pass has multiple kernels: spatio-temporal (although this one has been removed so this is just for the example), spatial, temporal.
 	 * If spatiotemporal is being used, the spatial and temporal are not being used and
 	 * so they will not be in the map returned by this function. This is also to avoid
 	 * ImGui from displaying the performance metrics about kernels that are not in use
