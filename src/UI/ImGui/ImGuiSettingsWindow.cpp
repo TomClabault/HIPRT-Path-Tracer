@@ -3986,16 +3986,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					}
 				}
 
-				ImGui::BeginDisabled(restir_settings.use_adaptive_directional_spatial_reuse);
-
-				if (ImGui::Checkbox("Spatial neighbors random rotation", &restir_settings.do_neighbor_rotation))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
-												"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
-												"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
-												"same neighbor locations which decreases reuse efficiency.");
-				ImGui::EndDisabled();
-
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 				if (ImGui::Checkbox("Allow reuse of converged neighbors", &restir_settings.allow_converged_neighbors_reuse))
 					m_render_window->set_render_dirty(true);
