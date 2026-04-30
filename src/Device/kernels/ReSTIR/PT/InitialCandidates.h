@@ -97,13 +97,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	initial_surface.shading_point	 = closest_hit_info.inter_point;
 	initial_surface.view_direction	 = -ray.direction;
 
-	float gi_initial_sample_pdf = 0.0f;
 	ReSTIRPTReservoirSample restir_pt_initial_sample;
 	restir_pt_initial_sample.pixel_index = pixel_index;
+	ReSTIRPTReservoir restir_pt_initial_reservoir;
 
-	ColorRGB32F incoming_radiance_to_visible_point;
-	ColorRGB32F incoming_radiance_to_sample_point;
-	ColorRGB32F throughput_to_visible_point = ColorRGB32F(1.0f);
+	float total_path_pdf				   = 1.0f;
+	ColorRGB32F path_unweighted_throughput = ColorRGB32F(1.0f);
+	// BSDF_visible_point * cos_theta_visible_point
+	ColorRGB32F first_bsdf_throughput = ColorRGB32F(1.0f);
 
 	// + 1 to nb_bounces here because we want "0" bounces to still act as one
 	// hit and to return some color
@@ -139,16 +140,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					// Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
 					ColorRGB32F direct_lighting_estimation =
 						estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, random_number_generator);
-					// Updating the cumulated outgoing radiance of our path to the visible point
-					incoming_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point,
-																						   render_data.render_settings.indirect_contribution_clamp, bounce);
+
+					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+					restir_pt_initial_sample.path_radiance							= direct_lighting_estimation;
+					restir_pt_initial_sample.target_function						= (path_unweighted_throughput * direct_lighting_estimation).luminance();
+					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * direct_lighting_estimation).luminance(),
+																  random_number_generator);
 				}
 
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
 				bool valid_indirect_bounce =
-					restir_gi_pt_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
-															  random_number_generator, incident_light_info, &bsdf_pdf);
+					restir_pt_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, closest_hit_info, -ray.direction, ray,
+														   random_number_generator, incident_light_info, &bsdf_pdf);
+
+				total_path_pdf *= bsdf_pdf;
+
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;
@@ -156,7 +163,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				if (bounce == 0)
 				{
 					restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
-					gi_initial_sample_pdf										  = bsdf_pdf;
+					first_bsdf_throughput										  = path_unweighted_throughput;
 				}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -183,8 +190,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					restir_pt_initial_sample.sample_point_primitive_index = -1;
 				}
 
-				incoming_radiance_to_visible_point +=
-					path_tracing_miss_gather_envmap(render_data, throughput_to_visible_point, ray.direction, ray_payload.bounce, pixel_index);
+				ColorRGB32F envmap_emission = path_tracing_miss_gather_envmap(render_data, ColorRGB32F(1.0f), ray.direction, ray_payload.bounce, pixel_index);
+
+				// This unweighted throughput to visible point is the full unweighted throughput but without the first BSDF contribution
+				restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+				restir_pt_initial_sample.path_radiance							= envmap_emission;
+				restir_pt_initial_sample.target_function						= (path_unweighted_throughput * envmap_emission).luminance();
+				restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
+															  random_number_generator);
 
 				ray_payload.next_ray_state = RayState::MISSED;
 			}
@@ -200,19 +213,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	// the same value
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-	restir_pt_initial_sample.incoming_radiance_to_visible_point = incoming_radiance_to_visible_point;
-	restir_pt_initial_sample.target_function =
-		ReSTIR_PT_evaluate_target_function<true, false>(render_data, restir_pt_initial_sample, initial_surface, random_number_generator);
-
-	float resampling_weight = 0.0f;
-	float mis_weight		= 1.0f;
-	float target_function	= restir_pt_initial_sample.target_function;
-	float source_pdf		= gi_initial_sample_pdf;
-	if (source_pdf > 0.0f)
-		resampling_weight = mis_weight * restir_pt_initial_sample.target_function / source_pdf;
-
-	ReSTIRPTReservoir restir_pt_initial_reservoir;
-	restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, resampling_weight, random_number_generator);
 	restir_pt_initial_reservoir.end();
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 
@@ -230,7 +230,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 		float trash_pdf;
 		ColorRGB32F radiance_to_camera = bsdf_dispatcher_eval(render_data, eval_context, trash_pdf, random_number_generator) *
-										 incoming_radiance_to_visible_point * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction));
+										 hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
+										 restir_pt_initial_reservoir.sample.unweighted_throughput_to_visible_point *
+										 restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
 
 		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_pt_initial_reservoir.UCW;
 	}

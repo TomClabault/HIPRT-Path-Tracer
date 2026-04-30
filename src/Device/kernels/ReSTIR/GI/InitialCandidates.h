@@ -147,8 +147,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
 				bool valid_indirect_bounce =
-					restir_gi_pt_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
-															  random_number_generator, incident_light_info, &bsdf_pdf);
+					restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
+														   random_number_generator, incident_light_info, &bsdf_pdf);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;

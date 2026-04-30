@@ -467,7 +467,7 @@ HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lig
  */
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 												  RayPayload& ray_payload,
-												  ColorRGB32F custom_ray_throughput,
+												  ColorRGB32F ray_throughput,
 												  HitInfo& closest_hit_info,
 												  float3_t view_direction,
 												  int x,
@@ -501,7 +501,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		total_direct_lighting += ray_payload.material.emission;
 
 	// Clamped indirect lighting
-	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * custom_ray_throughput;
+	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_throughput;
 
 	total_direct_lighting += direct_lighting_contribution;
 #endif

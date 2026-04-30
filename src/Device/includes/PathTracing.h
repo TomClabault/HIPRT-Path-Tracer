@@ -158,8 +158,12 @@ HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pix
 	}
 }
 
-HIPRT_DEVICE ColorRGB32F
-path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F& ray_throughput, float3_t ray_direction, int bounce, uint32_t pixel_index)
+HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data,
+														 const ColorRGB32F& ray_throughput,
+														 float3_t ray_direction,
+														 int bounce,
+														 uint32_t pixel_index,
+														 ColorRGB32F* out_raw_envmap_emission = nullptr)
 {
 	ColorRGB32F skysphere_color;
 
@@ -193,6 +197,8 @@ path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F&
 	}
 
 	skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
+	if (out_raw_envmap_emission)
+		*out_raw_envmap_emission = skysphere_color;
 
 	ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_throughput;
 	// Only clamping with the indirect lighting clamp value if

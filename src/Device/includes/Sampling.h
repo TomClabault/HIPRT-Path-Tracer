@@ -204,6 +204,38 @@ HIPRT_DEVICE static float cosine_weighted_pdf(float NoL)
 	return NoL * hippt::M_INV_PI;
 }
 
+HIPRT_DEVICE static float3_t uniform_sphere_sample(Xorshift32Generator& random_number_generator)
+{
+	float phi		= hippt::M_TWO_PI * random_number_generator();
+	float cos_theta = 2.0f * random_number_generator() - 1.0f;
+	float sin_theta = hippt::sqrt(1.0f - cos_theta * cos_theta);
+
+	return hippt::normalize(make_float3(sin_theta * hippt::intrin_cosf(phi), sin_theta * hippt::intrin_sinf(phi), cos_theta));
+}
+
+HIPRT_DEVICE static float uniform_sphere_pdf()
+{
+	return 1.0f / (4.0f * hippt::M_Pi);
+}
+
+HIPRT_DEVICE static float3_t uniform_hemisphere_sample_around_normal_world_space(const float3_t& normal, Xorshift32Generator& random_number_generator)
+{
+	float3_t sphere_sample = uniform_sphere_sample(random_number_generator);
+
+	float3_t hemisphere_sample;
+	if (hippt::dot(sphere_sample, normal) < 0.0f)
+		hemisphere_sample = -sphere_sample;
+	else
+		hemisphere_sample = sphere_sample;
+
+	return hemisphere_sample;
+}
+
+HIPRT_DEVICE static float uniform_hemisphere_pdf()
+{
+	return 1.0f / (2.0f * hippt::M_Pi);
+}
+
 // Reference: https://codesandbox.io/p/sandbox/fibonacci-sphere-forked-yhvclc?file=%2Fsrc%2Findex.ts%3A19%2C1-36%2C1
 HIPRT_DEVICE float3_t fibonacci_sphere_direction(int i, int N)
 {

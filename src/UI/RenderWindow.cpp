@@ -23,6 +23,11 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReSTIR PT & refactor
 // ReSTIR PT is going to be fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off)
+// PSS or solid angle?
+//	- Check Area ReSTIR
+//	- PT enchanced
+//	- MCMC DS
+//	- Mutations
 
 // TODO known bugs / incorrectness:
 // - ImGui Material editor crash with 0 materials in the scene (only default material when blender export for example)

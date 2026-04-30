@@ -73,8 +73,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 863
-#define DEBUG_PIXEL_Y 238
+#define DEBUG_PIXEL_X 664
+#define DEBUG_PIXEL_Y 264
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0

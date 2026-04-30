@@ -87,7 +87,7 @@
 *
 *		Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
 */
-#define ReSTIR_GI_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
+#define ReSTIR_GI_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
 
 /**
  * How many bits to use for the directional reuse masks

@@ -26,7 +26,9 @@ struct ReSTIRPTReservoirSample
 
 	int sample_point_primitive_index = -1;
 
-	ColorRGB32F incoming_radiance_to_visible_point;
+	// ColorRGB32F incoming_radiance_to_visible_point;
+	ColorRGB32F path_radiance;
+	ColorRGB32F unweighted_throughput_to_visible_point;
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 

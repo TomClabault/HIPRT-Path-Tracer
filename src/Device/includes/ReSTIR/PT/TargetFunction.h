@@ -78,7 +78,8 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 	if (bsdf_pdf > 0.0f)
 		visible_point_bsdf_color *= hippt::abs(cosine_term);
 
-	return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
+	ColorRGB32F full_throughput = visible_point_bsdf_color * sample.unweighted_throughput_to_visible_point;
+	return (full_throughput * sample.path_radiance).luminance();
 }
 
 #endif

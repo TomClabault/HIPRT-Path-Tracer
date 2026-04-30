@@ -156,7 +156,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float target_function_at_neighbor			  = reservoir_being_resampled_target_function;
 			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT, false>(render_data).use_confidence_weights;
 			float reservoir_resampled_M	   = use_confidence_weights ? reservoir_being_resampled_M : 1;
 			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : 1;
@@ -421,7 +421,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				// ReSTIR GI target function
 				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
 					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
