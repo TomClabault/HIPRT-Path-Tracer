@@ -78,6 +78,8 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 	if (bsdf_pdf > 0.0f)
 		visible_point_bsdf_color *= hippt::abs(cosine_term);
 
+	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
+	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
 	ColorRGB32F full_throughput = visible_point_bsdf_color * sample.unweighted_throughput_to_visible_point;
 	return (full_throughput * sample.path_radiance).luminance();
 }

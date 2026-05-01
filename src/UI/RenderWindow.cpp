@@ -21,9 +21,13 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-// TODO ReSTIR PT & refactor
-// ReSTIR PT is going to be fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off)
-// PSS or solid angle?
+// ******* TODO ReSTIR PT & refactor **********
+// Remove bool DEBUG template parameters
+// ReSTIR PT is going to be almost fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off, ...). Less experimentations possibilities but just simpler to maintain
+// Multiple initial path trees candidates
+// Ray volume state reconstruction @ sample point
+// 
+// PSS or solid angle? Read papers to see what they need 
 //	- Check Area ReSTIR
 //	- PT enchanced
 //	- MCMC DS

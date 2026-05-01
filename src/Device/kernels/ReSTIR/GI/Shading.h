@@ -146,14 +146,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
 			ColorRGB32F first_hit_throughput;
 			if (bsdf_pdf_first_hit > 0.0f)
-				first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) *
-									   resampling_reservoir.UCW;
+				first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
 
 			if (resampling_reservoir.sample.is_envmap_path())
 				camera_outgoing_radiance +=
-					path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
+					path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index) *
+					resampling_reservoir.UCW;
 			else
-				camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point;
+				camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point * resampling_reservoir.UCW;
 		}
 	}
 

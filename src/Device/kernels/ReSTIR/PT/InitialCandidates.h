@@ -24,8 +24,10 @@ HIPRT_DEVICE void ReSTIRPT_sample_point_fill(const HIPRTRenderData& render_data,
 											 const HitInfo& closest_hit_info,
 											 ReSTIRPTReservoirSample& restir_pt_initial_sample)
 {
+	restir_pt_initial_sample.sample_point = closest_hit_info.inter_point;
 	restir_pt_initial_sample.sample_point_geometric_normal.pack(closest_hit_info.geometric_normal);
-	restir_pt_initial_sample.sample_point				  = closest_hit_info.inter_point;
+	restir_pt_initial_sample.sample_point_shading_normal.pack(closest_hit_info.shading_normal);
+	restir_pt_initial_sample.sample_point_material		  = ray_payload.material;
 	restir_pt_initial_sample.sample_point_primitive_index = closest_hit_info.primitive_index;
 	restir_pt_initial_sample.sample_point_rough_enough =
 		ray_payload.material.can_do_light_sampling(render_data.render_settings.restir_pt_settings.neighbor_sample_point_roughness_threshold);
@@ -88,6 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 	bool intersection_found = closest_hit_info.primitive_index != -1;
 
+	// TODO re-read this at the end instread of storing it at the beginning for registers?
 	ReSTIRSurface initial_surface;
 	initial_surface.geometric_normal = closest_hit_info.geometric_normal;
 	initial_surface.shading_normal	 = closest_hit_info.shading_normal;
@@ -101,8 +104,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	restir_pt_initial_sample.pixel_index = pixel_index;
 	ReSTIRPTReservoir restir_pt_initial_reservoir;
 
-	float total_path_pdf				   = 1.0f;
-	ColorRGB32F path_unweighted_throughput = ColorRGB32F(1.0f);
+	ColorRGB32F path_unweighted_throughput				   = ColorRGB32F(1.0f);
+	ColorRGB32F path_unweighted_throughput_to_sample_point = ColorRGB32F(1.0f);
 	// BSDF_visible_point * cos_theta_visible_point
 	ColorRGB32F first_bsdf_throughput = ColorRGB32F(1.0f);
 
@@ -142,8 +145,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, random_number_generator);
 
 					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+					restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
 					restir_pt_initial_sample.path_radiance							= direct_lighting_estimation;
 					restir_pt_initial_sample.target_function						= (path_unweighted_throughput * direct_lighting_estimation).luminance();
+					restir_pt_initial_sample.x3_is_NEE								= bounce == 1;
 					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * direct_lighting_estimation).luminance(),
 																  random_number_generator);
 				}
@@ -151,10 +156,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
 				bool valid_indirect_bounce =
-					restir_pt_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, closest_hit_info, -ray.direction, ray,
-														   random_number_generator, incident_light_info, &bsdf_pdf);
-
-				total_path_pdf *= bsdf_pdf;
+					restir_pt_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point,
+														   closest_hit_info, -ray.direction, ray, random_number_generator, incident_light_info, &bsdf_pdf);
 
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
@@ -164,6 +167,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				{
 					restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
 					first_bsdf_throughput										  = path_unweighted_throughput;
+				}
+				else if (bounce == 1)
+				{
+					restir_pt_initial_sample.incident_light_info_at_sample_point   = incident_light_info;
+					restir_pt_initial_sample.sample_point_incident_light_direction = ray.direction;
 				}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -194,8 +202,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 				// This unweighted throughput to visible point is the full unweighted throughput but without the first BSDF contribution
 				restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+				restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
 				restir_pt_initial_sample.path_radiance							= envmap_emission;
 				restir_pt_initial_sample.target_function						= (path_unweighted_throughput * envmap_emission).luminance();
+				restir_pt_initial_sample.x3_is_NEE								= false;
 				restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
 															  random_number_generator);
 
@@ -223,16 +233,35 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	{
 		float3_t to_light_direction = restir_pt_initial_reservoir.sample.is_envmap_path()
 										  ? restir_pt_initial_sample.sample_point
-										  : hippt::normalize(restir_pt_initial_sample.sample_point - initial_surface.shading_point);
-		BSDFContext eval_context(initial_surface.view_direction, initial_surface.shading_normal, initial_surface.geometric_normal, to_light_direction,
-								 restir_pt_initial_sample.incident_light_info_at_visible_point, initial_surface.ray_volume_state, false,
-								 initial_surface.material, 0.0f);
+										  : hippt::normalize(restir_pt_initial_reservoir.sample.sample_point - initial_surface.shading_point);
+		BSDFContext first_hit_eval_context(initial_surface.view_direction, initial_surface.shading_normal, initial_surface.geometric_normal, to_light_direction,
+										   restir_pt_initial_reservoir.sample.incident_light_info_at_visible_point, initial_surface.ray_volume_state, false,
+										   initial_surface.material, 0.0f);
 
 		float trash_pdf;
-		ColorRGB32F radiance_to_camera = bsdf_dispatcher_eval(render_data, eval_context, trash_pdf, random_number_generator) *
-										 hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
-										 restir_pt_initial_reservoir.sample.unweighted_throughput_to_visible_point *
-										 restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
+		ColorRGB32F bsdf_first_hit = bsdf_dispatcher_eval(render_data, first_hit_eval_context, trash_pdf, random_number_generator) *
+									 hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction));
+
+		ColorRGB32F radiance_to_camera;
+		if (restir_pt_initial_reservoir.sample.is_envmap_path())
+		{
+			radiance_to_camera = bsdf_first_hit * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
+								 restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
+		}
+		else
+		{
+			// TODO the ray volume state should be updated here
+			float3_t view_direction					 = hippt::normalize(initial_surface.shading_point - restir_pt_initial_reservoir.sample.sample_point);
+			float3_t to_light_direction_sample_point = restir_pt_initial_reservoir.sample.sample_point_incident_light_direction;
+			BSDFContext secondary_hit_eval_context(view_direction, initial_surface.shading_normal, initial_surface.geometric_normal,
+												   to_light_direction_sample_point, restir_pt_initial_reservoir.sample.incident_light_info_at_sample_point,
+												   initial_surface.ray_volume_state, false, restir_pt_initial_reservoir.sample.sample_point_material, 0.0f);
+
+			ColorRGB32F bsdf_secondary_hit =
+				bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator) *
+				hippt::abs(hippt::dot(restir_pt_initial_reservoir.sample.sample_point_shading_normal.unpack(), to_light_direction_sample_point));
+			radiance_to_camera = bsdf_first_hit * bsdf_secondary_hit * restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
+		}
 
 		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_pt_initial_reservoir.UCW;
 	}

@@ -22,15 +22,23 @@ static std::mutex restir_pt_log_mutex;
 
 struct ReSTIRPTReservoirSample
 {
-	float3_t sample_point = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t sample_point						   = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t sample_point_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
+	DeviceUnpackedEffectiveMaterial sample_point_material;
 
 	int sample_point_primitive_index = -1;
 
-	// ColorRGB32F incoming_radiance_to_visible_point;
 	ColorRGB32F path_radiance;
-	ColorRGB32F unweighted_throughput_to_visible_point;
+	// TODO pack rgb9e5
+	ColorRGB32F unweighted_throughput_to_visible_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
+	// TODO pack rgb9e5
+	ColorRGB32F unweighted_throughput_to_sample_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
+	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
+
+	// True if the sample is a path of length 3, which ended at x2 and did NEE to sample x3 on a light
+	bool x3_is_NEE = false;
 
 	// TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry
 	// where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
@@ -52,6 +60,7 @@ struct ReSTIRPTReservoirSample
 	bool sample_point_rough_enough = false;
 
 	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
+	Octahedral24BitNormalPadded32b sample_point_shading_normal;
 
 	// Index of the pixel that produced this sample/reservoir during the initial candidates sampling
 	// Used by some algorithms such as ReSTIR PG

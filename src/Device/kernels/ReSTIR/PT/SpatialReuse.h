@@ -131,8 +131,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 				render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 		}
 
-		float target_function_at_center				= 0.0f;
-		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<ReSTIR_VARIANT_PT, false>(render_data, neighbor_index);
+		float target_function_at_center = 0.0f;
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)
@@ -140,14 +139,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
-			{
-				if (do_neighbor_target_function_visibility)
-					target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample,
-																									   center_pixel_surface, random_number_generator);
-				else
-					target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample,
-																										center_pixel_surface, random_number_generator);
-			}
+				target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample,
+																									center_pixel_surface, random_number_generator);
 		}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
@@ -195,9 +188,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 			selected_neighbor = neighbor_index;
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
-
-		/*ReSTIR_optimal_visibility_sampling<ReSTIR_VARIANT_PT, false>(render_data, spatial_reuse_output_reservoir, center_pixel_reservoir,
-		   center_pixel_surface, neighbor_index, reused_neighbors_count, random_number_generator);*/
 	}
 
 	float normalization_numerator	= 1.0f;
