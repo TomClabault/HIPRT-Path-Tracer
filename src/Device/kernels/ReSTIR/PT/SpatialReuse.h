@@ -53,6 +53,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_PT, false>(render_data);
+	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
+	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
+
 	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_index, random_number_generator);
 
 	// Only used with MIS-like weight
@@ -80,41 +84,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 
-		// We can already check whether or not this neighbor is going to be
-		// accepted at all by checking the heuristic cache
-		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
-		{
-			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
-			// we know that the center pixel will be accepted
-			//
-			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
-			// going to have issues if we try to read more than that.
-			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
-			{
-				// Advancing the rng for generating the spatial neighbors since if we "continue" here, the spatial neighbors rng
-				// isn't going to be advanced by the call to 'get_spatial_neighbor_pixel_index' below so we're doing it manually
-				spatial_neighbor_advance_rng<ReSTIR_VARIANT_PT, false>(render_data, spatial_neighbors_rng);
-
-				// Neighbor not passing the heuristics tests, skipping it right away
-				continue;
-			}
-		}
-
 		int neighbor_pixel_index =
 			get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT, false>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
 
-		if (!is_center_pixel && reused_neighbors_count > 32)
-			// If not the center pixel, we can check the heuristics
-			//
-			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
-			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT, false>(
-					render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_surface)))
+		// We can already check whether or not this neighbor is going to be
+		// accepted at all by checking the heuristic cache
+		if (!is_center_pixel)
+		{
+			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
+			// we know that the center pixel will be accepted
+			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
+		}
 
 		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
@@ -196,7 +181,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	ReSTIRPTSpatialNormalizationWeight<ReSTIR_PT_MISWeightsType> normalization_function;
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.weight_sum, center_pixel_surface, center_pixel_coords,
-											 normalization_numerator, normalization_denominator);
+											 normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.sample, spatial_reuse_output_reservoir.weight_sum,
 											 center_pixel_surface, center_pixel_coords, normalization_numerator, normalization_denominator,
@@ -222,7 +207,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	// TODO use a flag in the sample reservoir to indicate whether we are unoccluded or not
 	//		(we are always unoccluded if we resampled the canonical sample for example, in which case we don't have to do the validation)
 	//		It would also probably be beneficial to have another kernel do the validation such that samples that don't need the validation
-	//		(resampled the canonical neighbor) don't do the validation at all
+	//		(resampled the canonical neighbor) don't do the validation at all and we save on divergence
 	ReSTIR_PT_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.primitive_index,
 									random_number_generator);
 

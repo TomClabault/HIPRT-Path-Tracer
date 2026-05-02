@@ -57,6 +57,8 @@ struct ReSTIRPTReservoirSample
 	// the new view direction which is incorrect
 	//
 	// Is the bias bad if not using this?
+	//
+	// TODO true by default
 	bool sample_point_rough_enough = false;
 
 	Octahedral24BitNormalPadded32b sample_point_geometric_normal;

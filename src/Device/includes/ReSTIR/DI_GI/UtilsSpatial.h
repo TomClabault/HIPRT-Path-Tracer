@@ -21,9 +21,6 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 {
 	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, DEBUG>(render_data);
 
-	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
-	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
-
 	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
 		spatial_pass_settings.reuse_radius = spatial_pass_settings.per_pixel_spatial_reuse_radius[center_pixel_index];
@@ -249,7 +246,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 				// If we're allowing the reuse of converged neighbors, only doing so with a certain probability
 
 				Xorshift32Generator rng_converged_neighbor_reuse(
-					render_data.get_updated_random_seed(center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x));
+					(center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x) * neighbor_index);
 				if (rng_converged_neighbor_reuse() > spatial_pass_settings.converged_neighbor_reuse_probability)
 				{
 					// We didn't pass the probability check, we are not allowed to reuse the neighbor if it
@@ -268,32 +265,6 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 	}
 
 	return neighbor_pixel_index;
-}
-
-template <int ReSTIRVariant, bool DEBUG>
-HIPRT_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& render_data, Xorshift32Generator& rng)
-{
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, DEBUG>(render_data);
-
-	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
-	{
-		// If not using Hammersley, then each point is generated with 3 random numbers
-		//
-		// One for the random sector in the disk
-		// One for the random theta within that sector
-		// One for the random radius
-		//
-		// See the 'sample_spatial_neighbor_from_allowed_directions' function
-		rng();
-		rng();
-		rng();
-	}
-	else
-	{
-		// Two random numbers for sampling a neighbor in the disk
-		rng();
-		rng();
-	}
 }
 
 /**

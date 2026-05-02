@@ -70,6 +70,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	ReSTIRSurface center_pixel_surface		 = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_DI, false>(render_data);
+	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
+	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
+
 	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_DI, false>(render_data, center_pixel_index, random_number_generator);
 
 	// Only used with MIS-like weight
@@ -95,25 +99,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		start_index = reused_neighbors_count;
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
-		// We can already check whether or not this neighbor is going to be
-		// accepted at all by checking the heuristic cache
-		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
-		{
-			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
-			// we know that the center pixel will be accepted
-			//
-			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
-			// going to have issues if we try to read more than that.
-			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
-			{
-				// Advancing the rng for generating the spatial neighbors since if we "continue" here, the spatial neighbors rng
-				// isn't going to be advanced by the call to 'get_spatial_neighbor_pixel_index' below so we're doing it manually
-				spatial_neighbor_advance_rng<ReSTIR_VARIANT_DI, false>(render_data, spatial_neighbors_rng);
-
-				// Neighbor not passing the heuristics tests, skipping it right away
-				continue;
-			}
-		}
+		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 
 		int neighbor_pixel_index =
 			get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_DI, false>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
@@ -121,15 +107,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-		if (neighbor_index < reused_neighbors_count && reused_neighbors_count > 32)
-			// If not the center pixel, we can check the heuristics
-			//
-			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
-			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_DI, false>(
-					render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_DI, false>(render_data, center_pixel_surface)))
+		// We can already check whether or not this neighbor is going to be
+		// accepted at all by checking the heuristic cache
+		if (!is_center_pixel)
+		{
+			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
+			// we know that the center pixel will be accepted
+			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
+		}
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center		 = 0.0f;

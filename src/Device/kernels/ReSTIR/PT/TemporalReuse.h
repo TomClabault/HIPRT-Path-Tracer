@@ -112,6 +112,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
 
+	int selected_sample = -1;
 	ReSTIRPTReservoir initial_candidates_reservoir =
 		render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 	if (temporal_neighbor_reservoir.M > 0)
@@ -168,8 +169,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 #endif
 
 		// Combining as in Alg. 6 of the paper
-		temporal_reuse_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center,
-													 shift_mapping_jacobian, random_number_generator);
+		if (temporal_reuse_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center,
+														 shift_mapping_jacobian, random_number_generator))
+			selected_sample = TEMPORAL_NEIGHBOR_ID;
 		temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 	}
 
@@ -201,16 +203,29 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 #error "Unsupported mis weight type"
 #endif
 
-	temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight,
-												 initial_candidates_reservoir.sample.target_function,
-												 /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator);
+	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight,
+													 initial_candidates_reservoir.sample.target_function,
+													 /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+		selected_sample = INITIAL_CANDIDATES_ID;
+
 	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
 	ReSTIRPTTemporalNormalizationWeight<ReSTIR_PT_MISWeightsType> normalization_function;
-#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
+#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
+											 normalization_numerator, normalization_denominator);
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
+	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
+											 initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
+											 normalization_numerator, normalization_denominator, random_number_generator);
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
+	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
+											 initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
+											 selected_sample, normalization_numerator, normalization_denominator, random_number_generator);
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);

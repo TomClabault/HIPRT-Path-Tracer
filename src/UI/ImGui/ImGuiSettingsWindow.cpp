@@ -3561,7 +3561,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 		gi_or_pt_settings = &render_settings.restir_gi_settings;
 	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
 		gi_or_pt_settings = &render_settings.restir_pt_settings;
-	else 
+	else
 		gi_or_pt_settings = nullptr;
 
 	static bool use_heuristics_at_all				= true;
@@ -3840,11 +3840,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				}
 
-				// Checking the value before the "Neighbor Reuse Count" slider is modified
-				// so that we know whether or not we'll have to keep the
-				// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
-				int max_neighbor_count = restir_settings.reuse_neighbor_count;
-				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 16))
+				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 32, "%d", ImGuiSliderFlags_AlwaysClamp))
 					m_render_window->set_render_dirty(true);
 
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";

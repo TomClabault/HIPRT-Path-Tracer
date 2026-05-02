@@ -491,7 +491,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
 	if (render_data.render_settings.enable_direct || ray_payload.bounce > 1)
-		total_direct_lighting += hit_emission * custom_ray_throughput;
+		total_direct_lighting += hit_emission * ray_throughput;
 #else
 	if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.shading_normal, view_direction) > 0.0f)
 		// If we do have emissive geometry sampling, we only want to take
@@ -515,14 +515,14 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
  */
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data,
 															  RayPayload& ray_payload,
-															  ColorRGB32F custom_ray_throughput,
+															  ColorRGB32F ray_throughput,
 															  HitInfo& closest_hit_info,
 															  float3_t view_direction,
 															  int x,
 															  int y,
 															  Xorshift32Generator& random_number_generator)
 {
-	return estimate_direct_lighting(render_data, ray_payload, custom_ray_throughput, closest_hit_info, view_direction, x, y, random_number_generator);
+	return estimate_direct_lighting(render_data, ray_payload, ray_throughput, closest_hit_info, view_direction, x, y, random_number_generator);
 }
 
 /**

@@ -51,10 +51,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// If this is 2, the debug location will be in diagonal
 	int debug_neighbor_location_direction;
 
-	// Whether or not to rotate the spatial neighbor locations generated.
-	// Pretty much mandatory when using Hammersley points otherwise the neighbors
-	// will always be the exact same
-	bool do_neighbor_rotation;
 	// This seed is used to generate the spatial neighbors positions if not using Hammersley
 	unsigned int spatial_neighbors_rng_seed;
 
