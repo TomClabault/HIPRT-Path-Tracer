@@ -16,10 +16,14 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
 														ColorRGB32F bsdf_color,
 														const float3_t& bounce_direction,
 														float bsdf_pdf,
-														Xorshift32Generator& random_number_generator)
+														Xorshift32Generator& random_number_generator,
+														NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 	ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
 	ColorRGB32F dispersion_throughput  = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+
+	nee_deferred_MIS_context.last_bsdf_throughput = throughput_attenuation;
+	nee_deferred_MIS_context.last_bsdf_sample_pdf = bsdf_pdf;
 
 	if (ray_payload.bounce > 0)
 	{
@@ -80,8 +84,14 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 															  hiprtRay& out_ray,
 															  Xorshift32Generator& random_number_generator,
 															  BSDFIncidentLightInfo& incident_light_info,
-															  float* out_bsdf_pdf = nullptr)
+															  float& out_bsdf_pdf,
+															  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
+	nee_deferred_MIS_context.last_view_direction = view_direction;
+	nee_deferred_MIS_context.last_shading_point	 = closest_hit_info.inter_point;
+	nee_deferred_MIS_context.last_shading_normal = closest_hit_info.shading_normal;
+	nee_deferred_MIS_context.last_material		 = ray_payload.material;
+
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
@@ -94,15 +104,14 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 							incident_light_info);
 #endif
 
-	if (out_bsdf_pdf != nullptr)
-		*out_bsdf_pdf = bsdf_pdf;
+	out_bsdf_pdf = bsdf_pdf;
 
 	// Terminate ray if bad sampling
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
 	if (!restir_gi_update_ray_throughputs(render_data, ray_payload, ray_throughput_to_visible_point, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf,
-										  random_number_generator))
+										  random_number_generator, nee_deferred_MIS_context))
 		return false;
 
 	out_ray.origin	  = closest_hit_info.inter_point;
@@ -119,11 +128,15 @@ HIPRT_HOST_DEVICE bool restir_pt_update_ray_throughputs(HIPRTRenderData& render_
 														ColorRGB32F bsdf_color,
 														const float3_t& bounce_direction,
 														float bsdf_pdf,
-														Xorshift32Generator& random_number_generator)
+														Xorshift32Generator& random_number_generator,
+														NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 	ColorRGB32F unweighted_throughput = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal));
 	ColorRGB32F weighted_throughput	  = unweighted_throughput / bsdf_pdf;
 	ColorRGB32F dispersion_throughput = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+
+	nee_deferred_MIS_context.last_bsdf_throughput = weighted_throughput;
+	nee_deferred_MIS_context.last_bsdf_sample_pdf = bsdf_pdf;
 
 	// With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit
 	// This means that we're basically not taking the first hit into account and so we're not
@@ -187,8 +200,14 @@ HIPRT_HOST_DEVICE bool restir_pt_compute_next_indirect_bounce(HIPRTRenderData& r
 															  hiprtRay& out_ray,
 															  Xorshift32Generator& random_number_generator,
 															  BSDFIncidentLightInfo& incident_light_info,
-															  float* out_bsdf_pdf = nullptr)
+															  float& out_bsdf_pdf,
+															  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
+	nee_deferred_MIS_context.last_view_direction = view_direction;
+	nee_deferred_MIS_context.last_shading_point	 = closest_hit_info.inter_point;
+	nee_deferred_MIS_context.last_shading_normal = closest_hit_info.shading_normal;
+	nee_deferred_MIS_context.last_material		 = ray_payload.material;
+
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
@@ -201,15 +220,14 @@ HIPRT_HOST_DEVICE bool restir_pt_compute_next_indirect_bounce(HIPRTRenderData& r
 							incident_light_info);
 #endif
 
-	if (out_bsdf_pdf != nullptr)
-		*out_bsdf_pdf = bsdf_pdf;
+	out_bsdf_pdf = bsdf_pdf;
 
 	// Terminate ray if bad sampling
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
 	if (!restir_pt_update_ray_throughputs(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info,
-										  bsdf_color, bounce_direction, bsdf_pdf, random_number_generator))
+										  bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context))
 		return false;
 
 	out_ray.origin	  = closest_hit_info.inter_point;

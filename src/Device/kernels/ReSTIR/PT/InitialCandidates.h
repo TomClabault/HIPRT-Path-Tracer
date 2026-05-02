@@ -111,6 +111,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 	// + 1 to nb_bounces here because we want "0" bounces to still act as one
 	// hit and to return some color
+	NEEDeferredMISContext nee_deferred_MIS_context;
 	for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
 	{
 		if (ray_payload.next_ray_state != RayState::MISSED)
@@ -124,6 +125,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+				do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context);
 			}
 
 			if (intersection_found)
@@ -141,8 +143,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					 * Next-event estimation
 					 */
 					// Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
-					ColorRGB32F direct_lighting_estimation =
-						estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, random_number_generator);
+					ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info,
+																					  -ray.direction, x, y, random_number_generator, nee_deferred_MIS_context);
 
 					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
 					restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
@@ -155,9 +157,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
-				bool valid_indirect_bounce =
-					restir_pt_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point,
-														   closest_hit_info, -ray.direction, ray, random_number_generator, incident_light_info, &bsdf_pdf);
+				bool valid_indirect_bounce = restir_pt_compute_next_indirect_bounce(
+					render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info, -ray.direction, ray,
+					random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...

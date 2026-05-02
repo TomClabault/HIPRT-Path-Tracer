@@ -110,8 +110,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 
 				BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
 																						   // so that we know what the BSDF sampled
+
+				NEEDeferredMISContext nee_deferred_MIS_context;
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
-																					   random_number_generator, sampled_light_info);
+																					   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;

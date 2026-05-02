@@ -72,8 +72,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 
 	ColorRGB32F camera_outgoing_radiance;
 	if (render_data.render_settings.enable_direct_lighting)
+	{
 		// Adding the direct lighting contribution at the first hit in the direction of the camera
-		camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, random_number_generator);
+		NEEDeferredMISContext trash_context;
+		camera_outgoing_radiance +=
+			estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, random_number_generator, trash_context);
+	}
 
 	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];
 	if (render_data.render_settings.nb_bounces > 0)

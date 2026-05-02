@@ -70,12 +70,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	// hit and to return some color
 	bool intersection_found = closest_hit_info.primitive_index != -1;
 
+	NEEDeferredMISContext nee_deferred_MIS_context;
 	for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
 	{
 		if (ray_payload.next_ray_state != RayState::MISSED)
 		{
 			if (bounce > 0)
+			{
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+				do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context);
+			}
 
 			if (intersection_found)
 			{
@@ -92,8 +96,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
 				if (bounce > 0 || render_data.render_settings.enable_direct_lighting)
 				{
-					ray_payload.ray_color +=
-						estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator);
+					ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator,
+																	  nee_deferred_MIS_context);
 
 					sanity_check<true>(render_data, ray_payload.ray_color, x, y);
 				}
@@ -101,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 				BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
 																						   // so that we know what the BSDF sampled
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
-																					   random_number_generator, sampled_light_info);
+																					   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;
@@ -117,6 +121,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 		else if (ray_payload.next_ray_state == RayState::MISSED)
 			break;
 	}
+
+	// We do one last intersection after the last bounce to get a BSDF sample for NEE MIS
+	intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+	do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context);
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
