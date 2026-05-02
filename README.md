@@ -93,6 +93,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/)
 		- Supports envmap sampling
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR PT [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir)
 	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)
 	- Many bias correction weighting schemes:
 		- 1/M
