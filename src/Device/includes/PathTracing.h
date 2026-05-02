@@ -62,8 +62,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 {
 	ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
 
-	nee_deferred_MIS_context.last_bsdf_throughput = throughput_attenuation;
-	nee_deferred_MIS_context.last_bsdf_sample_pdf = bsdf_pdf;
+	nee_deferred_MIS_context.fill_last_bsdf_information(throughput_attenuation, bsdf_pdf);
 
 	// Russian roulette
 	if (apply_russian_roulette && !do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, rr_throughput_scaling,
@@ -119,11 +118,7 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 															BSDFIncidentLightInfo& incident_light_info,
 															NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-	nee_deferred_MIS_context.last_view_direction = view_direction;
-	nee_deferred_MIS_context.last_shading_point	 = closest_hit_info.inter_point;
-	nee_deferred_MIS_context.last_shading_normal = closest_hit_info.shading_normal;
-	nee_deferred_MIS_context.last_material		 = ray_payload.material;
-	nee_deferred_MIS_context.last_ray_throughput = ray_payload.throughput;
+	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.material, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;

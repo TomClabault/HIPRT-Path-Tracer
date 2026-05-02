@@ -22,8 +22,7 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
 	ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
 	ColorRGB32F dispersion_throughput  = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
 
-	nee_deferred_MIS_context.last_bsdf_throughput = throughput_attenuation;
-	nee_deferred_MIS_context.last_bsdf_sample_pdf = bsdf_pdf;
+	nee_deferred_MIS_context.fill_last_bsdf_information(throughput_attenuation, bsdf_pdf);
 
 	if (ray_payload.bounce > 0)
 	{
@@ -87,10 +86,7 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 															  float& out_bsdf_pdf,
 															  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-	nee_deferred_MIS_context.last_view_direction = view_direction;
-	nee_deferred_MIS_context.last_shading_point	 = closest_hit_info.inter_point;
-	nee_deferred_MIS_context.last_shading_normal = closest_hit_info.shading_normal;
-	nee_deferred_MIS_context.last_material		 = ray_payload.material;
+	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.material, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
@@ -135,8 +131,7 @@ HIPRT_HOST_DEVICE bool restir_pt_update_ray_throughputs(HIPRTRenderData& render_
 	ColorRGB32F weighted_throughput	  = unweighted_throughput / bsdf_pdf;
 	ColorRGB32F dispersion_throughput = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
 
-	nee_deferred_MIS_context.last_bsdf_throughput = weighted_throughput;
-	nee_deferred_MIS_context.last_bsdf_sample_pdf = bsdf_pdf;
+	nee_deferred_MIS_context.fill_last_bsdf_information(weighted_throughput, bsdf_pdf);
 
 	// With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit
 	// This means that we're basically not taking the first hit into account and so we're not
@@ -203,10 +198,7 @@ HIPRT_HOST_DEVICE bool restir_pt_compute_next_indirect_bounce(HIPRTRenderData& r
 															  float& out_bsdf_pdf,
 															  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-	nee_deferred_MIS_context.last_view_direction = view_direction;
-	nee_deferred_MIS_context.last_shading_point	 = closest_hit_info.inter_point;
-	nee_deferred_MIS_context.last_shading_normal = closest_hit_info.shading_normal;
-	nee_deferred_MIS_context.last_material		 = ray_payload.material;
+	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.material, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;

@@ -641,7 +641,9 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 	float bsdf_sample_mis_weight = 0.0f;
 
-#if DirectLightNEEEstimatorIsMISEstimator
+#if DirectLightNEEEstimator == LSS_BSDF
+	bsdf_sample_mis_weight = 1.0f;
+#elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 	if (ray_payload.material.emissive_texture_used)
 		// If the material is using an emissive texture, only BSDF sampling contribute because we don't have NEE for emissive textures yet
 		bsdf_sample_mis_weight = 1.0f;
@@ -655,8 +657,6 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 	}
-#elif DirectLightNEEEstimator == LSS_BSDF
-	bsdf_sample_mis_weight = 1.0f;
 #endif
 
 	ray_payload.ray_color +=
