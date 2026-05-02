@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 													 closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
 				}
 
-				if (bounce > 0 || render_data.render_settings.enable_direct)
+				if (bounce > 0 || render_data.render_settings.enable_direct_lighting)
 				{
 					ray_payload.ray_color +=
 						estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator);

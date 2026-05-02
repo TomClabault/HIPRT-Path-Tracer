@@ -490,7 +490,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 	ColorRGB32F hit_emission = ray_payload.material.emission;
 	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
-	if (render_data.render_settings.enable_direct || ray_payload.bounce > 1)
+	if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
 		total_direct_lighting += hit_emission * ray_throughput;
 #else
 	if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.shading_normal, view_direction) > 0.0f)

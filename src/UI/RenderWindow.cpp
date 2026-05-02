@@ -22,7 +22,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// Temporal reuse crash
 // ReSTIR PT is going to be almost fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off, ...). Less experimentations possibilities but just
 // simpler to maintain Multiple initial path trees candidates Ray volume state reconstruction @ sample point
 //

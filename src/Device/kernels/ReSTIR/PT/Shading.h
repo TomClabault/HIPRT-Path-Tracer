@@ -71,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
 	ColorRGB32F camera_outgoing_radiance;
-	if (render_data.render_settings.enable_direct)
+	if (render_data.render_settings.enable_direct_lighting)
 		// Adding the direct lighting contribution at the first hit in the direction of the camera
 		camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, random_number_generator);
 

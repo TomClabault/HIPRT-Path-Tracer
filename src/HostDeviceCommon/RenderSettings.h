@@ -139,9 +139,6 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 1;
 
-	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
-	bool enable_direct = false;
-
 	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
@@ -208,6 +205,9 @@ struct HIPRTRenderSettings
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;
+
+	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
+	bool enable_direct_lighting = true;
 
 	// Clamp direct lighting contribution to reduce fireflies
 	float direct_contribution_clamp = 0.0f;

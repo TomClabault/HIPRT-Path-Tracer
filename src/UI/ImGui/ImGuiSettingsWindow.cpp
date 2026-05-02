@@ -1075,7 +1075,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
-			if (ImGui::Checkbox("Enable DI", &render_settings.enable_direct))
+			if (ImGui::Checkbox("Enable DI", &render_settings.enable_direct_lighting))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(std::string("Whether or not to integrate direct lighting (NEE) at the primary hit (G-buffer surface)."));
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
