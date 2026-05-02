@@ -56,9 +56,9 @@
 #define ESS_BINARY_SEARCH 1
 #define ESS_ALIAS_TABLE	  2
 
-#define PSS_BSDF	  0
-#define PSS_RESTIR_GI 1
-#define PSS_RESTIR_PT 2
+#define PATH_SAMPLING_BSDF	  0
+#define PATH_SAMPLING_RESTIR_GI 1
+#define PATH_SAMPLING_RESTIR_PT 2
 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR GI + ReSTIRPGEnable. ReSTIR PG is not its
 // own "path sampling" strategy, it has to be piggy backing on a ReSTIR path sampler
 #define PSS_RESTIR_PG 3
@@ -116,10 +116,10 @@
 /**
  * What sampling strategy to use for sampling the bounces during path tracing.
  *
- *	- PSS_BSDF
+ *	- PATH_SAMPLING_BSDF
  *		The classical technique: importance samples the BSDF and bounces in that direction
  *
- *	- PSS_RESTIR_GI
+ *	- PATH_SAMPLING_RESTIR_GI
  *		Uses ReSTIR GI for resampling a path for the pixel.
  *
  *		The implementation is based on
@@ -130,7 +130,7 @@
  *
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  *
- *	- PSS_RESTIR_PT
+ *	- PATH_SAMPLING_RESTIR_PT
  *		Implementation of [Generalized Resampled Importance Sampling: Foundations of ReSTIR, Lin et al. 2022], resampling paths and not full path trees (as in
  *ReSTIR GI).
  *
@@ -140,7 +140,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PSS_RESTIR_PT
+#define PathSamplingStrategy PATH_SAMPLING_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

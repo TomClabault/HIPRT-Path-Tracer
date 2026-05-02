@@ -140,7 +140,7 @@ void GPURendererThread::setup_render_graphs()
 	RenderGraph& render_graph_interactivity = m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME];
 	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_MIS_LIGHT_BSDF);
-	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = render_graph_interactivity.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity	 = render_graph_interactivity.create_render_pass<MegaKernelRenderPass>();

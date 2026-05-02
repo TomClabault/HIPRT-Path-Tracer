@@ -105,11 +105,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	{
 		// Reading from the output of ReSTIR GI or PT depending on which one is being used
 
-#if PathSamplingStrategy == PSS_RESTIR_GI
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		restir_reservoir_pixel_index = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#elif PathSamplingStrategy == PSS_RESTIR_PT
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		restir_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
 #else
+		restir_reservoir_pixel_index = -1;
+
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
 #endif

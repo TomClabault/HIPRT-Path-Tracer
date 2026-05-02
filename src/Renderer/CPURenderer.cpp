@@ -178,7 +178,7 @@ void CPURenderer::setup_buffers()
 	m_restir_di_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #endif
 
-#if PathSamplingStrategy == PSS_RESTIR_GI
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 	m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_gi_state.temporal_reservoirs.resize(width * height);
 	m_restir_gi_state.spatial_reservoirs.resize(width * height);
@@ -188,7 +188,7 @@ void CPURenderer::setup_buffers()
 	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
 #endif
 	m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
-#elif PathSamplingStrategy == PSS_RESTIR_PT
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
 	m_restir_pt_state.spatial_reservoirs.resize(width * height);
@@ -452,7 +452,7 @@ void CPURenderer::update_render_data()
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_di_state.spatial_reuse_hit_rate_hits;
 #endif
 
-#if PathSamplingStrategy == PSS_RESTIR_GI
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 	m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs				  = m_restir_gi_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs			  = m_restir_gi_state.temporal_reservoirs.data();
@@ -469,7 +469,7 @@ void CPURenderer::update_render_data()
 		m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
 	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
-#elif PathSamplingStrategy == PSS_RESTIR_PT
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs				  = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs			  = m_restir_pt_state.temporal_reservoirs.data();
@@ -669,11 +669,11 @@ void CPURenderer::render()
 		ReSTIR_DI_pass();
 #endif
 
-#if PathSamplingStrategy == PSS_BSDF
+#if PathSamplingStrategy == PATH_SAMPLING_BSDF
 		tracing_pass();
-#elif PathSamplingStrategy == PSS_RESTIR_GI
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		ReSTIR_GI_pass();
-#elif PathSamplingStrategy == PSS_RESTIR_PT
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		ReSTIR_PT_pass();
 #endif
 

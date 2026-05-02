@@ -657,7 +657,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
 
@@ -668,7 +668,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 	case SETTINGS_PRESET_MIS_NEE_PATH_TRACER:
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_MIS_LIGHT_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -682,7 +682,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -715,7 +715,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -748,7 +748,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -804,7 +804,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_GI);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -839,7 +839,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_GI);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
@@ -1036,7 +1036,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (!render_settings.accumulate)
 				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI ||
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI)
 			{
 				ImGuiRenderer::add_warning("Adaptive sampling may not be efficient when used with ReSTIR. This is because "
 										   "ReSTIR looks around the current pixel to find neighbor to reuse but with adaptive sampling enabled, most pixels "
@@ -1458,7 +1458,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_PG)
 				{
 					// This is ReSTIR PG. Its enabled through ReSTIR GI/PT so let's enable ReSTIR PT
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_PT);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_PT);
 
 					// Automatically enabling ReSTIR PG still for convenience
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, KERNEL_OPTION_TRUE);
@@ -1471,7 +1471,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
 			{
-			case PSS_RESTIR_GI:
+			case PATH_SAMPLING_RESTIR_GI:
 			{
 				if (ImGui::CollapsingHeader("ReSTIR GI"))
 				{
@@ -1589,7 +1589,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
-			case PSS_RESTIR_PT:
+			case PATH_SAMPLING_RESTIR_PT:
 			{
 				if (ImGui::CollapsingHeader("ReSTIR PT"))
 				{
@@ -1708,8 +1708,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI ||
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_PT)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 				draw_ReSTIR_PG_settings_panel();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -5445,7 +5445,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 										"Same with all the other lobes that can be delta distributions.\n\n"
 										""
 										"There is basically no point in disabling that, this is just for performance comparisons.");
-		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI)
 		{
 			ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
 									   "are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."

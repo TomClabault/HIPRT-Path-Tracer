@@ -475,7 +475,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracin
 
 bool ReSTIRGIRenderPass::is_render_pass_used() const
 {
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI;
+	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI;
 }
 
 void ReSTIRGIRenderPass::request_temporal_bufffers_clear()
