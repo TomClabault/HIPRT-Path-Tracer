@@ -16,6 +16,7 @@
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
+#include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
@@ -150,10 +151,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_dat
 }
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_deferred_BSDF(HIPRTRenderData& render_data,
-													   RayPayload& ray_payload,
-													   const HitInfo closest_hit_info,
-													   const float3_t& view_direction,
-													   Xorshift32Generator& random_number_generator)
+															RayPayload& ray_payload,
+															const HitInfo closest_hit_info,
+															const float3_t& view_direction,
+															Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F light_source_radiance_mis;
 
@@ -374,7 +375,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
 			direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
-			direct_light_contribution += sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+			direct_light_contribution +=
+				sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
 			direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
@@ -454,7 +456,8 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 		direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_BSDF
-		direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
+		// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 		direct_light_contribution += sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
@@ -629,10 +632,16 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 									  HitInfo& closest_hit_info,
 									  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
+#if !DirectLightNEEEstimatorHasBSDFSampling
+	return;
+#endif
+
 	if (ray_payload.material.emission.is_black() || !intersection_found)
 		return;
 
 	float bsdf_sample_mis_weight = 0.0f;
+
+#if DirectLightNEEEstimatorIsMISEstimator
 	if (ray_payload.material.emissive_texture_used)
 		// If the material is using an emissive texture, only BSDF sampling contribute because we don't have NEE for emissive textures yet
 		bsdf_sample_mis_weight = 1.0f;
@@ -646,9 +655,25 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 	}
+#elif DirectLightNEEEstimator == LSS_BSDF
+	bsdf_sample_mis_weight = 1.0f;
+#endif
 
 	ray_payload.ray_color +=
 		nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_throughput * bsdf_sample_mis_weight;
+}
+
+HIPRT_DEVICE void do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
+										   hiprtRay ray,
+										   RayPayload& ray_payload,
+										   HitInfo& closest_hit_info,
+										   Xorshift32Generator& random_number_generator,
+										   NEEDeferredMISContext& nee_deferred_MIS_context)
+{
+#if DirectLightNEEEstimatorHasBSDFSampling
+	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+	do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context);
+#endif
 }
 
 #endif
