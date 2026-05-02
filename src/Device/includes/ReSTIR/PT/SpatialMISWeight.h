@@ -71,15 +71,15 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 		for (int j = 0; j < render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count + 1; j++)
 		{
-			int neighbor_index_j = get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT, false>(render_data, j, center_pixel_coords, random_number_generator);
+			int neighbor_index_j = get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT>(render_data, j, center_pixel_coords, random_number_generator);
 			if (neighbor_index_j == -1)
 				// Invalid neighbor, skipping
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT, false>(
+			if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(
 					render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
-					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_surface)))
+					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface)))
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 
@@ -156,7 +156,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float target_function_at_neighbor			  = reservoir_being_resampled_target_function;
 			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT, false>(render_data).use_confidence_weights;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT>(render_data).use_confidence_weights;
 			float reservoir_resampled_M	   = use_confidence_weights ? reservoir_being_resampled_M : 1;
 			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : 1;

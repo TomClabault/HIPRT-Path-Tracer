@@ -13,13 +13,13 @@
 
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
-template <int BiasCorrectionMode, int ReSTIRVariant, bool DEBUG>
+template <int BiasCorrectionMode, int ReSTIRVariant>
 struct ReSTIRSpatialNormalizationWeight
 {
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 float final_reservoir_weight_sum,
@@ -66,13 +66,13 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIR
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIRVariant>
 {
 	static constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
 
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-											 const ReSTIRSampleType<IsReSTIRGI, DEBUG>& final_reservoir_sample,
+											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 const ReSTIRSurface& center_pixel_surface,
 											 int2_t center_pixel_coords,
@@ -143,13 +143,13 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIR
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIRVariant>
 {
 	static constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
 
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-											 const ReSTIRSampleType<IsReSTIRGI, DEBUG>& final_reservoir_sample,
+											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 const ReSTIRSurface& center_pixel_surface,
 											 int selected_neighbor,
@@ -226,8 +226,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -237,8 +237,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIRV
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -248,8 +248,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, Re
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -259,8 +259,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEF
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -270,8 +270,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO,
 	}
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO, ReSTIRVariant, DEBUG>
+template <int ReSTIRVariant>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO, ReSTIRVariant>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

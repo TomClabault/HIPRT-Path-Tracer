@@ -172,7 +172,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			 render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
 		unsigned char accepted_directions =
-			hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<ReSTIR_VARIANT_PT, true>(render_data, pixel_index));
+			hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<ReSTIR_VARIANT_PT>(render_data, pixel_index));
 		float accepted_percentage = accepted_directions / 32.0f;
 		ColorRGB32F debug_color	  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
 

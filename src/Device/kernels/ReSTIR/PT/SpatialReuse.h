@@ -53,19 +53,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
-	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_PT, false>(render_data);
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_PT>(render_data);
 	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
 	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
 
-	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_index, random_number_generator);
+	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_PT>(render_data, center_pixel_index, random_number_generator);
 
 	// Only used with MIS-like weight
 	int selected_neighbor		  = 0;
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count	  = 0;
 	int valid_neighbors_M_sum	  = 0;
-	count_valid_spatial_neighbors<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count,
-															valid_neighbors_M_sum, neighbor_heuristics_cache);
+	count_valid_spatial_neighbors<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count, valid_neighbors_M_sum,
+													 neighbor_heuristics_cache);
 
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index			   = 0;
@@ -84,8 +84,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 
-		int neighbor_pixel_index =
-			get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT, false>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;

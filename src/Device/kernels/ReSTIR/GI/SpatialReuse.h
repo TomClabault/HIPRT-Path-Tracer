@@ -61,19 +61,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
-	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_GI, false>(render_data);
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIR_VARIANT_GI>(render_data);
 	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
 	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
 
-	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_GI, false>(render_data, center_pixel_index, random_number_generator);
+	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_GI>(render_data, center_pixel_index, random_number_generator);
 
 	// Only used with MIS-like weight
 	int selected_neighbor		  = 0;
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count	  = 0;
 	int valid_neighbors_M_sum	  = 0;
-	count_valid_spatial_neighbors<ReSTIR_VARIANT_GI, false>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count,
-															valid_neighbors_M_sum, neighbor_heuristics_cache);
+	count_valid_spatial_neighbors<ReSTIR_VARIANT_GI>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count, valid_neighbors_M_sum,
+													 neighbor_heuristics_cache);
 
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index			   = 0;
@@ -82,7 +82,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		start_index = reused_neighbors_count;
 
 	ReSTIRGIReservoir spatial_reuse_output_reservoir;
-	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> mis_weight_function;
+	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -92,8 +92,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 
-		int neighbor_pixel_index =
-			get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_GI, false>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_GI>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -125,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		}
 
 		float target_function_at_center				= 0.0f;
-		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<ReSTIR_VARIANT_GI, false>(render_data, neighbor_index);
+		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<ReSTIR_VARIANT_GI>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)
@@ -193,7 +192,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRSpatialNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> normalization_function;
+	ReSTIRSpatialNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> normalization_function;
 #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.weight_sum, center_pixel_surface, center_pixel_coords,
 											 normalization_numerator, normalization_denominator);

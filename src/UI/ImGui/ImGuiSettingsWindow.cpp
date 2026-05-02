@@ -1496,20 +1496,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
 
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_GI, false>();
+						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_GI>();
 
 						ImGui::TreePop();
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_GI, false>(
+					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_GI>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
-					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_GI, false>(
+					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_GI>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
@@ -1517,7 +1517,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						});
 					ImGui::PopItemWidth();
 
-					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_GI, false>();
+					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_GI>();
 
 					if (ImGui::CollapsingHeader("Debug"))
 					{
@@ -1613,20 +1613,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReSTIR PT - Rejection Heuristics Tree");
 
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_PT, false>();
+						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
 
 						ImGui::TreePop();
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_PT, false>(
+					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
-					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_PT, false>(
+					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass))
@@ -1634,7 +1634,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						});
 					ImGui::PopItemWidth();
 
-					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_PT, false>();
+					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_PT>();
 
 					if (ImGui::CollapsingHeader("Debug"))
 					{
@@ -1997,7 +1997,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_DI_settings_panel()
 		{
 			ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
 
-			draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_DI, false>();
+			draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_DI>();
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2086,7 +2086,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_DI_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_DI, false>(
+		draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_DI>(
 			[this, &render_settings]()
 			{
 				if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
@@ -2094,7 +2094,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_DI_settings_panel()
 			});
 
 		ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-		draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_DI, false>(
+		draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_DI>(
 			[&render_settings, this]()
 			{
 				if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
@@ -2102,7 +2102,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_DI_settings_panel()
 			});
 		ImGui::PopItemWidth();
 
-		draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_DI, false>();
+		draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_DI>();
 		if (ImGui::CollapsingHeader("Debug"))
 		{
 			ImGui::TreePush("ReSTIR DI debug options tree");
@@ -3541,7 +3541,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	}
 }
 
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 {
 	HIPRTRenderSettings& render_settings  = m_renderer->get_render_settings();
@@ -3707,7 +3707,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	}
 }
 
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
@@ -3781,7 +3781,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 	}
 }
 
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings			 = m_renderer->get_render_settings();
@@ -3978,7 +3978,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 	}
 }
 
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();

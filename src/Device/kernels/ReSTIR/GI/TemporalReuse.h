@@ -64,12 +64,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	int temporal_neighbor_pixel_index =
-		find_temporal_neighbor_index<ReSTIR_VARIANT_GI, false>(
-			render_data, center_pixel_surface.shading_point,
-			ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_GI, false>(render_data, center_pixel_surface), center_pixel_index,
-			random_number_generator)
-			.x;
+	int temporal_neighbor_pixel_index  = find_temporal_neighbor_index<ReSTIR_VARIANT_GI>(
+											 render_data, center_pixel_surface.shading_point,
+											 ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_GI>(render_data, center_pixel_surface),
+											 center_pixel_index, random_number_generator)
+											.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -106,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRSurface temporal_neighbor_surface =
 		get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> mis_weight_function;
 
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
@@ -209,7 +208,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI, false> normalization_function;
+	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> normalization_function;
 #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS

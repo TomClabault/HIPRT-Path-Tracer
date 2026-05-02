@@ -18,7 +18,7 @@ public:
 
 	static constexpr float AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE = 0.025f;
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static void resize_common_buffers(GPURenderer* renderer,
 									  int new_width,
 									  int new_height,
@@ -27,11 +27,11 @@ public:
 									  OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
 									  OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
-		resize_directional_reuse_buffers<ReSTIRVariant, DEBUG>(renderer, new_width, new_height, per_pixel_spatial_reuse_radius,
-															   per_pixel_spatial_reuse_direction_mask_u, per_pixel_spatial_reuse_direction_mask_ull);
+		resize_directional_reuse_buffers<ReSTIRVariant>(renderer, new_width, new_height, per_pixel_spatial_reuse_radius,
+														per_pixel_spatial_reuse_direction_mask_u, per_pixel_spatial_reuse_direction_mask_ull);
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static void resize_directional_reuse_buffers(GPURenderer* renderer,
 												 int new_width,
 												 int new_height,
@@ -54,7 +54,7 @@ public:
 			per_pixel_spatial_reuse_direction_mask_ull.resize(new_width * new_height);
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static bool pre_render_update_common_buffers(const HIPRTRenderData& render_data,
 												 GPURenderer* renderer,
 												 OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
@@ -66,14 +66,14 @@ public:
 	{
 		bool render_data_updated = false;
 
-		render_data_updated |= pre_render_update_directional_reuse_buffers<ReSTIRVariant, DEBUG>(
+		render_data_updated |= pre_render_update_directional_reuse_buffers<ReSTIRVariant>(
 			render_data, renderer, per_pixel_spatial_reuse_radius, per_pixel_spatial_reuse_direction_mask_u, per_pixel_spatial_reuse_direction_mask_ull,
 			spatial_reuse_statistics_hit_hits, spatial_reuse_statistics_hit_total);
 
 		return render_data_updated;
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data,
 															GPURenderer* renderer,
 															OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
@@ -82,7 +82,7 @@ public:
 															OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 															OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total)
 	{
-		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, DEBUG>(render_data);
+		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
 		const std::string& mask_bit_count_macro_name =
 			ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT
 			: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT
@@ -162,7 +162,7 @@ public:
 		return render_data_invalidated;
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static bool free_common_buffers(OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
 									OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
 									OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
@@ -172,14 +172,14 @@ public:
 	{
 		bool render_data_invalidated = false;
 
-		render_data_invalidated |= free_directional_reuse_buffers<ReSTIRVariant, DEBUG>(
-			per_pixel_spatial_reuse_radius, per_pixel_spatial_reuse_direction_mask_u, per_pixel_spatial_reuse_direction_mask_ull,
-			spatial_reuse_statistics_hit_hits, spatial_reuse_statistics_hit_total);
+		render_data_invalidated |= free_directional_reuse_buffers<ReSTIRVariant>(per_pixel_spatial_reuse_radius, per_pixel_spatial_reuse_direction_mask_u,
+																				 per_pixel_spatial_reuse_direction_mask_ull, spatial_reuse_statistics_hit_hits,
+																				 spatial_reuse_statistics_hit_total);
 
 		return render_data_invalidated;
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static bool free_directional_reuse_buffers(OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
 											   OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
 											   OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
@@ -215,7 +215,7 @@ public:
 		return render_data_invalidated;
 	}
 
-	template <int ReSTIRVariant, bool DEBUG>
+	template <int ReSTIRVariant>
 	static void update_render_data_common_buffers(HIPRTRenderData& render_data,
 												  OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
 												  OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
@@ -223,8 +223,7 @@ public:
 												  OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 												  OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total)
 	{
-		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings =
-			ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, DEBUG>(render_data);
+		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
 
 		if (per_pixel_spatial_reuse_direction_mask_u.size() > 0)
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();

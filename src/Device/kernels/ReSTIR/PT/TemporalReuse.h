@@ -64,12 +64,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	int temporal_neighbor_pixel_index =
-		find_temporal_neighbor_index<ReSTIR_VARIANT_PT, false>(
-			render_data, center_pixel_surface.shading_point,
-			ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT, false>(render_data, center_pixel_surface), center_pixel_index,
-			random_number_generator)
-			.x;
+	int temporal_neighbor_pixel_index  = find_temporal_neighbor_index<ReSTIR_VARIANT_PT>(
+											 render_data, center_pixel_surface.shading_point,
+											 ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface),
+											 center_pixel_index, random_number_generator)
+											.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,

@@ -79,8 +79,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
 	int temporal_neighbor_pixel_index =
-		find_temporal_neighbor_index<ReSTIR_VARIANT_DI, false>(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index],
-															   center_pixel_surface.shading_normal, center_pixel_index, random_number_generator)
+		find_temporal_neighbor_index<ReSTIR_VARIANT_DI>(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index],
+														center_pixel_surface.shading_normal, center_pixel_index, random_number_generator)
 			.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{
@@ -123,8 +123,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
-	ReSTIRTemporalResamplingMISWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI, false> mis_weight_function;
-	ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR_VARIANT_DI, false> mis_weight_function_gbh;
+	ReSTIRTemporalResamplingMISWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR_VARIANT_DI> mis_weight_function_gbh;
 
 	// Only used with MIS-like weight
 	//
@@ -294,7 +294,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, /* ReSTIRVariant */ ReSTIR_VARIANT_DI, /* DEBUG */ false> normalization_function;
+	ReSTIRTemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI> normalization_function;
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 											 normalization_numerator, normalization_denominator);

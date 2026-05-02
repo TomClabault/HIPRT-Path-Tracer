@@ -69,12 +69,12 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	constexpr int RESTIR_VARIANT = ReSTIRVariant;
 #endif
 
-	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<RESTIR_VARIANT, false>(render_data);
+	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<RESTIR_VARIANT>(render_data);
 
 	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-	float3_t center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<RESTIR_VARIANT, false>(render_data).reject_using_geometric_normals
-								 ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
-								 : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
+	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<RESTIR_VARIANT>(render_data).reject_using_geometric_normals
+										? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
+										: render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 
 	float best_area		  = 0.0f;
 	int best_radius_index = 0;
@@ -109,8 +109,7 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 			int neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
 			// On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
-			if (!check_neighbor_similarity_heuristics<RESTIR_VARIANT, false>(render_data, neighbor_index, center_pixel_index, center_shading_point,
-																			 center_normal))
+			if (!check_neighbor_similarity_heuristics<RESTIR_VARIANT>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
 				continue;
 
 			valid_samples_per_radius[radius_index] |= (1ull << sample_index);

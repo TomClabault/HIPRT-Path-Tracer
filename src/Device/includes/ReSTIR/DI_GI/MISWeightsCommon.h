@@ -18,36 +18,36 @@
  *
  * This sample type is then used in some of the specialization to pass to the target functions
  */
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 struct ReSTIRTypeStruct
 {
 };
 
 template <>
-struct ReSTIRTypeStruct<ReSTIR_VARIANT_DI, false>
+struct ReSTIRTypeStruct<ReSTIR_VARIANT_DI>
 {
 	using SampleType	= ReSTIRDIReservoirSample;
 	using ReservoirType = ReSTIRDIReservoir;
 };
 
 template <>
-struct ReSTIRTypeStruct<ReSTIR_VARIANT_GI, false>
+struct ReSTIRTypeStruct<ReSTIR_VARIANT_GI>
 {
 	using SampleType	= ReSTIRGIReservoirSample;
 	using ReservoirType = ReSTIRGIReservoir;
 };
 
 template <>
-struct ReSTIRTypeStruct<ReSTIR_VARIANT_PT, false>
+struct ReSTIRTypeStruct<ReSTIR_VARIANT_PT>
 {
 	using SampleType	= ReSTIRPTReservoirSample;
 	using ReservoirType = ReSTIRPTReservoir;
 };
 
-template <int ReSTIRVariant, bool DEBUG>
-using ReSTIRSampleType = typename ReSTIRTypeStruct<ReSTIRVariant, DEBUG>::SampleType;
+template <int ReSTIRVariant>
+using ReSTIRSampleType = typename ReSTIRTypeStruct<ReSTIRVariant>::SampleType;
 
-template <int ReSTIRVariant, bool DEBUG>
-using ReSTIRReservoirType = typename ReSTIRTypeStruct<ReSTIRVariant, DEBUG>::ReservoirType;
+template <int ReSTIRVariant>
+using ReSTIRReservoirType = typename ReSTIRTypeStruct<ReSTIRVariant>::ReservoirType;
 
 #endif

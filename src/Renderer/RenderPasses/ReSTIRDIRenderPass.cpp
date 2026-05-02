@@ -115,7 +115,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		if (spatial_output_2_needs_resize)
 			m_spatial_output_reservoirs_2.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<ReSTIR_VARIANT_DI, false>(
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<ReSTIR_VARIANT_DI>(
 			render_data, m_renderer, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 	}
@@ -143,7 +143,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::free_directional_reuse_buffers<ReSTIR_VARIANT_DI, false>(
+		render_data_invalidated |= ReSTIRRenderPassCommon::free_directional_reuse_buffers<ReSTIR_VARIANT_DI>(
 			m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 	}
@@ -164,7 +164,7 @@ void ReSTIRDIRenderPass::update_render_data()
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (is_render_pass_used())
 	{
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI, false>(
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(
 			render_data, m_per_pixel_spatial_reuse_radius, m_per_pixel_spatial_reuse_direction_mask_u, m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
 	}
@@ -185,9 +185,9 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_spatial_output_reservoirs_2.resize(new_width * new_height);
 	m_spatial_output_reservoirs_1.resize(new_width * new_height);
 
-	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<ReSTIR_VARIANT_DI, false>(m_renderer, new_width, new_height, m_per_pixel_spatial_reuse_radius,
-																					   m_per_pixel_spatial_reuse_direction_mask_u,
-																					   m_per_pixel_spatial_reuse_direction_mask_ull);
+	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<ReSTIR_VARIANT_DI>(m_renderer, new_width, new_height, m_per_pixel_spatial_reuse_radius,
+																				m_per_pixel_spatial_reuse_direction_mask_u,
+																				m_per_pixel_spatial_reuse_direction_mask_ull);
 }
 
 bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,

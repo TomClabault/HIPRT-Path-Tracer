@@ -10,36 +10,36 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-template <int ReSTIRVariant, int DEBUG>
+template <int ReSTIRVariant>
 struct ReSTIRSettingsTypeTemplate
 {
 };
 
 template <>
-struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_DI, 0>
+struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_DI>
 {
 	using Type = ReSTIRDISettings;
 };
 
 template <>
-struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_GI, 0>
+struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_GI>
 {
 	using Type = ReSTIRGISettings;
 };
 
 template <>
-struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_PT, 0>
+struct ReSTIRSettingsTypeTemplate<ReSTIR_VARIANT_PT>
 {
 	using Type = ReSTIRPTSettings;
 };
 
-template <int ReSTIRVariant, int DEBUG>
-using ReSTIRSettingsType = typename ReSTIRSettingsTypeTemplate<ReSTIRVariant, DEBUG>::Type;
+template <int ReSTIRVariant>
+using ReSTIRSettingsType = typename ReSTIRSettingsTypeTemplate<ReSTIRVariant>::Type;
 
 struct ReSTIRSettingsHelper
 {
-	template <int ReSTIRVariant, int DEBUG>
-	HIPRT_HOST_DEVICE static ReSTIRSettingsType<ReSTIRVariant, DEBUG> get_restir_settings(const HIPRTRenderData& render_data)
+	template <int ReSTIRVariant>
+	HIPRT_HOST_DEVICE static ReSTIRSettingsType<ReSTIRVariant> get_restir_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
 			return render_data.render_settings.restir_di_settings;
@@ -51,7 +51,7 @@ struct ReSTIRSettingsHelper
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}
 
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static const ReSTIRCommonSpatialPassSettings& get_restir_spatial_pass_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -64,7 +64,7 @@ struct ReSTIRSettingsHelper
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}
 
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static ReSTIRCommonSpatialPassSettings& get_restir_spatial_pass_settings(HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -77,7 +77,7 @@ struct ReSTIRSettingsHelper
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}
 
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static ReSTIRCommonTemporalPassSettings get_restir_temporal_pass_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -90,7 +90,7 @@ struct ReSTIRSettingsHelper
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}
 
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static ReSTIRCommonNeighborSimiliaritySettings get_restir_neighbor_similarity_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -108,7 +108,7 @@ struct ReSTIRSettingsHelper
 	 *
 	 * The template argument can be used to select between ReSTIR DI and ReSTIR GI spatial buffers
 	 */
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static int get_restir_spatial_pass_input_reservoir_M(const HIPRTRenderData& render_data, int pixel_index)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -121,7 +121,7 @@ struct ReSTIRSettingsHelper
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}
 
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static unsigned long long int get_spatial_reuse_direction_mask_ull(const HIPRTRenderData& render_data, int pixel_index)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -155,7 +155,7 @@ struct ReSTIRSettingsHelper
 	/**
 	 * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
 	 */
-	template <int ReSTIRVariant, int DEBUG>
+	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static float3_t get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)

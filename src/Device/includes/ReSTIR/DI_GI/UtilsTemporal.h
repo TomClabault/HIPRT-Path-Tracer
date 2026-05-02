@@ -19,7 +19,7 @@
  *	These two values will always be filled even if the temporal neighbor is invalid
  *	(disoccluion / occlusion / out of viewport)
  */
-template <int ReSTIRVariant, bool DEBUG>
+template <int ReSTIRVariant>
 HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_data,
 												 const float3_t& current_shading_point,
 												 const float3_t& current_normal,
@@ -32,7 +32,7 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 		return make_int3(center_pixel_index, center_pixel_index % render_data.render_settings.render_resolution.x,
 						 center_pixel_index / render_data.render_settings.render_resolution.x);
 
-	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<ReSTIRVariant, DEBUG>(render_data);
+	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<ReSTIRVariant>(render_data);
 
 	float3_t previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	float2_t previous_screen_space_point	 = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
@@ -73,8 +73,8 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 		// g-buffer is the same as the current frame's --> no need to read from previous
 		// frame g-buffer --> the previous frame G-buffer is deallocated to save VRAM
 		use_previous_frame_g_buffer &= render_data.render_settings.use_prev_frame_g_buffer();
-		if (check_neighbor_similarity_heuristics<ReSTIRVariant, DEBUG>(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point,
-																	   current_normal, use_previous_frame_g_buffer))
+		if (check_neighbor_similarity_heuristics<ReSTIRVariant>(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal,
+																use_previous_frame_g_buffer))
 			// We found a good neighbor
 			break;
 
