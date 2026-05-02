@@ -648,7 +648,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 	case SETTINGS_PRESET_DEFAULT:
 		break;
 
-	case SETTINGS_PRESET_REFERENCE_PATH_TRACER:
+	case SETTINGS_PRESET_REFERENCE_BRUTE_FORCE_PATH_TRACER:
 		render_settings.do_alpha_testing			  = true;
 		render_settings.alpha_testing_indirect_bounce = render_settings.nb_bounces + 1;
 		render_settings.direct_contribution_clamp	  = 0.0f;
@@ -3555,14 +3555,23 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			return std::ref(render_settings.restir_pt_settings);
 	}();
 
+	using GIOrPTSettingsType = std::conditional_t<ReSTIRVariant == ReSTIR_VARIANT_GI, ReSTIRGISettings, ReSTIRPTSettings>;
+	GIOrPTSettingsType* gi_or_pt_settings;
+	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+		gi_or_pt_settings = &render_settings.restir_gi_settings;
+	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+		gi_or_pt_settings = &render_settings.restir_pt_settings;
+	else 
+		gi_or_pt_settings = nullptr;
+
 	static bool use_heuristics_at_all				= true;
 	static bool use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
 	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
 	static bool use_roughness_heuristic_backup		= common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
 
 	// For ReSTIR GI only
-	static bool use_neighbor_sample_point_roughness_heuristic_backup = render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic;
-	static bool use_jacobian_heuristic_backup						 = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
+	static bool use_neighbor_sample_point_roughness_heuristic_backup = gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic;
+	static bool use_jacobian_heuristic_backup						 = gi_or_pt_settings->use_jacobian_rejection_heuristic;
 
 	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 	{
@@ -3577,21 +3586,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= false;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 
-			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
 			{
-				use_jacobian_heuristic_backup						 = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
-				use_neighbor_sample_point_roughness_heuristic_backup = render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic;
+				use_jacobian_heuristic_backup						 = gi_or_pt_settings->use_jacobian_rejection_heuristic;
+				use_neighbor_sample_point_roughness_heuristic_backup = gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic;
 
-				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic				 = false;
-				render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = false;
-			}
-			else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			{
-				use_jacobian_heuristic_backup						 = render_settings.restir_pt_settings.use_jacobian_rejection_heuristic;
-				use_neighbor_sample_point_roughness_heuristic_backup = render_settings.restir_pt_settings.use_neighbor_sample_point_roughness_heuristic;
-
-				render_settings.restir_pt_settings.use_jacobian_rejection_heuristic				 = false;
-				render_settings.restir_pt_settings.use_neighbor_sample_point_roughness_heuristic = false;
+				gi_or_pt_settings->use_jacobian_rejection_heuristic				 = false;
+				gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic = false;
 			}
 		}
 		else
@@ -3601,15 +3602,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= use_plane_distance_heuristic_backup;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
 
-			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
 			{
-				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic				 = use_jacobian_heuristic_backup;
-				render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
-			}
-			else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			{
-				render_settings.restir_pt_settings.use_jacobian_rejection_heuristic				 = use_jacobian_heuristic_backup;
-				render_settings.restir_pt_settings.use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
+				gi_or_pt_settings->use_jacobian_rejection_heuristic				 = use_jacobian_heuristic_backup;
+				gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
 			}
 		}
 
@@ -3674,27 +3670,23 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
 		{
-			// TODO ISRESTIRGI
-			// auto& gi_or_pt_settings =
-
 			ImGui::Dummy(ImVec2(0.0f, 10.0f));
-			if (ImGui::Checkbox("Use jacobian heuristic", &render_settings.restir_gi_settings.use_jacobian_rejection_heuristic))
+			if (ImGui::Checkbox("Use jacobian heuristic", &gi_or_pt_settings->use_jacobian_rejection_heuristic))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePush("Jacobian heuristic tree");
-			if (render_settings.restir_gi_settings.use_jacobian_rejection_heuristic)
+			if (gi_or_pt_settings->use_jacobian_rejection_heuristic)
 			{
-				if (ImGui::SliderFloat("Jacobian threshold", render_settings.restir_gi_settings.get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
+				if (ImGui::SliderFloat("Jacobian threshold", gi_or_pt_settings->get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
 				{
-					render_settings.restir_gi_settings.set_jacobian_heuristic_threshold(
-						hippt::max(1.001f, render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+					gi_or_pt_settings->set_jacobian_heuristic_threshold(hippt::max(1.001f, gi_or_pt_settings->get_jacobian_heuristic_threshold()));
 					m_render_window->set_render_dirty(true);
 				}
 			}
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-			if (ImGui::Checkbox("Use sample point roughness heuristic", &render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic))
+			if (ImGui::Checkbox("Use sample point roughness heuristic", &gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
 				"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
@@ -3705,8 +3697,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 				"specular surface: a rough primary hit bouncing into a window / mirror for example.");
 
 			ImGui::TreePush("Sample point roughness heuristic tree");
-			if (render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic)
-				if (ImGui::SliderFloat("Min. neighbor roughness", &render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
+			if (gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic)
+				if (ImGui::SliderFloat("Min. neighbor roughness", &gi_or_pt_settings->neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
 			ImGui::TreePop();
 		}
