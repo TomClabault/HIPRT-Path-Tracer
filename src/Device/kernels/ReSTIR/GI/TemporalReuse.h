@@ -55,9 +55,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
 
 	if (render_data.render_settings.sample_number == 0 && render_data.render_settings.accumulate)
+	{
 		// First frame of accumulation, no temporal history, just outputting the initial candidates
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] =
 			render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+
+		return;
+	}
 
 	// Initializing the random generator
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
