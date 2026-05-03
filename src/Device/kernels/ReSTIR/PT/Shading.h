@@ -114,7 +114,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			else
 			{
 				ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
-				if (!resampling_reservoir.sample.x3_is_NEE)
+				// if (!resampling_reservoir.sample.x3_is_NEE)
 				{
 					// Only evaluating all of this if the path didn't end at x2 with x3 on a light. Because if the path ended with NEE, the BSDF at x2 and cos
 					// theta is already included in the path_radiance (NEE estimation)

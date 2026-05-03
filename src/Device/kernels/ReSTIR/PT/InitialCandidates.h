@@ -33,6 +33,69 @@ HIPRT_DEVICE void ReSTIR_PT_sample_point_fill(const HIPRTRenderData& render_data
 		ray_payload.material.can_do_light_sampling(render_data.render_settings.restir_pt_settings.neighbor_sample_point_roughness_threshold);
 }
 
+HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
+									   float3_t view_direction,
+									   RayPayload& ray_payload,
+									   ColorRGB32F path_unweighted_throughput,
+									   ColorRGB32F path_unweighted_throughput_to_sample_point,
+									   ColorRGB32F first_bsdf_throughput,
+									   ReSTIRPTReservoir& restir_pt_initial_reservoir,
+									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
+									   HitInfo& closest_hit_info,
+									   NEEDeferredMISContext& nee_deferred_MIS_context,
+									   Xorshift32Generator& random_number_generator,
+									   int x,
+									   int y)
+{
+	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
+
+	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+	{
+		LightSamplePointInformation& light_sample = light_samples[i];
+
+		float nee_connection_pdf_solid_angle =
+			area_to_solid_angle_pdf(light_sample.area_measure_pdf, hippt::length(light_sample.point_on_light - closest_hit_info.inter_point),
+									compute_cosine_term_at_light_source(light_sample.light_source_normal,
+																		hippt::normalize(closest_hit_info.inter_point - light_sample.point_on_light)));
+
+		if (nee_connection_pdf_solid_angle <= 0.0f)
+			continue;
+
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+		float distance_to_light					 = hippt::length(shadow_ray_direction);
+		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+		hiprtRay shadow_ray;
+		shadow_ray.origin	 = shadow_ray_origin;
+		shadow_ray.direction = shadow_ray_direction_normalized;
+
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
+														   random_number_generator, ray_payload.bounce);
+
+		if (in_shadow)
+			continue;
+
+		restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+		restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
+		restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
+		restir_pt_initial_sample.path_radiance							= light_sample.emission;
+		restir_pt_initial_sample.target_function						= (path_unweighted_throughput * light_sample.emission).luminance();
+		restir_pt_initial_sample.x3_is_NEE								= ray_payload.bounce == 1;
+
+		constexpr float mis_weight = 1.0f / DirectLightSampleCount<DirectLightSamplingStrategy>();
+		float weight			   = mis_weight * (ray_payload.throughput * light_sample.emission / nee_connection_pdf_solid_angle).luminance();
+
+		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+	}
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_InitialCandidates(HIPRTRenderData render_data)
 #else
@@ -139,20 +202,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					if (bounce == 1)
 						ReSTIR_PT_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
-					/**
-					 * Next-event estimation
-					 */
-					// Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
-					ColorRGB32F direct_lighting_estimation = estimate_direct_lighting<false>(
-						render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context, random_number_generator);
-
-					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-					restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
-					restir_pt_initial_sample.path_radiance							= direct_lighting_estimation;
-					restir_pt_initial_sample.target_function						= (path_unweighted_throughput * direct_lighting_estimation).luminance();
-					restir_pt_initial_sample.x3_is_NEE								= bounce == 1;
-					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * direct_lighting_estimation).luminance(),
-																  random_number_generator);
+					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point,
+										 first_bsdf_throughput, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
+										 nee_deferred_MIS_context, random_number_generator, x, y);
 				}
 
 				float bsdf_pdf;
