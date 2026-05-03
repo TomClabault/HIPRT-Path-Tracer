@@ -787,6 +787,8 @@ HIPRT_DEVICE ColorRGB32F do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 	return do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 #endif
+
+	return ColorRGB32F(0.0f);
 }
 
 #endif
