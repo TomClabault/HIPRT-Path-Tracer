@@ -704,7 +704,6 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 									  bool intersection_found,
-									  float3_t ray_direction, // TODO remove
 									  RayPayload& ray_payload,
 									  HitInfo& closest_hit_info,
 									  NEEDeferredMISContext& nee_deferred_MIS_context,
@@ -736,7 +735,10 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		bsdf_sample_mis_weight = 1.0f;
 	else
 	{
-		float hit_distance					= hippt::length(closest_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
+		float3_t ray_direction = closest_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point;
+		float hit_distance	   = hippt::length(ray_direction);
+		ray_direction /= hit_distance;
+
 		float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 			render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 			nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index,
@@ -778,7 +780,7 @@ HIPRT_DEVICE void do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
 {
 #if DirectLightNEEEstimatorHasBSDFSampling
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-	do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+	do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 #endif
 }
 

@@ -121,8 +121,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 					restir_gi_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-				do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context,
-									random_number_generator);
+				do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 			}
 
 			if (intersection_found)
