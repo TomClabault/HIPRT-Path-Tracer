@@ -94,12 +94,12 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 	float3_t bounce_direction;
 	float bsdf_pdf;
 
-#if ReSTIRPGEnable == KERNEL_OPTION_FALSE
-	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
-												  random_number_generator, incident_light_info);
-#else
+#if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	restir_pg_sample_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator,
 							incident_light_info);
+#else
+	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
+												  random_number_generator, incident_light_info);
 #endif
 
 	out_bsdf_pdf = bsdf_pdf;

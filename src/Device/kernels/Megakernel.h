@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	}
 
 	// We do one last intersection after the last bounce to get a BSDF sample for NEE MIS
-	do_last_deferred_NEE_MIS(render_data, ray, ray_payload, closest_hit_info, random_number_generator, nee_deferred_MIS_context);
+	ray_payload.ray_color += do_last_deferred_NEE_MIS(render_data, ray, ray_payload, closest_hit_info, random_number_generator, nee_deferred_MIS_context);
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 

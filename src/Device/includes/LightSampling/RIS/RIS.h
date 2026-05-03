@@ -401,16 +401,30 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 	return reservoir;
 }
 
-HIPRT_DEVICE RISReservoir sample_lights_RIS(HIPRTRenderData& render_data,
-											RayPayload& ray_payload,
-											const HitInfo& closest_hit_info,
-											const float3_t& view_direction,
-											Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE RISReservoir sample_lights_RIS_for_deferred_NEE_BSDF_MIS(HIPRTRenderData& render_data,
+																	  RayPayload& ray_payload,
+																	  const HitInfo& closest_hit_info,
+																	  const float3_t& view_direction,
+																	  Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return RISReservoir();
 
 	return sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data,
+															 RayPayload& ray_payload,
+															 const HitInfo& closest_hit_info,
+															 const float3_t& view_direction,
+															 Xorshift32Generator& random_number_generator)
+{
+	if (render_data.buffers.emissive_triangles_count == 0)
+		return ColorRGB32F(0.0f);
+
+	RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+
+	return evaluate_RIS_reservoir_sample(render_data, ray_payload, closest_hit_info, view_direction, reservoir, random_number_generator);
 }
 
 #endif

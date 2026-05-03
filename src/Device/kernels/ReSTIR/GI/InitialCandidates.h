@@ -122,10 +122,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
-				// if (bounce > 1)
-				//  We're not doing NEE at the first hit for ReSTIR GI (and because this is deferred by one bounce, we're checking for bounce > 1)
-				incoming_radiance_to_visible_point +=
-					do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+				if (bounce > 1)
+					// We're not doing NEE at the first hit for ReSTIR GI (and because this is deferred by one bounce, we're checking for bounce > 1)
+					incoming_radiance_to_visible_point +=
+						do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 			}
 
 			if (intersection_found)
@@ -199,7 +199,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 			break;
 	}
 
-	// if (ray_payload.bounce > 1)
+	if (ray_payload.bounce > 1)
 	{
 		// We're not doing NEE at the first hit for ReSTIR GI (and because this is deferred by one bounce, we're checking for bounce > 1)
 		//
