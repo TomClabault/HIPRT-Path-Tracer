@@ -9,7 +9,7 @@
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/PG/SampleDistribution.h"
 
-HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_data,
+HIPRT_HOST_DEVICE bool ReSTIR_GI_update_ray_throughputs(HIPRTRenderData& render_data,
 														RayPayload& ray_payload,
 														ColorRGB32F& ray_throughput_to_visible_point,
 														HitInfo& closest_hit_info,
@@ -76,7 +76,7 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+HIPRT_HOST_DEVICE bool ReSTIR_GI_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 															  RayPayload& ray_payload,
 															  ColorRGB32F& ray_throughput_to_visible_point,
 															  HitInfo& closest_hit_info,
@@ -108,7 +108,7 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	if (!restir_gi_update_ray_throughputs(render_data, ray_payload, ray_throughput_to_visible_point, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf,
+	if (!ReSTIR_GI_update_ray_throughputs(render_data, ray_payload, ray_throughput_to_visible_point, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf,
 										  random_number_generator, nee_deferred_MIS_context))
 		return false;
 
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 	return true;
 }
 
-HIPRT_HOST_DEVICE bool restir_pt_update_ray_throughputs(HIPRTRenderData& render_data,
+HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_data,
 														RayPayload& ray_payload,
 														ColorRGB32F& path_unweighted_throughput,
 														ColorRGB32F& path_unweighted_throughput_to_sample_point,
@@ -188,7 +188,7 @@ HIPRT_HOST_DEVICE bool restir_pt_update_ray_throughputs(HIPRTRenderData& render_
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool restir_pt_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+HIPRT_HOST_DEVICE bool ReSTIR_PT_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 															  RayPayload& ray_payload,
 															  ColorRGB32F& path_unweighted_throughput,
 															  ColorRGB32F& path_unweighted_throughput_to_sample_point,
@@ -221,7 +221,7 @@ HIPRT_HOST_DEVICE bool restir_pt_compute_next_indirect_bounce(HIPRTRenderData& r
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	if (!restir_pt_update_ray_throughputs(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info,
+	if (!ReSTIR_PT_update_ray_throughputs(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info,
 										  bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context))
 		return false;
 

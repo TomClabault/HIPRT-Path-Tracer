@@ -19,10 +19,10 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void ReSTIRGI_sample_point_fill(const HIPRTRenderData& render_data,
-											 const RayPayload& ray_payload,
-											 const HitInfo& closest_hit_info,
-											 ReSTIRGIReservoirSample& restir_gi_initial_sample)
+HIPRT_DEVICE void ReSTIR_GI_sample_point_fill(const HIPRTRenderData& render_data,
+											  const RayPayload& ray_payload,
+											  const HitInfo& closest_hit_info,
+											  ReSTIRGIReservoirSample& restir_gi_initial_sample)
 {
 	restir_gi_initial_sample.sample_point_geometric_normal.pack(closest_hit_info.geometric_normal);
 	restir_gi_initial_sample.sample_point				  = closest_hit_info.inter_point;
@@ -137,7 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				{
 					ReGIR_representative_points_update(render_data, ray_payload, closest_hit_info);
 					if (bounce == 1)
-						ReSTIRGI_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_gi_initial_sample);
+						ReSTIR_GI_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_gi_initial_sample);
 
 					/**
 					 * Next-event estimation
@@ -153,7 +153,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
 				bool valid_indirect_bounce =
-					restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
+					ReSTIR_GI_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray,
 														   random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...

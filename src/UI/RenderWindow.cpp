@@ -22,11 +22,13 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// ReSTIR PT is going to be almost fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off, ...). Less experimentations possibilities but just
-// simpler to maintain Multiple initial path trees candidates Ray volume state reconstruction @ sample point
-// Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
-// Duplication maps to reduce correlations
-// Reduce number of NEE candidates (light tree splitting) based on bounce depth
+// - ReSTIR PT is going to be almost fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off, ...). Less experimentations possibilities but just
+// simpler to maintain
+// - Multiple initial path trees candidates
+// - Ray volume state reconstruction @ sample point
+// - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
+// - Duplication maps to reduce correlations
+// - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 //
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR

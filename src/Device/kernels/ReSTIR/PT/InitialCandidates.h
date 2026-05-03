@@ -19,10 +19,10 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void ReSTIRPT_sample_point_fill(const HIPRTRenderData& render_data,
-											 const RayPayload& ray_payload,
-											 const HitInfo& closest_hit_info,
-											 ReSTIRPTReservoirSample& restir_pt_initial_sample)
+HIPRT_DEVICE void ReSTIR_PT_sample_point_fill(const HIPRTRenderData& render_data,
+											  const RayPayload& ray_payload,
+											  const HitInfo& closest_hit_info,
+											  ReSTIRPTReservoirSample& restir_pt_initial_sample)
 {
 	restir_pt_initial_sample.sample_point = closest_hit_info.inter_point;
 	restir_pt_initial_sample.sample_point_geometric_normal.pack(closest_hit_info.geometric_normal);
@@ -125,7 +125,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-				do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+				// do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 			}
 
 			if (intersection_found)
@@ -137,14 +137,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				{
 					ReGIR_representative_points_update(render_data, ray_payload, closest_hit_info);
 					if (bounce == 1)
-						ReSTIRPT_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
+						ReSTIR_PT_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
 					/**
 					 * Next-event estimation
 					 */
 					// Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
-					ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info,
-																					  -ray.direction, x, y, nee_deferred_MIS_context, random_number_generator);
+					ColorRGB32F direct_lighting_estimation = estimate_direct_lighting<false>(
+						render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context, random_number_generator);
 
 					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
 					restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
@@ -157,7 +157,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
-				bool valid_indirect_bounce = restir_pt_compute_next_indirect_bounce(
+				bool valid_indirect_bounce = ReSTIR_PT_compute_next_indirect_bounce(
 					render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info, -ray.direction, ray,
 					random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
