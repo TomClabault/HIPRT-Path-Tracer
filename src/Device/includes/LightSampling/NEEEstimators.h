@@ -702,12 +702,16 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #endif
 }
 
-HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
-									  bool intersection_found,
-									  RayPayload& ray_payload,
-									  HitInfo& closest_hit_info,
-									  NEEDeferredMISContext& nee_deferred_MIS_context,
-									  Xorshift32Generator& random_number_generator)
+/**
+ * If the bounce ray of the main path hits an emissive light, computes the MIS weight for that emissive hit against the light sampler of the last hit and
+ * returns the contribution of that emissive hit with that MIS weight.
+ */
+HIPRT_DEVICE ColorRGB32F do_deferred_NEE_MIS(HIPRTRenderData& render_data,
+											 bool intersection_found,
+											 RayPayload& ray_payload,
+											 HitInfo& closest_hit_info,
+											 NEEDeferredMISContext& nee_deferred_MIS_context,
+											 Xorshift32Generator& random_number_generator)
 {
 #if !DirectLightNEEEstimatorHasBSDFSampling
 	return;
@@ -715,19 +719,19 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 	if (ray_payload.bounce == 1 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
-		return;
+		return ColorRGB32F(0.0f);
 
 #if DirectLightNEEEstimator == LSS_BSDF
 	if (ray_payload.material.emission.is_black() || !intersection_found)
-		return;
+		return ColorRGB32F(0.0f);
 
 	float bsdf_sample_mis_weight = 1.0f;
 
-	ray_payload.ray_color += nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
-							 nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
+	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
+		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 	if (ray_payload.material.emission.is_black() || !intersection_found)
-		return;
+		return ColorRGB32F(0.0f);
 
 	float bsdf_sample_mis_weight = 0.0f;
 	if (ray_payload.material.emissive_texture_used)
@@ -747,8 +751,8 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 	}
 
-	ray_payload.ray_color += nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
-							 nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
+	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
+		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	RISReservoir final_reservoir =
 		deferred_NEE_MIS_add_one_RIS_BSDF_sample(render_data, intersection_found, closest_hit_info, ray_payload, nee_deferred_MIS_context,
@@ -767,20 +771,21 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	ColorRGB32F last_hit_NEE_estimate = evaluate_RIS_reservoir_sample(render_data, last_hit_payload, last_hit_info,
 																	  nee_deferred_MIS_context.last_view_direction, final_reservoir, random_number_generator);
 
-	ray_payload.ray_color += last_hit_NEE_estimate * nee_deferred_MIS_context.last_ray_throughput;
+	return last_hit_NEE_estimate * nee_deferred_MIS_context.last_ray_throughput;
 #endif
 }
 
-HIPRT_DEVICE void do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
-										   hiprtRay ray,
-										   RayPayload& ray_payload,
-										   HitInfo& closest_hit_info,
-										   Xorshift32Generator& random_number_generator,
-										   NEEDeferredMISContext& nee_deferred_MIS_context)
+HIPRT_DEVICE ColorRGB32F do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
+												  hiprtRay ray,
+												  RayPayload& ray_payload,
+												  HitInfo& closest_hit_info,
+												  Xorshift32Generator& random_number_generator,
+												  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 #if DirectLightNEEEstimatorHasBSDFSampling
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-	do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+
+	return do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 #endif
 }
 

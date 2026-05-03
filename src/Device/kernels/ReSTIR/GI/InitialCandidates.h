@@ -121,7 +121,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 					restir_gi_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-				do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+
+				// if (bounce > 1)
+				//  We're not doing NEE at the first hit for ReSTIR GI (and because this is deferred by one bounce, we're checking for bounce > 1)
+				incoming_radiance_to_visible_point +=
+					do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 			}
 
 			if (intersection_found)
@@ -193,6 +197,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 		}
 		else if (ray_payload.next_ray_state == RayState::MISSED)
 			break;
+	}
+
+	// if (ray_payload.bounce > 1)
+	{
+		// We're not doing NEE at the first hit for ReSTIR GI (and because this is deferred by one bounce, we're checking for bounce > 1)
+		//
+		// We do one last intersection after the last bounce to get a BSDF sample for NEE MIS
+		incoming_radiance_to_visible_point +=
+			do_last_deferred_NEE_MIS(render_data, ray, ray_payload, closest_hit_info, random_number_generator, nee_deferred_MIS_context);
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

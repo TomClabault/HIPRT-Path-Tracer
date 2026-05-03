@@ -56,7 +56,7 @@
 #define ESS_BINARY_SEARCH 1
 #define ESS_ALIAS_TABLE	  2
 
-#define PATH_SAMPLING_BSDF	  0
+#define PATH_SAMPLING_BSDF		0
 #define PATH_SAMPLING_RESTIR_GI 1
 #define PATH_SAMPLING_RESTIR_PT 2
 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR GI + ReSTIRPGEnable. ReSTIR PG is not its
@@ -140,7 +140,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_BSDF
+#define PathSamplingStrategy PATH_SAMPLING_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
