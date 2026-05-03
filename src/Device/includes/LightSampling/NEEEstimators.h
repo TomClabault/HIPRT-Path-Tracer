@@ -714,6 +714,10 @@ HIPRT_DEVICE void do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	return;
 #endif
 
+	if (ray_payload.bounce == 1 && !render_data.render_settings.enable_direct_lighting)
+		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
+		return;
+
 #if DirectLightNEEEstimator == LSS_BSDF
 	if (ray_payload.material.emission.is_black() || !intersection_found)
 		return;
