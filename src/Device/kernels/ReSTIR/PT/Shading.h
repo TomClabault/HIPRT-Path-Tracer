@@ -113,29 +113,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 					resampling_reservoir.UCW;
 			else
 			{
-				ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
-				// if (!resampling_reservoir.sample.x3_is_NEE)
-				{
-					// Only evaluating all of this if the path didn't end at x2 with x3 on a light. Because if the path ended with NEE, the BSDF at x2 and cos
-					// theta is already included in the path_radiance (NEE estimation)
+				float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.sample_point);
+				float3_t to_light_direction_sample_point = resampling_reservoir.sample.sample_point_incident_light_direction;
+				float3_t shading_normal_sample_point	 = resampling_reservoir.sample.sample_point_shading_normal.unpack();
+				float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.sample_point_geometric_normal.unpack();
 
-					float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.sample_point);
-					float3_t to_light_direction_sample_point = resampling_reservoir.sample.sample_point_incident_light_direction;
-					float3_t shading_normal_sample_point	 = resampling_reservoir.sample.sample_point_shading_normal.unpack();
-					float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.sample_point_geometric_normal.unpack();
+				// Reproducing roughness accumulation
+				ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
+				// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
+				BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point,
+													   to_light_direction_sample_point, resampling_reservoir.sample.incident_light_info_at_sample_point,
+													   ray_payload.volume_state, false, resampling_reservoir.sample.sample_point_material, 0.0f);
 
-					// Reproducing roughness accumulation
-					ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
-					// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
-					BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point,
-														   to_light_direction_sample_point, resampling_reservoir.sample.incident_light_info_at_sample_point,
-														   ray_payload.volume_state, false, resampling_reservoir.sample.sample_point_material, 0.0f);
-
-					float trash_pdf;
-					ColorRGB32F bsdf_secondary_hit = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
-
-					secondary_hit_throughput = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
-				}
+				float trash_pdf;
+				ColorRGB32F bsdf_secondary_hit = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
+				ColorRGB32F secondary_hit_throughput =
+					bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 
 				camera_outgoing_radiance +=
 					first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.path_radiance * resampling_reservoir.UCW;

@@ -35,9 +35,6 @@ struct ReSTIRPTReservoirSample
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
 
-	// True if the sample is a path of length 3, which ended at x2 and did NEE to sample x3 on a light
-	bool x3_is_NEE = false;
-
 	// TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry
 	// where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
 	unsigned int visible_to_sample_point_alpha_test_random_seed = 42;

@@ -84,7 +84,6 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 		restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
 		restir_pt_initial_sample.path_radiance							= light_sample.emission;
 		restir_pt_initial_sample.target_function						= (path_unweighted_throughput * light_sample.emission).luminance();
-		restir_pt_initial_sample.x3_is_NEE								= ray_payload.bounce == 1;
 
 		constexpr float mis_weight = 1.0f / DirectLightSampleCount<DirectLightSamplingStrategy>();
 		float weight			   = mis_weight * (ray_payload.throughput * light_sample.emission / nee_connection_pdf_solid_angle).luminance();
@@ -255,7 +254,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
 				restir_pt_initial_sample.path_radiance							= envmap_emission;
 				restir_pt_initial_sample.target_function						= (path_unweighted_throughput * envmap_emission).luminance();
-				restir_pt_initial_sample.x3_is_NEE								= false;
 				restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
 															  random_number_generator);
 
