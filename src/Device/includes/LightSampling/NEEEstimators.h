@@ -370,29 +370,23 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
 	{
 		// ReSTIR DI isn't used for the secondary/tertiary/... bounces
 		// so there we can take multiple light samples per path vertex
-		for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
-		{
 #if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
-			direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
-			direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
-			direct_light_contribution +=
-				sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		direct_light_contribution = sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
-			if constexpr (deferred_BSDF_MIS)
-			{
-				RISReservoir reservoir =
-					sample_lights_RIS_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		if constexpr (deferred_BSDF_MIS)
+		{
+			RISReservoir reservoir =
+				sample_lights_RIS_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
-				out_nee_mis_context.fill_ris_reservoir(reservoir);
-			}
-			else
-				direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#endif
+			out_nee_mis_context.fill_ris_reservoir(reservoir);
 		}
-
-		direct_light_contribution /= DirectLightSamplingNEESampleCount;
+		else
+			direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif
 	}
 
 	return direct_light_contribution;
@@ -454,48 +448,44 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 
 	// Any of these light sampling strategy support sampling multiple lights
 	// per each shading point, effectively "amortizing" camera and bounce rays
-	for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
-	{
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR && DirectLightNEEEstimator != LSS_BSDF
-		// ReGIR has its own special path to optimize things a bit.
-		//
-		// Also, BSDF sampling only can be handled by the usual path because then
-		// ReGIR isn't used
-		direct_light_contribution += sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	// ReGIR has its own special path to optimize things a bit.
+	//
+	// Also, BSDF sampling only can be handled by the usual path because then
+	// ReGIR isn't used
+	direct_light_contribution = sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
 #else // Not ReGIR
 
 #if DirectLightNEEEstimator == LSS_ONE_LIGHT
-		direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_BSDF
-		// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
-		// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
+	// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
-		if constexpr (deferred_BSDF_MIS)
-			direct_light_contribution +=
-				sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-		else
-			direct_light_contribution += sample_one_light_MIS_multi_sample(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	if constexpr (deferred_BSDF_MIS)
+		direct_light_contribution = sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	else
+		direct_light_contribution = sample_one_light_MIS_multi_sample(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
-		if constexpr (deferred_BSDF_MIS)
-		{
-			RISReservoir reservoir =
-				sample_lights_RIS_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	if constexpr (deferred_BSDF_MIS)
+	{
+		RISReservoir reservoir =
+			sample_lights_RIS_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
-			out_nee_mis_context.fill_ris_reservoir(reservoir);
-		}
-		else
-			direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		out_nee_mis_context.fill_ris_reservoir(reservoir);
+	}
+	else
+		direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_RISLTC
-		direct_light_contribution += sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	direct_light_contribution = sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_LTC_SHADING
-		direct_light_contribution += sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	direct_light_contribution = sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 
 #endif // #if ReGIR
-	}
 
-	return direct_light_contribution / DirectLightSamplingNEESampleCount;
+	return direct_light_contribution;
 }
 
 /**

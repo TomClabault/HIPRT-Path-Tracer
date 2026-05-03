@@ -93,7 +93,6 @@ const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIRDebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR = "DirectLightNEEEstimator";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
-const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT = "DirectLightSamplingNEESampleCount";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS = "DirectLightUseNEEPlusPlus";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY = "NEEPlusPlusGridPrepopulateLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE = "DirectLightUseNEEPlusPlusRR";
@@ -227,7 +226,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE,
@@ -365,7 +363,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR] = std::make_shared<int>(DirectLightNEEEstimator);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT] = std::make_shared<int>(DirectLightSamplingNEESampleCount);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS] = std::make_shared<int>(DirectLightUseNEEPlusPlus);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(NEEPlusPlusGridPrepopulateLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE] = std::make_shared<int>(DirectLightUseNEEPlusPlusRR);

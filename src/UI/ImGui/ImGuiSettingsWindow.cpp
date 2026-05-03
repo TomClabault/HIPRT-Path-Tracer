@@ -1080,37 +1080,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGuiRenderer::show_help_marker(std::string("Whether or not to integrate direct lighting (NEE) at the primary hit (G-buffer surface)."));
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
-			ImGui::BeginDisabled(disabled);
-			static int nee_sample_count = DirectLightSamplingNEESampleCount;
-			ImGui::SliderInt("NEE Sample count", &nee_sample_count, 1, 8);
-			ImGuiRenderer::show_help_marker(std::string("How many light samples to take and shade per each vertex of the "
-														"ray's path.\n"
-														"\n"
-														"Said otherwise, we're going to run next-event estimation that many "
-														"times per each intersection point along the ray.\n"
-														"\n"
-														"This is good because this amortizes camera rays and bounce rays i.e. "
-														"we get better shading quality for as many camera rays and bounce rays.\n"
-														"\n"
-														"With ReSTIR DI this only applies to the secondary bounces shading.") +
-											(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
-			if (nee_sample_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT))
-			{
-				ImGui::TreePush("NEE Sample count apply button");
-				if (ImGui::Button("Apply"))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT, nee_sample_count);
-
-					m_render_window->set_render_dirty(true);
-					m_renderer->recompile_kernels();
-				}
-				ImGui::TreePop();
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			}
-			ImGui::EndDisabled();
-
 			const char* items_base_strategy[]	 = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
 													 "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)" };
 			const char* tooltips_base_strategy[] = {

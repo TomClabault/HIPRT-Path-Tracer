@@ -93,7 +93,6 @@ public:
 
 	static const std::string DIRECT_LIGHT_NEE_ESTIMATOR;
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
-	static const std::string DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT;
 	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS;
 	static const std::string DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY;
 	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE;
