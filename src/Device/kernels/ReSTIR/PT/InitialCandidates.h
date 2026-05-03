@@ -225,9 +225,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	initial_surface.shading_point	 = closest_hit_info.inter_point;
 	initial_surface.view_direction	 = -ray.direction;
 
+	ReSTIRPTReservoir restir_pt_initial_reservoir;
+
 	ReSTIRPTReservoirSample restir_pt_initial_sample;
 	restir_pt_initial_sample.pixel_index = pixel_index;
-	ReSTIRPTReservoir restir_pt_initial_reservoir;
 
 	ColorRGB32F path_unweighted_throughput = ColorRGB32F(1.0f);
 	// BSDF_visible_point * cos_theta_visible_point

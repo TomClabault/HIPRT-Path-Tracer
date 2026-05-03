@@ -17,7 +17,6 @@ STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
 
 # TODO remove when issue #7 (https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/issues/7) is fixed
 if (true)
-	file(COPY ${OROCHI_SUBMODULE_DIR}/ParallelPrimitives DESTINATION ${CMAKE_SOURCE_DIR}/contrib/Orochi)
 	file(COPY ${HIPRT_SUBMODULE_DIR}/hiprt/impl DESTINATION ${CMAKE_SOURCE_DIR}/hiprt)
 
 	file(GLOB HIPRT_FILES_TO_COPY ${HIPRT_SUBMODULE_DIR}/hiprt/*.h ${HIPRT_SUBMODULE_DIR}/hiprt/*.in)
