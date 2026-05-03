@@ -73,8 +73,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 732
-#define DEBUG_PIXEL_Y 472
+#define DEBUG_PIXEL_X 721
+#define DEBUG_PIXEL_Y 404
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -339,7 +339,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
 	m_render_data.buffers.vertex_normals	 = parsed_scene.vertex_normals.data();
 	m_render_data.buffers.texcoords			 = parsed_scene.texcoords.data();
-	m_render_data.buffers.triangles_areas	 = parsed_scene.triangle_areas.data();
+
+	ThreadManager::join_threads(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS);
+	m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 	m_render_data.buffers.material_textures = parsed_scene.textures.data();

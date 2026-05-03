@@ -76,7 +76,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		// Adding the direct lighting contribution at the first hit in the direction of the camera
 		NEEDeferredMISContext trash_context;
 		camera_outgoing_radiance +=
-			estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, random_number_generator, trash_context);
+			estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, trash_context, random_number_generator);
 	}
 
 	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];

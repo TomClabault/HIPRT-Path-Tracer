@@ -78,7 +78,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 			if (bounce > 0)
 			{
 				intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-				do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context);
+				do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, closest_hit_info, nee_deferred_MIS_context,
+									random_number_generator);
 			}
 
 			if (intersection_found)
@@ -96,8 +97,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
 				if (bounce > 0 || render_data.render_settings.enable_direct_lighting)
 				{
-					ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator,
-																	  nee_deferred_MIS_context);
+					ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y,
+																	  nee_deferred_MIS_context, random_number_generator);
 
 					sanity_check<true>(render_data, ray_payload.ray_color, x, y);
 				}

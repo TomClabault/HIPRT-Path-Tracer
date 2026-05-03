@@ -2228,36 +2228,6 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 {
 	pdf = 0.0f;
 
-	//// Computing the weights for sampling the lobes
-	// bool is_outside_object = !bsdf_context.volume_state.inside_material;
-
-	// float coat_sampling_weight;
-	// float sheen_sampling_weight;
-	// float metal_1_sampling_weight;
-	// float metal_2_sampling_weight;
-	// float retro_reflection_sampling_weight;
-	// float specular_sampling_weight;
-	// float diffuse_sampling_weight;
-	// float glass_sampling_weight;
-	// float diffuse_transmission_weight;
-	// principled_bsdf_get_lobes_weights(bsdf_context.material, is_outside_object, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight,
-	//								  metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight,
-	//								  glass_sampling_weight, diffuse_transmission_weight);
-
-	// float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
-	// float metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
-	// float glass_sampling_proba, diffuse_transmission_sampling_proba;
-	// float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-	//								? 1.0f
-	//								: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
-	// principled_bsdf_get_lobes_sampling_proba(
-	//	render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior, coat_sampling_weight,
-	//	sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight,
-	//	diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
-
-	//	coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba,
-	//	diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
-
 	float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
 	float metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
 	float glass_sampling_proba, diffuse_transmission_sampling_proba;
