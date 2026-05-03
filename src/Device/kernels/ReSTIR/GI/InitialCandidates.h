@@ -11,9 +11,9 @@
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
+#include "Device/includes/ReSTIR/GI/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
-#include "Device/includes/ReSTIR/GI_PT/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SanityCheck.h"
 
