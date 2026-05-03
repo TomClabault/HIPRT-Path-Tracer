@@ -19,6 +19,7 @@ ReflowComments: 'true'
 SortIncludes: 'false'
 ContinuationIndentWidth: '4'
 InsertNewlineAtEOF: true
+QualifierAlignment: Left
 TabWidth: '4'
 UseTab: Always
 
