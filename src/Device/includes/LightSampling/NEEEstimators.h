@@ -714,7 +714,7 @@ HIPRT_DEVICE ColorRGB32F do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 											 Xorshift32Generator& random_number_generator)
 {
 #if !DirectLightNEEEstimatorHasBSDFSampling
-	return;
+	return ColorRGB32F(0.0f);
 #endif
 
 	if (ray_payload.bounce == 1 && !render_data.render_settings.enable_direct_lighting)
