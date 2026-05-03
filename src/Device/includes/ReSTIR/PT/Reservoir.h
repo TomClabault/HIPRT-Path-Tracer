@@ -31,8 +31,6 @@ struct ReSTIRPTReservoirSample
 	ColorRGB32F path_radiance;
 	// TODO pack rgb9e5
 	ColorRGB32F unweighted_throughput_to_visible_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
-	// TODO pack rgb9e5
-	ColorRGB32F unweighted_throughput_to_sample_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;

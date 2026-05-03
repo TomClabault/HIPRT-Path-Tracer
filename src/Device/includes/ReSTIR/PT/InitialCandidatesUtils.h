@@ -12,7 +12,6 @@
 HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_data,
 														RayPayload& ray_payload,
 														ColorRGB32F& path_unweighted_throughput,
-														ColorRGB32F& path_unweighted_throughput_to_sample_point,
 														HitInfo& closest_hit_info,
 														ColorRGB32F bsdf_color,
 														const float3_t& bounce_direction,
@@ -36,9 +35,8 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_
 							 random_number_generator))
 	{
 		// Killed by russian roulette
-		path_unweighted_throughput				   = ColorRGB32F(0.0f);
-		path_unweighted_throughput_to_sample_point = ColorRGB32F(0.0f);
-		ray_payload.throughput					   = ColorRGB32F(0.0f);
+		path_unweighted_throughput = ColorRGB32F(0.0f);
+		ray_payload.throughput	   = ColorRGB32F(0.0f);
 
 		return false;
 	}
@@ -46,8 +44,6 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_
 	{
 		// Not killed by russian roulette so we're scaling the throughputs
 		path_unweighted_throughput *= rr_throughput_scaling;
-		if (ray_payload.bounce > 1)
-			path_unweighted_throughput_to_sample_point *= rr_throughput_scaling;
 	}
 
 	// Dispersion ray throughput filter
@@ -57,13 +53,6 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_
 	// happen: with some material, the throughput can get so low that it becomes denormalized and
 	// this can cause issues in some parts of the renderer (most notably the NaN detection)
 	path_unweighted_throughput.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
-
-	if (ray_payload.bounce > 1)
-	{
-		path_unweighted_throughput_to_sample_point *= dispersion_throughput;
-		path_unweighted_throughput_to_sample_point *= unweighted_throughput;
-		path_unweighted_throughput_to_sample_point.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
-	}
 
 	ray_payload.throughput *= dispersion_throughput;
 	ray_payload.throughput *= weighted_throughput;
@@ -82,7 +71,6 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& render_
 HIPRT_HOST_DEVICE bool ReSTIR_PT_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 															  RayPayload& ray_payload,
 															  ColorRGB32F& path_unweighted_throughput,
-															  ColorRGB32F& path_unweighted_throughput_to_sample_point,
 															  HitInfo& closest_hit_info,
 															  float3_t view_direction,
 															  hiprtRay& out_ray,
@@ -112,8 +100,8 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_compute_next_indirect_bounce(HIPRTRenderData& r
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	if (!ReSTIR_PT_update_ray_throughputs(render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info,
-										  bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context))
+	if (!ReSTIR_PT_update_ray_throughputs(render_data, ray_payload, path_unweighted_throughput, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf,
+										  random_number_generator, nee_deferred_MIS_context))
 		return false;
 
 	out_ray.origin	  = closest_hit_info.inter_point;

@@ -37,7 +37,6 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 									   float3_t view_direction,
 									   RayPayload& ray_payload,
 									   ColorRGB32F path_unweighted_throughput,
-									   ColorRGB32F path_unweighted_throughput_to_sample_point,
 									   ColorRGB32F first_bsdf_throughput,
 									   ReSTIRPTReservoir& restir_pt_initial_reservoir,
 									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
@@ -82,7 +81,6 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			continue;
 
 		restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-		restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
 		restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
 		restir_pt_initial_sample.path_radiance							= light_sample.emission;
 		restir_pt_initial_sample.target_function						= (path_unweighted_throughput * light_sample.emission).luminance();
@@ -167,8 +165,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	restir_pt_initial_sample.pixel_index = pixel_index;
 	ReSTIRPTReservoir restir_pt_initial_reservoir;
 
-	ColorRGB32F path_unweighted_throughput				   = ColorRGB32F(1.0f);
-	ColorRGB32F path_unweighted_throughput_to_sample_point = ColorRGB32F(1.0f);
+	ColorRGB32F path_unweighted_throughput = ColorRGB32F(1.0f);
 	// BSDF_visible_point * cos_theta_visible_point
 	ColorRGB32F first_bsdf_throughput = ColorRGB32F(1.0f);
 
@@ -202,16 +199,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					if (bounce == 1)
 						ReSTIR_PT_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
-					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point,
-										 first_bsdf_throughput, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
-										 nee_deferred_MIS_context, random_number_generator, x, y);
+					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput, first_bsdf_throughput,
+										 restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context,
+										 random_number_generator, x, y);
 				}
 
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info;
-				bool valid_indirect_bounce = ReSTIR_PT_compute_next_indirect_bounce(
-					render_data, ray_payload, path_unweighted_throughput, path_unweighted_throughput_to_sample_point, closest_hit_info, -ray.direction, ray,
-					random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
+				bool valid_indirect_bounce =
+					ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, closest_hit_info, -ray.direction, ray,
+														   random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
@@ -256,7 +253,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 				// This unweighted throughput to visible point is the full unweighted throughput but without the first BSDF contribution
 				restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-				restir_pt_initial_sample.unweighted_throughput_to_sample_point	= path_unweighted_throughput_to_sample_point;
 				restir_pt_initial_sample.path_radiance							= envmap_emission;
 				restir_pt_initial_sample.target_function						= (path_unweighted_throughput * envmap_emission).luminance();
 				restir_pt_initial_sample.x3_is_NEE								= false;
