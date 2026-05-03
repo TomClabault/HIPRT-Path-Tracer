@@ -405,6 +405,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 
 // TODO performance improvements branch:
+// - FP16 wherever possible
 // - Shadow rays NEE RR
 // - Use semi packed material in the shaders with unorm floats as uchar instead of full float, unpacing should be cheap and easy for those so we may gain
 // something
