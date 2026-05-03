@@ -24,12 +24,15 @@ struct ReSTIRPTReservoirSample
 {
 	float3_t sample_point						   = make_float3(-1.0f, -1.0f, -1.0f);
 	float3_t sample_point_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
+	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
+	Octahedral24BitNormalPadded32b sample_point_shading_normal;
 	DeviceUnpackedEffectiveMaterial sample_point_material;
 
 	int sample_point_primitive_index = -1;
 
 	ColorRGB32F path_radiance;
-	// TODO pack rgb9e5
+	// All products of BSDFs from the sample point included to the previous to last vertex (not the NEE vertex) of the path. Used as a cheaper proxy in the
+	// target function during spatial / temporal reuse instead of having to re-evaluate the BSDFs at the sample point for every candidate during reuse.
 	ColorRGB32F unweighted_throughput_to_visible_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
@@ -55,9 +58,6 @@ struct ReSTIRPTReservoirSample
 	//
 	// TODO true by default
 	bool sample_point_rough_enough = false;
-
-	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
-	Octahedral24BitNormalPadded32b sample_point_shading_normal;
 
 	// Index of the pixel that produced this sample/reservoir during the initial candidates sampling
 	// Used by some algorithms such as ReSTIR PG

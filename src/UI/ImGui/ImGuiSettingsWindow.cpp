@@ -1461,16 +1461,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-					if (ImGui::CollapsingHeader("Rejection Heuristics"))
-					{
-						ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
-
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_GI>();
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_GI>(
 						[&render_settings, this]()
@@ -1485,6 +1475,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 						});
 					ImGui::PopItemWidth();
+
+					if (ImGui::CollapsingHeader("Rejection Heuristics"))
+					{
+						ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
+
+						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_GI>();
+
+						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
 
 					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_GI>();
 
@@ -1578,17 +1578,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-					if (ImGui::CollapsingHeader("Rejection Heuristics"))
-					{
-						ImGui::TreePush("ReSTIR PT - Rejection Heuristics Tree");
-
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
+					draw_ReSTIR_PT_initial_candidates_panel();
+
 					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
@@ -1602,6 +1594,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 						});
 					ImGui::PopItemWidth();
+
+					if (ImGui::CollapsingHeader("Rejection Heuristics"))
+					{
+						ImGui::TreePush("ReSTIR PT - Rejection Heuristics Tree");
+
+						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
+
+						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
 
 					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_PT>();
 
@@ -4078,6 +4080,30 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 		ImGui::TreePop();
 		ImGui::PopID();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+}
+
+void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
+{
+	if (ImGui::CollapsingHeader("Initial Candidates"))
+	{
+		ImGui::TreePush("ReSTIR PT - Initial Candidates Tree");
+
+		if (ImGui::SliderInt("Initial path trees count", &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.initial_path_trees_count, 1,
+							 8))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::SliderInt("NEE RIS Light samples count",
+							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 16))
+			m_render_window->set_render_dirty(true);
+
+		if (ImGui::SliderInt("NEE RIS BSDF samples count",
+							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates, 0, 4))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
 	}
 }
 

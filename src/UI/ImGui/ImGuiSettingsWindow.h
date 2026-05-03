@@ -65,6 +65,8 @@ private:
 	void draw_ReSTIR_spatial_reuse_panel(std::function<void(void)> draw_before_panel = {});
 	template <int ReSTIRVariant>
 	void draw_ReSTIR_bias_correction_panel();
+	void draw_ReSTIR_PT_initial_candidates_panel();
+
 	void draw_next_event_estimation_plus_plus_panel();
 	bool use_nee_plus_plus_checkbox(const std::string& text = "Use NEE++");
 	void draw_principled_bsdf_energy_conservation();

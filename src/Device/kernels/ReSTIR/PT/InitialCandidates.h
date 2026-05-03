@@ -46,50 +46,115 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 									   int x,
 									   int y)
 {
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
-
-	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+	int nb_light_candidates = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates;
+	int nb_bsdf_candidates	= render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates;
+	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
 	{
-		LightSamplePointInformation& light_sample = light_samples[i];
+		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+			sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+									  closest_hit_info.geometric_normal, closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
-		float nee_connection_pdf_solid_angle =
-			area_to_solid_angle_pdf(light_sample.area_measure_pdf, hippt::length(light_sample.point_on_light - closest_hit_info.inter_point),
-									compute_cosine_term_at_light_source(light_sample.light_source_normal,
-																		hippt::normalize(closest_hit_info.inter_point - light_sample.point_on_light)));
+		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+		{
+			LightSamplePointInformation& light_sample = light_samples[i];
 
-		if (nee_connection_pdf_solid_angle <= 0.0f)
-			continue;
+			float nee_connection_pdf_solid_angle =
+				area_to_solid_angle_pdf(light_sample.area_measure_pdf, hippt::length(light_sample.point_on_light - closest_hit_info.inter_point),
+										compute_cosine_term_at_light_source(light_sample.light_source_normal,
+																			hippt::normalize(closest_hit_info.inter_point - light_sample.point_on_light)));
 
-		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
-		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light					 = hippt::length(shadow_ray_direction);
-		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+			if (nee_connection_pdf_solid_angle <= 0.0f)
+				continue;
 
-		hiprtRay shadow_ray;
-		shadow_ray.origin	 = shadow_ray_origin;
-		shadow_ray.direction = shadow_ray_direction_normalized;
+			float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+			float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+			float distance_to_light					 = hippt::length(shadow_ray_direction);
+			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
-		NEEPlusPlusContext nee_plus_plus_context;
-		nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator, ray_payload.bounce);
+			hiprtRay shadow_ray;
+			shadow_ray.origin	 = shadow_ray_origin;
+			shadow_ray.direction = shadow_ray_direction_normalized;
 
-		if (in_shadow)
-			continue;
+			NEEPlusPlusContext nee_plus_plus_context;
+			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+															   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
-		restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-		restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
-		restir_pt_initial_sample.path_radiance							= light_sample.emission;
-		restir_pt_initial_sample.target_function						= (path_unweighted_throughput * light_sample.emission).luminance();
+			if (in_shadow)
+				continue;
 
-		constexpr float mis_weight = 1.0f / DirectLightSampleCount<DirectLightSamplingStrategy>();
-		float weight			   = mis_weight * (ray_payload.throughput * light_sample.emission / nee_connection_pdf_solid_angle).luminance();
+			restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+			restir_pt_initial_sample.incident_light_info_at_sample_point	= BSDFIncidentLightInfo::NO_INFO;
+			restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
+			restir_pt_initial_sample.path_radiance							= light_sample.emission;
+			restir_pt_initial_sample.target_function						= (path_unweighted_throughput * light_sample.emission).luminance();
 
-		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+			BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+			BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
+									 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+									 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+
+			constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightSampleCount<DirectLightSamplingStrategy>();
+			float bsdf_pdf								  = bsdf_dispatcher_pdf(render_data, bsdf_context);
+			float nee_mis_weight =
+				balance_heuristic(nee_connection_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf,
+								  nb_bsdf_candidates);
+			float mis_weight = multi_light_sample_mis_weight * nee_mis_weight;
+
+			float weight = mis_weight * (ray_payload.throughput * light_sample.emission / nee_connection_pdf_solid_angle).luminance();
+
+			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+		}
+	}
+
+	for (int bsdf_candidate = 0; bsdf_candidate < nb_bsdf_candidates; bsdf_candidate++)
+	{
+		float bsdf_sample_pdf;
+		float3_t sampled_bsdf_direction;
+		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+
+		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+		bsdf_dispatcher_sample<true>(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+		bsdf_context.to_light_direction = sampled_bsdf_direction;
+		bsdf_sample_pdf					= bsdf_dispatcher_pdf(render_data, bsdf_context);
+
+		ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
+		if (bsdf_sample_pdf > 0.0f)
+		{
+			hiprtRay new_ray;
+			new_ray.origin	  = closest_hit_info.inter_point;
+			new_ray.direction = sampled_bsdf_direction;
+
+			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+			bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
+																	 ray_payload.bounce, random_number_generator);
+
+			// Checking that we did hit something and if we hit something,
+			// it needs to be emissive
+			if (!intersection_found || shadow_light_ray_hit_info.hit_emission.is_black() ||
+				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) <= 0.0f)
+				continue;
+
+			restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
+			restir_pt_initial_sample.incident_light_info_at_sample_point	= incident_light_info;
+			restir_pt_initial_sample.sample_point_incident_light_direction	= sampled_bsdf_direction;
+			restir_pt_initial_sample.path_radiance							= shadow_light_ray_hit_info.hit_emission;
+			restir_pt_initial_sample.target_function						= (path_unweighted_throughput * shadow_light_ray_hit_info.hit_emission).luminance();
+
+			float light_sampler_solid_angle_pdf =
+				pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+														 ray_payload.material, shadow_light_ray_hit_info, sampled_bsdf_direction);
+			float nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
+													 nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+			float weight		 = nee_mis_weight * (ray_payload.throughput * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf).luminance();
+
+			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+		}
 	}
 }
 
