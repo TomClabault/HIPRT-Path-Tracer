@@ -1424,7 +1424,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items,
 												 IM_ARRAYSIZE(items), tooltips))
 			{
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_PG)
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PG)
 				{
 					// This is ReSTIR PG. Its enabled through ReSTIR GI/PT so let's enable ReSTIR PT
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_PT);
