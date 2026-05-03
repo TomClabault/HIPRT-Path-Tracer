@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 															  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, ray_payload.material,
-													   ray_payload.throughput);
+													   ray_throughput_to_visible_point);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
