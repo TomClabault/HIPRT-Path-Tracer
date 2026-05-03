@@ -15,6 +15,7 @@ struct NEEDeferredMISContextSpecialized
 {
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
+												const RayVolumeState& volume_state,
 												const DeviceUnpackedEffectiveMaterial& material,
 												const ColorRGB32F& ray_throughput)
 	{
