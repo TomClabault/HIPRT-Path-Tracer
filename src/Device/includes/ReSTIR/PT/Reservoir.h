@@ -43,7 +43,7 @@ struct ReSTIRPTReservoirSample
 	unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
 	// TODO can be stored in outgoing_radiance_to_first_hit?
-	float target_function = 0.0f;
+	float target_functionnn = 0.0f;
 
 	// Whether or not the sample point is on a material that is rough enough to be reconnected
 	// If the sample point is on a mirror for example, reconnecting to that point from our center pixel
@@ -109,7 +109,7 @@ struct ReSTIRPTReservoir
 		if (random_number_generator() < reservoir_resampling_weight / weight_sum)
 		{
 			sample				   = other_reservoir.sample;
-			sample.target_function = target_function;
+			sample.target_functionnn = target_function;
 
 			return true;
 		}
@@ -122,7 +122,7 @@ struct ReSTIRPTReservoir
 		if (weight_sum == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_function * weight_sum;
+			UCW = 1.0f / sample.target_functionnn * weight_sum;
 	}
 
 	HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
@@ -131,7 +131,7 @@ struct ReSTIRPTReservoir
 		if (weight_sum == 0.0f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
+			UCW = 1.0f / sample.target_functionnn * weight_sum * normalization_numerator / normalization_denominator;
 
 		// Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
 		M = hippt::min(M, 1000000);
@@ -176,16 +176,16 @@ struct ReSTIRPTReservoir
 			std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
 			Debug::debugbreak();
 		}
-		else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
+		else if (std::isnan(sample.target_functionnn) || std::isinf(sample.target_functionnn))
 		{
 			std::lock_guard<std::mutex> lock(restir_pt_log_mutex);
 			std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
 			Debug::debugbreak();
 		}
-		else if (sample.target_function < 0)
+		else if (sample.target_functionnn < 0)
 		{
 			std::lock_guard<std::mutex> lock(restir_pt_log_mutex);
-			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_functionnn
 					  << std::endl;
 			Debug::debugbreak();
 		}

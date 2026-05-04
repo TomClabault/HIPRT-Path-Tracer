@@ -207,7 +207,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 #endif
 
 	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight,
-													 initial_candidates_reservoir.sample.target_function,
+													 initial_candidates_reservoir.sample.target_functionnn,
 													 /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 		selected_sample = INITIAL_CANDIDATES_ID;
 

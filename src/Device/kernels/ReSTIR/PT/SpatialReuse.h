@@ -121,7 +121,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 			if (is_center_pixel)
 				// No need to evaluate the center sample at the center pixel, that's exactly
 				// the target function of the center reservoir
-				target_function_at_center = neighbor_reservoir.sample.target_function;
+				target_function_at_center = neighbor_reservoir.sample.target_functionnn;
 			else
 				target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample,
 																									center_pixel_surface, random_number_generator);
@@ -145,8 +145,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_functionnn, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			center_pixel_reservoir.sample.target_functionnn, neighbor_reservoir,
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
@@ -156,8 +156,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_functionnn, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			center_pixel_reservoir.sample.target_functionnn, neighbor_reservoir,
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);

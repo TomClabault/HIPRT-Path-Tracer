@@ -177,7 +177,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -215,7 +215,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
 
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
 			float denom_mc =
@@ -271,7 +271,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -312,7 +312,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
 
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
 			float denom_mc =
@@ -382,7 +382,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
 			float target_function_neighbor_sample_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -425,7 +425,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
 
 			float nume_mc = center_reservoir_M;
 			float denom_mc =
@@ -487,8 +487,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 		{
 			// Resampling a neighbor
 
-			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
-			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_function;
+			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
+			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_functionnn;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
 			float temporal_neighbor_M	   = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;

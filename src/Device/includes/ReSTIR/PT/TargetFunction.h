@@ -78,10 +78,26 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 	if (bsdf_pdf > 0.0f)
 		visible_point_bsdf_color *= hippt::abs(cosine_term);
 
+	float3_t view_direction					 = hippt::normalize(surface.shading_point - sample.sample_point);
+	float3_t to_light_direction_sample_point = sample.sample_point_incident_light_direction;
+	float3_t shading_normal_sample_point	 = sample.sample_point_shading_normal.unpack();
+	float3_t geometric_normal_sample_point	 = sample.sample_point_geometric_normal.unpack();
+
+	// TODO Reproducing roughness accumulation
+	// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
+	// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
+	BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
+										   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point),
+										   // TODO proper update volume state for the sample point
+										   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.sample_point_material), 0.0f);
+
+	float trash_pdf;
+	ColorRGB32F sample_point_bsdf_color	 = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
+	ColorRGB32F secondary_hit_throughput = sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+
 	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
 	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
-	ColorRGB32F full_throughput = visible_point_bsdf_color * sample.unweighted_throughput_to_visible_point;
-	return (full_throughput * sample.path_radiance).luminance();
+	return (visible_point_bsdf_color * sample_point_bsdf_color * sample.path_radiance).luminance();
 }
 
 #endif
