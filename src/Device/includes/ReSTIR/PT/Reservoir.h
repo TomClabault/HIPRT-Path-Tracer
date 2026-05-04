@@ -31,9 +31,6 @@ struct ReSTIRPTReservoirSample
 	int sample_point_primitive_index = -1;
 
 	ColorRGB32F path_radiance;
-	// All products of BSDFs from the sample point included to the previous to last vertex (not the NEE vertex) of the path. Used as a cheaper proxy in the
-	// target function during spatial / temporal reuse instead of having to re-evaluate the BSDFs at the sample point for every candidate during reuse.
-	ColorRGB32F unweighted_throughput_to_visible_point = ColorRGB32F(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
@@ -108,7 +105,7 @@ struct ReSTIRPTReservoir
 
 		if (random_number_generator() < reservoir_resampling_weight / weight_sum)
 		{
-			sample				   = other_reservoir.sample;
+			sample					 = other_reservoir.sample;
 			sample.target_functionnn = target_function;
 
 			return true;

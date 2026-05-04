@@ -123,8 +123,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_functionnn;
 			else
-				target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample,
-																									center_pixel_surface, random_number_generator);
+				target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface,
+																								   random_number_generator);
 		}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M

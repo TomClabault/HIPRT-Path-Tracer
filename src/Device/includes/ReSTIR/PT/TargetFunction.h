@@ -91,13 +91,14 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 										   // TODO proper update volume state for the sample point
 										   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.sample_point_material), 0.0f);
 
+	// TODO can we use a simple target function visible point only for perf?
 	float trash_pdf;
-	ColorRGB32F sample_point_bsdf_color	 = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
-	ColorRGB32F secondary_hit_throughput = sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+	ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
+	ColorRGB32F sample_point_throughput = sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 
 	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
 	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
-	return (visible_point_bsdf_color * sample_point_bsdf_color * sample.path_radiance).luminance();
+	return (visible_point_bsdf_color * sample_point_throughput * sample.path_radiance).luminance();
 }
 
 #endif

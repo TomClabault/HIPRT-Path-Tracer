@@ -18,8 +18,7 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffecti
 	if (NoL <= 0.0f)
 		return ColorRGB32F(0.0f);
 
-	// pdf = NoL * hippt::M_INV_PI;
-	pdf = 1.0f / (2.0f * hippt::M_Pi);
+	pdf = NoL * hippt::M_INV_PI;
 
 	return material.base_color * hippt::M_INV_PI;
 }
@@ -31,8 +30,7 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(float NoL)
 	if (NoL <= 0.0f)
 		return 0.0f;
 
-	return 1.0f / (2.0f * hippt::M_Pi);
-	// return NoL * hippt::M_INV_PI;
+	return NoL * hippt::M_INV_PI;
 }
 
 /**
@@ -48,8 +46,7 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffec
 													   Xorshift32Generator& random_number_generator,
 													   BSDFIncidentLightInfo& out_sampled_light_info)
 {
-	sampled_direction = uniform_hemisphere_sample_around_normal_world_space(shading_normal, random_number_generator);
-	// sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
+	sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
 
 	out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 

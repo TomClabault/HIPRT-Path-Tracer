@@ -88,28 +88,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		{
 			// Only doing the shading if we do actually have a sample
 
-			float3_t restir_resampled_indirect_direction;
+			float3_t to_light_direction_visible_point;
 			if (resampling_reservoir.sample.is_envmap_path())
-				restir_resampled_indirect_direction = resampling_reservoir.sample.sample_point;
+				to_light_direction_visible_point = resampling_reservoir.sample.sample_point;
 			else
-				restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
+				to_light_direction_visible_point = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
 
 			// Computing the BSDF throughput at the first hit
 			//  - view direction: towards the camera
 			//  - incident light direction: towards the sample point
 			float bsdf_pdf_first_hit;
 			BSDFContext bsdf_first_hit_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-											   restir_resampled_indirect_direction, resampling_reservoir.sample.incident_light_info_at_visible_point,
+											   to_light_direction_visible_point, resampling_reservoir.sample.incident_light_info_at_visible_point,
 											   ray_payload.volume_state, false, ray_payload.material, 0.0f);
 			ColorRGB32F bsdf_first_hit = bsdf_dispatcher_eval(render_data, bsdf_first_hit_context, bsdf_pdf_first_hit, random_number_generator);
 
-			ColorRGB32F first_hit_throughput;
+			ColorRGB32F first_hit_throughput(0.0f);
 			if (bsdf_pdf_first_hit > 0.0f)
-				first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
+				first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
 
 			if (resampling_reservoir.sample.is_envmap_path())
 				camera_outgoing_radiance +=
-					path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index) *
+					path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 1, pixel_index) *
 					resampling_reservoir.UCW;
 			else
 			{

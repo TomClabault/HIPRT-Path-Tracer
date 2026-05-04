@@ -67,11 +67,11 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index	 = 0;
-		common_spatial_pass.number_of_passes	 = 1;
-		common_spatial_pass.reuse_radius		 = 0;
-		common_spatial_pass.reuse_neighbor_count = 1;
+		common_spatial_pass.number_of_passes	 = 2;
+		common_spatial_pass.reuse_radius		 = 20;
+		common_spatial_pass.reuse_neighbor_count = 5;
 
-		common_spatial_pass.debug_neighbor_location			  = true;
+		common_spatial_pass.debug_neighbor_location			  = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
 		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;

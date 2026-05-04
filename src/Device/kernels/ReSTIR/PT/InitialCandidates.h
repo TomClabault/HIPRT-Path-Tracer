@@ -94,10 +94,9 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 			ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
 
-			restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-			restir_pt_initial_sample.incident_light_info_at_sample_point	= BSDFIncidentLightInfo::NO_INFO;
-			restir_pt_initial_sample.sample_point_incident_light_direction	= shadow_ray_direction_normalized;
-			restir_pt_initial_sample.path_radiance							= light_sample.emission;
+			restir_pt_initial_sample.incident_light_info_at_sample_point   = BSDFIncidentLightInfo::NO_INFO;
+			restir_pt_initial_sample.sample_point_incident_light_direction = shadow_ray_direction_normalized;
+			restir_pt_initial_sample.path_radiance						   = light_sample.emission;
 			// TODO can we just simplify target function to 1.0f and weight to mis_weight * 1.0f / (product PDF) ? instead of tracking unweighted throughput et
 			// al.?
 			restir_pt_initial_sample.target_functionnn = (path_unweighted_throughput * bsdf_throughput * light_sample.emission).luminance();
@@ -143,10 +142,9 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) <= 0.0f)
 				continue;
 
-			restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-			restir_pt_initial_sample.incident_light_info_at_sample_point	= incident_light_info;
-			restir_pt_initial_sample.sample_point_incident_light_direction	= sampled_bsdf_direction;
-			restir_pt_initial_sample.path_radiance							= shadow_light_ray_hit_info.hit_emission;
+			restir_pt_initial_sample.incident_light_info_at_sample_point   = incident_light_info;
+			restir_pt_initial_sample.sample_point_incident_light_direction = sampled_bsdf_direction;
+			restir_pt_initial_sample.path_radiance						   = shadow_light_ray_hit_info.hit_emission;
 			restir_pt_initial_sample.target_functionnn = (path_unweighted_throughput * bsdf_throughput * shadow_light_ray_hit_info.hit_emission).luminance();
 
 			float light_sampler_solid_angle_pdf =
@@ -330,10 +328,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					ColorRGB32F envmap_emission =
 						path_tracing_miss_gather_envmap(render_data, ColorRGB32F(1.0f), ray.direction, ray_payload.bounce, pixel_index);
 
-					// This unweighted throughput to visible point is the full unweighted throughput but without the first BSDF contribution
-					restir_pt_initial_sample.unweighted_throughput_to_visible_point = path_unweighted_throughput / first_bsdf_throughput;
-					restir_pt_initial_sample.path_radiance							= envmap_emission;
-					restir_pt_initial_sample.target_functionnn						= (path_unweighted_throughput * envmap_emission).luminance();
+					restir_pt_initial_sample.path_radiance	   = envmap_emission;
+					restir_pt_initial_sample.target_functionnn = (path_unweighted_throughput * envmap_emission).luminance();
 					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
 																  random_number_generator);
 
@@ -352,6 +348,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	// the same value
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
+	restir_pt_initial_reservoir.M = 1;
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 
