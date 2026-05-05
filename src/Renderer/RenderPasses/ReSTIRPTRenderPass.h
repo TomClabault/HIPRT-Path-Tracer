@@ -59,6 +59,7 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+	virtual void compute_render_times() override;
 
 	virtual bool is_render_pass_used() const override;
 	void request_temporal_bufffers_clear();
@@ -70,6 +71,7 @@ public:
 
 private:
 	// Events for timing the time taken by spatial reuse
+	bool m_spatial_reuse_events_recorded = false;
 	oroEvent_t m_spatial_reuse_time_start;
 	oroEvent_t m_spatial_reuse_time_stop;
 

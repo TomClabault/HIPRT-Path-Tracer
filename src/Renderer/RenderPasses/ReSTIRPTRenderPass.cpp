@@ -344,12 +344,26 @@ void ReSTIRPTRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_da
 
 void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data)
 {
+	if (!render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
+		return;
+
 	void* launch_args[] = { &render_data };
 
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
-			m_renderer->get_main_stream());
+	// Emitting an event for timing all the spatial reuse passes combined
+	OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_start, m_renderer->get_main_stream()));
+
+	for (int i = 0; i < render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; i++)
+	{
+		configure_spatial_reuse_pass(render_data, i);
+		if (render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
+				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+				m_renderer->get_main_stream());
+	}
+
+	// Emitting the stop event
+	OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_stop, m_renderer->get_main_stream()));
+	m_spatial_reuse_events_recorded = true;
 }
 
 void ReSTIRPTRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
@@ -380,6 +394,10 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!m_render_pass_used_this_frame)
 		return false;
 
+	// Resetting the flag here just to know that we need not to read the spatial reuse
+	// pass oroEvents (if that flag isn't set to true before)
+	m_spatial_reuse_events_recorded = false;
+
 	compute_optimal_spatial_reuse_radii(render_data);
 
 	configure_initial_candidates_pass(render_data);
@@ -388,14 +406,7 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	configure_temporal_reuse_pass(render_data);
 	launch_temporal_reuse_pass(render_data);
 
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
-	{
-		for (int i = 0; i < render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; i++)
-		{
-			configure_spatial_reuse_pass(render_data, i);
-			launch_spatial_reuse_pass(render_data);
-		}
-	}
+	launch_spatial_reuse_pass(render_data);
 
 	configure_shading_pass(render_data);
 	launch_shading_pass(render_data);
@@ -468,6 +479,23 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTRenderPass::get_tracin
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
+}
+
+void ReSTIRPTRenderPass::compute_render_times()
+{
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	if (!is_render_pass_used())
+		return;
+
+	RenderPass::compute_render_times();
+
+	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
+	ReSTIRPTSettings& restir_pt_settings					 = render_data.render_settings.restir_pt_settings;
+
+	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start,
+											   m_spatial_reuse_time_stop));
 }
 
 bool ReSTIRPTRenderPass::is_render_pass_used() const
