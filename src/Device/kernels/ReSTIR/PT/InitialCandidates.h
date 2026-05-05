@@ -26,8 +26,6 @@ HIPRT_DEVICE void ReSTIR_PT_rc_di_vertex_fill_information(float3_t point_on_ligh
 {
 	restir_pt_initial_sample.rc_vertex = point_on_light;
 	restir_pt_initial_sample.rc_vertex_geometric_normal.pack(light_geometric_normal);
-	// restir_pt_initial_sample.rc_vertex_shading_normal.pack(closest_hit_info.shading_normal);
-	// restir_pt_initial_sample.rc_vertex_material = ray_payload.material;
 	restir_pt_initial_sample.rc_vertex_primitive_index = light_primitive_index;
 	restir_pt_initial_sample.sample_point_rough_enough = true;
 }
@@ -50,8 +48,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 									   ReSTIRSurface& initial_surface,
 									   float3_t view_direction,
 									   RayPayload& ray_payload,
-									   ColorRGB32F path_unweighted_throughput,
-									   ColorRGB32F first_bsdf_throughput,
+									   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+									   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
 									   ReSTIRPTReservoir& restir_pt_initial_reservoir,
 									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
 									   HitInfo& closest_hit_info,
@@ -115,20 +113,20 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 														light_sample.emissive_triangle_global_index, restir_pt_initial_sample);
 			if (ray_payload.bounce == 1)
 				restir_pt_initial_sample.incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
-			restir_pt_initial_sample.di_sample							= ray_payload.bounce == 0;
-			restir_pt_initial_sample.path_radiance						= light_sample.emission;
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
-			// TODO can we just simplify target function to 1.0f and weight to mis_weight * 1.0f / (product PDF) ? instead of tracking unweighted throughput et
-			// al.?
-			restir_pt_initial_sample.target_function = (path_unweighted_throughput * bsdf_throughput * light_sample.emission).luminance();
-
+			if (ray_payload.bounce <= 1)
+				restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
+			restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+			restir_pt_initial_sample.rc_vertex_incident_radiance = light_sample.emission * path_unweighted_throughput_after_rc_vertex;
+			if (ray_payload.bounce >= 2)
+				restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+			restir_pt_initial_sample.target_function =
+				(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_sample.emission).luminance();
 			constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 			float nee_mis_weight =
 				balance_heuristic(nee_connection_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf,
 								  nb_bsdf_candidates);
 			float mis_weight = multi_light_sample_mis_weight * nee_mis_weight;
-
-			float weight = mis_weight * (ray_payload.throughput * bsdf_throughput / nee_connection_pdf_solid_angle * light_sample.emission).luminance();
+			float weight	 = mis_weight * (ray_payload.throughput * bsdf_throughput / nee_connection_pdf_solid_angle * light_sample.emission).luminance();
 
 			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
@@ -168,11 +166,16 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 				ReSTIR_PT_rc_di_vertex_fill_information(point_on_light, shadow_light_ray_hit_info.hit_geometric_normal,
 														shadow_light_ray_hit_info.hit_prim_index, restir_pt_initial_sample);
 			if (ray_payload.bounce == 1)
-				restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
-			restir_pt_initial_sample.di_sample							= ray_payload.bounce == 0;
-			restir_pt_initial_sample.path_radiance						= shadow_light_ray_hit_info.hit_emission;
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
-			restir_pt_initial_sample.target_function = (path_unweighted_throughput * bsdf_throughput * shadow_light_ray_hit_info.hit_emission).luminance();
+				restir_pt_initial_sample.incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
+			if (ray_payload.bounce <= 1)
+				restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
+			restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+			restir_pt_initial_sample.rc_vertex_incident_radiance = shadow_light_ray_hit_info.hit_emission * path_unweighted_throughput_after_rc_vertex;
+			if (ray_payload.bounce >= 2)
+				restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+			restir_pt_initial_sample.target_function = (path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex *
+														bsdf_throughput * shadow_light_ray_hit_info.hit_emission)
+														   .luminance();
 
 			float light_sampler_solid_angle_pdf =
 				pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
@@ -267,9 +270,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		ReSTIRPTReservoirSample restir_pt_initial_sample;
 		restir_pt_initial_sample.pixel_index = pixel_index;
 
-		ColorRGB32F path_unweighted_throughput = ColorRGB32F(1.0f);
-		// BSDF_visible_point * cos_theta_visible_point
-		ColorRGB32F first_bsdf_throughput = ColorRGB32F(1.0f);
+		bool reconnection_vertex_chosen = false;
+		// Bounce throughput from rc_vertex to the next vertex included
+		ColorRGB32F path_unweighted_throughput_up_to_rc_vertex = ColorRGB32F(1.0f);
+		ColorRGB32F path_unweighted_throughput_after_rc_vertex = ColorRGB32F(1.0f);
 
 		// + 1 to nb_bounces here because we want "0" bounces to still act as one
 		// hit and to return some color
@@ -302,29 +306,34 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 							ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 					}
 
-					ReSTIR_PT_stream_NEE(render_data, initial_surface, -ray.direction, ray_payload, path_unweighted_throughput, first_bsdf_throughput,
-										 restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context,
-										 random_number_generator, x, y);
+					ReSTIR_PT_stream_NEE(render_data, initial_surface, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+										 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
+										 nee_deferred_MIS_context, random_number_generator, x, y);
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
-					bool valid_indirect_bounce =
-						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, path_unweighted_throughput, closest_hit_info, -ray.direction, ray,
-															   random_number_generator, incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
+					ColorRGB32F this_bounce_unweighted_throughput =
+						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator,
+															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
-					if (!valid_indirect_bounce)
+					if (reconnection_vertex_chosen)
+						path_unweighted_throughput_after_rc_vertex *= this_bounce_unweighted_throughput;
+					else
+						path_unweighted_throughput_up_to_rc_vertex *= this_bounce_unweighted_throughput;
+
+					if (this_bounce_unweighted_throughput == ReSTIR_PT_invalid_throughput)
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...
 						break;
 
 					if (bounce == 0)
-					{
 						restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
-						first_bsdf_throughput										  = path_unweighted_throughput;
-					}
 					else if (bounce == 1)
 					{
 						restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
 						restir_pt_initial_sample.rc_vertex_incident_light_direction	 = ray.direction;
+
+						// Hardcoded to bounce 2 for a simple reconnection shift at the first indirect vertex
+						reconnection_vertex_chosen = true;
 					}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -354,8 +363,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					ColorRGB32F envmap_emission =
 						path_tracing_miss_gather_envmap(render_data, ColorRGB32F(1.0f), ray.direction, ray_payload.bounce, pixel_index);
 
-					restir_pt_initial_sample.path_radiance	 = envmap_emission;
-					restir_pt_initial_sample.target_function = (path_unweighted_throughput * envmap_emission).luminance();
+					restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission;
+					restir_pt_initial_sample.target_function			 = (path_unweighted_throughput_up_to_rc_vertex * envmap_emission).luminance();
 					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
 																  random_number_generator);
 
@@ -401,7 +410,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		if (restir_pt_initial_reservoir.sample.is_envmap_path())
 		{
 			radiance_to_camera = bsdf_first_hit * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
-								 restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
+								 restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 		}
 		else
 		{
@@ -415,7 +424,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			ColorRGB32F bsdf_secondary_hit =
 				bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator) *
 				hippt::abs(hippt::dot(restir_pt_initial_reservoir.sample.rc_vertex_shading_normal.unpack(), to_light_direction_sample_point));
-			radiance_to_camera = bsdf_first_hit * bsdf_secondary_hit * restir_pt_initial_reservoir.sample.path_radiance * restir_pt_initial_reservoir.UCW;
+			radiance_to_camera =
+				bsdf_first_hit * bsdf_secondary_hit * restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 		}
 
 		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_pt_initial_reservoir.UCW;

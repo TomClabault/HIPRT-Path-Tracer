@@ -122,7 +122,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			secondary_hit_throughput	   = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 		}
 
-		camera_outgoing_radiance += first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.path_radiance * resampling_reservoir.UCW;
+		camera_outgoing_radiance += first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

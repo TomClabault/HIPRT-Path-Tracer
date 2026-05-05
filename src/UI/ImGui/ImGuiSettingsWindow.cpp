@@ -1160,6 +1160,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+			if (nee_estimator_disabled)
+				ImGuiRenderer::add_tooltip("The NEE estimator is controlled by ReSTIR PT.");
 			ImGui::EndDisabled(); // nee_estimator_disabled
 
 			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])

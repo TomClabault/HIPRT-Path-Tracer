@@ -102,7 +102,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 
 	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
 	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
-	return (visible_point_throughput * sample_point_throughput * sample.path_radiance).luminance();
+	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
 }
 
 #endif

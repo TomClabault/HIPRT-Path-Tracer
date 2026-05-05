@@ -31,7 +31,7 @@ struct ReSTIRPTReservoirSample
 
 	bool di_sample = false;
 
-	ColorRGB32F path_radiance;
+	ColorRGB32F rc_vertex_incident_radiance;
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 	// TODO all 'at sample' point variables should be replaced by rc_vertex variables
