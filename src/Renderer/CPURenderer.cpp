@@ -73,8 +73,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 35
-#define DEBUG_PIXEL_Y 26
+#define DEBUG_PIXEL_X 720
+#define DEBUG_PIXEL_Y 383
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -1524,10 +1524,7 @@ void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
 
 void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
 {
-	if (m_render_data.render_settings.nb_bounces > 0)
-	{
-		debug_render_pass([this](int x, int y) { ReSTIR_PT_InitialCandidates(m_render_data, x, y); });
-	}
+	debug_render_pass([this](int x, int y) { ReSTIR_PT_InitialCandidates(m_render_data, x, y); });
 }
 
 void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
@@ -1550,7 +1547,7 @@ void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
 
 void CPURenderer::launch_ReSTIR_PT_temporal_reuse_pass()
 {
-	if (m_render_data.render_settings.nb_bounces > 0 && m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+	if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
 	{
 		debug_render_pass([this](int x, int y) { ReSTIR_PT_TemporalReuse(m_render_data, x, y); });
 	}

@@ -72,68 +72,57 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 
 	ColorRGB32F camera_outgoing_radiance;
 	if (render_data.render_settings.enable_direct_lighting)
-	{
-		// Adding the direct lighting contribution at the first hit in the direction of the camera
-		NEEDeferredMISContext trash_context;
-		camera_outgoing_radiance +=
-			estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, trash_context, random_number_generator);
-	}
+		// Adding the directly visible emission from an emissive surface
+		camera_outgoing_radiance += ray_payload.material.emission;
 
 	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];
-	if (render_data.render_settings.nb_bounces > 0)
+	if (resampling_reservoir.UCW > 0.0f && (!resampling_reservoir.sample.di_sample || render_data.render_settings.enable_direct_lighting))
 	{
-		// Only doing the ReSTIR PT stuff if we have more than 1 bounce
+		// Only doing the shading if we do actually have a sample
 
-		if (resampling_reservoir.UCW > 0.0f)
+		float3_t to_light_direction_visible_point;
+		if (resampling_reservoir.sample.is_envmap_path())
+			to_light_direction_visible_point = resampling_reservoir.sample.rc_vertex;
+		else
+			to_light_direction_visible_point = hippt::normalize(resampling_reservoir.sample.rc_vertex - closest_hit_info.inter_point);
+
+		// Computing the BSDF throughput at the first hit
+		//  - view direction: towards the camera
+		//  - incident light direction: towards the sample point
+		float bsdf_pdf_first_hit;
+		BSDFContext bsdf_first_hit_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction_visible_point,
+										   resampling_reservoir.sample.incident_light_info_at_visible_point, ray_payload.volume_state, false,
+										   ray_payload.material, 0.0f);
+		ColorRGB32F bsdf_first_hit = bsdf_dispatcher_eval(render_data, bsdf_first_hit_context, bsdf_pdf_first_hit, random_number_generator);
+
+		ColorRGB32F first_hit_throughput(0.0f);
+		if (bsdf_pdf_first_hit > 0.0f)
+			first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
+
+		ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
+		if (resampling_reservoir.sample.is_envmap_path())
+			camera_outgoing_radiance +=
+				path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 1, pixel_index) * resampling_reservoir.UCW;
+		else if (!resampling_reservoir.sample.di_sample)
 		{
-			// Only doing the shading if we do actually have a sample
+			float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.rc_vertex);
+			float3_t to_light_direction_sample_point = resampling_reservoir.sample.rc_vertex_incident_light_direction;
+			float3_t shading_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_shading_normal.unpack();
+			float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_geometric_normal.unpack();
 
-			float3_t to_light_direction_visible_point;
-			if (resampling_reservoir.sample.is_envmap_path())
-				to_light_direction_visible_point = resampling_reservoir.sample.sample_point;
-			else
-				to_light_direction_visible_point = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
+			// Reproducing roughness accumulation
+			ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
+			// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
+			BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
+												   resampling_reservoir.sample.incident_light_info_at_sample_point, ray_payload.volume_state, false,
+												   resampling_reservoir.sample.rc_vertex_material, 0.0f);
 
-			// Computing the BSDF throughput at the first hit
-			//  - view direction: towards the camera
-			//  - incident light direction: towards the sample point
-			float bsdf_pdf_first_hit;
-			BSDFContext bsdf_first_hit_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-											   to_light_direction_visible_point, resampling_reservoir.sample.incident_light_info_at_visible_point,
-											   ray_payload.volume_state, false, ray_payload.material, 0.0f);
-			ColorRGB32F bsdf_first_hit = bsdf_dispatcher_eval(render_data, bsdf_first_hit_context, bsdf_pdf_first_hit, random_number_generator);
-
-			ColorRGB32F first_hit_throughput(0.0f);
-			if (bsdf_pdf_first_hit > 0.0f)
-				first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
-
-			if (resampling_reservoir.sample.is_envmap_path())
-				camera_outgoing_radiance +=
-					path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 1, pixel_index) *
-					resampling_reservoir.UCW;
-			else
-			{
-				float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.sample_point);
-				float3_t to_light_direction_sample_point = resampling_reservoir.sample.sample_point_incident_light_direction;
-				float3_t shading_normal_sample_point	 = resampling_reservoir.sample.sample_point_shading_normal.unpack();
-				float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.sample_point_geometric_normal.unpack();
-
-				// Reproducing roughness accumulation
-				ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
-				// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
-				BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point,
-													   to_light_direction_sample_point, resampling_reservoir.sample.incident_light_info_at_sample_point,
-													   ray_payload.volume_state, false, resampling_reservoir.sample.sample_point_material, 0.0f);
-
-				float trash_pdf;
-				ColorRGB32F bsdf_secondary_hit = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
-				ColorRGB32F secondary_hit_throughput =
-					bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
-
-				camera_outgoing_radiance +=
-					first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.path_radiance * resampling_reservoir.UCW;
-			}
+			float trash_pdf;
+			ColorRGB32F bsdf_secondary_hit = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
+			secondary_hit_throughput	   = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 		}
+
+		camera_outgoing_radiance += first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.path_radiance * resampling_reservoir.UCW;
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
@@ -148,7 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 									  ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_TARGET_FUNCTION)
 		path_tracing_accumulate_color(render_data, pixel_index,
-									  ColorRGB32F(resampling_reservoir.sample.target_functionnn) *
+									  ColorRGB32F(resampling_reservoir.sample.target_function) *
 										  render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_WEIGHT_SUM)
 		path_tracing_accumulate_color(render_data, pixel_index,

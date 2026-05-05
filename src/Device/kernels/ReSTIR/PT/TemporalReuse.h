@@ -143,7 +143,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel),
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
-				temporal_neighbor_reservoir.sample.sample_point, temporal_neighbor_reservoir.sample.sample_point_geometric_normal.unpack(),
+				temporal_neighbor_reservoir.sample.rc_vertex, temporal_neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 				center_pixel_surface.shading_point, render_data.g_buffer_prev_frame.primary_hit_position[temporal_neighbor_pixel_index],
 				render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 		}
@@ -207,7 +207,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 #endif
 
 	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight,
-													 initial_candidates_reservoir.sample.target_functionnn,
+													 initial_candidates_reservoir.sample.target_function,
 													 /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 		selected_sample = INITIAL_CANDIDATES_ID;
 

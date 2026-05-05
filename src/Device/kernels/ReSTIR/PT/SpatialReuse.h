@@ -109,10 +109,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 			//
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel),
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
-			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
-				neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_geometric_normal.unpack(), center_pixel_surface.shading_point,
-				render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
-				render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+			shift_mapping_jacobian =
+				get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(),
+															center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
+															render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 		}
 
 		float target_function_at_center = 0.0f;
@@ -121,10 +121,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 			if (is_center_pixel)
 				// No need to evaluate the center sample at the center pixel, that's exactly
 				// the target function of the center reservoir
-				target_function_at_center = neighbor_reservoir.sample.target_functionnn;
+				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
-				target_function_at_center = ReSTIR_PT_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface,
-																								   random_number_generator);
+				target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_SpatialTargetFunctionVisibility>(
+					render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 		}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
@@ -145,8 +145,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_functionnn, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_functionnn, neighbor_reservoir,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
@@ -156,8 +156,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_functionnn, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_functionnn, neighbor_reservoir,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);

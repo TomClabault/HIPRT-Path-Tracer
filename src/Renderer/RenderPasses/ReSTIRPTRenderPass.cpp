@@ -265,12 +265,9 @@ void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 {
 	void* launch_args[] = { &render_data };
 
-	if (render_data.render_settings.nb_bounces > 0)
-		// We only need to trace paths for the initial candidates if we have
-		// more than 1 bounce
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
-			m_renderer->get_main_stream());
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
+		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+		m_renderer->get_main_stream());
 }
 
 void ReSTIRPTRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_data)

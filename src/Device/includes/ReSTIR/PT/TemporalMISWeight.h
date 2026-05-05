@@ -177,7 +177,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -202,7 +202,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 				if (!initial_candidates_reservoir.sample.is_envmap_path())
 				{
 					float jacobian = get_jacobian_determinant_reconnection_shift(
-						initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(),
+						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -215,7 +215,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
 			float denom_mc =
@@ -271,7 +271,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -299,7 +299,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 				if (!initial_candidates_reservoir.sample.is_envmap_path())
 				{
 					float jacobian = get_jacobian_determinant_reconnection_shift(
-						initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(),
+						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -312,7 +312,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
 			float denom_mc =
@@ -382,7 +382,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
+			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_neighbor_sample_at_center	  = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
@@ -412,7 +412,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 				if (!initial_candidates_reservoir.sample.is_envmap_path())
 				{
 					float jacobian = get_jacobian_determinant_reconnection_shift(
-						initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(),
+						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -425,7 +425,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 				}
 			}
 
-			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_functionnn;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = center_reservoir_M;
 			float denom_mc =
@@ -487,8 +487,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 		{
 			// Resampling a neighbor
 
-			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_functionnn;
-			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_functionnn;
+			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_function;
 
 			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
 			float temporal_neighbor_M	   = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
@@ -530,7 +530,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 				if (!initial_candidates_reservoir.sample.is_envmap_path())
 				{
 					float jacobian = get_jacobian_determinant_reconnection_shift(
-						initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(),
+						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 

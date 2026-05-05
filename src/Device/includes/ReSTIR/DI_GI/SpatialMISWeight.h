@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_SPATIAL_MIS_WEIGHT_H
-#define DEVICE_RESTIR_DI_SPATIAL_MIS_WEIGHT_H
+#ifndef DEVICE_RESTIR_DI_GI_SPATIAL_MIS_WEIGHT_H
+#define DEVICE_RESTIR_DI_GI_SPATIAL_MIS_WEIGHT_H
 
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"

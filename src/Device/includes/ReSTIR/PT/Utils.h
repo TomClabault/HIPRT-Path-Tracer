@@ -35,15 +35,16 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	float3_t sample_direction;
 	if (reservoir.sample.is_envmap_path())
 	{
-		// For envmap path, the direction is stored in the 'sample_point' value
-		sample_direction		 = reservoir.sample.sample_point;
+		// For envmap path, the direction is stored in the 'rc_vertex' value
+		sample_direction		 = reservoir.sample.rc_vertex;
 		distance_to_sample_point = 1.0e35f;
 	}
 	else
 	{
 		// Not an envmap path, the direction is the difference between the current shading
 		// point and the reconnection point
-		sample_direction		 = reservoir.sample.sample_point - shading_point;
+
+		sample_direction		 = reservoir.sample.rc_vertex - shading_point;
 		distance_to_sample_point = hippt::length(sample_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
 		{

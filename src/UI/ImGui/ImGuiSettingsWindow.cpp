@@ -1151,6 +1151,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
 			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_base_strategy));
 
+			bool nee_estimator_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+			ImGui::BeginDisabled(nee_estimator_disabled);
 			if (ImGuiRenderer::ComboWithTooltips("NEE Estimator",
 												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 												 items, IM_ARRAYSIZE(items), tooltips, disabled_items))
@@ -1158,6 +1160,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+			ImGui::EndDisabled(); // nee_estimator_disabled
 
 			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
 			{
@@ -3884,6 +3887,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 						if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
 							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("Whether or not to gather statistics on the hit rate of the spatial reuse "
+														"pass (i.e. how many neighbors are rejected because of the G-Buffer heuristics vs. the maximum number "
+														"of neighbors that can be reused).\n\n"
+														""
+														"This is mainly useful to evaluate the effectiveness of the \"adaptive-directional spatial reuse\".\n"
+														"Note that this isn't great for performance.");
 					}
 
 					ImGui::EndDisabled();
@@ -3916,12 +3925,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 				ImGui::EndDisabled();
 
-				ImGuiRenderer::show_help_marker("Whether or not to gather statistics on the hit rate of the spatial reuse "
-												"pass (i.e. how many neighbors are rejected because of the G-Buffer heuristics vs. the maximum number "
-												"of neighbors that can be reused).\n\n"
-												""
-												"This is mainly useful to evaluate the effectiveness of the \"adaptive-directional spatial reuse\".\n"
-												"Note that this isn't great for performance.");
 				if (restir_settings.compute_spatial_reuse_hit_rate)
 				{
 					ImGui::TreePush("Spatial reuse hit rate statistics");

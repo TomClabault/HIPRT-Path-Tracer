@@ -74,8 +74,8 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 		common_spatial_pass.debug_neighbor_location			  = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
+		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
 		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;
-		common_spatial_pass.use_adaptive_directional_spatial_reuse = false;
 
 		common_spatial_pass.allow_converged_neighbors_reuse		 = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;
@@ -90,13 +90,13 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold	  = 0.1f;
 
-		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		neighbor_similarity_settings.use_roughness_similarity_heuristic = true;
 		neighbor_similarity_settings.roughness_similarity_threshold		= 0.25f;
 
-		use_jacobian_rejection_heuristic = true;
+		use_jacobian_rejection_heuristic = false;
 		jacobian_rejection_threshold	 = 15.0f;
 
-		use_neighbor_sample_point_roughness_heuristic = true;
+		use_neighbor_sample_point_roughness_heuristic = false;
 		neighbor_sample_point_roughness_threshold	  = 0.1f;
 
 		// Very very small m-cap to avoid correlations

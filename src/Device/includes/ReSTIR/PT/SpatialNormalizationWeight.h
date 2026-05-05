@@ -113,7 +113,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 			float jacobian = 1.0f;
 			if (!final_reservoir_sample.is_envmap_path())
 				jacobian = get_jacobian_determinant_reconnection_shift(
-					final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal.unpack(), center_pixel_surface.shading_point,
+					final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
 					neighbor_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
 			float target_function_at_neighbor = jacobian * ReSTIR_PT_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility, true>(
@@ -179,7 +179,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 				// Applying the jacobian to get "p_hat_from_i"
 				target_function_at_neighbor *=
 					hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(
-										 final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal.unpack(),
+										 final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 										 center_pixel_surface.shading_point, neighbor_surface.shading_point,
 										 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
 

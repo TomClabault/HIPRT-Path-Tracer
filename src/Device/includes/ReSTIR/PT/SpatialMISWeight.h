@@ -97,7 +97,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 				// Applying the jacobian to get "p_hat_from_i"
 				target_function_at_j *=
 					hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(
-										 reservoir_being_resampled_sample.sample_point, reservoir_being_resampled_sample.sample_point_geometric_normal.unpack(),
+										 reservoir_being_resampled_sample.rc_vertex, reservoir_being_resampled_sample.rc_vertex_geometric_normal.unpack(),
 										 center_pixel_surface.shading_point, neighbor_surface.shading_point,
 										 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
 
@@ -185,7 +185,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 					if (!center_pixel_reservoir_sample.is_envmap_path())
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(
-							center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal.unpack(),
+							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -314,7 +314,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 
 						float jacobian = get_jacobian_determinant_reconnection_shift(
-							center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal.unpack(),
+							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 						if (jacobian == 0.0f)
@@ -434,7 +434,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 					if (!center_pixel_reservoir_sample.is_envmap_path())
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(
-							center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal.unpack(),
+							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -561,7 +561,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 					if (!center_pixel_reservoir_sample.is_envmap_path())
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(
-							center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal.unpack(),
+							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 

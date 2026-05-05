@@ -22,7 +22,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	float3_t incident_light_direction;
 	if (sample.is_envmap_path())
 	{
-		// For envmap path, the direction is stored in the 'sample_point' value
+		// For envmap path, the direction is stored in the 'rc_vertex' value
 		incident_light_direction = sample.sample_point;
 		distance_to_sample_point = 1.0e35f;
 	}

@@ -22,25 +22,27 @@ static std::mutex restir_pt_log_mutex;
 
 struct ReSTIRPTReservoirSample
 {
-	float3_t sample_point						   = make_float3(-1.0f, -1.0f, -1.0f);
-	float3_t sample_point_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
-	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
-	Octahedral24BitNormalPadded32b sample_point_shading_normal;
-	DeviceUnpackedEffectiveMaterial sample_point_material;
+	float3_t rc_vertex							= make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t rc_vertex_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
+	Octahedral24BitNormalPadded32b rc_vertex_geometric_normal;
+	Octahedral24BitNormalPadded32b rc_vertex_shading_normal;
+	DeviceUnpackedEffectiveMaterial rc_vertex_material;
+	int rc_vertex_primitive_index = -1;
 
-	int sample_point_primitive_index = -1;
+	bool di_sample = false;
 
 	ColorRGB32F path_radiance;
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
-	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
+	// TODO all 'at sample' point variables should be replaced by rc_vertex variables
+	BSDFIncidentLightInfo incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
 
 	// TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry
 	// where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
 	unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
 	// TODO can be stored in outgoing_radiance_to_first_hit?
-	float target_functionnn = 0.0f;
+	float target_function = 0.0f;
 
 	// Whether or not the sample point is on a material that is rough enough to be reconnected
 	// If the sample point is on a mirror for example, reconnecting to that point from our center pixel
@@ -62,7 +64,7 @@ struct ReSTIRPTReservoirSample
 
 	HIPRT_DEVICE bool is_envmap_path() const
 	{
-		return sample_point_primitive_index == -1;
+		return rc_vertex_primitive_index == -1;
 	}
 };
 
@@ -105,8 +107,8 @@ struct ReSTIRPTReservoir
 
 		if (random_number_generator() < reservoir_resampling_weight / weight_sum)
 		{
-			sample					 = other_reservoir.sample;
-			sample.target_functionnn = target_function;
+			sample				   = other_reservoir.sample;
+			sample.target_function = target_function;
 
 			return true;
 		}
@@ -119,7 +121,7 @@ struct ReSTIRPTReservoir
 		if (weight_sum == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_functionnn * weight_sum;
+			UCW = 1.0f / sample.target_function * weight_sum;
 	}
 
 	HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
@@ -128,7 +130,7 @@ struct ReSTIRPTReservoir
 		if (weight_sum == 0.0f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_functionnn * weight_sum * normalization_numerator / normalization_denominator;
+			UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
 
 		// Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
 		M = hippt::min(M, 1000000);
@@ -173,16 +175,16 @@ struct ReSTIRPTReservoir
 			std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
 			Debug::debugbreak();
 		}
-		else if (std::isnan(sample.target_functionnn) || std::isinf(sample.target_functionnn))
+		else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
 		{
 			std::lock_guard<std::mutex> lock(restir_pt_log_mutex);
 			std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
 			Debug::debugbreak();
 		}
-		else if (sample.target_functionnn < 0)
+		else if (sample.target_function < 0)
 		{
 			std::lock_guard<std::mutex> lock(restir_pt_log_mutex);
-			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_functionnn
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function
 					  << std::endl;
 			Debug::debugbreak();
 		}

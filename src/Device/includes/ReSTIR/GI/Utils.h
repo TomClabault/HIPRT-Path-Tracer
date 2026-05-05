@@ -35,7 +35,7 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	float3_t sample_direction;
 	if (reservoir.sample.is_envmap_path())
 	{
-		// For envmap path, the direction is stored in the 'sample_point' value
+		// For envmap path, the direction is stored in the 'rc_vertex' value
 		sample_direction		 = reservoir.sample.sample_point;
 		distance_to_sample_point = 1.0e35f;
 	}

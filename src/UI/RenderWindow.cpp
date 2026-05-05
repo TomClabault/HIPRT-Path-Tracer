@@ -29,6 +29,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Duplication maps to reduce correlations
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
+// - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain?
 //
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR
