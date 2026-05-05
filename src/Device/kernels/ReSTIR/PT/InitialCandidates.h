@@ -22,12 +22,14 @@
 HIPRT_DEVICE void ReSTIR_PT_rc_di_vertex_fill_information(float3_t point_on_light,
 														  float3_t light_geometric_normal,
 														  int light_primitive_index,
+														  BSDFIncidentLightInfo incident_light_info,
 														  ReSTIRPTReservoirSample& restir_pt_initial_sample)
 {
 	restir_pt_initial_sample.rc_vertex = point_on_light;
 	restir_pt_initial_sample.rc_vertex_geometric_normal.pack(light_geometric_normal);
-	restir_pt_initial_sample.rc_vertex_primitive_index = light_primitive_index;
-	restir_pt_initial_sample.sample_point_rough_enough = true;
+	restir_pt_initial_sample.rc_vertex_primitive_index			  = light_primitive_index;
+	restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
+	restir_pt_initial_sample.sample_point_rough_enough			  = true;
 }
 
 HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& render_data,
@@ -110,7 +112,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 
 			if (ray_payload.bounce == 0)
 				ReSTIR_PT_rc_di_vertex_fill_information(light_sample.point_on_light, light_sample.light_source_normal,
-														light_sample.emissive_triangle_global_index, restir_pt_initial_sample);
+														light_sample.emissive_triangle_global_index, BSDFIncidentLightInfo::NO_INFO, restir_pt_initial_sample);
 			if (ray_payload.bounce == 1)
 				restir_pt_initial_sample.incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
 			if (ray_payload.bounce <= 1)
@@ -164,9 +166,9 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			float3_t point_on_light = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
 			if (ray_payload.bounce == 0)
 				ReSTIR_PT_rc_di_vertex_fill_information(point_on_light, shadow_light_ray_hit_info.hit_geometric_normal,
-														shadow_light_ray_hit_info.hit_prim_index, restir_pt_initial_sample);
+														shadow_light_ray_hit_info.hit_prim_index, incident_light_info, restir_pt_initial_sample);
 			if (ray_payload.bounce == 1)
-				restir_pt_initial_sample.incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
+				restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
 			if (ray_payload.bounce <= 1)
 				restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
 			restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
