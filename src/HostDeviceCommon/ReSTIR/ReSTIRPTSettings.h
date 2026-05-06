@@ -18,7 +18,7 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	// ReSTIR PT uses RIS at each path vertex to sampel lights and BSDFs for the initial candidates generation pass. These parameters control how many
 	// candidates are generated for each type of sampling. Both candidate types are mixed with MIS
 	int nee_ris_number_of_light_candidates = 1;
-	int nee_ris_number_of_bsdf_candidates  = 0;
+	int nee_ris_number_of_bsdf_candidates  = 1;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
@@ -64,7 +64,7 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 
 		common_temporal_pass.temporal_buffer_clear_requested = false;
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index	 = 0;
 		common_spatial_pass.number_of_passes	 = 2;

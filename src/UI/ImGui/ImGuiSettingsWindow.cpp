@@ -1438,6 +1438,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, KERNEL_OPTION_TRUE);
 				}
 
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+					// ReSTIR PT always uses RIS for NEE
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
@@ -1857,6 +1861,8 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
+	bool ris_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+	ImGui::BeginDisabled(ris_disabled);
 	if (ImGui::CollapsingHeader("RIS Settings"))
 	{
 		ImGui::TreePush("RIS Settings tree");
@@ -1898,6 +1904,9 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
+	ImGui::EndDisabled(); // ris_disabled
+	if (ris_disabled)
+		ImGuiRenderer::add_tooltip("The RIS light sampling settings are controlled by ReSTIR PT.");
 }
 
 void ImGuiSettingsWindow::draw_risltc_settings_panel()
