@@ -137,9 +137,9 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 2;
+	int nb_bounces = 1;
 
-	bool do_russian_roulette = false;
+	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to being terminated by russian roulette
@@ -152,7 +152,7 @@ struct HIPRTRenderSettings
 	// convergence.
 	//
 	// 0 for no clamping.
-	float russian_roulette_throughput_clamp = 10.0f;
+	float russian_roulette_throughput_clamp = 0.0f;
 
 	// What Russian roulette method to use to determine the path termination
 	// probability
@@ -207,7 +207,7 @@ struct HIPRTRenderSettings
 	float stop_pixel_noise_threshold = 0.075f;
 
 	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
-	bool enable_direct_lighting = true;
+	bool enable_direct_lighting = false;
 
 	// Clamp direct lighting contribution to reduce fireflies
 	float direct_contribution_clamp = 0.0f;

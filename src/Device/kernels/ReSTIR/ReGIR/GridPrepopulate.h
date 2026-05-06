@@ -78,8 +78,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
 				NEEDeferredMISContext nee_deferred_MIS_context;
 				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 				bool valid_indirect_bounce =
-					path_tracing_compute_next_indirect_bounce<true>(render_data, ray_payload, closest_hit_info, -camera_ray.direction, camera_ray,
-																	random_number_generator, incident_light_info, nee_deferred_MIS_context);
+					path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -camera_ray.direction, camera_ray,
+															  random_number_generator, incident_light_info, nee_deferred_MIS_context);
 
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...

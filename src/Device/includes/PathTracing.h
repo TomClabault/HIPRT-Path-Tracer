@@ -98,6 +98,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 															NEEDeferredMISContext& nee_deferred_MIS_context,
 															bool apply_russian_roulette = true)
 {
+	// TODO this function with the unused_rr_throughput_scaling is unused?
 	float unused_rr_throughput_scaling;
 	return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling, bsdf_color,
 											  bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context, apply_russian_roulette);
@@ -110,7 +111,6 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
  * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
  * but without evaluating the contribution of the BSDF or the PDF.
  */
-template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 															RayPayload& ray_payload,
 															HitInfo& closest_hit_info,
@@ -126,21 +126,21 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
-	path_tracing_sample_bsdf_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction,
-																	   bsdf_pdf, random_number_generator, incident_light_info);
+	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
+												  random_number_generator, incident_light_info);
+
+	out_ray.origin	  = closest_hit_info.inter_point;
+	out_ray.direction = bounce_direction;
 
 	// Terminate ray if bad sampling
-	if (bsdf_pdf <= 0.0f && !sampleDirectionOnly)
+	if (bsdf_pdf <= 0.0f)
 		return false;
 
 	ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color,
 																bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context);
-	if (ray_payload.throughput.is_black() && !sampleDirectionOnly)
+	if (ray_payload.throughput.is_black())
 		// Killed by russian roulette
 		return false;
-
-	out_ray.origin	  = closest_hit_info.inter_point;
-	out_ray.direction = bounce_direction;
 
 	return true;
 }

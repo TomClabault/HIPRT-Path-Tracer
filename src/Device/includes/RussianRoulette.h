@@ -19,7 +19,7 @@
  */
 HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings,
 									  int bounce,
-									  ColorRGB32F& ray_throughput,
+									  ColorRGB32F& in_out_ray_throughput,
 									  float& throughput_scaling,
 									  const ColorRGB32F& current_weight,
 									  Xorshift32Generator& random_number_generator)
@@ -29,12 +29,12 @@ HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings
 		float survive_probability = 0.0f;
 		if (render_settings.path_russian_roulette_method == PathRussianRoulette::MAX_THROUGHPUT)
 			// Easy max throughput threshold
-			survive_probability = ray_throughput.max_component();
+			survive_probability = in_out_ray_throughput.max_component();
 		else if (render_settings.path_russian_roulette_method == PathRussianRoulette::ARNOLD_2014)
 		{
 			// Reference:
 			// [Physically Based Shader Design in Arnold, Langlands, 2014]
-			survive_probability = (ray_throughput * current_weight).max_component() / ray_throughput.max_component();
+			survive_probability = (in_out_ray_throughput * current_weight).max_component() / in_out_ray_throughput.max_component();
 			survive_probability = sqrtf(survive_probability);
 		}
 
@@ -52,7 +52,7 @@ HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings
 			// probabilities
 			throughput_scaling = hippt::min(throughput_scaling, render_settings.russian_roulette_throughput_clamp);
 
-		ray_throughput *= throughput_scaling;
+		in_out_ray_throughput *= throughput_scaling;
 	}
 
 	// The ray survived

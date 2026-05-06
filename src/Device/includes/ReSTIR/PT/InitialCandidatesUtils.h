@@ -38,12 +38,13 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& 
 	{
 		// Killed by russian roulette
 		ray_payload.throughput = ColorRGB32F(0.0f);
+		unweighted_throughput  = ColorRGB32F(0.0f);
 
 		return ReSTIR_PT_invalid_throughput;
 	}
-	else
-		// Not killed by russian roulette so we're scaling the throughputs
-		unweighted_throughput *= rr_throughput_scaling;
+	// else
+	//	// Not killed by russian roulette so we're scaling the throughputs
+	//	unweighted_throughput *= rr_throughput_scaling;
 
 	// Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
 	// happen: with some material, the throughput can get so low that it becomes denormalized and
@@ -101,7 +102,9 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 		ReSTIR_PT_invalid_throughput)
 		return ReSTIR_PT_invalid_throughput;
 
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
+#endif
 
 	out_ray.origin	  = closest_hit_info.inter_point;
 	out_ray.direction = bounce_direction;
@@ -195,7 +198,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 				light_hit_info.primitive_index, hit_emission, light_hit_info.geometric_normal, hit_distance, sampled_bsdf_direction);
 			float nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
 													 nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
-			float weight		 = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
+			float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
 
 			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 			restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
