@@ -49,7 +49,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_uniform(const
 	int triangle_index				   = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
 	LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(
-							render_data, shading_point, view_direction, shading_normal, material, triangle_index, random_number_generator);
+		render_data, shading_point, view_direction, shading_normal, material, triangle_index, random_number_generator);
 
 	// PDF of that triangle sampled uniformly amongst all emissive triangles
 	light_sample.area_measure_pdf /= render_data.buffers.emissive_triangles_count;
@@ -95,16 +95,18 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return LightSamplePointInformation();
+	else if (render_data.buffers.emissive_triangles_power_alias_table.sum_elements == 0.0f)
+		return LightSamplePointInformation();
 
 	int random_emissive_triangle_index = render_data.buffers.emissive_triangles_power_alias_table.sample(random_number_generator);
 	int triangle_index				   = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
 	LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(
-							render_data, shading_point, view_direction, shading_normal, material, triangle_index, random_number_generator);
+		render_data, shading_point, view_direction, shading_normal, material, triangle_index, random_number_generator);
 
 	// PDF of sampling that triangle according to its power
-	light_sample.area_measure_pdf *= (light_sample.emission.luminance() * light_sample.light_area) /
-									 render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
+	light_sample.area_measure_pdf *=
+		(light_sample.emission.luminance() * light_sample.light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 
 	return light_sample;
 }
@@ -167,47 +169,39 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 
 	if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
 	{
-		light_point_samples[0] = sample_one_point_on_light_uniform(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
-																   random_number_generator);
+		light_point_samples[0] =
+			sample_one_point_on_light_uniform(render_data, shading_point, view_direction, shading_normal, ray_payload.material, random_number_generator);
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_POWER)
 	{
-		light_point_samples[0] = sample_one_point_on_light_power(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
-																 random_number_generator);
-
-		// TODO THIS IS DEBUG REMOVE THIS
-		if (DirectLightSampleCount<LSS_BASE_POWER>() > 1)
-		{
-			light_point_samples[1] = sample_one_point_on_light_power(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
-																	 random_number_generator);
-		}
+		light_point_samples[0] =
+			sample_one_point_on_light_power(render_data, shading_point, view_direction, shading_normal, ray_payload.material, random_number_generator);
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
 	{
 		unsigned int seed_before			 = random_number_generator.m_state.seed;
 		random_number_generator.m_state.seed = seed_before;
 
-		LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples =
-								sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																			last_hit_primitive_index, ray_payload, random_number_generator);
+		LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples = sample_one_emissive_triangle_light_tree_ats(
+			render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>(); i++)
 		{
-			light_point_samples[i] = sample_point_on_light_and_fill_light_sample_information(
-									render_data, shading_point, view_direction, shading_normal, ray_payload.material,
-									light_samples[i].emissive_triangle_global_index, random_number_generator);
+			light_point_samples[i] =
+				sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
+																		light_samples[i].emissive_triangle_global_index, random_number_generator);
 			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
 		}
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	{
 		LightSampleInformation light_sample =
-								sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																		   ray_payload.material, last_hit_primitive_index, random_number_generator);
+			sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, ray_payload.material,
+													   last_hit_primitive_index, random_number_generator);
 
-		light_point_samples[0] = sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal,
-																						 ray_payload.material, light_sample.emissive_triangle_global_index,
-																						 random_number_generator);
+		light_point_samples[0] =
+			sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
+																	light_sample.emissive_triangle_global_index, random_number_generator);
 
 		light_point_samples[0].area_measure_pdf *= light_sample.pdf;
 	}
@@ -227,10 +221,10 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 			invalid ReGIR light sampling fallback strategy
 #endif
 
-									// Fallback method as the point was outside of the ReGIR grid
-									light_point_samples = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(
-															render_data, shading_point, view_direction, shading_normal, geometric_normal,
-															last_hit_primitive_index, ray_payload, random_number_generator);
+				// Fallback method as the point was outside of the ReGIR grid
+				light_point_samples =
+					sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, geometric_normal,
+																				   last_hit_primitive_index, ray_payload, random_number_generator);
 		}
 	}
 

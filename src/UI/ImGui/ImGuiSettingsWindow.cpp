@@ -4108,11 +4108,15 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderInt("NEE RIS Light samples count",
+		if (ImGui::SliderInt("NEE RIS Light sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 16))
 			m_render_window->set_render_dirty(true);
 
-		if (ImGui::SliderInt("NEE RIS BSDF samples count",
+		if (ImGui::SliderInt("NEE RIS Envmap sample count",
+							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates, 0, 4))
+			m_render_window->set_render_dirty(true);
+
+		if (ImGui::SliderInt("NEE RIS BSDF sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates, 0, 4))
 			m_render_window->set_render_dirty(true);
 

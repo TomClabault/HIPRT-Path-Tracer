@@ -76,11 +76,11 @@ HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float v
 
 HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 									   float3_t& sampled_direction,
-									   float& envmap_pdf,
+									   float& envmap_pdf_solid_angle,
 									   Xorshift32Generator& random_number_generator)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-	envmap_pdf = 0.0f;
+	envmap_pdf_solid_angle = 0.0f;
 
 	return ColorRGB32F();
 #endif
@@ -120,17 +120,17 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 
 	ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
 	// Computing envmap PDF
-	envmap_pdf = 1.0f;
+	envmap_pdf_solid_angle = 1.0f;
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	// The texel was sampled according to its luminance
-	envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
+	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
 
 	// Account for the fact that the envmap texels have some area in the world
-	envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
+	envmap_pdf_solid_angle *= world_settings.envmap_width * world_settings.envmap_height;
 #endif
 
 	// Converting the PDF from area measure on the envmap to solid angle measure
-	envmap_pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
+	envmap_pdf_solid_angle /= (hippt::M_TWO_PI_SQUARED * sin_theta);
 
 	return env_map_radiance;
 }
@@ -176,16 +176,16 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 														 const float3_t& view_direction,
 														 Xorshift32Generator& random_number_generator)
 {
-	float envmap_pdf;
+	float envmap_pdf_solid_angle;
 	float3_t sampled_direction;
-	ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
+	ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf_solid_angle, random_number_generator);
 	ColorRGB32F envmap_mis_contribution;
 
 	if (ray_payload.material.can_do_light_sampling())
 	{
 		// Sampling the envmap with MIS
 		float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
-		if (envmap_pdf > 0.0f && cosine_term > 0.0f)
+		if (envmap_pdf_solid_angle > 0.0f && cosine_term > 0.0f)
 		{
 			hiprtRay shadow_ray;
 			shadow_ray.origin	 = closest_hit_info.inter_point;
@@ -208,12 +208,12 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
-				float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
+				float mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
 #else
 				float mis_weight = 1.0f;
 #endif
 
-				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
+				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle / nee_plus_plus_context.unoccluded_probability;
 			}
 		}
 	}

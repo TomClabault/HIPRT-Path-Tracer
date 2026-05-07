@@ -206,13 +206,13 @@
  *		luminance using an alias table for constant time sampling
  *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_NO_SAMPLING
+#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
  * sample when importance sampling direct lighting contribution from the envmap
  */
-#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
+#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to do bilinear filtering when sampling the envmap.
@@ -237,8 +237,6 @@ HIPRT_DEVICE constexpr int DirectLightSampleCount()
 	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
 		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
 		return LightTreeATSSplittingMaxLightSamples;
-	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
-		return 1;
 	else
 		// Other strategies just return 1 light sample per path vertex
 		return 1;

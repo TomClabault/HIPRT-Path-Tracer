@@ -36,8 +36,16 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		return;
 
-	int nb_light_candidates = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates;
-	int nb_bsdf_candidates	= render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates;
+	int nb_light_candidates	 = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates;
+	int nb_envmap_candidates = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates;
+	int nb_bsdf_candidates	 = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates;
+
+	if (render_data.buffers.emissive_triangles_count == 0)
+		nb_light_candidates = 0;
+
+	if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP || EnvmapSamplingStrategy == ESS_NO_SAMPLING)
+		nb_envmap_candidates = 0;
+
 	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
 	{
 		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
@@ -106,6 +114,60 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 		}
+	}
+
+	for (int envmap_candidate = 0; envmap_candidate < nb_envmap_candidates; envmap_candidate++)
+	{
+		float envmap_pdf_solid_angle;
+		float3_t envmap_sampled_direction;
+		ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
+
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction_normalized = envmap_sampled_direction;
+
+		hiprtRay shadow_ray;
+		shadow_ray.origin	 = shadow_ray_origin;
+		shadow_ray.direction = shadow_ray_direction_normalized;
+
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.envmap		 = true;
+		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
+		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
+														   random_number_generator, ray_payload.bounce);
+
+		if (in_shadow)
+			continue;
+
+		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
+								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+
+		float bsdf_pdf;
+		ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
+
+		if (ray_payload.bounce == 0)
+			ReSTIR_PT_rc_di_vertex_fill_information(envmap_sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, BSDFIncidentLightInfo::NO_INFO,
+													restir_pt_initial_sample);
+		if (ray_payload.bounce == 1)
+			restir_pt_initial_sample.incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
+		if (ray_payload.bounce <= 1)
+			restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
+		restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+		restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission * path_unweighted_throughput_after_rc_vertex;
+		if (ray_payload.bounce >= 2)
+			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+		restir_pt_initial_sample.target_function =
+			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
+		constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+		float nee_mis_weight						  = balance_heuristic(envmap_pdf_solid_angle, nb_envmap_candidates, bsdf_pdf, nb_bsdf_candidates);
+		float mis_weight							  = multi_light_sample_mis_weight * nee_mis_weight;
+		float weight = mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
+
+		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 	}
 
 	// NB BSDF candidates - 1 here because we're already doing 1 candidate thanks to the bounce of the main path
@@ -272,7 +334,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					intersection_found =
 						path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
-					ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
+					ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload,
+												  path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
 												  path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir,
 												  restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 
@@ -340,25 +403,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 #endif
 				}
 				else
-				{
-					if (bounce == 1)
-					{
-						// For envmap path, the direction is stored in the hit point
-						restir_pt_initial_sample.rc_vertex = ray.direction;
-						// -1 for the primitive index indicates that this is an envmap sample
-						restir_pt_initial_sample.rc_vertex_primitive_index = -1;
-					}
-
-					ColorRGB32F envmap_emission =
-						path_tracing_miss_gather_envmap(render_data, ColorRGB32F(1.0f), ray.direction, ray_payload.bounce, pixel_index);
-
-					restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission;
-					restir_pt_initial_sample.target_function			 = (path_unweighted_throughput_up_to_rc_vertex * envmap_emission).luminance();
-					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, (ray_payload.throughput * envmap_emission).luminance(),
-																  random_number_generator);
-
 					ray_payload.next_ray_state = RayState::MISSED;
-				}
 			}
 			else if (ray_payload.next_ray_state == RayState::MISSED)
 				break;
