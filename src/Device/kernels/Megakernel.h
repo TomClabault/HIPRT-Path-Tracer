@@ -107,6 +107,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 																						   // so that we know what the BSDF sampled
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
 																					   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
+
 				if (!valid_indirect_bounce)
 				{
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
@@ -132,7 +133,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
 	// Checking for NaNs / negative value samples. Output
-	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
+	if (!sanity_check<true>(render_data, ray_payload.ray_color, x, y))
 		return;
 
 	ColorRGB32F debug_color;

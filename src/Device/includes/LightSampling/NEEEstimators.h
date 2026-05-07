@@ -759,6 +759,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 			nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index,
 			ray_payload.material.emission, closest_hit_info.geometric_normal, hit_distance, ray_direction);
+
 		bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 	}
