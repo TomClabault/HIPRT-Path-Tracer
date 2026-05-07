@@ -20,7 +20,6 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
-									   ReSTIRSurface& initial_surface,
 									   float3_t view_direction,
 									   RayPayload& ray_payload,
 									   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
@@ -260,50 +259,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
-	// Initializing the closest hit info the information from the camera ray pass
-	HitInfo primary_surface_hit_info;
-	primary_surface_hit_info.inter_point	  = render_data.g_buffer.primary_hit_position[pixel_index];
-	primary_surface_hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-	primary_surface_hit_info.shading_normal	  = render_data.g_buffer.shading_normals[pixel_index].unpack();
-	primary_surface_hit_info.primitive_index  = render_data.g_buffer.first_hit_prim_index[pixel_index];
-
-	// Initializing the ray with the information from the camera ray pass
-	hiprtRay initial_ray;
-	initial_ray.direction = -render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
-
-	RayPayload initial_ray_payload;
-	initial_ray_payload.next_ray_state = RayState::BOUNCE;
-	initial_ray_payload.material	   = render_data.g_buffer.materials[pixel_index].unpack();
-
-	// Because this is the camera hit (and assuming the camera isn't inside volumes for now),
-	// the ray volume state after the camera hit is just an empty interior stack but with
-	// the material index that we hit pushed onto the stack. That's it. Because it is that
-	// simple, we don't have the ray volume state in the GBuffer but rather we can
-	// reconstruct the ray volume state on the fly
-	initial_ray_payload.volume_state.reconstruct_first_hit(initial_ray_payload.material, render_data.buffers.material_indices,
-														   primary_surface_hit_info.primitive_index, random_number_generator);
-
-	bool intersection_found = primary_surface_hit_info.primitive_index != -1;
-
-	// TODO re-read this at the end instread of storing it at the beginning for registers?
-	ReSTIRSurface initial_surface;
-	initial_surface.geometric_normal = primary_surface_hit_info.geometric_normal;
-	initial_surface.shading_normal	 = primary_surface_hit_info.shading_normal;
-	initial_surface.primitive_index	 = primary_surface_hit_info.primitive_index;
-	initial_surface.material		 = initial_ray_payload.material;
-	initial_surface.ray_volume_state = initial_ray_payload.volume_state;
-	initial_surface.shading_point	 = primary_surface_hit_info.inter_point;
-	initial_surface.view_direction	 = -initial_ray.direction;
-
 	ReSTIRPTReservoir restir_pt_initial_reservoir;
-
 	for (int candidate = 0; candidate < render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count; candidate++)
 	{
-		HitInfo closest_hit_info = primary_surface_hit_info;
-		bool intersection_found	 = closest_hit_info.primitive_index != -1;
+		HitInfo closest_hit_info;
+		closest_hit_info.inter_point	  = render_data.g_buffer.primary_hit_position[pixel_index];
+		closest_hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+		closest_hit_info.shading_normal	  = render_data.g_buffer.shading_normals[pixel_index].unpack();
+		closest_hit_info.primitive_index  = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
-		hiprtRay ray		   = initial_ray;
-		RayPayload ray_payload = initial_ray_payload;
+		bool intersection_found = closest_hit_info.primitive_index != -1;
+
+		hiprtRay ray;
+		ray.direction = -render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+
+		RayPayload ray_payload;
+		ray_payload.next_ray_state = RayState::BOUNCE;
+		ray_payload.material	   = render_data.g_buffer.materials[pixel_index].unpack();
+
+		// Because this is the camera hit (and assuming the camera isn't inside volumes for now),
+		// the ray volume state after the camera hit is just an empty interior stack but with
+		// the material index that we hit pushed onto the stack. That's it. Because it is that
+		// simple, we don't have the ray volume state in the GBuffer but rather we can
+		// reconstruct the ray volume state on the fly
+		ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices,
+													   render_data.g_buffer.first_hit_prim_index[pixel_index], random_number_generator);
 
 		ReSTIRPTReservoirSample restir_pt_initial_sample;
 		restir_pt_initial_sample.pixel_index = pixel_index;
@@ -354,7 +334,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 							ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 					}
 
-					ReSTIR_PT_stream_NEE(render_data, initial_surface, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 										 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
 										 nee_deferred_MIS_context, random_number_generator, x, y);
 
@@ -433,6 +413,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SHADE_ONLY_INITIAL_CANDIDATES &&
 		ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled)
 	{
+		ReSTIRSurface initial_surface;
+		initial_surface.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+		initial_surface.shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
+		initial_surface.primitive_index	 = render_data.g_buffer.first_hit_prim_index[pixel_index];
+		initial_surface.material		 = render_data.g_buffer.materials[pixel_index].unpack();
+		initial_surface.ray_volume_state.reconstruct_first_hit(initial_surface.material, render_data.buffers.material_indices, initial_surface.primitive_index,
+															   random_number_generator);
+		initial_surface.shading_point  = render_data.g_buffer.primary_hit_position[pixel_index];
+		initial_surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+
 		float3_t to_light_direction = restir_pt_initial_reservoir.sample.is_envmap_path()
 										  ? restir_pt_initial_reservoir.sample.rc_vertex
 										  : hippt::normalize(restir_pt_initial_reservoir.sample.rc_vertex - initial_surface.shading_point);

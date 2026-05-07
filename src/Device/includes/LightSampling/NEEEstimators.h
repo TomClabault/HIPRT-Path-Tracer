@@ -653,6 +653,8 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 																   RISReservoir& reservoir,
 																   Xorshift32Generator& random_number_generator)
 {
+#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
 	int nb_bsdf_candidates	= render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
@@ -712,6 +714,10 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #else
 	return RISReservoir();
 #endif
+
+#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
+	return RISReservoir();
 }
 
 /**
@@ -725,6 +731,8 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 														   NEEDeferredMISContext& nee_deferred_MIS_context,
 														   Xorshift32Generator& random_number_generator)
 {
+#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
 #if !DirectLightNEEEstimatorHasBSDFSampling
 	return ColorRGB32F(0.0f);
 #endif
@@ -777,15 +785,20 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	last_hit_info.shading_normal   = nee_deferred_MIS_context.last_shading_normal;
 	last_hit_info.primitive_index  = nee_deferred_MIS_context.last_primitive_index;
 
-	RayPayload last_hit_payload		  = ray_payload;
-	last_hit_payload.bounce			  = ray_payload.bounce - 1;
-	last_hit_payload.material		  = nee_deferred_MIS_context.last_material;
-	last_hit_payload.volume_state	  = nee_deferred_MIS_context.last_volume_state;
+	RayPayload last_hit_payload	  = ray_payload;
+	last_hit_payload.bounce		  = ray_payload.bounce - 1;
+	last_hit_payload.material	  = nee_deferred_MIS_context.last_material;
+	last_hit_payload.volume_state = nee_deferred_MIS_context.last_volume_state;
+
 	ColorRGB32F last_hit_NEE_estimate = evaluate_RIS_reservoir_sample(render_data, last_hit_payload, last_hit_info,
 																	  nee_deferred_MIS_context.last_view_direction, final_reservoir, random_number_generator);
 
 	return last_hit_NEE_estimate * nee_deferred_MIS_context.last_ray_throughput;
 #endif
+
+#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
+	return ColorRGB32F();
 }
 
 [[nodiscard]] HIPRT_DEVICE ColorRGB32F do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
@@ -795,6 +808,8 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 																Xorshift32Generator& random_number_generator,
 																NEEDeferredMISContext& nee_deferred_MIS_context)
 {
+#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
 #if DirectLightNEEEstimatorHasBSDFSampling
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
@@ -802,6 +817,10 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #endif
 
 	return ColorRGB32F(0.0f);
+
+#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
+	return ColorRGB32F();
 }
 
 #endif

@@ -141,15 +141,14 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PathIntegrator>
 template <>
 struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RESTIR_PT>
 {
-	// TODO would it be faster to store some of those in memory with like texcoords or whatnot instead of everything in the struct?
 	float3_t last_view_direction;
 	float3_t last_shading_point;
 	float3_t last_shading_normal;
 	float3_t last_geometric_normal;
-	DeviceUnpackedEffectiveMaterial last_material;
 	RayVolumeState last_volume_state;
 
 	int last_primitive_index;
+	float2_t last_texcoords;
 
 	// Ray throughput before multiplication with last_bsdf_throughput
 	ColorRGB32F last_ray_throughput;
@@ -171,9 +170,9 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 		last_shading_point	  = closest_hit_info.inter_point;
 		last_shading_normal	  = closest_hit_info.shading_normal;
 		last_geometric_normal = closest_hit_info.geometric_normal;
-		last_material		  = material;
 		last_volume_state	  = volume_state;
 		last_primitive_index  = closest_hit_info.primitive_index;
+		last_texcoords		  = closest_hit_info.texcoords;
 		last_ray_throughput	  = ray_throughput;
 	}
 
@@ -186,6 +185,13 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir)
 	{
 		ris_reservoir = reservoir;
+	}
+
+	HIPRT_DEVICE DeviceUnpackedEffectiveMaterial get_last_material(const HIPRTRenderData& render_data) const
+	{
+		int last_material_index = render_data.buffers.material_indices[last_primitive_index];
+
+		return get_intersection_material(render_data, last_material_index, last_texcoords);
 	}
 };
 
