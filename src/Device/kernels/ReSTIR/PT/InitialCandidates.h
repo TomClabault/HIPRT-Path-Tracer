@@ -302,8 +302,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
 					if (this_bounce_unweighted_throughput == ReSTIR_PT_invalid_throughput)
+					{
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...
+						bounce++;
 						break;
+					}
 
 					if (reconnection_vertex_chosen)
 						path_unweighted_throughput_after_rc_vertex *= this_bounce_unweighted_throughput;

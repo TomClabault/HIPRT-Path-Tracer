@@ -139,7 +139,7 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 1;
 
-	bool do_russian_roulette = false;
+	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to being terminated by russian roulette

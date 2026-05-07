@@ -92,6 +92,9 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 
 	out_bsdf_pdf = bsdf_pdf;
 
+	out_ray.origin	  = closest_hit_info.inter_point;
+	out_ray.direction = bounce_direction;
+
 	// Terminate ray if bad sampling
 	if (bsdf_pdf <= 0.0f)
 		return ReSTIR_PT_invalid_throughput;
@@ -105,9 +108,6 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
 #endif
-
-	out_ray.origin	  = closest_hit_info.inter_point;
-	out_ray.direction = bounce_direction;
 
 	// Returning this bounce's unweighted throughput
 	return this_bounce_unweighted_throughput;
