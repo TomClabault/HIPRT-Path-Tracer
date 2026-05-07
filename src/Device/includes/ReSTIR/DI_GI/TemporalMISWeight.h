@@ -660,4 +660,10 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 	float mc = 0.0f;
 };
 
+template <int BiasCorrectionMode>
+using ReSTIRDITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
+
+template <int BiasCorrectionMode>
+using ReSTIRGITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
+
 #endif

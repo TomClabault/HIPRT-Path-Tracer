@@ -294,7 +294,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI> normalization_function;
+	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_MISWeightsType> normalization_function;
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 											 normalization_numerator, normalization_denominator);

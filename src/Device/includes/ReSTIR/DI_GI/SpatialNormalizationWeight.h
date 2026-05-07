@@ -281,4 +281,10 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	}
 };
 
+template <int BiasCorrectionMode>
+using ReSTIRDISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
+
+template <int BiasCorrectionMode>
+using ReSTIRGISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
+
 #endif

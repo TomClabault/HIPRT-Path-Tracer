@@ -270,4 +270,10 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 	}
 };
 
+template <int BiasCorrectionMode>
+using ReSTIRDITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
+
+template <int BiasCorrectionMode>
+using ReSTIRGITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
+
 #endif

@@ -682,4 +682,10 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	float mc = 0.0f;
 };
 
+template <int BiasCorrectionMode>
+using ReSTIRDISpatialResamplingMISWeight = ReSTIRSpatialResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
+
+template <int BiasCorrectionMode>
+using ReSTIRGISpatialResamplingMISWeight = ReSTIRSpatialResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
+
 #endif

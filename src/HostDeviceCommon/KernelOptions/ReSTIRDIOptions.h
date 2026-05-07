@@ -26,8 +26,6 @@
 #endif
 #endif
 
-#define DO_DEBUG 0
-
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option

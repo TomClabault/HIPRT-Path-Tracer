@@ -82,7 +82,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		start_index = reused_neighbors_count;
 
 	ReSTIRGIReservoir spatial_reuse_output_reservoir;
-	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> mis_weight_function;
+	ReSTIRGISpatialResamplingMISWeight<ReSTIR_GI_MISWeightsType> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -192,7 +192,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRSpatialNormalizationWeight<ReSTIR_GI_MISWeightsType, ReSTIR_VARIANT_GI> normalization_function;
+	ReSTIRGISpatialNormalizationWeight<ReSTIR_GI_MISWeightsType> normalization_function;
 #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.weight_sum, center_pixel_surface, center_pixel_coords,
 											 normalization_numerator, normalization_denominator);

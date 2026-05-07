@@ -84,8 +84,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	count_valid_spatial_neighbors<ReSTIR_VARIANT_DI>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count, valid_neighbors_M_sum,
 													 neighbor_heuristics_cache);
 
-	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI> mis_weight_function;
-	ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR_VARIANT_DI> mis_weight_function_gbh;
+	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_MISWeightsType> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
@@ -161,17 +160,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum, update_mc,
 			/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
-
-#if DO_DEBUG
-		float gbh_mis_weight =
-			mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
-
-															  neighbor_reservoir.UCW, neighbor_reservoir.sample,
-
-															  center_pixel_surface, neighbor_index, center_pixel_coords, random_number_generator);
-		if (mis_weight != gbh_mis_weight)
-			hippt::debugbreak();
-#endif
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
@@ -217,7 +205,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator	= 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRSpatialNormalizationWeight<ReSTIR_DI_MISWeightsType, ReSTIR_VARIANT_DI> normalization_function;
+	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_MISWeightsType> normalization_function;
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.weight_sum, center_pixel_surface, center_pixel_coords,
 											 normalization_numerator, normalization_denominator, random_number_generator);
@@ -302,7 +290,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
-	// render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 }
 
 #endif
