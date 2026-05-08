@@ -175,6 +175,9 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	// it needs to be emissive
 	if (!intersection_found)
 	{
+		if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+			return;
+
 		// Envmap hit
 		float envmap_pdf_solid_angle;
 		ColorRGB32F envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);

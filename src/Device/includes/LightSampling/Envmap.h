@@ -184,7 +184,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 	if (ray_payload.material.can_do_light_sampling())
 	{
 		// Sampling the envmap with MIS
-		float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
+		float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 		if (envmap_pdf_solid_angle > 0.0f && cosine_term > 0.0f)
 		{
 			hiprtRay shadow_ray;
