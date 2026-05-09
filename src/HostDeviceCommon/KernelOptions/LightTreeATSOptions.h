@@ -39,7 +39,7 @@
  * If splitting is enabled, how many light samples, at most, per shading point
  * is allowed
  */
-#define LightTreeATSSplittingMaxLightSamples 4
+#define LightTreeATSSplittingMaxLightSamples 8
 
 #endif // #ifndef __KERNELCC__
 
