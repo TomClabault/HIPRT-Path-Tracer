@@ -83,7 +83,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_POWER
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
 
 /**
  * What direct lighting sampling strategy to use.
@@ -143,7 +143,7 @@
  *		variance. Takes the cosine term at the shading point into account
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
 
 /**
  * If true, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used
