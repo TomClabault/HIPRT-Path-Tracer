@@ -14,19 +14,12 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRCommonOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define NB_RADIUS 32
-#if ComputingSpatialDirectionalReuseForReSTIRGI == KERNEL_OPTION_TRUE
-#define NB_SAMPLES_PER_RADIUS_INTERNAL ReSTIR_GI_SpatialDirectionalReuseBitCount // CHANGE THIS ONE
-#else
-#define NB_SAMPLES_PER_RADIUS_INTERNAL ReSTIR_DI_SpatialDirectionalReuseBitCount // CHANGE THIS ONE
-#endif
-
-#define NB_SAMPLES_PER_RADIUS (NB_SAMPLES_PER_RADIUS_INTERNAL > 64 ? 64 : NB_SAMPLES_PER_RADIUS_INTERNAL) // Max to 64 for unsigned long long int
+#define NB_RADIUS			  32
+#define NB_SAMPLES_PER_RADIUS 64
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(64) ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
-													   unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
 													   unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
 													   unsigned char* __restrict__ out_adaptive_radius_buffer)
 #else
@@ -35,7 +28,6 @@ GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 										int x,
 										int y,
-										unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
 										unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
 										unsigned char* __restrict__ out_adaptive_radius_buffer)
 #endif
@@ -56,12 +48,8 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
 
 	// Clearing previous data
-#if NB_SAMPLES_PER_RADIUS > 32
 	out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
-#else
-	out_directional_reuse_masks_buffer_u[center_pixel_index] = 0;
-#endif
-	out_adaptive_radius_buffer[center_pixel_index] = 0;
+	out_adaptive_radius_buffer[center_pixel_index]			   = 0;
 
 #ifdef __KERNELCC__
 	constexpr int RESTIR_VARIANT = ComputingSpatialDirectionalReuseReSTIRVariant;
@@ -129,13 +117,8 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	if (best_area == 0.0f)
 		best_radius = 0.0f;
 
-	out_adaptive_radius_buffer[center_pixel_index] = (unsigned char)best_radius;
-#if NB_SAMPLES_PER_RADIUS > 32
+	out_adaptive_radius_buffer[center_pixel_index]			   = (unsigned char)best_radius;
 	out_directional_reuse_masks_buffer_ull[center_pixel_index] = valid_samples_per_radius[best_radius_index];
-#else
-	// Extracting the low 32 bits
-	out_directional_reuse_masks_buffer_u[center_pixel_index] = (unsigned int)(valid_samples_per_radius[best_radius_index] & 0x00000000FFFFFFFFF);
-#endif
 }
 
 #endif

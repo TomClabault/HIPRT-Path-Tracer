@@ -188,7 +188,6 @@ private:
 		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
 		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
 
-		std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
 		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
 		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
 
@@ -206,7 +205,6 @@ private:
 		std::vector<ReSTIRGIReservoir> temporal_reservoirs;
 		std::vector<ReSTIRGIReservoir> spatial_reservoirs;
 
-		std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
 		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
 		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
 
@@ -220,7 +218,6 @@ private:
 		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
 		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
 
-		std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
 		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
 		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
 

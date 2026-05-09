@@ -86,7 +86,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// probability instead of always/never. This helps trade performance for bias.
 	float converged_neighbor_reuse_probability;
 
-	unsigned int* per_pixel_spatial_reuse_directions_mask_u				= nullptr;
 	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
 	// This framebuffer is filled by the

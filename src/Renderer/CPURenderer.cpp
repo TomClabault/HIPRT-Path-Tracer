@@ -170,11 +170,7 @@ void CPURenderer::setup_buffers()
 	m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
 	m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
 	m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-#if ReSTIR_DI_SpatialDirectionalReuseBitCount > 32
 	m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-#else
-	m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
-#endif
 	m_restir_di_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #endif
 
@@ -182,21 +178,13 @@ void CPURenderer::setup_buffers()
 	m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_gi_state.temporal_reservoirs.resize(width * height);
 	m_restir_gi_state.spatial_reservoirs.resize(width * height);
-#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
 	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-#else
-	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
-#endif
 	m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
 	m_restir_pt_state.spatial_reservoirs.resize(width * height);
-#if ReSTIR_PT_SpatialDirectionalReuseBitCount > 32
 	m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-#else
-	m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
-#endif
 	m_restir_pt_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #endif
 
@@ -480,8 +468,6 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_1										  = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2										  = m_restir_pt_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3										  = m_restir_pt_state.temporal_reservoirs.data();
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
-		m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_u.data();
 	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
 		m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.data();
 	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
@@ -1273,8 +1259,7 @@ void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 		[this](int x, int y)
 		{
 			ReSTIR_Directional_Reuse_Compute<false>(
-				m_render_data, x, y, m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
-				m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data, x, y, m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
 				m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
 		});
 }
@@ -1401,8 +1386,7 @@ void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
 		[this](int x, int y)
 		{
 			ReSTIR_Directional_Reuse_Compute<true>(
-				m_render_data, x, y, m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
-				m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data, x, y, m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
 				m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
 		});
 }
@@ -1511,8 +1495,7 @@ void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
 		[this](int x, int y)
 		{
 			ReSTIR_Directional_Reuse_Compute<true>(
-				m_render_data, x, y, m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
-				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+				m_render_data, x, y, m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
 				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
 		});
 }

@@ -19,4 +19,6 @@
 #define ReSTIR_VARIANT_GI 1
 #define ReSTIR_VARIANT_PT 2
 
+#define ReSTIR_SpatialDirectionalReuseBitCount 64
+
 #endif

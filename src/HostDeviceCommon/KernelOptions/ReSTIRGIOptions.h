@@ -90,13 +90,6 @@
 #define ReSTIR_GI_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
 
 /**
- * How many bits to use for the directional reuse masks
- *
- * More bits use more VRAM but increase the precision of the directional reuse
- */
-#define ReSTIR_GI_SpatialDirectionalReuseBitCount (RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT)
-
-/**
  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
  *
  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function

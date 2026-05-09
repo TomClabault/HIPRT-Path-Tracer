@@ -133,13 +133,6 @@
  */
 #define ReSTIR_DI_LaterBouncesSamplingStrategy RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
 
-/**
- * How many bits to use for the directional reuse masks
- *
- * More bits use more VRAM but increase the precision of the directional reuse
- */
-#define ReSTIR_DI_SpatialDirectionalReuseBitCount (RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT)
-
 #endif // #ifndef __KERNELCC__
 
 #endif

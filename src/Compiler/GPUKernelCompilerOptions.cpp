@@ -122,16 +122,13 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReS
 const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_DI_MISWeightsUseVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE = "ReSTIR_DI_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_DI_SpatialDirectionalReuseBitCount";
 
 const std::string GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_GI_SpatialTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_GI_SpatialDirectionalReuseBitCount";
 const std::string GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_GI_MISWeightsUseVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE = "ReSTIR_GI_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED = "ReSTIR_GI_DebugViewShadeOnlyInitialCandidatesEnabled";
 
 const std::string GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_PT_SpatialTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_PT_SpatialDirectionalReuseBitCount";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_PT_MISWeightsUseVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE = "ReSTIR_PT_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED = "ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled";
@@ -255,16 +252,13 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
 
 	GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
 
 	GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
@@ -392,16 +386,13 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_MISWeightsUseVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_DI_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_DI_SpatialDirectionalReuseBitCount);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_GI_SpatialTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_GI_SpatialDirectionalReuseBitCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_GI_MISWeightsUseVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_GI_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED] = std::make_shared<int>(ReSTIR_GI_DebugViewShadeOnlyInitialCandidatesEnabled);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_PT_SpatialTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_PT_SpatialDirectionalReuseBitCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_PT_MISWeightsUseVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_PT_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED] = std::make_shared<int>(ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled);

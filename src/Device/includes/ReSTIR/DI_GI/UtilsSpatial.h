@@ -95,14 +95,14 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
 	int sector_index = 0;
 
 	unsigned char bit_count_so_far = 0;
-	if (hippt::popc(directions_mask) == ReSTIR_GI_SpatialDirectionalReuseBitCount)
+	if (hippt::popc(directions_mask) == ReSTIR_SpatialDirectionalReuseBitCount)
 		// Fast path if all the directions are allowed
 		sector_index = random_sector_index;
 	else
 	{
 		// A naive implementation of this would go something like
 		//
-		// for (i = 0; i < ReSTIR_GI_SpatialDirectionalReuseBitCount; i++)
+		// for (i = 0; i < ReSTIR_SpatialDirectionalReuseBitCount; i++)
 		// {
 		//     if (directions_mask & (1ull << i))
 		//     {
@@ -154,10 +154,10 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
 		sector_index = --bit_count_so_far;
 	}
 
-	float theta_start = sector_index / (float)ReSTIR_GI_SpatialDirectionalReuseBitCount;
+	float theta_start = sector_index / (float)ReSTIR_SpatialDirectionalReuseBitCount;
 	// Generating a random theta in between theta_start and the start of the next sector (which is 1.0f / 32.0f wide)
 	// i.e. a random theta inside our disk sector
-	float random_theta = theta_start + rng() * (1.0f / (float)ReSTIR_GI_SpatialDirectionalReuseBitCount);
+	float random_theta = theta_start + rng() * (1.0f / (float)ReSTIR_SpatialDirectionalReuseBitCount);
 
 	return make_float2(random_theta, rng());
 }

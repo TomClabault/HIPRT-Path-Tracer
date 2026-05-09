@@ -125,29 +125,11 @@ struct ReSTIRSettingsHelper
 	HIPRT_HOST_DEVICE static unsigned long long int get_spatial_reuse_direction_mask_ull(const HIPRTRenderData& render_data, int pixel_index)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-		{
-#if ReSTIR_DI_SpatialDirectionalReuseBitCount > 32
 			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
-#else
-			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
-#endif
-		}
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-		{
-#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
 			return render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
-#else
-			return render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
-#endif
-		}
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-		{
-#if ReSTIR_PT_SpatialDirectionalReuseBitCount > 32
 			return render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
-#else
-			return render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
-#endif
-		}
 		else
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}

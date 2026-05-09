@@ -3874,27 +3874,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						ImGuiRenderer::show_help_marker("The minimum radius that will be used per pixel when the optimal per-pixel spatial reuse "
 														"radius is computed by \"adaptive-directional spatial reuse\"");
 
-						bool bitcount_changed								= false;
-						static int spatial_reuse_directional_masks_bitcount = ReSTIRVariant == ReSTIR_VARIANT_DI   ? ReSTIR_DI_SpatialDirectionalReuseBitCount
-																			  : ReSTIRVariant == ReSTIR_VARIANT_GI ? ReSTIR_GI_SpatialDirectionalReuseBitCount
-																												   : ReSTIR_PT_SpatialDirectionalReuseBitCount;
-						bitcount_changed |= ImGui::RadioButton("32 Bits", &spatial_reuse_directional_masks_bitcount, 32);
-						ImGui::SameLine();
-						bitcount_changed |= ImGui::RadioButton("64 Bits", &spatial_reuse_directional_masks_bitcount, 64);
-						ImGuiRenderer::show_help_marker("How many bits to use for the directional spatial reuse bit masks.\n"
-														"More bits yields more precise result but use a little bit more VRAM.");
-						if (bitcount_changed)
-						{
-							global_kernel_options->set_macro_value(
-								ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT
-								: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT
-																	 : GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
-								spatial_reuse_directional_masks_bitcount);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 						if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
 							m_render_window->set_render_dirty(true);
