@@ -114,6 +114,8 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 
 	ReSTIRPTReservoir* restir_output_reservoirs = nullptr;
 
+	ColorRGB32F* decoupled_reuse_shading_result_buffer = nullptr;
+
 	ReSTIRPTDebugView debug_view;
 	float debug_view_scale_factor;
 

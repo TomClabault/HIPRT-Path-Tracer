@@ -16,7 +16,8 @@ template <bool withVisiblity, bool resamplingNeighbor = true>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& sample,
 														   ReSTIRSurface& surface,
-														   Xorshift32Generator& random_number_generator)
+														   Xorshift32Generator& random_number_generator,
+														   ColorRGB32F* out_vector_target_function = nullptr)
 {
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
@@ -93,14 +94,18 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 											   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
 
 		// TODO can we use a simple target function visible point only for perf?
+		//		- Maybe not if we want to do color noise reduction from ReSTIR PT enhanced where we need the target function to be precise
 		float trash_pdf;
 		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
 		sample_point_throughput				= sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 	}
 
+	ColorRGB32F vector_target_function = visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance;
+	if (out_vector_target_function)
+		*out_vector_target_function = vector_target_function;
 	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
 	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
-	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
+	return vector_target_function.luminance();
 }
 
 #endif

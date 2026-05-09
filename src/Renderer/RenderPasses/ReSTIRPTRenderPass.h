@@ -78,6 +78,7 @@ private:
 	OrochiBuffer<ReSTIRPTReservoir> m_initial_candidates_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
+	OrochiBuffer<ColorRGB32F> m_decoupled_reuse_shading_result_buffer;
 
 	OrochiBuffer<unsigned char> m_per_pixel_spatial_reuse_radius;
 	OrochiBuffer<unsigned long long int> m_per_pixel_spatial_reuse_direction_mask_ull;

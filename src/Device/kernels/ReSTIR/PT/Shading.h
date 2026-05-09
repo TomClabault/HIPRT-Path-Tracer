@@ -39,6 +39,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		return;
 
+	ColorRGB32F decoupled_reuse_shading_color = render_data.render_settings.restir_pt_settings.decoupled_reuse_shading_result_buffer[pixel_index];
+	if (render_data.render_settings.enable_direct_lighting)
+		// Adding the directly visible emission from an emissive surface
+		decoupled_reuse_shading_color += render_data.g_buffer.materials[pixel_index].get_emission();
+
+	path_tracing_accumulate_color(render_data, pixel_index, decoupled_reuse_shading_color);
+
+	return;
+
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	hiprtRay ray;
@@ -122,7 +131,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			secondary_hit_throughput	   = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 		}
 
-		camera_outgoing_radiance += first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
+		camera_outgoing_radiance +=
+			first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

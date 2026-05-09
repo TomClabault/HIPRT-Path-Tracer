@@ -115,16 +115,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 															render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 		}
 
+		ColorRGB32F vector_target_function;
 		float target_function_at_center = 0.0f;
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
-			if (is_center_pixel)
-				// No need to evaluate the center sample at the center pixel, that's exactly
-				// the target function of the center reservoir
-				target_function_at_center = neighbor_reservoir.sample.target_function;
-			else
-				target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_SpatialTargetFunctionVisibility>(
-					render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+			// if (is_center_pixel)
+			//	// No need to evaluate the center sample at the center pixel, that's exactly
+			//	// the target function of the center reservoir
+			//	target_function_at_center = neighbor_reservoir.sample.target_function;
+			// else
+			target_function_at_center = ReSTIR_PT_evaluate_target_function<true>(render_data, neighbor_reservoir.sample, center_pixel_surface,
+																				 random_number_generator, &vector_target_function);
 		}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
@@ -170,6 +171,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 														random_number_generator))
 			// Only used with MIS-like MIS weights
 			selected_neighbor = neighbor_index;
+
+		render_data.render_settings.restir_pt_settings.decoupled_reuse_shading_result_buffer[center_pixel_index] +=
+			mis_weight * vector_target_function * neighbor_reservoir.UCW * shift_mapping_jacobian /
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes;
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}

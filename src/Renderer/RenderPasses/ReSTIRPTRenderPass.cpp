@@ -108,6 +108,7 @@ void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_initial_candidates_buffer.resize(new_width * new_height);
 	m_temporal_buffer.resize(new_width * new_height);
 	m_spatial_buffer.resize(new_width * new_height);
+	m_decoupled_reuse_shading_result_buffer.resize(new_width * new_height);
 
 	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<ReSTIR_VARIANT_PT>(m_renderer, new_width, new_height, m_per_pixel_spatial_reuse_radius,
 																				m_per_pixel_spatial_reuse_direction_mask_ull);
@@ -207,6 +208,12 @@ bool ReSTIRPTRenderPass::pre_render_update(float delta_time)
 		{
 			m_spatial_buffer.free();
 
+			render_data_invalidated = true;
+		}
+
+		if (m_decoupled_reuse_shading_result_buffer.size() > 0)
+		{
+			m_decoupled_reuse_shading_result_buffer.free();
 			render_data_invalidated = true;
 		}
 
@@ -433,6 +440,8 @@ void ReSTIRPTRenderPass::update_render_data()
 		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_PT>(render_data, m_per_pixel_spatial_reuse_radius,
 																					 m_per_pixel_spatial_reuse_direction_mask_ull,
 																					 m_spatial_reuse_statistics_hit_hits, m_spatial_reuse_statistics_hit_total);
+
+		render_data.render_settings.restir_pt_settings.decoupled_reuse_shading_result_buffer = m_decoupled_reuse_shading_result_buffer.get_device_pointer();
 	}
 	else
 	{

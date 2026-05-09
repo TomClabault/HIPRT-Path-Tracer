@@ -257,6 +257,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		render_data.render_settings.restir_pg_settings.invalidate_splatting_sample(render_data.render_settings.render_resolution, x, y, bounce);
 #endif
 
+	render_data.render_settings.restir_pt_settings.decoupled_reuse_shading_result_buffer[pixel_index] = ColorRGB32F(0.0f);
+
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
 	ReSTIRPTReservoir restir_pt_initial_reservoir;
