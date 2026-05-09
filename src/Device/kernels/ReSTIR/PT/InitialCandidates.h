@@ -305,12 +305,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			{
 				if (bounce > 0)
 				{
-					if (bounce == 1)
-						// This is going to be tracing the ray from the visible point to the sample:
-						// we're saving the random seed used during the BVH traversal to be able to reproduce
-						// alpha tests
-						restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-
 					intersection_found =
 						path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 

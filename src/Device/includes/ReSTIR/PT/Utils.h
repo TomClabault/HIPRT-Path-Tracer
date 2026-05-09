@@ -62,11 +62,10 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	shadow_ray.direction = sample_direction;
 
 	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index,
-												 /* bounce. Always 1 for ReSTIR PT from visible point to sample point */ 1, random_number_generator);
+												 /* bounce. Always 0 for ReSTIR PT from visible point to reconnection vertex */ 0, random_number_generator);
 
 	if (!visible)
 	{
-		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
 		reservoir.UCW = 0.0f;
 
 		return true;

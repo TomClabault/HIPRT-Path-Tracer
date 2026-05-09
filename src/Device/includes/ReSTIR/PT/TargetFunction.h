@@ -63,9 +63,8 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		visibility_ray.origin	 = surface.shading_point;
 		visibility_ray.direction = incident_light_direction;
 
-		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
 		bool sample_point_occluded =
-			evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0, random_number_generator_alpha_test);
+			evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0, random_number_generator);
 		if (sample_point_occluded)
 			return 0.0f;
 	}
@@ -91,8 +90,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
 											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point),
 											   // TODO proper update volume state for the sample point
-											   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material),
-											   0.0f);
+											   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
 
 		// TODO can we use a simple target function visible point only for perf?
 		float trash_pdf;
