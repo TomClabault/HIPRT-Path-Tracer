@@ -137,7 +137,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -207,7 +207,7 @@ struct HIPRTRenderSettings
 	float stop_pixel_noise_threshold = 0.075f;
 
 	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
-	bool enable_direct_lighting = true;
+	bool enable_direct_lighting = false;
 
 	// Clamp direct lighting contribution to reduce fireflies
 	float direct_contribution_clamp = 0.0f;

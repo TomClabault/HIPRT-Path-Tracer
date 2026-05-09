@@ -66,11 +66,8 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data,
-													   BSDFContext& bsdf_context,
-													   float3_t& sampled_direction,
-													   float& pdf,
-													   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(
+	const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3_t& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -82,11 +79,12 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 	}*/
 	return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
-													   bsdf_context.incident_light_info);
+	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.geometric_normal, bsdf_context.shading_normal, sampled_direction,
+													   pdf, random_number_generator, bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, sampled_direction, pdf,
-													   random_number_generator, bsdf_context.incident_light_info);
+	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.geometric_normal,
+													   bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
+													   bsdf_context.incident_light_info);
 #endif
 }
 

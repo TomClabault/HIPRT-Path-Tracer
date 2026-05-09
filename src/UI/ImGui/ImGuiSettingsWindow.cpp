@@ -1422,7 +1422,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
 				"Uses ReSTIR GI to resample a path to shade for the pixel. Biased (although barely noticeable by design of resampling full path trees instead "
-				"of just paths as ReSTIR PT",
+				"of just paths as ReSTIR PT)",
 				"Uses ReSTIR PT to resample a path to shade for the pixel. The difference with ReSTIR GI is that is resamples paths and not full path trees, "
 				"guaranteeing unbiasedness.",
 				"Uses ReSTIR Path Guiding piggy-backing on another ReSTIR path sampler to improve path sampling distributions over time with guiding.",
@@ -4084,7 +4084,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
 		ImGui::TreePush("ReSTIR PT - Initial candidates tree");
 
 		if (ImGui::SliderInt("Initial path trees count", &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.initial_path_trees_count, 1,
-			8))
+							 8))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

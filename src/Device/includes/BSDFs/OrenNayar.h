@@ -96,6 +96,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffecti
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
 													   const float3_t& world_space_view_direction,
+													   const float3_t& geometric_normal,
 													   const float3_t& shading_normal,
 													   float3_t& out_sampled_direction,
 													   float& pdf,
@@ -103,6 +104,13 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffec
 													   BSDFIncidentLightInfo& out_sampled_light_info)
 {
 	out_sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
+	if (hippt::dot(out_sampled_direction, geometric_normal) <= 0.0f)
+	{
+		// Sampling below the geometry is going to lead to light leaks, invalidating
+		pdf = 0.0f;
+
+		return ColorRGB32F(0.0f);
+	}
 
 	out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 
