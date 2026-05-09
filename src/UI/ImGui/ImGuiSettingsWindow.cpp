@@ -1310,6 +1310,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
 				draw_ris_settings_panel();
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+					draw_ReSTIR_PT_light_sampling_panel();
 
 				break;
 			}
@@ -1589,7 +1591,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 					draw_ReSTIR_PT_initial_candidates_panel();
-
 					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
@@ -4078,15 +4079,25 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
 {
-	if (ImGui::CollapsingHeader("Initial Candidates"))
+	if (ImGui::CollapsingHeader("Initial candidates"))
 	{
-		ImGui::TreePush("ReSTIR PT - Initial Candidates Tree");
+		ImGui::TreePush("ReSTIR PT - Initial candidates tree");
 
 		if (ImGui::SliderInt("Initial path trees count", &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.initial_path_trees_count, 1,
-							 8))
+			8))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_ReSTIR_PT_light_sampling_panel()
+{
+	if (ImGui::CollapsingHeader("ReSTIR PT light sampling settings"))
+	{
+		ImGui::TreePush("ReSTIR PT - Light sampling tree");
+
 		if (ImGui::SliderInt("NEE RIS Light sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 8))
 			m_render_window->set_render_dirty(true);

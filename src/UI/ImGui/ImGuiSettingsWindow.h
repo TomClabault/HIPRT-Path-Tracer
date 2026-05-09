@@ -66,6 +66,7 @@ private:
 	template <int ReSTIRVariant>
 	void draw_ReSTIR_bias_correction_panel();
 	void draw_ReSTIR_PT_initial_candidates_panel();
+	void draw_ReSTIR_PT_light_sampling_panel();
 
 	void draw_next_event_estimation_plus_plus_panel();
 	bool use_nee_plus_plus_checkbox(const std::string& text = "Use NEE++");
