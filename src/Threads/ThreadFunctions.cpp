@@ -181,6 +181,10 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		int max_emissive_mesh_index_offset = 0;
 		for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index_in_whole_scene++)
 		{
+			{
+				if (current_triangle_index_in_whole_scene == 3193126)
+					std::cerr << "";
+			}
 			int index_1 = mesh->mFaces[face_index].mIndices[0];
 			int index_2 = mesh->mFaces[face_index].mIndices[1];
 			int index_3 = mesh->mFaces[face_index].mIndices[2];
@@ -212,13 +216,13 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 				float face_area		 = hippt::length(face_normal) * 0.5f;
 				float face_emission	 = 0.0f;
 
-				if (renderer_material.uses_emissive_texture())
+				if (renderer_material.uses_non_constant_emissive_texture())
 				{
 					// If the mesh has an emissive texture, we're going to approximately integrate the emissive texture power of each face of the mesh for light
 					// sampling
 					// and store that in the emission parameter of the material
-					constexpr unsigned int sample_u_count = 256;
-					constexpr unsigned int sample_v_count = 256;
+					constexpr unsigned int sample_u_count = 16;
+					constexpr unsigned int sample_v_count = 16;
 
 					for (unsigned int sample_u = 0; sample_u < sample_u_count; sample_u++)
 					{

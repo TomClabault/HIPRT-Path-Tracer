@@ -8,8 +8,6 @@
 #include <future>
 #include <numeric>
 
-// DELETEBISTROSGTREEEDBUG.glt
-
 int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
 {
 	return m_triangle_indices[bvh_triangle_index];

@@ -15,8 +15,7 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
 
-	compute_node_spherical_gaussian(
-		0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
+	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 }
 
 void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data)
@@ -112,6 +111,8 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		}
 
 		if (valid_triangle_count == 0)
+			return;
+		else if (sg_node.total_power == 0.0f)
 			return;
 
 		sum_positions /= sg_node.total_power;

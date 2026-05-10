@@ -50,7 +50,7 @@ struct CPUMaterial
 
 		mat.set_emission(emission);
 		mat.set_emission_strength(emission_strength * global_emissive_factor);
-		mat.set_emissive_texture_used(uses_emissive_texture());
+		mat.set_emissive_texture_used(uses_non_constant_emissive_texture());
 
 		mat.set_base_color(base_color);
 
@@ -147,16 +147,25 @@ struct CPUMaterial
 
 	HIPRT_HOST_DEVICE bool is_emissive() const
 	{
-		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || uses_emissive_texture();
+		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || uses_non_constant_emissive_texture() ||
+			   uses_constant_emissive_texture();
 	}
 
 	/**
 	 * @return True if the material uses an emissive texture. Constant emissive texture (i.e. emission_texture_index ==
 	 * MaterialConstants::CONSTANT_EMISSIVE_TEXTURE) is not considered an emissive texture for this function
 	 */
-	HIPRT_DEVICE bool uses_emissive_texture() const
+	HIPRT_DEVICE bool uses_non_constant_emissive_texture() const
 	{
 		return emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
+	}
+
+	/**
+	 * @return True if the material uses a constant emissive texture, i.e. if the emission is given by a texture but that texture is a single color
+	 */
+	HIPRT_DEVICE bool uses_constant_emissive_texture() const
+	{
+		return emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 	}
 
 	/*
