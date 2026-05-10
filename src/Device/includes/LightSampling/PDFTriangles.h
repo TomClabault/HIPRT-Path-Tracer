@@ -96,8 +96,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
 											float3_t shading_normal,
 											const DeviceUnpackedEffectiveMaterial& material,
 											int emissive_triangle_global_index,
-											float light_area,
-											ColorRGB32F light_emission)
+											float light_area)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return 0.0f;
@@ -108,9 +107,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
 	}
 	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
 	{
+		float sampling_power = render_data.buffers.triangles_average_emissive_power_luminance[emissive_triangle_global_index];
 		// TODO EMISSIVE TEXTURE SAMPLING
 		// Here we need to use the emission used in the CDF to get the PDF, not the hit emission (which is the light_emission parameter here)
-		return (light_emission.luminance() * light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
+		return sampling_power / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 	}
 	else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
 	{
@@ -142,8 +142,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 															 float3_t point_on_triangle,
 															 float3_t triangle_normal,
 															 int emissive_triangle_global_index,
-															 float light_area,
-															 ColorRGB32F light_emission)
+															 float light_area)
 {
 	float point_on_light_pdf;
 
@@ -179,7 +178,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 		point_on_light_pdf = 1.0e15f;
 
 	float light_pdf = pdf_of_emissive_triangle<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, material,
-																	  emissive_triangle_global_index, light_area, light_emission);
+																	  emissive_triangle_global_index, light_area);
 
 	float full_pdf = point_on_light_pdf * light_pdf;
 
@@ -194,12 +193,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 															 const DeviceUnpackedEffectiveMaterial& material,
 															 float3_t point_on_triangle,
 															 float3_t triangle_normal,
-															 int emissive_triangle_global_index,
-															 ColorRGB32F light_emission)
+															 int emissive_triangle_global_index)
 {
 	return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, material,
 																			point_on_triangle, triangle_normal, emissive_triangle_global_index,
-																			triangle_load_area(render_data, emissive_triangle_global_index), light_emission);
+																			triangle_load_area(render_data, emissive_triangle_global_index));
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
@@ -213,7 +211,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 {
 	return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, material,
 																			point_on_triangle, light_hit_info.hit_geometric_normal,
-																			light_hit_info.hit_prim_index, light_hit_info.hit_emission);
+																			light_hit_info.hit_prim_index);
 }
 
 /**
@@ -235,7 +233,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 															const DeviceUnpackedEffectiveMaterial& material,
 															int emissive_triangle_global_index,
 															float light_area,
-															ColorRGB32F light_emission,
 															float3_t light_surface_normal,
 															float hit_distance,
 															float3_t to_light_direction)
@@ -247,9 +244,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 	//  --> cos_angle negative
 	float cosine_light_source = compute_cosine_term_at_light_source(light_surface_normal, -to_light_direction);
 
-	float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(
-		render_data, shading_point, view_direction, shading_normal, material, shading_point + hit_distance * to_light_direction, light_surface_normal,
-		emissive_triangle_global_index, light_area, light_emission);
+	float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
+																							  material, shading_point + hit_distance * to_light_direction,
+																							  light_surface_normal, emissive_triangle_global_index, light_area);
 
 	return area_to_solid_angle_pdf(pdf_area_measure, hit_distance, cosine_light_source);
 }
@@ -261,14 +258,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 															float3_t shading_normal,
 															const DeviceUnpackedEffectiveMaterial& material,
 															int emissive_triangle_global_index,
-															ColorRGB32F light_emission,
 															float3_t light_surface_normal,
 															float hit_distance,
 															float3_t to_light_direction)
 {
 	return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(
 		render_data, shading_point, view_direction, shading_normal, material, emissive_triangle_global_index,
-		triangle_load_area(render_data, emissive_triangle_global_index), light_emission, light_surface_normal, hit_distance, to_light_direction);
+		triangle_load_area(render_data, emissive_triangle_global_index), light_surface_normal, hit_distance, to_light_direction);
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
@@ -280,9 +276,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 															const BSDFLightSampleRayHitInfo& light_hit_info,
 															float3_t to_light_direction)
 {
-	return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(
-		render_data, shading_point, view_direction, shading_normal, material, light_hit_info.hit_prim_index, light_hit_info.hit_emission,
-		light_hit_info.hit_geometric_normal, light_hit_info.hit_distance, to_light_direction);
+	return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, material,
+																		   light_hit_info.hit_prim_index, light_hit_info.hit_geometric_normal,
+																		   light_hit_info.hit_distance, to_light_direction);
 }
 
 #endif

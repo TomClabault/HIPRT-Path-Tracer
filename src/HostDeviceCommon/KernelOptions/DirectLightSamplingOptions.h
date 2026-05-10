@@ -124,7 +124,7 @@
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_ONE_LIGHT
+#define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #endif
 
 /**

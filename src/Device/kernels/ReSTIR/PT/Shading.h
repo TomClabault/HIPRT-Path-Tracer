@@ -73,7 +73,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	ColorRGB32F camera_outgoing_radiance;
 	if (render_data.render_settings.enable_direct_lighting)
 		// Adding the directly visible emission from an emissive surface
-		camera_outgoing_radiance += ray_payload.material.get_hit_emission();
+		camera_outgoing_radiance += ray_payload.material.get_emission();
 
 	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];
 	if (resampling_reservoir.UCW > 0.0f && (!resampling_reservoir.sample.di_sample || render_data.render_settings.enable_direct_lighting))

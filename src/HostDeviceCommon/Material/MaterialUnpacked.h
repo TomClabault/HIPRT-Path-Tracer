@@ -101,11 +101,6 @@
  */
 struct DeviceUnpackedEffectiveMaterial
 {
-	HIPRT_HOST_DEVICE bool is_emissive() const
-	{
-		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || emissive_texture_used;
-	}
-
 	HIPRT_HOST_DEVICE bool can_do_light_sampling(float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD) const
 	{
 		return MaterialUtils::can_do_light_sampling(roughness, metallic, specular_transmission, coat, coat_roughness, second_roughness, second_roughness_weight,
@@ -197,12 +192,14 @@ struct DeviceUnpackedEffectiveMaterial
 		return SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
-	HIPRT_DEVICE ColorRGB32F get_hit_emission() const
+	HIPRT_DEVICE ColorRGB32F get_emission() const
 	{
-		// TODO use emissive texture
 		return emission * emission_strength;
 	}
 
+	/**
+	 * @return The emission not scaled by emission strength
+	 */
 	HIPRT_DEVICE ColorRGB32F get_raw_emission() const
 	{
 		return emission;
@@ -221,6 +218,16 @@ struct DeviceUnpackedEffectiveMaterial
 	HIPRT_DEVICE void set_emission_strength(float strength)
 	{
 		emission_strength = strength;
+	}
+
+	HIPRT_DEVICE bool is_emissive() const
+	{
+		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || uses_emissive_texture();
+	}
+
+	HIPRT_DEVICE bool uses_emissive_texture() const
+	{
+		return emissive_texture_index != MaterialConstants::NO_TEXTURE && emissive_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 	}
 
 	ColorRGB32F base_color = ColorRGB32F(1.0f);
@@ -296,6 +303,7 @@ struct DeviceUnpackedEffectiveMaterial
 	// 0.0f completely transparent (becomes invisible)
 	float alpha_opacity = 1.0f;
 
+	// TODO remove this, unused
 	unsigned char energy_preservation_monte_carlo_samples = 12;
 
 	/**
@@ -331,10 +339,6 @@ struct DeviceUnpackedEffectiveMaterial
 	//
 	// See PrincipledBSDFDoEnergyCompensation in this codebase.
 	bool enforce_strong_energy_conservation = false;
-	// This member is only ever set to true on the GPU when we have the simplified material
-	// that doesn't have texture indices anymore. Then we can manually fetch the emissive texture
-	// index of the material and sample the emissive texture
-	bool emissive_texture_used = false;
 
 	HIPRT_HOST_DEVICE void set_dielectric_priority(unsigned char priority)
 	{
@@ -358,7 +362,7 @@ private:
 	// Multiplier on the emission and on the emission read from a potential emissive texture. Contains the scene-global 'global_emissive_factor' multiplier
 	float emission_strength = 1.0f;
 	// Index of the emissive texture for fetching the emission when hitting the material
-	int emissive_texture_index = MaterialConstants::NO_TEXTURE;
+	unsigned short int emissive_texture_index = MaterialConstants::NO_TEXTURE;
 
 	// Nested dielectric parameter
 	// Private because this may be different depending on the BRDF override

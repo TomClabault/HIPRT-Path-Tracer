@@ -453,8 +453,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 		float emission_strength = 0.0f;
 		mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
 
-		renderer_material.emission_strength		= hippt::max(color_emissive.luminance(), emission_strength);
-		renderer_material.emissive_texture_used = true;
+		renderer_material.emission_strength = hippt::max(color_emissive.luminance(), emission_strength);
 	}
 
 	mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, renderer_material.metallic);

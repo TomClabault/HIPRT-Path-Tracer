@@ -147,9 +147,13 @@ struct CPUMaterial
 
 	HIPRT_HOST_DEVICE bool is_emissive() const
 	{
-		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || emissive_texture_used;
+		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || uses_emissive_texture();
 	}
 
+	/**
+	 * @return True if the material uses an emissive texture. Constant emissive texture (i.e. emission_texture_index ==
+	 * MaterialConstants::CONSTANT_EMISSIVE_TEXTURE) is not considered an emissive texture for this function
+	 */
 	HIPRT_DEVICE bool uses_emissive_texture() const
 	{
 		return emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
@@ -221,7 +225,6 @@ struct CPUMaterial
 	ColorRGB32F emission		 = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
 	float emission_strength		 = 1.0f;
 	float global_emissive_factor = 1.0f; // This factor is baked into 'emission_strength' before being sent to the GPU
-	bool emissive_texture_used	 = false;
 
 	ColorRGB32F base_color = ColorRGB32F(1.0f);
 

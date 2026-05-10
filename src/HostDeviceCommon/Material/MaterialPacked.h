@@ -89,7 +89,6 @@ struct DevicePackedEffectiveMaterial
 
 		packed.set_emission(unpacked.get_raw_emission());
 		packed.set_emission_strength(unpacked.get_emission_strength());
-		packed.set_emissive_texture_used(unpacked.emissive_texture_used);
 
 		packed.set_base_color(unpacked.base_color);
 
@@ -161,7 +160,6 @@ struct DevicePackedEffectiveMaterial
 
 		unpacked.set_raw_emission(this->get_raw_emission());
 		unpacked.set_emission_strength(this->get_emission_strength());
-		unpacked.emissive_texture_used = this->get_emissive_texture_used();
 
 		unpacked.base_color = this->get_base_color();
 
@@ -975,9 +973,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 		out.sheen_texture_index					= this->get_sheen_texture_index();
 		out.specular_transmission_texture_index = this->get_specular_transmission_texture_index();
 
-		out.emissive_texture_used = this->get_emissive_texture_used();
-		if (!out.emissive_texture_used)
-			out.set_raw_emission(this->get_raw_emission());
+		out.set_raw_emission(this->get_raw_emission());
 		out.set_emission_strength(this->get_emission_strength());
 
 		if (MaterialUtils::use_base_color_texture(out.base_color_texture_index))

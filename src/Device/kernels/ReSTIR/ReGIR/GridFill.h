@@ -18,7 +18,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> grid_fill_sample_canonical_candidate(
-						const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3_t view_direction, Xorshift32Generator& rng)
+	const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3_t view_direction, Xorshift32Generator& rng)
 {
 	RayPayload dummy_ray_payload;
 	dummy_ray_payload.material.roughness = surface.cell_roughness;
@@ -29,9 +29,8 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSam
 	return sample_one_emissive_triangle_light_tree_ats<false>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal,
 															  surface.cell_primitive_index, dummy_ray_payload, rng);
 #else
-	return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal,
-																					   surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload,
-																					   rng);
+	return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(
+		render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 #endif
 }
 
@@ -54,8 +53,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 		if (reservoir_is_canonical)
 		{
 			LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> light_point_samples =
-									grid_fill_sample_canonical_candidate(render_data, surface,
-																		 hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
+				grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
 
 			for (int i = 0; i < DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(); i++)
 			{
@@ -64,9 +62,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 					continue;
 
 				// This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-				float target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
-																						   light_point_sample.light_source_normal,
-																						   light_point_sample.point_on_light, rng);
+				float target_function =
+					ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
+																	   light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
 
 				float mis_weight = 1.0f / (regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir *
 										   DirectLightIntegrationFactor<ReGIR_GridFillLightSamplingBaseStrategyCanonical>());
@@ -83,8 +81,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 			material.specular  = surface.cell_specular;
 
 			LightSamplePointInformation light_point_sample = sample_one_emissive_triangle_with_cell_light_distribution(
-									render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point),
-									surface.cell_normal, material, hash_grid_cell_index, primary_hit, rng);
+				render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, material,
+				hash_grid_cell_index, primary_hit, rng);
 
 			// TODO DO WE NEED THIS
 			/*if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
@@ -98,21 +96,18 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 				  ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
 				  /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
 					 We don't need that in RIS*/
-									ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation &&
-															ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus > (render_data, surface, primary_hit,
-																												  light_point_sample.emission,
-																												  light_point_sample.light_source_normal,
-																												  light_point_sample.point_on_light, rng);
+				ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation &&
+					ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus > (render_data, surface, primary_hit, light_point_sample.emission,
+																		  light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
 
 			float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(
-									render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point),
-									surface.cell_normal, material, light_point_sample.point_on_light, light_point_sample.light_source_normal,
-									light_point_sample.emissive_triangle_global_index, light_point_sample.light_area, light_point_sample.emission);
-			float mis_weight = balance_heuristic(
-									light_point_sample.area_measure_pdf,
-									regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF,
-									ReGIR_GridFillCellDistributionsCanonicalSampleCount *
-															DirectLightIntegrationFactor<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>());
+				render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, material,
+				light_point_sample.point_on_light, light_point_sample.light_source_normal, light_point_sample.emissive_triangle_global_index,
+				light_point_sample.light_area);
+			float mis_weight = balance_heuristic(light_point_sample.area_measure_pdf,
+												 regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF,
+												 ReGIR_GridFillCellDistributionsCanonicalSampleCount *
+													 DirectLightIntegrationFactor<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>());
 
 			reservoir.stream_sample(mis_weight, target_function, light_point_sample.area_measure_pdf, light_point_sample, rng);
 			sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
@@ -131,9 +126,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 		for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
 		{
 			LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>()> light_point_samples =
-									grid_fill_cell_light_distributions_canonical_sample(
-															render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point),
-															rng);
+				grid_fill_cell_light_distributions_canonical_sample(render_data, surface,
+																	hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
 
 			for (int i = 0; i < DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(); i++)
 			{
@@ -143,18 +137,18 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 					// during sampling
 					continue;
 
-				float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
-																							   light_point_sample.light_source_normal,
-																							   light_point_sample.point_on_light, rng);
-				unsigned int sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index
-																		  [light_point_sample.emissive_triangle_global_index];
-				float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit,
-																							   light_point_sample, sampled_mesh_index);
-				float mis_weight				   = balance_heuristic(
-										  light_point_sample.area_measure_pdf,
-										  ReGIR_GridFillCellDistributionsCanonicalSampleCount *
-																  DirectLightIntegrationFactor<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(),
-										  cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
+				float target_function =
+					ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
+																		   light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
+				unsigned int sampled_mesh_index =
+					render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_point_sample.emissive_triangle_global_index];
+				float cell_light_distributions_pdf =
+					get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_point_sample, sampled_mesh_index);
+				float mis_weight =
+					balance_heuristic(light_point_sample.area_measure_pdf,
+									  ReGIR_GridFillCellDistributionsCanonicalSampleCount *
+										  DirectLightIntegrationFactor<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(),
+									  cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
 				save_target_function			  = target_function;
 				save_sampled_mesh_index			  = sampled_mesh_index;
@@ -189,8 +183,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 		if (reservoir_is_canonical)
 		{
 			LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> light_point_samples =
-									grid_fill_sample_canonical_candidate(render_data, surface,
-																		 hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
+				grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
 
 			for (int i = 0; i < DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(); i++)
 			{
@@ -198,9 +191,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 				if (light_point_sample.emissive_triangle_global_index == -1)
 					continue;
 
-				float target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
-																						   light_point_sample.light_source_normal,
-																						   light_point_sample.point_on_light, rng);
+				float target_function =
+					ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
+																	   light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
 
 				float mis_weight = 1.0f / (regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir *
 										   DirectLightIntegrationFactor<ReGIR_GridFillLightSamplingBaseStrategyCanonical>());
@@ -219,10 +212,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 			dummy_ray_payload.material.specular	 = surface.cell_specular;
 
 			LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>()> light_point_samples =
-									sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
-															render_data, surface.cell_point,
-															hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal,
-															surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+				sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
+					render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal,
+					surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 
 			for (int i = 0; i < DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(); i++)
 			{
@@ -230,12 +222,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 				if (light_point_sample.emissive_triangle_global_index == -1)
 					continue;
 
-				float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
-																							   light_point_sample.light_source_normal,
-																							   light_point_sample.point_on_light, rng);
-				float mis_weight	  = 1.0f / (regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir *
-											DirectLightIntegrationFactor<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>());
-				float source_pdf	  = light_point_sample.area_measure_pdf;
+				float target_function =
+					ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, light_point_sample.emission,
+																		   light_point_sample.light_source_normal, light_point_sample.point_on_light, rng);
+				float mis_weight = 1.0f / (regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir *
+										   DirectLightIntegrationFactor<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>());
+				float source_pdf = light_point_sample.area_measure_pdf;
 
 				sanity_check<true>(render_data, source_pdf, -1, -1);
 				sanity_check<true>(render_data, target_function, -1, -1);
@@ -259,21 +251,18 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data,
 	ReGIRReservoir grid_fill_reservoir;
 
 	if constexpr (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE)
-		grid_fill_reservoir = grid_fill_with_per_cell_light_distributions(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit,
-																		  rng);
+		grid_fill_reservoir =
+			grid_fill_with_per_cell_light_distributions(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
 	else
-		grid_fill_reservoir = grid_fill_classic<accumulatePreIntegration>(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit,
-																		  rng);
+		grid_fill_reservoir =
+			grid_fill_classic<accumulatePreIntegration>(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
 
 	return grid_fill_reservoir;
 }
 
 template <bool accumulatePreIntegration>
-HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render_data,
-														 const ReGIRReservoir& output_reservoir,
-														 bool reservoir_is_canonical,
-														 unsigned int hash_grid_cell_index,
-														 bool primary_hit)
+HIPRT_DEVICE void grid_fill_pre_integration_accumulation(
+	HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir, bool reservoir_is_canonical, unsigned int hash_grid_cell_index, bool primary_hit)
 {
 	if constexpr (accumulatePreIntegration)
 	{
@@ -307,18 +296,13 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render
  */
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64) ReGIR_Grid_Fill(HIPRTRenderData render_data,
-									  ReGIRHashGridSoADevice output_reservoirs_grid,
-									  unsigned int number_of_cells_alive,
-									  bool primary_hit)
+__launch_bounds__(64)
+	ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
 #else
 template <bool accumulatePreIntegration>
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReGIR_Grid_Fill(HIPRTRenderData render_data,
-					   ReGIRHashGridSoADevice output_reservoirs_grid,
-					   unsigned int number_of_cells_alive,
-					   bool primary_hit,
-					   int thread_index)
+inline ReGIR_Grid_Fill(
+	HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -366,9 +350,8 @@ inline ReGIR_Grid_Fill(HIPRTRenderData render_data,
 		regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
 		grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(
-								render_data, output_reservoir,
-								regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell),
-								hash_grid_cell_index, primary_hit);
+			render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell),
+			hash_grid_cell_index, primary_hit);
 
 #ifndef __KERNELCC__
 		// We're dispatching exactly one thread per reservoir to compute on the CPU so no need

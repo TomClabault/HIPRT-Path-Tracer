@@ -587,7 +587,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
 
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-	ColorRGB32F hit_emission = ray_payload.material.get_hit_emission();
+	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
 	if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
@@ -598,7 +598,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		// it into account on the first bounce, otherwise we would be
 		// accounting for direct light sampling twice (bounce on emissive
 		// geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-		total_direct_lighting += ray_payload.material.get_hit_emission();
+		total_direct_lighting += ray_payload.material.get_emission();
 
 	// Clamped indirect lighting
 	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_throughput;
@@ -684,15 +684,13 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			// Our target function does not include the geometry term because we're integrating
 			// in solid angle. The geometry term in the target function ( / in the integrand) is only
 			// for surface area direct lighting integration
-			ColorRGB32F hit_emission	   = ray_payload.material.get_hit_emission();
+			ColorRGB32F hit_emission	   = ray_payload.material.get_emission();
 			ColorRGB32F light_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta * hit_emission;
 			float target_function		   = light_contribution.luminance();
 
 			float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 				render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
-				// TODO EMISSIVE TEXTURE SAMPLING, the emission parameter passed here should be the emission that the triangle is fetched with in the power
-				// sampling CDF, not the hit emission
-				nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, main_path_ray_hit_info.primitive_index, hit_emission,
+				nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, main_path_ray_hit_info.primitive_index,
 				main_path_ray_hit_info.geometric_normal, hit_distance, to_light_direction);
 
 			float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf,
@@ -747,40 +745,29 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 		return ColorRGB32F(0.0f);
 
 #if DirectLightNEEEstimator == LSS_BSDF
-	if (ray_payload.material.emission.is_black() || !intersection_found)
+	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
 
 	float bsdf_sample_mis_weight = 1.0f;
 
-	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
+	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.get_emission() * nee_deferred_MIS_context.last_bsdf_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
 
-	ColorRGB32F hit_emission = ray_payload.material.get_hit_emission();
+	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 
-	float bsdf_sample_mis_weight = 0.0f;
-	if (ray_payload.material.emissive_texture_used)
-		// If the material is using an emissive texture, only BSDF sampling contribute because we don't have NEE for emissive textures yet
-		// TODO EMISSIVE TEXTURE SAMPLING, remove this branch
-		bsdf_sample_mis_weight = 1.0f;
-	else
-	{
-		float3_t ray_direction = closest_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point;
-		float hit_distance	   = hippt::length(ray_direction);
-		ray_direction /= hit_distance;
+	float3_t ray_direction = closest_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point;
+	float hit_distance	   = hippt::length(ray_direction);
+	ray_direction /= hit_distance;
 
-		float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
-			render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
-			nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index,
-			// TODO EMISSIVE TEXTURE SAMPLING, the emission parameter passed here should be the emission that the triangle is fetched with in the power sampling
-			// CDF, not the hit emission
-			hit_emission, closest_hit_info.geometric_normal, hit_distance, ray_direction);
+	float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
+		render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction, nee_deferred_MIS_context.last_shading_normal,
+		nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index, closest_hit_info.geometric_normal, hit_distance, ray_direction);
 
-		bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
-												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
-	}
+	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
+													 DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
 	return nee_deferred_MIS_context.last_ray_throughput * hit_emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
