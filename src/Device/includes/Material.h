@@ -121,15 +121,18 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 		material.specular_transmission = specular_transmission;
 #endif
 
-	ColorRGB32F emission = read_material_texture<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
+	ColorRGB32F emission;
 	if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
-		emission = material.emission;
+		emission = material.get_raw_emission();
+	else
+		emission = read_material_texture<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
 
 	DeviceUnpackedEffectiveMaterial unpacked_effective_material(material);
 	unpacked_effective_material.base_color = material.base_color;
 
 	unpacked_effective_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
-	unpacked_effective_material.emission			  = emission;
+	unpacked_effective_material.set_raw_emission(emission);
+	unpacked_effective_material.set_emission_strength(material.get_emission_strength());
 	// Roughening of the base roughness and second metallic roughness based
 	// on the coat roughness. This should be precomputed instead of being done here
 	//

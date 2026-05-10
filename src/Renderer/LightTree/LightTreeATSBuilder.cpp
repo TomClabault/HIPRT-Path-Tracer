@@ -21,8 +21,7 @@ float3_t LightTreeATSBuilder::get_triangle_vertex(unsigned int linear_emissive_t
 {
 	int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 	return triangles_data.vertices_positions
-							[triangles_data.triangle_vertex_indices[triangles_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																	vertex_index]];
+		[triangles_data.triangle_vertex_indices[triangles_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + vertex_index]];
 }
 
 void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
@@ -66,11 +65,10 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		m_prefetched_triangles[i].bounds.extend(v1);
 		m_prefetched_triangles[i].bounds.extend(v2);
 
-		m_prefetched_triangles[i].centroid			  = (v0 + v1 + v2) / 3.0f;
-		m_prefetched_triangles[i].normal			  = triangle_normal;
-		m_prefetched_triangles[i].area				  = triangle_area;
-		m_prefetched_triangles[i].power				  = mat.get_total_emission().luminance() * triangle_area;
-		m_prefetched_triangles[i].DEBUG_FULL_EMISSION = mat.get_total_emission();
+		m_prefetched_triangles[i].centroid = (v0 + v1 + v2) / 3.0f;
+		m_prefetched_triangles[i].normal   = triangle_normal;
+		m_prefetched_triangles[i].area	   = triangle_area;
+		m_prefetched_triangles[i].power	   = mat.get_total_emission().luminance() * triangle_area;
 	}
 
 	m_current_node_index->store(0);
@@ -220,16 +218,13 @@ float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientatio
 	float sin_theta_o = sinf(orientation_data.theta_o);
 	float cos_theta_o = cosf(orientation_data.theta_o);
 	float theta_w	  = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(hippt::M_Pi));
-	return 2.0f * hippt::M_Pi * (1.0f - cos_theta_o) + hippt::M_Pi * 0.5f *
-																			   (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) -
-																				2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
+	return 2.0f * hippt::M_Pi * (1.0f - cos_theta_o) +
+		   hippt::M_Pi * 0.5f *
+			   (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
 
-float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node,
-												  int& out_split_axis,
-												  float& out_split_position,
-												  const LightTreeBuilderTrianglesData& triangles_data,
-												  int split_method)
+float LightTreeATSBuilder::compute_split_position(
+	const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data, int split_method)
 {
 	if (split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_MIDPOINT)
 	{

@@ -142,8 +142,8 @@ struct HIPRTGeometry
 			m_geometry = nullptr;
 		}
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
-		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream,
-											 m_geometry));
+		HIPRT_CHECK_ERROR(
+			hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		if (do_compaction)
@@ -168,6 +168,8 @@ struct HIPRTScene
 	HIPRTGeometry emissive_triangles_BLAS;
 
 	OrochiBuffer<float> triangle_areas;
+	OrochiBuffer<float> triangle_average_emissive_luminance;
+	OrochiBuffer<float> triangle_average_emissive_power_luminance;
 	OrochiBuffer<unsigned char> has_vertex_normals;
 	OrochiBuffer<float3_t> vertex_normals;
 	OrochiBuffer<int> material_indices;

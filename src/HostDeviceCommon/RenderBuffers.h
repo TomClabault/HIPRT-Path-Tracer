@@ -44,6 +44,11 @@ struct RenderBuffers
 	float2_t* texcoords = nullptr;
 	// Precomputed areas of all triangles of the scene
 	float* triangles_areas = nullptr;
+	// Buffer that should be indexed with a global triangle index and contains the average emission over the face of the triangle. This value is not power i.e.
+	// it's not multiplied by the area of the triangle.
+	float* triangles_average_emissive_luminance = nullptr;
+	// Same as 'triangles_average_emissive_luminance' but contains the average emissive power of the triangle instead of the average luminance.
+	float* triangles_average_emissive_power_luminance = nullptr;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;
@@ -68,6 +73,7 @@ struct RenderBuffers
 	int* emissive_triangles_primitive_indices_and_emissive_textures = nullptr;
 	// Alias table for sampling emissives lights according to power
 	AliasTableDevice emissive_triangles_power_alias_table;
+	// Alias tables and other data related the emissive **meshes**
 	EmissiveMeshesAliasTablesDevice emissive_meshes_data;
 
 	// A pointer either to an array of Image8Bit or to an array of

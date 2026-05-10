@@ -22,21 +22,21 @@
  *      For some other parameters, some stuff can be precomputed on the CPU and the GPU
  *      can then use only the precomputed stuff. In these cases, you need to add the precomputed
  *      stuff in here. The data needed for the precomputation is only going to be stored
- *      in the CPUMaterial, step 2).
+ *      in the MaterialHost, step 2).
  *
  *      An example of a precomputed parameter is the emission. On the GPU, the emission is a simple
  *      color but on the CPU the emission is a color + emission strength.
  *      The emission strength is precomputed (multiplied/factored in) into the emission when
  *      packed into the material that the GPU uses
  *
- * 2)   CPUMaterial.h
+ * 2)   MaterialHost.h
  *
- *      Add the parameter to the CPUMaterial structure. Read step 1) for precomputed parameters.
+ *      Add the parameter to the MaterialHost structure. Read step 1) for precomputed parameters.
  *
  *      If the parameter needs clamping to avoid NaNs/singularities/numerical imprecisions, the clamping
- *      must be done in CPUMaterial::make_safe()
+ *      must be done in MaterialHost::make_safe()
  *
- *      You also need to add a line in CPUMaterial::pack_to_gpu() to define how the GPUMaterial (whose data is packed).
+ *      You also need to add a line in MaterialHost::pack_to_gpu() to define how the GPUMaterial (whose data is packed).
  *      This is most likely just a .set() call like all the other parameters. That setter will be defined in step 3).
  *      If you have some precomputation to do (such as with the emission), it can be done in there (look at the .set_emission() call)
  *
@@ -45,7 +45,7 @@
  *      Add the parameter to the MaterialPacked structure in MaterialPacked.h (only the parameters that
  *      the GPU is going to use. So, if there is any precomputation to be done (most parameters do not have precomputation), add only what
  *      holds the precomputed result that the GPU is directly going to use, not the data needed
- *      for the precomputation (that's only in CPUMaterial).
+ *      for the precomputation (that's only in MaterialHost).
  *
  *      The parameter will need to be packed. It can be added to a member that doesn't have all its "fields" filled yet (look for // TODO)
  *      or a new member needs to be created for the new parameter.
@@ -197,7 +197,32 @@ struct DeviceUnpackedEffectiveMaterial
 		return SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
-	ColorRGB32F emission   = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+	HIPRT_DEVICE ColorRGB32F get_hit_emission() const
+	{
+		// TODO use emissive texture
+		return emission * emission_strength;
+	}
+
+	HIPRT_DEVICE ColorRGB32F get_raw_emission() const
+	{
+		return emission;
+	}
+
+	HIPRT_DEVICE void set_raw_emission(const ColorRGB32F& emission_)
+	{
+		emission = emission_;
+	}
+
+	HIPRT_DEVICE float get_emission_strength() const
+	{
+		return emission_strength;
+	}
+
+	HIPRT_DEVICE void set_emission_strength(float strength)
+	{
+		emission_strength = strength;
+	}
+
 	ColorRGB32F base_color = ColorRGB32F(1.0f);
 
 	float roughness		   = 0.3f;
@@ -328,6 +353,13 @@ struct DeviceUnpackedEffectiveMaterial
 	}
 
 private:
+	// Emission color of the material for non-textured emissive surfaces
+	ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+	// Multiplier on the emission and on the emission read from a potential emissive texture. Contains the scene-global 'global_emissive_factor' multiplier
+	float emission_strength = 1.0f;
+	// Index of the emissive texture for fetching the emission when hitting the material
+	int emissive_texture_index = MaterialConstants::NO_TEXTURE;
+
 	// Nested dielectric parameter
 	// Private because this may be different depending on the BRDF override
 	// being used so we want to control this with getters/setters
@@ -336,22 +368,22 @@ private:
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
 {
-	int normal_map_texture_index = 65535;
+	int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
 
-	int emission_texture_index	 = 65535;
-	int base_color_texture_index = 65535;
+	int emission_texture_index	 = MaterialConstants::NO_TEXTURE;
+	int base_color_texture_index = MaterialConstants::NO_TEXTURE;
 
 	// If not 65535, there is only one texture for the metallic and the roughness parameters in which.
 	// case the green channel is the roughness and the blue channel is the metalness
-	int roughness_metallic_texture_index = 65535;
-	int roughness_texture_index			 = 65535;
-	int metallic_texture_index			 = 65535;
-	int anisotropic_texture_index		 = 65535;
+	int roughness_metallic_texture_index = MaterialConstants::NO_TEXTURE;
+	int roughness_texture_index			 = MaterialConstants::NO_TEXTURE;
+	int metallic_texture_index			 = MaterialConstants::NO_TEXTURE;
+	int anisotropic_texture_index		 = MaterialConstants::NO_TEXTURE;
 
-	int specular_texture_index				= 65535;
-	int coat_texture_index					= 65535;
-	int sheen_texture_index					= 65535;
-	int specular_transmission_texture_index = 65535;
+	int specular_texture_index				= MaterialConstants::NO_TEXTURE;
+	int coat_texture_index					= MaterialConstants::NO_TEXTURE;
+	int sheen_texture_index					= MaterialConstants::NO_TEXTURE;
+	int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 };
 
 #endif

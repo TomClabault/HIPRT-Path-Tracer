@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/KernelOptions/Common.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
@@ -83,7 +84,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
+#define DirectLightSamplingStrategy LSS_BASE_POWER
 
 /**
  * What direct lighting sampling strategy to use.
@@ -143,7 +144,7 @@
  *		variance. Takes the cosine term at the shading point into account
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 
 /**
  * If true, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used
@@ -192,6 +193,16 @@
  * performance/sampling quality as backfacing lights will not be sampled anymore (depending on the sampling strategy)
  */
 #define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
+
+/**
+ * Whether or not to use a visiblity term in the target function whose PDF we're
+ * approximating with RIS.
+ * Only applies for pure RIS direct lighting strategy (i.e. not RIS used by ReSTIR
+ * on the initial candidates pass for example)
+ *
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
+ */
+#define RISUseVisiblityTargetFunction KERNEL_OPTION_FALSE
 
 /**
  * What envmap sampling strategy to use

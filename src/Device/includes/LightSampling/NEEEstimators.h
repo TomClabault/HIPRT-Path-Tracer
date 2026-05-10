@@ -524,13 +524,14 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 	if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
 		return ColorRGB32F(0.0f);
 
-	ColorRGB32F material_self_textured_emission;
-	if (ray_payload.material.emissive_texture_used)
-		// If the material is using an emissive texture, we will add its emission to the NEE estimation
-		// because we're not importance sampling emissive textures so we're doing it the brute force
-		// way for now (there are some things about light warping I think to properly sample emissive
-		// textures but haven't read too much of that)
-		material_self_textured_emission = ray_payload.material.emission;
+	// TODO EMISSIVE TEXTURE SAMPLING
+	// ColorRGB32F material_self_textured_emission;
+	// if (ray_payload.material.emissive_texture_used)
+	//	// If the material is using an emissive texture, we will add its emission to the NEE estimation
+	//	// because we're not importance sampling emissive textures so we're doing it the brute force
+	//	// way for now (there are some things about light warping I think to properly sample emissive
+	//	// textures but haven't read too much of that)
+	//	material_self_textured_emission = ray_payload.material.emission;
 
 	ColorRGB32F direct_light_contribution;
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING
@@ -549,7 +550,8 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 #endif
 #endif
 
-	return direct_light_contribution + material_self_textured_emission;
+	// TODO EMISSIVE TEXTURE SAMPLING
+	return direct_light_contribution; // +material_self_textured_emission;
 }
 
 HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
@@ -585,7 +587,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
 
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-	ColorRGB32F hit_emission = ray_payload.material.emission;
+	ColorRGB32F hit_emission = ray_payload.material.get_hit_emission();
 	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
 	if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
@@ -596,7 +598,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		// it into account on the first bounce, otherwise we would be
 		// accounting for direct light sampling twice (bounce on emissive
 		// geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-		total_direct_lighting += ray_payload.material.emission;
+		total_direct_lighting += ray_payload.material.get_hit_emission();
 
 	// Clamped indirect lighting
 	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_throughput;
@@ -659,7 +661,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
 	int nb_bsdf_candidates	= render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 
-	if (ray_payload.material.emission.is_black() || !intersection_found || nb_bsdf_candidates == 0)
+	if (!ray_payload.material.is_emissive() || !intersection_found || nb_bsdf_candidates == 0)
 	{
 		reservoir.end();
 
@@ -682,19 +684,22 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			// Our target function does not include the geometry term because we're integrating
 			// in solid angle. The geometry term in the target function ( / in the integrand) is only
 			// for surface area direct lighting integration
-			ColorRGB32F light_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta * ray_payload.material.emission;
+			ColorRGB32F hit_emission	   = ray_payload.material.get_hit_emission();
+			ColorRGB32F light_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta * hit_emission;
 			float target_function		   = light_contribution.luminance();
 
 			float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 				render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
-				nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, main_path_ray_hit_info.primitive_index,
-				ray_payload.material.emission, main_path_ray_hit_info.geometric_normal, hit_distance, to_light_direction);
+				// TODO EMISSIVE TEXTURE SAMPLING, the emission parameter passed here should be the emission that the triangle is fetched with in the power
+				// sampling CDF, not the hit emission
+				nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, main_path_ray_hit_info.primitive_index, hit_emission,
+				main_path_ray_hit_info.geometric_normal, hit_distance, to_light_direction);
 
 			float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf,
 												 nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 			candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-			bsdf_RIS_sample.emission				 = ray_payload.material.emission;
+			bsdf_RIS_sample.emission				 = hit_emission;
 			bsdf_RIS_sample.point_on_light_source	 = main_path_ray_hit_info.inter_point;
 			bsdf_RIS_sample.is_bsdf_sample			 = true;
 			bsdf_RIS_sample.bsdf_sample_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta;
@@ -750,12 +755,15 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
-	if (ray_payload.material.emission.is_black() || !intersection_found)
+	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
+
+	ColorRGB32F hit_emission = ray_payload.material.get_hit_emission();
 
 	float bsdf_sample_mis_weight = 0.0f;
 	if (ray_payload.material.emissive_texture_used)
 		// If the material is using an emissive texture, only BSDF sampling contribute because we don't have NEE for emissive textures yet
+		// TODO EMISSIVE TEXTURE SAMPLING, remove this branch
 		bsdf_sample_mis_weight = 1.0f;
 	else
 	{
@@ -766,13 +774,15 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 		float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 			render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 			nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index,
-			ray_payload.material.emission, closest_hit_info.geometric_normal, hit_distance, ray_direction);
+			// TODO EMISSIVE TEXTURE SAMPLING, the emission parameter passed here should be the emission that the triangle is fetched with in the power sampling
+			// CDF, not the hit emission
+			hit_emission, closest_hit_info.geometric_normal, hit_distance, ray_direction);
 
 		bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 												   DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 	}
 
-	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
+	return nee_deferred_MIS_context.last_ray_throughput * hit_emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	RISReservoir final_reservoir =

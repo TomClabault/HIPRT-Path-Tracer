@@ -73,7 +73,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	ColorRGB32F camera_outgoing_radiance;
 	if (render_data.render_settings.enable_direct_lighting)
 		// Adding the directly visible emission from an emissive surface
-		camera_outgoing_radiance += ray_payload.material.emission;
+		camera_outgoing_radiance += ray_payload.material.get_hit_emission();
 
 	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];
 	if (resampling_reservoir.UCW > 0.0f && (!resampling_reservoir.sample.di_sample || render_data.render_settings.enable_direct_lighting))
@@ -122,7 +122,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			secondary_hit_throughput	   = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 		}
 
-		camera_outgoing_radiance += first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
+		camera_outgoing_radiance +=
+			first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

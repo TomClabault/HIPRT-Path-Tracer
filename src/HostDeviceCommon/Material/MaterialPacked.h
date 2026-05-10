@@ -87,7 +87,8 @@ struct DevicePackedEffectiveMaterial
 	{
 		DevicePackedEffectiveMaterial packed;
 
-		packed.set_emission(unpacked.emission);
+		packed.set_emission(unpacked.get_raw_emission());
+		packed.set_emission_strength(unpacked.get_emission_strength());
 		packed.set_emissive_texture_used(unpacked.emissive_texture_used);
 
 		packed.set_base_color(unpacked.base_color);
@@ -158,7 +159,8 @@ struct DevicePackedEffectiveMaterial
 	{
 		DeviceUnpackedEffectiveMaterial unpacked;
 
-		unpacked.emission			   = this->get_emission();
+		unpacked.set_raw_emission(this->get_raw_emission());
+		unpacked.set_emission_strength(this->get_emission_strength());
 		unpacked.emissive_texture_used = this->get_emissive_texture_used();
 
 		unpacked.base_color = this->get_base_color();
@@ -225,9 +227,14 @@ struct DevicePackedEffectiveMaterial
 		return unpacked;
 	}
 
-	HIPRT_HOST_DEVICE ColorRGB32F get_emission() const
+	HIPRT_HOST_DEVICE ColorRGB32F get_raw_emission() const
 	{
 		return this->emission;
+	}
+
+	HIPRT_HOST_DEVICE float get_emission_strength() const
+	{
+		return this->emission_strength;
 	}
 
 	HIPRT_HOST_DEVICE bool get_emissive_texture_used() const
@@ -495,6 +502,11 @@ struct DevicePackedEffectiveMaterial
 		this->emission = emission_;
 	}
 
+	HIPRT_HOST_DEVICE void set_emission_strength(float emission_strength_)
+	{
+		this->emission_strength = emission_strength_;
+	}
+
 	HIPRT_HOST_DEVICE void set_emissive_texture_used(bool emissive_texture_used)
 	{
 		flags.set_bool<PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(emissive_texture_used);
@@ -748,7 +760,7 @@ struct DevicePackedEffectiveMaterial
 	HIPRT_HOST_DEVICE void set_energy_preservation_monte_carlo_samples(unsigned char energy_preservation_monte_carlo_samples)
 	{
 		alpha_thin_film_hue_dielectric_priority.set_uchar<PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(
-								energy_preservation_monte_carlo_samples);
+			energy_preservation_monte_carlo_samples);
 	}
 
 	HIPRT_HOST_DEVICE void set_enforce_strong_energy_conservation(bool enforce_strong_energy_conservation)
@@ -793,6 +805,8 @@ private:
 
 	// Full range emission
 	ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+	// Multiplier on the emission and on the emissive texture if it is used.
+	float emission_strength = 1.0f;
 
 	// Base color RGB 3x8 bits + roughness uchar [float in [0,1] packed in 8 bit]
 	ColorRGB24bFloat0_1Packed base_color_roughness;
@@ -963,7 +977,8 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 		out.emissive_texture_used = this->get_emissive_texture_used();
 		if (!out.emissive_texture_used)
-			out.emission = this->get_emission();
+			out.set_raw_emission(this->get_raw_emission());
+		out.set_emission_strength(this->get_emission_strength());
 
 		if (MaterialUtils::use_base_color_texture(out.base_color_texture_index))
 			out.base_color = this->get_base_color();

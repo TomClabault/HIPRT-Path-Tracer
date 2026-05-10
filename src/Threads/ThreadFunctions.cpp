@@ -3,8 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Image/Image.h"
 #include "Compiler/GPUKernel.h"
+#include "Device/includes/Texture.h"
+#include "Device/includes/TriangleStructures.h"
+#include "Image/Image.h"
 #include "Threads/ThreadFunctions.h"
 
 // For replacing backslashes in texture paths
@@ -166,6 +168,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 	// This is only used for the emissives triangles vertex indices
 	int global_indices_offset = 0;
 
+	unsigned int emissive_triangle_index_so_far = 0;
+
 	// Looping over all the meshes
 	for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
 	{
@@ -173,15 +177,6 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		int material_index = mesh->mMaterialIndex;
 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
-
-		// If the mesh is emissive, we're going to add the indices of its faces to the emissive triangles
-		// of the scene such that the triangles can be importance sampled (direct lighting estimation / next-event estimation)
-		//
-		// We are not importance sampling emissive texture so if the mesh has an emissive texture attached, we're
-		// not adding its triangles to the list of emissive triangles
-		bool emissive_texture_used = renderer_material.emission_texture_index != MaterialConstants::NO_TEXTURE &&
-									 renderer_material.emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
-		bool is_mesh_emissive = renderer_material.is_emissive() || emissive_texture_used;
 
 		int max_emissive_mesh_index_offset = 0;
 		for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index_in_whole_scene++)
@@ -193,18 +188,69 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 			// Accumulating the maximum index of this mesh, this is to know
 			max_emissive_mesh_index_offset = std::max(max_emissive_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
 
-			if (is_mesh_emissive)
+			if (renderer_material.is_emissive())
 			{
-				if (!emissive_texture_used)
-					// Pushing the index of the current triangle if we're looping on an emissive mesh
-					// and if that mesh doesn't have an emissive texture because we're not importance
-					// sampling emissive textures
-					parsed_scene.emissive_triangles_primitive_indices.push_back(current_triangle_index_in_whole_scene);
-
 				parsed_scene.emissive_triangle_vertex_indices.push_back(index_1 + global_indices_offset);
 				parsed_scene.emissive_triangle_vertex_indices.push_back(index_2 + global_indices_offset);
 				parsed_scene.emissive_triangle_vertex_indices.push_back(index_3 + global_indices_offset);
+
+				parsed_scene.emissive_triangles_primitive_indices.push_back(current_triangle_index_in_whole_scene);
 				parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.push_back(current_triangle_index_in_whole_scene);
+
+				int emissive_triangle_global_index = current_triangle_index_in_whole_scene;
+
+				int vertex_index_1 = parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0];
+				int vertex_index_2 = parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1];
+				int vertex_index_3 = parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2];
+
+				float3_t vertex_1 = parsed_scene.vertices_positions[vertex_index_1];
+				float3_t vertex_2 = parsed_scene.vertices_positions[vertex_index_2];
+				float3_t vertex_3 = parsed_scene.vertices_positions[vertex_index_3];
+
+				// Using the triangle class to easily compute the area of the triangle
+				float3_t face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
+				float face_area		 = hippt::length(face_normal) * 0.5f;
+				float face_emission	 = 0.0f;
+
+				if (renderer_material.uses_emissive_texture())
+				{
+					// If the mesh has an emissive texture, we're going to approximately integrate the emissive texture power of each face of the mesh for light
+					// sampling
+					// and store that in the emission parameter of the material
+					constexpr unsigned int sample_u_count = 256;
+					constexpr unsigned int sample_v_count = 256;
+
+					for (unsigned int sample_u = 0; sample_u < sample_u_count; sample_u++)
+					{
+						for (unsigned int sample_v = 0; sample_v < sample_v_count; sample_v++)
+						{
+							float u = (sample_u + 0.5f) / static_cast<float>(sample_u_count);
+							float v = (sample_v + 0.5f) / static_cast<float>(sample_v_count);
+
+							TriangleIndices triangle_vertex_indices = { vertex_index_1, vertex_index_2, vertex_index_3 };
+							TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(parsed_scene.texcoords.data(), triangle_vertex_indices);
+
+							float2_t texcoords = uv_interpolate(triangle_texcoords, make_float2(u, v));
+
+							ColorRGBA32F emission_rgba = parsed_scene.textures[renderer_material.emission_texture_index].sample_rgba32f(texcoords);
+							ColorRGB32F emission_rgb(emission_rgba.r, emission_rgba.g, emission_rgba.b);
+
+							face_emission += emission_rgb.luminance() / (static_cast<float>(sample_u_count) * static_cast<float>(sample_v_count));
+						}
+					}
+				}
+				else
+					face_emission = renderer_material.get_total_emission().luminance();
+
+				float face_power = face_area * face_emission;
+
+				parsed_scene.triangles_average_emissive_luminance.push_back(face_emission);
+				parsed_scene.triangles_average_emissive_power_luminance.push_back(face_power);
+			}
+			else
+			{
+				parsed_scene.triangles_average_emissive_luminance.push_back(0.0f);		 // Non emissive triangle, average emission is 0
+				parsed_scene.triangles_average_emissive_power_luminance.push_back(0.0f); // Non emissive triangle, emissive power is 0
 			}
 		}
 
@@ -222,13 +268,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
 
-		// This does not resolve to true if the mesh is using emissive textures
-		// because we do not want to count those as 'emissive meshes' since
-		// emissive textures aren't importance sampled and "emissive meshes" are
-		// only for importance sampling.
-		bool is_mesh_emissive = renderer_material.is_emissive() && !renderer_material.emissive_texture_used;
-
-		if (is_mesh_emissive)
+		if (renderer_material.is_emissive())
 			emissive_meshes_indices.push_back(mesh_index);
 	}
 
@@ -243,8 +283,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.resize(parsed_scene.emissive_triangles_primitive_indices.size());
 		parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index.resize(parsed_scene.triangles_vertex_indices.size() / 3, -1);
 
-		// Another loop to compute emissive meshes, multithreaded
-
+		// Another loop to compute an alias table over emissive meshes
 #pragma omp parallel for
 		for (int emissive_mesh_index = 0; emissive_mesh_index < emissive_meshes_indices.size(); emissive_mesh_index++)
 		{
@@ -265,15 +304,9 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 			for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
 			{
 				int emissive_triangle_global_index = parsed_scene.emissive_triangles_primitive_indices.at(mesh_offset + face_index);
-				float3_t vertex_1 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
-				float3_t vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
-				float3_t vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
 
 				// Using the triangle class to easily compute the area of the triangle
-				float3_t face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
-				float face_area		 = hippt::length(face_normal) * 0.5f;
-				float face_power	 = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength *
-								   renderer_material.global_emissive_factor;
+				float face_power = parsed_scene.triangles_average_emissive_power_luminance[emissive_triangle_global_index];
 
 				// The PDF of each emissive triangle of the mesh is going to be its power divided by the total power
 				// of the mesh (we'll divide later).
@@ -286,6 +319,12 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 				total_mesh_power += face_power;
 
 				// Sum of all the normals weighted by area
+				float3_t vertex_1 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
+				float3_t vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
+				float3_t vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
+
+				float3_t face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
+				float face_area		 = hippt::length(face_normal) * 0.5f;
 				average_normal += face_area * face_normal;
 			}
 
@@ -298,13 +337,13 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 			for (int j = 0; j < mesh->mNumVertices; j++)
 				average_vertex += *reinterpret_cast<float3_t*>(&mesh->mVertices[j]);
 			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].average_mesh_point =
-									average_vertex / static_cast<float>(mesh->mNumVertices);
+				average_vertex / static_cast<float>(mesh->mNumVertices);
 			if (hippt::length(average_normal) <= 0.01f)
 				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal =
-										make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
+					make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
 			else
 				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal =
-										hippt::normalize(average_normal / static_cast<float>(mesh->mNumFaces));
+					hippt::normalize(average_normal / static_cast<float>(mesh->mNumFaces));
 			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].emissive_triangle_count   = mesh->mNumFaces;
 			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].total_mesh_emissive_power = total_mesh_power;
 

@@ -9,6 +9,7 @@
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
+#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"

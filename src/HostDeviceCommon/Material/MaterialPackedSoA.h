@@ -18,6 +18,11 @@ struct DevicePackedEffectiveMaterialSoA
 		return this->emission[material_index];
 	}
 
+	HIPRT_DEVICE float get_emission_strength(int material_index) const
+	{
+		return this->emission_strength[material_index];
+	}
+
 	HIPRT_DEVICE bool get_emissive_texture_used(int material_index) const
 	{
 		return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>();
@@ -61,31 +66,31 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_anisotropy(int material_index) const
 	{
 		return anisotropy_and_rotation_and_second_roughness[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>();
 	}
 
 	HIPRT_DEVICE float get_anisotropy_rotation(int material_index) const
 	{
 		return anisotropy_and_rotation_and_second_roughness[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>();
 	}
 
 	HIPRT_DEVICE float get_second_roughness_weight(int material_index) const
 	{
 		return anisotropy_and_rotation_and_second_roughness[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>();
 	}
 
 	HIPRT_DEVICE float get_second_roughness(int material_index) const
 	{
 		return anisotropy_and_rotation_and_second_roughness[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>();
 	}
 
 	HIPRT_DEVICE float get_retro_reflection(int material_index) const
 	{
 		return specular_and_darkening_and_coat_roughness_and_retro_reflection[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_RETRO_REFLECTION>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_RETRO_REFLECTION>();
 	}
 
 	HIPRT_DEVICE bool get_do_metallic_energy_compensation(int material_index) const
@@ -96,7 +101,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_specular(int material_index) const
 	{
 		return specular_and_darkening_and_coat_roughness_and_retro_reflection[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR>();
 	}
 
 	HIPRT_DEVICE float get_specular_tint(int material_index) const
@@ -112,7 +117,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_specular_darkening(int material_index) const
 	{
 		return specular_and_darkening_and_coat_roughness_and_retro_reflection[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>();
 	}
 
 	HIPRT_DEVICE bool get_do_specular_energy_compensation(int material_index) const
@@ -138,31 +143,31 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_coat_roughness(int material_index) const
 	{
 		return specular_and_darkening_and_coat_roughness_and_retro_reflection[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_COAT_ROUGHNESS>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_COAT_ROUGHNESS>();
 	}
 
 	HIPRT_DEVICE float get_coat_roughening(int material_index) const
 	{
 		return coat_roughening_darkening_anisotropy_and_rotation[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>();
+			.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>();
 	}
 
 	HIPRT_DEVICE float get_coat_darkening(int material_index) const
 	{
 		return coat_roughening_darkening_anisotropy_and_rotation[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_DARKENING>();
+			.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_DARKENING>();
 	}
 
 	HIPRT_DEVICE float get_coat_anisotropy(int material_index) const
 	{
 		return coat_roughening_darkening_anisotropy_and_rotation[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>();
+			.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>();
 	}
 
 	HIPRT_DEVICE float get_coat_anisotropy_rotation(int material_index) const
 	{
 		return coat_roughening_darkening_anisotropy_and_rotation[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>();
+			.get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>();
 	}
 
 	HIPRT_DEVICE float get_coat_ior(int material_index) const
@@ -183,7 +188,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_sheen_roughness(int material_index) const
 	{
 		return sheen_roughness_transmission_dispersion_thin_film[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>();
 	}
 
 	HIPRT_DEVICE ColorRGB32F get_sheen_color(int material_index) const
@@ -199,7 +204,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_specular_transmission(int material_index) const
 	{
 		return sheen_roughness_transmission_dispersion_thin_film[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>();
 	}
 
 	HIPRT_DEVICE float get_diffuse_transmission(int material_index) const
@@ -220,7 +225,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_dispersion_scale(int material_index) const
 	{
 		return sheen_roughness_transmission_dispersion_thin_film[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>();
 	}
 
 	HIPRT_DEVICE float get_dispersion_abbe_number(int material_index) const
@@ -241,7 +246,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_thin_film(int material_index) const
 	{
 		return sheen_roughness_transmission_dispersion_thin_film[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>();
+			.get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>();
 	}
 
 	HIPRT_DEVICE float get_thin_film_ior(int material_index) const
@@ -262,7 +267,7 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_thin_film_hue_shift_degrees(int material_index) const
 	{
 		return alpha_thin_film_hue_dielectric_priority[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>();
 	}
 
 	HIPRT_DEVICE float get_thin_film_base_ior_override(int material_index) const
@@ -278,18 +283,18 @@ struct DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE float get_alpha_opacity(int material_index) const
 	{
 		return alpha_thin_film_hue_dielectric_priority[material_index]
-								.get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>();
+			.get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>();
 	}
 	HIPRT_DEVICE unsigned char get_dielectric_priority(int material_index) const
 	{
 		return alpha_thin_film_hue_dielectric_priority[material_index]
-								.get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_DIELECTRIC_PRIORITY>();
+			.get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_DIELECTRIC_PRIORITY>();
 	}
 
 	HIPRT_DEVICE unsigned char get_energy_preservation_monte_carlo_samples(int material_index) const
 	{
 		return alpha_thin_film_hue_dielectric_priority[material_index]
-								.get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>();
+			.get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>();
 	}
 
 	HIPRT_DEVICE bool get_enforce_strong_energy_conservation(int material_index) const
@@ -329,7 +334,8 @@ struct DevicePackedEffectiveMaterialSoA
 	UChar8BoolsPacked* flags = nullptr;
 
 	// Full range emission
-	ColorRGB32F* emission = nullptr;
+	ColorRGB32F* emission	 = nullptr;
+	float* emission_strength = nullptr;
 
 	// Base color RGB 3x8 bits + roughness uchar [float in [0,1] packed in 8 bit]
 	ColorRGB24bFloat0_1Packed* base_color_roughness = nullptr;
@@ -457,12 +463,12 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 	HIPRT_DEVICE unsigned short int get_base_color_texture_index(int material_index) const
 	{
 		return base_color_roughness_metallic_index[material_index]
-								.get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::BASE_COLOR_INDEX>();
+			.get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::BASE_COLOR_INDEX>();
 	}
 	HIPRT_DEVICE unsigned short int get_roughness_metallic_texture_index(int material_index) const
 	{
 		return base_color_roughness_metallic_index[material_index]
-								.get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::ROUGHNESS_METALLIC_INDEX>();
+			.get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::ROUGHNESS_METALLIC_INDEX>();
 	}
 	HIPRT_DEVICE unsigned short int get_roughness_texture_index(int material_index) const
 	{
@@ -520,6 +526,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 		if (!out.get_emissive_texture_used())
 			// Only loading the emission if no emissive texture is used
 			out.set_emission(this->get_emission(material_index));
+		out.set_emission_strength(this->get_emission_strength(material_index));
 
 		if (MaterialUtils::use_base_color_texture(out.get_base_color_texture_index()))
 			// Only reading the base color if no base color texture is used

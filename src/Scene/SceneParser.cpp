@@ -432,17 +432,30 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 	// Getting the properties that are going to be used by the materials
 	// of the application
 
-	aiReturn error_code_emissive;
 	mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
 	if (renderer_material.emission_texture_index == MaterialConstants::NO_TEXTURE)
 	{
 		ColorRGB32F emission;
 		mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, *((aiColor3D*)&emission));
+		mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, renderer_material.emission_strength);
 
 		renderer_material.emission = emission;
 	}
+	else
+	{
+		ColorRGB32F color_emissive;
+		// ASSIMP stores the emission strength of emissive textures in "Color emissive"
+		mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, *((aiColor3D*)&color_emissive));
 
-	mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, renderer_material.emission_strength);
+		// And if the GLTF contains an emission factor > 1.0f, emission strength will be clamped to 1.0f. The unclamped value is then in
+		// AI_MATKEY_EMISSIVE_INTENSITY. If the GLTF emission factor is not > 1.0f, then AI_MATKEY_EMISSIVE_INTENSITY is undefined and the float
+		// emission_strength below will stay defined to 0.0f
+		float emission_strength = 0.0f;
+		mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
+
+		renderer_material.emission_strength		= hippt::max(color_emissive.luminance(), emission_strength);
+		renderer_material.emissive_texture_used = true;
+	}
 
 	mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, renderer_material.metallic);
 	mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, renderer_material.roughness);

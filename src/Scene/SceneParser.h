@@ -7,17 +7,17 @@
 #define SCENE_PARSER_H
 
 #include "assimp/Importer.hpp"
-#include "assimp/scene.h"
 #include "assimp/postprocess.h"
+#include "assimp/scene.h"
 
 #include "HostDeviceCommon/Material/MaterialCPU.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "Image/Image.h"
+#include "Renderer/Sphere.h"
+#include "Renderer/Triangle.h"
 #include "Scene/AABB.h"
 #include "Scene/Camera.h"
 #include "Scene/ParsedEmissiveMeshes.h"
-#include "Renderer/Sphere.h"
-#include "Renderer/Triangle.h"
 #include "Utils/Utils.h"
 
 #include <filesystem>
@@ -132,10 +132,12 @@ struct Scene
 	std::vector<float3_t> vertex_normals;
 	std::vector<float2_t> texcoords;
 	std::vector<float> triangle_areas;
-	// Vertex A, edges AB and AC of the triangles of the scene
-	/*std::vector<float3_t> triangle_A;
-	std::vector<float3_t> triangle_AB;
-	std::vector<float3_t> triangle_AC;*/
+	// Total emissive power of each triangle of the scene. Used for building importance sampling data structures. Should be indexed with a global triangle
+	// index. This is the power of the triangle as a whole, i.e. pre-multiplied by the area of the triangle
+	std::vector<float> triangles_average_emissive_power_luminance;
+	// Average emission of each triangle of the scene. Used for building importance sampling data structures. Should be indexed with a global triangle index.
+	// This is the average emission of the triangle, i.e. not multiplied by the area of the triangle.
+	std::vector<float> triangles_average_emissive_luminance;
 
 	// Contains the primitive indices of all the emissives triangles that will be used for light sampling.
 	//

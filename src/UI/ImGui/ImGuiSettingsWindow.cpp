@@ -5,6 +5,7 @@
 
 #include "Compiler/GPUKernelCompiler.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"

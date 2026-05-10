@@ -5,7 +5,8 @@
 
 #include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
-#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "Utils/Utils.h"
 
 #include <cassert>

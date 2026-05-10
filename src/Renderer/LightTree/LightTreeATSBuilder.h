@@ -27,8 +27,6 @@ public:
 		float area;
 
 		float power;
-
-		ColorRGB32F DEBUG_FULL_EMISSION;
 	};
 
 	struct Bin
@@ -66,11 +64,8 @@ public:
 	void update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data);
 	void subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth);
 	float compute_saoh_m_omega(const LightTreeATSNodeOrientationData& orientation_data) const;
-	float compute_split_position(const LightTreeATSNode& node,
-								 int& out_split_axis,
-								 float& out_split_position,
-								 const LightTreeBuilderTrianglesData& triangles_data,
-								 int split_method);
+	float compute_split_position(
+		const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data, int split_method);
 	float compute_node_cost(const LightTreeATSNode& node);
 	float compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const LightTreeBuilderTrianglesData& triangles_data);
 	int partition_node_primitives(unsigned int node_index, int axis, float split_position);

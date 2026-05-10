@@ -6,14 +6,11 @@
 #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 #define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
-#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
-#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
-#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
@@ -140,17 +137,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT
-
-/**
- * Whether or not to use a visiblity term in the target function whose PDF we're
- * approximating with RIS.
- * Only applies for pure RIS direct lighting strategy (i.e. not RIS used by ReSTIR
- * on the initial candidates pass for example)
- *
- *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
- */
-#define RISUseVisiblityTargetFunction KERNEL_OPTION_FALSE
+#define PathSamplingStrategy PATH_SAMPLING_BSDF
 
 /**
  * Debug option which, if enabled, only outputs the sample 'render_settings.output_debug_sample_N'

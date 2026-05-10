@@ -103,10 +103,12 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
 
 	LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(
 		render_data, shading_point, view_direction, shading_normal, material, triangle_index, random_number_generator);
+	if (light_sample.emissive_triangle_global_index == -1)
+		return LightSamplePointInformation();
 
 	// PDF of sampling that triangle according to its power
-	light_sample.area_measure_pdf *=
-		(light_sample.emission.luminance() * light_sample.light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
+	float sampling_power = render_data.buffers.triangles_average_emissive_power_luminance[light_sample.emissive_triangle_global_index];
+	light_sample.area_measure_pdf *= sampling_power / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 
 	return light_sample;
 }

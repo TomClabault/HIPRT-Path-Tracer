@@ -10,32 +10,32 @@
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 #include "Renderer/CPUGPUCommonDataStructures/DevicePackedMaterialSoACPUGPUCommonData.h"
 
+// TODO refactor SoACPUData and SoAGPUData into a single, std::vector or OrochiBuffer, templated class
 #define DECLARE_ALL_MEMBERS_STD_TIE                                                                                                                            \
-	auto all_members = std::tie(normal_map_emission_index, base_color_roughness_metallic_index, roughness_and_metallic_index, anisotropic_specular_index,      \
-								coat_sheen_index, specular_transmission_index,                                                                                 \
+	auto all_members = std::tie(                                                                                                                               \
+		normal_map_emission_index, base_color_roughness_metallic_index, roughness_and_metallic_index, anisotropic_specular_index, coat_sheen_index,            \
+		specular_transmission_index,                                                                                                                           \
                                                                                                                                                                \
-								flags,                                                                                                                         \
+		flags,                                                                                                                                                 \
                                                                                                                                                                \
-								emission,                                                                                                                      \
+		emission, emission_strength,                                                                                                                           \
                                                                                                                                                                \
-								base_color_roughness,                                                                                                          \
+		base_color_roughness,                                                                                                                                  \
                                                                                                                                                                \
-								oren_nayar_sigma,                                                                                                              \
+		oren_nayar_sigma,                                                                                                                                      \
                                                                                                                                                                \
-								metallic_F90_and_metallic, metallic_F82_packed_and_diffuse_transmission, metallic_F90_falloff_exponent,                        \
-								anisotropy_and_rotation_and_second_roughness,                                                                                  \
+		metallic_F90_and_metallic, metallic_F82_packed_and_diffuse_transmission, metallic_F90_falloff_exponent, anisotropy_and_rotation_and_second_roughness,  \
                                                                                                                                                                \
-								specular_color_and_tint_factor, specular_and_darkening_and_coat_roughness_and_retro_reflection, coat_medium_thickness,         \
-								coat_and_medium_absorption, coat_roughening_darkening_anisotropy_and_rotation, coat_ior,                                       \
+		specular_color_and_tint_factor, specular_and_darkening_and_coat_roughness_and_retro_reflection, coat_medium_thickness, coat_and_medium_absorption,     \
+		coat_roughening_darkening_anisotropy_and_rotation, coat_ior,                                                                                           \
                                                                                                                                                                \
-								sheen_and_color,                                                                                                               \
+		sheen_and_color,                                                                                                                                       \
                                                                                                                                                                \
-								ior, absorption_color_packed, absorption_at_distance,                                                                          \
+		ior, absorption_color_packed, absorption_at_distance,                                                                                                  \
                                                                                                                                                                \
-								sheen_roughness_transmission_dispersion_thin_film,                                                                             \
+		sheen_roughness_transmission_dispersion_thin_film,                                                                                                     \
                                                                                                                                                                \
-								dispersion_abbe_number, thin_film_ior, thin_film_thickness, thin_film_kappa_3, thin_film_base_ior_override,                    \
-								alpha_thin_film_hue_dielectric_priority);
+		dispersion_abbe_number, thin_film_ior, thin_film_thickness, thin_film_kappa_3, thin_film_base_ior_override, alpha_thin_film_hue_dielectric_priority);
 
 /**
  * These two structures here are just there to hold all the buffers created on the CPU
@@ -51,6 +51,7 @@ struct DevicePackedEffectiveMaterialSoACPUData : public DevicePackedMaterialSoAC
 	std::vector<UChar8BoolsPacked> flags;
 
 	std::vector<ColorRGB32F> emission;
+	std::vector<float> emission_strength;
 
 	std::vector<ColorRGB24bFloat0_1Packed> base_color_roughness;
 
@@ -114,69 +115,70 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
 		size_t element_count			   = gpu_packed_materials.size();
 
 		// Textured part
-		normal_map_emission_index = expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, normal_map_emission_index),
-																				   element_count);
-		base_color_roughness_metallic_index = expand_from_gpu_packed_materials<Uint2xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness_metallic_index), element_count);
-		roughness_and_metallic_index = expand_from_gpu_packed_materials<Uint2xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, roughness_and_metallic_index), element_count);
-		anisotropic_specular_index = expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, anisotropic_specular_index),
-																					element_count);
+		normal_map_emission_index =
+			expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, normal_map_emission_index), element_count);
+		base_color_roughness_metallic_index =
+			expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness_metallic_index), element_count);
+		roughness_and_metallic_index =
+			expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, roughness_and_metallic_index), element_count);
+		anisotropic_specular_index =
+			expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, anisotropic_specular_index), element_count);
 		coat_sheen_index = expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, coat_sheen_index), element_count);
-		specular_transmission_index = expand_from_gpu_packed_materials<Uint2xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, specular_transmission_index), element_count);
+		specular_transmission_index =
+			expand_from_gpu_packed_materials<Uint2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, specular_transmission_index), element_count);
 
 		// Non textured parameters
 		flags = expand_from_gpu_packed_materials<UChar8BoolsPacked>(0, data, offsetof(DevicePackedTexturedMaterial, flags), element_count);
 
-		emission = expand_from_gpu_packed_materials<ColorRGB32F>(0, data, offsetof(DevicePackedTexturedMaterial, emission), element_count);
+		emission		  = expand_from_gpu_packed_materials<ColorRGB32F>(0, data, offsetof(DevicePackedTexturedMaterial, emission), element_count);
+		emission_strength = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, emission_strength), element_count);
 
-		base_color_roughness = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness), element_count);
+		base_color_roughness =
+			expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness), element_count);
 
 		oren_nayar_sigma = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, oren_nayar_sigma), element_count);
 
 		metallic_F90_and_metallic = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count);
 		metallic_F82_packed_and_diffuse_transmission = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed_and_diffuse_transmission), element_count);
-		metallic_F90_falloff_exponent = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent),
-																				element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed_and_diffuse_transmission), element_count);
+		metallic_F90_falloff_exponent =
+			expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent), element_count);
 		anisotropy_and_rotation_and_second_roughness = expand_from_gpu_packed_materials<Float4xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count);
 
 		specular_color_and_tint_factor = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, specular_color_and_tint_factor), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, specular_color_and_tint_factor), element_count);
 		specular_and_darkening_and_coat_roughness_and_retro_reflection = expand_from_gpu_packed_materials<Float4xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, specular_and_darkening_and_coat_roughness_and_retro_reflection), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, specular_and_darkening_and_coat_roughness_and_retro_reflection), element_count);
 		coat_medium_thickness = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, coat_medium_thickness), element_count);
 		coat_and_medium_absorption = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, coat_and_medium_absorption), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, coat_and_medium_absorption), element_count);
 		coat_roughening_darkening_anisotropy_and_rotation = expand_from_gpu_packed_materials<Float4xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, coat_roughening_darkening_anisotropy_and_rotation), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, coat_roughening_darkening_anisotropy_and_rotation), element_count);
 		coat_ior = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, coat_ior), element_count);
 
-		sheen_and_color = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, sheen_and_color),
-																					  element_count);
+		sheen_and_color =
+			expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, sheen_and_color), element_count);
 
 		ior						= expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, ior), element_count);
 		absorption_color_packed = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(
-								0, data, offsetof(DevicePackedTexturedMaterial, absorption_color_packed), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, absorption_color_packed), element_count);
 		absorption_at_distance =
-								expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, absorption_at_distance), element_count);
+			expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, absorption_at_distance), element_count);
 
 		sheen_roughness_transmission_dispersion_thin_film = expand_from_gpu_packed_materials<Float4xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, sheen_roughness_transmission_dispersion_thin_film), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, sheen_roughness_transmission_dispersion_thin_film), element_count);
 
 		dispersion_abbe_number =
-								expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, dispersion_abbe_number), element_count);
+			expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, dispersion_abbe_number), element_count);
 		thin_film_ior		= expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, thin_film_ior), element_count);
 		thin_film_thickness = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, thin_film_thickness), element_count);
 		thin_film_kappa_3	= expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, thin_film_kappa_3), element_count);
-		thin_film_base_ior_override = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, thin_film_base_ior_override),
-																			  element_count);
+		thin_film_base_ior_override =
+			expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, thin_film_base_ior_override), element_count);
 		alpha_thin_film_hue_dielectric_priority = expand_from_gpu_packed_materials<Float2xUChar2xPacked>(
-								0, data, offsetof(DevicePackedTexturedMaterial, alpha_thin_film_hue_dielectric_priority), element_count);
+			0, data, offsetof(DevicePackedTexturedMaterial, alpha_thin_film_hue_dielectric_priority), element_count);
 	}
 
 	DevicePackedTexturedMaterialSoA get_device_SoA_struct()
@@ -192,7 +194,8 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
 
 		out.flags = flags.data();
 
-		out.emission = emission.data();
+		out.emission		  = emission.data();
+		out.emission_strength = emission_strength.data();
 
 		out.base_color_roughness = base_color_roughness.data();
 

@@ -805,7 +805,9 @@ void GPURenderer::update_render_data()
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_meshes_data = m_hiprt_scene.emissive_meshes_data.to_device();
-		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
+		m_render_data.buffers.triangles_areas							 = m_hiprt_scene.triangle_areas.get_device_pointer();
+		m_render_data.buffers.triangles_average_emissive_luminance		 = m_hiprt_scene.triangle_average_emissive_luminance.get_device_pointer();
+		m_render_data.buffers.triangles_average_emissive_power_luminance = m_hiprt_scene.triangle_average_emissive_power_luminance.get_device_pointer();
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
 		if (m_hiprt_scene.texcoords_buffer.size() > 0)
@@ -940,26 +942,32 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 								});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES,
-								[this, &scene]()
-								{
-									m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
-									if (m_hiprt_scene.emissive_triangles_count > 0)
-									{
-										OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(
+		ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES,
+		[this, &scene]()
+		{
+			m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
+			if (m_hiprt_scene.emissive_triangles_count > 0)
+			{
+				OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-										m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
-										m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
+				m_hiprt_scene.triangle_average_emissive_luminance.resize(scene.triangles_average_emissive_luminance.size());
+				m_hiprt_scene.triangle_average_emissive_luminance.upload_data(scene.triangles_average_emissive_luminance.data());
 
-										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(
-											scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
-										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(
-											scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
-									}
+				m_hiprt_scene.triangle_average_emissive_power_luminance.resize(scene.triangles_average_emissive_power_luminance.size());
+				m_hiprt_scene.triangle_average_emissive_power_luminance.upload_data(scene.triangles_average_emissive_power_luminance.data());
 
-									// Uploading emissive meshes
-									m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
-								});
+				m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
+				m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
+
+				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
+				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(
+					scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
+			}
+
+			// Uploading emissive meshes
+			m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
+		});
 }
 
 void GPURenderer::rebuild_bvh(HIPRTGeometry& geometry, hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)

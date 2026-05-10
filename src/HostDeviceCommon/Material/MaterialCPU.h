@@ -23,6 +23,8 @@
 //
 // But the GPU only cares about the precomputed values itself, not the ingredients
 // to the precomputation so that's why we have separate structures
+//
+// TODO rename MaterialHost
 struct CPUMaterial
 {
 	/**
@@ -46,8 +48,9 @@ struct CPUMaterial
 		mat.set_sheen_texture_index(this->sheen_texture_index);
 		mat.set_specular_transmission_texture_index(this->specular_transmission_texture_index);
 
-		mat.set_emission(emission * emission_strength * global_emissive_factor);
-		mat.set_emissive_texture_used(emissive_texture_used);
+		mat.set_emission(emission);
+		mat.set_emission_strength(emission_strength * global_emissive_factor);
+		mat.set_emissive_texture_used(uses_emissive_texture());
 
 		mat.set_base_color(base_color);
 
@@ -147,6 +150,11 @@ struct CPUMaterial
 		return !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) || !hippt::is_zero(emission.b) || emissive_texture_used;
 	}
 
+	HIPRT_DEVICE bool uses_emissive_texture() const
+	{
+		return emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
+	}
+
 	/*
 	 * Clamps some of the parameters of the material to avoid edge cases like NaNs
 	 * during rendering (i.e. numerical instabilities)
@@ -211,8 +219,8 @@ struct CPUMaterial
 	}
 
 	ColorRGB32F emission		 = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
-	float emission_strength		 = 1.0f; // This factor is baked into 'emission' before being sent to the GPU
-	float global_emissive_factor = 1.0f; // This factor is baked into 'emission' before being sent to the GPU
+	float emission_strength		 = 1.0f;
+	float global_emissive_factor = 1.0f; // This factor is baked into 'emission_strength' before being sent to the GPU
 	bool emissive_texture_used	 = false;
 
 	ColorRGB32F base_color = ColorRGB32F(1.0f);
