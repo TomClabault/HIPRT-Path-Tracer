@@ -14,19 +14,15 @@ struct LightTreeBuilderTrianglesData
 {
 	LightTreeBuilderTrianglesData(const std::vector<int>& emissive_triangles_primitive_indices,
 								  const std::vector<int>& triangle_vertex_indices,
-								  const std::vector<float3_t>& vertices_positions,
-								  const std::vector<int>& material_indices,
-								  const std::vector<CPUMaterial>& materials)
+								  const std::vector<float3_t>& vertices_positions)
 		: emissive_triangles_primitive_indices(emissive_triangles_primitive_indices), triangle_vertex_indices(triangle_vertex_indices),
-		  vertices_positions(vertices_positions), material_indices(material_indices), materials(materials)
+		  vertices_positions(vertices_positions)
 	{
 	}
 
 	const std::vector<int>& emissive_triangles_primitive_indices;
 	const std::vector<int>& triangle_vertex_indices;
 	const std::vector<float3_t>& vertices_positions;
-	const std::vector<int>& material_indices;
-	const std::vector<CPUMaterial>& materials;
 };
 
 #endif

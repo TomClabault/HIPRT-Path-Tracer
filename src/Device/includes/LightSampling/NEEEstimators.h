@@ -524,15 +524,6 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 	if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
 		return ColorRGB32F(0.0f);
 
-	// TODO EMISSIVE TEXTURE SAMPLING
-	// ColorRGB32F material_self_textured_emission;
-	// if (ray_payload.material.emissive_texture_used)
-	//	// If the material is using an emissive texture, we will add its emission to the NEE estimation
-	//	// because we're not importance sampling emissive textures so we're doing it the brute force
-	//	// way for now (there are some things about light warping I think to properly sample emissive
-	//	// textures but haven't read too much of that)
-	//	material_self_textured_emission = ray_payload.material.emission;
-
 	ColorRGB32F direct_light_contribution;
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING
 	direct_light_contribution = ColorRGB32F(0.0f);
@@ -545,13 +536,12 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 	direct_light_contribution = sample_multiple_emissive_geometry<deferred_BSDF_MIS>(render_data, ray_payload, closest_hit_info, view_direction,
 																					 out_nee_mis_context, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_RESTIR_DI
-	direct_light_contribution =
-		sample_one_light_ReSTIR_DI<deferred_BSDF_MIS>(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
+	direct_light_contribution = sample_one_light_ReSTIR_DI<deferred_BSDF_MIS>(render_data, ray_payload, closest_hit_info, view_direction, pixel_coords,
+																			  out_nee_mis_context, random_number_generator);
 #endif
 #endif
 
-	// TODO EMISSIVE TEXTURE SAMPLING
-	return direct_light_contribution; // +material_self_textured_emission;
+	return direct_light_contribution;
 }
 
 HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)

@@ -373,8 +373,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	if (parsed_scene.emissive_triangles_primitive_indices.size() > 0)
 	{
-		m_light_tree_builder_sg.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices,
-												 parsed_scene.vertices_positions, parsed_scene.material_indices, parsed_scene.materials);
+		m_light_tree_builder_sg.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_average_emissive_power_luminance,
+												 parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions);
 		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
 		m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
 										  m_light_tree_sg_device_data);
@@ -435,8 +435,6 @@ void CPURenderer::update_render_data()
 #if DirectLightNEEEstimator == LSS_RESTIR_DI
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_di_settings.restir_output_reservoirs			  = m_restir_di_state.spatial_output_reservoirs_1.data();
-	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
-		m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
 		m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.data();
 	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =

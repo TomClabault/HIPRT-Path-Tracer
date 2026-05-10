@@ -4,29 +4,30 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Renderer/LightTree/LightTreeSGSamplingDataStructure.h"
 #include "Renderer/GPURenderer.h"
+#include "Renderer/LightTree/LightTreeSGSamplingDataStructure.h"
 #include "Threads/ThreadManager.h"
 
 void LightTreeSGSamplingDataStructure::compute_from_scene(const Scene& scene, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
 {
 	compute(compiler_options,
 
-			scene.emissive_triangles_primitive_indices, scene.vertices_positions, scene.triangles_vertex_indices, scene.material_indices, scene.materials);
+			scene.emissive_triangles_primitive_indices, scene.triangles_average_emissive_power_luminance, scene.vertices_positions,
+			scene.triangles_vertex_indices);
 }
 
 void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompilerOptions> compiler_options,
 											   const std::vector<int>& emissive_triangles_primitive_indices,
+											   const std::vector<float>& triangles_average_emissive_power_luminance,
 											   const std::vector<float3_t>& vertices_positions,
-											   const std::vector<int>& triangles_vertex_indices,
-											   const std::vector<int>& material_indices,
-											   const std::vector<CPUMaterial>& materials)
+											   const std::vector<int>& triangles_vertex_indices)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG,
 								[this, compiler_options,
 
-								 &emissive_triangles_primitive_indices, &triangles_vertex_indices, &vertices_positions, &material_indices, &materials]()
+								 &emissive_triangles_primitive_indices, &triangles_average_emissive_power_luminance, &triangles_vertex_indices,
+								 &vertices_positions]()
 								{
 									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
 
@@ -37,8 +38,8 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 										return;
 									}
 
-									m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_vertex_indices, vertices_positions,
-																			 material_indices, materials);
+									m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance,
+																			 triangles_vertex_indices, vertices_positions);
 									m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
 									m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices,
 																	  triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
@@ -59,15 +60,13 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
 
-	std::vector<int> emissive_triangle_indices = hiprt_scene.emissive_triangles_primitive_indices.download_data();
-	std::vector<float3_t> vertices_positions   = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
-	std::vector<int> triangles_indices		   = hiprt_scene.whole_scene_BLAS.download_triangle_indices();
-	std::vector<int> material_indices		   = hiprt_scene.material_indices.download_data();
+	std::vector<int> emissive_triangle_indices					  = hiprt_scene.emissive_triangles_primitive_indices.download_data();
+	std::vector<float> triangles_average_emissive_power_luminance = hiprt_scene.triangle_average_emissive_power_luminance.download_data();
+	std::vector<float3_t> vertices_positions					  = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
+	std::vector<int> triangles_indices							  = hiprt_scene.whole_scene_BLAS.download_triangle_indices();
 
 	free();
-	compute(compiler_options,
-
-			emissive_triangle_indices, vertices_positions, triangles_indices, material_indices, m_renderer->get_current_materials());
+	compute(compiler_options, emissive_triangle_indices, triangles_average_emissive_power_luminance, vertices_positions, triangles_indices);
 
 	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG);
 }
@@ -82,9 +81,9 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, st
 	bool directly_using_light_tree = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 	bool using_regir_light_tree	   = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 	bool nee_plus_plus_using_light_tree =
-							compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY) ==
-													LSS_BASE_LIGHT_TREE_SG &&
-							compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY) ==
+			LSS_BASE_LIGHT_TREE_SG &&
+		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
 
 	return (directly_using_light_tree || using_regir_light_tree || nee_plus_plus_using_light_tree) && emissive_count > 0;
 }

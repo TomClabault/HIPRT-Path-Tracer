@@ -56,10 +56,9 @@ public:
 								 const LightTreeBuilderTrianglesData& triangles_data) const;
 
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
+						  const std::vector<float>& triangles_average_emissive_power_luminance,
 						  const std::vector<int>& triangle_indices,
-						  const std::vector<float3_t>& vertices_positions,
-						  const std::vector<int>& material_indices,
-						  const std::vector<CPUMaterial>& materials);
+						  const std::vector<float3_t>& vertices_positions);
 
 	void update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data);
 	void subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth);

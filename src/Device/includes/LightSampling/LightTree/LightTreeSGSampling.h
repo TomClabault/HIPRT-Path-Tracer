@@ -194,7 +194,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
-	;
 #endif
 
 	float cumulative_probability = 1.0f;
@@ -232,7 +231,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 
 	LightSampleInformation light_sample;
 	light_sample.emissive_triangle_global_index = emissive_triangle_index;
-	light_sample.pdf							= cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
+	light_sample.pdf							= cumulative_probability * (1.0f / current_node.triangle_count); // PDF of sampling that triangle in that node
 
 	return light_sample;
 }
@@ -265,7 +264,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
-	;
 #endif
 
 	float root_node_importance =

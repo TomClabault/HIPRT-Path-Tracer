@@ -25,16 +25,14 @@ float3_t LightTreeATSBuilder::get_triangle_vertex(unsigned int linear_emissive_t
 }
 
 void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
+										   const std::vector<float>& triangles_average_emissive_power_luminance,
 										   const std::vector<int>& triangle_vertex_indices,
-										   const std::vector<float3_t>& vertices_positions,
-										   const std::vector<int>& material_indices,
-										   const std::vector<CPUMaterial>& materials)
+										   const std::vector<float3_t>& vertices_positions)
 {
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building light tree...");
 	auto start = std::chrono::high_resolution_clock::now();
 
-	LightTreeBuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices,
-												 materials);
+	LightTreeBuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions);
 
 	m_current_node_index = std::make_shared<std::atomic<unsigned int>>(0);
 	m_max_tree_depth	 = std::make_shared<std::atomic<unsigned int>>(0);
@@ -59,8 +57,6 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 			triangle_area = normal_length * 0.5f;
 		triangle_normal /= normal_length;
 
-		const CPUMaterial& mat = triangles_data.materials[triangles_data.material_indices[triangles_data.emissive_triangles_primitive_indices[i]]];
-
 		m_prefetched_triangles[i].bounds.extend(v0);
 		m_prefetched_triangles[i].bounds.extend(v1);
 		m_prefetched_triangles[i].bounds.extend(v2);
@@ -68,7 +64,9 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		m_prefetched_triangles[i].centroid = (v0 + v1 + v2) / 3.0f;
 		m_prefetched_triangles[i].normal   = triangle_normal;
 		m_prefetched_triangles[i].area	   = triangle_area;
-		m_prefetched_triangles[i].power	   = mat.get_total_emission().luminance() * triangle_area;
+
+		int global_triangle_index		= emissive_triangles_primitive_indices[i];
+		m_prefetched_triangles[i].power = triangles_average_emissive_power_luminance[global_triangle_index];
 	}
 
 	m_current_node_index->store(0);

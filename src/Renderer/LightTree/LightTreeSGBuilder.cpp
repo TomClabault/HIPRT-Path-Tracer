@@ -6,17 +6,17 @@
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
+										  const std::vector<float>& triangles_average_emissive_power_luminance,
 										  const std::vector<int>& triangle_indices,
-										  const std::vector<float3_t>& vertices_positions,
-										  const std::vector<int>& material_indices,
-										  const std::vector<CPUMaterial>& materials)
+										  const std::vector<float3_t>& vertices_positions)
 {
-	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangle_indices, vertices_positions, material_indices, materials);
+	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangle_indices,
+											  vertices_positions);
 
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
 
-	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions,
-																	 material_indices, materials));
+	compute_node_spherical_gaussian(
+		0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 }
 
 void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data)
@@ -90,17 +90,11 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				continue;
 
 			float3_t p0 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			0]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
 			float3_t p1 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			1]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
 			float3_t p2 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			2]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
 			float3_t e1 = p1 - p0;
 			float3_t e2 = p2 - p0;
@@ -141,25 +135,19 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				continue;
 
 			float3_t p0 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			0]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
 			float3_t p1 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			1]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
 			float3_t p2 = triangle_data.vertices_positions
-												  [triangle_data.triangle_vertex_indices
-																		   [triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 +
-																			2]];
+							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
 			sg_node.bounds.extend(p0);
 			sg_node.bounds.extend(p1);
 			sg_node.bounds.extend(p2);
 
-			bounding_sphere_radius = hippt::max(bounding_sphere_radius,
-												hippt::max(hippt::max(hippt::length(sg_node.spatial_mean - p0), hippt::length(sg_node.spatial_mean - p1)),
-														   hippt::length(sg_node.spatial_mean - p2)));
+			bounding_sphere_radius =
+				hippt::max(bounding_sphere_radius, hippt::max(hippt::max(hippt::length(sg_node.spatial_mean - p0), hippt::length(sg_node.spatial_mean - p1)),
+															  hippt::length(sg_node.spatial_mean - p2)));
 		}
 
 		// Computes vMF parameters with the mean axis (normalized by the function)
