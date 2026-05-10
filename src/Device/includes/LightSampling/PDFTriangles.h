@@ -99,6 +99,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
 											float light_area,
 											ColorRGB32F light_emission)
 {
+	if (render_data.buffers.emissive_triangles_count == 0)
+		return 0.0f;
+
 	if constexpr (lightSamplingStrategy == LSS_BASE_UNIFORM)
 	{
 		return 1.0f / render_data.buffers.emissive_triangles_count;
