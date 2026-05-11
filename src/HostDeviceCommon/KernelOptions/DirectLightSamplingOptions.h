@@ -84,7 +84,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
+#define DirectLightSamplingStrategy LSS_BASE_POWER
 
 /**
  * What direct lighting sampling strategy to use.
@@ -124,7 +124,7 @@
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_MIS_LIGHT_BSDF
+#define DirectLightNEEEstimator LSS_BSDF
 #endif
 
 /**

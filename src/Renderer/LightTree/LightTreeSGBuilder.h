@@ -59,8 +59,8 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].gaussian_spatial_variance = m_nodes[i].spatial_variance;
 		device_data_out.nodes_device[i].bounding_sphere_radius	  = m_nodes[i].bounding_sphere_radius;
 		device_data_out.nodes_device[i].total_power				  = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf.sharpness);
-		/*device_data_out.nodes_device[i].bounds_min = m_nodes[i].bounds.mini;
-		device_data_out.nodes_device[i].bounds_max = m_nodes[i].bounds.maxi;*/
+		/*device_data_out.nodes_device[i].bounds_min				  = m_nodes[i].bounds.mini;
+		device_data_out.nodes_device[i].bounds_max				  = m_nodes[i].bounds.maxi;*/
 		device_data_out.nodes_device[i].triangle_count = m_nodes[i].triangle_count;
 		if (m_nodes[i].triangle_count == 0)
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;

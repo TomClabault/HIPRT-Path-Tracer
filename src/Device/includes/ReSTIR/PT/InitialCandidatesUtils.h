@@ -205,7 +205,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	}
 
 	float3_t view_direction	 = -sampled_bsdf_direction;
-	ColorRGB32F hit_emission = ray_payload.material.emission;
+	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 	if (hit_emission.is_black() || compute_cosine_term_at_light_source(light_hit_info.geometric_normal, view_direction) <= 0.0f)
 		return;
 
@@ -261,7 +261,12 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 Xorshift32Generator& random_number_generator)
 {
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
+	// here
+	ray_payload.bounce--;
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, light_hit_info, random_number_generator);
+	// And add it back before deferred NEE MIS so that the code inside deferred NEE MIS receives the bounce index that it expects
+	ray_payload.bounce++;
 
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,

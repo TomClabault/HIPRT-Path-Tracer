@@ -730,7 +730,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	return ColorRGB32F(0.0f);
 #endif
 
-	if (ray_payload.bounce == 1 && !render_data.render_settings.enable_direct_lighting)
+	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
 		return ColorRGB32F(0.0f);
 
@@ -773,7 +773,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	last_hit_info.primitive_index  = nee_deferred_MIS_context.last_primitive_index;
 
 	RayPayload last_hit_payload	  = ray_payload;
-	last_hit_payload.bounce		  = ray_payload.bounce - 1;
+	last_hit_payload.bounce		  = ray_payload.bounce;
 	last_hit_payload.material	  = nee_deferred_MIS_context.last_material;
 	last_hit_payload.volume_state = nee_deferred_MIS_context.last_volume_state;
 
@@ -798,7 +798,12 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
 
 #if DirectLightNEEEstimatorHasBSDFSampling
+	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
+	// here
+	ray_payload.bounce--;
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+	// And add it back before deferred NEE MIS so that the code inside deferred NEE MIS receives the bounce index that it expects
+	ray_payload.bounce++;
 
 	return do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 #endif

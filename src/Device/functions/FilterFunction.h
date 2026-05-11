@@ -48,7 +48,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		// No alpha testing
 		return false;
 
-	if (payload->bounce >= payload->render_data->render_settings.alpha_testing_indirect_bounce)
+	if (payload->bounce >= payload->render_data->render_settings.alpha_testing_max_bounce)
 		// Alpha testing is disabled at the current bounce
 		//
 		// Returning false to indicate an intersection

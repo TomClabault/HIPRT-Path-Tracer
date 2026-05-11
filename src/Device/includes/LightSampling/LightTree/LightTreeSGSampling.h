@@ -69,6 +69,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	if (node.total_power == 0.0f)
 		return 0.0f;
 
+	// Commented because too expensive (RIS 16 bistro: 38ms --> 40ms) but not massively better quality (just a little bit)
 	/*float3_t max_corner;
 	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
 	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;

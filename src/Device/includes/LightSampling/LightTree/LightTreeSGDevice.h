@@ -28,6 +28,9 @@ struct LightTreeSGNodeDevice
 	unsigned int left_child_index_or_first_triangle_index;
 
 	unsigned int triangle_count;
+
+	/*float3_t bounds_min;
+	float3_t bounds_max;*/
 };
 
 struct LightTreeSGDevice

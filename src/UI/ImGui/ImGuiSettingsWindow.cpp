@@ -301,7 +301,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		// Clamping to 0 in case the user input a negative number of bounces
 		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
 
-		if (render_settings.alpha_testing_indirect_bounce >= nb_bounce_before_change + 1)
+		if (render_settings.alpha_testing_max_bounce >= nb_bounce_before_change + 1)
 			// Auto adjusting the alpha testing indirect bounce limit such that, if the alpha test limit
 			// was above the maximum number of bounces before (i.e. alpha test are always enabled) we changed
 			// the number of bounces, then we want the limit to stay above the maximum (such that alpha tests are
@@ -310,7 +310,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			// This is only for the convenience of the user so that they don't have the go change
 			// the alpha test bounce limit after they change the number of bounces: the alpha test limit changes automatically
 			// (if the alpha test limit was at the maximum)
-			render_settings.alpha_testing_indirect_bounce = render_settings.nb_bounces + 1;
+			render_settings.alpha_testing_max_bounce = render_settings.nb_bounces + 1;
 
 		m_render_window->set_render_dirty(true);
 	}
@@ -651,7 +651,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 
 	case SETTINGS_PRESET_REFERENCE_BRUTE_FORCE_PATH_TRACER:
 		render_settings.do_alpha_testing			  = true;
-		render_settings.alpha_testing_indirect_bounce = render_settings.nb_bounces + 1;
+		render_settings.alpha_testing_max_bounce = render_settings.nb_bounces + 1;
 		render_settings.direct_contribution_clamp	  = 0.0f;
 		render_settings.indirect_contribution_clamp	  = 0.0f;
 		render_settings.envmap_contribution_clamp	  = 0.0f;
@@ -5198,7 +5198,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces + 1, "%d"))
+		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_max_bounce, 0, render_settings.nb_bounces + 1, "%d"))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
 										""
@@ -5211,9 +5211,9 @@ void ImGuiSettingsWindow::draw_quality_panel()
 										"Shadow rays for NEE are also affected by this setting.\n\n"
 										""
 										"This feature helps with performance on scenes with medium/a lot of alpha tested geometry.");
-		if (render_settings.alpha_testing_indirect_bounce > render_settings.nb_bounces)
+		if (render_settings.alpha_testing_max_bounce > render_settings.nb_bounces)
 			ImGui::Text("Alpha tests always enabled.");
-		if (render_settings.alpha_testing_indirect_bounce == 0)
+		if (render_settings.alpha_testing_max_bounce == 0)
 			ImGui::Text("Alpha tests always disabled.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

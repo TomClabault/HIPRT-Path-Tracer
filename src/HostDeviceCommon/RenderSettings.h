@@ -227,7 +227,7 @@ struct HIPRTRenderSettings
 	// testing
 	//
 	// Shadow rays for NEE are also affected by this setting
-	int alpha_testing_indirect_bounce = nb_bounces + 1;
+	int alpha_testing_max_bounce = nb_bounces + 1;
 
 	// Whether or not to do normal mapping at all
 	// If false, geometric normals will always be used
