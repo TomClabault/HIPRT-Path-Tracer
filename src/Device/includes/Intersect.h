@@ -166,7 +166,10 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3_t& view
 
 		hit_info.geometric_normal *= -1.0f;
 		hit_info.shading_normal *= -1.0f;
+		hit_info.geometry_backfacing = true;
 	}
+	else
+		hit_info.geometry_backfacing = false;
 
 	if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
 		// Flipping the normal such that the view direction isn't below the shading hemisphere anymore

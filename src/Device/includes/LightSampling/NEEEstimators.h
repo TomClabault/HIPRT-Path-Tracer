@@ -577,11 +577,16 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 		clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
 
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-	ColorRGB32F hit_emission = ray_payload.material.get_emission();
-	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
+	// This if() rejects backfacing lights if backfacing lights are disabled
+	if (compute_cosine_term_at_light_source(closest_hit_info.original_geometric_normal(), view_direction) > 0.0f)
+	{
+		ColorRGB32F hit_emission = ray_payload.material.get_emission();
 
-	if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
-		total_direct_lighting += hit_emission * ray_throughput;
+		hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
+
+		if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
+			total_direct_lighting += hit_emission * ray_throughput;
+	}
 #else
 	if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.shading_normal, view_direction) > 0.0f)
 		// If we do have emissive geometry sampling, we only want to take
