@@ -39,6 +39,10 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		incident_light_direction /= distance_to_sample_point;
 	}
 
+	if (sample.di_sample && compute_cosine_term_at_light_source(sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
+		// Backfacing light
+		return 0.0f;
+
 	float cosine_term = hippt::dot(incident_light_direction, surface.shading_normal);
 	if (cosine_term <= 0.0f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
 		return 0.0f;
