@@ -73,8 +73,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 580
-#define DEBUG_PIXEL_Y 309
+#define DEBUG_PIXEL_X 738
+#define DEBUG_PIXEL_Y 319
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -362,8 +362,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 #if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingStrategy == LSS_BASE_REGIR ||                                                 \
 	(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
-	m_light_tree_builder_ats.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices,
-											  parsed_scene.vertices_positions, parsed_scene.material_indices, parsed_scene.materials);
+	m_light_tree_builder_ats.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_average_emissive_power_luminance,
+											  parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions);
 	m_light_tree_ats_device_data = m_light_tree_builder_ats.compute_device_data<std::vector>();
 	m_light_tree_builder_ats.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
 									   m_light_tree_ats_device_data);
