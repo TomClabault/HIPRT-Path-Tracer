@@ -61,7 +61,7 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	// 	{ m00  0   m02 }
 	//  { 0    m11  0  }
 	//  { m20  0    1  }
-	ColorRGBA32F ltc_params = sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false);
+	ColorRGBA32F ltc_params = sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false);
 
 	return ltc_params;
 }
@@ -99,7 +99,7 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float c
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
-	return sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
+	return sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 }
 
 HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
@@ -135,7 +135,7 @@ HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_t
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
-	return sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
+	return sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 }
 
 #endif

@@ -17,7 +17,7 @@
 #endif
 
 template <typename T>
-HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2_t& texcoords, int texture_index);
+HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, const float2_t& texcoords, int texture_index, bool is_srgb);
 HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& render_data,
 													const float2_t& texcoords,
 													int metallic_texture_index,
@@ -100,23 +100,23 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 			material.metallic = roughness_metallic.y;
 	}
 
-	float anisotropy = read_material_texture<float>(render_data, false, texcoords, material.anisotropic_texture_index);
+	float anisotropy = read_material_texture<float>(render_data, texcoords, material.anisotropic_texture_index, false);
 	if (material.anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 		material.anisotropy = anisotropy;
 
-	float specular = read_material_texture<float>(render_data, false, texcoords, material.specular_texture_index);
+	float specular = read_material_texture<float>(render_data, texcoords, material.specular_texture_index, false);
 	if (material.specular_texture_index != MaterialConstants::NO_TEXTURE)
 		material.specular = specular;
 
-	float coat = read_material_texture<float>(render_data, false, texcoords, material.coat_texture_index);
+	float coat = read_material_texture<float>(render_data, texcoords, material.coat_texture_index, false);
 	if (material.coat_texture_index != MaterialConstants::NO_TEXTURE)
 		material.coat = coat;
 
-	float sheen = read_material_texture<float>(render_data, false, texcoords, material.sheen_texture_index);
+	float sheen = read_material_texture<float>(render_data, texcoords, material.sheen_texture_index, false);
 	if (material.sheen_texture_index != MaterialConstants::NO_TEXTURE)
 		material.sheen = sheen;
 
-	float specular_transmission = read_material_texture<float>(render_data, false, texcoords, material.specular_transmission_texture_index);
+	float specular_transmission = read_material_texture<float>(render_data, texcoords, material.specular_transmission_texture_index, false);
 	if (material.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
 		material.specular_transmission = specular_transmission;
 #endif
@@ -125,7 +125,7 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 	if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
 		emission = material.get_raw_emission();
 	else
-		emission = read_material_texture<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
+		emission = read_material_texture<ColorRGB32F>(render_data, texcoords, material.emission_texture_index, false);
 
 	DeviceUnpackedEffectiveMaterial unpacked_effective_material(material);
 	unpacked_effective_material.base_color = material.base_color;
@@ -174,7 +174,7 @@ HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& rende
 
 	if (metallic_roughness_texture_index != MaterialConstants::NO_TEXTURE)
 	{
-		ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, false, texcoords);
+		ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, texcoords, metallic_roughness_texture_index, false);
 
 		// Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
 		out.x = rgb.g;
@@ -182,8 +182,8 @@ HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& rende
 	}
 	else
 	{
-		out.x = read_material_texture<float>(render_data, false, texcoords, roughness_texture_index);
-		out.y = read_material_texture<float>(render_data, false, texcoords, metallic_texture_index);
+		out.x = read_material_texture<float>(render_data, texcoords, roughness_texture_index, false);
+		out.y = read_material_texture<float>(render_data, texcoords, metallic_texture_index, false);
 	}
 
 	return out;
@@ -192,7 +192,7 @@ HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& rende
 HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2_t& texcoords, int base_color_texture_index)
 {
 	out_alpha		  = 1.0f;
-	ColorRGBA32F rgba = read_material_texture<ColorRGBA32F>(render_data, true, texcoords, base_color_texture_index);
+	ColorRGBA32F rgba = read_material_texture<ColorRGBA32F>(render_data, texcoords, base_color_texture_index, true);
 	if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		ColorRGB32F base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
@@ -228,12 +228,12 @@ HIPRT_DEVICE float read_data<float>(const ColorRGBA32F& rgba)
 }
 
 template <typename T>
-HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2_t& texcoords, int texture_index)
+HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, const float2_t& texcoords, int texture_index, bool is_srgb)
 {
 	if (texture_index == MaterialConstants::NO_TEXTURE || texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
 		return T();
 
-	ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, is_srgb, texcoords);
+	ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texcoords, texture_index, is_srgb);
 	return read_data<T>(rgba);
 }
 

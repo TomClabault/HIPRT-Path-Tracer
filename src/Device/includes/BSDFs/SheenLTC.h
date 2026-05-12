@@ -55,7 +55,7 @@ HIPRT_DEVICE static ColorRGB32F read_LTC_parameters(const HIPRTRenderData& rende
 #endif
 
 	float2_t parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, roughness));
-	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, 0, false, parameters_uv, false);
+	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, parameters_uv, 0, false, false);
 }
 
 /**
@@ -168,7 +168,7 @@ HIPRT_DEVICE static float3_t sheen_ltc_sample(const HIPRTRenderData& render_data
 
 	// Creating the sampled direction in a space at phi=0
 	float3_t sampled_direction_ltc_space =
-							hippt::normalize(make_float3(cosine_sample.x * Ai_inv - cosine_sample.z * Bi * Ai_inv, cosine_sample.y * Ai_inv, cosine_sample.z));
+		hippt::normalize(make_float3(cosine_sample.x * Ai_inv - cosine_sample.z * Bi * Ai_inv, cosine_sample.y * Ai_inv, cosine_sample.z));
 
 	// Bringing out of the phi=0 configuration by rotating
 	return rotate_vector(sampled_direction_ltc_space, make_float3(0.0f, 0.0f, 1.0f), get_phi(local_view_direction));

@@ -49,7 +49,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	// because that GGX energy compensation texture is created with a clamp address mode, not wrap
 	// and we have to do the Y-flipping manually when not sampling in wrap mode
 	uv.y	  = 1.0f - uv.y;
-	float Ess = sample_texture_rgb_32bits(GGX_directional_albedo_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
+	float Ess = sample_texture_rgb_32bits(GGX_directional_albedo_texture_pointer, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 
 	// Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
 	float kms = (1.0f - Ess) / Ess;

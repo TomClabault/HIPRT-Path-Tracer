@@ -29,6 +29,8 @@ struct NEEDeferredMISContextSpecialized
 template <int PathIntegrator>
 struct NEEDeferredMISContextSpecialized<LSS_BSDF, PathIntegrator>
 {
+	float3_t last_shading_point;
+
 	// Ray throughput before multiplication with last_bsdf_throughput
 	ColorRGB32F last_ray_throughput;
 
@@ -42,6 +44,7 @@ struct NEEDeferredMISContextSpecialized<LSS_BSDF, PathIntegrator>
 												const DeviceUnpackedEffectiveMaterial& material,
 												const ColorRGB32F& ray_throughput)
 	{
+		last_shading_point	= closest_hit_info.inter_point;
 		last_ray_throughput = ray_throughput;
 	}
 

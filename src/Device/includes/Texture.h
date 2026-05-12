@@ -36,7 +36,7 @@ using Image32Bit = int;
  * If 'flip_uv_y' is true, then the UV coordinates are just used as is
  */
 template <typename ImageType = Image8Bit>
-HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer, float2_t uv, int texture_index, bool is_srgb, bool flip_uv_y = true)
 {
 	ColorRGBA32F rgba;
 
@@ -77,9 +77,9 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
  * It should be set to false if your texture addressing mode isn't 'warping'
  * or when you know what you're doing and why you need to have it to false
  */
-HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, float2_t uv, int texture_index, bool is_srgb, bool flip_uv_y = true)
 {
-	ColorRGBA32F rgba = sample_texture_rgba<Image8Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
+	ColorRGBA32F rgba = sample_texture_rgba<Image8Bit>(texture_buffer, uv, texture_index, is_srgb, flip_uv_y);
 
 	return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
@@ -103,16 +103,16 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buf
  * It should be set to false if your texture addressing mode isn't 'warping'
  * or when you know what you're doing and why you need to have it to false
  */
-HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, float2_t uv, int texture_index, bool is_srgb, bool flip_uv_y = true)
 {
-	ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
+	ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, uv, texture_index, is_srgb, flip_uv_y);
 
 	return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
-HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_buffer, float2_t uv, int texture_index, bool is_srgb, bool flip_uv_y = true)
 {
-	return sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
+	return sample_texture_rgba<Image32Bit>(texture_buffer, uv, texture_index, is_srgb, flip_uv_y);
 }
 
 #ifdef __KERNELCC__

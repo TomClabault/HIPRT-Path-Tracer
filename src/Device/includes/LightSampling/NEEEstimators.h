@@ -725,7 +725,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 [[nodiscard]] HIPRT_DEVICE ColorRGB32F do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 														   bool intersection_found,
 														   RayPayload& ray_payload,
-														   HitInfo& closest_hit_info,
+														   HitInfo& light_hit_info,
 														   NEEDeferredMISContext& nee_deferred_MIS_context,
 														   Xorshift32Generator& random_number_generator)
 {
@@ -742,6 +742,10 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #if DirectLightNEEEstimator == LSS_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
+	else if (compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(),
+												 hippt::normalize(nee_deferred_MIS_context.last_shading_point - light_hit_info.inter_point)) <= 0.0f)
+		// If the light is backfacing and backfacing lights are disabled, then we don't want to add its contribution
+		return ColorRGB32F(0.0f);
 
 	float bsdf_sample_mis_weight = 1.0f;
 
@@ -753,13 +757,13 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 
-	float3_t ray_direction = closest_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point;
+	float3_t ray_direction = light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point;
 	float hit_distance	   = hippt::length(ray_direction);
 	ray_direction /= hit_distance;
 
 	float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 		render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction, nee_deferred_MIS_context.last_shading_normal,
-		nee_deferred_MIS_context.last_material, closest_hit_info.primitive_index, closest_hit_info.geometric_normal, hit_distance, ray_direction);
+		nee_deferred_MIS_context.last_material, light_hit_info.primitive_index, light_hit_info.original_geometric_normal(), hit_distance, ray_direction);
 
 	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 													 DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
@@ -768,7 +772,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	RISReservoir final_reservoir =
-		deferred_NEE_MIS_add_one_RIS_BSDF_sample(render_data, intersection_found, closest_hit_info, ray_payload, nee_deferred_MIS_context,
+		deferred_NEE_MIS_add_one_RIS_BSDF_sample(render_data, intersection_found, light_hit_info, ray_payload, nee_deferred_MIS_context,
 												 nee_deferred_MIS_context.ris_reservoir, random_number_generator);
 
 	HitInfo last_hit_info;

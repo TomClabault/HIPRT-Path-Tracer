@@ -180,8 +180,13 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 
 	unsigned short int emissive_texture_index =
 		render_data.buffers.materials_buffer_soa.get_emission_texture_index(render_data.buffers.material_indices[global_triangle_index]);
+	unsigned short int base_color_texture_index =
+		render_data.buffers.materials_buffer_soa.get_base_color_texture_index(render_data.buffers.material_indices[global_triangle_index]);
 
-	return read_material_texture<ColorRGB32F>(render_data, false, texcoords, emissive_texture_index);
+	ColorRGBA32F rgba_emission = sample_texture_rgba(render_data.buffers.material_textures, texcoords, emissive_texture_index, false);
+	ColorRGBA32F base_color	   = sample_texture_rgba(render_data.buffers.material_textures, texcoords, base_color_texture_index, false);
+
+	return ColorRGB32F(rgba_emission.r * rgba_emission.a, rgba_emission.g * rgba_emission.a, rgba_emission.b * rgba_emission.a) * base_color.a;
 }
 
 HIPRT_DEVICE ColorRGB32F get_triangle_emission_at_point(const HIPRTRenderData& render_data, int global_triangle_index, float3_t point_on_triangle)

@@ -206,7 +206,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 	float3_t view_direction	 = -sampled_bsdf_direction;
 	ColorRGB32F hit_emission = ray_payload.material.get_emission();
-	if (hit_emission.is_black() || compute_cosine_term_at_light_source(light_hit_info.geometric_normal, view_direction) <= 0.0f)
+	if (hit_emission.is_black() || compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(), view_direction) <= 0.0f)
 		return;
 
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -233,11 +233,11 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		float nee_mis_weight = 1.0f;
 		if (nb_light_candidates > 0)
 		{
-			float hit_distance = hippt::length(light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
-			float light_sampler_solid_angle_pdf =
-				pdf_of_emissive_triangle_hit_solid_angle(render_data, nee_deferred_MIS_context.last_shading_point, view_direction,
-														 nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data),
-														 light_hit_info.primitive_index, light_hit_info.geometric_normal, hit_distance, sampled_bsdf_direction);
+			float hit_distance					= hippt::length(light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
+			float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
+				render_data, nee_deferred_MIS_context.last_shading_point, view_direction, nee_deferred_MIS_context.last_shading_normal,
+				nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index, light_hit_info.original_geometric_normal(),
+				hit_distance, sampled_bsdf_direction);
 			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
 											   nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}

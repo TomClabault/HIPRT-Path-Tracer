@@ -22,12 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - ReSTIR PT is going to be almost fully unbiased, no biased settings (vis in MIS weight, vis reuse on/off, ...). Less experimentations possibilities but just
-// simpler to maintain
-// - Multiple initial path trees candidates
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Duplication maps to reduce correlations
+//		- Only works with temporal reuse though? Or can we use it to
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain?
 //
@@ -79,9 +77,12 @@ extern ImGuiLogger g_imgui_logger;
 //		Even build a CDF on the GPU instead of antithetic sampling
 //		We're going to need the theory of uhhhh though for unbiased sampling based on sample value
 //		Can we use the super pixel algorithm instead of hashed screen space grid for restir spatial reuse
-// - For hash grid screen space spatial reuse, we can sort the samples by intensity before building the CDF and then sample the CDF with a blue noise texture to
-//		get blue noise output from ReSTIR, amazing.
-//		Maybe we're going to need the paper on stratified RIS to keep the blue noise properties here? Otherwise is going to destroy the blue noise properties?
+// - For hash grid screen space spatial reuse,
+//		- We can sort the samples by intensity before building the CDF and then sample the CDF with a blue noise texture to get blue noise output from ReSTIR,
+//amazing.
+//		- Maybe we're going to need the paper on stratified RIS to keep the blue noise properties here? Otherwise is going to destroy the blue noise properties?
+//		- SLIC superpixel to group pixels together and reuse in these groups instead of with a hash grid? We would run SLIC on a denoised image and this would
+// give us lighting discontinuities as well, to not reuse accross lighting discontinuities
 // - For adaptive sampling + restir we can use that idea of keeping relevant neighbors in a screen space hash grid such that we reuse good neighbors directly
 // and never reuse stale neighbors
 // - Can we use visibility variance to guide restir DI vis reuse ?
