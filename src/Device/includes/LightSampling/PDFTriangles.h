@@ -243,6 +243,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 	//  --> triangle normal not facing the same way
 	//  --> cos_angle negative
 	float cosine_light_source = compute_cosine_term_at_light_source(light_surface_normal, -to_light_direction);
+	if (cosine_light_source < 1.0e-8f)
+		return 0.0f;
 
 	float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
 																							  material, shading_point + hit_distance * to_light_direction,

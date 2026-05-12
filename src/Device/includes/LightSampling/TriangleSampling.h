@@ -186,6 +186,13 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 	ColorRGBA32F rgba_emission = sample_texture_rgba(render_data.buffers.material_textures, texcoords, emissive_texture_index, false);
 	ColorRGBA32F base_color	   = sample_texture_rgba(render_data.buffers.material_textures, texcoords, base_color_texture_index, false);
 
+	if (!render_data.render_settings.do_alpha_testing)
+	{
+		// Doing this so that this match what we see visually
+		rgba_emission.a = 1.0f;
+		base_color.a	= 1.0f;
+	}
+
 	return ColorRGB32F(rgba_emission.r * rgba_emission.a, rgba_emission.g * rgba_emission.a, rgba_emission.b * rgba_emission.a) * base_color.a;
 }
 

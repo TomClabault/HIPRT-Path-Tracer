@@ -588,7 +588,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 			total_direct_lighting += hit_emission * ray_throughput;
 	}
 #else
-	if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.shading_normal, view_direction) > 0.0f)
+	if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.original_geometric_normal(), view_direction) > 0.0f)
 		// If we do have emissive geometry sampling, we only want to take
 		// it into account on the first bounce, otherwise we would be
 		// accounting for direct light sampling twice (bounce on emissive
@@ -653,6 +653,9 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
 
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+	/*if (nee_deferred_MIS_context.ris_reservoir.weight_sum == 0.0f)
+		return RISReservoir();*/
+
 	int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
 	int nb_bsdf_candidates	= render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 
@@ -674,7 +677,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 	if (bsdf_sample_pdf > 0.0f)
 	{
-		if (compute_cosine_term_at_light_source(main_path_ray_hit_info.geometric_normal, -to_light_direction) > 0.0f)
+		if (compute_cosine_term_at_light_source(main_path_ray_hit_info.original_geometric_normal(), -to_light_direction) > 0.0f)
 		{
 			// Our target function does not include the geometry term because we're integrating
 			// in solid angle. The geometry term in the target function ( / in the integrand) is only
@@ -686,7 +689,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 				render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 				nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material, main_path_ray_hit_info.primitive_index,
-				main_path_ray_hit_info.geometric_normal, hit_distance, to_light_direction);
+				main_path_ray_hit_info.original_geometric_normal(), hit_distance, to_light_direction);
 
 			float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf,
 												 nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
@@ -754,6 +757,10 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
+	else if (compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(),
+												 hippt::normalize(nee_deferred_MIS_context.last_shading_point - light_hit_info.inter_point)) <= 0.0f)
+		// If the light is backfacing and backfacing lights are disabled, then we don't want to add its contribution
+		return ColorRGB32F(0.0f);
 
 	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 
@@ -774,6 +781,8 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	RISReservoir final_reservoir =
 		deferred_NEE_MIS_add_one_RIS_BSDF_sample(render_data, intersection_found, light_hit_info, ray_payload, nee_deferred_MIS_context,
 												 nee_deferred_MIS_context.ris_reservoir, random_number_generator);
+	if (final_reservoir.UCW == 0.0f)
+		return ColorRGB32F(0.0f);
 
 	HitInfo last_hit_info;
 	last_hit_info.inter_point	   = nee_deferred_MIS_context.last_shading_point;
@@ -789,6 +798,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	ColorRGB32F last_hit_NEE_estimate = evaluate_RIS_reservoir_sample(render_data, last_hit_payload, last_hit_info,
 																	  nee_deferred_MIS_context.last_view_direction, final_reservoir, random_number_generator);
 
+	nee_deferred_MIS_context.ris_reservoir = RISReservoir();
 	return last_hit_NEE_estimate * nee_deferred_MIS_context.last_ray_throughput;
 #endif
 
