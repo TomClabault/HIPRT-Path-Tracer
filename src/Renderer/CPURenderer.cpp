@@ -73,8 +73,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 758
-#define DEBUG_PIXEL_Y 328
+#define DEBUG_PIXEL_X 756
+#define DEBUG_PIXEL_Y 323
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -315,24 +315,24 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_gpu_packed_materials.upload_data(gpu_packed_materials);
 	m_render_data.buffers.materials_buffer_soa = m_gpu_packed_materials.get_device_SoA_struct();
 	m_render_data.buffers.material_indices	   = parsed_scene.material_indices.data();
-
-	// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
-	m_material_opaque.resize(parsed_scene.materials.size());
-	for (int i = 0; i < parsed_scene.materials.size(); i++)
-		m_material_opaque[i] = parsed_scene.material_has_opaque_base_color_texture[i] && parsed_scene.materials[i].alpha_opacity == 1.0f;
-
-	m_render_data.buffers.material_opaque	 = m_material_opaque.data();
-	m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
-	m_render_data.buffers.triangles_indices	 = parsed_scene.triangles_vertex_indices.data();
-	m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
-	m_render_data.buffers.vertex_normals	 = parsed_scene.vertex_normals.data();
-	m_render_data.buffers.texcoords			 = parsed_scene.texcoords.data();
+	m_render_data.buffers.has_vertex_normals   = parsed_scene.has_vertex_normals.data();
+	m_render_data.buffers.triangles_indices	   = parsed_scene.triangles_vertex_indices.data();
+	m_render_data.buffers.vertices_positions   = parsed_scene.vertices_positions.data();
+	m_render_data.buffers.vertex_normals	   = parsed_scene.vertex_normals.data();
+	m_render_data.buffers.texcoords			   = parsed_scene.texcoords.data();
 
 	ThreadManager::join_threads(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS);
 	m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 	m_render_data.buffers.material_textures = parsed_scene.textures.data();
+
+	// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
+	m_material_opaque.resize(parsed_scene.materials.size());
+	for (int i = 0; i < parsed_scene.materials.size(); i++)
+		m_material_opaque[i] = parsed_scene.material_has_opaque_base_color_texture[i] && parsed_scene.materials[i].alpha_opacity == 1.0f;
+
+	m_render_data.buffers.material_opaque = m_material_opaque.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	m_render_data.buffers.triangles_average_emissive_luminance		 = parsed_scene.triangles_average_emissive_luminance.data();
