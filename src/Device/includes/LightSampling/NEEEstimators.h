@@ -741,6 +741,8 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
 		return ColorRGB32F(0.0f);
+	else if (nee_deferred_MIS_context.last_bsdf_sample_pdf <= 0.0f)
+		return ColorRGB32F(0.0f);
 
 #if DirectLightNEEEstimator == LSS_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)

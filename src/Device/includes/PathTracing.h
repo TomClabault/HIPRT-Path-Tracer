@@ -54,17 +54,14 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 															const HitInfo& closest_hit_info,
 															ColorRGB32F current_throughput,
 															float& rr_throughput_scaling,
-															ColorRGB32F bsdf_color,
+															ColorRGB32F bsdf_color_cos_theta,
 															float3_t bounce_direction,
 															float bsdf_pdf,
 															Xorshift32Generator& random_number_generator,
 															NEEDeferredMISContext& nee_deferred_MIS_context,
 															bool apply_russian_roulette = true)
 {
-	ColorRGB32F bsdf_cos_theta		   = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal));
-	ColorRGB32F throughput_attenuation = bsdf_cos_theta / bsdf_pdf;
-
-	nee_deferred_MIS_context.fill_last_bsdf_information(bsdf_cos_theta, bsdf_pdf);
+	ColorRGB32F throughput_attenuation = bsdf_color_cos_theta / bsdf_pdf;
 
 	// Russian roulette
 	if (apply_russian_roulette && !do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, rr_throughput_scaling,
@@ -91,7 +88,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 															RayPayload& ray_payload,
 															const HitInfo& closest_hit_info,
 															ColorRGB32F current_throughput,
-															ColorRGB32F bsdf_color,
+															ColorRGB32F bsdf_color_cos_theta,
 															float3_t bounce_direction,
 															float bsdf_pdf,
 															Xorshift32Generator& random_number_generator,
@@ -100,8 +97,9 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 {
 	// TODO this function with the unused_rr_throughput_scaling is unused?
 	float unused_rr_throughput_scaling;
-	return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling, bsdf_color,
-											  bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context, apply_russian_roulette);
+	return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling,
+											  bsdf_color_cos_theta, bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context,
+											  apply_russian_roulette);
 }
 
 /**
@@ -128,6 +126,9 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	float bsdf_pdf;
 	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
 												  random_number_generator, incident_light_info);
+	ColorRGB32F bsdf_color_cos_theta = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal));
+
+	nee_deferred_MIS_context.fill_last_bsdf_information(bsdf_color_cos_theta, bsdf_pdf);
 
 	out_ray.origin	  = closest_hit_info.inter_point;
 	out_ray.direction = bounce_direction;
@@ -136,7 +137,7 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color,
+	ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color_cos_theta,
 																bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context);
 	if (ray_payload.throughput.is_black())
 		// Killed by russian roulette

@@ -24,7 +24,7 @@ HIPRT_DEVICE static void debug_set_final_color(const HIPRTRenderData& render_dat
 		render_data.buffers.accumulated_ray_colors[y * render_data.render_settings.render_resolution.x + x] = final_color;
 	else
 		render_data.buffers.accumulated_ray_colors[y * render_data.render_settings.render_resolution.x + x] =
-								final_color * render_data.render_settings.sample_number;
+			final_color * render_data.render_settings.sample_number;
 }
 
 /**
