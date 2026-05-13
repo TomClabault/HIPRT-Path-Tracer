@@ -19,7 +19,7 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	// candidates are generated for each type of sampling. Both candidate types are mixed with MIS
 	int nee_ris_number_of_light_candidates	= 1;
 	int nee_ris_number_of_envmap_candidates = 0;
-	int nee_ris_number_of_bsdf_candidates	= 1;
+	int nee_ris_number_of_bsdf_candidates	= 20;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated

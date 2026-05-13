@@ -215,10 +215,8 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		if (last_bounce == 0)
-			// TODO using nee_deferred_MIS_context.last_geometric_normal, nee_deferred_MIS_context.last_primitive_index is incorrect? Should be current hit prim
-			// index / normal?
-			ReSTIR_PT_rc_di_vertex_fill_information(light_hit_info.inter_point, nee_deferred_MIS_context.last_geometric_normal,
-													nee_deferred_MIS_context.last_primitive_index, incident_light_info, restir_pt_initial_sample);
+			ReSTIR_PT_rc_di_vertex_fill_information(light_hit_info.inter_point, light_hit_info.geometric_normal, light_hit_info.primitive_index,
+													incident_light_info, restir_pt_initial_sample);
 		if (last_bounce == 1)
 			restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
 		if (last_bounce <= 1)
