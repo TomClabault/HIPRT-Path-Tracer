@@ -736,8 +736,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 #if !DirectLightNEEEstimatorHasBSDFSampling
 	return ColorRGB32F(0.0f);
-#endif
-
+#else
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
 		return ColorRGB32F(0.0f);
@@ -805,6 +804,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #endif
 
 #endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif // DirectLightNEEEstimatorHasBSDFSampling
 
 	return ColorRGB32F();
 }
