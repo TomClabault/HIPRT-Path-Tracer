@@ -683,7 +683,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			// in solid angle. The geometry term in the target function ( / in the integrand) is only
 			// for surface area direct lighting integration
 			ColorRGB32F hit_emission	   = ray_payload.material.get_emission();
-			ColorRGB32F light_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta * hit_emission;
+			ColorRGB32F light_contribution = nee_deferred_MIS_context.last_bsdf_x_cos_theta * hit_emission;
 			float target_function		   = light_contribution.luminance();
 
 			float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(
@@ -698,7 +698,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 			bsdf_RIS_sample.emission				 = hit_emission;
 			bsdf_RIS_sample.point_on_light_source	 = main_path_ray_hit_info.inter_point;
 			bsdf_RIS_sample.is_bsdf_sample			 = true;
-			bsdf_RIS_sample.bsdf_sample_contribution = nee_deferred_MIS_context.last_bsdf_cos_theta;
+			bsdf_RIS_sample.bsdf_sample_contribution = nee_deferred_MIS_context.last_bsdf_x_cos_theta;
 			// The RIS integrator will compute bsdf_sample_contribution * bsdf_sample_cosine_term / ... when evaluating the reservoir but our BSDF sample
 			// contribution here already contains the cosine term so we're setting cosine term = 1.0f in the reservoir's sample
 			bsdf_RIS_sample.bsdf_sample_cosine_term = 1.0f;
@@ -753,7 +753,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 	float bsdf_sample_mis_weight = 1.0f;
 
-	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.get_emission() * nee_deferred_MIS_context.last_bsdf_cos_theta /
+	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.get_emission() * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)
@@ -776,7 +776,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 													 DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
-	return nee_deferred_MIS_context.last_ray_throughput * hit_emission * nee_deferred_MIS_context.last_bsdf_cos_theta /
+	return nee_deferred_MIS_context.last_ray_throughput * hit_emission * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	RISReservoir final_reservoir =

@@ -169,7 +169,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		return;
 
 	BSDFIncidentLightInfo incident_light_info = nee_deferred_MIS_context.last_bsdf_incident_light_info;
-	ColorRGB32F bsdf_throughput				  = nee_deferred_MIS_context.last_bsdf_cos_theta;
+	ColorRGB32F bsdf_throughput				  = nee_deferred_MIS_context.last_bsdf_x_cos_theta;
 
 	// Checking that we did hit something and if we hit something,
 	// it needs to be emissive
@@ -240,6 +240,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 											   nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}
 		else
+			// Faster path for no light candidates, equivalent to balance heuristic (bsdf_pdf, nb_bsdf_candidates, ***, 0)
 			nee_mis_weight = 1.0f / nb_bsdf_candidates;
 
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();

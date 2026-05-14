@@ -35,7 +35,7 @@ struct NEEDeferredMISContextSpecialized<LSS_BSDF, PathIntegrator>
 	ColorRGB32F last_ray_throughput;
 
 	// BSDF * cos_theta
-	ColorRGB32F last_bsdf_cos_theta;
+	ColorRGB32F last_bsdf_x_cos_theta;
 	float last_bsdf_sample_pdf;
 
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
@@ -50,8 +50,8 @@ struct NEEDeferredMISContextSpecialized<LSS_BSDF, PathIntegrator>
 
 	HIPRT_DEVICE void fill_last_bsdf_information(ColorRGB32F bsdf_cos_theta, float bsdf_pdf)
 	{
-		last_bsdf_cos_theta	 = bsdf_cos_theta;
-		last_bsdf_sample_pdf = bsdf_pdf;
+		last_bsdf_x_cos_theta = bsdf_cos_theta;
+		last_bsdf_sample_pdf  = bsdf_pdf;
 	}
 };
 
@@ -67,7 +67,7 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 	ColorRGB32F last_ray_throughput;
 
 	// BSDF * cos_theta
-	ColorRGB32F last_bsdf_cos_theta;
+	ColorRGB32F last_bsdf_x_cos_theta;
 	float last_bsdf_sample_pdf;
 
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
@@ -85,8 +85,8 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 
 	HIPRT_DEVICE void fill_last_bsdf_information(ColorRGB32F bsdf_cos_theta, float bsdf_pdf)
 	{
-		last_bsdf_cos_theta	 = bsdf_cos_theta;
-		last_bsdf_sample_pdf = bsdf_pdf;
+		last_bsdf_x_cos_theta = bsdf_cos_theta;
+		last_bsdf_sample_pdf  = bsdf_pdf;
 	}
 
 	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir) {}
@@ -108,7 +108,7 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PathIntegrator>
 	ColorRGB32F last_ray_throughput;
 
 	// BSDF * cos_theta
-	ColorRGB32F last_bsdf_cos_theta;
+	ColorRGB32F last_bsdf_x_cos_theta;
 	float last_bsdf_sample_pdf;
 
 	RISReservoir ris_reservoir;
@@ -131,8 +131,8 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PathIntegrator>
 
 	HIPRT_DEVICE void fill_last_bsdf_information(ColorRGB32F bsdf_cos_theta, float bsdf_pdf)
 	{
-		last_bsdf_cos_theta	 = bsdf_cos_theta;
-		last_bsdf_sample_pdf = bsdf_pdf;
+		last_bsdf_x_cos_theta = bsdf_cos_theta;
+		last_bsdf_sample_pdf  = bsdf_pdf;
 	}
 
 	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir)
@@ -157,7 +157,7 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 	ColorRGB32F last_ray_throughput;
 
 	// BSDF * cos_theta
-	ColorRGB32F last_bsdf_cos_theta;
+	ColorRGB32F last_bsdf_x_cos_theta;
 	float last_bsdf_sample_pdf;
 	BSDFIncidentLightInfo last_bsdf_incident_light_info;
 
@@ -181,8 +181,8 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 
 	HIPRT_DEVICE void fill_last_bsdf_information(ColorRGB32F bsdf_cos_theta, float bsdf_pdf)
 	{
-		last_bsdf_cos_theta	 = bsdf_cos_theta;
-		last_bsdf_sample_pdf = bsdf_pdf;
+		last_bsdf_x_cos_theta = bsdf_cos_theta;
+		last_bsdf_sample_pdf  = bsdf_pdf;
 	}
 
 	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir)

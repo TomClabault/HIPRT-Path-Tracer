@@ -129,7 +129,7 @@
  *
  *	- PATH_SAMPLING_RESTIR_PT
  *		Implementation of [Generalized Resampled Importance Sampling: Foundations of ReSTIR, Lin et al. 2022], resampling paths and not full path trees (as in
- *ReSTIR GI).
+ *		ReSTIR GI).
  *
  *	- PATH_SAMPLING_RESTIR_PG
  *		Implementation of [ReSTIR PG: Path Guiding with Spatiotemporally Resampled Paths, Zeng et al. 2025]
@@ -137,7 +137,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT
+#define PathSamplingStrategy PATH_SAMPLING_BSDF
 
 /**
  * Debug option which, if enabled, only outputs the sample 'render_settings.output_debug_sample_N'
