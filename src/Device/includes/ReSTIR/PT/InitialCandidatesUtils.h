@@ -239,6 +239,9 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
 											   nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}
+		else
+			nee_mis_weight = 1.0f / nb_bsdf_candidates;
+
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
