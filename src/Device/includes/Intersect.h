@@ -618,32 +618,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	if (!shadow_ray_hit.hasHit())
 		return false;
 
-	// If we're here, this means that we found a hit that is not
-	// alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
-
-	// Reading the emission of the material
-	int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
-	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
-
-	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
-	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
-	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
-	// Getting the shading normal
-	else
-		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
-
-	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
-																	   triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-	out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
-	out_light_hit_info.hit_prim_index			  = shadow_ray_hit.primID;
-	out_light_hit_info.hit_material_index		  = material_index;
-	out_light_hit_info.hit_distance				  = shadow_ray_hit.t;
-
-	return true;
+	float hit_distance = shadow_ray_hit.t;
 #else
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
@@ -673,35 +648,42 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 
 	bool hit_found = shadow_ray_hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
 
-	if (hit_found)
-	{
-		// If we found a hit and that it is close enough (hit_found conditions)
-
-		int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
-		int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
-
-		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
-		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-		float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
-		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
-		else
-			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
-
-		out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-		out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
-																		   triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-		out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
-		out_light_hit_info.hit_prim_index			  = shadow_ray_hit.primID;
-		out_light_hit_info.hit_material_index		  = material_index;
-		out_light_hit_info.hit_distance				  = cumulative_t;
-
-		return true;
-	}
-	else
+	if (!hit_found)
 		return false;
-#endif // __KERNELCC__
+
+	float hit_distance = cumulative_t;
+
+#endif
+
+	// If we're here, this means that we found a hit that is not
+	// alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
+
+	// Reading the emission of the material
+	int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
+	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
+
+	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
+	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+
+	float emission_strength = render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
+	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
+		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
+	// Getting the shading normal
+	else
+		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+	out_light_hit_info.hit_emission *= emission_strength;
+
+	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
+	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
+																	   triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
+	out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
+	out_light_hit_info.hit_prim_index			  = shadow_ray_hit.primID;
+	out_light_hit_info.hit_material_index		  = material_index;
+	out_light_hit_info.hit_distance				  = hit_distance;
+
+	// Return shadowed
+	return true;
 }
 
 HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data,

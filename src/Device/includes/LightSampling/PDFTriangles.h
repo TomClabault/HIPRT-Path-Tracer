@@ -108,8 +108,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
 	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
 	{
 		float sampling_power = render_data.buffers.triangles_average_emissive_power_luminance[emissive_triangle_global_index];
-		// TODO EMISSIVE TEXTURE SAMPLING
-		// Here we need to use the emission used in the CDF to get the PDF, not the hit emission (which is the light_emission parameter here)
+
 		return sampling_power / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 	}
 	else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
