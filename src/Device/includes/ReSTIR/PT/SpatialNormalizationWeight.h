@@ -177,11 +177,10 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 
 			if (!final_reservoir_sample.is_envmap_path())
 				// Applying the jacobian to get "p_hat_from_i"
-				target_function_at_neighbor *=
-					hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(
-										 final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(),
-										 center_pixel_surface.shading_point, neighbor_surface.shading_point,
-										 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
+				target_function_at_neighbor *= hippt::max(
+					0.0f, get_jacobian_determinant_reconnection_shift(
+							  final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
+							  neighbor_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
 
 			if (target_function_at_neighbor > 0.0f)
 			{
@@ -245,6 +244,28 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 
 template <>
 struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled by the MIS weights when resampling the neighbors
+		out_normalization_nume	= 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
+template <>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled by the MIS weights when resampling the neighbors
+		out_normalization_nume	= 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
+template <>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

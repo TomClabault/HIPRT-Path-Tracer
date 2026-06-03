@@ -25,9 +25,14 @@ extern ImGuiLogger g_imgui_logger;
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Duplication maps to reduce correlations
-//		- Only works with temporal reuse though? Or can we use it to
+//		- Only works with temporal reuse though? Or can we use it with spatial reuse as well somehow? Or can we use the maps for some other use?
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
-// - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain?
+// - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
+// - Remove visibility in MIS weights option from ReSTIR PT
+// - Could it be possible to precompute spatial reuse neighbors ahead of time to be able to share computations with pairwise MIS, basically doing paired spatial
+// reuse of restir pt enhanced but while keeping SPMIS capability
+//		- Or maybe we can produce a map of random seeds and those random seeds choose the spatial neighbors, this could also be used to share duplicated
+//computations
 //
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR
@@ -79,7 +84,7 @@ extern ImGuiLogger g_imgui_logger;
 //		Can we use the super pixel algorithm instead of hashed screen space grid for restir spatial reuse
 // - For hash grid screen space spatial reuse,
 //		- We can sort the samples by intensity before building the CDF and then sample the CDF with a blue noise texture to get blue noise output from ReSTIR,
-//amazing.
+// amazing.
 //		- Maybe we're going to need the paper on stratified RIS to keep the blue noise properties here? Otherwise is going to destroy the blue noise properties?
 //		- SLIC superpixel to group pixels together and reuse in these groups instead of with a hash grid? We would run SLIC on a denoised image and this would
 // give us lighting discontinuities as well, to not reuse accross lighting discontinuities

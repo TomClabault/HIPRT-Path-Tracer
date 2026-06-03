@@ -9,6 +9,8 @@
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 #include "UI/PerformanceMetricsComputer.h"
 
@@ -97,12 +99,8 @@ private:
 	OrochiBuffer<ReSTIRDIReservoir> m_spatial_output_reservoirs_2;
 
 	ReSTIRDIReservoir* m_last_restir_output_reservoirs = nullptr;
-
-	OrochiBuffer<unsigned char> m_per_pixel_spatial_reuse_radius;
-	OrochiBuffer<unsigned long long int> m_per_pixel_spatial_reuse_direction_mask_ull;
-
-	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
-	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
+	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	ReSTIRSPMISDataHost<OrochiBuffer> m_spmis_data;
 
 	// If true, the temporal buffers are going to be reset by the temporal pass
 	bool m_temporal_buffer_clear_requested = false;

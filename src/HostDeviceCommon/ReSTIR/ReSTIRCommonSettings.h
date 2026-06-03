@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 
+#include "Device/includes/ReSTIR/SPMIS/ReSTIRCommonSPMISSettings.h"
+
 /**
  * Note that no default values are set here because they are all set in
  * the ReSTIR_XXX_DefaultSettings structure/header files
@@ -107,6 +109,8 @@ struct ReSTIRCommonSpatialPassSettings
 	// Counters for gathering the statistics on the spatial reuse hit rate
 	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_hits	 = nullptr;
 	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_total = nullptr;
+
+	ReSTIRCommonSPMISSettings spmis_settings;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

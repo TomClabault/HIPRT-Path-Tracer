@@ -26,6 +26,8 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashGridSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -188,11 +190,8 @@ private:
 		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
 		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
 
-		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
-		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
-
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
+		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
+		ReSTIRSPMISDataHost<std::vector> spmis_data;
 
 		ReSTIRDIReservoir* output_reservoirs = nullptr;
 
@@ -205,11 +204,8 @@ private:
 		std::vector<ReSTIRGIReservoir> temporal_reservoirs;
 		std::vector<ReSTIRGIReservoir> spatial_reservoirs;
 
-		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
-		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
-
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
+		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
+		ReSTIRSPMISDataHost<std::vector> spmis_data;
 	} m_restir_gi_state;
 
 	struct ReSTIRPTState
@@ -218,11 +214,8 @@ private:
 		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
 		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
 
-		std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
-		std::vector<unsigned char> per_pixel_spatial_reuse_radius;
-
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
-		AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
+		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
+		ReSTIRSPMISDataHost<std::vector> spmis_data;
 	} m_restir_pt_state;
 
 	struct ReSTIRPGState

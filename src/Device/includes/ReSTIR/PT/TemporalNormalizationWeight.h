@@ -141,8 +141,8 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			return;
 		}
 
-float 			center_pixel_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
-																												 center_pixel_surface, random_number_generator);
+		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
 		if (temporal_neighbor_M > 0)
@@ -151,8 +151,8 @@ float 			center_pixel_target_function = ReSTIR_PT_evaluate_target_function<ReSTI
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-				temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
-					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
@@ -229,6 +229,30 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 
 template <>
 struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled when resampling the
+		// neighbors. Everything is already in the MIS weights m_i.
+		out_normalization_nume	= 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
+template <>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled when resampling the
+		// neighbors. Everything is already in the MIS weights m_i.
+		out_normalization_nume	= 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
+template <>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

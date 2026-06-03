@@ -184,8 +184,9 @@ void CPURenderer::setup_buffers()
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
 	m_restir_pt_state.spatial_reservoirs.resize(width * height);
-	m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-	m_restir_pt_state.per_pixel_spatial_reuse_radius.resize(width * height);
+
+	m_restir_pt_state.directional_spatial_reuse_data_buffer.resize(width, height);
+	m_restir_pt_state.spmis_data.resize(width, height);
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -466,15 +467,13 @@ void CPURenderer::update_render_data()
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs			  = m_restir_pt_state.temporal_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs				  = m_restir_pt_state.temporal_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs				  = m_restir_pt_state.spatial_reservoirs.data();
-	m_render_data.aux_buffers.restir_pt_reservoir_buffer_1										  = m_restir_pt_state.initial_candidates_reservoirs.data();
-	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2										  = m_restir_pt_state.spatial_reservoirs.data();
-	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3										  = m_restir_pt_state.temporal_reservoirs.data();
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-		m_restir_pt_state.per_pixel_spatial_reuse_directions_mask_ull.data();
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-		m_restir_pt_state.per_pixel_spatial_reuse_radius.data();
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_pt_state.spatial_reuse_hit_rate_total;
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_pt_state.spatial_reuse_hit_rate_hits;
+
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_1 = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_restir_pt_state.spatial_reservoirs.data();
+	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_restir_pt_state.temporal_reservoirs.data();
+
+	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
+	m_restir_pt_state.spmis_data.to_device(m_render_data);
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE

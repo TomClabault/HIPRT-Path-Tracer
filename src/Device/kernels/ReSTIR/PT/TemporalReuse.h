@@ -158,7 +158,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir.sample, initial_candidates_reservoir.M, temporal_neighbor_surface, center_pixel_surface,
 			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||        \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
@@ -202,6 +204,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 																						center_pixel_surface, temporal_neighbor_surface,
 
 																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
+																						center_pixel_surface, temporal_neighbor_surface,
+
+																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
 #error "Unsupported mis weight type"
 #endif
@@ -235,6 +243,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported mis weight type"

@@ -650,11 +650,11 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		break;
 
 	case SETTINGS_PRESET_REFERENCE_BRUTE_FORCE_PATH_TRACER:
-		render_settings.do_alpha_testing			  = true;
-		render_settings.alpha_testing_max_bounce = render_settings.nb_bounces + 1;
-		render_settings.direct_contribution_clamp	  = 0.0f;
-		render_settings.indirect_contribution_clamp	  = 0.0f;
-		render_settings.envmap_contribution_clamp	  = 0.0f;
+		render_settings.do_alpha_testing			= true;
+		render_settings.alpha_testing_max_bounce	= render_settings.nb_bounces + 1;
+		render_settings.direct_contribution_clamp	= 0.0f;
+		render_settings.indirect_contribution_clamp = 0.0f;
+		render_settings.envmap_contribution_clamp	= 0.0f;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
@@ -3984,39 +3984,49 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- Pairwise MIS defensive",
 				"- Pairwise symmetric ratio",
 				"- Pairwise asymmetric ratio",
+				"- Stochastic Pairwise MIS",
+				"- Stochastic Pairwise MIS defensive",
 			};
 
-			const char* tooltips[] = { "Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
-									   "Those weights are biased because they do not account for cases where "
-									   "we resample a sample that couldn't have been produced by some neighbors.\n"
-									   "The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
-									   "this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
+			const char* tooltips[] = {
+				"Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
+				"Those weights are biased because they do not account for cases where "
+				"we resample a sample that couldn't have been produced by some neighbors.\n"
+				"The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
+				"this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
 
-									   "Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
-									   "Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
-									   "has a very low target function(when the neighbor is a glossy surface for example).\n"
-									   "See Fig. 7 of the 2020 paper.",
+				"Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
+				"Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
+				"has a very low target function(when the neighbor is a glossy surface for example).\n"
+				"See Fig. 7 of the 2020 paper.",
 
-									   "Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
-									   "and still unbiased.",
+				"Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
+				"and still unbiased.",
 
-									   "Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
-									   "N being the number of neighbors resampled.\n"
-									   "Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
+				"Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
+				"N being the number of neighbors resampled.\n"
+				"Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
 
-									   "Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
-									   "Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
 
-									   "Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
-									   "Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023, defensive approach to reduce correlations at the cost of a bit higher variance",
 
-									   "A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
-									   ""
-									   "Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
 
-									   "A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
-									   ""
-									   "Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]" };
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
+
+				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
+				"importance sampled based on the luminance of their samples",
+
+				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
+				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher variance",
+			};
 
 			int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
 				ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE

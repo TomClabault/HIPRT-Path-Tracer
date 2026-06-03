@@ -660,6 +660,19 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 	float mc = 0.0f;
 };
 
+// For temporal reuse, we're not using SPMIS (we're not importance sampling the temporal neighbor) so we just use traditional pairwise MIS weights
+template <int ReSTIRVariant>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS, ReSTIRVariant>
+	: public ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, ReSTIRVariant>
+{
+};
+
+template <int ReSTIRVariant>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE, ReSTIRVariant>
+	: public ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE, ReSTIRVariant>
+{
+};
+
 template <int BiasCorrectionMode>
 using ReSTIRDITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
 

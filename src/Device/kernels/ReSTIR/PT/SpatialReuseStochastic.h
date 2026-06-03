@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_H
-#define DEVICE_RESTIR_PT_SPATIAL_REUSE_H
+#ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_STOCHASTIC_H
+#define DEVICE_RESTIR_PT_SPATIAL_REUSE_STOCHASTIC_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
@@ -21,9 +21,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuse(HIPRTRenderData render_data)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseStochastic(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData render_data, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseStochastic(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -161,18 +161,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
-	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
-		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
-
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
-			render_data,
-
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
-
-			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
 #else
 #error "Unsupported mis weight type"
 #endif
@@ -206,9 +194,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
-	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
-	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported mis weight type"

@@ -223,6 +223,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
+	ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+	// Stochastic pairwise MIS use their own custom spatial reuse kernel so this is just here so that everything compiles fine and we don't get the
+	// "unsupported mis weight type" error
+	float mis_weight = 1.0f;
 #else
 #error "Unsupported mis weight type"
 #endif

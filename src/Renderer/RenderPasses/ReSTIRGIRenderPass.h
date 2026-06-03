@@ -7,6 +7,8 @@
 #define RESTIR_GI_RENDER_PASS_H
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -77,11 +79,8 @@ private:
 	OrochiBuffer<ReSTIRGIReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRGIReservoir> m_spatial_buffer;
 
-	OrochiBuffer<unsigned char> m_per_pixel_spatial_reuse_radius;
-	OrochiBuffer<unsigned long long int> m_per_pixel_spatial_reuse_direction_mask_ull;
-
-	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
-	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
+	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	ReSTIRSPMISDataHost<OrochiBuffer> m_spmis_data;
 
 	ReSTIRGIReservoir* m_last_temporal_output_reservoirs = nullptr;
 	ReSTIRGIReservoir* m_last_restir_output_reservoirs	 = nullptr;

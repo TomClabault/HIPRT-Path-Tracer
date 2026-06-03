@@ -15,6 +15,7 @@
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
+#include "Device/includes/ReSTIR/SPMIS/SPMISUtils.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -277,6 +278,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		ray_payload.next_ray_state = RayState::BOUNCE;
 		ray_payload.material	   = render_data.g_buffer.materials[pixel_index].unpack();
 
+#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+		ReSTIR_spmis_insert_pixel_hash<ReSTIR_VARIANT_PT>(render_data, x, y, closest_hit_info.inter_point, closest_hit_info.geometric_normal);
+#endif
+
 		// Because this is the camera hit (and assuming the camera isn't inside volumes for now),
 		// the ray volume state after the camera hit is just an empty interior stack but with
 		// the material index that we hit pushed onto the stack. That's it. Because it is that
@@ -430,10 +436,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 		ColorRGB32F radiance_to_camera;
 		if (restir_pt_initial_reservoir.sample.is_envmap_path())
-		{
 			radiance_to_camera = bsdf_first_hit * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
 								 restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
-		}
 		else
 		{
 			// TODO the ray volume state should be updated here
