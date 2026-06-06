@@ -5718,7 +5718,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (!ImGui::CollapsingHeader("Performance Metrics"))
+	if (!ImGui::CollapsingHeader("Performance metrics"))
 		return;
 
 	ImGui::TreePush("Performance metrics tree");

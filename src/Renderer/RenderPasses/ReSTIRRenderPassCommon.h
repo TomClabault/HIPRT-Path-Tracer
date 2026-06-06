@@ -31,21 +31,20 @@ public:
 
 	template <int ReSTIRVariant, template <typename> typename DataContainer>
 	static bool pre_render_update_common_buffers(const HIPRTRenderData& render_data,
-												 GPURenderer* renderer,
+												 GPUKernelCompilerOptions& compiler_options,
 												 ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data,
 												 ReSTIRSPMISDataHost<DataContainer>& spmis_data)
 	{
 		bool render_data_updated = false;
 
-		render_data_updated |= pre_render_update_directional_reuse_buffers<ReSTIRVariant>(render_data, renderer, directional_spatial_reuse_data);
-		render_data_updated |= pre_render_update_spmis_buffers<ReSTIRVariant>(render_data, renderer, spmis_data);
+		render_data_updated |= pre_render_update_directional_reuse_buffers<ReSTIRVariant>(render_data, directional_spatial_reuse_data);
+		render_data_updated |= pre_render_update_spmis_buffers<ReSTIRVariant>(render_data, compiler_options, spmis_data);
 
 		return render_data_updated;
 	}
 
 	template <int ReSTIRVariant, template <typename> typename DataContainer>
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data,
-															GPURenderer* renderer,
 															ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
@@ -57,7 +56,7 @@ public:
 		{
 			if (directional_spatial_reuse_data.size() == 0)
 			{
-				directional_spatial_reuse_data.resize(renderer->m_render_resolution.x, renderer->m_render_resolution.y);
+				directional_spatial_reuse_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
 
 				render_data_invalidated = true;
 			}
@@ -79,15 +78,17 @@ public:
 	}
 
 	template <int ReSTIRVariant, template <typename> typename DataContainer>
-	static bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPURenderer* renderer, ReSTIRSPMISDataHost<DataContainer>& spmis_data)
+	static bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data,
+												GPUKernelCompilerOptions& compiler_options,
+												ReSTIRSPMISDataHost<DataContainer>& spmis_data)
 	{
 		int mis_weight_type;
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-			mis_weight_type = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE);
+			mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE);
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-			mis_weight_type = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE);
+			mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE);
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			mis_weight_type = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
+			mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 		else
 			static_assert(ReSTIRVariant == ReSTIR_VARIANT_DI || ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT,
 						  "Invalid ReSTIR variant");
@@ -97,7 +98,7 @@ public:
 		{
 			if (spmis_data.size() == 0)
 			{
-				spmis_data.resize(renderer->m_render_resolution.x, renderer->m_render_resolution.y);
+				spmis_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
 
 				render_data_invalidated = true;
 			}
@@ -137,6 +138,7 @@ public:
 
 	template <int ReSTIRVariant, template <typename> typename DataContainer>
 	static void update_render_data_common_buffers(HIPRTRenderData& render_data,
+												  GPUKernelCompilerOptions& compiler_options,
 												  ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data,
 												  ReSTIRSPMISDataHost<DataContainer>& spmis_data)
 	{

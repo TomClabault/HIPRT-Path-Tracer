@@ -10,11 +10,33 @@
 
 template <template <typename> typename DataContainer>
 using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
-											   unsigned int>; // Pixel hashes
+											   unsigned int,								   // All pixel hashes
+											   GenericAtomicType<unsigned int, DataContainer>, // All pixel hashes checksums
+											   unsigned int,								   // All pixel index in cell
+											   // TODO not needed
+											   unsigned int,									// Important pixel index in cell
+											   unsigned int,									// Important pixel indices sorting values
+											   unsigned int,									// Important pixel hashes
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cell pixels counters
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cells non-zero reservoir counters
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cell global offset counter
+											   unsigned int,									// Cell offsets
+											   GenericAtomicType<unsigned int, DataContainer>>; // Cells confidence sums
 
 enum ReSTIRSPMISDataHostBuffers
 {
-	RESTIR_SPMIS_PIXEL_HASHES,
+	RESTIR_SPMIS_ALL_PIXEL_HASHES,
+	RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS,
+	RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL,
+	// TODO not needed
+	RESTIR_SPMIS_IMPORTANT_PIXEL_INDEX_IN_CELL,
+	RESTIR_SPMIS_PIXEL_INDICES_SORTED,
+	RESTIR_SPMIS_IMPORTANT_PIXEL_HASHES,
+	RESTIR_SPMIS_CELL_COUNTERS,
+	RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS,
+	RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER,
+	RESTIR_SPMIS_CELL_OFFSETS,
+	RESTIR_SPMIS_CELL_CONFIDENCE_SUMS,
 };
 
 template <template <typename> typename DataContainer>
@@ -22,16 +44,11 @@ struct ReSTIRSPMISDataHost
 {
 	void resize(unsigned int width, unsigned int height)
 	{
-		m_spmis_data.resize(width * height);
+		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER });
+		m_spmis_data.resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
 	}
 
-	void reset()
-	{
-		if (size() == 0)
-			return;
-
-		m_spmis_data.memset_buffer<RESTIR_SPMIS_PIXEL_HASHES>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
-	}
+	void reset() {}
 
 	bool free()
 	{
@@ -59,16 +76,106 @@ struct ReSTIRSPMISDataHost
 	{
 		if (size() == 0)
 		{
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = 0;
+
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes				 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums	 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell		 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_hashes		 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted			 = nullptr;
+
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters			   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets					   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter	   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums			   = nullptr;
 
 			return;
 		}
 
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_HASHES>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums =
+			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_IMPORTANT_PIXEL_INDEX_IN_CELL>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_hashes =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_IMPORTANT_PIXEL_HASHES>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = (unsigned int)size();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();
+
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters =
+			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_COUNTERS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters =
+			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter =
+			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets =
+			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums =
+			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;
 };
+
+// template <>
+// struct ReSTIRSPMISDataHost<OrochiBuffer> : public ReSTIRSPMISDataHostCommon<OrochiBuffer>
+//{
+//	void resize(unsigned int width, unsigned int height)
+//	{
+//		ReSTIRSPMISDataHostCommon<OrochiBuffer>::resize(width, height);
+//
+//		m_spmis_radix_sort.resize(width * height);
+//		m_spmis_prefix_scan.resize(width * height);
+//	}
+//
+//	bool free()
+//	{
+//		ReSTIRSPMISDataHostCommon<OrochiBuffer>::free();
+//
+//		if (size() > 0)
+//		{
+//			m_spmis_radix_sort.free();
+//			m_spmis_prefix_scan.free();
+//
+//			return true;
+//		}
+//
+//		return false;
+//	}
+//
+//	std::size_t get_byte_size() const
+//	{
+//		return ReSTIRSPMISDataHostCommon<OrochiBuffer>::get_byte_size() + m_spmis_radix_sort.get_byte_size() + m_spmis_prefix_scan.get_byte_size();
+//	}
+//
+//	OrochiBuffer<unsigned int>& get_important_pixel_indices_sorted_buffer()
+//	{
+//		return m_spmis_data.get_buffer<RESTIR_SPMIS_IMPORTANT_PIXEL_INDICES_SORTING_VALUES>();
+//	}
+//
+//	void to_device(HIPRTRenderData& render_data)
+//	{
+//		ReSTIRSPMISDataHostCommon<OrochiBuffer>::to_device(render_data);
+//		if (size() == 0)
+//			return;
+//
+//		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_indices_sorted =
+//			m_spmis_data.get_buffer<RESTIR_SPMIS_IMPORTANT_PIXEL_INDICES_SORTING_VALUES>().get_device_pointer();
+//		/*render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_indices_sorted =
+//			m_spmis_radix_sort.get_sorted_values_buffer().get_device_pointer();*/
+//		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets =
+//			m_spmis_prefix_scan.get_output_buffer().get_device_pointer();
+//	}
+//
+//	// For sorting on the GPU
+//	RadixSort m_spmis_radix_sort;
+//	ParallelPrefixScanDecoupledLookback<unsigned int> m_spmis_prefix_scan;
+// };
 
 #endif

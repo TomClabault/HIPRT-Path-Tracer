@@ -58,6 +58,8 @@ public:
 
 	OrochiBuffer<OutputType>& get_output_buffer();
 
+	std::size_t get_byte_size() const;
+
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_basic(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	static void unit_test_data_type(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
@@ -66,11 +68,11 @@ public:
 	static void unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename InputDataType, typename TransformedDataType = InputDataType, typename OutputDataType = InputDataType>
 	static void unit_test_template(
-							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-							oroStream_t stream,
-							ParallelSegmentedPrefixScan<InputDataType, TransformedDataType, OutputDataType>& scanner,
-							std::function<TransformedDataType(InputDataType&)> input_value_transform   = [](InputDataType val) { return val; },
-							std::function<OutputDataType(TransformedDataType&)> output_value_transform = [](TransformedDataType val) { return val; });
+		std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+		oroStream_t stream,
+		ParallelSegmentedPrefixScan<InputDataType, TransformedDataType, OutputDataType>& scanner,
+		std::function<TransformedDataType(InputDataType&)> input_value_transform   = [](InputDataType val) { return val; },
+		std::function<OutputDataType(TransformedDataType&)> output_value_transform = [](TransformedDataType val) { return val; });
 
 private:
 	void initialize_kernels();

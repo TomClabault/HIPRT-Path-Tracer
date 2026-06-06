@@ -29,10 +29,11 @@ extern ImGuiLogger g_imgui_logger;
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
 // - Remove visibility in MIS weights option from ReSTIR PT
+// - Remove use_confidence_weights option from ReSTIR, we always use it anyways
 // - Could it be possible to precompute spatial reuse neighbors ahead of time to be able to share computations with pairwise MIS, basically doing paired spatial
 // reuse of restir pt enhanced but while keeping SPMIS capability
 //		- Or maybe we can produce a map of random seeds and those random seeds choose the spatial neighbors, this could also be used to share duplicated
-//computations
+// computations
 //
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR

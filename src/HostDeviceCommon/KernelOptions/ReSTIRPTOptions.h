@@ -55,7 +55,7 @@
  * See the doc of the RESTIR_MIS_WEIGHTS_TYPE macros in ReSTIRCommonOptions.h for more details on the different types of MIS weights that can be used when
  * resampling spatial neighbors.
  */
-#define ReSTIR_PT_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#define ReSTIR_PT_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 
 /**
  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]

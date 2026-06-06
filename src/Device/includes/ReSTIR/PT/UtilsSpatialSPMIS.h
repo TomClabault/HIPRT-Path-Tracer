@@ -1,0 +1,169 @@
+/*
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef DEVICE_RESTIR_PT_UTILS_SPATIAL_SPMIS_H
+#define DEVICE_RESTIR_PT_UTILS_SPATIAL_SPMIS_H
+
+#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/Intersect.h"
+#include "Device/includes/LightSampling/Envmap.h"
+#include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/Surface.h"
+
+#include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+
+#define SPATIAL_SPMIS_SEARCH_ITERATIONS		  12
+#define SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS	  20.0f
+#define SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT 1.25f
+
+/**
+ * Searches for a cell to reuse from around the center pixel, with increasing search radius
+ */
+HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
+	const HIPRTRenderData& render_data,
+	unsigned int center_pixel_index,
+	int2_t center_pixel_coords,
+	const ReSTIRSurface& center_pixel_surface,
+	int& out_neighbors_confidence_sum,
+	Xorshift32Generator rng // Passing the RNG by copy because we don't want the RNG used here to advance our global RNG
+)
+{
+	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
+
+	// First, always WRSing the center cell
+	unsigned int center_cell_index = spmis_settings.all_pixel_hashes[center_pixel_index];
+	if (center_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+		// Should never happen because a pixel that gets to this point in the code must have a valid cell index
+		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
+	// DEBUG
+	{
+		// TODO this is invalid for multiple spatial reuse passes, we need something to count the confidences properly
+		out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[center_cell_index];
+
+		return center_cell_index;
+	}
+
+	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
+
+	// Variables for WRS, starting with the center cell selected
+	float weight_sum				 = center_cell_weight;
+	unsigned int selected_cell_index = center_cell_index;
+
+	float radius = SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS;
+	for (int i = 0; i < SPATIAL_SPMIS_SEARCH_ITERATIONS; i++, radius *= SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT)
+	{
+		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
+		// This searches in a square for simplicity, not a disk but that's fine
+		int2_t neighbor_coords = center_pixel_coords + random_offset;
+
+		// If out of the viewport, mirroring the coordinates on the borders
+		if (neighbor_coords.x < 0)
+			neighbor_coords.x = -neighbor_coords.x;
+		else if (neighbor_coords.x >= render_data.render_settings.render_resolution.x)
+			neighbor_coords.x = 2 * render_data.render_settings.render_resolution.x - neighbor_coords.x - 1;
+
+		if (neighbor_coords.y < 0)
+			neighbor_coords.y = -neighbor_coords.y;
+		else if (neighbor_coords.y >= render_data.render_settings.render_resolution.y)
+			neighbor_coords.y = 2 * render_data.render_settings.render_resolution.y - neighbor_coords.y - 1;
+
+		unsigned int neighbor_pixel_index = neighbor_coords.x + neighbor_coords.y * render_data.render_settings.render_resolution.x;
+		unsigned int neighbor_cell_index  = spmis_settings.all_pixel_hashes[neighbor_pixel_index];
+
+		if (neighbor_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+			// Hit a pixel that doesn't have a valid cell index, skipping
+			continue;
+		else if (neighbor_cell_index == center_cell_index)
+			// Hit a pixel that has the same cell index as the center pixel, skipping because we already accounted for the center cell at the beginning
+			continue;
+
+		if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
+																	 center_pixel_surface.geometric_normal))
+			// Neighbor doesn't pass the similarity heuristics, skipping
+			continue;
+
+		unsigned int neighbor_cell_weight = spmis_settings.cell_confidence_sums[neighbor_cell_index];
+
+		weight_sum += neighbor_cell_weight;
+		if (rng() < neighbor_cell_weight / weight_sum)
+			// Selecting this neighbor cell
+			selected_cell_index = neighbor_cell_index;
+	}
+
+	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
+		// TODO this is invalid for multiple spatial reuse passes, we need something to count the confidences properly
+		out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[selected_cell_index];
+	else
+		out_neighbors_confidence_sum = 0;
+
+	return selected_cell_index;
+}
+
+HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(
+	const HIPRTRenderData& render_data, unsigned int neighbor_cell_index, float& out_selection_probability, bool uniform_selection, Xorshift32Generator& rng)
+{
+	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
+
+	unsigned int cell_start_index	= spmis_settings.cell_offsets[neighbor_cell_index];
+	unsigned int non_zero_cell_size = spmis_settings.cell_non_zero_reservoir_counters[neighbor_cell_index];
+	if (non_zero_cell_size == 0)
+	{
+		out_selection_probability = 0.0f;
+
+		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+	}
+
+	constexpr unsigned int RIS_NEIGHBOR_COUNT = 8;
+
+	float weight_sum			   = 0.0f;
+	float selected_target_function = 0.0f;
+	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+	for (int i = 0; i < RIS_NEIGHBOR_COUNT; i++)
+	{
+		unsigned int random_index		  = rng.random_index(non_zero_cell_size);
+		unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
+		if (uniform_selection)
+		{
+			out_selection_probability = 1.0f / non_zero_cell_size;
+
+			return neighbor_pixel_index;
+		}
+
+		ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
+
+		// RIS for selecting the neighbor
+		float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
+		float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+		float mis_weight	  = 1.0f / (float)RIS_NEIGHBOR_COUNT;
+		float weight		  = mis_weight * target_function / source_pdf;
+
+		weight_sum += weight;
+		if (rng() < weight / weight_sum)
+		{
+			selected_index			 = neighbor_pixel_index;
+			selected_target_function = target_function;
+		}
+	}
+
+	if (weight_sum == 0.0f)
+	{
+		out_selection_probability = 0.0f;
+
+		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+	}
+	else
+	{
+		float UCW = weight_sum / selected_target_function;
+		// For clarity, the spatial reuse loop expects a PDF not an UCW (inverse PDF) so we're inverting it here
+		out_selection_probability = 1.0f / UCW;
+
+		return selected_index;
+	}
+}
+
+#endif

@@ -93,7 +93,7 @@ add_executable(HIPRTPathTracer
 	${IMPLOT_FLIP_SOURCES_AND_HEADERS}
 )
 
-set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
+set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 23)
 
 find_package(OpenMP REQUIRED)
 find_package(OpenGL REQUIRED)

@@ -23,6 +23,8 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 {
 	if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
 	{
+		// ReSTIR GI enabled
+
 		if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
 			render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
 
@@ -35,6 +37,8 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 
 	if (render_data.aux_buffers.restir_pt_reservoir_buffer_1 != nullptr)
 	{
+		// ReSTIR PT enabled
+
 		if (render_data.aux_buffers.restir_pt_reservoir_buffer_1)
 			render_data.aux_buffers.restir_pt_reservoir_buffer_1[pixel_index] = ReSTIRPTReservoir();
 
@@ -43,6 +47,12 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 
 		if (render_data.aux_buffers.restir_pt_reservoir_buffer_3)
 			render_data.aux_buffers.restir_pt_reservoir_buffer_3[pixel_index] = ReSTIRPTReservoir();
+
+//#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
+//	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+//		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums[pixel_index] =
+//			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+//#endif
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())

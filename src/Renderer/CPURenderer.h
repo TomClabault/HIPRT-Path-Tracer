@@ -47,6 +47,7 @@ public:
 	void setup_gmon();
 	void GMoN_post_sample_update();
 	void ReGIR_post_sample_update();
+	void ReSTIR_PT_post_sample_update();
 
 	void set_scene(Scene& parsed_scene);
 	void compute_emissives_power_alias_table(const Scene& scene);
@@ -119,6 +120,7 @@ public:
 	void configure_ReSTIR_PT_shading_pass();
 
 	void launch_ReSTIR_PT_initial_candidates_pass();
+	void launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservoir* input_reservoirs);
 	void launch_ReSTIR_PT_temporal_reuse_pass();
 	void launch_ReSTIR_PT_spatial_reuse_pass();
 	void launch_ReSTIR_PT_shading_pass();

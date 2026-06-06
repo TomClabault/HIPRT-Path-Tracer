@@ -32,7 +32,14 @@
 #include "Device/kernels/ReSTIR/PT/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/PT/Shading.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMIS.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
+
+#include "Device/kernels/ReSTIR/SPMIS/ComputeOffsets.h"
+#include "Device/kernels/ReSTIR/SPMIS/CountCells.h"
+#include "Device/kernels/ReSTIR/SPMIS/ResetBuffers.h"
+#include "Device/kernels/ReSTIR/SPMIS/ResetCounters.h"
+#include "Device/kernels/ReSTIR/SPMIS/Sort.h"
 
 #include "Device/kernels/ReSTIR/PG/Fitting.h"
 #include "Device/kernels/ReSTIR/PG/ResetDistributions.h"
@@ -53,6 +60,7 @@
 #include <chrono>
 #include <numeric>
 #include <omp.h>
+#include <ranges>
 
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
@@ -65,7 +73,7 @@
 // Useful if you're using an image viewer to get the the coordinates of the interesting pixel. If that image viewer has its (0, 0) in the top left corner,
 // you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 //
-// If you're debugging coordinates that come from a shader of this renderer (by printing the x and y coordinate of the pixel being rendered, then this will need
+// If you're debugging coordinates that come from a kernel of this renderer (by printing the x and y coordinate of the pixel being rendered, then this will need
 // to be 1)
 #define DEBUG_FLIP_Y 0
 
@@ -73,8 +81,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 337
-#define DEBUG_PIXEL_Y 458
+#define DEBUG_PIXEL_X 607
+#define DEBUG_PIXEL_Y 355
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -187,6 +195,8 @@ void CPURenderer::setup_buffers()
 
 	m_restir_pt_state.directional_spatial_reuse_data_buffer.resize(width, height);
 	m_restir_pt_state.spmis_data.resize(width, height);
+	m_restir_pt_state.spmis_data.m_spmis_data.memset_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>(
+		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 #endif
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -301,6 +311,17 @@ void CPURenderer::ReGIR_post_sample_update()
 		m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available =
 			hippt::min(m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available,
 					   m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
+	}
+}
+
+void CPURenderer::ReSTIR_PT_post_sample_update()
+{
+	unsigned int pixel_count = m_resolution.x * m_resolution.y;
+
+#pragma omp parallel for
+	for (int index = 0; index < pixel_count; index++)
+	{
+		ReSTIR_SPMIS_ResetBuffers(m_render_data, index);
 	}
 }
 
@@ -685,6 +706,7 @@ void CPURenderer::post_sample_update(int frame_number)
 
 	GMoN_post_sample_update();
 	ReGIR_post_sample_update();
+	ReSTIR_PT_post_sample_update();
 }
 
 void CPURenderer::update_cameras(int sample)
@@ -1200,6 +1222,8 @@ void CPURenderer::ReSTIR_PT_pass()
 	configure_ReSTIR_PT_initial_candidates_pass();
 	launch_ReSTIR_PT_initial_candidates_pass();
 
+	launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer);
+
 	configure_ReSTIR_PT_temporal_reuse_pass();
 	launch_ReSTIR_PT_temporal_reuse_pass();
 
@@ -1494,6 +1518,53 @@ void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
 	debug_render_pass([this](int x, int y) { ReSTIR_PT_InitialCandidates(m_render_data, x, y); });
 }
 
+void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservoir* input_reservoirs)
+{
+	ReSTIRSPMISDataHostInternal<std::vector>& spmis_data = m_restir_pt_state.spmis_data.m_spmis_data;
+
+	AtomicType<unsigned int>* cell_pixels_counters = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().data();
+	AtomicType<unsigned int>* cell_non_zero_reservoir_counters =
+		spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().data();
+	AtomicType<unsigned int>* cell_confidence_sums		 = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>().data();
+	AtomicType<unsigned int>* cell_global_offset_counter = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().data();
+	unsigned int num_cells								 = m_resolution.x * m_resolution.y;
+	for (int i = 0; i < num_cells; i++)
+	{
+		ReSTIR_SPMIS_ResetCounters(cell_pixels_counters, cell_non_zero_reservoir_counters, cell_confidence_sums, cell_global_offset_counter, num_cells, i);
+	}
+
+	unsigned int* all_pixels_hashes	   = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES>().data();
+	unsigned int* pixels_index_in_cell = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().data();
+	for (int i = 0; i < num_cells; i++)
+	{
+		// First call to count important pixels first
+		ReSTIR_SPMIS_CountCells(all_pixels_hashes, pixels_index_in_cell, cell_pixels_counters, cell_non_zero_reservoir_counters, cell_confidence_sums,
+								input_reservoirs, num_cells, true, i);
+	}
+
+	for (int i = 0; i < num_cells; i++)
+	{
+		// Second call to count non-important pixels
+		ReSTIR_SPMIS_CountCells(all_pixels_hashes, pixels_index_in_cell, cell_pixels_counters, cell_non_zero_reservoir_counters, cell_confidence_sums,
+								input_reservoirs, num_cells, false, i);
+	}
+
+	unsigned int* cell_offsets			= spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().data();
+	void* compute_offsets_launch_args[] = { &cell_pixels_counters, &cell_global_offset_counter, &cell_offsets, &num_cells };
+	for (int i = 0; i < num_cells; i++)
+	{
+		ReSTIR_SPMIS_ComputeOffsets(cell_pixels_counters, cell_global_offset_counter, cell_offsets, num_cells, i);
+	}
+
+	unsigned int* pixel_indices_sorted = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_PIXEL_INDICES_SORTED>().data();
+	for (int i = 0; i < num_cells; i++)
+	{
+		ReSTIR_SPMIS_Sort(all_pixels_hashes, pixels_index_in_cell, cell_offsets, pixel_indices_sorted, num_cells, i);
+	}
+
+	// TODO compute only valid count
+}
+
 void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
 {
 	if (m_render_data.render_settings.sample_number == 0)
@@ -1558,7 +1629,11 @@ void CPURenderer::configure_ReSTIR_PT_spatial_reuse_pass(int spatial_pass_index)
 
 void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 {
-	debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuse(m_render_data, x, y); });
+	if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMIS(m_render_data, x, y); });
+	else
+		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuse(m_render_data, x, y); });
 }
 
 void CPURenderer::configure_ReSTIR_PT_shading_pass()

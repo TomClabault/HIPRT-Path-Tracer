@@ -46,6 +46,8 @@ public:
 
 	OrochiBuffer<OutputType>& get_output_buffer();
 
+	std::size_t get_byte_size() const;
+
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 private:
@@ -59,12 +61,12 @@ private:
 	static void unit_test_inclusive(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	template <typename InputDataType, typename TransformedDataType = InputDataType, typename OutputDataType = InputDataType>
 	static void unit_test_template(
-							std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-							oroStream_t stream,
-							ParallelPrefixScanDecoupledLookback<InputDataType, TransformedDataType, OutputDataType>& scanner,
-							std::function<TransformedDataType(InputDataType&)> input_value_transform   = [](InputDataType val) { return val; },
-							std::function<OutputDataType(TransformedDataType&)> output_value_transform = [](TransformedDataType val) { return val; },
-							bool exclusive_scan														   = true);
+		std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+		oroStream_t stream,
+		ParallelPrefixScanDecoupledLookback<InputDataType, TransformedDataType, OutputDataType>& scanner,
+		std::function<TransformedDataType(InputDataType&)> input_value_transform   = [](InputDataType val) { return val; },
+		std::function<OutputDataType(TransformedDataType&)> output_value_transform = [](TransformedDataType val) { return val; },
+		bool exclusive_scan														   = true);
 
 private:
 	OrochiBuffer<InputType> m_input_buffer;

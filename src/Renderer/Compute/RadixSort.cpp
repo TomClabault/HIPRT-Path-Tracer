@@ -54,6 +54,12 @@ void RadixSort::compile()
 	m_per_block_count_table_prefix_scan.compile();
 }
 
+bool RadixSort::has_been_compiled() const
+{
+	// Checking only one of the kernels is enough since they are all compiled together in compile()
+	return m_memset_0_kernel.has_been_compiled();
+}
+
 void RadixSort::resize(unsigned int element_count)
 {
 	if (m_last_resize_element_count == element_count)
@@ -259,17 +265,20 @@ OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer()
 
 OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
 {
-	if (!m_data_uploaded)
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
-								"RadixSort::get_sorted_values_buffer() called before any data has been uploaded. The returned buffer will be empty. Did you "
-								"mean to read from the buffer passed as input to set_data_pointers() instead?");
-
 	return m_values_buffer;
 }
 
 void RadixSort::set_ordering(Ordering order)
 {
 	m_ordering = order;
+}
+
+std::size_t RadixSort::get_byte_size() const
+{
+	return (m_keys_buffer.get_byte_size() + m_values_buffer.get_byte_size() + m_temp_keys_buffer.get_byte_size() + m_temp_values_buffer.get_byte_size() +
+			m_global_count_tables_buffer.get_byte_size() + m_per_block_count_tables_buffer.get_byte_size() +
+			m_per_block_count_tables_scanned_buffer.get_byte_size() + m_global_count_table_prefix_scan.get_byte_size() +
+			m_per_block_count_table_prefix_scan.get_byte_size());
 }
 
 void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)

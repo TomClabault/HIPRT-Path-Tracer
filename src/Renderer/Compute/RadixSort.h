@@ -29,6 +29,7 @@ public:
 	void init(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 	void compile();
+	bool has_been_compiled() const;
 
 	void resize(unsigned int element_count);
 	void free();
@@ -41,6 +42,8 @@ public:
 	OrochiBuffer<unsigned int>& get_sorted_values_buffer();
 
 	void set_ordering(Ordering order);
+
+	std::size_t get_byte_size() const;
 
 	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 

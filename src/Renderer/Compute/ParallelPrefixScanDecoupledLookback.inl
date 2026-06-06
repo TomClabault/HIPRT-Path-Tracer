@@ -248,6 +248,13 @@ OrochiBuffer<OutputType>& ParallelPrefixScanDecoupledLookback<InputType, Transfo
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
+std::size_t ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_byte_size() const
+{
+	return m_input_buffer.get_byte_size() + m_output_buffer.get_byte_size() + m_global_block_index_counter_buffer.get_byte_size() +
+		   m_block_descriptors_buffer.get_byte_size();
+}
+
+template <typename InputType, typename TransformedType, typename OutputType>
 void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	unit_test_basic(hiprt_ctx, stream);
@@ -322,23 +329,23 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 	scanner.compile();
 
 	unit_test_template<unsigned int, unsigned int, unsigned int>(
-							hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
+		hiprt_ctx, stream, scanner, [](unsigned int val) { return val; }, [](unsigned int val) { return val; }, false);
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
 template <typename InputDataType, typename TransformedDataType, typename OutputDataType>
 void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::unit_test_template(
-						std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
-						oroStream_t stream,
-						ParallelPrefixScanDecoupledLookback<InputDataType, TransformedDataType, OutputDataType>& scanner,
-						std::function<TransformedDataType(InputDataType&)> input_value_transform,
-						std::function<OutputDataType(TransformedDataType&)> output_value_transform,
-						bool exclusive_scan)
+	std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
+	oroStream_t stream,
+	ParallelPrefixScanDecoupledLookback<InputDataType, TransformedDataType, OutputDataType>& scanner,
+	std::function<TransformedDataType(InputDataType&)> input_value_transform,
+	std::function<OutputDataType(TransformedDataType&)> output_value_transform,
+	bool exclusive_scan)
 {
 	std::mt19937 engine_uint(42);
-	auto rng = std::bind(std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>,
-											std::uniform_real_distribution<float>>(0, 100),
-						 engine_uint);
+	auto rng = std::bind(
+		std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>, std::uniform_real_distribution<float>>(0, 100),
+		engine_uint);
 
 	// Full tests with random sizes
 	oroEvent_t scan_start;
@@ -416,11 +423,11 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 				else
 					formatter = "%f";
 
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										("ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got " + formatter +
-										 ", expected " + formatter)
-																.c_str(),
-										i, j, test_size, output[j], expected_output[j]);
+				g_imgui_logger.add_line(
+					ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+					("ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got " + formatter + ", expected " + formatter)
+						.c_str(),
+					i, j, test_size, output[j], expected_output[j]);
 
 				Debug::debugbreak();
 

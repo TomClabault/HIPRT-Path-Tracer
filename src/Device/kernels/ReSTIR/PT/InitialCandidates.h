@@ -278,11 +278,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		ray_payload.next_ray_state = RayState::BOUNCE;
 		ray_payload.material	   = render_data.g_buffer.materials[pixel_index].unpack();
 
-#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
-	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
-		ReSTIR_spmis_insert_pixel_hash<ReSTIR_VARIANT_PT>(render_data, x, y, closest_hit_info.inter_point, closest_hit_info.geometric_normal);
-#endif
-
 		// Because this is the camera hit (and assuming the camera isn't inside volumes for now),
 		// the ray volume state after the camera hit is just an empty interior stack but with
 		// the material index that we hit pushed onto the stack. That's it. Because it is that
@@ -405,8 +400,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 
-	/*restir_pt_initial_reservoir.sample.target_function =
-		ReSTIR_PT_evaluate_target_function<false, false>(render_data, restir_pt_initial_reservoir.sample, initial_surface, random_number_generator);*/
+#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+	float3_t pixel_first_hit_point			  = render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t pixel_first_hit_geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+	ReSTIR_spmis_insert_pixel_hash<ReSTIR_VARIANT_PT>(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
+#endif
 
 	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_pt_initial_reservoir;
 

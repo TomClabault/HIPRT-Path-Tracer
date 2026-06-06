@@ -172,7 +172,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			// Getting the surface data at the neighbor
 			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-			float target_function_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+			float target_function_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
 				render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (!final_reservoir_sample.is_envmap_path())

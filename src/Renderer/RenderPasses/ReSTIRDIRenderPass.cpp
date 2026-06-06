@@ -115,8 +115,8 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		if (spatial_output_2_needs_resize)
 			m_spatial_output_reservoirs_2.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_DI>(render_data, m_renderer,
-																											   m_directional_spatial_reuse_data, m_spmis_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_DI>(
+			render_data, *m_renderer->get_global_compiler_options(), m_directional_spatial_reuse_data, m_spmis_data);
 	}
 	else
 	{
@@ -160,9 +160,8 @@ void ReSTIRDIRenderPass::update_render_data()
 
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (is_render_pass_used())
-	{
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(render_data, m_directional_spatial_reuse_data, m_spmis_data);
-	}
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(render_data, *m_renderer->get_global_compiler_options(),
+																					 m_directional_spatial_reuse_data, m_spmis_data);
 	else
 	{
 		render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;

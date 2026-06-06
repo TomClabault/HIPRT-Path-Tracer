@@ -21,8 +21,14 @@ public:
 	static const std::string RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID;
 	static const std::string RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID;
 	static const std::string RESTIR_PT_SHADING_KERNEL_ID;
 	static const std::string RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_SORT_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
@@ -46,10 +52,11 @@ public:
 	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
 	void configure_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
+	void launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, ReSTIRPTReservoir* input_reservoirs);
 	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index);
-	void launch_spatial_reuse_pass(HIPRTRenderData& render_data);
+	void launch_spatial_reuse_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	void configure_shading_pass(HIPRTRenderData& render_data);
 	void launch_shading_pass(HIPRTRenderData& render_data);
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -76,6 +83,10 @@ private:
 	bool m_spatial_reuse_events_recorded = false;
 	oroEvent_t m_spatial_reuse_time_start;
 	oroEvent_t m_spatial_reuse_time_stop;
+
+	bool m_spmis_sorting_events_recorded = false;
+	oroEvent_t m_spmis_sorting_time_start;
+	oroEvent_t m_spmis_sorting_time_stop;
 
 	OrochiBuffer<ReSTIRPTReservoir> m_initial_candidates_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
