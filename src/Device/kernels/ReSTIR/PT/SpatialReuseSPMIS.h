@@ -58,9 +58,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
-	int neighbors_confidence_sum  = 0;
-	unsigned int reuse_cell_index = spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
-															   neighbors_confidence_sum, random_number_generator);
+	int neighbors_confidence_sum_int = 0;
+	unsigned int reuse_cell_index	 = spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
+																  neighbors_confidence_sum_int, random_number_generator);
 	if (reuse_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		// Should never happen because a pixel that gets to this point in the code must have a valid cell index
 		return;
@@ -70,7 +70,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
 	// Scaling the confidence sum, section 4.3 of the paper
 	float non_canonical_confidence_scaling = reused_neighbors_count / (float)reuse_cell_pixel_count;
-	neighbors_confidence_sum *= non_canonical_confidence_scaling;
+	float neighbors_confidence_sum		   = neighbors_confidence_sum_int * non_canonical_confidence_scaling;
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
@@ -128,12 +128,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	{
 		// Sampling one random neighbor with uniform selection over all reservoirs, zero importance or not, (N_c = 1, section 4.2 of "Stochastic Pairwise MIS
 		// for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026") and using that neighbor to estimate the MIS weight of the canonical sample
-		float neighbor_selection_probability = 1.0f;
-
 		ReSTIRCommonSPMISSettings spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
 		unsigned int cell_start_index			 = spmis_settings.cell_offsets[reuse_cell_index];
 		unsigned int random_index				 = random_number_generator.random_index(reuse_cell_pixel_count);
 		unsigned int neighbor_pixel_index		 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
+		float neighbor_selection_probability	 = 1.0f / reuse_cell_pixel_count;
 
 		float mis_weight				= 1.0f;
 		float shift_mapping_jacobian	= 1.0f;
@@ -142,7 +141,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		{
 			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
-			float mis_weight = mis_weight_function.get_resampling_MIS_weight(
+			mis_weight = mis_weight_function.get_resampling_MIS_weight(
 				render_data,
 
 				neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample,
@@ -156,11 +155,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
 													random_number_generator);
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
-	}
-
-	if (center_pixel_reservoir.UCW > 0 && spatial_reuse_output_reservoir.weight_sum <= 0.0f)
-	{
-		hippt::debugbreak();
 	}
 
 	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);

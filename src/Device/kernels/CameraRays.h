@@ -48,11 +48,56 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		if (render_data.aux_buffers.restir_pt_reservoir_buffer_3)
 			render_data.aux_buffers.restir_pt_reservoir_buffer_3[pixel_index] = ReSTIRPTReservoir();
 
-//#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
-//	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
-//		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums[pixel_index] =
-//			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-//#endif
+#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+		unsigned int* all_pixel_hashes						 = nullptr;
+		AtomicType<unsigned int>* all_pixel_hashes_checksums = nullptr;
+
+		// For each pixel, the index in its hash cell
+		unsigned int* all_pixels_index_in_cell = nullptr;
+		// For each pixel that has a non-zero reservoir, the index of that pixel in its hash cell but only counting pixels
+		// with a non-zero reservoir (important pixels)
+		//
+		// TODO not needed
+		unsigned int* important_pixels_index_in_cell = nullptr;
+		// A fullscreen buffer that contains the hash cell index of a given pixel but only for pixels that have a non-zero importance reservoir at the end of
+		// the initial candidates pass.
+		unsigned int* important_pixel_hashes = nullptr;
+		// A fullscreen buffer which contains, for each cell, the list of pixel indices that belongs to that cell. Pixel indices in each cell are sorted with
+		// important pixels (non-zero contribution reservoirs) first and non-important pixels after that. This buffer should be indexed as [cell_ffset +
+		// index_in_cell] with cell_offset coming from the cell_offsets buffer and index_in_cell in [0, cell_pixels_counts[cell_index]], with the first
+		// cell_non_zero_reservoir_counters[cell_index] pixels indices of the cell being the important pixels and the remaining ones being the non-important
+		// pixels.
+		unsigned int* pixel_indices_sorted = nullptr;
+
+		// How many **pixels** are in the cells, containing non-zero reservoirs or not
+		// TODO unsigned char is enough for 8 * 8 cells
+		AtomicType<unsigned int>* cell_pixels_counters = nullptr;
+		// For each cell, how many pixels have a non-zero reservoir (important pixels) in it.
+		AtomicType<unsigned int>* cell_non_zero_reservoir_counters = nullptr;
+		// Cell counters but prefixed scanned so that we can know the offset of each cell
+		unsigned int* cell_offsets = nullptr;
+		// A global counter used to compute the offsets of each cell
+		AtomicType<unsigned int>* cell_global_offset_counter = nullptr;
+		// Sum of the confidence weights of all pixels of a given cell
+		AtomicType<unsigned int>* cell_confidence_sums = nullptr;
+
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index] =
+			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums[pixel_index] =
+			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell[pixel_index]		  = 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell[pixel_index] = 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_hashes[pixel_index] =
+			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted[pixel_index] =
+			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[pixel_index]				= 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[pixel_index] = 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets[pixel_index]						= 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter[0]					= 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
+#endif
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())

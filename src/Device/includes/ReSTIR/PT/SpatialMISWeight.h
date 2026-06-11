@@ -630,94 +630,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 													  ReSTIRSurface& center_pixel_surface,
 													  float target_function_at_center,
 													  int neighbor_pixel_index,
-													  int valid_neighbors_confidence_sum,
-													  bool resampling_canonical,
-													  Xorshift32Generator& random_number_generator)
-	{
-		if (!resampling_canonical)
-		{
-			// Resampling a neighbor
-
-			float target_function_at_neighbor = reservoir_being_resampled_target_function;
-
-			float reservoir_resampled_M	   = reservoir_being_resampled_confidence;
-			float center_reservoir_M	   = center_pixel_reservoir_confidence;
-			float neighbors_confidence_sum = valid_neighbors_confidence_sum;
-
-			float nume	= target_function_at_neighbor * reservoir_resampled_M;
-			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
-			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
-
-			return mi;
-		}
-		else
-		{
-			// Resampling the center pixel, we're going to estimate the MIS weight using the stochastic pairwise estimator by selecting N_c (hardcoded to 1 in
-			// this implementation) neighbors, according to section 4.2 of "Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom
-			// et al. 2026"
-
-			ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
-				render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
-
-			// Because we're using the target function as a PDF here, we need to scale the PDF
-			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
-
-			// Only doing this if we at least have a target function to scale by the jacobian
-			if (target_function_center_sample_at_neighbor > 0.0f)
-			{
-				if (!center_pixel_reservoir_sample.is_envmap_path())
-				{
-					// If this is an envmap path the jacobian is just 1 so this is not needed
-
-					float jacobian = get_jacobian_determinant_reconnection_shift(
-						center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
-						neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
-						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-					if (jacobian == 0.0f)
-						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
-						// and has been rejected), the target function is set to 0
-						target_function_center_sample_at_neighbor = 0.0f;
-					else
-						target_function_center_sample_at_neighbor *= jacobian;
-				}
-			}
-
-			float reservoir_resampled_M	   = reservoir_being_resampled_confidence;
-			float center_reservoir_M	   = center_pixel_reservoir_confidence;
-			float neighbors_confidence_sum = valid_neighbors_confidence_sum;
-
-			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
-
-			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
-			float denom_mc =
-				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_M;
-			float confidence_multiplier = reservoir_resampled_M / (center_reservoir_M + neighbors_confidence_sum);
-
-			if (denom_mc != 0.0f)
-				return confidence_multiplier * nume_mc / denom_mc;
-			else
-				return 0.0f;
-		}
-	}
-};
-
-template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
-{
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-
-													  float reservoir_being_resampled_confidence,
-													  float reservoir_being_resampled_target_function,
-													  ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
-													  int center_pixel_reservoir_confidence,
-													  float center_pixel_reservoir_target_function,
-
-													  ReSTIRSurface& center_pixel_surface,
-													  float target_function_at_center,
-													  int neighbor_pixel_index,
-													  int valid_neighbors_confidence_sum,
+													  float neighbors_confidence_sum,
 
 													  int reused_neighbors_count,
 													  float neighbor_selection_probability,
@@ -731,21 +644,16 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 
 			float target_function_at_neighbor = reservoir_being_resampled_target_function;
 
-			float reservoir_resampled_M	   = reservoir_being_resampled_confidence;
-			float center_reservoir_M	   = center_pixel_reservoir_confidence;
-			float neighbors_confidence_sum = valid_neighbors_confidence_sum;
-
-			float nume	= target_function_at_neighbor * reservoir_resampled_M;
-			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
+			float nume	= target_function_at_neighbor * reservoir_being_resampled_confidence;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_pixel_reservoir_confidence;
 			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
 
-			float spmis_proba	   = 1.0f / (reused_neighbors_count * neighbor_selection_probability);
-			float defensive_factor = valid_neighbors_confidence_sum / (valid_neighbors_confidence_sum + (float)center_pixel_reservoir_confidence);
-			return spmis_proba * defensive_factor * mi;
+			float spmis_proba = 1.0f / (reused_neighbors_count * neighbor_selection_probability);
+			return spmis_proba * mi;
 		}
 		else
 		{
-			if (valid_neighbors_confidence_sum == 0 || reused_neighbors_count == 0)
+			if (neighbors_confidence_sum == 0 || reused_neighbors_count == 0)
 				return 1.0f;
 
 			// Resampling the center pixel, we're going to estimate the MIS weight using the stochastic pairwise estimator by selecting N_c (hardcoded to 1 in
@@ -780,16 +688,13 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 				}
 			}
 
-			float reservoir_resampled_M	   = reservoir_being_resampled_confidence;
-			float center_reservoir_M	   = center_pixel_reservoir_confidence;
-			float neighbors_confidence_sum = valid_neighbors_confidence_sum;
-
 			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-			float nume_mc = target_function_center_sample_at_center * center_reservoir_M;
-			float denom_mc =
-				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_M;
-			float confidence_multiplier = reservoir_resampled_M / (center_reservoir_M + neighbors_confidence_sum);
+			float nume_mc  = target_function_center_sample_at_center * center_pixel_reservoir_confidence;
+			float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
+							 target_function_center_sample_at_center * center_pixel_reservoir_confidence;
+			// TODO is this wrong? Check Gemini
+			float confidence_multiplier = reservoir_being_resampled_confidence / neighbors_confidence_sum;
 
 			if (denom_mc != 0.0f)
 			{
@@ -799,7 +704,103 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 					// with N_c = 1 in this implementation
 					spmis_proba = 1.0f / (1.0f * neighbor_selection_probability);
 
-				float defensive_addition = center_reservoir_M / (center_reservoir_M + neighbors_confidence_sum);
+				return spmis_proba * confidence_multiplier * nume_mc / denom_mc;
+			}
+			else
+				return 0.0f;
+		}
+	}
+};
+
+template <>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
+{
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
+
+													  float reservoir_being_resampled_confidence,
+													  float reservoir_being_resampled_target_function,
+													  ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
+													  int center_pixel_reservoir_confidence,
+													  float center_pixel_reservoir_target_function,
+
+													  ReSTIRSurface& center_pixel_surface,
+													  float target_function_at_center,
+													  int neighbor_pixel_index,
+													  float neighbors_confidence_sum,
+
+													  int reused_neighbors_count,
+													  float neighbor_selection_probability,
+
+													  bool resampling_canonical,
+													  Xorshift32Generator& random_number_generator)
+	{
+		if (!resampling_canonical)
+		{
+			// Resampling a neighbor
+
+			float target_function_at_neighbor = reservoir_being_resampled_target_function;
+
+			float nume	= target_function_at_neighbor * reservoir_being_resampled_confidence;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_pixel_reservoir_confidence;
+			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
+
+			float spmis_proba	   = 1.0f / (reused_neighbors_count * neighbor_selection_probability);
+			float defensive_factor = neighbors_confidence_sum / (neighbors_confidence_sum + (float)center_pixel_reservoir_confidence);
+			return spmis_proba * defensive_factor * mi;
+		}
+		else
+		{
+			if (neighbors_confidence_sum == 0 || reused_neighbors_count == 0)
+				return 1.0f;
+
+			// Resampling the center pixel, we're going to estimate the MIS weight using the stochastic pairwise estimator by selecting N_c (hardcoded to 1 in
+			// this implementation) neighbors, according to section 4.2 of "Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom
+			// et al. 2026"
+
+			ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+
+			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+
+			// Because we're using the target function as a PDF here, we need to scale the PDF
+			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
+
+			// Only doing this if we at least have a target function to scale by the jacobian
+			if (target_function_center_sample_at_neighbor > 0.0f)
+			{
+				if (!center_pixel_reservoir_sample.is_envmap_path())
+				{
+					// If this is an envmap path the jacobian is just 1 so this is not needed
+
+					float jacobian = get_jacobian_determinant_reconnection_shift(
+						center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
+						neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
+						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+					if (jacobian == 0.0f)
+						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+						// and has been rejected), the target function is set to 0
+						target_function_center_sample_at_neighbor = 0.0f;
+					else
+						target_function_center_sample_at_neighbor *= jacobian;
+				}
+			}
+
+			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
+
+			float nume_mc  = target_function_center_sample_at_center * center_pixel_reservoir_confidence;
+			float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
+							 target_function_center_sample_at_center * center_pixel_reservoir_confidence;
+			float confidence_multiplier = reservoir_being_resampled_confidence / neighbors_confidence_sum;
+
+			if (denom_mc != 0.0f)
+			{
+				float spmis_proba = 1.0f;
+				if (neighbor_selection_probability > 0.0f)
+					// 1.0f / (N_c * P_c(i))
+					// with N_c = 1 in this implementation
+					spmis_proba = 1.0f / (1.0f * neighbor_selection_probability);
+
+				float defensive_addition = center_pixel_reservoir_confidence / (center_pixel_reservoir_confidence + neighbors_confidence_sum);
 				return defensive_addition + spmis_proba * confidence_multiplier * nume_mc / denom_mc;
 			}
 			else

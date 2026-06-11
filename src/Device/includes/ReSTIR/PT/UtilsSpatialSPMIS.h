@@ -40,13 +40,13 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		// Should never happen because a pixel that gets to this point in the code must have a valid cell index
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
-	// DEBUG
-	{
-		// TODO this is invalid for multiple spatial reuse passes, we need something to count the confidences properly
-		out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[center_cell_index];
+	// DEBUG, reuse only from center cell
+	//{
+	//	// TODO this is invalid for multiple spatial reuse passes, we need something to count the confidences properly
+	//	out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[center_cell_index];
 
-		return center_cell_index;
-	}
+	//	return center_cell_index;
+	//}
 
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
