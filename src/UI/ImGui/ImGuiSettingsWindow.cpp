@@ -3984,8 +3984,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- Pairwise MIS defensive",
 				"- Pairwise symmetric ratio",
 				"- Pairwise asymmetric ratio",
-				"- Stochastic Pairwise MIS",
-				"- Stochastic Pairwise MIS defensive",
+				"- Stochastic pairwise MIS",
+				"- Stochastic pairwise MIS defensive",
 			};
 
 			const char* tooltips[] = {

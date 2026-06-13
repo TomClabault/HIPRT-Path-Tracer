@@ -62,8 +62,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	unsigned int reuse_cell_index	 = spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
 																  neighbors_confidence_sum_int, random_number_generator);
 	if (reuse_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-		// Should never happen because a pixel that gets to this point in the code must have a valid cell index
+	{
+		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then
+		render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = center_pixel_reservoir;
+
 		return;
+	}
 
 	unsigned int reuse_cell_pixel_count =
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[reuse_cell_index];
@@ -75,52 +79,52 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] == 0)
-		// No neighbor to reuse
-		reused_neighbors_count = 0;
+	// if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] == 0)
+	//	// No neighbor to reuse
+	//	reused_neighbors_count = 0;
 
-	// Resampling only the neighbors, canonical resampling is further below
-	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
+	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
-		float neighbor_selection_probability = 1.0f;
-		unsigned int neighbor_pixel_index =
-			get_spmis_spatial_neighbor_pixel_index(render_data, reuse_cell_index, neighbor_selection_probability, false, random_number_generator);
-		if (neighbor_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-			// Invalid neighbor
-			continue;
-
-		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-
-		float shift_mapping_jacobian = 1.0f;
-		if (neighbor_reservoir.UCW > 0.0f && !neighbor_reservoir.sample.is_envmap_path())
+		// Resampling only the neighbors, canonical resampling is further below
+		for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 		{
-			// Only attempting the shift if the neighbor reservoir is valid
-			//
-			// Also, if this is the last neighbor resample (meaning that it is the center pixel),
-			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
-			shift_mapping_jacobian =
-				get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(),
-															center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
-															render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+			float neighbor_selection_probability = 1.0f;
+			unsigned int neighbor_pixel_index =
+				get_spmis_spatial_neighbor_pixel_index(render_data, reuse_cell_index, neighbor_selection_probability, random_number_generator);
+			if (neighbor_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+				// Invalid neighbor
+				continue;
+
+			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+
+			float shift_mapping_jacobian = 1.0f;
+			if (neighbor_reservoir.UCW > 0.0f && !neighbor_reservoir.sample.is_envmap_path())
+			{
+				// Only attempting the shift if the neighbor reservoir is valid
+				//
+				// Also, if this is the last neighbor resample (meaning that it is the center pixel),
+				// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
+				shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
+					neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
+					render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
+					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+			}
+
+			float target_function_at_center = 0.0f;
+			if (neighbor_reservoir.UCW > 0.0f)
+				target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_SpatialTargetFunctionVisibility>(
+					render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+
+			float mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
+				neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function / shift_mapping_jacobian,
+				center_pixel_reservoir.M,
+
+				target_function_at_center, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability);
+
+			spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
+														random_number_generator);
+			spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 		}
-
-		float target_function_at_center = 0.0f;
-		if (neighbor_reservoir.UCW > 0.0f)
-			target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_SpatialTargetFunctionVisibility>(
-				render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
-			render_data,
-
-			neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample,
-			center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
-
-			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, neighbors_confidence_sum, reused_neighbors_count,
-			neighbor_selection_probability,
-			/* resampling canonical */ false, random_number_generator);
-
-		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
-		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
 	// Now resampling the center pixel reservoir
@@ -134,23 +138,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		unsigned int neighbor_pixel_index		 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 		float neighbor_selection_probability	 = 1.0f / reuse_cell_pixel_count;
 
-		float mis_weight				= 1.0f;
-		float shift_mapping_jacobian	= 1.0f;
-		float target_function_at_center = center_pixel_reservoir.sample.target_function;
-		if (neighbor_pixel_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-		{
-			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		float shift_mapping_jacobian		 = 1.0f;
+		float target_function_at_center		 = center_pixel_reservoir.sample.target_function;
+		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		float mis_weight =
+			mis_weight_function.get_resampling_MIS_weight_canonical(render_data,
 
-			mis_weight = mis_weight_function.get_resampling_MIS_weight(
-				render_data,
+																	neighbor_reservoir.M * non_canonical_confidence_scaling, center_pixel_reservoir.sample,
+																	center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-				neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample,
-				center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
-
-				center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, neighbors_confidence_sum,
-				reused_neighbors_count, neighbor_selection_probability,
-				/* resampling canonical */ true, random_number_generator);
-		}
+																	center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum,
+																	reused_neighbors_count, neighbor_selection_probability, random_number_generator);
 
 		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
 													random_number_generator);

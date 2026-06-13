@@ -48,6 +48,17 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	//	return center_cell_index;
 	//}
 
+	// DEBUG reuse from fixed pixel cell
+	/*{
+		unsigned int X				   = 392;
+		unsigned int Y				   = 414;
+		unsigned int couch_pixel_index = X + (render_data.render_settings.render_resolution.y - 1 - Y) * render_data.render_settings.render_resolution.x;
+		unsigned int couch_cell_index  = spmis_settings.all_pixel_hashes[couch_pixel_index];
+		out_neighbors_confidence_sum   = spmis_settings.cell_confidence_sums[couch_cell_index];
+
+		return couch_cell_index;
+	}*/
+
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
 	// Variables for WRS, starting with the center cell selected
@@ -104,8 +115,10 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	return selected_cell_index;
 }
 
-HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(
-	const HIPRTRenderData& render_data, unsigned int neighbor_cell_index, float& out_selection_probability, bool uniform_selection, Xorshift32Generator& rng)
+HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
+																 unsigned int neighbor_cell_index,
+																 float& out_selection_probability,
+																 Xorshift32Generator& rng)
 {
 	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
 
@@ -118,6 +131,12 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	}
 
+	// DEBUG RETURN THE FIRST PIXEL OF THE CELL
+	/*{
+		out_selection_probability = 1.0f;
+		return spmis_settings.pixel_indices_sorted[cell_start_index];
+	}*/
+
 	constexpr unsigned int RIS_NEIGHBOR_COUNT = 8;
 
 	float weight_sum			   = 0.0f;
@@ -127,19 +146,13 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(
 	{
 		unsigned int random_index		  = rng.random_index(non_zero_cell_size);
 		unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
-		if (uniform_selection)
-		{
-			out_selection_probability = 1.0f / non_zero_cell_size;
-
-			return neighbor_pixel_index;
-		}
 
 		ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
 
 		// RIS for selecting the neighbor
 		float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
 		float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-		float mis_weight	  = 1.0f / (float)RIS_NEIGHBOR_COUNT;
+		float mis_weight	  = 1.0f / RIS_NEIGHBOR_COUNT;
 		float weight		  = mis_weight * target_function / source_pdf;
 
 		weight_sum += weight;

@@ -167,6 +167,9 @@ endif()
 if(MSVC_IDE)
 	# Enabling parallel compilation on MSVC which isn't enabled by default
 	if(MSVC)
+		set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+		cmake_policy(SET CMP0141 NEW)
+
 		add_definitions(/MP)
 
 		if (${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
