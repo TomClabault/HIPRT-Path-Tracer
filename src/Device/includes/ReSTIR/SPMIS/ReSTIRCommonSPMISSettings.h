@@ -27,9 +27,6 @@ struct ReSTIRCommonSPMISSettings
 	//
 	// TODO not needed
 	unsigned int* important_pixels_index_in_cell = nullptr;
-	// A fullscreen buffer that contains the hash cell index of a given pixel but only for pixels that have a non-zero importance reservoir at the end of the
-	// initial candidates pass.
-	unsigned int* important_pixel_hashes = nullptr;
 	// A fullscreen buffer which contains, for each cell, the list of pixel indices that belongs to that cell. Pixel indices in each cell are sorted with
 	// important pixels (non-zero contribution reservoirs) first and non-important pixels after that. This buffer should be indexed as [cell_ffset +
 	// index_in_cell] with cell_offset coming from the cell_offsets buffer and index_in_cell in [0, cell_pixels_counts[cell_index]], with the first

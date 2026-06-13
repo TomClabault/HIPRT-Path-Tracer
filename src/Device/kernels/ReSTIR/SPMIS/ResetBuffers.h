@@ -29,7 +29,6 @@ inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 	spmis_settings.all_pixel_hashes[index]				   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	spmis_settings.all_pixel_hashes_checksums[index]	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	spmis_settings.all_pixels_index_in_cell[index]		   = 0;
-	spmis_settings.important_pixel_hashes[index]		   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	spmis_settings.pixel_indices_sorted[index]			   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	spmis_settings.cell_pixels_counters[index]			   = 0;
 	spmis_settings.cell_non_zero_reservoir_counters[index] = 0;

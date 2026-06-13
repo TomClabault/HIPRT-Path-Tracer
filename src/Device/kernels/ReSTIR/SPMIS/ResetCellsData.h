@@ -1,0 +1,40 @@
+/*
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef KERNELS_RESTIR_SPMIS_RESET_CELLS_DATA_H
+#define KERNELS_RESTIR_SPMIS_RESET_CELLS_DATA_H
+
+#include "Device/includes/FixIntellisense.h"
+#include "HostDeviceCommon/RenderData.h"
+
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void)
+ReSTIR_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int size)
+#else
+GLOBAL_KERNEL_SIGNATURE(void)
+inline ReSTIR_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int size, int cell_index)
+#endif
+{
+#ifdef __KERNELCC__
+	const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+#endif
+
+	if (cell_index >= size)
+		return;
+
+	ReSTIRCommonSPMISSettings spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+
+	if (cell_index == 0)
+		*spmis_settings.cell_global_offset_counter = 0;
+
+	spmis_settings.all_pixels_index_in_cell[cell_index]			= 0;
+	spmis_settings.pixel_indices_sorted[cell_index]				= HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+	spmis_settings.cell_pixels_counters[cell_index]				= 0;
+	spmis_settings.cell_non_zero_reservoir_counters[cell_index] = 0;
+	spmis_settings.cell_offsets[cell_index]						= 0;
+	spmis_settings.cell_confidence_sums[cell_index]				= 0;
+}
+
+#endif

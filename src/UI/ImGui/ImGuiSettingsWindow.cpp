@@ -3856,6 +3856,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
 												"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
 
+				bool using_spmis;
+				if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
+					// SPMIS not implemented for ReSTIR DI
+					using_spmis = false;
+				else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+					// SPMIS not implemented for ReSTIR GI
+					using_spmis = false;
+				else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+					using_spmis = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
+									  RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+								  global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
+									  RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
+
+				ImGui::BeginDisabled(using_spmis);
 				if (ImGui::CollapsingHeader("Directional spatial reuse"))
 				{
 					ImGui::TreePush("Directional spatial reuse tree");
@@ -3900,6 +3914,28 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					ImGui::TreePop();
 				}
+				if (using_spmis)
+					ImGuiRenderer::add_tooltip("Disabled because using SPMIS");
+				ImGui::EndDisabled();
+
+				ImGui::BeginDisabled(!using_spmis && ReSTIRVariant != ReSTIR_VARIANT_PT);
+				if (ImGui::CollapsingHeader("SPMIS Settings"))
+				{
+					ImGui::TreePush("SPMIS Settings tree");
+
+					ReSTIRCommonSPMISSettings& spmis_settings = render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+
+					if (ImGui::SliderInt("Screen space cell size", &spmis_settings.tile_size, 1, 64))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::TreePop();
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				}
+				if (ReSTIRVariant != ReSTIR_VARIANT_PT)
+					ImGuiRenderer::add_tooltip("Disabled because not using ReSTIR PT");
+				else if (!using_spmis)
+					ImGuiRenderer::add_tooltip("Disabled because not using SPMIS");
+				ImGui::EndDisabled();
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

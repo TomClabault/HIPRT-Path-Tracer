@@ -25,7 +25,7 @@ public:
 	static const std::string RESTIR_PT_SHADING_KERNEL_ID;
 	static const std::string RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID;
-	static const std::string RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_SORT_KERNEL_ID;

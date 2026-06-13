@@ -18,7 +18,7 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID		=
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					= "ReSTIR PT Shading";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID = "ReSTIR PT Directional reuse compute";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		= "ReSTIR PT SPMIS Reset Buffers";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID		= "ReSTIR PT SPMIS Reset Counters";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	= "ReSTIR PT SPMIS Reset Cells Data";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			= "ReSTIR PT SPMIS Count Cells";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		= "ReSTIR PT SPMIS Compute Offsets";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				= "ReSTIR PT SPMIS Sort";
@@ -31,7 +31,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SHADING_KERNEL_ID, "ReSTIR_PT_Shading" },
 	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, "ReSTIR_SPMIS_ResetBuffers" },
-	{ RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID, "ReSTIR_SPMIS_ResetCounters" },
+	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, "ReSTIR_SPMIS_ResetCellsData" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, "ReSTIR_SPMIS_CountCells" },
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, "ReSTIR_SPMIS_ComputeOffsets" },
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, "ReSTIR_SPMIS_Sort" },
@@ -45,7 +45,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/Shading.h" },
 	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetBuffers.h" },
-	{ RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCounters.h" },
+	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCellsData.h" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/CountCells.h" },
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeOffsets.h" },
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/Sort.h" }
@@ -141,13 +141,13 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID));
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID]->set_kernel_file_path(
-		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID]->set_kernel_function_name(
-		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID]->synchronize_options_with(m_compiler_options);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->set_kernel_file_path(
+		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->set_kernel_function_name(
+		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID);
@@ -230,7 +230,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 			// SPMIS has never been compiled but we need it now
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
@@ -369,46 +369,42 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_start, m_renderer->get_main_stream()));
 
+	unsigned int num_cells			   = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count;
+	void* reset_counters_launch_args[] = { &render_data, &num_cells };
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
+																								   reset_counters_launch_args, m_renderer->get_main_stream());
+
 	unsigned int* cell_counters = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().get_device_pointer();
 	unsigned int* cell_non_zero_reservoir_counters =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().get_device_pointer();
 	unsigned int* cell_confidence_sums =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>().get_device_pointer();
-	unsigned int* cell_global_offset_counter =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().get_device_pointer();
-	unsigned int num_cells			   = m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y;
-	void* reset_counters_launch_args[] = { &cell_counters, &cell_non_zero_reservoir_counters, &cell_confidence_sums, &cell_global_offset_counter, &num_cells };
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_COUNTERS_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, 1, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, 1, reset_counters_launch_args,
-		m_renderer->get_main_stream());
-
 	unsigned int* all_pixels_hashes = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES>().get_device_pointer();
 	unsigned int* all_pixels_index_in_cell =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().get_device_pointer();
 	bool count_important			= true; // We want to count the important pixels first so that they are sorted at the beginning of their cell
 	void* count_cells_launch_args[] = { &all_pixels_hashes,	   &all_pixels_index_in_cell, &cell_counters, &cell_non_zero_reservoir_counters,
 										&cell_confidence_sums, &input_reservoirs,		  &num_cells,	  &count_important };
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, 1, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, 1, count_cells_launch_args,
-		m_renderer->get_main_stream());
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, count_cells_launch_args,
+																							  m_renderer->get_main_stream());
 
 	// And then a second call counting the non-important pixels so that they are sorted after the important ones in their cell
 	count_important = false;
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, 1, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, 1, count_cells_launch_args,
-		m_renderer->get_main_stream());
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, count_cells_launch_args,
+																							  m_renderer->get_main_stream());
 
+	unsigned int* cell_global_offset_counter =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().get_device_pointer();
 	unsigned int* cell_offsets			= m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().get_device_pointer();
 	void* compute_offsets_launch_args[] = { &cell_counters, &cell_global_offset_counter, &cell_offsets, &num_cells };
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, 1, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, 1, compute_offsets_launch_args,
-		m_renderer->get_main_stream());
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
+																								  compute_offsets_launch_args, m_renderer->get_main_stream());
 
 	unsigned int* pixel_indices_sorted =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_PIXEL_INDICES_SORTED>().get_device_pointer();
 	void* sort_launch_args[] = { &all_pixels_hashes, &all_pixels_index_in_cell, &cell_offsets, &pixel_indices_sorted, &num_cells };
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, 1, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, 1, sort_launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, sort_launch_args,
+																					   m_renderer->get_main_stream());
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_stop, m_renderer->get_main_stream()));
 	m_spmis_sorting_events_recorded = true;
@@ -502,9 +498,13 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 
 		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+		{
+			launch_spmis_create_reuse_cells_pass(render_data, compiler_options, render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
+
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->launch_asynchronous(
 				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
 				m_renderer->get_main_stream());
+		}
 		else
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
 				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
@@ -552,9 +552,6 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 	configure_initial_candidates_pass(render_data);
 	launch_initial_candidates_pass(render_data);
-
-	launch_spmis_create_reuse_cells_pass(render_data, compiler_options,
-										 render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer);
 
 	configure_temporal_reuse_pass(render_data);
 	launch_temporal_reuse_pass(render_data);

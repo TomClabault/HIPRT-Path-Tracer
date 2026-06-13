@@ -38,7 +38,7 @@
 #include "Device/kernels/ReSTIR/SPMIS/ComputeOffsets.h"
 #include "Device/kernels/ReSTIR/SPMIS/CountCells.h"
 #include "Device/kernels/ReSTIR/SPMIS/ResetBuffers.h"
-#include "Device/kernels/ReSTIR/SPMIS/ResetCounters.h"
+#include "Device/kernels/ReSTIR/SPMIS/ResetCellsData.h"
 #include "Device/kernels/ReSTIR/SPMIS/Sort.h"
 
 #include "Device/kernels/ReSTIR/PG/Fitting.h"
@@ -1530,7 +1530,7 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	unsigned int num_cells								 = m_resolution.x * m_resolution.y;
 	for (int i = 0; i < num_cells; i++)
 	{
-		ReSTIR_SPMIS_ResetCounters(cell_pixels_counters, cell_non_zero_reservoir_counters, cell_confidence_sums, cell_global_offset_counter, num_cells, i);
+		ReSTIR_SPMIS_ResetCellsData(m_render_data, num_cells, i);
 	}
 
 	unsigned int* all_pixels_hashes	   = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES>().data();

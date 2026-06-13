@@ -88,8 +88,6 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell[pixel_index]		  = 0;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell[pixel_index] = 0;
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixel_hashes[pixel_index] =
-			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted[pixel_index] =
 			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[pixel_index]				= 0;
