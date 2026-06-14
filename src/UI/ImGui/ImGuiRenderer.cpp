@@ -49,7 +49,7 @@ void ImGuiRenderer::add_warning(const std::string& warning_text)
 }
 
 bool ImGuiRenderer::ComboWithTooltips(
-						const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items)
+	const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, unsigned char* disabled_items)
 {
 	if (ImGui::BeginCombo(combo_text.c_str(), items[*combo_value]))
 	{
@@ -193,11 +193,10 @@ void ImGuiRenderer::draw_dockspace()
 
 			int renderer_width	= m_render_window->get_renderer()->m_render_resolution.x;
 			int renderer_height = m_render_window->get_renderer()->m_render_resolution.y;
-			m_dock_id_left		= ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left,
-															  ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr,
-															  &dockspace_id);
-			m_dock_id_bottom	= ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down,
-															  ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
+			m_dock_id_left		= ImGui::DockBuilderSplitNode(
+				 dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
+			m_dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down,
+														   ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
 
 			// we now dock our windows into the docking node we made above
 			ImGui::DockBuilderDockWindow(ImGuiLogWindow::TITLE, m_dock_id_bottom);

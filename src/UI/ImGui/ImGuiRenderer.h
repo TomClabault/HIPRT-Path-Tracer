@@ -45,7 +45,8 @@ public:
 								  const char** items,
 								  size_t items_count,
 								  const char** tooltips,
-								  bool* disabled_items = nullptr);
+								  // unsigned char to allow using std::vector<bool>.data()
+								  unsigned char* disabled_items = nullptr);
 
 	void set_render_window(RenderWindow* renderer);
 	void set_status_text(const std::string& new_status_text);

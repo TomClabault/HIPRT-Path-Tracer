@@ -29,7 +29,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	int2_t center_pixel_coords,
 	const ReSTIRSurface& center_pixel_surface,
 	int& out_neighbors_confidence_sum,
-	Xorshift32Generator rng // Passing the RNG by copy because we don't want the RNG used here to advance our global RNG
+	Xorshift32Generator& rng // Passing the RNG by copy because we don't want the RNG used here to advance our global RNG
 )
 {
 	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
@@ -42,15 +42,33 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
+	// DEBUG
+	//{
+	//	unsigned int out_pixel = center_pixel_index + 1;
+	//	if (out_pixel >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
+	//		out_pixel = center_pixel_index;
+
+	//	unsigned int out_cell_index = spmis_settings.all_pixel_hashes[out_pixel];
+	//	if (out_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+	//		// Can happen if hash collision resolution fails
+	//		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
+	//	out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[out_cell_index];
+
+	//	return out_cell_index;
+	//}
+
 	// Variables for WRS, starting with the center cell selected
-	float weight_sum				 = center_cell_weight;
+	float weight_sum = center_cell_weight;
+	// float weight_sum				 = 0.0f;
 	unsigned int selected_cell_index = center_cell_index;
 
 	float radius = SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS;
 	for (int i = 0; i < SPATIAL_SPMIS_SEARCH_ITERATIONS; i++, radius *= SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT)
 	{
 		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
-		// This searches in a square for simplicity, not a disk but that's fine
+		// int2_t random_offset = make_int2(radius, 0);
+		//  This searches in a square for simplicity, not a disk but that's fine
 		int2_t neighbor_coords = center_pixel_coords + random_offset;
 
 		// If out of the viewport, mirroring the coordinates on the borders
@@ -73,9 +91,8 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		else if (neighbor_cell_index == center_cell_index)
 			// Hit a pixel that has the same cell index as the center pixel, skipping because we already accounted for the center cell at the beginning
 			continue;
-
-		if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-																	 center_pixel_surface.geometric_normal))
+		else if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index, center_pixel_index,
+																		  center_pixel_surface.shading_point, center_pixel_surface.geometric_normal))
 			// Neighbor doesn't pass the similarity heuristics, skipping
 			continue;
 
@@ -86,6 +103,9 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 			// Selecting this neighbor cell
 			selected_cell_index = neighbor_cell_index;
 	}
+
+	if (selected_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
 		out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[selected_cell_index];
@@ -111,12 +131,10 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	}
 
-	constexpr unsigned int RIS_NEIGHBOR_COUNT = 8;
-
 	float weight_sum			   = 0.0f;
 	float selected_target_function = 0.0f;
 	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-	for (int i = 0; i < RIS_NEIGHBOR_COUNT; i++)
+	for (int i = 0; i < spmis_settings.ris_neighbor_count; i++)
 	{
 		unsigned int random_index		  = rng.random_index(non_zero_cell_size);
 		unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
@@ -126,7 +144,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 		// RIS for selecting the neighbor
 		float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
 		float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-		float mis_weight	  = 1.0f / RIS_NEIGHBOR_COUNT;
+		float mis_weight	  = 1.0f / spmis_settings.ris_neighbor_count;
 		float weight		  = mis_weight * target_function / source_pdf;
 
 		weight_sum += weight;

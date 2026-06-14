@@ -9,9 +9,9 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "Scene/AABB.h"
 
+#include "glm/gtc/quaternion.hpp"
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
-#include "glm/gtc/quaternion.hpp"
 
 #define _USE_MATH_DEFINES
 #include <math.h>

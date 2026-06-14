@@ -1147,14 +1147,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool ltc_shading_disabled = regir;
 			const bool restir_di_disabled	= false;
 
-			bool disabled_items[] = { no_direct_light_sampling_disabled,
-									  uniform_one_light_disabled,
-									  bsdf_sampling_disabled,
-									  mis_disabled,
-									  ris_disabled,
-									  risltc_disabled,
-									  ltc_shading_disabled,
-									  restir_di_disabled };
+			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
+											   uniform_one_light_disabled,
+											   bsdf_sampling_disabled,
+											   mis_disabled,
+											   ris_disabled,
+											   risltc_disabled,
+											   ltc_shading_disabled,
+											   restir_di_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_base_strategy' array.
@@ -2868,7 +2868,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 32))
+			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 16))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
 
@@ -3836,25 +3836,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 32, "%d", ImGuiSliderFlags_AlwaysClamp))
+				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 1, 16))
 					m_render_window->set_render_dirty(true);
-
-				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
-				{
-					restir_settings.auto_reuse_radius = false;
-
-					if (!restir_settings.debug_neighbor_location)
-						// Clamping if not debugging (we do allow negative values when debugging)
-						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
-
-					m_render_window->set_render_dirty(true);
-				}
-				ImGui::SameLine();
-				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
-												"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
 
 				bool using_spmis;
 				if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
@@ -3870,6 +3853,25 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 									  RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
 
 				ImGui::BeginDisabled(using_spmis);
+				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
+				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
+				{
+					restir_settings.auto_reuse_radius = false;
+
+					if (!restir_settings.debug_neighbor_location)
+						// Clamping if not debugging (we do allow negative values when debugging)
+						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
+
+					m_render_window->set_render_dirty(true);
+				}
+				if (using_spmis)
+					ImGuiRenderer::add_tooltip("Disabled because using SPMIS, use the radius settings in \"SPMIS Settings\"");
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
+												"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
+
 				if (ImGui::CollapsingHeader("Directional spatial reuse"))
 				{
 					ImGui::TreePush("Directional spatial reuse tree");
@@ -3915,7 +3917,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGui::TreePop();
 				}
 				if (using_spmis)
-					ImGuiRenderer::add_tooltip("Disabled because using SPMIS");
+					ImGuiRenderer::add_tooltip("Not compatible with SPMIS");
 				ImGui::EndDisabled();
 
 				ImGui::BeginDisabled(!using_spmis && ReSTIRVariant != ReSTIR_VARIANT_PT);
@@ -3926,6 +3928,14 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ReSTIRCommonSPMISSettings& spmis_settings = render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
 
 					if (ImGui::SliderInt("Screen space cell size", &spmis_settings.tile_size, 1, 64))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Non-canonical sampling");
+					if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
 						m_render_window->set_render_dirty(true);
 
 					ImGui::TreePop();
@@ -4010,122 +4020,156 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 		ImGui::PushID(&common_settings);
 		ImGui::TreePush("MIS Weights tree ReSTIR");
 
+		std::vector<const char*> mis_weights_types_items = { "- 1/M (Biased)",
+															 "- 1/Z",
+															 "- MIS-like",
+															 "- Generalized balance heuristic",
+															 "- Pairwise MIS",
+															 "- Pairwise MIS defensive",
+															 "- Pairwise symmetric ratio",
+															 "- Pairwise asymmetric ratio",
+															 "- Stochastic pairwise MIS",
+															 "- Stochastic pairwise MIS defensive" };
+
+		std::vector<const char*> tooltips = {
+			"Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
+			"Those weights are biased because they do not account for cases where "
+			"we resample a sample that couldn't have been produced by some neighbors.\n"
+			"The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
+			"this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
+
+			"Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
+			"Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
+			"has a very low target function(when the neighbor is a glossy surface for example).\n"
+			"See Fig. 7 of the 2020 paper.",
+
+			"Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
+			"and still unbiased.",
+
+			"Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
+			"N being the number of neighbors resampled.\n"
+			"Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
+
+			"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+			"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+
+			"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+			"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023, defensive approach to reduce correlations at the cost of a bit higher variance",
+
+			"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+			""
+			"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
+
+			"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+			""
+			"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
+		};
+
+		if (ReSTIRVariant == ReSTIR_VARIANT_PT)
 		{
-			const char* mis_weights_types_items[] = {
-				"- 1/M (Biased)",
-				"- 1/Z",
-				"- MIS-like",
-				"- Generalized balance heuristic",
-				"- Pairwise MIS",
-				"- Pairwise MIS defensive",
-				"- Pairwise symmetric ratio",
-				"- Pairwise asymmetric ratio",
-				"- Stochastic pairwise MIS",
-				"- Stochastic pairwise MIS defensive",
-			};
-
-			const char* tooltips[] = {
-				"Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
-				"Those weights are biased because they do not account for cases where "
-				"we resample a sample that couldn't have been produced by some neighbors.\n"
-				"The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
-				"this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
-
-				"Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
-				"Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
-				"has a very low target function(when the neighbor is a glossy surface for example).\n"
-				"See Fig. 7 of the 2020 paper.",
-
-				"Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
-				"and still unbiased.",
-
-				"Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
-				"N being the number of neighbors resampled.\n"
-				"Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
-
-				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
-				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
-
-				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
-				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023, defensive approach to reduce correlations at the cost of a bit higher variance",
-
-				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
-				""
-				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
-
-				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
-				""
-				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
-
+			tooltips.push_back(
 				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-				"importance sampled based on the luminance of their samples",
+				"importance sampled based on the luminance of their samples");
 
+			tooltips.push_back(
 				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher variance",
-			};
-
-			int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-				ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE
-				: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE
-													 : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
-			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items, IM_ARRAYSIZE(mis_weights_types_items),
-												 tooltips))
-			{
-				m_renderer->recompile_kernels();
-
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
-
-			bool disable_confidence_weights =
-				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M || *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z;
-
-			if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
-				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
-			{
-				if (ImGui::SliderFloat("Beta exponent", &common_settings.symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
-					m_render_window->set_render_dirty(true);
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			}
-
-			ImGui::BeginDisabled(disable_confidence_weights);
-			if (ImGui::Checkbox("Use confidence weights", &common_settings.use_confidence_weights))
-				m_render_window->set_render_dirty(true);
-			std::string confidence_weight_help_string =
-				"Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
-			if (disable_confidence_weights)
-				confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
-			ImGuiRenderer::show_help_marker(confidence_weight_help_string);
-			ImGui::EndDisabled();
-
-			// No visibility for 1/M weights
-			bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M;
-			bool mis_weights_use_visibility;
-			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
-			else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
-			else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
-			ImGui::BeginDisabled(bias_correction_visibility_disabled);
-			if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
-			{
-				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-					ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY
-					: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY
-														 : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
-				*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			if (bias_correction_visibility_disabled)
-				ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
-			ImGui::EndDisabled();
+				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher variance");
 		}
+		else
+		{
+			tooltips.push_back("Not implemented for ReSTIR DI and ReSTIR GI");
+			tooltips.push_back("Not implemented for ReSTIR DI and ReSTIR GI");
+		}
+
+		std::vector<unsigned char> disabled_items = {
+			false, // "- 1/M (Biased)",
+			false, // "- 1/Z",
+			false, // "- MIS-like",
+			false, //"- Generalized balance heuristic",
+			false, // "- Pairwise MIS",
+			false, // "- Pairwise MIS defensive",
+			false, // "- Pairwise symmetric ratio",
+			false, // "- Pairwise asymmetric ratio",
+		};
+
+		if (ReSTIRVariant == ReSTIR_VARIANT_PT)
+		{
+			// "- Stochastic pairwise MIS"
+			disabled_items.push_back(false);
+			// "- Stochastic pairwise MIS defensive"
+			disabled_items.push_back(false);
+		}
+		else
+		{
+			// Disabled for ReSTIR DI and ReSTIR GI
+
+			// "- Stochastic pairwise MIS"
+			disabled_items.push_back(true);
+			// "- Stochastic pairwise MIS defensive"
+			disabled_items.push_back(true);
+		}
+
+		int* mis_weights_type_option_pointer =
+			global_kernel_options->get_raw_pointer_to_macro_value(ReSTIRVariant == ReSTIR_VARIANT_DI   ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE
+																  : ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE
+																									   : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
+		if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items.data(), mis_weights_types_items.size(),
+											 tooltips.data(), disabled_items.data()))
+		{
+			m_renderer->recompile_kernels();
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
+
+		bool disable_confidence_weights =
+			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M || *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z;
+
+		if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
+		{
+			if (ImGui::SliderFloat("Beta exponent", &common_settings.symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+		ImGui::BeginDisabled(disable_confidence_weights);
+		if (ImGui::Checkbox("Use confidence weights", &common_settings.use_confidence_weights))
+			m_render_window->set_render_dirty(true);
+		std::string confidence_weight_help_string =
+			"Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
+		if (disable_confidence_weights)
+			confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
+		ImGuiRenderer::show_help_marker(confidence_weight_help_string);
+		ImGui::EndDisabled();
+
+		// No visibility for 1/M weights
+		bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M;
+		bool mis_weights_use_visibility;
+		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
+			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
+		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
+		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
+		ImGui::BeginDisabled(bias_correction_visibility_disabled);
+		if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
+		{
+			int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
+				ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY
+				: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY
+													 : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
+			*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		if (bias_correction_visibility_disabled)
+			ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
+		ImGui::EndDisabled();
 
 		ImGui::TreePop();
 		ImGui::PopID();

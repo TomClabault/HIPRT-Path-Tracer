@@ -81,8 +81,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 362
-#define DEBUG_PIXEL_Y 449
+#define DEBUG_PIXEL_X 373
+#define DEBUG_PIXEL_Y 447
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -1222,8 +1222,6 @@ void CPURenderer::ReSTIR_PT_pass()
 	configure_ReSTIR_PT_initial_candidates_pass();
 	launch_ReSTIR_PT_initial_candidates_pass();
 
-	launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer);
-
 	configure_ReSTIR_PT_temporal_reuse_pass();
 	launch_ReSTIR_PT_temporal_reuse_pass();
 
@@ -1631,7 +1629,11 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 {
 	if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 		ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	{
+		launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
+
 		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMIS(m_render_data, x, y); });
+	}
 	else
 		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuse(m_render_data, x, y); });
 }

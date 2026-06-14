@@ -76,11 +76,10 @@ struct ReSTIRSPMISDataHost
 		{
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = 0;
 
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes				 = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums	 = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell		 = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted			 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes			 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell	 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted		 = nullptr;
 
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters			   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
@@ -97,8 +96,6 @@ struct ReSTIRSPMISDataHost
 			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell =
 			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.important_pixels_index_in_cell =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_IMPORTANT_PIXEL_INDEX_IN_CELL>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = (unsigned int)size();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted =
 			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();

@@ -40,6 +40,7 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 		return;
 
 	unsigned int cell_index = all_pixel_hashes[linear_pixel_index];
+
 	if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		return;
 

@@ -11,9 +11,15 @@
 struct ReSTIRCommonSPMISSettings
 {
 	// Screen space tile size
-	int tile_size = 8;
+	int tile_size = 1;
 
-	// Size of the buffer all_pixel_hashes buffer
+	// How many pixels to stream from a cell to produce one non-canonical neighbor
+	int ris_neighbor_count = 1;
+
+	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
+	bool do_non_canonical_confidence_adjustement = false;
+
+	// Size of the fullscreen buffers
 	unsigned int pixel_hashes_count = 0;
 
 	// Fullscreen buffer that contains the hash cell index of a given pixel
@@ -22,11 +28,6 @@ struct ReSTIRCommonSPMISSettings
 
 	// For each pixel, the index in its hash cell
 	unsigned int* all_pixels_index_in_cell = nullptr;
-	// For each pixel that has a non-zero reservoir, the index of that pixel in its hash cell but only counting pixels
-	// with a non-zero reservoir (important pixels)
-	//
-	// TODO not needed
-	unsigned int* important_pixels_index_in_cell = nullptr;
 	// A fullscreen buffer which contains, for each cell, the list of pixel indices that belongs to that cell. Pixel indices in each cell are sorted with
 	// important pixels (non-zero contribution reservoirs) first and non-important pixels after that. This buffer should be indexed as [cell_ffset +
 	// index_in_cell] with cell_offset coming from the cell_offsets buffer and index_in_cell in [0, cell_pixels_counts[cell_index]], with the first

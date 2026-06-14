@@ -28,9 +28,9 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 
 	unsigned int checksum;
 	unsigned int hash_cell_index = ReSTIR_spmis_hash(spmis_settings, pixel_x, pixel_y, shading_point, surface_normal, checksum) % total_num_cells;
-	if (!HashGrid::resolve_collision<16, true>(spmis_settings.all_pixel_hashes_checksums,
-											   render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y,
-											   hash_cell_index, checksum))
+	if (!HashGrid::resolve_collision<ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps, true>(
+			spmis_settings.all_pixel_hashes_checksums, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y,
+			hash_cell_index, checksum))
 	{
 		spmis_settings.all_pixel_hashes[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 

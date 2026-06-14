@@ -21,6 +21,8 @@
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#define DO_DEBUG_CONDITION 0
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData render_data)
 #else
@@ -54,7 +56,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
 
 	ReSTIRPTReservoir* input_reservoir_buffer = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs;
-	ReSTIRPTReservoir center_pixel_reservoir  = input_reservoir_buffer[center_pixel_index];
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
@@ -64,6 +65,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	if (reuse_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then
+		ReSTIRPTReservoir center_pixel_reservoir														  = input_reservoir_buffer[center_pixel_index];
 		render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = center_pixel_reservoir;
 
 		return;
@@ -73,16 +75,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[reuse_cell_index];
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
 	// Scaling the confidence sum, section 4.3 of the paper
-	float non_canonical_confidence_scaling = reused_neighbors_count / (float)reuse_cell_pixel_count;
-	float neighbors_confidence_sum		   = neighbors_confidence_sum_int * non_canonical_confidence_scaling;
+	float non_canonical_confidence_scaling =
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.do_non_canonical_confidence_adjustement
+			? reused_neighbors_count / (float)reuse_cell_pixel_count
+			: 1.0f;
+	float neighbors_confidence_sum = neighbors_confidence_sum_int * non_canonical_confidence_scaling;
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
-	// if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] == 0)
-	//	// No neighbor to reuse
-	//	reused_neighbors_count = 0;
-
+	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].M;
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
 		// Resampling only the neighbors, canonical resampling is further below
@@ -117,7 +119,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 
 			float mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
 				neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function / shift_mapping_jacobian,
-				center_pixel_reservoir.M,
+				center_pixel_reservoir_confidence,
 
 				target_function_at_center, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability);
 
@@ -128,6 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	}
 
 	// Now resampling the center pixel reservoir
+	ReSTIRPTReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if (center_pixel_reservoir.UCW > 0.0f)
 	{
 		// Sampling one random neighbor with uniform selection over all reservoirs, zero importance or not, (N_c = 1, section 4.2 of "Stochastic Pairwise MIS
@@ -141,6 +144,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		float shift_mapping_jacobian		 = 1.0f;
 		float target_function_at_center		 = center_pixel_reservoir.sample.target_function;
 		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+
 		float mis_weight =
 			mis_weight_function.get_resampling_MIS_weight_canonical(render_data,
 
@@ -155,6 +159,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
+	// DEBUG REMOVE = 1
+	{
+		spatial_reuse_output_reservoir.M = 1;
+	}
+	// spatial_reuse_output_reservoir.M = reused_neighbors_count + center_pixel_reservoir.M;
 	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
@@ -167,12 +176,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 									random_number_generator);
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
-	if (render_data.render_settings.restir_pt_settings.m_cap > 0)
+	bool last_spatial_pass = render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_pass_index ==
+							 render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes - 1;
+	bool m_cap_enabled = render_data.render_settings.restir_pt_settings.m_cap > 0;
+	if (last_spatial_pass && m_cap_enabled)
 		// M-capping the spatial neighbor if an M-cap has been given
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_pt_settings.m_cap);
 
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
-	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed * spatial_reuse_output_reservoir.M);
 
 #endif // ReSTIR_PT_MISWeightsType
 }

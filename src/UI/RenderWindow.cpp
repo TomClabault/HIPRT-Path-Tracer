@@ -21,6 +21,10 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO crashes
+// - ReSTIR GI
+// ATS Light Tree with MIS?
+
 // ******* TODO ReSTIR PT & refactor **********
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
@@ -29,7 +33,13 @@ extern ImGuiLogger g_imgui_logger;
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
 // - Remove visibility in MIS weights option from ReSTIR PT
+// - Remove reuse of converged neighbors, keep the unbiased approach
+// - Mover SPMIS settings out of common spatial pass and just in pt spatial
+// - Rename reservoir.M to reservoir .confidence
+// - ReSTIR Spatial reuse doesn't have to store the sample for the output reservoir, we can just store the pixel index of the sample and then fetch it when
+// needed, massively reduce registers needed since we don't keep the selected sample in the output reservoir anymore
 // - Remove use_confidence_weights option from ReSTIR, we always use it anyways
+// - Can we use a target function without the second BSDF for performance?
 // - Could it be possible to precompute spatial reuse neighbors ahead of time to be able to share computations with pairwise MIS, basically doing paired spatial
 // reuse of restir pt enhanced but while keeping SPMIS capability
 //		- Or maybe we can produce a map of random seeds and those random seeds choose the spatial neighbors, this could also be used to share duplicated
@@ -38,7 +48,7 @@ extern ImGuiLogger g_imgui_logger;
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR
 //	- PT enchanced
-//	- MCMC DS
+//	- MCMC Decoupled shading
 //	- Mutations
 
 // TODO known bugs / incorrectness:
@@ -75,6 +85,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - How to have better confidence weights that are proportional to variance rather than just counting how many samples it has seen?
 // - Is multiple temporal buffers a good idea for reducing correlations? Such that temporal reuse has more potential candidates to choose from. We need
 // something to avoid duplicated in the temporal buffer though.
 //		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?

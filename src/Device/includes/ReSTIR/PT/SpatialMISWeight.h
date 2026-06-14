@@ -692,8 +692,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			return 0.0f;
 	}
 
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight_non_canonical(float reservoir_being_resampled_confidence,
-																	float reservoir_being_resampled_target_function,
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight_non_canonical(float neighbor_reservoir_confidence_sum,
+																	float target_function_at_neighbor,
 																	int center_pixel_reservoir_confidence,
 
 																	float target_function_at_center,
@@ -704,9 +704,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 	{
 		// Resampling a neighbor
 
-		float target_function_at_neighbor = reservoir_being_resampled_target_function;
-
-		float nume	= target_function_at_neighbor * reservoir_being_resampled_confidence;
+		float nume	= target_function_at_neighbor * neighbor_reservoir_confidence_sum;
 		float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_pixel_reservoir_confidence;
 		float mi	= denom == 0.0f ? 0.0f : (nume / denom);
 
@@ -714,9 +712,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 		return spmis_proba * mi;
 	}
 };
-
-// float defensive_factor = neighbors_confidence_sum / (neighbors_confidence_sum + (float)center_pixel_reservoir_confidence);
-// float defensive_addition = center_pixel_reservoir_confidence / (center_pixel_reservoir_confidence + neighbors_confidence_sum);
 
 template <>
 struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
