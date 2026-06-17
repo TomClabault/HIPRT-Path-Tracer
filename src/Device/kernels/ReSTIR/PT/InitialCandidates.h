@@ -309,10 +309,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					intersection_found =
 						path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
-					ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload,
-												  path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
-												  path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir,
-												  restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+					if (intersection_found)
+					{
+						// We're checking for intersection found here because otherwise this would add envmap contribution but the envmap contribution on miss
+						// is already added by ReSTIR_PT_do_last_deferred_NEE_MIS
+						ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload,
+													  path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
+													  path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir,
+													  restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+					}
 
 					path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee = path_unweighted_throughput_up_to_rc_vertex;
 					path_unweighted_throughput_after_rc_vertex_for_deferred_nee = path_unweighted_throughput_after_rc_vertex;
