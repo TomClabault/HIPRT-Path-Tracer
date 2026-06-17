@@ -100,10 +100,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
 
 		ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
-		if (resampling_reservoir.sample.is_envmap_path())
+		/*if (resampling_reservoir.sample.is_envmap_path())
 			camera_outgoing_radiance +=
-				path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 1, pixel_index) * resampling_reservoir.UCW;
-		else if (!resampling_reservoir.sample.di_sample)
+				path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 0, pixel_index) * resampling_reservoir.UCW;
+		else */
+		if (!resampling_reservoir.sample.di_sample)
 		{
 			float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.rc_vertex);
 			float3_t to_light_direction_sample_point = resampling_reservoir.sample.rc_vertex_incident_light_direction;

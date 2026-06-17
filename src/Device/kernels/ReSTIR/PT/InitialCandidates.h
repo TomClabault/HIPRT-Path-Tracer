@@ -317,10 +317,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 													  path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
 													  path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir,
 													  restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
-					}
 
-					path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee = path_unweighted_throughput_up_to_rc_vertex;
-					path_unweighted_throughput_after_rc_vertex_for_deferred_nee = path_unweighted_throughput_after_rc_vertex;
+						path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee = path_unweighted_throughput_up_to_rc_vertex;
+						path_unweighted_throughput_after_rc_vertex_for_deferred_nee = path_unweighted_throughput_after_rc_vertex;
+					}
 				}
 
 				if (intersection_found)
@@ -383,15 +383,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 #endif
 				}
 				else
-					ray_payload.next_ray_state = RayState::MISSED;
+					break;
 			}
-			else if (ray_payload.next_ray_state == RayState::MISSED)
-				break;
 		}
 
 		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
 										   path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir, restir_pt_initial_sample,
-										   closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+										   closest_hit_info, nee_deferred_MIS_context, intersection_found, random_number_generator);
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

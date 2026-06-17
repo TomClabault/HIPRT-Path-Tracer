@@ -66,8 +66,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices, closest_hit_info.primitive_index,
 												   random_number_generator);
 
-	// + 1 to nb_bounces here because we want "0" bounces to still act as one
-	// hit and to return some color
 	bool intersection_found = closest_hit_info.primitive_index != -1;
 
 	NEEDeferredMISContext nee_deferred_MIS_context;

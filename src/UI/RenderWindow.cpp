@@ -41,6 +41,7 @@ extern ImGuiLogger g_imgui_logger;
 // needed, massively reduce registers needed since we don't keep the selected sample in the output reservoir anymore
 // - Remove use_confidence_weights option from ReSTIR, we always use it anyways
 // - Issue with alpha testing windows in scandinavian studio, unusual noise
+// - Remove alpha testing bounce limit, too anoying and never used
 // - Can we use a target function without the second BSDF for performance?
 // - No N-steps RIS pixel in cell sampling for SPMIS, just full linear WRS
 // - fp16 wherever possible and compression and everything for SPMIS

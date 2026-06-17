@@ -260,13 +260,22 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 ReSTIRPTReservoirSample& restir_pt_initial_sample,
 													 HitInfo& light_hit_info,
 													 NEEDeferredMISContext& nee_deferred_MIS_context,
+													 bool last_intersection_found,
 													 Xorshift32Generator& random_number_generator)
 {
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
 	// here
 	ray_payload.bounce--;
-	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, light_hit_info, random_number_generator);
+	bool intersection_found;
+	if (last_intersection_found)
+		// If the last ray was a hit and we're doing deferred NEE, this means that we sampled the ray in the main loop but we need to trace it here to see if it
+		// hits anything interesting
+		intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, light_hit_info, random_number_generator);
+	else
+		// This means that the last ray we shot was a miss so we're doing deferred NEE MIS here for envmap, no need to re-trace a ray, we know it's a miss
+		// already
+		intersection_found = false;
 	// And add it back before deferred NEE MIS so that the code inside deferred NEE MIS receives the bounce index that it expects
 	ray_payload.bounce++;
 
