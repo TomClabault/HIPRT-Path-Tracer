@@ -39,7 +39,8 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		incident_light_direction /= distance_to_sample_point;
 	}
 
-	if (sample.di_sample && compute_cosine_term_at_light_source(sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
+	if (!sample.is_envmap_path() && sample.di_sample &&
+		compute_cosine_term_at_light_source(sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
 		// Backfacing light
 		return 0.0f;
 

@@ -3922,8 +3922,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGuiRenderer::add_tooltip("Not compatible with SPMIS");
 				ImGui::EndDisabled();
 
-				ImGui::BeginDisabled(!using_spmis && ReSTIRVariant != ReSTIR_VARIANT_PT);
-				if (ImGui::CollapsingHeader("SPMIS Settings"))
+				bool disable_spmis_settings = !using_spmis || ReSTIRVariant != ReSTIR_VARIANT_PT;
+				ImGui::BeginDisabled(disable_spmis_settings);
+				if (ImGui::CollapsingHeader("SPMIS Settings") && !disable_spmis_settings)
 				{
 					ImGui::TreePush("SPMIS Settings tree");
 

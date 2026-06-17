@@ -17,7 +17,7 @@ struct ReSTIRCommonSPMISSettings
 	int ris_neighbor_count = 1;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
-	bool do_non_canonical_confidence_adjustement = true;
+	bool do_non_canonical_confidence_adjustement = false;
 
 	// Size of the fullscreen buffers
 	unsigned int pixel_hashes_count = 0;
