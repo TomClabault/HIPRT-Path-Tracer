@@ -1539,15 +1539,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						}
 
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						const char* debug_view_items[] = { "- No debug view",
-														   "- Shade only initial candidates",
-														   "- Final reservoir UCW",
-														   "- Final reservoir target function",
-														   "- Final reservoir weight sum",
-														   "- Final reservoir M",
-														   "- Per pixel reuse radius",
-														   "- Valid directions percentage" };
-						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+						std::vector<const char*> debug_view_items = { "- No debug view",
+																	  "- Shade only initial candidates",
+																	  "- Final reservoir UCW",
+																	  "- Final reservoir target function",
+																	  "- Final reservoir weight sum",
+																	  "- Final reservoir M",
+																	  "- Per pixel reuse radius",
+																	  "- Valid directions percentage" };
+						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items.data(), debug_view_items.size()))
 						{
 							int macro_value_before =
 								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
@@ -1664,7 +1664,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 														   "- Final reservoir weight sum",
 														   "- Final reservoir M",
 														   "- Per pixel reuse radius",
-														   "- Valid directions percentage" };
+														   "- Valid directions percentage",
+														   "- SPMIS cells" };
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_pt_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						{
 							int macro_value_before =
@@ -3914,6 +3915,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					ImGui::EndDisabled();
 
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
 				}
 				if (using_spmis)

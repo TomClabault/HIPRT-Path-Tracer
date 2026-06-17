@@ -42,33 +42,15 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
-	// DEBUG
-	//{
-	//	unsigned int out_pixel = center_pixel_index + 1;
-	//	if (out_pixel >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-	//		out_pixel = center_pixel_index;
-
-	//	unsigned int out_cell_index = spmis_settings.all_pixel_hashes[out_pixel];
-	//	if (out_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-	//		// Can happen if hash collision resolution fails
-	//		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-
-	//	out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[out_cell_index];
-
-	//	return out_cell_index;
-	//}
-
 	// Variables for WRS, starting with the center cell selected
-	float weight_sum = center_cell_weight;
-	// float weight_sum				 = 0.0f;
+	float weight_sum				 = center_cell_weight;
 	unsigned int selected_cell_index = center_cell_index;
 
 	float radius = SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS;
 	for (int i = 0; i < SPATIAL_SPMIS_SEARCH_ITERATIONS; i++, radius *= SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT)
 	{
 		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
-		// int2_t random_offset = make_int2(radius, 0);
-		//  This searches in a square for simplicity, not a disk but that's fine
+		// This searches in a square for simplicity, not a disk but that's fine
 		int2_t neighbor_coords = center_pixel_coords + random_offset;
 
 		// If out of the viewport, mirroring the coordinates on the borders

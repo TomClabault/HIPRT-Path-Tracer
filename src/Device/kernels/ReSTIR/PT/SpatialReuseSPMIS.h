@@ -159,11 +159,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
-	// DEBUG REMOVE = 1
-	{
-		spatial_reuse_output_reservoir.M = 1;
-	}
-	// spatial_reuse_output_reservoir.M = reused_neighbors_count + center_pixel_reservoir.M;
+	spatial_reuse_output_reservoir.M = reused_neighbors_count + center_pixel_reservoir.M;
 	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
@@ -184,7 +180,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_pt_settings.m_cap);
 
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
-	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed * spatial_reuse_output_reservoir.M);
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 
 #endif // ReSTIR_PT_MISWeightsType
 }

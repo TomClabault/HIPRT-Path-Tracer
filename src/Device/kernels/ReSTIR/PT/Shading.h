@@ -133,11 +133,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
 		return;
 
-	/*path_tracing_accumulate_color(
-		render_data, pixel_index, ray_payload.ray_color,
-		ColorRGB32F::random_color(render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index]));
-	return;*/
-
 	if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_FINAL_RESERVOIR_UCW)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
@@ -185,6 +180,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 
 		// Regular output
 		path_tracing_accumulate_color(render_data, pixel_index, ray_payload.ray_color, debug_color);
+	}
+	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SPMIS_CELLS)
+	{
+		path_tracing_accumulate_color(
+			render_data, pixel_index, ray_payload.ray_color,
+			ColorRGB32F::random_color(render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index]));
 	}
 	else
 	{

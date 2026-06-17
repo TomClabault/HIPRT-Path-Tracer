@@ -11,13 +11,13 @@
 struct ReSTIRCommonSPMISSettings
 {
 	// Screen space tile size
-	int tile_size = 1;
+	int tile_size = 32;
 
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 1;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
-	bool do_non_canonical_confidence_adjustement = false;
+	bool do_non_canonical_confidence_adjustement = true;
 
 	// Size of the fullscreen buffers
 	unsigned int pixel_hashes_count = 0;
