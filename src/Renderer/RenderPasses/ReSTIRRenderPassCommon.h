@@ -142,10 +142,7 @@ public:
 												  ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data,
 												  ReSTIRSPMISDataHost<DataContainer>& spmis_data)
 	{
-		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
-		ReSTIRCommonSPMISSettings& common_spmis_settings			  = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIRVariant>(render_data);
-
-		directional_spatial_reuse_data.to_device(render_data);
+		directional_spatial_reuse_data.template to_device<ReSTIRVariant>(render_data);
 		spmis_data.to_device(render_data);
 	}
 };

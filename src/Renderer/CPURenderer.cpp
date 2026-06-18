@@ -186,8 +186,7 @@ void CPURenderer::setup_buffers()
 	m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_gi_state.temporal_reservoirs.resize(width * height);
 	m_restir_gi_state.spatial_reservoirs.resize(width * height);
-	m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-	m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
+	m_restir_gi_state.directional_spatial_reuse_data_buffer.resize(width, height);
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
@@ -474,14 +473,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_gi_reservoir_buffer_1										  = m_restir_gi_state.initial_candidates_reservoirs.data();
 	m_render_data.aux_buffers.restir_gi_reservoir_buffer_2										  = m_restir_gi_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_gi_reservoir_buffer_3										  = m_restir_gi_state.temporal_reservoirs.data();
-	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u =
-		m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.data();
-	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-		m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.data();
-	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-		m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
-	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
-	m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
+	m_restir_gi_state.directional_spatial_reuse_data_buffer.to_device<ReSTIR_VARIANT_GI>(m_render_data);
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs				  = m_restir_pt_state.initial_candidates_reservoirs.data();

@@ -6,6 +6,7 @@
 #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
 
+#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
@@ -67,25 +68,28 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		return m_spatial_reuse_data.size();
 	}
 
+	template <int ReSTIRVariant>
 	void to_device(HIPRTRenderData& render_data)
 	{
+		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
+
 		if (size() == 0)
 		{
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius			   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_total				   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_hits				   = nullptr;
+			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
+			common_spatial_pass_settings.per_pixel_spatial_reuse_radius				 = nullptr;
+			common_spatial_pass_settings.spatial_reuse_hit_rate_total				 = nullptr;
+			common_spatial_pass_settings.spatial_reuse_hit_rate_hits				 = nullptr;
 
 			return;
 		}
 
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
+		common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull =
 			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
+		common_spatial_pass_settings.per_pixel_spatial_reuse_radius =
 			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_total =
+		common_spatial_pass_settings.spatial_reuse_hit_rate_total =
 			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_hits =
+		common_spatial_pass_settings.spatial_reuse_hit_rate_hits =
 			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>();
 	}
 

@@ -566,6 +566,9 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 void ReSTIRPTRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
+	if (!is_render_pass_used())
+		return;
+
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
 	m_temporal_buffer_clear_requested = false;

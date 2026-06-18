@@ -164,14 +164,8 @@ void GPUKernel::launch(int block_size_x, int block_size_y, int nb_threads_x, int
 	launch_3D_block_size(block_size_x, block_size_y, 1, nb_threads_x, nb_threads_y, 1, launch_args, stream);
 }
 
-void GPUKernel::launch_3D_block_size(int block_size_x,
-									 int block_size_y,
-									 int block_size_z,
-									 int nb_threads_x,
-									 int nb_threads_y,
-									 int nb_threads_z,
-									 void** launch_args,
-									 oroStream_t stream)
+void GPUKernel::launch_3D_block_size(
+	int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
 {
 	unsigned int block_count_x = (nb_threads_x + block_size_x - 1) / block_size_x;
 	unsigned int block_count_y = (nb_threads_y + block_size_y - 1) / block_size_y;
@@ -183,14 +177,8 @@ void GPUKernel::launch_3D_block_size(int block_size_x,
 	m_launched_at_least_once = true;
 }
 
-void GPUKernel::launch_asynchronous_3D_block_count(int block_count_x,
-												   int block_count_y,
-												   int block_count_z,
-												   int block_size_x,
-												   int block_size_y,
-												   int block_size_z,
-												   void** launch_args,
-												   oroStream_t stream)
+void GPUKernel::launch_asynchronous_3D_block_count(
+	int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
 											 stream, launch_args, 0));
@@ -271,14 +259,8 @@ void GPUKernel::launch_asynchronous(int block_size_x, int block_size_y, int nb_t
 	launch_asynchronous_3D(block_size_x, block_size_y, 1, nb_threads_x, nb_threads_y, 1, launch_args, stream);
 }
 
-void GPUKernel::launch_asynchronous_3D(int block_size_x,
-									   int block_size_y,
-									   int block_size_z,
-									   int nb_threads_x,
-									   int nb_threads_y,
-									   int nb_threads_z,
-									   void** launch_args,
-									   oroStream_t stream)
+void GPUKernel::launch_asynchronous_3D(
+	int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
 {
 	if (m_measure_execution_time)
 		OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
