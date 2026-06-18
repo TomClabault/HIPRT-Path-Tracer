@@ -14,7 +14,7 @@ struct ReSTIRCommonSPMISSettings
 	int tile_size = 32;
 
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
-	int ris_neighbor_count = 1;
+	int ris_neighbor_count = 8;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
 	bool do_non_canonical_confidence_adjustement = false;

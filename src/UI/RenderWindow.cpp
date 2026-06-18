@@ -24,6 +24,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO crashes
 // - ReSTIR GI
 // ATS Light Tree with MIS?
+// - Crash pairwise MIS moving camera
+// - GMoN Blend deactivating when moving camera
 
 // ******* TODO ReSTIR PT & refactor **********
 // - Ray volume state reconstruction @ sample point

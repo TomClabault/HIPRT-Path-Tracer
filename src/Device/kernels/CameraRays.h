@@ -48,8 +48,9 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		if (render_data.aux_buffers.restir_pt_reservoir_buffer_3)
 			render_data.aux_buffers.restir_pt_reservoir_buffer_3[pixel_index] = ReSTIRPTReservoir();
 
-#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
-	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+#if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                            \
+	 ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) &&                                                                 \
+	PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index] =
 			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums[pixel_index] =
