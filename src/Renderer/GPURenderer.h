@@ -233,7 +233,6 @@ public:
 
 	HIPRTRenderSettings& get_render_settings();
 	std::shared_ptr<ApplicationSettings> get_application_settings();
-	WorldSettings& get_world_settings();
 	HIPRTRenderData& get_render_data();
 	HIPRTScene& get_hiprt_scene();
 	std::shared_ptr<HIPRTOrochiCtx> get_hiprt_orochi_ctx();

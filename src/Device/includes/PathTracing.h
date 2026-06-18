@@ -203,7 +203,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 			if (!render_data.world_settings.envmap_scale_background_intensity)
 #endif
 				// Un-scaling the envmap if the user doesn't want to scale the background
-				skysphere_color /= render_data.world_settings.envmap_intensity;
+				skysphere_color /= (render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
 		}
 	}
 

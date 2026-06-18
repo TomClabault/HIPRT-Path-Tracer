@@ -12,11 +12,13 @@
 
 void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string& envmap_filepath)
 {
-	m_envmap_data.pack_from(image);
+	float envmap_scaling_factor;
+	m_envmap_data.pack_from(image, envmap_scaling_factor);
 	m_envmap_filepath = envmap_filepath;
 
-	m_width	 = image.width;
-	m_height = image.height;
+	m_width						   = image.width;
+	m_height					   = image.height;
+	m_envmap_packed_scaling_factor = envmap_scaling_factor;
 }
 
 void RendererEnvmap::update(GPURenderer* renderer, float delta_time)
@@ -113,13 +115,19 @@ float* RendererEnvmap::get_cdf_device_pointer()
 	return m_cdf.get_device_pointer();
 }
 
-unsigned int RendererEnvmap::get_width()
+unsigned int RendererEnvmap::get_width() const
 {
 	return m_width;
 }
-unsigned int RendererEnvmap::get_height()
+
+unsigned int RendererEnvmap::get_height() const
 {
 	return m_height;
+}
+
+float RendererEnvmap::get_envmap_packed_scaling_factor() const
+{
+	return m_envmap_packed_scaling_factor;
 }
 
 float RendererEnvmap::get_sampling_structure_VRAM_usage() const
@@ -180,7 +188,7 @@ void RendererEnvmap::do_animation(GPURenderer* renderer, float delta_time)
 
 void RendererEnvmap::update_renderer(GPURenderer* renderer)
 {
-	WorldSettings& world_settings = renderer->get_world_settings();
+	WorldSettings& world_settings = renderer->get_render_data().world_settings;
 
 	world_settings.envmap_to_world_matrix = envmap_to_world_matrix;
 	world_settings.world_to_envmap_matrix = world_to_envmap_matrix;

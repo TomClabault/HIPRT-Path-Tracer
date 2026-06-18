@@ -28,6 +28,10 @@ struct WorldSettings
 	// Simple scale multiplier on the envmap color read from the envmap texture
 	// in the shader
 	float envmap_intensity = 1.0f;
+	// This value may be different from 1.0f in case the original maximum texel intensity of the envmap exceeds the maximum representable value of the RGBE
+	// 9/9/9/5 format. In that case, the envmap is scaled down to fit in the RGBE 9/9/9/5 format and this scaling factor is stored here. This scaling factor is
+	// applied to the envmap texels when reading them in the shader.
+	float envmap_packed_scaling_factor = 1.0f;
 	// If true, the background of the scene (where rays directly miss any geometry
 	// and we directly see the skysphere) will scale with the envmap_intensity coefficient.
 	// This can be visually unpleasing because the background will most likely

@@ -6,9 +6,9 @@
 #ifndef DEVICE_RGBE9995_ENVMAP_H
 #define DEVICE_RGBE9995_ENVMAP_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Packing.h"
 #include "Image/Image.h"
-#include "HIPRT-Orochi/OrochiBuffer.h"
 
 /**
  * If GPU is true, then functions of this class will be templated such
@@ -18,11 +18,30 @@ template <bool GPU>
 class RGBE9995Envmap
 {
 public:
-	HIPRT_HOST void pack_from(const Image32Bit& image)
+	HIPRT_HOST void pack_from(const Image32Bit& image, float& out_scaling_factor)
 	{
 		bool warning_emitted = false;
 
 		packed_data_CPU.resize(image.width * image.height);
+
+		// Computing the maximum component of any texel of the envmap
+		float max_component = 0.0f;
+		for (int y = 0; y < image.height; y++)
+		{
+			for (int x = 0; x < image.width; x++)
+			{
+				int index = x + y * image.width;
+
+				max_component = hippt::max(max_component, image.get_pixel_ColorRGB32F(index).max_component());
+			}
+		}
+
+		// We're going to scale every texel of the envmap by a factor such that the maximum component of any texel is 65535.0f. This is to avoid clamping of the
+		// envmap when the maximum component of any texel is greater than 65535.0f, which is the maximum value that can be represented by the RGBE9995 format.
+		// Clamping would introduce a loss in dynamic range but scaling doesn't
+		//
+		// The scaling factor is also outputted so that the user can scale the envmap back to its original range when using it in the renderer
+		out_scaling_factor = hippt::max(1.0f, max_component / 65535.0f);
 
 #pragma omp parallel for
 		for (int y = 0; y < image.height; y++)
@@ -31,13 +50,7 @@ public:
 			{
 				int index = x + y * image.width;
 
-				if (image.get_pixel_ColorRGB32F(index).max_component() > 65535.0f && !warning_emitted)
-				{
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Envmap maximum brightness reached (65535)! Clamping to 65535.");
-
-					warning_emitted = true;
-				}
-				packed_data_CPU[index].pack(image.get_pixel_ColorRGB32F(index));
+				packed_data_CPU[index].pack(image.get_pixel_ColorRGB32F(index) / out_scaling_factor);
 			}
 		}
 

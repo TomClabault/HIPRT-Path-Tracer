@@ -53,8 +53,9 @@ public:
 	void get_alias_table_device_pointers(float*& out_probas_pointer, int*& out_alias_pointer);
 	float* get_cdf_device_pointer();
 
-	unsigned int get_width();
-	unsigned int get_height();
+	unsigned int get_width() const;
+	unsigned int get_height() const;
+	float get_envmap_packed_scaling_factor() const;
 
 	/**
 	 * Returns the VRAM used by the sampling structure of the envmap in MB
@@ -96,6 +97,8 @@ private:
 	RGBE9995Envmap<true> m_envmap_data;
 	unsigned int m_width  = 0;
 	unsigned int m_height = 0;
+	// See the documentation of WorldSettings::envmap_packed_scaling_factor for more information about this variable
+	float m_envmap_packed_scaling_factor = 1.0f;
 
 	// CDF / Alias table for sampling the envmap
 	OrochiBuffer<float> m_cdf;

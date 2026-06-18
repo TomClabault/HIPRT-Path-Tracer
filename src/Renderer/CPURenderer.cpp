@@ -582,11 +582,13 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 		m_render_data.world_settings.envmap_total_sum = total_sum;
 	}
 
-	m_packed_envmap.pack_from(envmap_image);
-	m_render_data.world_settings.envmap				= m_packed_envmap.get_data_pointer();
-	m_render_data.world_settings.envmap_width		= envmap_image.width;
-	m_render_data.world_settings.envmap_height		= envmap_image.height;
-	m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
+	float envmap_scaling_factor;
+	m_packed_envmap.pack_from(envmap_image, envmap_scaling_factor);
+	m_render_data.world_settings.envmap						  = m_packed_envmap.get_data_pointer();
+	m_render_data.world_settings.envmap_width				  = envmap_image.width;
+	m_render_data.world_settings.envmap_height				  = envmap_image.height;
+	m_render_data.world_settings.envmap_packed_scaling_factor = envmap_scaling_factor;
+	m_render_data.world_settings.ambient_light_type			  = AmbientLightType::ENVMAP;
 
 	if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
 		m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();

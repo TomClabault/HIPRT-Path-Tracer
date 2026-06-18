@@ -231,10 +231,10 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 	int index_x0y1 = x_i + y_i_1 * world_settings.envmap_width;
 	int index_x1y1 = x_i_1 + y_i_1 * world_settings.envmap_width;
 
-	ColorRGB32F color_x0y0 = world_settings.envmap[index_x0y0].unpack() * world_settings.envmap_intensity;
-	ColorRGB32F color_x1y0 = world_settings.envmap[index_x1y0].unpack() * world_settings.envmap_intensity;
-	ColorRGB32F color_x0y1 = world_settings.envmap[index_x0y1].unpack() * world_settings.envmap_intensity;
-	ColorRGB32F color_x1y1 = world_settings.envmap[index_x1y1].unpack() * world_settings.envmap_intensity;
+	ColorRGB32F color_x0y0 = world_settings.envmap[index_x0y0].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
+	ColorRGB32F color_x1y0 = world_settings.envmap[index_x1y0].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
+	ColorRGB32F color_x0y1 = world_settings.envmap[index_x0y1].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
+	ColorRGB32F color_x1y1 = world_settings.envmap[index_x1y1].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
 
 	return hippt::lerp(hippt::lerp(color_x0y0, color_x1y0, x_frac), hippt::lerp(color_x0y1, color_x1y1, x_frac), y_frac);
 #else
@@ -242,7 +242,7 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 	int y	  = uv.y * (world_settings.envmap_height - 1);
 	int index = x + y * world_settings.envmap_width;
 
-	return world_settings.envmap[index].unpack() * world_settings.envmap_intensity;
+	return world_settings.envmap[index].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
 #endif
 }
 

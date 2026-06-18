@@ -935,24 +935,26 @@ void ImGuiSettingsWindow::draw_environment_panel()
 	{
 		ImGui::TreePush("Environment tree");
 
+		WorldSettings& world_settings = m_renderer->get_render_data().world_settings;
+
 		bool has_envmap = m_renderer->has_envmap();
-		render_made_piggy |= ImGui::RadioButton("None", ((int*)&m_renderer->get_world_settings().ambient_light_type), 0);
+		render_made_piggy |= ImGui::RadioButton("None", ((int*)&world_settings.ambient_light_type), 0);
 		ImGui::SameLine();
-		render_made_piggy |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 1);
+		render_made_piggy |= ImGui::RadioButton("Use uniform lighting", ((int*)&world_settings.ambient_light_type), 1);
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!has_envmap);
-		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 2);
+		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&world_settings.ambient_light_type), 2);
 		if (!has_envmap)
 			// Showing a tooltip for why the envmap button is disabled
 			ImGuiRenderer::show_help_marker("No envmap loaded.");
 		ImGui::EndDisabled();
 
-		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
+		if (world_settings.ambient_light_type == AmbientLightType::UNIFORM)
 		{
-			render_made_piggy |= ImGui::ColorEdit3("Uniform light color", (float*)&m_renderer->get_world_settings().uniform_light_color,
-												   ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+			render_made_piggy |=
+				ImGui::ColorEdit3("Uniform light color", (float*)&world_settings.uniform_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		}
-		else if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::ENVMAP)
+		else if (world_settings.ambient_light_type == AmbientLightType::ENVMAP)
 		{
 			float& rota_X = m_renderer->get_envmap().rotation_X;
 			float& rota_Y = m_renderer->get_envmap().rotation_Y;
@@ -966,10 +968,10 @@ void ImGuiSettingsWindow::draw_environment_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			render_made_piggy |= rotation_changed;
-			render_made_piggy |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer->get_world_settings().envmap_intensity, 0.0f, 10.0f);
+			render_made_piggy |= ImGui::SliderFloat("Envmap intensity", (float*)&world_settings.envmap_intensity, 0.0f, 10.0f);
 			ImGui::TreePush("Envmap intensity tree");
-			render_made_piggy |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer->get_world_settings().envmap_scale_background_intensity);
-			if (m_renderer->get_world_settings().envmap_intensity != 1.0f && !m_renderer->get_world_settings().envmap_scale_background_intensity)
+			render_made_piggy |= ImGui::Checkbox("Scale background intensity", (bool*)&world_settings.envmap_scale_background_intensity);
+			if (world_settings.envmap_intensity != 1.0f && !world_settings.envmap_scale_background_intensity)
 			{
 				ImGuiRenderer::add_warning("Using a custom envmap intensity without scaling the background "
 										   "intensity can result in discrepancies when looking at the envmap through a mirror or "
@@ -983,7 +985,7 @@ void ImGuiSettingsWindow::draw_environment_panel()
 		}
 
 		// Ensuring no negative light color
-		m_renderer->get_world_settings().uniform_light_color.clamp(0.0f, 1.0e38f);
+		world_settings.uniform_light_color.clamp(0.0f, 1.0e38f);
 
 		ImGui::TreePop();
 

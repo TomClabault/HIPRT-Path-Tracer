@@ -123,7 +123,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 	envmap_pdf_solid_angle = 1.0f;
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	// The texel was sampled according to its luminance
-	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
+	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor);
 
 	// Account for the fact that the envmap texels have some area in the world
 	envmap_pdf_solid_angle *= world_settings.envmap_width * world_settings.envmap_height;
@@ -158,7 +158,8 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	// The texel was sampled according to its luminance
-	pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
+	pdf = envmap_radiance.luminance() /
+		  (envmap_total_sum * render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
 
 	// Account for the fact that the envmap texels have some area in the world
 	pdf *= world_settings.envmap_width * world_settings.envmap_height;
