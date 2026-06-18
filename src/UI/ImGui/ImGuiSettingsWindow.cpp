@@ -5241,7 +5241,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 
 	ImGui::TreePush("Quality settings tree");
 
-	if (ImGui::CollapsingHeader("Nested dielectrics"))
+	ImGui::SeparatorText("Nested dielectrics");
 	{
 		ImGui::TreePush("Nested dielectrics tree");
 
@@ -5271,7 +5271,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Alpha testing"))
+	ImGui::SeparatorText("Alpha testing");
 	{
 		ImGui::TreePush("Alpha testing tree");
 
@@ -5283,7 +5283,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Textures"))
+	ImGui::SeparatorText("Textures");
 	{
 		ImGui::TreePush("Quality settings textures tree");
 
@@ -5323,7 +5323,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Triangle sampling"))
+	ImGui::SeparatorText("Triangle sampling");
 	{
 		ImGui::TreePush("Triangle sampling tree");
 
@@ -5347,11 +5347,10 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Light clamping"))
+	ImGui::SeparatorText("Light clamping");
 	{
 		ImGui::TreePush("Lighting Settings Performance Tree");
 
-		ImGui::SeparatorText("Clamping");
 		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
 		{
 			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
@@ -5383,8 +5382,8 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Microfacet regularization"))
-		draw_microfacet_model_regularization_tree();
+	ImGui::SeparatorText("Microfacet regularization");
+	draw_microfacet_model_regularization_tree();
 
 	ImGui::TreePop();
 }
