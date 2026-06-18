@@ -43,7 +43,7 @@ struct ReSTIRSPMISDataHost
 	void resize(unsigned int width, unsigned int height)
 	{
 		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER });
-		m_spmis_data.resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
+		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
 	}
 
 	void reset() {}
@@ -91,25 +91,25 @@ struct ReSTIRSPMISDataHost
 		}
 
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES>();
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums =
-			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = (unsigned int)size();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();
 
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters =
-			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_COUNTERS>();
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_COUNTERS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters =
-			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>();
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter =
-			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>();
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets =
-			m_spmis_data.get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums =
-			m_spmis_data.get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;

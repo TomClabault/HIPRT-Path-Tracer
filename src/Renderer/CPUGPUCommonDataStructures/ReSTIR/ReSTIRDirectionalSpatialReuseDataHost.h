@@ -32,8 +32,8 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		m_spatial_reuse_data.resize(width * height,
 									{ RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL, RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS });
 
-		m_spatial_reuse_data.resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(1);
-		m_spatial_reuse_data.resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(1);
+		m_spatial_reuse_data.template resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(1);
+		m_spatial_reuse_data.template resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(1);
 	}
 
 	void reset()
@@ -41,8 +41,8 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		if (size() == 0)
 			return;
 
-		m_spatial_reuse_data.memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(0);
-		m_spatial_reuse_data.memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(0);
+		m_spatial_reuse_data.template memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(0);
+		m_spatial_reuse_data.template memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(0);
 	}
 
 	bool free()
@@ -80,13 +80,13 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		}
 
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-			m_spatial_reuse_data.get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
+			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-			m_spatial_reuse_data.get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
+			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_total =
-			m_spatial_reuse_data.get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>();
+			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_reuse_hit_rate_hits =
-			m_spatial_reuse_data.get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>();
+			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>();
 	}
 
 	ReSTIRDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;
