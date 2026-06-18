@@ -164,8 +164,8 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 		bsdf_ray.direction = sampled_bsdf_direction;
 
 #if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
-		intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index,
-																	   ray_payload.bounce, rng);
+		intersection_found =
+			evaluate_bsdf_light_sample_ray_simplified(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, rng);
 #else
 		intersection_found =
 			evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, rng);

@@ -54,7 +54,7 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(
 				nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 				nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-																   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+																   nee_plus_plus_context, random_number_generator);
 			}
 		}
 	}
@@ -91,8 +91,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 	RayPayload ray_payload;
 
 	HitInfo closest_hit_info;
-	bool intersection_found = trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1,
-												  /* bounce. Always 0 for camera rays*/ 0, random_number_generator);
+	bool intersection_found =
+		trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, random_number_generator);
 
 	if (!intersection_found)
 		return;

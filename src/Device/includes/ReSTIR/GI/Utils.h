@@ -60,8 +60,7 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	shadow_ray.origin	 = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index,
-												 /* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
+	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, random_number_generator);
 
 	if (!visible)
 	{

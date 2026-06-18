@@ -51,7 +51,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 		nee_plus_plus_context.point_on_light = sample.point_on_light_source;
 		nee_plus_plus_context.shaded_point	 = shadow_ray.origin;
 		in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
-													  random_number_generator, ray_payload.bounce);
+													  random_number_generator);
 	}
 
 	if (!in_shadow)
@@ -194,7 +194,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
 			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
 			bool hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
-															ray_payload.bounce, random_number_generator);
+															random_number_generator);
 
 			if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() &&
 				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
@@ -351,7 +351,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 
 			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
 			bool hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
-															ray_payload.bounce, random_number_generator);
+															random_number_generator);
 
 			if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() &&
 				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)

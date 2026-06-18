@@ -24,8 +24,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 
 	ColorRGB32F selected_sample_radiance;
 	LightSamplePointInformation light_sample = sample_one_emissive_triangle_regir_with_selected_sample_radiance(
-							render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-							closest_hit_info.primitive_index, ray_payload, point_outside_grid, selected_sample_radiance, random_number_generator);
+		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+		closest_hit_info.primitive_index, ray_payload, point_outside_grid, selected_sample_radiance, random_number_generator);
 
 	if (!point_outside_grid)
 	{
@@ -73,12 +73,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		invalid ReGIR light sampling fallback strategy
 #endif
 
-								// Fallback method as the point was outside of the ReGIR grid
-								ColorRGB32F light_source_radiance;
+			// Fallback method as the point was outside of the ReGIR grid
+			ColorRGB32F light_source_radiance;
 
-		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(
-								render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								closest_hit_info.primitive_index, ray_payload, random_number_generator);
+		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+			sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+									  closest_hit_info.geometric_normal, closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 		{
@@ -109,7 +109,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 			if (dot_light_source > 0.0f)
 			{
 				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-																   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+																   nee_plus_plus_context, random_number_generator);
 
 				if (!in_shadow)
 				{
@@ -134,8 +134,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 						if (light_sample_solid_angle_pdf > 0.0f)
 						{
 							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance += light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf /
-													 nee_plus_plus_context.unoccluded_probability;
+							light_source_radiance +=
+								light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 
 							// Just a CPU-only sanity check
 							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);

@@ -196,7 +196,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 			nee_plus_plus_context.point_on_light = sampled_direction;
 			nee_plus_plus_context.envmap		 = true;
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
-															   random_number_generator, ray_payload.bounce);
+															   random_number_generator);
 			if (!in_shadow)
 			{
 				float bsdf_pdf;
@@ -213,7 +213,8 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				float mis_weight = 1.0f;
 #endif
 
-				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle / nee_plus_plus_context.unoccluded_probability;
+				envmap_mis_contribution =
+					bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle / nee_plus_plus_context.unoccluded_probability;
 			}
 		}
 	}
@@ -238,8 +239,8 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 		shadow_ray.origin	 = closest_hit_info.inter_point;
 		shadow_ray.direction = bsdf_sampled_dir;
 
-		bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce,
-													  random_number_generator);
+		bool in_shadow =
+			evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 		if (!in_shadow)
 		{
 			float envmap_eval_pdf;

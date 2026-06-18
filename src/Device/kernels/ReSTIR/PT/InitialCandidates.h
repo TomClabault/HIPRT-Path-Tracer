@@ -77,7 +77,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-															   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+															   nee_plus_plus_context, random_number_generator);
 
 			if (in_shadow)
 				continue;
@@ -134,7 +134,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
 		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator, ray_payload.bounce);
+														   random_number_generator);
 
 		if (in_shadow)
 			continue;
@@ -191,7 +191,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 
 			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
 			bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
-																	 ray_payload.bounce, random_number_generator);
+																	 random_number_generator);
 
 			// Checking that we did hit something and if we hit something,
 			// it needs to be emissive

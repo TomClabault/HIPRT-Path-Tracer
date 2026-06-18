@@ -95,8 +95,7 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 		shadow_ray.origin	 = surface.shading_point;
 		shadow_ray.direction = sample_direction;
 
-		bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, surface.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0,
-													 random_number_generator);
+		bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, surface.primitive_index, random_number_generator);
 
 		target_function *= visible;
 	}

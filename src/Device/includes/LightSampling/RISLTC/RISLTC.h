@@ -54,7 +54,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 		nee_plus_plus_context.point_on_light = light_sample_info.point_on_light;
 		nee_plus_plus_context.shaded_point	 = shadow_ray.origin;
 		in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
-													  random_number_generator, ray_payload.bounce);
+													  random_number_generator);
 	}
 
 	ColorRGB32F final_color;
@@ -191,7 +191,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 
 			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
 			bool hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
-															ray_payload.bounce, random_number_generator);
+															random_number_generator);
 
 			if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() &&
 				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
