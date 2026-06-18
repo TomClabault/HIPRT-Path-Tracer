@@ -299,6 +299,7 @@ public:
 	HardwareAccelerationSupport device_supports_hardware_acceleration();
 
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
+	const std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options() const;
 
 	void recompile_kernels(bool use_cache = true);
 

@@ -27,7 +27,7 @@ void RenderPass::set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> 
 
 void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	for (auto& name_to_kernel : get_all_kernels())
@@ -37,7 +37,7 @@ void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const
 
 void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		// Not recompiling if the render pass is disabled / not being used
 		return;
 
@@ -48,7 +48,7 @@ void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, co
 
 void RenderPass::compute_render_times()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		// No times to compute if the render pass is disabled / not being used
 		return;
 
@@ -61,7 +61,7 @@ void RenderPass::compute_render_times()
 
 void RenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		// No metrics to update if the render pass is disabled / not being used
 		return;
 
@@ -87,7 +87,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_all_kernels()
 	// The default implementation just returns all the kernels.
 	// Or an empty map if the render pass isn't being used
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return {};
 	else
 		return m_kernels;
@@ -99,14 +99,9 @@ std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_tracing_kernel
 	return get_all_kernels();
 }
 
-bool RenderPass::is_render_pass_used() const
+bool RenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 	return true;
-}
-
-void RenderPass::set_is_render_pass_used(bool is_render_pass_used)
-{
-	m_render_pass_used_this_frame = is_render_pass_used;
 }
 
 void RenderPass::add_dependency(std::shared_ptr<RenderPass> dependency)

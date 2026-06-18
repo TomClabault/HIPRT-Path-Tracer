@@ -238,7 +238,7 @@ LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_s
 
 bool GPURenderer::gmon_used() const
 {
-	return get_gmon_render_pass() && get_gmon_render_pass()->is_render_pass_used();
+	return get_gmon_render_pass() && get_gmon_render_pass()->is_render_pass_used(*get_global_compiler_options());
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
@@ -451,7 +451,6 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
 
 	m_render_thread.set_active_render_graph(active_render_graph);
-	m_render_thread.update_is_render_pass_used();
 
 	pre_render_update(delta_time_gpu);
 
@@ -644,6 +643,11 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 }
 
 std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options()
+{
+	return m_render_thread.get_render_graphs().at(GPURendererThread::RENDER_GRAPH_FULL_NAME).get_compiler_options();
+}
+
+const std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options() const
 {
 	return m_render_thread.get_render_graphs().at(GPURendererThread::RENDER_GRAPH_FULL_NAME).get_compiler_options();
 }

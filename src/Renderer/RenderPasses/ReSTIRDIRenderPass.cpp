@@ -95,7 +95,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 
 	int2_t render_resolution = m_renderer->m_render_resolution;
 
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		// ReSTIR DI enabled
 		bool initial_candidates_reservoir_needs_resize = m_initial_candidates_reservoirs.size() == 0;
@@ -159,7 +159,7 @@ void ReSTIRDIRenderPass::update_render_data()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	// Setting the pointers for use in reset_render() in the camera rays kernel
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(render_data, *m_renderer->get_global_compiler_options(),
 																					 m_directional_spatial_reuse_data, m_spmis_data);
 	else
@@ -171,7 +171,7 @@ void ReSTIRDIRenderPass::update_render_data()
 
 void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	m_initial_candidates_reservoirs.resize(new_width * new_height);
@@ -186,7 +186,7 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 													  bool silent,
 													  bool use_cache)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -221,7 +221,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	if (render_data.render_settings.need_to_reset)
@@ -249,7 +249,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 
 bool ReSTIRDIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 
 	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_data().render_settings.restir_di_settings;
@@ -480,9 +480,9 @@ void ReSTIRDIRenderPass::compute_render_times()
 											   m_spatial_reuse_time_stop));
 }
 
-bool ReSTIRDIRenderPass::is_render_pass_used() const
+bool ReSTIRDIRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
 }
 
 void ReSTIRDIRenderPass::request_temporal_bufffers_clear()

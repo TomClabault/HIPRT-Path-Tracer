@@ -25,6 +25,11 @@ std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options()
 	return m_compiler_options;
 }
 
+const std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options() const
+{
+	return m_compiler_options;
+}
+
 void RenderGraph::set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options)
 {
 	m_compiler_options = options;
@@ -69,12 +74,6 @@ void RenderGraph::prepass()
 {
 	for (auto& name_to_render_pass : m_render_passes)
 		name_to_render_pass.second->prepass();
-}
-
-void RenderGraph::update_is_render_pass_used()
-{
-	for (auto& name_to_render_pass : m_render_passes)
-		name_to_render_pass.second->set_is_render_pass_used(name_to_render_pass.second->is_render_pass_used());
 }
 
 bool RenderGraph::pre_render_update(float delta_time)

@@ -40,7 +40,7 @@ public:
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override {};
 
-	virtual bool is_render_pass_used() const override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	float get_VRAM_usage() const;
 	float get_hash_grid_load_factor() const;

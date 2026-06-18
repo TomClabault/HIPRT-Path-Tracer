@@ -56,11 +56,6 @@ void GPURendererThread::resize(int new_width, int new_height)
 		render_graph.resize(new_width, new_height);
 }
 
-void GPURendererThread::update_is_render_pass_used()
-{
-	m_active_render_graph->update_is_render_pass_used();
-}
-
 void GPURendererThread::reset(bool reset_by_camera_movement)
 {
 	for (auto& [rg_name, render_graph] : m_render_graphs)
@@ -395,6 +390,11 @@ RenderGraph& GPURendererThread::get_active_render_graph()
 }
 
 std::unordered_map<std::string, RenderGraph>& GPURendererThread::get_render_graphs()
+{
+	return m_render_graphs;
+}
+
+const std::unordered_map<std::string, RenderGraph>& GPURendererThread::get_render_graphs() const
 {
 	return m_render_graphs;
 }

@@ -26,7 +26,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 	int2_t render_resolution = render_data.render_settings.render_resolution;
 
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		unsigned int number_of_sets =
 			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
@@ -83,7 +83,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -127,7 +127,7 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 
 void GMoNRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (m_render_pass_used_this_frame)
+	if (is_render_pass_used(compiler_options))
 	{
 		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		m_next_set_to_accumulate++;
@@ -162,7 +162,7 @@ unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
 
 void GMoNRenderPass::reset(bool reset_by_camera_movement)
 {
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		m_next_set_to_accumulate = 0;
 
@@ -198,7 +198,7 @@ unsigned int GMoNRenderPass::get_number_of_sets_used()
 
 void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		m_gmon.resize_sets(new_width, new_height, get_number_of_sets_used());
 
@@ -208,7 +208,7 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 {
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 		return m_gmon.map_result_framebuffer();
 
 	return nullptr;
@@ -216,7 +216,7 @@ ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 
 void GMoNRenderPass::unmap_result_framebuffer()
 {
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 		m_gmon.result_framebuffer->unmap();
 }
 
@@ -225,7 +225,7 @@ bool GMoNRenderPass::buffers_allocated()
 	return m_gmon.sets.size() > 0;
 }
 
-bool GMoNRenderPass::is_render_pass_used() const
+bool GMoNRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 	bool gmon_enabled		  = m_gmon.use_gmon;
 	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
@@ -240,7 +240,7 @@ GMoNGPUData& GMoNRenderPass::get_gmon_data()
 
 unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return 0;
 
 	return m_gmon.get_VRAM_usage_bytes();

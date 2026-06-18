@@ -45,7 +45,7 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
-	virtual bool is_render_pass_used() const override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 	bool& get_do_retargeting();
 
 	int& get_blue_noise_texture_width();

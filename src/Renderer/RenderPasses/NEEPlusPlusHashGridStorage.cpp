@@ -55,9 +55,9 @@ bool NEEPlusPlusHashGridStorage::pre_render_update(HIPRTRenderData& render_data,
 	return updated;
 }
 
-void NEEPlusPlusHashGridStorage::update_render_data(HIPRTRenderData& render_data)
+void NEEPlusPlusHashGridStorage::update_render_data(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (m_nee_plus_plus_render_pass->is_render_pass_used())
+	if (m_nee_plus_plus_render_pass->is_render_pass_used(compiler_options))
 	{
 		render_data.nee_plus_plus.m_entries_buffer.total_num_rays		 = m_total_num_rays.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_total_unoccluded_rays.get_atomic_device_pointer();
@@ -116,7 +116,7 @@ void NEEPlusPlusHashGridStorage::reset()
 	}
 }
 
-bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, float max_megabyte_size)
+bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, float max_megabyte_size)
 {
 	update_cell_alive_count();
 
@@ -145,7 +145,7 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, float 
 		m_checksum_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 		m_total_cells_alive_count.memset_whole_buffer(0);
 
-		update_render_data(render_data);
+		update_render_data(render_data, compiler_options);
 
 		return true;
 	}

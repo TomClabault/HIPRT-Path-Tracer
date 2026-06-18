@@ -20,11 +20,11 @@ public:
 
 	bool pre_render_update(HIPRTRenderData& render_data, bool is_interacting_camera);
 
-	void update_render_data(HIPRTRenderData& render_data);
+	void update_render_data(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	bool free();
 	void reset();
 
-	bool try_resize(HIPRTRenderData& render_data, float max_megabyte_size);
+	bool try_resize(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, float max_megabyte_size);
 
 	unsigned int update_cell_alive_count();
 	unsigned int get_cell_alive_count() const;

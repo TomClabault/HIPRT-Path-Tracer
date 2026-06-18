@@ -62,7 +62,7 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
-	virtual bool is_render_pass_used() const override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 	void request_temporal_bufffers_clear();
 
 	/**

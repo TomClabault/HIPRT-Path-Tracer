@@ -38,7 +38,7 @@ public:
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement);
 
-	virtual bool is_render_pass_used() const override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	NEEPlusPlusHashGridStorage& get_nee_plus_plus_storage();
 

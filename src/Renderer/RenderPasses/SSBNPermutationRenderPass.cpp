@@ -21,20 +21,20 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 	: RenderPass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME, renderer, options)
 {
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_function_name("SSBNPermutationSortingPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																								  "/SSBNPermutation/RetargetingPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->set_kernel_function_name("SSBNPermutationRetargetingPass");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS] =
-							std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS);
+		std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																									"/SSBNPermutation/RefreshSeedsPass.h");
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->set_kernel_function_name("SSBNPermutationRefreshSeedsPass");
@@ -46,7 +46,7 @@ SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std:
 
 void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	m_sorted_seeds_buffer.resize(new_width * new_height);
@@ -67,14 +67,14 @@ void SSBNPermutationRenderPass::resize(unsigned int new_width, unsigned int new_
 
 void SSBNPermutationRenderPass::reload_blue_noise_texture_and_retargeting_data(int new_width, int new_height)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	m_blue_noise_texture_width	= new_width;
 	m_blue_noise_texture_height = new_height;
 
-	std::string blue_noise_texture_path = SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" +
-										  std::to_string(m_blue_noise_texture_height) + ".png";
+	std::string blue_noise_texture_path =
+		SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" + std::to_string(m_blue_noise_texture_height) + ".png";
 
 	Image8Bit blue_noise_texture = Image8Bit::read_image(blue_noise_texture_path, 1, false);
 	if (blue_noise_texture.width != m_blue_noise_texture_width || blue_noise_texture.height != m_blue_noise_texture_height)
@@ -98,7 +98,7 @@ void SSBNPermutationRenderPass::reload_blue_noise_texture_and_retargeting_data(i
 
 void SSBNPermutationRenderPass::reload_retargeting_data_only(int new_max_retargeting_radius)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	m_max_retargeting_radius = new_max_retargeting_radius;
@@ -114,8 +114,8 @@ void SSBNPermutationRenderPass::reload_retargeting_data_only(int new_max_retarge
 								m_max_retargeting_radius, m_blue_noise_texture_width, m_blue_noise_texture_height);
 		// We don't have the retargeting data for that, let's run the simulation
 		// Execute annealing simulation block for generating permutations
-		std::string blue_noise_texture_path = SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" +
-											  std::to_string(m_blue_noise_texture_height) + ".png";
+		std::string blue_noise_texture_path =
+			SSBN_PERMUTATION_DATA_DIRECTORY "/noise" + std::to_string(m_blue_noise_texture_width) + "x" + std::to_string(m_blue_noise_texture_height) + ".png";
 		std::string permutation_file_path_no_extension = SSBN_PERMUTATION_DATA_DIRECTORY "/permutation" + std::to_string(m_blue_noise_texture_width) + "x" +
 														 std::to_string(m_blue_noise_texture_height) + "-r" + std::to_string(m_max_retargeting_radius);
 
@@ -147,7 +147,7 @@ std::string SSBNPermutationRenderPass::get_permutation_file_path_no_extension(in
 bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 {
 	bool updated = false;
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 	{
 		if (m_sorted_seeds_buffer.size() != 0)
 		{
@@ -189,12 +189,12 @@ bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
 
 bool SSBNPermutationRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	return is_render_pass_used();
+	return is_render_pass_used(compiler_options);
 }
 
 void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return;
 
 	unsigned char* blue_noise_texture_buffer_pointer = m_blue_noise_dither_texture_buffer.get_device_pointer();
@@ -235,7 +235,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		// the sorting passes but that's not enough and we'll lose convergence eventually so we need to refresh the seeds.
 		void* launch_args_refresh_seeds[] = { &render_data };
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(
-								32, 1, render_resolution_x, render_resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
+			32, 1, render_resolution_x, render_resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
 
 		// And return because now we have brand new seeds, the luminance currently in the buffer doesn't correspond so sorting and retargeting will be helpless,
 		// we'll just render the next frame normally. This will be a white noise frame but not sure what else to do when we need to refresh the seeds....
@@ -245,8 +245,8 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
 	if (m_do_retargeting)
 	{
-		std::vector<unsigned int> input_seeds = OrochiBuffer<unsigned int>::download_data(render_data.buffers.get_input_random_seeds_pointer(),
-																						  render_resolution_x * render_resolution_y);
+		std::vector<unsigned int> input_seeds =
+			OrochiBuffer<unsigned int>::download_data(render_data.buffers.get_input_random_seeds_pointer(), render_resolution_x * render_resolution_y);
 
 		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
 		void* launch_args_sorting[]			  = { &render_data,
@@ -257,12 +257,11 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 												  &sorted_seeds_buffer_pointer,
 												  &hash_grid_offsets_buffer_pointer };
 
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
-																								 block_size * block_size * m_different_hash_count, 1,
-																								 launch_args_sorting, m_renderer->get_main_stream());
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
+			block_size * block_size, 1, block_size * block_size * m_different_hash_count, 1, launch_args_sorting, m_renderer->get_main_stream());
 
 		std::vector<unsigned int> sorted_seeds =
-								OrochiBuffer<unsigned int>::download_data(sorted_seeds_buffer_pointer, render_resolution_x * render_resolution_y);
+			OrochiBuffer<unsigned int>::download_data(sorted_seeds_buffer_pointer, render_resolution_x * render_resolution_y);
 
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
 		void* launch_args_retargeting[]					   = { &render_data,
@@ -286,9 +285,8 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 												  &render_data.buffers.get_input_random_seeds_pointer(),
 												  &hash_grid_offsets_buffer_pointer };
 
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(block_size * block_size, 1,
-																								 block_size * block_size * m_different_hash_count, 1,
-																								 launch_args_sorting, m_renderer->get_main_stream());
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
+			block_size * block_size, 1, block_size * block_size * m_different_hash_count, 1, launch_args_sorting, m_renderer->get_main_stream());
 	}
 
 	if (m_need_to_restore_accumulate_1spp_settings)
@@ -317,7 +315,7 @@ void SSBNPermutationRenderPass::reset(bool reset_by_camera_movement) {}
 
 void SSBNPermutationRenderPass::update_render_data()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -327,9 +325,9 @@ void SSBNPermutationRenderPass::update_render_data()
 	render_data.ssbn_settings.screen_space_hash_grid	= m_screen_space_hash_grid_buffer.get_device_pointer();
 }
 
-bool SSBNPermutationRenderPass::is_render_pass_used() const
+bool SSBNPermutationRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) == KERNEL_OPTION_TRUE;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) == KERNEL_OPTION_TRUE;
 }
 
 bool& SSBNPermutationRenderPass::get_do_retargeting()

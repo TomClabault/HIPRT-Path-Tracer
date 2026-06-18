@@ -109,7 +109,7 @@ public:
 
 	virtual void reset(bool reset_by_camera_movement) override;
 
-	virtual bool is_render_pass_used() const override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	/**
 	 * Returns the VRAM used by ReSTIR DI in MB

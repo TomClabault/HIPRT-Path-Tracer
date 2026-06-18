@@ -44,8 +44,6 @@ public:
 	 */
 	void resize(int new_width, int new_height);
 
-	void update_is_render_pass_used();
-
 	void reset(bool reset_by_camera_movement);
 
 	/**
@@ -104,6 +102,7 @@ public:
 	RenderGraph& get_active_render_graph();
 
 	std::unordered_map<std::string, RenderGraph>& get_render_graphs();
+	const std::unordered_map<std::string, RenderGraph>& get_render_graphs() const;
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;

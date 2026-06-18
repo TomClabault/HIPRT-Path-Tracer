@@ -33,7 +33,7 @@ bool MegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOro
 														bool silent,
 														bool use_cache)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	bool updated = false;
@@ -57,7 +57,7 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	// Resetting this flag as this is a new frame
@@ -71,7 +71,7 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 
 bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 
 	void* launch_args[] = { &render_data };
@@ -86,7 +86,7 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	if (render_data.render_settings.accumulate)
@@ -98,10 +98,10 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 	render_data.render_settings.sample_number = 0;
 }
 
-bool MegaKernelRenderPass::is_render_pass_used() const
+bool MegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 	// Only active if we're not using ReSTIR GI/PT because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_GI &&
-		   m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_PT;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_GI &&
+		   compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_PT;
 }

@@ -63,7 +63,7 @@ bool ReSTIRPGRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 													  bool silent,
 													  bool use_cache)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	bool updated = false;
@@ -103,7 +103,7 @@ bool ReSTIRPGRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 
 void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -119,7 +119,7 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 	bool updated = false;
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 	{
 		if (m_splatting_samples_soa_buffer.get_byte_size() != 0)
 			m_splatting_samples_soa_buffer.free();
@@ -201,7 +201,7 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 
 bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 
 	void* launch_args[] = { &render_data };
@@ -225,7 +225,7 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 void ReSTIRPGRenderPass::update_render_data()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -244,11 +244,11 @@ void ReSTIRPGRenderPass::update_render_data()
 	render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells();
 }
 
-bool ReSTIRPGRenderPass::is_render_pass_used() const
+bool ReSTIRPGRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	bool restir_path_sampling_used = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI ||
-									 m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
-	bool using_restir_pg = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
+	bool restir_path_sampling_used = compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI ||
+									 compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+	bool using_restir_pg = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
 	bool bounces		 = m_renderer->get_render_data().render_settings.nb_bounces > 0;
 
 	return restir_path_sampling_used && using_restir_pg && bounces;
@@ -264,7 +264,7 @@ float ReSTIRPGRenderPass::get_VRAM_usage() const
 
 float ReSTIRPGRenderPass::get_hash_grid_load_factor() const
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return 0.0f;
 
 	if (m_grid_cell_alive_count_buffer.size() == 0)

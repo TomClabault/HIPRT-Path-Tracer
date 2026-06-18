@@ -102,7 +102,7 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 
 void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return;
 
 	m_initial_candidates_buffer.resize(new_width * new_height);
@@ -119,7 +119,7 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	bool recompiled = false;
@@ -158,7 +158,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 
 	int2_t render_resolution = m_renderer->m_render_resolution;
 
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		// ReSTIR GI enabled
 		bool initial_candidates_reservoir_needs_resize	= m_initial_candidates_buffer.size() == 0;
@@ -375,7 +375,7 @@ void ReSTIRGIRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
 
 bool ReSTIRGIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 
 	compute_optimal_spatial_reuse_radii(render_data);
@@ -415,7 +415,7 @@ void ReSTIRGIRenderPass::update_render_data()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	// Setting the pointers for use in reset_render() in the camera rays kernel
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		render_data.aux_buffers.restir_gi_reservoir_buffer_1 = m_initial_candidates_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
@@ -448,7 +448,7 @@ void ReSTIRGIRenderPass::reset(bool reset_by_camera_movement)
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_kernels()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
@@ -456,15 +456,15 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_ke
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracing_kernels()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
 }
 
-bool ReSTIRGIRenderPass::is_render_pass_used() const
+bool ReSTIRGIRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI;
 }
 
 void ReSTIRGIRenderPass::request_temporal_bufffers_clear()

@@ -146,12 +146,7 @@ public:
 	 *
 	 * If the render pass is not active, launch() and post_render_update() will not be called after is_render_pass_used() is called.
 	 */
-	virtual bool is_render_pass_used() const;
-
-	/**
-	 * Sets the 'm_render_pass_used_this_frame' boolean
-	 */
-	void set_is_render_pass_used(bool is_render_pass_used);
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const;
 
 	/**
 	 * This should launch the render pass kernels on the GPU
@@ -350,26 +345,6 @@ public:
 	void set_name(const std::string& new_name);
 
 protected:
-	// This boolean is automatically set with the return of the function is_render_pass_used()
-	// at the beginning of each frame
-	//
-	// This boolean should be used in launch() and post_sample_update() functions
-	// in place of is_render_pass_used().
-	//
-	// This is because
-	//		- launch() and post_sample_function() are asynchronous with the UI
-	//		- is_render_pass_used() tends to check for the renderer's global_kernel_options
-	//			to determine if a render pass should be active or not
-	//		- but that's a race concurrency issue because the global_kernel_options can be modified
-	//			by the ImGui UI while the render pass is running and so checking for the renderer kernel options
-	//			asynchronously can lead to undefined behavior with unintialized buffers
-	//
-	//		----> this boolean should be used instead as it defines whether the render pass is active or
-	//			not for the whole frame
-	//
-	// is_render_pass_used() can be used safely at any time outside of the launch() and post_sample_update() functions
-	bool m_render_pass_used_this_frame = true;
-
 	std::string m_name;
 
 	// Access to the renderer that holds the render pass

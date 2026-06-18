@@ -245,7 +245,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 												   bool silent,
 												   bool use_cache)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
 	bool updated = false;
@@ -339,7 +339,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	// while async compute is filling them so synchronization here
 	synchronize_async_compute();
 
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 	{
 		bool storage_updated = m_hash_grid_storage.pre_render_update(render_data);
 		if (storage_updated)
@@ -394,7 +394,7 @@ ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A,
 
 bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return false;
 	else if (render_data.buffers.emissive_triangles_count == 0)
 		return false;
@@ -1206,7 +1206,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 
 void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!m_render_pass_used_this_frame)
+	if (!is_render_pass_used(compiler_options))
 		return;
 
 	launch_correlation_reduction_copy(render_data);
@@ -1218,7 +1218,7 @@ void ReGIRRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (is_render_pass_used())
+	if (is_render_pass_used(*m_compiler_options))
 		m_hash_grid_storage.to_device(render_data);
 	else
 	{
@@ -1242,7 +1242,7 @@ void ReGIRRenderPass::synchronize_async_compute()
 
 void ReGIRRenderPass::compute_render_times()
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		// No times to compute if the render pass is disabled / not being used
 		return;
 
@@ -1284,7 +1284,7 @@ void ReGIRRenderPass::compute_render_times()
 
 void ReGIRRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
-	if (!is_render_pass_used())
+	if (!is_render_pass_used(*m_compiler_options))
 		// No metrics to update if the render pass is disabled / not being used
 		return;
 
@@ -1350,9 +1350,9 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 		m_hash_grid_storage.reset();
 }
 
-bool ReGIRRenderPass::is_render_pass_used() const
+bool ReGIRRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 }
 
 float ReGIRRenderPass::get_VRAM_usage_bytes() const

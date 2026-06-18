@@ -22,6 +22,7 @@ public:
 	void set_render_window(RenderWindow* render_window);
 
 	std::shared_ptr<GPUKernelCompilerOptions> get_compiler_options();
+	const std::shared_ptr<GPUKernelCompilerOptions> get_compiler_options() const;
 	void set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	template <typename RenderPassType>
@@ -42,7 +43,6 @@ public:
 											  bool use_cache									  = true) override;
 
 	virtual void prepass() override;
-	virtual void update_is_render_pass_used();
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
