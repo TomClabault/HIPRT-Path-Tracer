@@ -485,7 +485,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_restir_pt_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_restir_pt_state.temporal_reservoirs.data();
 
-	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
+	m_restir_pt_state.directional_spatial_reuse_data_buffer.template to_device<ReSTIR_VARIANT_PT>(m_render_data);
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
 #endif
 
