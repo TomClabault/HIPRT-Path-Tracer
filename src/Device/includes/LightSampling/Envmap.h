@@ -240,8 +240,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 		shadow_ray.origin	 = closest_hit_info.inter_point;
 		shadow_ray.direction = bsdf_sampled_dir;
 
-		bool in_shadow =
-			evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+		bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
 		if (!in_shadow)
 		{
 			float envmap_eval_pdf;
