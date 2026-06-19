@@ -184,7 +184,9 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 		render_data.buffers.materials_buffer_soa.get_base_color_texture_index(render_data.buffers.material_indices[global_triangle_index]);
 
 	ColorRGBA32F rgba_emission = sample_texture_rgba(render_data.buffers.material_textures, texcoords, emissive_texture_index, false);
-	ColorRGBA32F base_color	   = sample_texture_rgba(render_data.buffers.material_textures, texcoords, base_color_texture_index, false);
+	ColorRGBA32F base_color	   = ColorRGBA32F(1.0f);
+	if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
+		base_color = sample_texture_rgba(render_data.buffers.material_textures, texcoords, base_color_texture_index, false);
 
 	if (!render_data.render_settings.do_alpha_testing)
 	{
@@ -193,7 +195,7 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 		base_color.a	= 1.0f;
 	}
 
-	return ColorRGB32F(rgba_emission.r * rgba_emission.a, rgba_emission.g * rgba_emission.a, rgba_emission.b * rgba_emission.a) * base_color.a;
+	return ColorRGB32F(rgba_emission.r, rgba_emission.g, rgba_emission.b) * rgba_emission.a * base_color.a;
 }
 
 HIPRT_DEVICE ColorRGB32F get_triangle_emission_at_point(const HIPRTRenderData& render_data, int global_triangle_index, float3_t point_on_triangle)
