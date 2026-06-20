@@ -683,8 +683,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			float spmis_proba = 1.0f;
 			if (neighbor_selection_probability > 0.0f)
 				// 1.0f / (N_c * P_c(i))
-				// with N_c = 1 in this implementation
-				spmis_proba = 1.0f / (1.0f * neighbor_selection_probability);
+				spmis_proba = 1.0f / (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.canonical_weight_estimation_count *
+									  neighbor_selection_probability);
 
 			return spmis_proba * confidence_multiplier * nume_mc / denom_mc;
 		}
@@ -780,11 +780,10 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			float spmis_proba = 1.0f;
 			if (neighbor_selection_probability > 0.0f)
 				// 1.0f / (N_c * P_c(i))
-				// with N_c = 1 in this implementation
-				spmis_proba = 1.0f / (1.0f * neighbor_selection_probability);
+				spmis_proba = 1.0f / (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.canonical_weight_estimation_count *
+									  neighbor_selection_probability);
 
-			float defensive_addition = center_pixel_reservoir_confidence / (center_pixel_reservoir_confidence + neighbors_confidence_sum);
-			return defensive_addition + spmis_proba * confidence_multiplier * nume_mc / denom_mc;
+			return spmis_proba * confidence_multiplier * nume_mc / denom_mc;
 		}
 		else
 			return 0.0f;

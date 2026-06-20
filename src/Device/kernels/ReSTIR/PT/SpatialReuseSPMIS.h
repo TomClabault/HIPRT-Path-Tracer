@@ -57,9 +57,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
-	int neighbors_confidence_sum_int = 0;
-	unsigned int reuse_cell_index	 = spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
-																  neighbors_confidence_sum_int, random_number_generator);
+	int neighbors_confidence_sum_int	= 0;
+	unsigned int reuse_cell_pixel_count = 0;
+	unsigned int reuse_cell_index		= spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
+																	 neighbors_confidence_sum_int, reuse_cell_pixel_count, random_number_generator);
 	if (reuse_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then
@@ -69,8 +70,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		return;
 	}
 
-	unsigned int reuse_cell_pixel_count =
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[reuse_cell_index];
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
 	// Scaling the confidence sum, section 4.3 of the paper
 	float non_canonical_confidence_scaling =
@@ -135,24 +134,35 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		// for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026") and using that neighbor to estimate the MIS weight of the canonical sample
 
 		ReSTIRCommonSPMISSettings spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
-		unsigned int cell_start_index			 = spmis_settings.cell_offsets[reuse_cell_index];
-		unsigned int random_index				 = random_number_generator.random_index(reuse_cell_pixel_count);
-		unsigned int neighbor_pixel_index		 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
-		float neighbor_selection_probability	 = 1.0f / reuse_cell_pixel_count;
 
-		float shift_mapping_jacobian	  = 1.0f;
-		float target_function_at_center	  = center_pixel_reservoir.sample.target_function;
-		int neighbor_reservoir_confidence = input_reservoir_buffer[neighbor_pixel_index].M;
+		float mis_weight = 0.0f;
+		for (int i = 0; i < spmis_settings.canonical_weight_estimation_count; i++)
+		{
+			unsigned int cell_start_index		 = spmis_settings.cell_offsets[reuse_cell_index];
+			unsigned int random_index			 = random_number_generator.random_index(reuse_cell_pixel_count);
+			unsigned int neighbor_pixel_index	 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
+			float neighbor_selection_probability = 1.0f / reuse_cell_pixel_count;
 
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
-			render_data,
+			int neighbor_reservoir_confidence = input_reservoir_buffer[neighbor_pixel_index].M;
 
-			neighbor_reservoir_confidence * non_canonical_confidence_scaling, center_pixel_reservoir.sample, center_pixel_reservoir.M,
-			center_pixel_reservoir.sample.target_function,
+			mis_weight += mis_weight_function.get_resampling_MIS_weight_canonical(
+				render_data,
 
-			center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability,
-			random_number_generator);
+				neighbor_reservoir_confidence * non_canonical_confidence_scaling, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+				center_pixel_reservoir.sample.target_function,
 
+				center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability,
+				random_number_generator);
+		}
+
+#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+		// First term of Eq. 18 in the paper (only for the defensive formulation)
+		float defensive_addition = center_pixel_reservoir.M / (center_pixel_reservoir.M + neighbors_confidence_sum);
+		mis_weight += defensive_addition;
+#endif
+
+		constexpr float shift_mapping_jacobian = 1.0f;
+		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;
 		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
 													random_number_generator);
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);

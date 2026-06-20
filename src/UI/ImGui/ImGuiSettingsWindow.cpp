@@ -3981,6 +3981,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
 						m_render_window->set_render_dirty(true);
 
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Canonical sampling");
+					if (ImGui::SliderInt("Canonical estimation count", &spmis_settings.canonical_weight_estimation_count, 1, 8))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::add_tooltip("How many samples to take to estimate the MIS weight of the canonical sample. Section 4.2 of the paper.");
+
 					ImGui::TreePop();
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				}

@@ -30,6 +30,9 @@ struct ReSTIRCommonSPMISSettings
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
 	bool do_non_canonical_confidence_adjustement = false;
 
+	// How many neighboring pixels to sample to estimate the canonical weight
+	int canonical_weight_estimation_count = 2;
+
 	// Size of the fullscreen buffers
 	unsigned int pixel_hashes_count = 0;
 

@@ -25,6 +25,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	int2_t center_pixel_coords,
 	const ReSTIRSurface& center_pixel_surface,
 	int& out_neighbors_confidence_sum,
+	unsigned int& out_reuse_cell_pixel_count,
 	Xorshift32Generator& rng // Passing the RNG by copy because we don't want the RNG used here to advance our global RNG
 )
 {
@@ -94,9 +95,16 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
+	{
 		out_neighbors_confidence_sum = selected_cell_confidence_sum;
+		out_reuse_cell_pixel_count =
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[selected_cell_index];
+	}
 	else
+	{
 		out_neighbors_confidence_sum = 0;
+		out_reuse_cell_pixel_count	 = 0;
+	}
 
 	return selected_cell_index;
 }
