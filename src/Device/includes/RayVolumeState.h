@@ -43,7 +43,7 @@ struct RayVolumeState
 
 		int mat_index = material_indices_buffer[primitive_index];
 
-		interior_stack.push(incident_mat_index, outgoing_mat_index, inside_material, mat_index, material.get_dielectric_priority());
+		interior_stack.push(mat_index, material.get_dielectric_priority(), incident_mat_index, outgoing_mat_index, inside_material);
 
 		if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)
 			// If we hit a dispersive material, we sample the wavelength that will be used

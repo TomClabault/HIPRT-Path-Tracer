@@ -122,7 +122,7 @@ struct NestedDielectricsInteriorStack
 	 * Returns false if that intersection should not be skipped
 	 */
 	HIPRT_HOST_DEVICE bool push(
-		int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
+		int material_index, int material_priority, int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material)
 	{
 		if (stack_position == NestedDielectricsStackSize - 1)
 			// The stack is already at the maximum

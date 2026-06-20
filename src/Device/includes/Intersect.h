@@ -265,8 +265,8 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
 		skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-			in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
-			in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
+			material_index, in_out_ray_payload.material.get_dielectric_priority(), in_out_ray_payload.volume_state.incident_mat_index,
+			in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material);
 
 		if (in_out_ray_payload.volume_state.inside_material)
 			// If we're traveling inside a volume, accumulating the distance for Beer's law
