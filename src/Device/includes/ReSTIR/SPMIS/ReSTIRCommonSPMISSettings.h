@@ -13,6 +13,17 @@ struct ReSTIRCommonSPMISSettings
 	// Screen space tile size
 	int tile_size = 32;
 
+	// Initial radius for finding a good neighboring cell
+	float initial_search_radius = 10.0f;
+	// How much the search radius grows by after each step
+	float neighboring_cell_search_radius_increment = 1.25f;
+	// How many iterations to search for a neighboring cell
+	int neighboring_cell_max_search_iterations = 8;
+	// When searching for a neighboring cell to reuse from, cells further away are downweighted by 1.0f / distance_to_center_pixel to improve variance (since we
+	// will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough so we're further scaling by a controllable
+	// factor. The lower this factor, the more closer cells are preferred. 0.0f turns off distance scaling.
+	float distance_scaling = 8.0f;
+
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
 

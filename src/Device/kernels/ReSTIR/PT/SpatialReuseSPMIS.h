@@ -133,24 +133,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	{
 		// Sampling one random neighbor with uniform selection over all reservoirs, zero importance or not, (N_c = 1, section 4.2 of "Stochastic Pairwise MIS
 		// for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026") and using that neighbor to estimate the MIS weight of the canonical sample
+
 		ReSTIRCommonSPMISSettings spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
 		unsigned int cell_start_index			 = spmis_settings.cell_offsets[reuse_cell_index];
 		unsigned int random_index				 = random_number_generator.random_index(reuse_cell_pixel_count);
 		unsigned int neighbor_pixel_index		 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 		float neighbor_selection_probability	 = 1.0f / reuse_cell_pixel_count;
 
-		float shift_mapping_jacobian		 = 1.0f;
-		float target_function_at_center		 = center_pixel_reservoir.sample.target_function;
-		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		float shift_mapping_jacobian	  = 1.0f;
+		float target_function_at_center	  = center_pixel_reservoir.sample.target_function;
+		int neighbor_reservoir_confidence = input_reservoir_buffer[neighbor_pixel_index].M;
 
-		float mis_weight =
-			mis_weight_function.get_resampling_MIS_weight_canonical(render_data,
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
+			render_data,
 
-																	neighbor_reservoir.M * non_canonical_confidence_scaling, center_pixel_reservoir.sample,
-																	center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
+			neighbor_reservoir_confidence * non_canonical_confidence_scaling, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			center_pixel_reservoir.sample.target_function,
 
-																	center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum,
-																	reused_neighbors_count, neighbor_selection_probability, random_number_generator);
+			center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability,
+			random_number_generator);
 
 		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
 													random_number_generator);

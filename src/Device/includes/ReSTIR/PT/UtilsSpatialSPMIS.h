@@ -16,10 +16,6 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
-#define SPATIAL_SPMIS_SEARCH_ITERATIONS		  12
-#define SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS	  20.0f
-#define SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT 1.25f
-
 /**
  * Searches for a cell to reuse from around the center pixel, with increasing search radius
  */
@@ -43,11 +39,12 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
 	// Variables for WRS, starting with the center cell selected
-	float weight_sum				 = center_cell_weight;
-	unsigned int selected_cell_index = center_cell_index;
+	float weight_sum						  = center_cell_weight;
+	unsigned int selected_cell_index		  = center_cell_index;
+	unsigned int selected_cell_confidence_sum = center_cell_weight;
 
-	float radius = SPATIAL_SPMIS_INITIAL_SEARCH_RADIUS;
-	for (int i = 0; i < SPATIAL_SPMIS_SEARCH_ITERATIONS; i++, radius *= SPATIAL_SPMIS_SEARCH_RADIUS_INCREMENT)
+	float radius = spmis_settings.initial_search_radius;
+	for (int i = 0; i < spmis_settings.neighboring_cell_max_search_iterations; i++, radius *= spmis_settings.neighboring_cell_search_radius_increment)
 	{
 		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
 		// This searches in a square for simplicity, not a disk but that's fine
@@ -80,17 +77,24 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 
 		unsigned int neighbor_cell_weight = spmis_settings.cell_confidence_sums[neighbor_cell_index];
 
-		weight_sum += neighbor_cell_weight;
-		if (rng() < neighbor_cell_weight / weight_sum)
+		float selection_weight = neighbor_cell_weight;
+		selection_weight *=
+			spmis_settings.distance_scaling > 0.0f ? 1.0f / (hippt::length(neighbor_coords - center_pixel_coords) / spmis_settings.distance_scaling) : 1.0f;
+
+		weight_sum += selection_weight;
+		if (rng() < selection_weight / weight_sum)
+		{
 			// Selecting this neighbor cell
-			selected_cell_index = neighbor_cell_index;
+			selected_cell_index			 = neighbor_cell_index;
+			selected_cell_confidence_sum = neighbor_cell_weight;
+		}
 	}
 
 	if (selected_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
-		out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[selected_cell_index];
+		out_neighbors_confidence_sum = selected_cell_confidence_sum;
 	else
 		out_neighbors_confidence_sum = 0;
 

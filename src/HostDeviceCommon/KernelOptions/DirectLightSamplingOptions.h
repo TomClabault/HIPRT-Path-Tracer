@@ -228,7 +228,7 @@
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
  * sample when importance sampling direct lighting contribution from the envmap
  */
-#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_FALSE
+#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to do bilinear filtering when sampling the envmap.

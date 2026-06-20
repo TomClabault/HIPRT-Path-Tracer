@@ -142,6 +142,11 @@ namespace hippt
 		return hippt::sqrt(hippt::dot(u, u));
 	}
 
+	__device__ static float length(int2_t u)
+	{
+		return hippt::sqrt(u.x * u.x + u.y * u.y);
+	}
+
 	__device__ static float length2(float3_t u)
 	{
 		return hippt::dot(u, u);
@@ -1096,6 +1101,11 @@ namespace hippt
 	static float length(float2_t u)
 	{
 		return hippt::sqrt(hippt::dot(u, u));
+	}
+
+	static float length(int2_t u)
+	{
+		return hippt::sqrt(u.x * u.x + u.y * u.y);
 	}
 
 	static constexpr float length2(float3_t u)

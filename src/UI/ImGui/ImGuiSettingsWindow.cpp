@@ -3924,6 +3924,56 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						m_render_window->set_render_dirty(true);
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Neighbor cell search");
+
+					if (ImGui::SliderFloat("Initial search radius", &spmis_settings.initial_search_radius, 0.0f, 32.0f))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderFloat("Search radius growth factor", &spmis_settings.neighboring_cell_search_radius_increment, 1.0f, 4.0f))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 1, 16))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderFloat("Distance scaling", &spmis_settings.distance_scaling, 0.0f, 8.0f))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::add_tooltip(
+						"When searching for a neighboring cell to reuse from, cells further away are downweighted by 1.0f / distance_to_center_pixel to "
+						"improve variance (since we will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough "
+						"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
+						"distance scaling.");
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::Text("Quick settings");
+					if (ImGui::Button("Good input"))
+					{
+						spmis_settings.tile_size								= 32;
+						spmis_settings.initial_search_radius					= 10.0f;
+						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+						spmis_settings.neighboring_cell_max_search_iterations	= 8;
+						spmis_settings.distance_scaling							= 8.0f;
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::add_tooltip(
+						"Preset of settings that works well for scenes that are not too difficult, where the output of the initial candidates pass is not too "
+						"sparse. Using this preset with input that is too sparse may result in correlations.");
+
+					ImGui::SameLine();
+					if (ImGui::Button("Sparse input"))
+					{
+						spmis_settings.tile_size								= 32;
+						spmis_settings.initial_search_radius					= 20.0f;
+						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+						spmis_settings.neighboring_cell_max_search_iterations	= 12;
+						// Distance scaling off
+						spmis_settings.distance_scaling = 0.0f;
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::add_tooltip(
+						"Preset of settings that works well for scenes that are difficult to render, where the output of the initial candidates pass is sparse "
+						"(only few pixels have contributing paths). Using this preset with input that is not sparse may result in increased variance and "
+						"better convergence could be achieved with the \"Good input\" preset.");
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Non-canonical sampling");
 					if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
 						m_render_window->set_render_dirty(true);
