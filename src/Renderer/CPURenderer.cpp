@@ -65,7 +65,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -81,8 +81,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 617
-#define DEBUG_PIXEL_Y 147
+#define DEBUG_PIXEL_X 187
+#define DEBUG_PIXEL_Y 374
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -106,7 +106,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 100
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -315,6 +315,10 @@ void CPURenderer::ReGIR_post_sample_update()
 
 void CPURenderer::ReSTIR_PT_post_sample_update()
 {
+#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+	return;
+#endif
+
 	unsigned int pixel_count = m_resolution.x * m_resolution.y;
 
 #pragma omp parallel for
