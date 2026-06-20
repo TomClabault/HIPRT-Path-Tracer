@@ -21,8 +21,6 @@
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define DO_DEBUG_CONDITION 0
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData render_data)
 #else
@@ -118,8 +116,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 					render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 			float mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
-				neighbor_reservoir.M * non_canonical_confidence_scaling, neighbor_reservoir.sample.target_function / shift_mapping_jacobian,
-				center_pixel_reservoir_confidence,
+				neighbor_reservoir.M * non_canonical_confidence_scaling,
+				shift_mapping_jacobian == 0.0f ? 0.0f : neighbor_reservoir.sample.target_function / shift_mapping_jacobian, center_pixel_reservoir_confidence,
 
 				target_function_at_center, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability);
 
