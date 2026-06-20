@@ -653,9 +653,6 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
 
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
-	/*if (nee_deferred_MIS_context.ris_reservoir.weight_sum == 0.0f)
-		return RISReservoir();*/
-
 	int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
 	int nb_bsdf_candidates	= render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 

@@ -6,6 +6,8 @@
 #ifndef DEVICE_BSDF_EVAL_INCIDENT_LIGHT_INFO_H
 #define DEVICE_BSDF_EVAL_INCIDENT_LIGHT_INFO_H
 
+#include "Device/includes/FixIntellisense.h"
+
 enum BSDFIncidentLightInfo
 {
 	// Default value: nothing is assumed about the incident light direction
@@ -48,5 +50,11 @@ enum SpecularDeltaReflectionSampled : int
 	SPECULAR_PEAK_NOT_SAMPLED = 0,
 	SPECULAR_PEAK_SAMPLED	  = 1,
 };
+
+HIPRT_DEVICE inline bool bsdf_incident_light_info_transmission_lobe(BSDFIncidentLightInfo incident_light_info)
+{
+	return (incident_light_info & BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE) != 0 ||
+		   (incident_light_info & BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE) != 0;
+}
 
 #endif

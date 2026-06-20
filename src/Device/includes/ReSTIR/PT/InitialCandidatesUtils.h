@@ -175,12 +175,16 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	// it needs to be emissive
 	if (!intersection_found)
 	{
-		if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
-			return;
-
-		// Envmap hit
 		float envmap_pdf_solid_angle;
-		ColorRGB32F envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
+		ColorRGB32F envmap_emission;
+		if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+			// Envmap hit
+			envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
+		else if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
+		{
+			envmap_emission		   = render_data.world_settings.uniform_light_color;
+			envmap_pdf_solid_angle = 1.0f;
+		}
 
 		if (last_bounce == 0)
 			ReSTIR_PT_rc_di_vertex_fill_information(sampled_bsdf_direction, make_float3(0.0f, 0.0f, 0.0f), -1, incident_light_info, restir_pt_initial_sample);
@@ -195,7 +199,12 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		restir_pt_initial_sample.target_function =
 			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
 
-		float nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf_solid_angle, nb_envmap_candidates);
+		float nee_mis_weight;
+		if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf_solid_angle, nb_envmap_candidates);
+		else
+			// The uniform sky isn't explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
+			nee_mis_weight = 1.0f;
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);

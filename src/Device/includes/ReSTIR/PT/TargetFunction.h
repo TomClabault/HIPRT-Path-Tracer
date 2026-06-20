@@ -9,6 +9,7 @@
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
+#include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -89,13 +90,14 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		float3_t shading_normal_sample_point	 = sample.rc_vertex_shading_normal.unpack();
 		float3_t geometric_normal_sample_point	 = sample.rc_vertex_geometric_normal.unpack();
 
-		// TODO Reproducing roughness accumulation
+		RayVolumeState ray_volume_state_copy = surface.ray_volume_state;
+		// TODO reproduce roughness accumumlation
 		// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
-		// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
+		ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, surface.material, sample.incident_light_info_at_visible_point,
+													   surface.primitive_index);
 		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
-											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point),
-											   // TODO proper update volume state for the sample point
-											   surface.ray_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
+											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
+											   const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
 
 		// TODO can we use a simple target function visible point only for perf?
 		float trash_pdf;
@@ -103,8 +105,6 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		sample_point_throughput				= sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 	}
 
-	// Note that this target function is not 100% accuracte, we would have to recompute the BSDF at the sample point with the new view direction to be fully
-	// accurate but that would be more expensive so we're not doing that, not perfect but much cheaper
 	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
 }
 

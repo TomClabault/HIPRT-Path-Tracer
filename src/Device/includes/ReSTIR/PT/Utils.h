@@ -73,4 +73,21 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	return false;
 }
 
+HIPRT_DEVICE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRenderData& render_data,
+																 RayVolumeState& volume_state,
+																 DeviceUnpackedEffectiveMaterial& material_at_visible_point,
+																 BSDFIncidentLightInfo incident_light_info_visible_point,
+																 int visible_point_primitive_index)
+{
+	if (bsdf_incident_light_info_transmission_lobe(incident_light_info_visible_point))
+	{
+		// If we refracted at the visible point, we need to push the material index of the visible point into the interior stack of the ray volume state
+		// so that the BSDF evaluation at the sample point is correct and has the expected ray volume state
+		int material_index = render_data.buffers.material_indices[visible_point_primitive_index];
+
+		volume_state.interior_stack.push(material_index, material_at_visible_point.get_dielectric_priority(), volume_state.incident_mat_index,
+										 volume_state.outgoing_mat_index, volume_state.inside_material);
+	}
+}
+
 #endif

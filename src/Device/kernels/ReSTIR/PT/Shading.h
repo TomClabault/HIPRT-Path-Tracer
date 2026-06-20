@@ -100,10 +100,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
 
 		ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
-		/*if (resampling_reservoir.sample.is_envmap_path())
-			camera_outgoing_radiance +=
-				path_tracing_miss_gather_envmap(render_data, first_hit_throughput, to_light_direction_visible_point, 0, pixel_index) * resampling_reservoir.UCW;
-		else */
 		if (!resampling_reservoir.sample.di_sample)
 		{
 			float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.rc_vertex);
@@ -111,9 +107,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			float3_t shading_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_shading_normal.unpack();
 			float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_geometric_normal.unpack();
 
+			ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_payload.volume_state, ray_payload.material,
+														   resampling_reservoir.sample.incident_light_info_at_visible_point, closest_hit_info.primitive_index);
 			// Reproducing roughness accumulation
 			ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
-			// TODO the ray volume state should be advanced/updated/pushed into here to reproduce the state that it's in at the sample point
 			BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
 												   resampling_reservoir.sample.incident_light_info_at_sample_point, ray_payload.volume_state, false,
 												   resampling_reservoir.sample.rc_vertex_material, 0.0f);
