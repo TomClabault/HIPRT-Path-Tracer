@@ -10,11 +10,9 @@
 
 template <template <typename> typename DataContainer>
 using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
-											   unsigned int,								   // All pixel hashes
-											   GenericAtomicType<unsigned int, DataContainer>, // All pixel hashes checksums
-											   unsigned int,								   // All pixel index in cell
-											   // TODO not needed
-											   unsigned int,									// Important pixel index in cell
+											   unsigned int,									// All pixel hashes
+											   GenericAtomicType<unsigned int, DataContainer>,	// All pixel hashes checksums
+											   unsigned int,									// All pixel index in cell
 											   unsigned int,									// Important pixel indices sorting values
 											   GenericAtomicType<unsigned int, DataContainer>,	// Cell pixels counters
 											   GenericAtomicType<unsigned int, DataContainer>,	// Cells non-zero reservoir counters
@@ -27,8 +25,6 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_ALL_PIXEL_HASHES,
 	RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS,
 	RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL,
-	// TODO not needed
-	RESTIR_SPMIS_IMPORTANT_PIXEL_INDEX_IN_CELL,
 	RESTIR_SPMIS_PIXEL_INDICES_SORTED,
 	RESTIR_SPMIS_CELL_COUNTERS,
 	RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS,
