@@ -808,10 +808,12 @@ void GPURenderer::update_render_data()
 			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
-			m_render_data.buffers.emissive_meshes_data = m_hiprt_scene.emissive_meshes_data.to_device();
-		m_render_data.buffers.triangles_areas							 = m_hiprt_scene.triangle_areas.get_device_pointer();
-		m_render_data.buffers.triangles_average_emissive_luminance		 = m_hiprt_scene.triangle_average_emissive_luminance.get_device_pointer();
-		m_render_data.buffers.triangles_average_emissive_power_luminance = m_hiprt_scene.triangle_average_emissive_power_luminance.get_device_pointer();
+		{
+			m_render_data.buffers.emissive_meshes_data						 = m_hiprt_scene.emissive_meshes_data.to_device();
+			m_render_data.buffers.triangles_average_emissive_luminance		 = m_hiprt_scene.triangle_average_emissive_luminance.get_device_pointer();
+			m_render_data.buffers.triangles_average_emissive_power_luminance = m_hiprt_scene.triangle_average_emissive_power_luminance.get_device_pointer();
+		}
+		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
 		if (m_hiprt_scene.texcoords_buffer.size() > 0)
