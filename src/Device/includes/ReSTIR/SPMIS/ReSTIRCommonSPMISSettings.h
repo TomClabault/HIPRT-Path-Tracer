@@ -26,10 +26,8 @@ struct ReSTIRCommonSPMISSettings
 
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
-	// If true, ris_neighbor_count is ignored and all non-zero pixels of the cell are RISed to get a non-canonical neighbor.
-	// TODO needs to be replaced by CDF sampling instead of RISing all neighbors (slow!)
-	bool ris_neighbor_count_all = false;
-	bool ris_neighbor_cdf		= true;
+	// If true, ris_neighbor_count is ignored and all non-zero pixels are importance sampled at once through inverse CDF sampling
+	bool ris_neighbor_cdf = true;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
 	bool do_non_canonical_confidence_adjustement = false;

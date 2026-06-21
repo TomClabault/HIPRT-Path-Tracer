@@ -128,29 +128,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 	float weight_sum			   = 0.0f;
 	float selected_target_function = 0.0f;
 	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-	if (spmis_settings.ris_neighbor_count_all)
-	{
-		for (int neighbor_index = 0; neighbor_index < non_zero_cell_size; neighbor_index++)
-		{
-			unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + neighbor_index];
-
-			ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
-
-			// RIS for selecting the neighbor
-			float source_pdf	  = 1.0f; // All pixels are going to through, no random sampling
-			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-			float mis_weight	  = 1.0f;
-			float weight		  = mis_weight * target_function / source_pdf;
-
-			weight_sum += weight;
-			if (rng() < weight / weight_sum)
-			{
-				selected_index			 = neighbor_pixel_index;
-				selected_target_function = target_function;
-			}
-		}
-	}
-	else if (spmis_settings.ris_neighbor_cdf)
+	if (spmis_settings.ris_neighbor_cdf)
 	{
 		CDFDevice cell_cdf;
 		cell_cdf.cdf  = spmis_settings.cell_cdfs + cell_start_index;
