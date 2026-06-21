@@ -37,6 +37,9 @@ struct ReSTIRCommonSPMISSettings
 
 	ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
 
+	int hash_normal_precision		  = 2;
+	float hash_normal_jitter_strength = 0.2f;
+
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
 	// If true, ris_neighbor_count is ignored and all non-zero pixels are importance sampled at once through inverse CDF sampling

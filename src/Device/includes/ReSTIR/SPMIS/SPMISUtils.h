@@ -13,7 +13,8 @@
 HIPRT_DEVICE unsigned int ReSTIR_spmis_hash(
 	ReSTIRCommonSPMISSettings& spmis_settings, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal, unsigned int& out_checksum)
 {
-	return screen_space_gbuffer_hash(pixel_x, pixel_y, spmis_settings.tile_size, shading_point, surface_normal, 0.2f, &out_checksum);
+	return screen_space_gbuffer_hash(pixel_x, pixel_y, spmis_settings.tile_size, shading_point, surface_normal, spmis_settings.hash_normal_precision,
+									 spmis_settings.hash_normal_jitter_strength, &out_checksum);
 }
 
 template <int ReSTIRVariant>

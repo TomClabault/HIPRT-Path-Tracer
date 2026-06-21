@@ -228,13 +228,15 @@ HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(int pixel_x,
 														   int screen_space_grid_cell_size,
 														   float3_t world_position,
 														   float3_t geometric_normal,
+														   unsigned int normal_hash_precision,
 														   float normal_jitter_strength,
 														   unsigned int* out_checksum = nullptr)
 {
 	unsigned int grid_coord_x = pixel_x / screen_space_grid_cell_size;
 	unsigned int grid_coord_y = pixel_y / screen_space_grid_cell_size;
 
-	unsigned int hashed_normal = hash_quantize_normal(jitter_normal_in_tangent_plane(geometric_normal, world_position, normal_jitter_strength), 2);
+	unsigned int hashed_normal =
+		hash_quantize_normal(jitter_normal_in_tangent_plane(geometric_normal, world_position, normal_jitter_strength), normal_hash_precision);
 
 	if (out_checksum != nullptr)
 		*out_checksum = h2_xxhash32(grid_coord_x + h2_xxhash32(grid_coord_y + h2_xxhash32(hashed_normal)));

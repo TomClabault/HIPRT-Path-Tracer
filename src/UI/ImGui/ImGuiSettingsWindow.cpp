@@ -1616,6 +1616,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					}
 
 					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_PT>();
+					draw_ReSTIR_PT_SPMIS_settings_panel();
 
 					if (ImGui::CollapsingHeader("Debug"))
 					{
@@ -3830,18 +3831,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 1, 16))
 					m_render_window->set_render_dirty(true);
 
-				bool using_spmis;
-				if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-					// SPMIS not implemented for ReSTIR DI
-					using_spmis = false;
-				else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-					// SPMIS not implemented for ReSTIR GI
-					using_spmis = false;
-				else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-					using_spmis = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-									  RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-								  global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-									  RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
+				bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean<ReSTIRVariant>();
 
 				ImGui::BeginDisabled(using_spmis);
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
@@ -3910,124 +3900,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 				if (using_spmis)
 					ImGuiRenderer::add_tooltip("Not compatible with SPMIS");
-				ImGui::EndDisabled();
-
-				bool disable_spmis_settings = !using_spmis || ReSTIRVariant != ReSTIR_VARIANT_PT;
-				ImGui::BeginDisabled(disable_spmis_settings);
-				if (ImGui::CollapsingHeader("SPMIS Settings") && !disable_spmis_settings)
-				{
-					ImGui::TreePush("SPMIS Settings tree");
-
-					ReSTIRCommonSPMISSettings& spmis_settings = render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
-
-					if (ImGui::SliderInt("Screen space cell size", &spmis_settings.tile_size, 1, 64))
-						m_render_window->set_render_dirty(true);
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::SeparatorText("Neighbor cell search");
-
-					if (ImGui::SliderFloat("Initial search radius", &spmis_settings.initial_search_radius, 0.0f, 32.0f))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderFloat("Search radius growth factor", &spmis_settings.neighboring_cell_search_radius_increment, 1.0f, 4.0f))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 1, 16))
-						m_render_window->set_render_dirty(true);
-					ImGui::BeginDisabled(spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection);
-					if (ImGui::SliderFloat("Distance scaling", &spmis_settings.distance_scaling, 0.0f, 8.0f))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::add_tooltip(
-						"When searching for a neighboring cell to reuse from, cells further away are downweighted by 1.0f / distance_to_center_pixel to "
-						"improve variance (since we will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough "
-						"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
-						"distance scaling.");
-					ImGui::EndDisabled();
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::Text("Quick settings");
-					if (ImGui::Button("Good input"))
-					{
-						spmis_settings.tile_size								= 32;
-						spmis_settings.initial_search_radius					= 10.0f;
-						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
-						spmis_settings.neighboring_cell_max_search_iterations	= 8;
-						spmis_settings.distance_scaling							= 8.0f;
-
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::add_tooltip(
-						"Preset of settings that works well for scenes that are not too difficult, where the output of the initial candidates pass is not too "
-						"sparse. Using this preset with input that is too sparse may result in correlations.");
-
-					ImGui::SameLine();
-					if (ImGui::Button("In-between"))
-					{
-						spmis_settings.tile_size								= 32;
-						spmis_settings.initial_search_radius					= 10.0f;
-						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
-						spmis_settings.neighboring_cell_max_search_iterations	= 10;
-						// Distance scaling off
-						spmis_settings.distance_scaling = 16.0f;
-
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::add_tooltip("In-between good input and sparse input.");
-
-					ImGui::SameLine();
-					if (ImGui::Button("Sparse input"))
-					{
-						spmis_settings.tile_size								= 32;
-						spmis_settings.initial_search_radius					= 20.0f;
-						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
-						spmis_settings.neighboring_cell_max_search_iterations	= 12;
-						// Distance scaling off
-						spmis_settings.distance_scaling = 0.0f;
-
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::add_tooltip(
-						"Preset of settings that works well for scenes that are difficult to render, where the output of the initial candidates pass is sparse "
-						"(only few pixels have contributing paths). Using this preset with input that is not sparse may result in increased variance and "
-						"better convergence could be achieved with the \"Good input\" preset.");
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					if (ImGui::Checkbox("Compatibility-guided selection",
-										&spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection))
-						m_render_window->set_render_dirty(true);
-					if (spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
-					{
-						ImGui::TreePush("Compatibility guided selection settings tree");
-
-						if (ImGui::SliderFloat("Solid angle omage", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
-							m_render_window->set_render_dirty(true);
-
-						ImGui::TreePop();
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::SeparatorText("Non-canonical sampling");
-					if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
-						m_render_window->set_render_dirty(true);
-
-					ImGui::BeginDisabled(spmis_settings.ris_neighbor_cdf);
-					if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
-						m_render_window->set_render_dirty(true);
-					ImGui::EndDisabled();
-					if (ImGui::Checkbox("CDF sampling of the cell", &spmis_settings.ris_neighbor_cdf))
-						m_render_window->set_render_dirty(true);
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::SeparatorText("Canonical sampling");
-					if (ImGui::SliderInt("Canonical estimation count", &spmis_settings.canonical_weight_estimation_count, 1, 8))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::add_tooltip("How many samples to take to estimate the MIS weight of the canonical sample. Section 4.2 of the paper.");
-
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
-				if (ReSTIRVariant != ReSTIR_VARIANT_PT)
-					ImGuiRenderer::add_tooltip("Disabled because not using ReSTIR PT");
-				else if (!using_spmis)
-					ImGuiRenderer::add_tooltip("Disabled because not using SPMIS");
 				ImGui::EndDisabled();
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4258,6 +4130,155 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 		ImGui::PopID();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
+}
+
+template <int ReSTIRVariant>
+bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_boolean()
+{
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	bool using_spmis = false;
+	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
+		// SPMIS not implemented for ReSTIR DI
+		using_spmis = false;
+	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+		// SPMIS not implemented for ReSTIR GI
+		using_spmis = false;
+	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+		using_spmis =
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
+				RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
+
+	return using_spmis;
+}
+
+void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean<ReSTIR_VARIANT_PT>();
+
+	bool disable_spmis_settings = !using_spmis;
+	ImGui::BeginDisabled(disable_spmis_settings);
+	if (ImGui::CollapsingHeader("SPMIS Settings") && !disable_spmis_settings)
+	{
+		ImGui::TreePush("SPMIS Settings tree");
+
+		ReSTIRCommonSPMISSettings& spmis_settings = render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+
+		ImGui::SeparatorText("Neighbor cell search");
+
+		if (ImGui::SliderFloat("Initial search radius", &spmis_settings.initial_search_radius, 0.0f, 32.0f))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderFloat("Search radius growth factor", &spmis_settings.neighboring_cell_search_radius_increment, 1.0f, 4.0f))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 1, 16))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::BeginDisabled(spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection);
+		if (ImGui::SliderFloat("Distance scaling", &spmis_settings.distance_scaling, 0.0f, 8.0f))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker(
+			"When searching for a neighboring cell to reuse from, cells further away are downweighted by 1.0f / distance_to_center_pixel to "
+			"improve variance (since we will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough "
+			"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
+			"distance scaling.");
+		ImGui::EndDisabled();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("Quick settings");
+		if (ImGui::Button("Good input"))
+		{
+			spmis_settings.tile_size								= 32;
+			spmis_settings.initial_search_radius					= 10.0f;
+			spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+			spmis_settings.neighboring_cell_max_search_iterations	= 8;
+			spmis_settings.distance_scaling							= 8.0f;
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::add_tooltip(
+			"Preset of settings that works well for scenes that are not too difficult, where the output of the initial candidates pass is not too "
+			"sparse. Using this preset with input that is too sparse may result in correlations.");
+
+		ImGui::SameLine();
+		if (ImGui::Button("In-between"))
+		{
+			spmis_settings.tile_size								= 32;
+			spmis_settings.initial_search_radius					= 10.0f;
+			spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+			spmis_settings.neighboring_cell_max_search_iterations	= 10;
+			// Distance scaling off
+			spmis_settings.distance_scaling = 16.0f;
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::add_tooltip("In-between good input and sparse input.");
+
+		ImGui::SameLine();
+		if (ImGui::Button("Sparse input"))
+		{
+			spmis_settings.tile_size								= 32;
+			spmis_settings.initial_search_radius					= 20.0f;
+			spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+			spmis_settings.neighboring_cell_max_search_iterations	= 12;
+			// Distance scaling off
+			spmis_settings.distance_scaling = 0.0f;
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::add_tooltip(
+			"Preset of settings that works well for scenes that are difficult to render, where the output of the initial candidates pass is sparse "
+			"(only few pixels have contributing paths). Using this preset with input that is not sparse may result in increased variance and "
+			"better convergence could be achieved with the \"Good input\" preset.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::Checkbox("Compatibility-guided selection", &spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection))
+			m_render_window->set_render_dirty(true);
+		if (spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
+		{
+			ImGui::TreePush("Compatibility guided selection settings tree");
+
+			if (ImGui::SliderFloat("Solid angle omage", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Non-canonical sampling");
+		if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::BeginDisabled(spmis_settings.ris_neighbor_cdf);
+		if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
+			m_render_window->set_render_dirty(true);
+		ImGui::EndDisabled();
+		if (ImGui::Checkbox("CDF sampling of the cell", &spmis_settings.ris_neighbor_cdf))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Canonical sampling");
+		if (ImGui::SliderInt("Canonical estimation count", &spmis_settings.canonical_weight_estimation_count, 1, 4))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::add_tooltip("How many samples to take to estimate the MIS weight of the canonical sample. Section 4.2 of the paper.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Hash grid settings");
+		if (ImGui::SliderInt("Screen space cell size", &spmis_settings.tile_size, 1, 32, "%d", ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Normal precision", &spmis_settings.hash_normal_precision, 1, 8))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderFloat("Normal jitter strength", &spmis_settings.hash_normal_jitter_strength, 0.0f, 0.5f))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+	if (!using_spmis)
+		ImGuiRenderer::add_tooltip("Disabled because not using SPMIS");
+	ImGui::EndDisabled();
 }
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()

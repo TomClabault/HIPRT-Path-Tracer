@@ -34,7 +34,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_PT_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_PT_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,

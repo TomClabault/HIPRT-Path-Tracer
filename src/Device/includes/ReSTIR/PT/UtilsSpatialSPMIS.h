@@ -62,7 +62,6 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	unsigned int selected_cell_confidence_sum = center_cell_weight;
 
 	float radius = spmis_settings.initial_search_radius;
-	// TODO test more cell taps
 	for (int i = 0; i < spmis_settings.neighboring_cell_max_search_iterations; i++, radius *= spmis_settings.neighboring_cell_search_radius_increment)
 	{
 		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
