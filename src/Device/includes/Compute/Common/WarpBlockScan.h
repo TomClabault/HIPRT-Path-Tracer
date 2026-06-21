@@ -109,13 +109,10 @@ HIPRT_DEVICE T block_prefix_scan_inclusive(T val, int thread_idx = threadIdx.x)
 template <int element_count, typename T, typename Operator = OperatorSum<T>>
 HIPRT_DEVICE T block_prefix_scan_exclusive(T val, int thread_idx = threadIdx.x)
 {
-	const unsigned int lane = thread_idx & 31;
+	T inclusive_scanned = block_prefix_scan_inclusive<element_count, T, Operator>(val, thread_idx);
+	T exclusive_scanned = inclusive_scanned - val;
 
-	// Shift right by one lane, insert identity at lane 0
-	T val_shifted = hippt::warp_shfl_up(val, 1);
-	val_shifted	  = lane == 0 ? 0 : val_shifted;
-
-	return block_prefix_scan_inclusive<element_count, T, Operator>(val_shifted, thread_idx);
+	return exclusive_scanned;
 }
 
 #endif
