@@ -91,19 +91,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 			unsigned int neighbor_pixel_index =
 				get_spmis_spatial_neighbor_pixel_index(render_data, reuse_cell_index, neighbor_selection_probability, random_number_generator);
 
-			int limit = 50;
-			if (neighbor_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-			{
-				if (center_pixel_coords.x < limit && 1 - render_data.render_settings.render_resolution.y - 1 - center_pixel_coords.y < limit)
-				{
-					// Debugging all variables
-					// printf("SPMIS: OUTING\n");
-				}
-
-				// Invalid neighbor
-				continue;
-			}
-
 			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 			float shift_mapping_jacobian = 1.0f;
@@ -129,22 +116,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 				shift_mapping_jacobian == 0.0f ? 0.0f : neighbor_reservoir.sample.target_function / shift_mapping_jacobian, center_pixel_reservoir_confidence,
 
 				target_function_at_center, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability);
-
-			{
-				float reservoir_resampling_weight = mis_weight * target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian;
-				if (center_pixel_coords.x < limit && 1 - render_data.render_settings.render_resolution.y - 1 - center_pixel_coords.y < limit &&
-					(reservoir_resampling_weight <= 0.0f || !hippt::is_finite(reservoir_resampling_weight)))
-				{
-					// Debugging all variables
-					printf("SPMIS: center pixel (%d, %d), neighbor pixel (%d, %d), neighbor M %d, neighbor UCW %f, neighbor target function %f, shift jacobian "
-						   "%f, target function at center %f, neighbors confidence sum %f, reused neighbors count %d, neighbor selection probability %f, mis "
-						   "weight %f\n",
-						   center_pixel_coords.x, center_pixel_coords.y, neighbor_pixel_index % render_data.render_settings.render_resolution.x,
-						   neighbor_pixel_index / render_data.render_settings.render_resolution.x, neighbor_reservoir.M, neighbor_reservoir.UCW,
-						   neighbor_reservoir.sample.target_function, shift_mapping_jacobian, target_function_at_center, neighbors_confidence_sum,
-						   reused_neighbors_count, neighbor_selection_probability, mis_weight);
-				}
-			}
 
 			spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
 														random_number_generator);

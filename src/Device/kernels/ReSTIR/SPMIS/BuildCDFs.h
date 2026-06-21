@@ -18,8 +18,7 @@ ReSTIR_SPMIS_BuildCDFs(unsigned int* cell_non_zero_reservoir_counters,
 					   unsigned int* pixel_indices_sorted,
 					   ReSTIRPTReservoir* input_reservoirs,
 					   float* out_cdfs,
-					   unsigned int size,
-					   unsigned int* DEBUGINDICES)
+					   unsigned int size)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned int>* cell_non_zero_reservoir_counters,
@@ -30,8 +29,7 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned int>* cell_non_zero_reservoir_
 							  ReSTIRPTReservoir* input_reservoirs,
 							  float* out_cdfs,
 							  [[maybe_unused]] unsigned int size			 = 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
-							  [[maybe_unused]] unsigned int cell_alive_index = 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
-							  unsigned int* DEBUGINDICES					 = nullptr)
+							  [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
 #endif
 {
 #ifndef __KERNELCC__
@@ -84,37 +82,6 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned int>* cell_non_zero_reservoir_
 	float pixel_importance = 0.0f;
 	if (index_in_cell < non_zero_count)
 	{
-		{
-			{
-				bool index_found = false;
-				if (DEBUGINDICES != nullptr)
-				{
-					for (int i = 0; i < 5; i++)
-						if (index == DEBUGINDICES[i])
-						{
-							index_found = true;
-							break;
-						}
-
-					if (index == DEBUGINDICES[0] - 1)
-						index_found = true;
-				}
-				if (index_found)
-				{
-					// Debugging all variables
-					unsigned int pixel_index		  = pixel_indices_sorted[index];
-					ReSTIRPTReservoir input_reservoir = input_reservoirs[pixel_index];
-					float pixel_importance_			  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.M;
-					printf("[DEBUG] tid.x = %u, bid.x = cell_alive_index = %u, cell_index = %u, cell_offset = %u, index_in_cell = %u, index = %u, "
-						   "non_zero_count = "
-						   "%u, "
-						   "pixel_index = %u, "
-						   "pixel_importance = %f\n",
-						   threadIdx.x, blockIdx.x, cell_index, cell_offset, index_in_cell, index, non_zero_count, pixel_index, pixel_importance_);
-				}
-			}
-		}
-
 		unsigned int pixel_index		  = pixel_indices_sorted[index];
 		ReSTIRPTReservoir input_reservoir = input_reservoirs[pixel_index];
 		pixel_importance				  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.M;
@@ -123,8 +90,6 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned int>* cell_non_zero_reservoir_
 	__syncthreads();
 
 	float prefix_scanned = block_prefix_scan_exclusive<1024>(pixel_importance);
-
-	__syncthreads();
 
 	__shared__ float weight_sum;
 	if (index_in_cell == non_zero_count - 1)

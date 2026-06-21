@@ -25,7 +25,6 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   unsigned int,								   // Cell alive list
 											   unsigned int,								   // Cell offsets
 											   GenericAtomicType<unsigned int, DataContainer>, // Cells confidence sums
-																							   // TODO fp16
 											   float>;										   // Cells CDFs
 
 enum ReSTIRSPMISDataHostBuffers
@@ -42,7 +41,6 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_CELL_ALIVE_LIST,
 	RESTIR_SPMIS_CELL_OFFSETS,
 	RESTIR_SPMIS_CELL_CONFIDENCE_SUMS,
-	// TODO fp16
 	RESTIR_SPMIS_CELL_CDFS,
 };
 

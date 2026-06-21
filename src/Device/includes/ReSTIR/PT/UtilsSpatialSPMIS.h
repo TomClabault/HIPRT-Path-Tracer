@@ -139,7 +139,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 			// RIS for selecting the neighbor
 			float source_pdf	  = 1.0f; // All pixels are going to through, no random sampling
 			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-			float mis_weight	  = 1.0f; // / spmis_settings.ris_neighbor_count;
+			float mis_weight	  = 1.0f;
 			float weight		  = mis_weight * target_function / source_pdf;
 
 			weight_sum += weight;
@@ -173,28 +173,6 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 		weight_sum += weight;
 		selected_index			 = neighbor_pixel_index;
 		selected_target_function = target_function;
-
-		{
-			if (weight_sum == 0.0f)
-			{
-				const uint32_t x		   = blockIdx.x * blockDim.x + threadIdx.x;
-				const uint32_t y		   = blockIdx.y * blockDim.y + threadIdx.y;
-				int2_t center_pixel_coords = make_int2(x, y);
-
-				int limit = 25;
-				if (center_pixel_coords.x < limit && 1 - render_data.render_settings.render_resolution.y - 1 - center_pixel_coords.y < limit)
-				{
-					// Debugging variables
-					printf("Weight sum 0: neighbor_pixel_index = %u, neighbor_cell_index = %u, neighbor_importance = %f, neighbor_importance_sum = %f, "
-						   "source_pdf = %f, target_function "
-						   "= %f, weight = %f, non_zero_cell_size: %u\n",
-						   neighbor_pixel_index, neighbor_cell_index, neighbor_importance, neighbor_importance_sum, source_pdf, target_function, weight,
-						   non_zero_cell_size);
-
-					render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = neighbor_cell_index;
-				}
-			}
-		}
 	}
 	else
 	{
