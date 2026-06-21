@@ -26,6 +26,7 @@ extern ImGuiLogger g_imgui_logger;
 // - GMoN Blend deactivating when moving camera
 
 // ******* TODO ReSTIR PT & refactor **********
+// - We have a precomputation CDF of luminance neighbors but can we precompute reuse cells / pixels somehow? Maybe brute force iterating could be fine?
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Duplication maps to reduce correlations
@@ -490,6 +491,7 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Neural visibility cache for envmap sampling?
 // - Can we do restir BSDF somehow? Sharing BSDF samples across neighbors, only BSDF samples and then use that into restir gi or whatever. Could be good for
 // layered BSDF where samping the BSDF is high-variance
 // - Another separate render graph for interactivity

@@ -10,15 +10,23 @@
 
 template <template <typename> typename DataContainer>
 using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
-											   unsigned int,									// All pixel hashes
-											   GenericAtomicType<unsigned int, DataContainer>,	// All pixel hashes checksums
-											   unsigned int,									// All pixel index in cell
-											   unsigned int,									// Important pixel indices sorting values
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cell pixels counters
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cells non-zero reservoir counters
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cell global offset counter
-											   unsigned int,									// Cell offsets
-											   GenericAtomicType<unsigned int, DataContainer>>; // Cells confidence sums
+											   unsigned int,								   // All pixel hashes
+											   GenericAtomicType<unsigned int, DataContainer>, // All pixel hashes checksums
+											   unsigned int,								   // All pixel index in cell
+											   unsigned int,								   // Important pixel indices sorting values
+											   // TODO short int
+											   GenericAtomicType<unsigned int, DataContainer>, // Cell pixels counters
+																							   // TODO short int
+											   GenericAtomicType<unsigned int, DataContainer>, // Cells non-zero reservoir counters
+											   GenericAtomicType<unsigned int, DataContainer>, // Cell global offset counter
+											   GenericAtomicType<unsigned int, DataContainer>, // Cell total count counter
+																							   // TODO uchar
+											   GenericAtomicType<unsigned int, DataContainer>, // Cell occupied
+											   unsigned int,								   // Cell alive list
+											   unsigned int,								   // Cell offsets
+											   GenericAtomicType<unsigned int, DataContainer>, // Cells confidence sums
+																							   // TODO fp16
+											   float>;										   // Cells CDFs
 
 enum ReSTIRSPMISDataHostBuffers
 {
@@ -29,8 +37,13 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_CELL_COUNTERS,
 	RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS,
 	RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER,
+	RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER,
+	RESTIR_SPMIS_CELL_OCCUPIED,
+	RESTIR_SPMIS_CELL_ALIVE_LIST,
 	RESTIR_SPMIS_CELL_OFFSETS,
 	RESTIR_SPMIS_CELL_CONFIDENCE_SUMS,
+	// TODO fp16
+	RESTIR_SPMIS_CELL_CDFS,
 };
 
 template <template <typename> typename DataContainer>
@@ -38,11 +51,23 @@ struct ReSTIRSPMISDataHost
 {
 	void resize(unsigned int width, unsigned int height)
 	{
-		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER });
+		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER });
+
 		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
+		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>(1);
+
+		reset();
 	}
 
-	void reset() {}
+	void reset()
+	{
+		if (size() == 0)
+			return;
+
+		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_OCCUPIED>(0);
+		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>(0);
+		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_ALIVE_LIST>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	}
 
 	bool free()
 	{
@@ -79,9 +104,13 @@ struct ReSTIRSPMISDataHost
 
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters			   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets					   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter	   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_total_count_counter		   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_occupied					   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_alive_list				   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets					   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums			   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs						   = nullptr;
 
 			return;
 		}
@@ -102,10 +131,18 @@ struct ReSTIRSPMISDataHost
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_total_count_counter =
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_occupied =
+			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_OCCUPIED>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_alive_list =
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_ALIVE_LIST>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs =
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDFS>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;

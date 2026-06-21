@@ -21,12 +21,10 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 {
 	ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIRVariant>(render_data);
 
-	unsigned int pixel_index		= pixel_x + pixel_y * render_data.render_settings.render_resolution.x;
-	unsigned int current_hash_value = spmis_settings.all_pixel_hashes[pixel_index];
-
-	unsigned int total_num_cells = spmis_settings.pixel_hashes_count;
+	unsigned int pixel_index = pixel_x + pixel_y * render_data.render_settings.render_resolution.x;
 
 	unsigned int checksum;
+	unsigned int total_num_cells = spmis_settings.pixel_hashes_count;
 	unsigned int hash_cell_index = ReSTIR_spmis_hash(spmis_settings, pixel_x, pixel_y, shading_point, surface_normal, checksum) % total_num_cells;
 	if (!HashGrid::resolve_collision<ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps, true>(
 			spmis_settings.all_pixel_hashes_checksums, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y,
@@ -37,6 +35,11 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 		return;
 	}
 
+	unsigned int cell_not_occupied = hippt::atomic_compare_exchange(&spmis_settings.cell_occupied[hash_cell_index], 0u, 1u) == 0;
+	unsigned int cell_alive_index  = hippt::atomic_fetch_add(spmis_settings.cell_total_count_counter, cell_not_occupied);
+	if (cell_not_occupied)
+		// This is a new cell
+		spmis_settings.cell_alive_list[cell_alive_index] = hash_cell_index;
 	spmis_settings.all_pixel_hashes[pixel_index] = hash_cell_index;
 }
 

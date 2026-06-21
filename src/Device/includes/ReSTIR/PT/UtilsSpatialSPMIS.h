@@ -128,24 +128,95 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 	float weight_sum			   = 0.0f;
 	float selected_target_function = 0.0f;
 	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-	for (int i = 0; i < spmis_settings.ris_neighbor_count; i++)
+	if (spmis_settings.ris_neighbor_count_all)
 	{
-		unsigned int random_index		  = rng.random_index(non_zero_cell_size);
+		for (int neighbor_index = 0; neighbor_index < non_zero_cell_size; neighbor_index++)
+		{
+			unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + neighbor_index];
+
+			ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
+
+			// RIS for selecting the neighbor
+			float source_pdf	  = 1.0f; // All pixels are going to through, no random sampling
+			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+			float mis_weight	  = 1.0f; // / spmis_settings.ris_neighbor_count;
+			float weight		  = mis_weight * target_function / source_pdf;
+
+			weight_sum += weight;
+			if (rng() < weight / weight_sum)
+			{
+				selected_index			 = neighbor_pixel_index;
+				selected_target_function = target_function;
+			}
+		}
+	}
+	else if (spmis_settings.ris_neighbor_cdf)
+	{
+		CDFDevice cell_cdf;
+		cell_cdf.cdf  = spmis_settings.cell_cdfs + cell_start_index;
+		cell_cdf.size = non_zero_cell_size;
+
+		unsigned int random_index		  = cell_cdf.sample(rng);
 		unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 
 		ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
 
 		// RIS for selecting the neighbor
-		float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
-		float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-		float mis_weight	  = 1.0f / spmis_settings.ris_neighbor_count;
-		float weight		  = mis_weight * target_function / source_pdf;
+		float neighbor_importance = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+		// The total sum weight is stored in cdf[0] by the build cdf kernel
+		float neighbor_importance_sum = spmis_settings.cell_cdfs[cell_start_index];
+		float source_pdf			  = neighbor_importance / neighbor_importance_sum; // Importance sampling of the pixel in the cell
+		float target_function		  = neighbor_importance;
+		float mis_weight			  = 1.0f;
+		float weight				  = mis_weight * target_function / source_pdf;
 
 		weight_sum += weight;
-		if (rng() < weight / weight_sum)
+		selected_index			 = neighbor_pixel_index;
+		selected_target_function = target_function;
+
 		{
-			selected_index			 = neighbor_pixel_index;
-			selected_target_function = target_function;
+			if (weight_sum == 0.0f)
+			{
+				const uint32_t x		   = blockIdx.x * blockDim.x + threadIdx.x;
+				const uint32_t y		   = blockIdx.y * blockDim.y + threadIdx.y;
+				int2_t center_pixel_coords = make_int2(x, y);
+
+				int limit = 25;
+				if (center_pixel_coords.x < limit && 1 - render_data.render_settings.render_resolution.y - 1 - center_pixel_coords.y < limit)
+				{
+					// Debugging variables
+					printf("Weight sum 0: neighbor_pixel_index = %u, neighbor_cell_index = %u, neighbor_importance = %f, neighbor_importance_sum = %f, "
+						   "source_pdf = %f, target_function "
+						   "= %f, weight = %f, non_zero_cell_size: %u\n",
+						   neighbor_pixel_index, neighbor_cell_index, neighbor_importance, neighbor_importance_sum, source_pdf, target_function, weight,
+						   non_zero_cell_size);
+
+					render_data.render_settings.DEBUG_BUFFER_ULL_1[0] = neighbor_cell_index;
+				}
+			}
+		}
+	}
+	else
+	{
+		for (int i = 0; i < spmis_settings.ris_neighbor_count; i++)
+		{
+			unsigned int random_index		  = rng.random_index(non_zero_cell_size);
+			unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
+
+			ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
+
+			// RIS for selecting the neighbor
+			float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
+			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+			float mis_weight	  = 1.0f / spmis_settings.ris_neighbor_count;
+			float weight		  = mis_weight * target_function / source_pdf;
+
+			weight_sum += weight;
+			if (rng() < weight / weight_sum)
+			{
+				selected_index			 = neighbor_pixel_index;
+				selected_target_function = target_function;
+			}
 		}
 	}
 

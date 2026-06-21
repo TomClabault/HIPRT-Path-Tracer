@@ -5,7 +5,7 @@ RT_output*.png
 .vscode
 .vs
 
-build*
+build/
 data/OBJs/*.blend
 data/OBJs/*.obj
 data/OBJs/*.mtl

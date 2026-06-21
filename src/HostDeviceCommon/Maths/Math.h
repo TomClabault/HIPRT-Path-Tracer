@@ -770,6 +770,40 @@ namespace hippt
 		return __int_as_float(atomicCAS((int*)p, __float_as_int(cmp), __float_as_int(val)));
 	}
 
+	// Source - https://stackoverflow.com/a/67541604
+	// Posted by WilliamKF
+	// Retrieved 2026-06-21, License - CC BY-SA 4.0
+	template <>
+	__device__ uint8_t atomic_compare_exchange(uint8_t* address, const uint8_t expected, const uint8_t value)
+	{
+		// Determine where in a byte-aligned 32-bit range our address of 8 bits occurs.
+		const uint8_t longAddressModulo = reinterpret_cast<size_t>(address) & 0x3;
+		// Determine the base address of the byte-aligned 32-bit range that contains our address of 8 bits.
+		uint32_t* baseAddress			   = reinterpret_cast<uint32_t*>(address - longAddressModulo);
+		constexpr uint32_t byteSelection[] = { 0x3214, 0x3240, 0x3410, 0x4210 }; // The byte position we work on is '4'.
+		const uint32_t byteSelector		   = byteSelection[longAddressModulo];
+		const uint32_t longExpected		   = expected;
+		const uint32_t longValue		   = value;
+		uint32_t longOldValue			   = *baseAddress;
+		uint32_t longAssumed;
+		uint8_t oldValue;
+
+		do
+		{
+			// Select bytes from the old value and new value to construct a 32-bit value to use.
+			const uint32_t replacement = __byte_perm(longOldValue, longValue, byteSelector);
+			const uint32_t comparison  = __byte_perm(longOldValue, longExpected, byteSelector);
+
+			longAssumed = longOldValue;
+			// Use 32-bit atomicCAS() to try and set the 8-bits we care about.
+			longOldValue = atomicCAS(baseAddress, comparison, replacement);
+			// Grab the 8-bit portion we care about from the old value at address.
+			oldValue = (longOldValue >> (8 * longAddressModulo)) & 0xFF;
+		} while (expected == oldValue && longAssumed != longOldValue); // Repeat until other three 8-bit values stabilize.
+
+		return oldValue;
+	}
+
 	template <typename T>
 	__device__ static T atomic_compare_exchange_gpu(T* address, T expected, T new_value)
 	{

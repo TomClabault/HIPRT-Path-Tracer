@@ -34,6 +34,9 @@ inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 	spmis_settings.cell_non_zero_reservoir_counters[index] = 0;
 	spmis_settings.cell_offsets[index]					   = 0;
 	spmis_settings.cell_confidence_sums[index]			   = 0;
+	*spmis_settings.cell_total_count_counter			   = 0;
+	spmis_settings.cell_occupied[index]					   = 0;
+	spmis_settings.cell_alive_list[index]				   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 }
 
 #endif

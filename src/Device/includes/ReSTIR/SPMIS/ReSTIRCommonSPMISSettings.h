@@ -26,6 +26,10 @@ struct ReSTIRCommonSPMISSettings
 
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
+	// If true, ris_neighbor_count is ignored and all non-zero pixels of the cell are RISed to get a non-canonical neighbor.
+	// TODO needs to be replaced by CDF sampling instead of RISing all neighbors (slow!)
+	bool ris_neighbor_count_all = false;
+	bool ris_neighbor_cdf		= true;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
 	bool do_non_canonical_confidence_adjustement = false;
@@ -57,8 +61,20 @@ struct ReSTIRCommonSPMISSettings
 	unsigned int* cell_offsets = nullptr;
 	// A global counter used to compute the offsets of each cell
 	AtomicType<unsigned int>* cell_global_offset_counter = nullptr;
+	// Counter of how many different cells have at least one pixel in them. This is used to know how many cells we need to build CDFs for.
+	AtomicType<unsigned int>* cell_total_count_counter = nullptr;
+	// For each cell, whether or not it has at least one pixel in it. This is used to increment the cell total count counter without counting multiple times the
+	// same cell
+	AtomicType<unsigned int>* cell_occupied = nullptr;
+	// A list of size cell_total_count_counter that contains the indices of all cells that have at least one pixel in them. This is used to build CDFs for all
+	// cells that have at least one pixel in them.
+	unsigned int* cell_alive_list = nullptr;
 	// Sum of the confidence weights of all pixels of a given cell
 	AtomicType<unsigned int>* cell_confidence_sums = nullptr;
+	// CDF built on the important pixels of each cell to be able to sample a pixel from a cell according to its confidence weight directly without RISing over
+	// everything
+	// TODO fp16
+	float* cell_cdfs = nullptr;
 };
 
 #endif

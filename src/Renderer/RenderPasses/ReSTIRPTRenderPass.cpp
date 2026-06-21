@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReSTIRPTRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRRenderPassCommon.h"
@@ -22,6 +23,7 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			= "ReSTIR PT SPMIS Count Cells";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		= "ReSTIR PT SPMIS Compute Offsets";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				= "ReSTIR PT SPMIS Sort";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			= "ReSTIR PT SPMIS Build CDFs";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },
@@ -35,6 +37,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, "ReSTIR_SPMIS_CountCells" },
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, "ReSTIR_SPMIS_ComputeOffsets" },
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, "ReSTIR_SPMIS_Sort" },
+	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, "ReSTIR_SPMIS_BuildCDFs" }
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FILES = {
@@ -48,7 +51,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCellsData.h" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/CountCells.h" },
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeOffsets.h" },
-	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/Sort.h" }
+	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/Sort.h" },
+	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildCDFs.h" }
 };
 
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
@@ -172,6 +176,14 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->set_kernel_function_name(
 		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID));
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->synchronize_options_with(m_compiler_options);
+
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->set_kernel_file_path(
+		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->set_kernel_function_name(
+		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 }
 
 void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -234,6 +246,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 			recompiled = true;
 		}
@@ -369,7 +382,9 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_start, m_renderer->get_main_stream()));
 
-	unsigned int num_cells			   = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count;
+	const ReSTIRCommonSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+
+	unsigned int num_cells			   = spmis_settings.pixel_hashes_count;
 	void* reset_counters_launch_args[] = { &render_data, &num_cells };
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
 																								   reset_counters_launch_args, m_renderer->get_main_stream());
@@ -405,6 +420,133 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 	void* sort_launch_args[] = { &all_pixels_hashes, &all_pixels_index_in_cell, &cell_offsets, &pixel_indices_sorted, &num_cells };
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, sort_launch_args,
 																					   m_renderer->get_main_stream());
+
+	float* cell_cdfs			   = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().get_device_pointer();
+	unsigned int* cell_alive_list  = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
+	unsigned int* DEBUGNOPE		   = nullptr;
+	void* build_cdfs_launch_args[] = {
+		&cell_non_zero_reservoir_counters, &cell_offsets, &cell_alive_list, &pixel_indices_sorted, &input_reservoirs, &cell_cdfs, &num_cells, &DEBUGNOPE
+	};
+	unsigned int cell_size			 = spmis_settings.tile_size;
+	unsigned int dispatch_block_size = cell_size * cell_size;
+	unsigned int cell_alive_count =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+	// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1, build_cdfs_launch_args,
+																							 m_renderer->get_main_stream());
+
+	std::vector<float> cell_cdfs_host = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().download_data();
+
+	std::vector<unsigned int> pixel_indices_sorted_host =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_PIXEL_INDICES_SORTED>().download_data();
+	std::vector<ReSTIRPTReservoir> reservoirs = OrochiBuffer<ReSTIRPTReservoir>::download_data(
+		input_reservoirs, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y);
+	std::ofstream pixel_indices_sorted_file("pixel_indices_sorted.txt");
+
+	std::vector<unsigned int> cell_non_zero_counters_host =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().download_data();
+	std::vector<unsigned int> cell_offsets_host = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().download_data();
+
+	std::vector<unsigned int> cell_alive_list_host =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().download_data();
+
+	std::vector<float> reference_cdfs(cell_cdfs_host.size(), 0.0f);
+	/*ReSTIR_SPMIS_BuildCDFs(cell_non_zero_counters_host.data(), cell_offsets_host.data(), cell_alive_list_host.data(), cell_alive_count,
+						   pixel_indices_sorted_host.data(), reservoirs.data(), reference_cdfs.data());*/
+	for (int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
+	{
+		unsigned int cell_index		= cell_alive_list_host[cell_alive_index];
+		unsigned int non_zero_count = cell_non_zero_counters_host[cell_index];
+		if (non_zero_count > 0)
+		{
+			unsigned int cell_offset = cell_offsets_host[cell_index];
+			float running_sum		 = 0.0f;
+
+			for (unsigned int i = 0; i < non_zero_count; i++)
+			{
+				unsigned int pixel_index = pixel_indices_sorted_host[cell_offset + i];
+
+				reference_cdfs[cell_offset + i] = running_sum;
+				running_sum += reservoirs[pixel_index].UCW * reservoirs[pixel_index].sample.target_function * reservoirs[pixel_index].M;
+			}
+
+			// Normalization
+			for (unsigned int i = 0; i < non_zero_count; i++)
+				reference_cdfs[cell_offset + i] /= running_sum;
+		}
+	}
+
+	// Check reference against GPU
+	{
+		std::vector<unsigned int> debug_indices;
+		for (int i = 0; i < cell_cdfs_host.size(); i++)
+		{
+			if (std::abs(reference_cdfs[i] - cell_cdfs_host[i]) > 5e-2f)
+			{
+				if (reference_cdfs[i] == 0.0f && cell_cdfs_host[i] > 0.0f)
+					continue;
+
+				std::cerr << "CDF mismatch at index " << i << ": reference = " << reference_cdfs[i] << ", GPU = " << cell_cdfs_host[i];
+				std::cerr << std::endl;
+
+				debug_indices.push_back(i);
+				if (debug_indices.size() == 5)
+					break;
+			}
+		}
+
+		if (debug_indices.size() > 0)
+		{
+			while (debug_indices.size() < 5)
+				debug_indices.push_back(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
+			OrochiBuffer<unsigned int> debug_indices_GPU_buffer(debug_indices);
+			unsigned int* debug_indices_GPU = debug_indices_GPU_buffer.get_device_pointer();
+
+			void* build_cdfs_launch_args[] = { &cell_non_zero_reservoir_counters,
+											   &cell_offsets,
+											   &cell_alive_list,
+											   &pixel_indices_sorted,
+											   &input_reservoirs,
+											   &cell_cdfs,
+											   &num_cells,
+											   &debug_indices_GPU };
+			// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1,
+																									 build_cdfs_launch_args, m_renderer->get_main_stream());
+			oroStreamSynchronize(m_renderer->get_main_stream());
+			std::cerr << std::endl;
+		}
+	}
+
+	// Sanity check importance sum in CDF 0
+	{
+		std::vector<float> cell_cdfs_gpu_downloaded =
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().download_data();
+		for (int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
+		{
+			unsigned int cell_index		= cell_alive_list_host[cell_alive_index];
+			unsigned int cell_offset	= cell_offsets_host[cell_index];
+			float importance_sum		= cell_cdfs_gpu_downloaded[cell_offset];
+			unsigned int non_zero_count = cell_non_zero_counters_host[cell_index];
+
+			if (importance_sum <= 0.0f && non_zero_count > 0)
+			{
+				std::cerr << "Warning: Cell " << cell_index << " has zero importance sum in CDF 0. Non-zero count = " << non_zero_count << std::endl;
+
+				break;
+			}
+		}
+	}
+
+	for (unsigned int i = 0; i < pixel_indices_sorted_host.size(); i++)
+	{
+		unsigned int pixel_index = pixel_indices_sorted_host[i];
+		float cdf				 = cell_cdfs_host[i];
+		float cdf_reference		 = reference_cdfs[i];
+		pixel_indices_sorted_file << std::fixed << std::setprecision(6) << "[" << cdf_reference << "] | " << cdf << " | " << pixel_index << ": "
+								  << reservoirs[pixel_index].UCW * reservoirs[pixel_index].sample.target_function << std::endl;
+	}
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_stop, m_renderer->get_main_stream()));
 	m_spmis_sorting_events_recorded = true;
@@ -504,6 +646,44 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->launch_asynchronous(
 				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
 				m_renderer->get_main_stream());
+
+			{
+				std::vector<unsigned long long int> debug = OrochiBuffer<unsigned long long int>::download_data(
+					reinterpret_cast<unsigned long long int*>(render_data.render_settings.DEBUG_BUFFER_ULL_1), 1024);
+
+				std::vector<unsigned int> cell_offsets_host =
+					m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().download_data();
+				std::vector<float> cell_cdf_host = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().download_data();
+				std::vector<unsigned int> non_zero_reservoirs_count =
+					m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().download_data();
+				std::vector<unsigned int> cell_alive_list =
+					m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().download_data();
+				unsigned int cell_alive_count =
+					m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+				unsigned int cell_index = debug[0];
+				if (cell_index != 4242424242)
+				{
+					unsigned int cell_offset	= cell_offsets_host[cell_index];
+					unsigned int non_zero_count = non_zero_reservoirs_count[cell_index];
+					float cdf_value				= cell_cdf_host[cell_offset];
+
+					bool cell_found = false;
+					for (int i = 0; i < cell_alive_count; i++)
+					{
+						if (cell_alive_list[i] == cell_index)
+						{
+							cell_found = true;
+							break;
+						}
+					}
+
+					std::cerr << "Debug: Cell index = " << cell_index << ", cell offset = " << cell_offset << ", CDF value = " << cdf_value;
+					std::cerr << ", Non-zero count = " << non_zero_count;
+					std::cerr << ", Cell found = " << (cell_found ? "true" : "false");
+					std::cerr << std::endl;
+					std::cerr << std::endl;
+				}
+			}
 		}
 		else
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(

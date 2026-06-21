@@ -35,6 +35,7 @@
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMIS.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
+#include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
 #include "Device/kernels/ReSTIR/SPMIS/ComputeOffsets.h"
 #include "Device/kernels/ReSTIR/SPMIS/CountCells.h"
 #include "Device/kernels/ReSTIR/SPMIS/ResetBuffers.h"
@@ -81,8 +82,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 887
-#define DEBUG_PIXEL_Y 312
+#define DEBUG_PIXEL_X 306
+#define DEBUG_PIXEL_Y 273
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -1558,7 +1559,11 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 		ReSTIR_SPMIS_Sort(all_pixels_hashes, pixels_index_in_cell, cell_offsets, pixel_indices_sorted, num_cells, i);
 	}
 
-	// TODO compute only valid count
+	unsigned int* cell_alive_list = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().data();
+	unsigned int cell_alive_count = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().at(0);
+	float* cell_cdfs			  = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().data();
+	ReSTIR_SPMIS_BuildCDFs(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
+						   cell_cdfs);
 }
 
 void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()

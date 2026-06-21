@@ -21,7 +21,14 @@ struct CDFDevice
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
-			if (hippt::ldg_load(cdf + mid) < random_value)
+			float cdf_value;
+			if (mid == 0)
+				// This shortcut avoids one memory load and also allows storing whatever data we want in cdf[0] since it will never be used (such as the total
+				// sum of the weights for example)
+				cdf_value = 0.0f;
+			else
+				cdf_value = cdf[mid];
+			if (cdf_value < random_value)
 				left = mid + 1;
 			else
 				right = mid;
@@ -49,7 +56,14 @@ struct CDFDeviceU16
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
-			if (hippt::ldg_load(cdf_u16 + mid) < random_value)
+			unsigned short int cdf_value;
+			if (mid == 0)
+				// This shortcut avoids one memory load and also allows storing whatever data we want in cdf_u16[0] since it will never be used (such as the
+				// total sum of the weights for example)
+				cdf_value = 0;
+			else
+				cdf_value = cdf_u16[mid];
+			if (cdf_value < random_value)
 				left = mid + 1;
 			else
 				right = mid;

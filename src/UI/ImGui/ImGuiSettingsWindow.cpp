@@ -3978,7 +3978,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
 						m_render_window->set_render_dirty(true);
 
+					ImGui::BeginDisabled(spmis_settings.ris_neighbor_count_all);
 					if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
+						m_render_window->set_render_dirty(true);
+					ImGui::EndDisabled();
+					if (ImGui::Checkbox("All pixels of the cell", &spmis_settings.ris_neighbor_count_all))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::Checkbox("CDF sampling of the cell", &spmis_settings.ris_neighbor_cdf))
 						m_render_window->set_render_dirty(true);
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
