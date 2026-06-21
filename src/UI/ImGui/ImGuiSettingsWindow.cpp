@@ -3957,6 +3957,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"sparse. Using this preset with input that is too sparse may result in correlations.");
 
 					ImGui::SameLine();
+					if (ImGui::Button("In-between"))
+					{
+						spmis_settings.tile_size								= 32;
+						spmis_settings.initial_search_radius					= 10.0f;
+						spmis_settings.neighboring_cell_search_radius_increment = 1.25f;
+						spmis_settings.neighboring_cell_max_search_iterations	= 10;
+						// Distance scaling off
+						spmis_settings.distance_scaling = 16.0f;
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::add_tooltip("In-between good input and sparse input.");
+
+					ImGui::SameLine();
 					if (ImGui::Button("Sparse input"))
 					{
 						spmis_settings.tile_size								= 32;
