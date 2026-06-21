@@ -461,6 +461,13 @@ namespace hippt
 		return x4 * x2;
 	}
 
+	__device__ static constexpr float pow_8(float x)
+	{
+		float x2 = x * x;
+		float x4 = x2 * x2;
+		return x4 * x4;
+	}
+
 	__device__ static float intrin_pow(float x, float y)
 	{
 		return __powf(x, y);
@@ -1441,6 +1448,13 @@ namespace hippt
 		float x2 = x * x;
 		float x4 = x2 * x2;
 		return x4 * x2;
+	}
+
+	static constexpr float pow_8(float x)
+	{
+		float x2 = x * x;
+		float x4 = x2 * x2;
+		return x4 * x4;
 	}
 
 	static float intrin_pow(float x, float y)

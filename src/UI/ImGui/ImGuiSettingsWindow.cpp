@@ -3932,6 +3932,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 1, 16))
 						m_render_window->set_render_dirty(true);
+					ImGui::BeginDisabled(spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection);
 					if (ImGui::SliderFloat("Distance scaling", &spmis_settings.distance_scaling, 0.0f, 8.0f))
 						m_render_window->set_render_dirty(true);
 					ImGuiRenderer::add_tooltip(
@@ -3939,6 +3940,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"improve variance (since we will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough "
 						"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
 						"distance scaling.");
+					ImGui::EndDisabled();
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::Text("Quick settings");
@@ -3986,6 +3988,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"Preset of settings that works well for scenes that are difficult to render, where the output of the initial candidates pass is sparse "
 						"(only few pixels have contributing paths). Using this preset with input that is not sparse may result in increased variance and "
 						"better convergence could be achieved with the \"Good input\" preset.");
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					if (ImGui::Checkbox("Compatibility-guided selection",
+										&spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection))
+						m_render_window->set_render_dirty(true);
+					if (spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
+					{
+						ImGui::TreePush("Compatibility guided selection settings tree");
+
+						if (ImGui::SliderFloat("Solid angle omage", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop();
+					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Non-canonical sampling");

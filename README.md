@@ -105,6 +105,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Pairwise symmetric & asymmetric ratio MIS weights [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 		- Stochastic pairwise MIS [\[Hedstrom et al., 2026\]](https://research.nvidia.com/labs/rtr/publication/hedstrom2026stochastic/)
 	- Adaptive-directional spatial reuse for improved offline rendering efficiency
+	- Compatibility-guided neighbor selection [\[Junkins et al., 2026\]](https://research.nvidia.com/labs/rtr/publication/junkins2026compatibility/)
 	- Optimal visibility sampling [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features
 - Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between Frames [\[Heitz and Belcour, 2019.\]](https://eheitzresearch.wordpress.com/772-2/)

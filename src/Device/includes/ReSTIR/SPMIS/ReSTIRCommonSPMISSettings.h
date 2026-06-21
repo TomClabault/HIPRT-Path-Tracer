@@ -8,6 +8,17 @@
 
 #include "HostDeviceCommon/AtomicType.h"
 
+struct ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings
+{
+	// If true, uses the heuristic from [Compatibility-Guided Neighbor Selection for ReSTIR, Junkins, 2026] to weight the selection of the neighboring cell.
+	// Disabled by default because not that good, a bit worse than hard rejection actually
+	bool do_compatibility_guided_selection = false;
+
+	// How much the distance to the center pixel is scaled when computing the weight of a neighboring cell. The lower this factor, the more closer cells are
+	// preferred. 0.0f turns off distance scaling.
+	float solid_angle_omega = 0.05f;
+};
+
 struct ReSTIRCommonSPMISSettings
 {
 	// Screen space tile size
@@ -23,6 +34,8 @@ struct ReSTIRCommonSPMISSettings
 	// will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough so we're further scaling by a controllable
 	// factor. The lower this factor, the more closer cells are preferred. 0.0f turns off distance scaling.
 	float distance_scaling = 8.0f;
+
+	ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
 
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
