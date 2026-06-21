@@ -34,7 +34,7 @@ struct CDFDevice
 				right = mid;
 		}
 
-		return left;
+		return left > 0 ? left - 1 : 0;
 	}
 
 	const float* cdf = nullptr;
@@ -69,7 +69,7 @@ struct CDFDeviceU16
 				right = mid;
 		}
 
-		return left;
+		return left > 0 ? left - 1 : 0;
 	}
 
 	const unsigned short int* cdf_u16 = nullptr;
