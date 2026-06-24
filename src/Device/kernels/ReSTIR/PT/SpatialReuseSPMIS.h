@@ -88,8 +88,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 		{
 			float neighbor_selection_probability = 1.0f;
-			unsigned int seed_before			 = random_number_generator.m_state.seed;
-			random_number_generator.m_state.seed = seed_before;
 			unsigned int neighbor_pixel_index	 = get_spmis_spatial_neighbor_pixel_index(render_data, center_pixel_surface, reuse_cell_index,
 																						  neighbor_selection_probability, random_number_generator);
 
@@ -100,16 +98,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 
 			float shift_mapping_jacobian = 1.0f;
 			if (neighbor_reservoir.UCW > 0.0f && !neighbor_reservoir.sample.is_envmap_path())
-			{
 				// Only attempting the shift if the neighbor reservoir is valid
-				//
-				// Also, if this is the last neighbor resample (meaning that it is the center pixel),
-				// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 				shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
 					neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
 					render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
 					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-			}
 
 			float target_function_at_center = 0.0f;
 			if (neighbor_reservoir.UCW > 0.0f)

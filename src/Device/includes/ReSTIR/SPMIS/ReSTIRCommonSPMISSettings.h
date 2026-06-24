@@ -43,23 +43,8 @@ struct ReSTIRCommonSPMISSettings
 	// How many pixels to stream from a cell to produce one non-canonical neighbor
 	int ris_neighbor_count = 8;
 	// If true, ris_neighbor_count is ignored and all non-zero pixels are importance sampled at once through inverse CDF sampling
-	bool ris_neighbor_cdf				  = true;
-	int ris_neighbor_cdf_count			  = 8;
-	bool ris_neighbor_use_target_function = false;
-
-	bool ris_neighbor_use_full_target_function_call = false;
-
-	bool ris_neighbor_use_a_la_carte									= true;
-	bool ris_neighbor_use_target_function_jacobian_term					= true;
-	bool ris_neighbor_use_target_function_cos_theta_term				= true;
-	bool ris_neighbor_use_target_function_visible_point_brdf_term		= true;
-	bool ris_neighbor_use_target_function_sample_point_brdf_term		= false;
-	bool ris_neighbor_use_target_function_sample_point_brdf_term_approx = true;
-
-	bool ris_neighbor_use_neighbor_importance_based						   = false;
-	bool ris_neighbor_use_neighbor_importance_based_jacobian			   = true;
-	bool ris_neighbor_use_neighbor_importance_based_light_source_cos_theta = true;
-	bool ris_neighbor_use_neighbor_importance_based_cancel_cos_thetas	   = false;
+	bool ris_neighbor_cdf	   = true;
+	int ris_neighbor_cdf_count = 8;
 
 	// Whether or not to scale non-canonical candidates confidence during resampling, section 4.3 of the SPMIS paper
 	bool do_non_canonical_confidence_adjustement = false;
