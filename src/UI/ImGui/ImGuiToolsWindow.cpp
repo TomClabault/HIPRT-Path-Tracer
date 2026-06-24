@@ -137,9 +137,8 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(ggx_dir_albedo_settings.masking_shadowing_term,
-																									   ggx_dir_albedo_settings.texture_size_cos_theta,
-																									   ggx_dir_albedo_settings.texture_size_roughness);
+			output_filename = GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(
+				ggx_dir_albedo_settings.masking_shadowing_term, ggx_dir_albedo_settings.texture_size_cos_theta, ggx_dir_albedo_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -198,8 +197,8 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_fresnel_directional_albedo_texture_filename(
-									ggx_fresnel_dir_albedo_settings.masking_shadowing_term, ggx_fresnel_dir_albedo_settings.texture_size_cos_theta,
-									ggx_fresnel_dir_albedo_settings.texture_size_roughness, ggx_fresnel_dir_albedo_settings.texture_size_ior);
+				ggx_fresnel_dir_albedo_settings.masking_shadowing_term, ggx_fresnel_dir_albedo_settings.texture_size_cos_theta,
+				ggx_fresnel_dir_albedo_settings.texture_size_roughness, ggx_fresnel_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -259,8 +258,8 @@ void ImGuiToolsWindow::draw_GGX_glass()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(
-									ggx_glass_dir_albedo_settings.masking_shadowing_term, ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
-									ggx_glass_dir_albedo_settings.texture_size_roughness, ggx_glass_dir_albedo_settings.texture_size_ior);
+				ggx_glass_dir_albedo_settings.masking_shadowing_term, ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
+				ggx_glass_dir_albedo_settings.texture_size_roughness, ggx_glass_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -316,8 +315,8 @@ void ImGuiToolsWindow::draw_GGX_thin_glass()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(
-									ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
-									ggx_thin_glass_dir_albedo_settings.texture_size_roughness, ggx_thin_glass_dir_albedo_settings.texture_size_ior);
+				ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
+				ggx_thin_glass_dir_albedo_settings.texture_size_roughness, ggx_thin_glass_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -376,8 +375,8 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(
-									glossy_dielectric_albedo_settings.masking_shadowing_term, glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
-									glossy_dielectric_albedo_settings.texture_size_roughness, glossy_dielectric_albedo_settings.texture_size_ior);
+				glossy_dielectric_albedo_settings.masking_shadowing_term, glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
+				glossy_dielectric_albedo_settings.texture_size_roughness, glossy_dielectric_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -665,9 +664,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static std::vector<float> current_captured_errors;
 		static std::vector<float> current_recorded_xs;
 		static std::vector<float> current_recorded_ys;
-
-		if (ImGui::Button("Debug"))
-			Debug::debugbreak();
 
 		if (capture_started)
 		{

@@ -21,11 +21,14 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-// TODO crashes
-// ATS Light Tree with MIS?
-// - GMoN Blend deactivating when moving camera
-
 // ******* TODO ReSTIR PT & refactor **********
+// - How to somehow increase the precision of hash grid cells SPMIS where needed?
+// - Where do we actually need the reservoir sample when reading reservoirs? Let's not read it if not needed.
+// - Enable non-canonical confidence scaling on specular surfaces if sharing samples that are not very far away: sharing samples far away is fine because the
+// resampled direction to x2 basically stays the same.
+//		- More generally we need some sort of metric that tells us how much the resampled direction varies from the ideal reflection direction
+//		- Maybe just decrease hash grid cell size on specular materials?
+// - Varying neighbor cell search radius on specular materials SPMIS?
 // - We have a precomputation CDF of luminance neighbors but can we precompute reuse cells / pixels somehow? Maybe brute force iterating could be fine?
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
@@ -58,6 +61,8 @@ extern ImGuiLogger g_imgui_logger;
 //	- Mutations
 
 // TODO known bugs / incorrectness:
+// - Minecraft harbor + principled BSDF + envmap --> iron bars look dark with ReSTIR PT at 0 bounces but should reflect the envmap at least
+// - GMoN Blend deactivating when moving camera and not reactivating --> annoying
 // - ImGui Material editor crash with 0 materials in the scene (only default material when blender export for example)
 // - Adaptive sampling broken in furance test?
 // - IOR 1 glass at roughness 1 without energy conservation loses a lot of energy but it shouldn't even be here because it's IOR 1

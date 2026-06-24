@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		return 0.0f;
 
 	float cosine_term = hippt::dot(incident_light_direction, surface.shading_normal);
-	if (cosine_term <= 0.0f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
+	if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
 		return 0.0f;
 	else if constexpr (resamplingNeighbor)
 	{
@@ -99,7 +99,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
 											   const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
 
-		// TODO can we use a simple target function visible point only for perf?
+		// TODO can we use a simple target function visible point only for perf? We can have a template parameter to do that only during spatial reuse
 		float trash_pdf;
 		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
 		sample_point_throughput				= sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));

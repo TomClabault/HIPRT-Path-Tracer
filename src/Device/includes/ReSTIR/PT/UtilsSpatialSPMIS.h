@@ -11,6 +11,7 @@
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -138,6 +139,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 }
 
 HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
+																 ReSTIRSurface& center_surface,
 																 unsigned int neighbor_cell_index,
 																 float& out_selection_probability,
 																 Xorshift32Generator& rng)
@@ -162,23 +164,231 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 		cell_cdf.cdf  = spmis_settings.cell_cdfs + cell_start_index;
 		cell_cdf.size = non_zero_cell_size;
 
-		unsigned int random_index		  = cell_cdf.sample(rng);
-		unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
+		for (int neighbor = 0; neighbor < spmis_settings.ris_neighbor_cdf_count; neighbor++)
+		{
+			unsigned int random_index		  = cell_cdf.sample(rng);
+			unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 
-		ReSTIRPTReservoir neighbor_reservoir = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
+			// TODO antithetic sampling?
+			//
+			//
+			// TODO how to sample multiple elements from one CDF efficiently without stupidly running multiple binary searches in a row
+			//		----------------------------------------
+			//		8 samples per thread: generating 8 random numbers(u0, ..., u7).
+			//		How it works : Sort these 8 numbers in your registers using a small, unrolled sorting network.Once sorted(u0, u1, u7​), you execute your
+			// searches sequentially.
+			//		Why it’s faster : The bounds of your binary search shrink with each sample.Finding u1​ bounds the search space for u2​, and so
+			// on.Furthermore, processing them in sorted order drastically improves L1 cache hit rates because the memory accesses sweep linearly from left to
+			//		----------------------------------------
+			//
+			//		----------------------------------------
+			//		How it works : You map the probability domain[0, 1] to a linear grid of, say, 256 bins.
+			//		When you build your CDF, you also populate this 256 element LUT.Each bin stores the starting index in the CDF where that probability
+			// threshold is crossed.
+			//
+			//		The Search : To sample a random number u, you multiply u * 256 to find your LUT bin.The LUT gives you the exact sub - range in the 1024 -
+			// element CDF to look at.
+			// 		Why it's faster : Instead of searching 1024 elements(10 steps), you narrow the bounds down to a handful of elements immediately.From there,
+			// you either do a tiny 2 - to - 3 step binary search or a simple linear search.The cost to build a 256 - element LUT every frame is a negligible,
+			// single - dispatch compute pass.
+			//		----------------------------------------
+			//
+			//
+			// right across the CDF rather than bouncing randomly.
+			// TODO which elements of the target function help the most with variance? cos theta? jacobian? Study for DI and GI
+			// TODO all of that in another kernel pass to have better occupancy, same as House of cards
+			// TODO add geometric similarity heuristics to the target function weight
+			// TODO fast approximation to specular lobe rather than going through the full BRDF, we just need something approximate
+			// TODO high jacobian isn't good, we shouldn't just multiply the weight by the jacobian but rather but the distance to 1
+			// TODO U16 CDF 16 is FP16 is broken?
+			// TODO sampling only the best neighbor? Not proportional?
+			// TODO under which circumstances is non-canonical scaling good? It's basically when reuse is bad, which happens when? Specular surface in the white
+			// room but not the metal bars in Minecraft harbor? What's the consensus? What's the heuristic?
+			// TODO 8 seems to be the more efficient but what about when we optimize CDF sampling?
+			//
+			//
+			//
+			//
+			// The best option so far is a la carte, everything enabled but with an approximation for the sample point BSDF
+			ReSTIRPTReservoir neighbor_reservoir   = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
+			float shift_mapping_jacobian_to_center = 1.0f;
+			if (neighbor_reservoir.UCW > 0.0f && !neighbor_reservoir.sample.is_envmap_path())
+			{
+				// Only attempting the shift if the neighbor reservoir is valid
+				//
+				// Also, if this is the last neighbor resample (meaning that it is the center pixel),
+				// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
+				shift_mapping_jacobian_to_center = get_jacobian_determinant_reconnection_shift(
+					neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), center_surface.shading_point,
+					render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
+					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+			}
 
-		// RIS for selecting the neighbor
-		float neighbor_importance = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
-		// The total sum weight is stored in cdf[0] by the build cdf kernel
-		float neighbor_importance_sum = spmis_settings.cell_cdfs[cell_start_index];
-		float source_pdf			  = neighbor_importance / neighbor_importance_sum; // Importance sampling of the pixel in the cell
-		float target_function		  = neighbor_importance;
-		float mis_weight			  = 1.0f;
-		float weight				  = mis_weight * target_function / source_pdf;
+			// RIS for selecting the neighbor
+			float neighbor_importance = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+			// The total sum weight is stored in cdf[0] by the build cdf kernel
+			float neighbor_importance_sum = spmis_settings.cell_cdfs[cell_start_index];
+			float source_pdf			  = neighbor_importance / neighbor_importance_sum; // Importance sampling of the pixel in the cell
+			float target_function;
+			if (spmis_settings.ris_neighbor_use_target_function)
+			{
+				if (spmis_settings.ris_neighbor_use_full_target_function_call)
+					target_function = ReSTIR_PT_evaluate_target_function<false, true>(render_data, neighbor_reservoir.sample, center_surface, rng) *
+									  shift_mapping_jacobian_to_center * neighbor_reservoir.UCW;
+				else if (spmis_settings.ris_neighbor_use_a_la_carte)
+				{
+					target_function = 1.0f;
 
-		weight_sum += weight;
-		selected_index			 = neighbor_pixel_index;
-		selected_target_function = target_function;
+					target_function *= neighbor_reservoir.UCW;
+					if (spmis_settings.ris_neighbor_use_target_function_jacobian_term)
+						target_function *= shift_mapping_jacobian_to_center;
+
+					float distance_to_sample_point;
+					float3_t incident_light_direction;
+					if (neighbor_reservoir.sample.is_envmap_path())
+					{
+						// For envmap path, the direction is stored in the 'rc_vertex' value
+						incident_light_direction = neighbor_reservoir.sample.rc_vertex;
+						distance_to_sample_point = 1.0e35f;
+					}
+					else
+					{
+						// Not an envmap path, the direction is the difference between the current shading
+						// point and the reconnection point
+						incident_light_direction = neighbor_reservoir.sample.rc_vertex - center_surface.shading_point;
+						distance_to_sample_point = hippt::length(incident_light_direction);
+						if (distance_to_sample_point <= 1.0e-6f)
+							// To avoid numerical instabilities
+							target_function = 0.0f;
+
+						incident_light_direction /= distance_to_sample_point;
+					}
+
+					if (spmis_settings.ris_neighbor_use_target_function_cos_theta_term && !neighbor_reservoir.sample.is_envmap_path() &&
+						neighbor_reservoir.sample.di_sample &&
+						compute_cosine_term_at_light_source(neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
+						// Backfacing light
+						target_function = 0.0f;
+
+					float cosine_term = hippt::dot(incident_light_direction, center_surface.shading_normal);
+					if (spmis_settings.ris_neighbor_use_target_function_cos_theta_term)
+					{
+						if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(neighbor_reservoir.sample.incident_light_info_at_visible_point))
+							cosine_term = 0.0f;
+					}
+					else
+						cosine_term = 1.0f;
+
+					target_function *= cosine_term;
+
+					ColorRGB32F visible_point_throughput = ColorRGB32F(1.0f);
+					if (spmis_settings.ris_neighbor_use_target_function_visible_point_brdf_term)
+					{
+						float bsdf_pdf;
+						BSDFContext bsdf_context(
+							center_surface.view_direction, center_surface.shading_normal, center_surface.geometric_normal, incident_light_direction,
+							const_cast<BSDFIncidentLightInfo&>(neighbor_reservoir.sample.incident_light_info_at_visible_point), center_surface.ray_volume_state,
+							false, center_surface.material, 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
+
+						visible_point_throughput = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
+					}
+
+					ColorRGB32F sample_point_throughput = ColorRGB32F(1.0f);
+
+					if (!neighbor_reservoir.sample.di_sample)
+					{
+						if (spmis_settings.ris_neighbor_use_target_function_sample_point_brdf_term)
+						{
+							if (spmis_settings.ris_neighbor_use_target_function_sample_point_brdf_term_approx)
+								sample_point_throughput = ColorRGB32F(neighbor_reservoir.sample.bsdf_throughput_luminance_at_sample_point);
+							else
+							{
+								float3_t view_direction					 = hippt::normalize(center_surface.shading_point - neighbor_reservoir.sample.rc_vertex);
+								float3_t to_light_direction_sample_point = neighbor_reservoir.sample.rc_vertex_incident_light_direction;
+								float3_t shading_normal_sample_point	 = neighbor_reservoir.sample.rc_vertex_shading_normal.unpack();
+								float3_t geometric_normal_sample_point	 = neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack();
+
+								RayVolumeState ray_volume_state_copy = center_surface.ray_volume_state;
+								// TODO reproduce roughness accumumlation
+								// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
+								ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, center_surface.material,
+																			   neighbor_reservoir.sample.incident_light_info_at_visible_point,
+																			   center_surface.primitive_index);
+								BSDFContext secondary_hit_eval_context(
+									view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
+									const_cast<BSDFIncidentLightInfo&>(neighbor_reservoir.sample.incident_light_info_at_sample_point), ray_volume_state_copy,
+									false, const_cast<DeviceUnpackedEffectiveMaterial&>(neighbor_reservoir.sample.rc_vertex_material), 0.0f);
+
+								// TODO can we use a simple target function visible point only for perf? We can have a template parameter to do that only during
+								// spatial reuse
+								float trash_pdf;
+								ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, rng);
+								sample_point_throughput =
+									sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+							}
+						}
+						else
+						{
+							float3_t to_light_direction_sample_point = neighbor_reservoir.sample.rc_vertex_incident_light_direction;
+							float3_t shading_normal_sample_point	 = neighbor_reservoir.sample.rc_vertex_shading_normal.unpack();
+
+							target_function *= hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+						}
+					}
+
+					target_function *= (visible_point_throughput * sample_point_throughput * neighbor_reservoir.sample.rc_vertex_incident_radiance).luminance();
+				}
+				else if (spmis_settings.ris_neighbor_use_neighbor_importance_based)
+				{
+					float3_t incident_light_direction;
+					if (neighbor_reservoir.sample.is_envmap_path())
+						// For envmap path, the direction is stored in the 'rc_vertex' value
+						incident_light_direction = neighbor_reservoir.sample.rc_vertex;
+					else
+						// Not an envmap path, the direction is the difference between the current shading
+						// point and the reconnection point
+						incident_light_direction = hippt::normalize(neighbor_reservoir.sample.rc_vertex - center_surface.shading_point);
+
+					target_function = neighbor_importance;
+					if (spmis_settings.ris_neighbor_use_neighbor_importance_based_jacobian)
+						target_function *= shift_mapping_jacobian_to_center;
+
+					if (spmis_settings.ris_neighbor_use_neighbor_importance_based_light_source_cos_theta && !neighbor_reservoir.sample.is_envmap_path() &&
+						neighbor_reservoir.sample.di_sample &&
+						compute_cosine_term_at_light_source(neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
+						// Backfacing light
+						target_function = 0.0f;
+
+					if (spmis_settings.ris_neighbor_use_neighbor_importance_based_cancel_cos_thetas)
+					{
+						// Canceling the neighbor cos theta terms (at visible point) from the target function and applying the cos theta
+						// term at the center pixel instead.
+						float cos_theta_at_visible_point_neighbor = hippt::abs(hippt::dot(neighbor_reservoir.sample.rc_vertex_shading_normal.unpack(),
+																						  neighbor_reservoir.sample.rc_vertex_incident_light_direction));
+						float cos_theta_at_visible_point_center	  = hippt::dot(center_surface.shading_normal, incident_light_direction);
+						if (cos_theta_at_visible_point_center <= 0.0f &&
+							!bsdf_incident_light_info_transmission_lobe(neighbor_reservoir.sample.incident_light_info_at_visible_point))
+							cos_theta_at_visible_point_center = 0.0f;
+
+						// target_function /= cos_theta_at_visible_point_neighbor;
+						target_function *= cos_theta_at_visible_point_center;
+					}
+				}
+				else
+					target_function = neighbor_importance;
+			}
+			else
+				target_function = neighbor_importance;
+			float mis_weight = 1.0f / spmis_settings.ris_neighbor_cdf_count;
+			float weight	 = mis_weight * target_function / source_pdf;
+
+			weight_sum += weight;
+			if (rng() < weight / weight_sum)
+			{
+				selected_index			 = neighbor_pixel_index;
+				selected_target_function = target_function;
+			}
+		}
 	}
 	else
 	{

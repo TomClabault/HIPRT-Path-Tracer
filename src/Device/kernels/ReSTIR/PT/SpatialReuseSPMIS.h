@@ -88,8 +88,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 		{
 			float neighbor_selection_probability = 1.0f;
-			unsigned int neighbor_pixel_index =
-				get_spmis_spatial_neighbor_pixel_index(render_data, reuse_cell_index, neighbor_selection_probability, random_number_generator);
+			unsigned int seed_before			 = random_number_generator.m_state.seed;
+			random_number_generator.m_state.seed = seed_before;
+			unsigned int neighbor_pixel_index	 = get_spmis_spatial_neighbor_pixel_index(render_data, center_pixel_surface, reuse_cell_index,
+																						  neighbor_selection_probability, random_number_generator);
+
+			if (neighbor_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+				continue;
 
 			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 

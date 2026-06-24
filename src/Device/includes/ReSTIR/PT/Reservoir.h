@@ -22,22 +22,24 @@ static std::mutex restir_pt_log_mutex;
 
 struct ReSTIRPTReservoirSample
 {
-	float3_t rc_vertex							= make_float3(-1.0f, -1.0f, -1.0f);
-	float3_t rc_vertex_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
+	// 'rc_vertex' here is x1 (with x0 the camera), i.e. the gbuffer hit
+
+	float3_t rc_vertex = make_float3(-1.0f, -1.0f, -1.0f);
 	Octahedral24BitNormalPadded32b rc_vertex_geometric_normal;
+	float3_t rc_vertex_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
 	Octahedral24BitNormalPadded32b rc_vertex_shading_normal;
-	DeviceUnpackedEffectiveMaterial rc_vertex_material;
+	ColorRGB32F rc_vertex_incident_radiance;
 	int rc_vertex_primitive_index = -1;
+
+	DeviceUnpackedEffectiveMaterial rc_vertex_material;
 
 	bool di_sample = false;
 
-	ColorRGB32F rc_vertex_incident_radiance;
-
+	// TODO all 'at visible' point variables should be replaced by 'rc_vertex' variables
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
-	// TODO all 'at sample' point variables should be replaced by rc_vertex variables
-	BSDFIncidentLightInfo incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
+	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
+	float bsdf_throughput_luminance_at_sample_point			   = 1.0f;
 
-	// TODO can be stored in outgoing_radiance_to_first_hit?
 	float target_function = 0.0f;
 
 	// Whether or not the sample point is on a material that is rough enough to be reconnected

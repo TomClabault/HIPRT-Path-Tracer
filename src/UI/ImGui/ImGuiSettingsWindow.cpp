@@ -4240,7 +4240,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		{
 			ImGui::TreePush("Compatibility guided selection settings tree");
 
-			if (ImGui::SliderFloat("Solid angle omage", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
+			if (ImGui::SliderFloat("Solid angle omega", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
@@ -4256,6 +4256,62 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::EndDisabled();
 		if (ImGui::Checkbox("CDF sampling of the cell", &spmis_settings.ris_neighbor_cdf))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("CDF use target function", &spmis_settings.ris_neighbor_use_target_function))
+			m_render_window->set_render_dirty(true);
+		if (spmis_settings.ris_neighbor_use_target_function)
+		{
+			ImGui::TreePush("Target function settings tree");
+
+			if (ImGui::Checkbox("Full target function call", &spmis_settings.ris_neighbor_use_full_target_function_call))
+			{
+				spmis_settings.ris_neighbor_use_a_la_carte				  = false;
+				spmis_settings.ris_neighbor_use_neighbor_importance_based = false;
+
+				m_render_window->set_render_dirty(true);
+			}
+			if (ImGui::Checkbox("A la carte", &spmis_settings.ris_neighbor_use_a_la_carte))
+			{
+				spmis_settings.ris_neighbor_use_full_target_function_call = false;
+				spmis_settings.ris_neighbor_use_neighbor_importance_based = false;
+
+				m_render_window->set_render_dirty(true);
+			}
+			if (ImGui::Checkbox("Neighbor importance based", &spmis_settings.ris_neighbor_use_neighbor_importance_based))
+			{
+				spmis_settings.ris_neighbor_use_full_target_function_call = false;
+				spmis_settings.ris_neighbor_use_a_la_carte				  = false;
+
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			if (spmis_settings.ris_neighbor_use_a_la_carte)
+			{
+				if (ImGui::Checkbox("Jacobian term", &spmis_settings.ris_neighbor_use_target_function_jacobian_term))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Cos theta term", &spmis_settings.ris_neighbor_use_target_function_cos_theta_term))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Visible point BRDF term", &spmis_settings.ris_neighbor_use_target_function_visible_point_brdf_term))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Sample point BRDF term", &spmis_settings.ris_neighbor_use_target_function_sample_point_brdf_term))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Sample point BRDF term approx", &spmis_settings.ris_neighbor_use_target_function_sample_point_brdf_term_approx))
+					m_render_window->set_render_dirty(true);
+			}
+			else if (spmis_settings.ris_neighbor_use_neighbor_importance_based)
+			{
+				if (ImGui::Checkbox("Jacobian term", &spmis_settings.ris_neighbor_use_neighbor_importance_based_jacobian))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Light source cos theta term", &spmis_settings.ris_neighbor_use_neighbor_importance_based_light_source_cos_theta))
+					m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Cancel cos thetas", &spmis_settings.ris_neighbor_use_neighbor_importance_based_cancel_cos_thetas))
+					m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
+		if (ImGui::SliderInt("CDF RIS count", &spmis_settings.ris_neighbor_cdf_count, 1, 8))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -189,7 +189,10 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		if (last_bounce == 0)
 			ReSTIR_PT_rc_di_vertex_fill_information(sampled_bsdf_direction, make_float3(0.0f, 0.0f, 0.0f), -1, incident_light_info, restir_pt_initial_sample);
 		if (last_bounce == 1)
-			restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
+		{
+			restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
+			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+		}
 		if (last_bounce <= 1)
 			restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
 		restir_pt_initial_sample.di_sample					 = last_bounce == 0;
@@ -227,7 +230,10 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			ReSTIR_PT_rc_di_vertex_fill_information(light_hit_info.inter_point, light_hit_info.geometric_normal, light_hit_info.primitive_index,
 													incident_light_info, restir_pt_initial_sample);
 		if (last_bounce == 1)
-			restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
+		{
+			restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
+			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+		}
 		if (last_bounce <= 1)
 			restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
 		restir_pt_initial_sample.di_sample					 = last_bounce == 0;
