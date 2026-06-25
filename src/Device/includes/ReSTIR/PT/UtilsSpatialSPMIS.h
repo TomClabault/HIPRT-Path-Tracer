@@ -174,27 +174,19 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 			//
 			// TODO how to sample multiple elements from one CDF efficiently without stupidly running multiple binary searches in a row
 			//		----------------------------------------
-			//		8 samples per thread: generating 8 random numbers(u0, ..., u7).
-			//		How it works : Sort these 8 numbers in your registers using a small, unrolled sorting network.Once sorted(u0, u1, u7​), you execute your
-			// searches sequentially.
-			//		Why it’s faster : The bounds of your binary search shrink with each sample.Finding u1​ bounds the search space for u2​, and so
-			// on.Furthermore, processing them in sorted order drastically improves L1 cache hit rates because the memory accesses sweep linearly from left to
-			//		----------------------------------------
-			//
-			//		----------------------------------------
 			//		How it works : You map the probability domain[0, 1] to a linear grid of, say, 256 bins.
 			//		When you build your CDF, you also populate this 256 element LUT.Each bin stores the starting index in the CDF where that probability
 			// threshold is crossed.
 			//
-			//		The Search : To sample a random number u, you multiply u * 256 to find your LUT bin.The LUT gives you the exact sub - range in the 1024 -
+			//		The Search : To sample a random number u, you multiply u * 256 to find your LUT bin.The LUT gives you the exact sub - range in the 1024
+			//-
 			// element CDF to look at.
-			// 		Why it's faster : Instead of searching 1024 elements(10 steps), you narrow the bounds down to a handful of elements immediately.From there,
-			// you either do a tiny 2 - to - 3 step binary search or a simple linear search.The cost to build a 256 - element LUT every frame is a negligible,
-			// single - dispatch compute pass.
+			// 		Why it's faster : Instead of searching 1024 elements(10 steps), you narrow the bounds down to a handful of elements immediately.From
+			// there, you either do a tiny 2 - to - 3 step binary search or a simple linear search.The cost to build a 256 - element LUT every frame is a
+			// negligible, single - dispatch compute pass.
 			//		----------------------------------------
 			//
 			//
-			// right across the CDF rather than bouncing randomly.
 			// TODO which elements of the target function help the most with variance? cos theta? jacobian? Study for DI and GI
 			// TODO all of that in another kernel pass to have better occupancy, same as House of cards
 			// TODO add geometric similarity heuristics to the target function weight
@@ -202,8 +194,8 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 			// TODO high jacobian isn't good, we shouldn't just multiply the weight by the jacobian but rather but the distance to 1
 			// TODO U16 CDF 16 is FP16 is broken?
 			// TODO sampling only the best neighbor? Not proportional?
-			// TODO under which circumstances is non-canonical scaling good? It's basically when reuse is bad, which happens when? Specular surface in the white
-			// room but not the metal bars in Minecraft harbor? What's the consensus? What's the heuristic?
+			// TODO under which circumstances is non-canonical scaling good? It's basically when reuse is bad, which happens when? Specular surface in the
+			// white room but not the metal bars in Minecraft harbor? What's the consensus? What's the heuristic?
 			// TODO 8 seems to be the more efficient but what about when we optimize CDF sampling?
 			//
 			//

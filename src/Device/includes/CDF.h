@@ -10,6 +10,12 @@
 
 struct CDFDevice
 {
+	template <int sampleCount>
+	struct Samples
+	{
+		unsigned int samples[sampleCount];
+	};
+
 	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
 		float random_value = rng();
@@ -35,6 +41,88 @@ struct CDFDevice
 		}
 
 		return left > 0 ? left - 1 : 0;
+	}
+
+	// TODO the size here could be a template parameter but then we'd need to write all sorting networks for all supported template parameter sizes
+	HIPRT_DEVICE typename CDFDevice::template Samples<8> sample_8(Xorshift32Generator& rng) const
+	{
+		float random_numbers[8];
+		for (int i = 0; i < 8; ++i)
+			random_numbers[i] = rng();
+
+		// Sorting the random numbers with a sorting network
+		hippt::compare_swap(random_numbers[0], random_numbers[1]);
+		hippt::compare_swap(random_numbers[2], random_numbers[3]);
+		hippt::compare_swap(random_numbers[4], random_numbers[5]);
+		hippt::compare_swap(random_numbers[6], random_numbers[7]);
+
+		hippt::compare_swap(random_numbers[0], random_numbers[2]);
+		hippt::compare_swap(random_numbers[1], random_numbers[3]);
+		hippt::compare_swap(random_numbers[4], random_numbers[6]);
+		hippt::compare_swap(random_numbers[5], random_numbers[7]);
+
+		hippt::compare_swap(random_numbers[1], random_numbers[2]);
+		hippt::compare_swap(random_numbers[5], random_numbers[6]);
+
+		hippt::compare_swap(random_numbers[0], random_numbers[4]);
+		hippt::compare_swap(random_numbers[1], random_numbers[5]);
+		hippt::compare_swap(random_numbers[2], random_numbers[6]);
+		hippt::compare_swap(random_numbers[3], random_numbers[7]);
+
+		hippt::compare_swap(random_numbers[0], random_numbers[2]);
+		hippt::compare_swap(random_numbers[1], random_numbers[3]);
+		hippt::compare_swap(random_numbers[4], random_numbers[6]);
+		hippt::compare_swap(random_numbers[5], random_numbers[7]);
+
+		hippt::compare_swap(random_numbers[0], random_numbers[1]);
+		hippt::compare_swap(random_numbers[2], random_numbers[3]);
+		hippt::compare_swap(random_numbers[4], random_numbers[5]);
+		hippt::compare_swap(random_numbers[6], random_numbers[7]);
+
+		hippt::compare_swap(random_numbers[2], random_numbers[4]);
+		hippt::compare_swap(random_numbers[3], random_numbers[5]);
+
+		hippt::compare_swap(random_numbers[1], random_numbers[2]);
+		hippt::compare_swap(random_numbers[3], random_numbers[4]);
+		hippt::compare_swap(random_numbers[5], random_numbers[6]);
+
+		hippt::compare_swap(random_numbers[2], random_numbers[3]);
+		hippt::compare_swap(random_numbers[4], random_numbers[5]);
+
+		typename CDFDevice::template Samples<8> samples;
+
+		// Because the random numbers are sorted in ascending order, the left index can be reused from random number to the next random number
+		unsigned int current_left = 0;
+		for (int i = 0; i < 8; ++i)
+		{
+			float random_value = random_numbers[i];
+
+			// Binary search
+			unsigned int left  = current_left;
+			unsigned int right = size - 1;
+
+			while (left < right)
+			{
+				unsigned int mid = (left + right) / 2;
+				float cdf_value;
+				if (mid == 0)
+					// This shortcut avoids one memory load and also allows storing whatever data we want in cdf[0] since it will never be used (such as the
+					// total sum of the weights for example)
+					cdf_value = 0.0f;
+				else
+					cdf_value = cdf[mid];
+				if (cdf_value < random_value)
+					left = mid + 1;
+				else
+					right = mid;
+			}
+
+			samples.samples[i] = left > 0 ? left - 1 : 0;
+
+			current_left = left;
+		}
+
+		return samples;
 	}
 
 	const float* cdf = nullptr;

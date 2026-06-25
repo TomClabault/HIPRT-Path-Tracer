@@ -549,6 +549,14 @@ namespace hippt
 		return __half_as_ushort(half);
 	}
 
+	template <typename T>
+	__device__ static void compare_swap(T& a, T& b)
+	{
+		T temp_a = a;
+		a		 = hippt::min(temp_a, b);
+		b		 = hippt::max(temp_a, b);
+	}
+
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address'
 	 * in global or shared memory and stores 'value' to memory at the same address.
@@ -1537,6 +1545,14 @@ namespace hippt
 	{
 		// fp16 is just fp32 on the CPU , so we can just reinterpret the bits as a float and then convert to fp16 bits
 		return fp32_to_fp16_bits(half);
+	}
+
+	template <typename T>
+	static void compare_swap(T& a, T& b)
+	{
+		T temp_a = a;
+		a		 = hippt::min(temp_a, b);
+		b		 = hippt::max(temp_a, b);
 	}
 
 	/**
