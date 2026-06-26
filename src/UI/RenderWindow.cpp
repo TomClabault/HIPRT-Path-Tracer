@@ -22,6 +22,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Estimate the variance of initial candidates in each and determine reuse radius of SPMIS with that: lower variance = lower radius, higher variance = higher
+// radius to hide correlations that would arise from low radius reuse
 // - How to somehow increase the precision of hash grid cells SPMIS where needed?
 // - Where do we actually need the reservoir sample when reading reservoirs? Let's not read it if not needed.
 // - Enable non-canonical confidence scaling on specular surfaces if sharing samples that are not very far away: sharing samples far away is fine because the
@@ -496,9 +498,11 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Neural incident radiance cache
+// - Use the neural incident radiance cache to do specular reflections resampling with ReSTIR: when resampling a specular neighbor, estimate target function at
+// center with BSDF_center * incident_radiance_cache_direction_of_neighbor_same_random_seed
+// - Neural path guiding anisotropic gaussians
 // - Neural visibility cache for envmap sampling?
-// - Can we do restir BSDF somehow? Sharing BSDF samples across neighbors, only BSDF samples and then use that into restir gi or whatever. Could be good for
-// layered BSDF where samping the BSDF is high-variance
 // - Another separate render graph for interactivity
 // - Use only packed material throughout the shaders to save registers?
 // - We can use incoming radiance radiance cache to sample BSDF directions for MIS: we would cache the incoming radiance only from emissives and use that with

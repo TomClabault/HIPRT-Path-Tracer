@@ -160,39 +160,22 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	if (spmis_settings.ris_neighbor_cdf)
 	{
-		CDFDevice cell_cdf;
-		cell_cdf.cdf  = spmis_settings.cell_cdfs + cell_start_index;
-		cell_cdf.size = non_zero_cell_size;
+		CDFDeviceWithLUT<ReSTIR_PT_SPMISCDFLUTSize, unsigned short int> cell_cdf;
+		unsigned int lut_offset = spmis_settings.cell_cdf_lut_offsets[neighbor_cell_index];
+		cell_cdf.cdf			= spmis_settings.cell_cdfs + cell_start_index;
+		cell_cdf.cdf_lut		= spmis_settings.cell_cdf_luts + lut_offset;
+		cell_cdf.size			= non_zero_cell_size;
 
 		for (int neighbor = 0; neighbor < spmis_settings.ris_neighbor_cdf_count; neighbor++)
 		{
+			unsigned int random_seed		  = rng.m_state.seed;
 			unsigned int random_index		  = cell_cdf.sample(rng);
 			unsigned int neighbor_pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 
 			// TODO antithetic sampling?
 			//
-			//
-			// TODO how to sample multiple elements from one CDF efficiently without stupidly running multiple binary searches in a row
-			//		----------------------------------------
-			//		How it works : You map the probability domain[0, 1] to a linear grid of, say, 256 bins.
-			//		When you build your CDF, you also populate this 256 element LUT.Each bin stores the starting index in the CDF where that probability
-			// threshold is crossed.
-			//
-			//		The Search : To sample a random number u, you multiply u * 256 to find your LUT bin.The LUT gives you the exact sub - range in the 1024
-			//-
-			// element CDF to look at.
-			// 		Why it's faster : Instead of searching 1024 elements(10 steps), you narrow the bounds down to a handful of elements immediately.From
-			// there, you either do a tiny 2 - to - 3 step binary search or a simple linear search.The cost to build a 256 - element LUT every frame is a
-			// negligible, single - dispatch compute pass.
-			//		----------------------------------------
-			//
-			//
-			// TODO which elements of the target function help the most with variance? cos theta? jacobian? Study for DI and GI
 			// TODO all of that in another kernel pass to have better occupancy, same as House of cards
-			// TODO add geometric similarity heuristics to the target function weight
 			// TODO fast approximation to specular lobe rather than going through the full BRDF, we just need something approximate
-			// TODO high jacobian isn't good, we shouldn't just multiply the weight by the jacobian but rather but the distance to 1
-			// TODO U16 CDF 16 is FP16 is broken?
 			// TODO sampling only the best neighbor? Not proportional?
 			// TODO under which circumstances is non-canonical scaling good? It's basically when reuse is bad, which happens when? Specular surface in the
 			// white room but not the metal bars in Minecraft harbor? What's the consensus? What's the heuristic?

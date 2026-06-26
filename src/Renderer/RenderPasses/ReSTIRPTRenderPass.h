@@ -54,6 +54,7 @@ public:
 	void configure_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, ReSTIRPTReservoir* input_reservoirs);
+	void resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count);
 	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index);

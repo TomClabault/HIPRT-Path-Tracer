@@ -22,7 +22,7 @@ struct CDFDevice
 
 		// Binary search
 		unsigned int left  = 0;
-		unsigned int right = size - 1;
+		unsigned int right = size;
 
 		while (left < right)
 		{
@@ -99,7 +99,7 @@ struct CDFDevice
 
 			// Binary search
 			unsigned int left  = current_left;
-			unsigned int right = size - 1;
+			unsigned int right = size;
 
 			while (left < right)
 			{
@@ -130,6 +130,39 @@ struct CDFDevice
 	unsigned int size = 0;
 };
 
+template <unsigned int LUTSize, typename LUTIndexType>
+struct CDFDeviceWithLUT
+{
+	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
+	{
+		// Binary search
+		float random_value				  = rng();
+		unsigned int lut_bin_index		  = hippt::min(LUTSize - 1, static_cast<unsigned int>(random_value * LUTSize));
+		LUTIndexType DEBUGcdf_index_start = cdf_lut[lut_bin_index];
+
+		LUTIndexType left  = cdf_lut[lut_bin_index];
+		LUTIndexType right = (lut_bin_index < LUTSize - 1 ? cdf_lut[lut_bin_index + 1] : size - 1) + 1;
+
+		while (left < right)
+		{
+			LUTIndexType mid = (left + right) / 2;
+			float cdf_value	 = mid == 0 ? 0.0f : cdf[mid];
+
+			if (cdf_value < random_value)
+				left = mid + 1;
+			else
+				right = mid;
+		}
+
+		return left > 0 ? left - 1 : 0;
+	}
+
+	const float* cdf  = nullptr;
+	unsigned int size = 0;
+
+	LUTIndexType* cdf_lut = nullptr;
+};
+
 struct CDFDeviceU16
 {
 	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
@@ -139,7 +172,7 @@ struct CDFDeviceU16
 
 		// Binary search
 		unsigned int left  = 0;
-		unsigned int right = size - 1;
+		unsigned int right = size;
 
 		while (left < right)
 		{

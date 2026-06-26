@@ -421,21 +421,50 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, sort_launch_args,
 																					   m_renderer->get_main_stream());
 
-	float* cell_cdfs			   = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().get_device_pointer();
-	unsigned int* cell_alive_list  = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
-	void* build_cdfs_launch_args[] = {
-		&cell_non_zero_reservoir_counters, &cell_offsets, &cell_alive_list, &pixel_indices_sorted, &input_reservoirs, &cell_cdfs, &num_cells
-	};
+	float* cell_cdfs				 = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().get_device_pointer();
+	unsigned int* cell_alive_list	 = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
 	unsigned int cell_size			 = spmis_settings.tile_size;
 	unsigned int dispatch_block_size = cell_size * cell_size;
 	unsigned int cell_alive_count =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+
+	resize_cdf_luts_buffer(render_data, cell_alive_count);
+
+	unsigned short int* cell_cdf_luts = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+	unsigned int* cell_cdf_lut_offsets =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
+	void* build_cdfs_launch_args[] = { &cell_non_zero_reservoir_counters,
+									   &cell_offsets,
+									   &cell_alive_list,
+									   &pixel_indices_sorted,
+									   &input_reservoirs,
+									   &cell_cdfs,
+									   &cell_cdf_luts,
+									   &cell_cdf_lut_offsets,
+									   &num_cells };
+
 	// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1, build_cdfs_launch_args,
 																							 m_renderer->get_main_stream());
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_stop, m_renderer->get_main_stream()));
 	m_spmis_sorting_events_recorded = true;
+}
+
+void ReSTIRPTRenderPass::resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count)
+{
+	if (m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
+	{
+		// Resizing the buffer to get enough space for the CDF LUTs of all cells
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().resize(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize *
+																											  1.05f);
+
+		// Settings the pointer in both the render data and the renderer render data to the new buffer pointer
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+		m_renderer->get_render_data().render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+	}
 }
 
 void ReSTIRPTRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_data)

@@ -89,7 +89,10 @@ struct ReSTIRCommonSPMISSettings
 	// CDF built on the important pixels of each cell to be able to sample a pixel from a cell according to its confidence weight directly without RISing over
 	// everything
 	// TODO fp16
-	float* cell_cdfs = nullptr;
+	float* cell_cdfs				  = nullptr;
+	unsigned short int* cell_cdf_luts = nullptr;
+	// Fullscreen buffer that contains, for each cell, the offset in the cell_cdf_luts buffer of the CDF LUT of that cell.
+	unsigned int* cell_cdf_lut_offsets = nullptr;
 };
 
 #endif

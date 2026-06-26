@@ -73,5 +73,6 @@
 #endif // #ifndef __KERNELCC__
 
 #define ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps 256
+#define ReSTIR_PT_SPMISCDFLUTSize						   1024
 
 #endif

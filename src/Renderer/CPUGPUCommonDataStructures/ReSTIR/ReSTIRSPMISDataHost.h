@@ -16,16 +16,18 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   unsigned int,								   // Important pixel indices sorting values
 											   // TODO short int
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell pixels counters
-																							   // TODO short int
+											   // TODO short int
 											   GenericAtomicType<unsigned int, DataContainer>, // Cells non-zero reservoir counters
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell global offset counter
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell total count counter
-																							   // TODO uchar
+											   // TODO uchar
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell occupied
 											   unsigned int,								   // Cell alive list
 											   unsigned int,								   // Cell offsets
 											   GenericAtomicType<unsigned int, DataContainer>, // Cells confidence sums
-											   float>;										   // Cells CDFs
+											   float,										   // Cells CDFs
+											   unsigned short int,							   // Cells CDF LUTs for speeding up CDF sampling
+											   unsigned int>;								   // Cells CDF LUT offsets
 
 enum ReSTIRSPMISDataHostBuffers
 {
@@ -42,6 +44,8 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_CELL_OFFSETS,
 	RESTIR_SPMIS_CELL_CONFIDENCE_SUMS,
 	RESTIR_SPMIS_CELL_CDFS,
+	RESTIR_SPMIS_CELL_CDF_LUTS,
+	RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS,
 };
 
 template <template <typename> typename DataContainer>
@@ -49,7 +53,8 @@ struct ReSTIRSPMISDataHost
 {
 	void resize(unsigned int width, unsigned int height)
 	{
-		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER });
+		// RESTIR_SPMIS_CELL_CDF_LUTS is resized when creating spmis cells, not here
+		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER, RESTIR_SPMIS_CELL_CDF_LUTS });
 
 		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
 		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>(1);
@@ -109,6 +114,8 @@ struct ReSTIRSPMISDataHost
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets					   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums			   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs						   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts					   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets			   = nullptr;
 
 			return;
 		}
@@ -141,6 +148,12 @@ struct ReSTIRSPMISDataHost
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDFS>();
+		// The pointer is not set here because the buffer is resized when creating the SPMIS cells, not here so we may not have a valid pointer to set at all
+		// since the buffer hasn't been allocated (resized)
+		// render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts = m_spmis_data.template
+		// get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUTS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets =
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;

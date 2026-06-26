@@ -4173,7 +4173,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		if (ImGui::SliderFloat("Search radius growth factor", &spmis_settings.neighboring_cell_search_radius_increment, 1.0f, 4.0f))
 			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 1, 16))
+		if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 0, 16))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::BeginDisabled(spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection);
@@ -5895,6 +5895,8 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (ImGui::InputInt("Max sample count", &m_application_settings->max_sample_count))
+		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
 	{
 		// Clamping to 1

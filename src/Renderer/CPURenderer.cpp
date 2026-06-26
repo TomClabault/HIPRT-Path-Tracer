@@ -76,14 +76,14 @@
 //
 // If you're debugging coordinates that come from a kernel of this renderer (by printing the x and y coordinate of the pixel being rendered, then this will need
 // to be 1)
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 306
-#define DEBUG_PIXEL_Y 273
+#define DEBUG_PIXEL_X 1105
+#define DEBUG_PIXEL_Y 13
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -107,7 +107,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 100
+#define DEBUG_NEIGHBORHOOD_SIZE 500
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -1562,8 +1562,18 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	unsigned int* cell_alive_list = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().data();
 	unsigned int cell_alive_count = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().at(0);
 	float* cell_cdfs			  = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().data();
-	ReSTIR_SPMIS_BuildCDFs(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
-						   cell_cdfs);
+
+	if (spmis_data.template get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
+	{
+		spmis_data.template resize_one_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize);
+		m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+			spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();
+	}
+	unsigned short int* cell_cdf_luts = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();
+
+	unsigned int* cell_cdf_luts_offsets = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>().data();
+	ReSTIR_SPMIS_BuildCDFs(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs, cell_cdfs,
+						   cell_cdf_luts, cell_cdf_luts_offsets);
 }
 
 void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
