@@ -13,6 +13,7 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   unsigned int,								   // All pixel hashes
 											   GenericAtomicType<unsigned int, DataContainer>, // All pixel hashes checksums
 											   unsigned int,								   // All pixel index in cell
+											   unsigned int,								   // All pixel reuse cell pixel index
 											   unsigned int,								   // Important pixel indices sorting values
 											   // TODO short int
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell pixels counters
@@ -33,6 +34,7 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_ALL_PIXEL_HASHES,
 	RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS,
 	RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL,
+	RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX,
 	RESTIR_SPMIS_PIXEL_INDICES_SORTED,
 	RESTIR_SPMIS_CELL_COUNTERS,
 	RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS,
@@ -99,10 +101,11 @@ struct ReSTIRSPMISDataHost
 		{
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = 0;
 
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes			 = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell	 = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted		 = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes					= nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums		= nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell			= nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_reuse_cell_pixel_index = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted				= nullptr;
 
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters			   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
@@ -125,6 +128,8 @@ struct ReSTIRSPMISDataHost
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_reuse_cell_pixel_index =
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = (unsigned int)size();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();

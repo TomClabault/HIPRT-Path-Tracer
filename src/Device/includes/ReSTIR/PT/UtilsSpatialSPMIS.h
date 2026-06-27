@@ -48,6 +48,17 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 )
 {
 	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
+	unsigned int cached_reuse_cell_pixel_index		= spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index];
+	if (cached_reuse_cell_pixel_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+	{
+		// We're going to reuse from the cell at the cached reuse pixel index to avoid running the expensive cell search each frame when we already have a good
+		// cell chosen from previous frames
+		unsigned int reuse_cell_index = spmis_settings.all_pixel_hashes[cached_reuse_cell_pixel_index];
+		out_neighbors_confidence_sum  = spmis_settings.cell_confidence_sums[reuse_cell_index];
+		out_reuse_cell_pixel_count	  = spmis_settings.cell_pixels_counters[reuse_cell_index];
+
+		return reuse_cell_index;
+	}
 
 	// First, always WRSing the center cell
 	unsigned int center_cell_index = spmis_settings.all_pixel_hashes[center_pixel_index];
@@ -60,6 +71,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	// Variables for WRS, starting with the center cell selected
 	float weight_sum						  = center_cell_weight;
 	unsigned int selected_cell_index		  = center_cell_index;
+	unsigned int selected_pixel_index		  = center_pixel_index;
 	unsigned int selected_cell_confidence_sum = center_cell_weight;
 
 	float radius = spmis_settings.initial_search_radius;
@@ -116,6 +128,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		{
 			// Selecting this neighbor cell
 			selected_cell_index			 = neighbor_cell_index;
+			selected_pixel_index		 = neighbor_pixel_index;
 			selected_cell_confidence_sum = neighbor_cell_weight;
 		}
 	}
@@ -126,8 +139,9 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
 	{
 		out_neighbors_confidence_sum = selected_cell_confidence_sum;
-		out_reuse_cell_pixel_count =
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters[selected_cell_index];
+		out_reuse_cell_pixel_count	 = spmis_settings.cell_pixels_counters[selected_cell_index];
+
+		spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index] = selected_pixel_index;
 	}
 	else
 	{

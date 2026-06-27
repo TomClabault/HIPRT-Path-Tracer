@@ -61,6 +61,9 @@ struct ReSTIRCommonSPMISSettings
 
 	// For each pixel, the index in its hash cell
 	unsigned int* all_pixels_index_in_cell = nullptr;
+	// For each pixel, the index of the pixel whose reuse cell to reuse from. This is precomputed to avoid having to do an expensive reuse cell search each
+	// frame
+	unsigned int* all_pixels_reuse_cell_pixel_index = nullptr;
 	// A fullscreen buffer which contains, for each cell, the list of pixel indices that belongs to that cell. Pixel indices in each cell are sorted with
 	// important pixels (non-zero contribution reservoirs) first and non-important pixels after that. This buffer should be indexed as [cell_ffset +
 	// index_in_cell] with cell_offset coming from the cell_offsets buffer and index_in_cell in [0, cell_pixels_counts[cell_index]], with the first
