@@ -36,8 +36,8 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 		return;
 	}
 
-	unsigned int cell_not_occupied = hippt::atomic_compare_exchange(&spmis_settings.cell_occupied[hash_cell_index], 0u, 1u) == 0;
-	unsigned int cell_alive_index  = hippt::atomic_fetch_add(spmis_settings.cell_total_count_counter, cell_not_occupied);
+	unsigned char cell_not_occupied = hippt::atomic_compare_exchange(&spmis_settings.cell_occupied[hash_cell_index], (unsigned char)0, (unsigned char)1) == 0;
+	unsigned int cell_alive_index	= hippt::atomic_fetch_add(spmis_settings.cell_total_count_counter, (unsigned int)cell_not_occupied);
 	if (cell_not_occupied)
 		// This is a new cell
 		spmis_settings.cell_alive_list[cell_alive_index] = hash_cell_index;

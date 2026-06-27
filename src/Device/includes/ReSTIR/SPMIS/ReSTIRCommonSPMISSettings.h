@@ -80,7 +80,7 @@ struct ReSTIRCommonSPMISSettings
 	AtomicType<unsigned int>* cell_total_count_counter = nullptr;
 	// For each cell, whether or not it has at least one pixel in it. This is used to increment the cell total count counter without counting multiple times the
 	// same cell
-	AtomicType<unsigned int>* cell_occupied = nullptr;
+	AtomicType<unsigned char>* cell_occupied = nullptr;
 	// A list of size cell_total_count_counter that contains the indices of all cells that have at least one pixel in them. This is used to build CDFs for all
 	// cells that have at least one pixel in them.
 	unsigned int* cell_alive_list = nullptr;

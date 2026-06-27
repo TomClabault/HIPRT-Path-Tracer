@@ -17,17 +17,16 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   // TODO short int
 											   GenericAtomicType<unsigned int, DataContainer>, // Cell pixels counters
 											   // TODO short int
-											   GenericAtomicType<unsigned int, DataContainer>, // Cells non-zero reservoir counters
-											   GenericAtomicType<unsigned int, DataContainer>, // Cell global offset counter
-											   GenericAtomicType<unsigned int, DataContainer>, // Cell total count counter
-											   // TODO uchar
-											   GenericAtomicType<unsigned int, DataContainer>, // Cell occupied
-											   unsigned int,								   // Cell alive list
-											   unsigned int,								   // Cell offsets
-											   GenericAtomicType<unsigned int, DataContainer>, // Cells confidence sums
-											   float,										   // Cells CDFs
-											   unsigned short int,							   // Cells CDF LUTs for speeding up CDF sampling
-											   unsigned int>;								   // Cells CDF LUT offsets
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cells non-zero reservoir counters
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cell global offset counter
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cell total count counter
+											   GenericAtomicType<unsigned char, DataContainer>, // Cell occupied
+											   unsigned int,									// Cell alive list
+											   unsigned int,									// Cell offsets
+											   GenericAtomicType<unsigned int, DataContainer>,	// Cells confidence sums
+											   float,											// Cells CDFs
+											   unsigned short int,								// Cells CDF LUTs for speeding up CDF sampling
+											   unsigned int>;									// Cells CDF LUT offsets
 
 enum ReSTIRSPMISDataHostBuffers
 {
