@@ -449,14 +449,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		if (restir_pt_initial_reservoir.sample.is_envmap_path())
 			radiance_to_camera = bsdf_first_hit * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
 								 restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
-		else
+		else if (!restir_pt_initial_reservoir.sample.di_sample)
 		{
 			// TODO the ray volume state should be updated here
 			float3_t view_direction					 = hippt::normalize(initial_surface.shading_point - restir_pt_initial_reservoir.sample.rc_vertex);
 			float3_t to_light_direction_sample_point = restir_pt_initial_reservoir.sample.rc_vertex_incident_light_direction;
+
+			int rc_vertex_material_index = render_data.buffers.material_indices[restir_pt_initial_reservoir.sample.rc_vertex_primitive_index];
+			DeviceUnpackedEffectiveMaterial rc_vertex_material = get_intersection_material(
+				render_data, rc_vertex_material_index,
+				make_float2(restir_pt_initial_reservoir.sample.rc_vertex_texcoords_u, restir_pt_initial_reservoir.sample.rc_vertex_texcoords_v));
 			BSDFContext secondary_hit_eval_context(view_direction, initial_surface.shading_normal, initial_surface.geometric_normal,
 												   to_light_direction_sample_point, restir_pt_initial_reservoir.sample.incident_light_info_at_sample_point,
-												   initial_surface.ray_volume_state, false, restir_pt_initial_reservoir.sample.rc_vertex_material, 0.0f);
+												   initial_surface.ray_volume_state, false, rc_vertex_material, 0.0f);
 
 			ColorRGB32F bsdf_secondary_hit =
 				bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator) *
@@ -464,6 +469,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			radiance_to_camera =
 				bsdf_first_hit * bsdf_secondary_hit * restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 		}
+		else
+			radiance_to_camera = bsdf_first_hit * restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 
 		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_pt_initial_reservoir.UCW;
 	}

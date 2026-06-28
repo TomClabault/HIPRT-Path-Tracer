@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_PT_TARGET_FUNCTION_H
 
 #include "Device/includes/LightSampling/NEEEstimators.h"
+#include "Device/includes/Material.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
@@ -95,9 +96,13 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
 		ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, surface.material, sample.incident_light_info_at_visible_point,
 													   surface.primitive_index);
+
+		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
+		DeviceUnpackedEffectiveMaterial rc_vertex_material =
+			get_intersection_material(render_data, rc_vertex_material_index, make_float2(sample.rc_vertex_texcoords_u, sample.rc_vertex_texcoords_v));
 		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
 											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
-											   const_cast<DeviceUnpackedEffectiveMaterial&>(sample.rc_vertex_material), 0.0f);
+											   rc_vertex_material, 0.0f);
 
 		// TODO can we use a simple target function visible point only for perf? We can have a template parameter to do that only during spatial reuse
 		float trash_pdf;

@@ -134,7 +134,8 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 	restir_pt_initial_sample.rc_vertex = closest_hit_info.inter_point;
 	restir_pt_initial_sample.rc_vertex_geometric_normal.pack(closest_hit_info.geometric_normal);
 	restir_pt_initial_sample.rc_vertex_shading_normal.pack(closest_hit_info.shading_normal);
-	restir_pt_initial_sample.rc_vertex_material		   = ray_payload.material;
+	restir_pt_initial_sample.rc_vertex_texcoords_u	   = closest_hit_info.texcoords.x;
+	restir_pt_initial_sample.rc_vertex_texcoords_v	   = closest_hit_info.texcoords.y;
 	restir_pt_initial_sample.rc_vertex_primitive_index = closest_hit_info.primitive_index;
 	restir_pt_initial_sample.sample_point_rough_enough =
 		ray_payload.material.can_do_light_sampling(render_data.render_settings.restir_pt_settings.neighbor_sample_point_roughness_threshold);

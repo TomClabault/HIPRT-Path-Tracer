@@ -22,8 +22,7 @@ static std::mutex restir_pt_log_mutex;
 
 struct ReSTIRPTReservoirSample
 {
-	// 'rc_vertex' here is x1 (with x0 the camera), i.e. the gbuffer hit
-
+	// 'rc_vertex' in this reservoir is x1 (with x0 the camera), i.e. the gbuffer hit
 	float3_t rc_vertex = make_float3(-1.0f, -1.0f, -1.0f);
 	Octahedral24BitNormalPadded32b rc_vertex_geometric_normal;
 	float3_t rc_vertex_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
@@ -31,16 +30,19 @@ struct ReSTIRPTReservoirSample
 	ColorRGB32F rc_vertex_incident_radiance;
 	int rc_vertex_primitive_index = -1;
 
-	DeviceUnpackedEffectiveMaterial rc_vertex_material;
+	float rc_vertex_texcoords_u = -1.0f;
+	float rc_vertex_texcoords_v = -1.0f;
 
-	bool di_sample = false;
+	float bsdf_throughput_luminance_at_sample_point = 1.0f;
+	float target_function							= 0.0f;
 
 	// TODO all 'at visible' point variables should be replaced by 'rc_vertex' variables
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 	BSDFIncidentLightInfo incident_light_info_at_sample_point  = BSDFIncidentLightInfo::NO_INFO;
-	float bsdf_throughput_luminance_at_sample_point			   = 1.0f;
 
-	float target_function = 0.0f;
+	// Index of the pixel that produced this sample/reservoir during the initial candidates sampling
+	// Used by some algorithms such as ReSTIR PG
+	unsigned int pixel_index = static_cast<unsigned int>(-1);
 
 	// Whether or not the sample point is on a material that is rough enough to be reconnected
 	// If the sample point is on a mirror for example, reconnecting to that point from our center pixel
@@ -55,10 +57,7 @@ struct ReSTIRPTReservoirSample
 	//
 	// TODO true by default
 	bool sample_point_rough_enough = false;
-
-	// Index of the pixel that produced this sample/reservoir during the initial candidates sampling
-	// Used by some algorithms such as ReSTIR PG
-	unsigned int pixel_index = static_cast<unsigned int>(-1);
+	bool di_sample				   = false;
 
 	HIPRT_DEVICE bool is_envmap_path() const
 	{
