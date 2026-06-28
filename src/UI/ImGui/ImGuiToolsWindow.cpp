@@ -407,7 +407,7 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 
 void ImGuiToolsWindow::draw_image_difference_panel()
 {
-	static constexpr std::string USING_VIEWPORT_TEXT = "Using viewport";
+	static constexpr const char* USING_VIEWPORT_TEXT = "Using viewport";
 
 	if (ImGui::CollapsingHeader("Image difference"))
 	{
