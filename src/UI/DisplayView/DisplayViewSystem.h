@@ -126,6 +126,9 @@ private:
 	std::unordered_map<DisplayViewType, DisplayView> m_display_views;
 	// Index within the vector of the display view currently being used
 	DisplayView* m_current_display_view = nullptr;
+	// If != UNDEFINED, remembers the display view before an auto-switch, to restore later
+	DisplayViewType m_saved_display_view = DisplayViewType::UNDEFINED;
+
 	// If != UNDEFINED, then someone has requested a display view change and the display view change will be applied upon calling update().
 	// Why is this necessary and why not just change the DisplayView directly?
 	//		- Picture this scenario: we're currently displaying the default display view.

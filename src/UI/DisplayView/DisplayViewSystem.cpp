@@ -171,12 +171,23 @@ bool DisplayViewSystem::update_selected_display_view()
 
 void DisplayViewSystem::handle_automatic_display_view_changes()
 {
-	if (m_current_display_view->get_display_view_type() == DisplayViewType::GMON_BLEND && !m_renderer->gmon_used())
+	DisplayViewType current_type = m_current_display_view->get_display_view_type();
+	bool gmon_available = m_renderer->gmon_used();
+
+	if (current_type == DisplayViewType::GMON_BLEND && !gmon_available)
 	{
-		// But GMoN blend is used while GMoN isn't active, we need to go back to default
+		m_saved_display_view = DisplayViewType::GMON_BLEND;
 		queue_display_view_change(DisplayViewType::DEFAULT);
 		update_selected_display_view();
 	}
+	else if (current_type == DisplayViewType::DEFAULT && m_saved_display_view == DisplayViewType::GMON_BLEND && gmon_available)
+	{
+		m_saved_display_view = DisplayViewType::UNDEFINED;
+		queue_display_view_change(DisplayViewType::GMON_BLEND);
+		update_selected_display_view();
+	}
+	else if (current_type != DisplayViewType::DEFAULT && current_type != DisplayViewType::GMON_BLEND)
+		m_saved_display_view = DisplayViewType::UNDEFINED;
 }
 
 bool DisplayViewSystem::current_display_view_needs_adaptive_sampling_buffers()
