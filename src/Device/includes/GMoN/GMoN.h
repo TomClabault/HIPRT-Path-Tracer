@@ -133,8 +133,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
 	{
 		// Section 4.3 and Eq. 6
 		float gini_coefficient = compute_gini_coefficient(SORTED_MEANS_VARIABLE);
-		if (gini_coefficient == 0.0f)
-			return ColorRGB32F(0.0f);
 
 		int c = gini_coefficient * (GMoNMSetsCount / 2);
 

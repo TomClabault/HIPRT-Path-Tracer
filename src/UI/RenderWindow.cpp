@@ -55,6 +55,8 @@ extern ImGuiLogger g_imgui_logger;
 // reuse of restir pt enhanced but while keeping SPMIS capability
 //		- Or maybe we can produce a map of random seeds and those random seeds choose the spatial neighbors, this could also be used to share duplicated
 // computations
+// - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we
+// can use that pixel index to go fetch the sample at the right pixel
 //
 // PSS or solid angle? Read papers to see what they need
 //	- Check Area ReSTIR
@@ -90,11 +92,6 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // - Test ReSTIR GI with diffuse transmission
-// - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we
-// can use that pixel index to go fetch the sample at the right pixel
-// - distance rejection heuristic for GI reconnection
-// - Alpha tests darkening ReSTIR DI & ReSTIR GI
-// - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
 // - How to have better confidence weights that are proportional to variance rather than just counting how many samples it has seen?
