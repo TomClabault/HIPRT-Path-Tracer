@@ -84,7 +84,6 @@ extern ImGuiLogger g_imgui_logger;
 // that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be
 // any of that basically, it should just be evaluating the BSDF
-// - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through
 // this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays
 // miss the scene and hit the envmap directly) without background envmap intensity scaling:
