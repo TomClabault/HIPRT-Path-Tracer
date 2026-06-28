@@ -53,7 +53,11 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 			int index = x + y * width;
 
 			for (int i = 0; i < output_channels; i++)
+			{
 				output_image[index * output_channels + i] = pixels[index * output_channels + i];
+				if (i == 3 && output_channels == 4 && read_channels < 4)
+					output_image[index * output_channels + i] = 255; // If the image has no alpha channel, we set it to 255 (fully opaque)
+			}
 		}
 	}
 
