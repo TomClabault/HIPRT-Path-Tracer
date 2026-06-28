@@ -12,7 +12,7 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_BuildCDFs(unsigned int* cell_non_zero_reservoir_counters,
+ReSTIR_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
 					   unsigned int* cell_offsets,
 					   unsigned int* cell_alive_list,
 					   unsigned int* pixel_indices_sorted,
@@ -23,7 +23,7 @@ ReSTIR_SPMIS_BuildCDFs(unsigned int* cell_non_zero_reservoir_counters,
 					   unsigned int size)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned int>* cell_non_zero_reservoir_counters,
+inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
 							  unsigned int* cell_offsets,
 							  unsigned int* cell_alive_list,
 							  unsigned int cell_alive_count,

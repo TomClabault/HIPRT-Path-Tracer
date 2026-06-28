@@ -10,24 +10,22 @@
 
 template <template <typename> typename DataContainer>
 using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
-											   unsigned int,								   // All pixel hashes
-											   GenericAtomicType<unsigned int, DataContainer>, // All pixel hashes checksums
-											   unsigned int,								   // All pixel index in cell
-											   unsigned int,								   // All pixel reuse cell pixel index
-											   unsigned int,								   // Important pixel indices sorting values
-											   // TODO short int
-											   GenericAtomicType<unsigned int, DataContainer>, // Cell pixels counters
-											   // TODO short int
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cells non-zero reservoir counters
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cell global offset counter
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cell total count counter
-											   GenericAtomicType<unsigned char, DataContainer>, // Cell occupied
-											   unsigned int,									// Cell alive list
-											   unsigned int,									// Cell offsets
-											   GenericAtomicType<unsigned int, DataContainer>,	// Cells confidence sums
-											   float,											// Cells CDFs
-											   unsigned short int,								// Cells CDF LUTs for speeding up CDF sampling
-											   unsigned int>;									// Cells CDF LUT offsets
+											   unsigned int,										 // All pixel hashes
+											   GenericAtomicType<unsigned int, DataContainer>,		 // All pixel hashes checksums
+											   unsigned int,										 // All pixel index in cell
+											   unsigned int,										 // All pixel reuse cell pixel index
+											   unsigned int,										 // Important pixel indices sorting values
+											   GenericAtomicType<unsigned short int, DataContainer>, // Cell pixels counters
+											   GenericAtomicType<unsigned short int, DataContainer>, // Cells non-zero reservoir counters
+											   GenericAtomicType<unsigned int, DataContainer>,		 // Cell global offset counter
+											   GenericAtomicType<unsigned int, DataContainer>,		 // Cell total count counter
+											   GenericAtomicType<unsigned char, DataContainer>,		 // Cell occupied
+											   unsigned int,										 // Cell alive list
+											   unsigned int,										 // Cell offsets
+											   GenericAtomicType<unsigned int, DataContainer>,		 // Cells confidence sums
+											   float,												 // Cells CDFs
+											   unsigned short int,									 // Cells CDF LUTs for speeding up CDF sampling
+											   unsigned int>;										 // Cells CDF LUT offsets
 
 enum ReSTIRSPMISDataHostBuffers
 {

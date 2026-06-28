@@ -1519,8 +1519,8 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 {
 	ReSTIRSPMISDataHostInternal<std::vector>& spmis_data = m_restir_pt_state.spmis_data.m_spmis_data;
 
-	AtomicType<unsigned int>* cell_pixels_counters = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().data();
-	AtomicType<unsigned int>* cell_non_zero_reservoir_counters =
+	AtomicType<unsigned short int>* cell_pixels_counters = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().data();
+	AtomicType<unsigned short int>* cell_non_zero_reservoir_counters =
 		spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().data();
 	AtomicType<unsigned int>* cell_confidence_sums		 = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>().data();
 	AtomicType<unsigned int>* cell_global_offset_counter = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().data();

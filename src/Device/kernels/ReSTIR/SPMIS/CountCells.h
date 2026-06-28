@@ -13,8 +13,8 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 						unsigned int* all_pixel_index_in_cell,
-						unsigned int* cell_counters,
-						unsigned int* cell_non_zero_reservoir_counters,
+						unsigned short int* cell_counters,
+						unsigned short int* cell_non_zero_reservoir_counters,
 						unsigned int* cell_confidence_sums,
 						ReSTIRPTReservoir* reservoirs,
 						unsigned int size,
@@ -23,8 +23,8 @@ ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 							   unsigned int* all_pixel_index_in_cell,
-							   AtomicType<unsigned int>* cell_counters,
-							   AtomicType<unsigned int>* cell_non_zero_reservoir_counters,
+							   AtomicType<unsigned short int>* cell_counters,
+							   AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
 							   AtomicType<unsigned int>* cell_confidence_sums,
 							   ReSTIRPTReservoir* reservoirs,
 							   unsigned int size,
@@ -50,10 +50,10 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 
 	if ((count_important && important) || (!count_important && !important))
 	{
-		unsigned int index_in_cell = hippt::atomic_fetch_add(&cell_counters[cell_index], 1u);
+		unsigned short int index_in_cell = hippt::atomic_fetch_add(&cell_counters[cell_index], (unsigned short int)1);
 		hippt::atomic_fetch_add(&cell_confidence_sums[cell_index], (unsigned int)reservoirs[linear_pixel_index].M);
 		if (important)
-			hippt::atomic_fetch_add(&cell_non_zero_reservoir_counters[cell_index], 1u);
+			hippt::atomic_fetch_add(&cell_non_zero_reservoir_counters[cell_index], (unsigned short int)1);
 
 		all_pixel_index_in_cell[linear_pixel_index] = index_in_cell;
 	}

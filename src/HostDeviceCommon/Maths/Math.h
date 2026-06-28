@@ -714,6 +714,27 @@ namespace hippt
 	}
 
 	template <>
+	__device__ unsigned short atomic_fetch_add(unsigned short* address, unsigned short val)
+	{
+		// Source: https://forums.developer.nvidia.com/t/how-to-use-atomiccas-to-implement-atomicadd-short-trouble-adapting-programming-guide-example/22712/10
+		unsigned int* base_address = (unsigned int*)((size_t)address & ~2);
+		unsigned int long_val	   = ((size_t)address & 2) ? ((unsigned int)val << 16) : val;
+		unsigned int long_old	   = atomicAdd(base_address, long_val);
+
+		if ((size_t)address & 2)
+			return (unsigned short)(long_old >> 16);
+		else
+		{
+			unsigned short old = (unsigned short)(long_old & 0xffff);
+			if (old + val < old)
+				// Oops, overflow in lower part occurred
+				atomicAdd(base_address, -(1 << 16)); // Fix it by subtracting back the carry
+
+			return old;
+		}
+	}
+
+	template <>
 	__device__ short int atomic_fetch_add(short int* address, short int val)
 	{
 		// Source: https://forums.developer.nvidia.com/t/how-to-use-atomiccas-to-implement-atomicadd-short-trouble-adapting-programming-guide-example/22712/11

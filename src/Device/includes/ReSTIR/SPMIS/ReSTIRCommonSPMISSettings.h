@@ -72,9 +72,9 @@ struct ReSTIRCommonSPMISSettings
 
 	// How many **pixels** are in the cells, containing non-zero reservoirs or not
 	// TODO unsigned char is enough for 8 * 8 cells
-	AtomicType<unsigned int>* cell_pixels_counters = nullptr;
+	AtomicType<unsigned short int>* cell_pixels_counters = nullptr;
 	// For each cell, how many pixels have a non-zero reservoir (important pixels) in it.
-	AtomicType<unsigned int>* cell_non_zero_reservoir_counters = nullptr;
+	AtomicType<unsigned short int>* cell_non_zero_reservoir_counters = nullptr;
 	// Cell counters but prefixed scanned so that we can know the offset of each cell
 	unsigned int* cell_offsets = nullptr;
 	// A global counter used to compute the offsets of each cell
