@@ -12,6 +12,9 @@
 // For replacing backslashes in texture paths
 #include <regex>
 
+// For embedded texture access (aiTexture struct and stb_image)
+#include "assimp/texture.h"
+
 void ThreadFunctions::compile_kernel(std::shared_ptr<GPUKernel> kernel,
 									 std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
 									 const std::vector<hiprtFuncNameSet>& func_name_sets)
@@ -40,7 +43,8 @@ void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name,
 	kernel.compile(hiprt_orochi_ctx, func_name_sets, true, true);
 }
 
-void ThreadFunctions::load_scene_texture(Scene& parsed_scene,
+void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
+										 Scene& parsed_scene,
 										 std::string scene_path,
 										 const std::vector<std::pair<aiTextureType, std::string>>& tex_paths,
 										 const std::vector<int>& material_indices,
@@ -115,7 +119,62 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene,
 			break;
 		}
 
-		Image8Bit texture = Image8Bit::read_image(full_path, nb_channels, false);
+		Image8Bit texture;
+		if (!texture_file_path.empty() && texture_file_path[0] == '*')
+		{
+			// Embedded texture reference (ASSIMP uses "*0", "*1", etc. as paths for embedded textures)
+			int embedded_idx			  = std::stoi(texture_file_path.substr(1));
+			const aiTexture* embedded_tex = assimp_scene->mTextures[embedded_idx];
+			if (embedded_tex != nullptr)
+			{
+				if (std::string(embedded_tex->mFilename.C_Str()).contains("Labels_0_BaseColor"))
+					printf("\n");
+
+				if (embedded_tex->mHeight == 0)
+				{
+					// Compressed embedded texture (PNG/JPEG data in memory)
+					stbi_set_flip_vertically_on_load_thread(false);
+
+					int w, h, n;
+					unsigned char* pixels =
+						stbi_load_from_memory(reinterpret_cast<const unsigned char*>(embedded_tex->pcData), embedded_tex->mWidth, &w, &h, &n, nb_channels);
+
+					if (pixels)
+					{
+						texture = Image8Bit(pixels, w, h, nb_channels);
+						stbi_image_free(pixels);
+					}
+				}
+				else
+				{
+					// Uncompressed embedded texture (raw RGBA8888 aiTexel array)
+					if (nb_channels == 4)
+					{
+						texture = Image8Bit(reinterpret_cast<const unsigned char*>(embedded_tex->pcData), embedded_tex->mWidth, embedded_tex->mHeight, 4);
+					}
+					else
+					{
+						// Need to reduce channels from RGBA to nb_channels
+						Image8Bit converted(embedded_tex->mWidth, embedded_tex->mHeight, nb_channels);
+						int num_pixels				  = embedded_tex->mWidth * embedded_tex->mHeight;
+						const unsigned char* src_data = reinterpret_cast<const unsigned char*>(embedded_tex->pcData);
+						for (int pixel_i = 0; pixel_i < num_pixels; pixel_i++)
+							for (int c = 0; c < nb_channels; c++)
+								converted[pixel_i * nb_channels + c] = src_data[pixel_i * 4 + c];
+
+						texture = std::move(converted);
+					}
+				}
+			}
+		}
+		else
+		{
+			// External texture file on disk
+			if (full_path.contains("Labels_0_BaseColor"))
+				printf("\n");
+
+			texture = Image8Bit::read_image(full_path, nb_channels, false);
+		}
 
 		int material_index = material_indices[thread_index];
 		if (type == aiTextureType_EMISSIVE)

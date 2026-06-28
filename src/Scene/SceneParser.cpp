@@ -90,7 +90,7 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
 	parsed_scene.metadata.mesh_material_indices.resize(scene->mNumMeshes);
 	parsed_scene.textures.resize(texture_count);
 	assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
-	dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
+	dispatch_texture_loading(scene, parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
 
 	parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 
@@ -403,7 +403,8 @@ void SceneParser::assign_material_texture_indices(std::vector<CPUMaterial>& mate
 	}
 }
 
-void SceneParser::dispatch_texture_loading(Scene& parsed_scene,
+void SceneParser::dispatch_texture_loading(const aiScene* assimp_scene,
+										   Scene& parsed_scene,
 										   const std::string& scene_path,
 										   int nb_threads,
 										   const std::vector<std::pair<aiTextureType, std::string>>& texture_paths,
@@ -415,15 +416,16 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene,
 
 	// Creating a state to keep the data that the threads need alive
 	std::shared_ptr<TextureLoadingThreadState> texture_threads_state = std::make_shared<TextureLoadingThreadState>();
-	texture_threads_state->scene_filepath							 = scene_path;
-	texture_threads_state->texture_paths							 = texture_paths;
-	texture_threads_state->material_indices							 = material_indices;
+	texture_threads_state->assimp_scene		  = assimp_scene;
+	texture_threads_state->scene_filepath	  = scene_path;
+	texture_threads_state->texture_paths	  = texture_paths;
+	texture_threads_state->material_indices	  = material_indices;
 
 	ThreadManager::set_thread_data(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, texture_threads_state);
 
 	for (int i = 0; i < nb_threads; i++)
-		ThreadManager::start_thread(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, ThreadFunctions::load_scene_texture, std::ref(parsed_scene),
-									texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths),
+		ThreadManager::start_thread(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, ThreadFunctions::load_scene_texture, assimp_scene,
+									std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths),
 									std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 

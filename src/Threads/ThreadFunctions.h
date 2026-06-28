@@ -8,6 +8,8 @@
 
 #include "Renderer/GPURenderer.h"
 
+struct aiScene;
+
 class ThreadFunctions
 {
 public:
@@ -23,7 +25,8 @@ public:
 								  std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx,
 								  const std::vector<hiprtFuncNameSet>& func_name_sets);
 
-	static void load_scene_texture(Scene& parsed_scene,
+	static void load_scene_texture(const aiScene* assimp_scene,
+								   Scene& parsed_scene,
 								   std::string scene_path,
 								   const std::vector<std::pair<aiTextureType, std::string>>& tex_paths,
 								   const std::vector<int>& material_indices,

@@ -228,7 +228,8 @@ private:
 	static void assign_material_texture_indices(std::vector<CPUMaterial>& materials,
 												const std::vector<ParsedMaterialTextureIndices>& material_tex_indices,
 												const std::vector<int>& material_textures_offsets);
-	static void dispatch_texture_loading(Scene& parsed_scene,
+	static void dispatch_texture_loading(const aiScene* assimp_scene,
+										 Scene& parsed_scene,
 										 const std::string& scene_path,
 										 int nb_threads,
 										 const std::vector<std::pair<aiTextureType, std::string>>& texture_paths,
