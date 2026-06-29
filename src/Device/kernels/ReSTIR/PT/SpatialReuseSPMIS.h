@@ -82,8 +82,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
 	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].M;
-	unsigned int random_seed_before		  = random_number_generator.m_state.seed;
-	random_number_generator.m_state.seed  = random_seed_before;
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
 		// Resampling only the neighbors, canonical resampling is further below
