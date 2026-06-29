@@ -1656,7 +1656,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 														   "- Final reservoir M",
 														   "- Per pixel reuse radius",
 														   "- Valid directions percentage",
-														   "- SPMIS cells" };
+														   "- SPMIS cells",
+														   "- Cell variance" };
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_pt_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						{
 							int macro_value_before =
@@ -4185,6 +4186,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
 			"distance scaling.");
 		ImGui::EndDisabled();
+		if (ImGui::Checkbox("Variance aware reuse radius", &spmis_settings.variance_aware_reuse_radius))
+			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("Quick settings");

@@ -25,7 +25,8 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   GenericAtomicType<unsigned int, DataContainer>,		 // Cells confidence sums
 											   float,												 // Cells CDFs
 											   unsigned short int,									 // Cells CDF LUTs for speeding up CDF sampling
-											   unsigned int>;										 // Cells CDF LUT offsets
+											   unsigned int,										 // Cells CDF LUT offsets
+											   float>;												 // Cells variance
 
 enum ReSTIRSPMISDataHostBuffers
 {
@@ -45,6 +46,7 @@ enum ReSTIRSPMISDataHostBuffers
 	RESTIR_SPMIS_CELL_CDFS,
 	RESTIR_SPMIS_CELL_CDF_LUTS,
 	RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS,
+	RESTIR_SPMIS_CELL_VARIANCE,
 };
 
 template <template <typename> typename DataContainer>
@@ -116,6 +118,7 @@ struct ReSTIRSPMISDataHost
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs						   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts					   = nullptr;
 			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets			   = nullptr;
+			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_variance			   = nullptr;
 
 			return;
 		}
@@ -156,6 +159,8 @@ struct ReSTIRSPMISDataHost
 		// get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUTS>();
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>();
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_variance =
+			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_VARIANCE>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;

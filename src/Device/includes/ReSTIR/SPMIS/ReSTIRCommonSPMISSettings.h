@@ -33,7 +33,8 @@ struct ReSTIRCommonSPMISSettings
 	// When searching for a neighboring cell to reuse from, cells further away are downweighted by 1.0f / distance_to_center_pixel to improve variance (since we
 	// will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough so we're further scaling by a controllable
 	// factor. The lower this factor, the more closer cells are preferred. 0.0f turns off distance scaling.
-	float distance_scaling = 8.0f;
+	float distance_scaling			 = 8.0f;
+	bool variance_aware_reuse_radius = true;
 
 	ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
 
@@ -96,6 +97,14 @@ struct ReSTIRCommonSPMISSettings
 	unsigned short int* cell_cdf_luts = nullptr;
 	// Fullscreen buffer that contains, for each cell, the offset in the cell_cdf_luts buffer of the CDF LUT of that cell.
 	unsigned int* cell_cdf_lut_offsets = nullptr;
+
+	// Per-cell coefficient of variation of the contributions UCW * target_function.
+	//
+	// Normalized variation coefficient:
+	//		coeff = sqrt(Var(X) / Mean^2)
+	//		normalized coeff = coeff / (1 + coeff) to be in [0, 1]
+	// Computed inside BuildCDFs.
+	float* cell_variance = nullptr;
 };
 
 #endif

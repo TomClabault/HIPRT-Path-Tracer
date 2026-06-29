@@ -30,6 +30,7 @@ public:
 	static const std::string RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_SORT_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_COMPUTE_PER_CELL_NOISE_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;

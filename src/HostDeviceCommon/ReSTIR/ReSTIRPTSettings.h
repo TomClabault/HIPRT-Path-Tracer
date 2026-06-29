@@ -53,6 +53,7 @@ enum ReSTIRPTDebugView
 	PT_PER_PIXEL_REUSE_RADIUS				 = 6,
 	PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 7,
 	PT_SPMIS_CELLS							 = 8,
+	PT_CELL_VARIANCE						 = 9,
 };
 
 struct ReSTIRPTSettings : public ReSTIRCommonSettings
@@ -106,7 +107,7 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 		use_confidence_weights = true;
 
 		debug_view				= ReSTIRPTDebugView::PT_NO_DEBUG;
-		debug_view_scale_factor = 1.0f;
+		debug_view_scale_factor = 2.0f;
 	}
 
 	ReSTIRPTInitialCandidatesPassSettings initial_candidates;

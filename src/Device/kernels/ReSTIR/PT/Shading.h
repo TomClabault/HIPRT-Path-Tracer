@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/HashGrid.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
@@ -189,6 +190,27 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		path_tracing_accumulate_color(
 			render_data, pixel_index, ray_payload.ray_color,
 			ColorRGB32F::random_color(render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index]));
+	}
+	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_CELL_VARIANCE)
+	{
+		const auto& spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+		unsigned int cell_index	   = spmis_settings.all_pixel_hashes[pixel_index];
+		if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX || spmis_settings.cell_variance == nullptr)
+			debug_set_final_color(render_data, x, y, ColorRGB32F(0.0f));
+		else
+		{
+			float rel_var = spmis_settings.cell_variance[cell_index];
+			// Sentinel -1.0f means cell has too few pixels for a reliable estimate
+			if (rel_var < 0.0f)
+				debug_set_final_color(render_data, x, y, ColorRGB32F(0.0f));
+			else
+			{
+				float t = hippt::min(rel_var / render_data.render_settings.restir_pt_settings.debug_view_scale_factor, 1.0f);
+				// Green (low noise) -> Red (high noise)
+				ColorRGB32F debug_color = hippt::lerp(ColorRGB32F(0.0f, 2.0f, 0.0f), ColorRGB32F(2.0f, 0.0f, 0.0f), t);
+				debug_set_final_color(render_data, x, y, debug_color);
+			}
+		}
 	}
 	else
 	{

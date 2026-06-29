@@ -74,8 +74,33 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	unsigned int selected_pixel_index		  = center_pixel_index;
 	unsigned int selected_cell_confidence_sum = center_cell_weight;
 
-	float radius = spmis_settings.initial_search_radius;
-	for (int i = 0; i < spmis_settings.neighboring_cell_max_search_iterations; i++, radius *= spmis_settings.neighboring_cell_search_radius_increment)
+	constexpr float variance_slider_lower_bound = 0.5f;
+	constexpr float variance_slider_upper_bound = 0.725f;
+	float cell_variance							= spmis_settings.cell_variance[center_cell_index];
+	float variance_slider = hippt::clamp(0.0f, 1.0f, (cell_variance - variance_slider_lower_bound) / (1.0f - variance_slider_upper_bound));
+
+	// Determining the search settings
+	float radius;
+	unsigned int max_search_iterations;
+	float distance_scaling;
+	if (spmis_settings.variance_aware_reuse_radius)
+	{
+		radius				  = hippt::lerp(10.0f, 20.0f, variance_slider);
+		max_search_iterations = hippt::lerp(0, 12, variance_slider);
+		if (cell_variance > 0.65f)
+			// Disabled
+			distance_scaling = 0.0f;
+		else
+			distance_scaling = hippt::lerp(3.0f, 8.0f, 1.0f - variance_slider);
+	}
+	else
+	{
+		radius				  = spmis_settings.initial_search_radius;
+		max_search_iterations = spmis_settings.neighboring_cell_max_search_iterations;
+		distance_scaling	  = spmis_settings.distance_scaling;
+	}
+
+	for (int i = 0; i < max_search_iterations; i++, radius *= spmis_settings.neighboring_cell_search_radius_increment)
 	{
 		int2_t random_offset = make_int2(radius * (rng() * 2.0f - 1.0f), radius * (rng() * 2.0f - 1.0f));
 		// This searches in a square for simplicity, not a disk but that's fine
@@ -120,8 +145,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		float selection_weight = neighbor_cell_weight;
 		selection_weight *= compatibility_weight;
 		if (!spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
-			selection_weight *=
-				spmis_settings.distance_scaling > 0.0f ? 1.0f / (hippt::length(neighbor_coords - center_pixel_coords) / spmis_settings.distance_scaling) : 1.0f;
+			selection_weight *= distance_scaling > 0.0f ? 1.0f / (hippt::length(neighbor_coords - center_pixel_coords) / distance_scaling) : 1.0f;
 
 		weight_sum += selection_weight;
 		if (rng() < selection_weight / weight_sum)
