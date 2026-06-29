@@ -257,7 +257,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 				distance_to_sample_point = hippt::length(incident_light_direction);
 				if (distance_to_sample_point <= 1.0e-6f)
 					// To avoid numerical instabilities
-					target_function = 0.0f;
+					continue;
 
 				incident_light_direction /= distance_to_sample_point;
 			}
@@ -265,11 +265,11 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 			if (!neighbor_reservoir.sample.is_envmap_path() && neighbor_reservoir.sample.di_sample &&
 				compute_cosine_term_at_light_source(neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
 				// Backfacing light
-				target_function = 0.0f;
+				continue;
 
 			float cosine_term = hippt::dot(incident_light_direction, center_surface.shading_normal);
 			if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(neighbor_reservoir.sample.incident_light_info_at_visible_point))
-				cosine_term = 0.0f;
+				continue;
 
 			target_function *= cosine_term;
 
@@ -280,6 +280,8 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 									 MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
 
 			ColorRGB32F visible_point_throughput = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
+			if (visible_point_throughput.luminance() == 0.0f)
+				continue;
 
 			ColorRGB32F sample_point_throughput = ColorRGB32F(1.0f);
 			if (!neighbor_reservoir.sample.di_sample)
