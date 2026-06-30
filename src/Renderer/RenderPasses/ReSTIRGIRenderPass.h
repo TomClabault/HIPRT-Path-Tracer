@@ -8,7 +8,6 @@
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -80,7 +79,6 @@ private:
 	OrochiBuffer<ReSTIRGIReservoir> m_spatial_buffer;
 
 	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
-	ReSTIRSPMISDataHost<OrochiBuffer> m_spmis_data;
 
 	ReSTIRGIReservoir* m_last_temporal_output_reservoirs = nullptr;
 	ReSTIRGIReservoir* m_last_restir_output_reservoirs	 = nullptr;

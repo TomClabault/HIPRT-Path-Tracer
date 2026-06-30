@@ -206,7 +206,8 @@ void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_temporal_buffer.resize(new_width * new_height);
 	m_spatial_buffer.resize(new_width * new_height);
 
-	ReSTIRRenderPassCommon::resize_common_buffers<ReSTIR_VARIANT_PT>(m_renderer, new_width, new_height, m_directional_spatial_reuse_data, m_spmis_data);
+	m_directional_spatial_reuse_data.resize(new_width, new_height);
+	m_spmis_data.resize(new_width, new_height);
 }
 
 bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -297,8 +298,8 @@ bool ReSTIRPTRenderPass::pre_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_PT>(
-			render_data, *m_renderer->get_global_compiler_options(), m_directional_spatial_reuse_data, m_spmis_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_PT>(render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= pre_render_update_spmis_buffers(render_data, *m_renderer->get_global_compiler_options());
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
 		m_last_temporal_output_reservoirs = m_initial_candidates_buffer.get_device_pointer();
@@ -327,7 +328,8 @@ bool ReSTIRPTRenderPass::pre_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::free_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data, m_spmis_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::free_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data);
+		render_data_invalidated |= m_spmis_data.free();
 	}
 
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.auto_reuse_radius)
@@ -335,6 +337,33 @@ bool ReSTIRPTRenderPass::pre_render_update(float delta_time)
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_radius =
 			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) *
 			ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+
+	return render_data_invalidated;
+}
+
+bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	int mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
+
+	bool render_data_invalidated = false;
+	if (mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	{
+		if (m_spmis_data.size() == 0)
+		{
+			m_spmis_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
+
+			render_data_invalidated = true;
+		}
+	}
+	else
+	{
+		if (m_spmis_data.size() > 0)
+		{
+			m_spmis_data.free();
+
+			render_data_invalidated = true;
+		}
+	}
 
 	return render_data_invalidated;
 }
@@ -678,8 +707,8 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_PT>(render_data, *m_renderer->get_global_compiler_options(),
-																					 m_directional_spatial_reuse_data, m_spmis_data);
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_PT>(render_data, m_directional_spatial_reuse_data);
+		m_spmis_data.to_device(render_data);
 	}
 	else
 	{
@@ -698,7 +727,8 @@ void ReSTIRPTRenderPass::update_render_data()
 
 void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 {
-	ReSTIRRenderPassCommon::reset_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data, m_spmis_data);
+	ReSTIRRenderPassCommon::reset_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data);
+	m_spmis_data.reset();
 
 	MegaKernelRenderPass::reset(reset_by_camera_movement);
 }

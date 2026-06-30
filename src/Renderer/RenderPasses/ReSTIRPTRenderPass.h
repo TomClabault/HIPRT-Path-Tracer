@@ -44,6 +44,7 @@ public:
 											  bool silent,
 											  bool use_cache) override;
 	virtual bool pre_render_update(float delta_time) override;
+	bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 
 	/**
 	 * This pass computes the optimal reuse radius and reuse directions to use, per-pixel
