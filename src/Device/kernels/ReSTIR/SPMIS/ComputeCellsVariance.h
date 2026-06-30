@@ -3,35 +3,35 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_RESTIR_SPMIS_COMPUTE_PER_CELL_NOISE_H
-#define KERNELS_RESTIR_SPMIS_COMPUTE_PER_CELL_NOISE_H
+#ifndef KERNELS_RESTIR_SPMIS_COMPUTE_CELLS_VARIANCE_H
+#define KERNELS_RESTIR_SPMIS_COMPUTE_CELLS_VARIANCE_H
 
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 
-#define PER_CELL_NOISE_MIN_PIXEL_COUNT 16
+#define PER_CELL_VARIANCE_MIN_PIXEL_COUNT 16
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_ComputePerCellNoise(unsigned short int* cell_pixels_counters,
-								 unsigned int* cell_offsets,
-								 unsigned int* cell_alive_list,
-								 unsigned int* pixel_indices_sorted,
-								 ReSTIRPTReservoir* input_reservoirs,
-								 float* out_cell_variance,
-								 unsigned int size)
+ReSTIR_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
+								  unsigned int* cell_offsets,
+								  unsigned int* cell_alive_list,
+								  unsigned int* pixel_indices_sorted,
+								  ReSTIRPTReservoir* input_reservoirs,
+								  float* out_cell_variance,
+								  unsigned int size)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_ComputePerCellNoise(AtomicType<unsigned short int>* cell_pixels_counters,
-										unsigned int* cell_offsets,
-										unsigned int* cell_alive_list,
-										unsigned int cell_alive_count,
-										unsigned int* pixel_indices_sorted,
-										ReSTIRPTReservoir* input_reservoirs,
-										float* out_cell_variance,
-										[[maybe_unused]] unsigned int size			   = 0,
-										[[maybe_unused]] unsigned int cell_alive_index = 0)
+inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pixels_counters,
+										 unsigned int* cell_offsets,
+										 unsigned int* cell_alive_list,
+										 unsigned int cell_alive_count,
+										 unsigned int* pixel_indices_sorted,
+										 ReSTIRPTReservoir* input_reservoirs,
+										 float* out_cell_variance,
+										 [[maybe_unused]] unsigned int size				= 0,
+										 [[maybe_unused]] unsigned int cell_alive_index = 0)
 #endif
 {
 #ifndef __KERNELCC__
@@ -40,7 +40,7 @@ inline ReSTIR_SPMIS_ComputePerCellNoise(AtomicType<unsigned short int>* cell_pix
 	{
 		unsigned int cell_index	 = cell_alive_list[i];
 		unsigned int total_count = cell_pixels_counters[cell_index];
-		if (total_count < PER_CELL_NOISE_MIN_PIXEL_COUNT)
+		if (total_count < PER_CELL_VARIANCE_MIN_PIXEL_COUNT)
 		{
 			out_cell_variance[cell_index] = -1.0f;
 			continue;
@@ -83,7 +83,7 @@ inline ReSTIR_SPMIS_ComputePerCellNoise(AtomicType<unsigned short int>* cell_pix
 		return;
 
 	unsigned int total_count = cell_pixels_counters[cell_index];
-	if (total_count < PER_CELL_NOISE_MIN_PIXEL_COUNT)
+	if (total_count < PER_CELL_VARIANCE_MIN_PIXEL_COUNT)
 	{
 		if (threadIdx.x == 0)
 			out_cell_variance[cell_index] = -1.0f;

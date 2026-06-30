@@ -36,8 +36,8 @@
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
+#include "Device/kernels/ReSTIR/SPMIS/ComputeCellsVariance.h"
 #include "Device/kernels/ReSTIR/SPMIS/ComputeOffsets.h"
-#include "Device/kernels/ReSTIR/SPMIS/ComputePerCellNoise.h"
 #include "Device/kernels/ReSTIR/SPMIS/CountCells.h"
 #include "Device/kernels/ReSTIR/SPMIS/ResetBuffers.h"
 #include "Device/kernels/ReSTIR/SPMIS/ResetCellsData.h"
@@ -1579,8 +1579,8 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	if (m_render_data.render_settings.sample_number == 0)
 	{
 		float* cell_variance = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_VARIANCE>().data();
-		ReSTIR_SPMIS_ComputePerCellNoise(cell_pixels_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
-										 cell_variance);
+		ReSTIR_SPMIS_ComputeCellsVariance(cell_pixels_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
+										  cell_variance);
 	}
 }
 
