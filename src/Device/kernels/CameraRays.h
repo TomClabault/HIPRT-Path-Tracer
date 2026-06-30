@@ -65,6 +65,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets[pixel_index]						= 0;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter[0]					= 0;
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
+		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_variance[pixel_index]					= -1.0f;
 #endif
 	}
 

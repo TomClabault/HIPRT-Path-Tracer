@@ -77,6 +77,11 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	constexpr float variance_slider_lower_bound = 0.5f;
 	constexpr float variance_slider_upper_bound = 0.725f;
 	float cell_variance							= spmis_settings.cell_variance[center_cell_index];
+	if (cell_variance == -1.0f || cell_variance == 0.0f)
+		// In case we have no variance information, default to maximum variance.
+		// Same for 0 variance cells: 0 variance is basically impossible so this probably means that the cell is completely empty (no contributing reservoirs)
+		// because the variance is so high (or it's a completely shadowed region)
+		cell_variance = 1.0f;
 	float variance_slider = hippt::clamp(0.0f, 1.0f, (cell_variance - variance_slider_lower_bound) / (1.0f - variance_slider_upper_bound));
 
 	// Determining the search settings
@@ -86,7 +91,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	if (spmis_settings.variance_aware_reuse_radius)
 	{
 		radius				  = hippt::lerp(10.0f, 20.0f, variance_slider);
-		max_search_iterations = hippt::lerp(0, 12, variance_slider);
+		max_search_iterations = hippt::lerp(2, 12, variance_slider);
 		if (cell_variance > 0.65f)
 			// Disabled
 			distance_scaling = 0.0f;

@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Test constant memory for Megakernel RenderData
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
