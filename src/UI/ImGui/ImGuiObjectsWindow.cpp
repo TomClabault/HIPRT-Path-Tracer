@@ -855,37 +855,20 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 		if (ImGui::BeginListBox("##all_objects", ImVec2(-FLT_MIN, 15 * ImGui::GetTextLineHeightWithSpacing())))
 		{
-			for (int material_index = 0; material_index < materials.size(); material_index++)
+			for (int mesh_index = 0; mesh_index < mesh_names.size(); mesh_index++)
 			{
+				int material_index = mesh_material_indices[mesh_index];
+
 				if (filter_string != "")
 				{
-					// The user has filtered the materials, checking if the current material
+					// The user has filtered the materials, checking if the current mesh's material
 					// has been filtered out or not.
-					//
-					// The material isn't filtered out (it is accepted) if its index can be found
-					// in the 'accepted_material_indices' set
-					//
-					// If not, the material has been filetered out
 					if (filtered_material_indices.find(material_index) == filtered_material_indices.end())
 						continue;
 				}
 
 				const bool is_selected = (currently_selected_material_index == material_index);
-				// Find the first mesh that uses this material to get an informative display label.
-				// mesh_names and mesh_material_indices are both indexed by mesh index, while the
-				// loop variable here iterates materials. Simply indexing mesh_names[material_index]
-				// would pick a mesh at an unrelated index when mesh count != material count.
-				int first_mesh_index = -1;
-				for (int mi = 0; mi < mesh_names.size(); mi++)
-				{
-					if (mesh_material_indices[mi] == material_index)
-					{
-						first_mesh_index = mi;
-						break;
-					}
-				}
-				std::string mesh_name = (first_mesh_index >= 0) ? mesh_names[first_mesh_index] : "<no mesh>";
-				std::string text		 = mesh_name + " (" + material_names[material_index] + ")";
+				std::string text		 = mesh_names[mesh_index] + " (" + material_names[material_index] + ")";
 				if (ImGui::Selectable(text.c_str(), is_selected))
 					currently_selected_material_index = material_index;
 
