@@ -27,7 +27,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
-// - Remove reuse of converged neighbors, keep the unbiased approach
 // - Mover SPMIS settings out of common spatial pass and just in pt spatial
 // - Rename reservoir.M to reservoir .confidence
 // - Issue with last BSDF sample and envmap in scandinavian studio

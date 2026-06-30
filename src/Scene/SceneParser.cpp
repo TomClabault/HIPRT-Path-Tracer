@@ -15,6 +15,7 @@
 #include "glm/gtx/matrix_decompose.hpp"
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 extern ImGuiLogger g_imgui_logger;
@@ -226,6 +227,40 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
 		// Adding the maximum index of the mesh to our global indices offset
 		global_indices_offset += max_mesh_index_offset;
 	}
+
+	// Traverse the node hierarchy to get meaningful object names from aiNode and assign
+	// them to their respective meshes. This is needed because aiMesh::mName carries
+	// Blender's internal data-block name (e.g., "Plane.132") rather than the user-visible
+	// object name (e.g., "coffee-table-surround"), which lives in aiNode::mName.
+	//
+	// With aiProcess_PreTransformVertices + AI_CONFIG_PP_PTV_KEEP_HIERARCHY=1, the
+	// hierarchy is preserved with identity transforms, so we walk the preserved node tree
+	// and overwrite the stored mesh_names with the node names. Grouping nodes with empty
+	// names are skipped so that only nodes with actual names (typically the objects in the
+	// scene) contribute their name to the meshes they reference.
+	std::function<void(aiNode*)> assign_node_names_to_meshes;
+	assign_node_names_to_meshes = [&](aiNode* node)
+	{
+		std::string node_name = node->mName.C_Str();
+		bool node_has_name = !node_name.empty();
+
+		for (int m = 0; m < node->mNumMeshes; m++)
+		{
+			int mesh_index = node->mMeshes[m];
+
+			// Only overwrite if the node has a non-empty name. Grouping/parent nodes
+			// that don't carry an explicit name should not erase a child node's name
+			// that was already assigned by this traversal.
+			if (node_has_name)
+				parsed_scene.metadata.mesh_names[mesh_index] = node_name;
+		}
+
+		for (int c = 0; c < node->mNumChildren; c++)
+			assign_node_names_to_meshes(node->mChildren[c]);
+	};
+
+	if (scene->mRootNode)
+		assign_node_names_to_meshes(scene->mRootNode);
 
 	// Adjusting the speed of the camera so that we can cross the scene in approximately Camera::SCENE_CROSS_TIME
 	parsed_scene.camera.auto_adjust_speed(parsed_scene.metadata.scene_bounding_box);

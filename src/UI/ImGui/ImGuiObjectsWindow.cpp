@@ -831,6 +831,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	std::vector<CPUMaterial> materials			   = m_renderer->get_current_materials();
 	const std::vector<std::string>& material_names = m_renderer->get_material_names();
 	const std::vector<std::string>& mesh_names	   = m_renderer->get_mesh_names();
+	const std::vector<int>& mesh_material_indices  = m_renderer->get_mesh_material_indices();
 
 	bool material_changed						 = false;
 	static int currently_selected_material_index = 0;
@@ -849,7 +850,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		// 'accepted_material_indices' set
 		bool first_time = filter_string == "" && filtered_material_indices.size() == 0 && materials.size() > 0;
 		if (ImGui::InputText("Search", &filter_string) || first_time)
-			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, filter_string);
+			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, mesh_material_indices, filter_string);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ImGui::BeginListBox("##all_objects", ImVec2(-FLT_MIN, 15 * ImGui::GetTextLineHeightWithSpacing())))
@@ -870,7 +871,21 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				}
 
 				const bool is_selected = (currently_selected_material_index == material_index);
-				std::string text	   = mesh_names[material_index] + " (" + material_names[material_index] + ")";
+				// Find the first mesh that uses this material to get an informative display label.
+				// mesh_names and mesh_material_indices are both indexed by mesh index, while the
+				// loop variable here iterates materials. Simply indexing mesh_names[material_index]
+				// would pick a mesh at an unrelated index when mesh count != material count.
+				int first_mesh_index = -1;
+				for (int mi = 0; mi < mesh_names.size(); mi++)
+				{
+					if (mesh_material_indices[mi] == material_index)
+					{
+						first_mesh_index = mi;
+						break;
+					}
+				}
+				std::string mesh_name = (first_mesh_index >= 0) ? mesh_names[first_mesh_index] : "<no mesh>";
+				std::string text		 = mesh_name + " (" + material_names[material_index] + ")";
 				if (ImGui::Selectable(text.c_str(), is_selected))
 					currently_selected_material_index = material_index;
 
@@ -914,7 +929,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		// 'accepted_material_indices' set
 		bool first_time = filter_string == "" && filtered_material_indices.size() == 0 && materials.size() > 0;
 		if (ImGui::InputText("Search", &filter_string) || first_time)
-			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, filter_string);
+			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, m_renderer->get_mesh_material_indices(), filter_string);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -1288,6 +1303,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int material_count,
 																	   const std::vector<std::string>& material_names,
 																	   const std::vector<std::string>& mesh_names,
+																	   const std::vector<int>& mesh_material_indices,
 																	   const std::string& filter_string) const
 {
 	std::unordered_set<int> accepted_material_indices;
@@ -1311,9 +1327,24 @@ std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int mater
 	// Just pure brute force search...
 	// Will improve if this ever becomes a serious bottleneck
 	for (int material_index = 0; material_index < material_count; material_index++)
-		if (case_insensitive_string_find(material_names[material_index], filter_string) ||
-			case_insensitive_string_find(mesh_names[material_index], filter_string))
+	{
+		// A material is shown if its name matches the filter, or if any mesh that uses
+		// this material has a matching name. mesh_material_indices maps mesh_index to
+		// material_index, so we scan all meshes to find those referencing this material.
+		bool material_matches = case_insensitive_string_find(material_names[material_index], filter_string);
+		bool mesh_matches	  = false;
+		for (int mi = 0; mi < mesh_names.size(); mi++)
+		{
+			if (mesh_material_indices[mi] == material_index && case_insensitive_string_find(mesh_names[mi], filter_string))
+			{
+				mesh_matches = true;
+				break;
+			}
+		}
+
+		if (material_matches || mesh_matches)
 			accepted_material_indices.insert(material_index);
+	}
 
 	return accepted_material_indices;
 }

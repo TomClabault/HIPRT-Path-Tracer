@@ -30,6 +30,7 @@ public:
 	std::unordered_set<int> filter_displayed_materials(int material_count,
 													   const std::vector<std::string>& material_names,
 													   const std::vector<std::string>& mesh_names,
+													   const std::vector<int>& mesh_material_indices,
 													   const std::string& filter_string) const;
 
 private:
