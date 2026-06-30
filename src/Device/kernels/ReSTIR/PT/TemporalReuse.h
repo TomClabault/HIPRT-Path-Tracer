@@ -132,8 +132,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 			// of use (and because manually handling the visibility in the target
 			// function of the temporal reuse is tricky for the user to use in
 			// combination with other parameters
-			target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, temporal_neighbor_reservoir.sample,
-																											  center_pixel_surface, random_number_generator);
+			target_function_at_center =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 		float shift_mapping_jacobian = 1.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f && !temporal_neighbor_reservoir.sample.is_envmap_path())

@@ -100,7 +100,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 		// that sample is > so we're going to check both target function here.
 
 		// Evaluating the target function at the center pixel because this is the pixel of the initial candidates
-		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<true>(
 			render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
@@ -110,7 +110,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 		if (temporal_neighbor_M > 0)
 		{
 			// We only want to check if the temporal could have produced the sample if we actually have a temporal neighbor
-			float temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			float temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
 		}
@@ -141,7 +141,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			return;
 		}
 
-		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<true>(
 			render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
@@ -151,7 +151,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-			temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		}
 

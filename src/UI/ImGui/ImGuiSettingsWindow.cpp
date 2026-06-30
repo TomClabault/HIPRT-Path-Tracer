@@ -4103,29 +4103,29 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 		ImGui::EndDisabled();
 
 		// No visibility for 1/M weights
-		bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M;
-		bool mis_weights_use_visibility;
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
-		ImGui::BeginDisabled(bias_correction_visibility_disabled);
-		if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
+		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI || ReSTIRVariant == ReSTIR_VARIANT_GI)
 		{
-			int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-				ReSTIRVariant == ReSTIR_VARIANT_DI	 ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY
-				: ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY
-													 : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_USE_VISIBILITY);
-			*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
+			bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M;
+			bool mis_weights_use_visibility;
+			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
+				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
+			else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
+			ImGui::BeginDisabled(bias_correction_visibility_disabled);
+			if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
+			{
+				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
+					ReSTIRVariant == ReSTIR_VARIANT_DI ? GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY
+													   : GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
+				*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			if (bias_correction_visibility_disabled)
+				ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
+			ImGui::EndDisabled();
 		}
-		if (bias_correction_visibility_disabled)
-			ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
-		ImGui::EndDisabled();
 
 		ImGui::TreePop();
 		ImGui::PopID();

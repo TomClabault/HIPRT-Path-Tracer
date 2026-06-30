@@ -37,21 +37,6 @@
 #define ReSTIR_PT_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
- * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
- * generalized balance heuristic, pairwise MIS, ...) used to remove bias when
- * resampling neighbors. An additional visibility ray will be traced for MIS-weight
- * evaluated. This effectively means for each neighbor resampled or (for each neighbor resampled)^2
- * if using the generalized balance heuristics (without pairwise-MIS)
- *
- * To guarantee unbiasedness, this needs to be true. A small amount of energy loss
- * may be observed if this value is KERNEL_OPTION_FALSE but the performance cost of the spatial
- * reuse will be reduced noticeably
- *
- *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
- */
-#define ReSTIR_PT_MISWeightsUseVisibility KERNEL_OPTION_TRUE
-
-/**
  * See the doc of the RESTIR_MIS_WEIGHTS_TYPE macros in ReSTIRCommonOptions.h for more details on the different types of MIS weights that can be used when
  * resampling spatial neighbors.
  */

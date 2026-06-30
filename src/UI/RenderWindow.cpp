@@ -22,20 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Where do we actually need the reservoir sample when reading reservoirs? Let's not read it if not needed.
-// - Enable non-canonical confidence scaling on specular surfaces if sharing samples that are not very far away: sharing samples far away is fine because the
-// resampled direction to x2 basically stays the same.
-//		- More generally we need some sort of metric that tells us how much the resampled direction varies from the ideal reflection direction
-//		- Maybe just decrease hash grid cell size on specular materials?
-// - Varying neighbor cell search radius on specular materials SPMIS?
-// - We have a precomputation CDF of luminance neighbors but can we precompute reuse cells / pixels somehow? Maybe brute force iterating could be fine?
 // - Ray volume state reconstruction @ sample point
 // - Lobe specific shift mapping etc... need to just impelment bsdf_eval_one_lobe and bsdf_sample_eval_one_lobe and that's it basically
-// - Duplication maps to reduce correlations
-//		- Only works with temporal reuse though? Or can we use it with spatial reuse as well somehow? Or can we use the maps for some other use?
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
-// - Remove visibility in MIS weights option from ReSTIR PT
 // - Remove reuse of converged neighbors, keep the unbiased approach
 // - Mover SPMIS settings out of common spatial pass and just in pt spatial
 // - Rename reservoir.M to reservoir .confidence

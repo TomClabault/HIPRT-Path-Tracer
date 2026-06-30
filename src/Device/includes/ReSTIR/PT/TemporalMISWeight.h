@@ -116,7 +116,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 		{
 			// Only computing the target function if we do have a temporal neighbor
 
-			target_function_at_temporal_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			target_function_at_temporal_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
@@ -129,7 +129,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 			// compute anything else, we can already return 0.0f for the MIS weight.
 			return 0.0f;
 
-		float target_function_at_center = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+		float target_function_at_center = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
 																												center_pixel_surface, random_number_generator);
 
 		int temporal_M		   = temporal_neighbor_reservoir_M;
@@ -189,7 +189,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -286,7 +286,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 				// Eq 7.8
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -399,7 +399,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 			float denom_mi = center_reservoir_M + neighbors_confidence_sum * difference_function;
 			float mi	   = nume_mi / denom_mi;
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -517,7 +517,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 
 			float mi = nume_mi / denom_mi;
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF

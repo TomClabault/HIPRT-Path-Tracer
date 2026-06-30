@@ -87,10 +87,10 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			float target_function_at_j;
 			if (j == current_neighbor_index)
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+				target_function_at_j = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
 																											 neighbor_surface, random_number_generator);
 			else
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+				target_function_at_j = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
 																											 neighbor_surface, random_number_generator);
 
 			if (!reservoir_being_resampled_sample.is_envmap_path())
@@ -171,7 +171,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			if (update_mc)
 			{
 				ReSTIRSurface neighbor_pixel_surface			= get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -298,7 +298,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -418,7 +418,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -544,7 +544,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -645,7 +645,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 
 		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 			render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
@@ -742,7 +742,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 
 		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
+		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
 			render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
