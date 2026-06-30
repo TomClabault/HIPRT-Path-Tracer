@@ -69,8 +69,6 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
 		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;
 
-		common_spatial_pass.compute_spatial_reuse_hit_rate = false;
-
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 37.5f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;

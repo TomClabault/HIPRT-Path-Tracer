@@ -284,9 +284,6 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 		unsigned long long int* spatial_reuse_hit_rate_hits	 = nullptr;
 		unsigned long long int* spatial_reuse_hit_rate_total = nullptr;
 
-		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
-			hippt::atomic_fetch_add(spatial_pass_settings.spatial_reuse_hit_rate_total, 1ull);
-
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<ReSTIRVariant>(render_data, neighbor_index, center_pixel_coords, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
@@ -296,9 +293,6 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 				render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
 				ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIRVariant>(render_data, center_pixel_surface)))
 			continue;
-
-		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
-			hippt::atomic_fetch_add(spatial_pass_settings.spatial_reuse_hit_rate_hits, 1ull);
 
 		out_valid_neighbor_M_sum += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIRVariant>(render_data, neighbor_pixel_index);
 		out_valid_neighbor_count++;

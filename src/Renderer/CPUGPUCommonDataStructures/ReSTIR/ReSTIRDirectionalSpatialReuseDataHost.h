@@ -12,17 +12,13 @@
 template <template <typename> typename DataContainer>
 using ReSTIRDirectionalSpatialReuseDataHostInternal =
 	GenericSoA<DataContainer,
-			   unsigned char,											  // Spatial reuse radius
-			   unsigned long long int,									  // Spatial reuse direction mask (encoded as a bitfield of valid reuse directions)
-			   GenericAtomicType<unsigned long long int, DataContainer>,  // Spatial reuse statistics: total number of reuse attempts
-			   GenericAtomicType<unsigned long long int, DataContainer>>; // Spatial reuse statistics: total number of reuse hits
+			   unsigned char,			// Spatial reuse radius
+			   unsigned long long int>; // Spatial reuse direction mask (encoded as a bitfield of valid reuse directions)
 
 enum ReSTIRDirectionalSpatialReuseDataHostBuffers
 {
 	RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS,
 	RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL,
-	RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL,
-	RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS,
 };
 
 template <template <typename> typename DataContainer>
@@ -30,20 +26,13 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 {
 	void resize(unsigned int width, unsigned int height)
 	{
-		m_spatial_reuse_data.resize(width * height,
-									{ RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL, RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS });
-
-		m_spatial_reuse_data.template resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(1);
-		m_spatial_reuse_data.template resize_one_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(1);
+		m_spatial_reuse_data.resize(width * height);
 	}
 
 	void reset()
 	{
 		if (size() == 0)
 			return;
-
-		m_spatial_reuse_data.template memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>(0);
-		m_spatial_reuse_data.template memset_buffer<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>(0);
 	}
 
 	bool free()
@@ -77,8 +66,6 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		{
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 			common_spatial_pass_settings.per_pixel_spatial_reuse_radius				 = nullptr;
-			common_spatial_pass_settings.spatial_reuse_hit_rate_total				 = nullptr;
-			common_spatial_pass_settings.spatial_reuse_hit_rate_hits				 = nullptr;
 
 			return;
 		}
@@ -87,10 +74,6 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
 		common_spatial_pass_settings.per_pixel_spatial_reuse_radius =
 			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
-		common_spatial_pass_settings.spatial_reuse_hit_rate_total =
-			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_TOTAL>();
-		common_spatial_pass_settings.spatial_reuse_hit_rate_hits =
-			m_spatial_reuse_data.template get_buffer_data_atomic_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_STATISTICS_HIT_HITS>();
 	}
 
 	ReSTIRDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;

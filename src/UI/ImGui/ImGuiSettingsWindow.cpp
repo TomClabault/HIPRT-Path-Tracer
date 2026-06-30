@@ -3882,16 +3882,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 							m_render_window->set_render_dirty(true);
 						ImGuiRenderer::show_help_marker("The minimum radius that will be used per pixel when the optimal per-pixel spatial reuse "
 														"radius is computed by \"adaptive-directional spatial reuse\"");
-
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("Whether or not to gather statistics on the hit rate of the spatial reuse "
-														"pass (i.e. how many neighbors are rejected because of the G-Buffer heuristics vs. the maximum number "
-														"of neighbors that can be reused).\n\n"
-														""
-														"This is mainly useful to evaluate the effectiveness of the \"adaptive-directional spatial reuse\".\n"
-														"Note that this isn't great for performance.");
 					}
 
 					ImGui::EndDisabled();
@@ -3904,25 +3894,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				ImGui::EndDisabled();
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-				if (restir_settings.compute_spatial_reuse_hit_rate)
-				{
-					ImGui::TreePush("Spatial reuse hit rate statistics");
-
-					if (restir_settings.spatial_reuse_hit_rate_total != nullptr)
-					{
-						// Making sure that the buffers are indeed allocated
-
-						unsigned long long int spatial_reuse_total = OrochiBuffer<unsigned long long int>::download_data(
-							reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_total), 1)[0];
-						unsigned long long int spatial_reuse_hit = OrochiBuffer<unsigned long long int>::download_data(
-							reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_hits), 1)[0];
-
-						ImGui::Text("Hit rate: %f", spatial_reuse_hit * 100.0f / spatial_reuse_total);
-					}
-
-					ImGui::TreePop();
-				}
 			}
 		}
 
