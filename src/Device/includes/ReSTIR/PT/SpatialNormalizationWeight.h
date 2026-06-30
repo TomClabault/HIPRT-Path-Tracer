@@ -116,7 +116,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 					final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
 					neighbor_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
-			float target_function_at_neighbor = jacobian * ReSTIR_PT_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility, true>(
+			float target_function_at_neighbor = jacobian * ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(
 															   render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
