@@ -3905,29 +3905,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-				if (ImGui::Checkbox("Allow reuse of converged neighbors", &restir_settings.allow_converged_neighbors_reuse))
-					m_render_window->set_render_dirty(true);
-				std::string reuse_of_converged_neighbors_help = "If checked, then the spatial reuse passes are allowed "
-																"to reuse from neighboring pixels which have converged (and thus neighbors that "
-																"are not being sampled anymore = neighbors whose reservoirs do not evolve anymore). "
-																"This improves performance but at the cost of bias when non-converged "
-																"pixels try to reuse from converged pixels. The bias will thus typically manifest "
-																"on the parts of the image that are the hardest to render.";
-				if (!render_settings.enable_adaptive_sampling)
-					reuse_of_converged_neighbors_help += "\n\nDisabled because adaptive sampling isn't enabled.";
-				ImGuiRenderer::show_help_marker(reuse_of_converged_neighbors_help);
-				if (restir_settings.allow_converged_neighbors_reuse)
-				{
-					if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &restir_settings.converged_neighbor_reuse_probability, 0.0f, 1.0f))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by "
-													"spatially reusing converged neighbors only with a certain probability instead of never / always."
-													"\n\n 0.0 nevers reuses converged neighbors. No bias but performance impact."
-													"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
-				}
-				ImGui::EndDisabled();
-
 				if (restir_settings.compute_spatial_reuse_hit_rate)
 				{
 					ImGui::TreePush("Spatial reuse hit rate statistics");
@@ -4901,17 +4878,6 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 									 "This is an issue with 1/Z weights (and pairwise-MIS) because MIS-like and proper MIS "
 									 "(generalized balance heuristic/GBH) weights do not blindly overweight a sample as "
 									 "1/Z does (and then hopes that we divide by Z accordingly).");
-	}
-
-	if (render_settings.enable_adaptive_sampling && render_settings.restir_di_settings.common_spatial_pass.allow_converged_neighbors_reuse &&
-		render_settings.restir_di_settings.common_spatial_pass.converged_neighbor_reuse_probability > 0.0f)
-	{
-		bias_reasons.push_back("- Adaptive Sampling + \"Allow Reuse of Converged Neighbors\"");
-		hover_explanations.push_back("Adaptive sampling disables the sampling of some pixels. The "
-									 "spatial reuse pass then reuses from neighbors that do not evolve anymore (if they've "
-									 "been disabled by adaptive sampling) and that causes some slight convergence issues, "
-									 "especially on parts of the image where adaptive sampling does the more work. This "
-									 "manifest as bias on the hardest-to-render parts of the scene.");
 	}
 
 	if (!render_settings.restir_di_settings.do_final_shading_visibility)

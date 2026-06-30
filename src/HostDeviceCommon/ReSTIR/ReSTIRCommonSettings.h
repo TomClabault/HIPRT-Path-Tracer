@@ -80,14 +80,6 @@ struct ReSTIRCommonSpatialPassSettings
 		return use_adaptive_directional_spatial_reuse && render_data_render_settings_accumulate;
 	}
 
-	// If true, neighboring pixels that have converged (if adaptive sampling is enabled)
-	// won't be reused to reduce bias.
-	// If false, even neighboring pixels that have converged can be reused by the spatial pass
-	bool allow_converged_neighbors_reuse;
-	// If we're allowing the spatial reuse of converged neighbors, we're doing so we're a given
-	// probability instead of always/never. This helps trade performance for bias.
-	float converged_neighbor_reuse_probability;
-
 	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
 	// This framebuffer is filled by the

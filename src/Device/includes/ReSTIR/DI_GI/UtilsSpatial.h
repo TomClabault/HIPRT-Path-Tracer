@@ -238,28 +238,9 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 		if (render_data.render_settings.enable_adaptive_sampling &&
 			render_data.render_settings.sample_number >= render_data.render_settings.adaptive_sampling_min_samples)
 		{
-			// If adaptive sampling is enabled, we only want to reuse a converged neighbor if the user allowed it
-			// We also check whether or not we've reached the minimum amount of samples of adaptive sampling because
-			// if adaptive sampling hasn't kicked in yet, there's no need to check whether the neighbor has converged or not yet
-
-			if (spatial_pass_settings.allow_converged_neighbors_reuse)
-			{
-				// If we're allowing the reuse of converged neighbors, only doing so with a certain probability
-
-				Xorshift32Generator rng_converged_neighbor_reuse(
-					(center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x) * neighbor_index);
-				if (rng_converged_neighbor_reuse() > spatial_pass_settings.converged_neighbor_reuse_probability)
-				{
-					// We didn't pass the probability check, we are not allowed to reuse the neighbor if it
-					// has converged
-
-					if (render_data.aux_buffers.pixel_converged_sample_count[neighbor_pixel_index] != -1)
-						// The neighbor is indeed converged, returning invalid neighbor with -1
-						return -1;
-				}
-			}
-			else if (render_data.aux_buffers.pixel_converged_sample_count[neighbor_pixel_index] != -1)
-				// The user doesn't allow reusing converged neighbors and the neighbor is indeed converged
+			if (render_data.aux_buffers.pixel_converged_sample_count[neighbor_pixel_index] != -1)
+				// Not reusing reusing converged neighbors as this is biased and the neighbor is indeed converged
+				//
 				// Returning -1 for invalid neighbor
 				return -1;
 		}
