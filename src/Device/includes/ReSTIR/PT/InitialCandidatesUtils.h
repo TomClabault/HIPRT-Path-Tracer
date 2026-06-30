@@ -123,7 +123,6 @@ HIPRT_DEVICE void ReSTIR_PT_rc_di_vertex_fill_information(float3_t point_on_ligh
 	restir_pt_initial_sample.rc_vertex_geometric_normal.pack(light_geometric_normal);
 	restir_pt_initial_sample.rc_vertex_primitive_index			  = light_primitive_index;
 	restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
-	restir_pt_initial_sample.sample_point_rough_enough			  = true;
 }
 
 HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& render_data,
@@ -137,8 +136,6 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 	restir_pt_initial_sample.rc_vertex_texcoords_u	   = closest_hit_info.texcoords.x;
 	restir_pt_initial_sample.rc_vertex_texcoords_v	   = closest_hit_info.texcoords.y;
 	restir_pt_initial_sample.rc_vertex_primitive_index = closest_hit_info.primitive_index;
-	restir_pt_initial_sample.sample_point_rough_enough =
-		ray_payload.material.can_do_light_sampling(render_data.render_settings.restir_pt_settings.neighbor_sample_point_roughness_threshold);
 }
 
 HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,

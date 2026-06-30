@@ -14,7 +14,7 @@
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
 
-template <bool withVisiblity, bool resamplingNeighbor = true>
+template <bool withVisiblity>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& sample,
 														   ReSTIRSurface& surface,
@@ -49,20 +49,6 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 	float cosine_term = hippt::dot(incident_light_direction, surface.shading_normal);
 	if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
 		return 0.0f;
-	else if constexpr (resamplingNeighbor)
-	{
-		// If resampling a neighbor, the target function is going to evaluate to 0.0f if the sample point of the neighbor
-		// is specular: that is because when resampling a neighbor, i.e. reconnecting to the sample point of the neighbor,
-		// we're changing the view direction of the BSDF at the sample point.
-		//
-		// And changing the view direction of a specular BSDF without changing the incident light direction (which we are not
-		// modifying) isn't going to adhere to the law of perfect reflection and so the contribution of the BSDF at the neighbor's
-		// sample point will be 0.0f.
-		//
-		// So that's why we're returning 0.0f here
-		if (render_data.render_settings.restir_pt_settings.use_neighbor_sample_point_roughness_heuristic && !sample.sample_point_rough_enough)
-			return 0.0f;
-	}
 
 	if constexpr (withVisiblity)
 	{

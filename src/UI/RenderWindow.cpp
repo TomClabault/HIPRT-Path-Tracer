@@ -22,9 +22,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Estimate the variance of initial candidates in each and determine reuse radius of SPMIS with that: lower variance = lower radius, higher variance = higher
-// radius to hide correlations that would arise from low radius reuse
-// - How to somehow increase the precision of hash grid cells SPMIS where needed?
 // - Where do we actually need the reservoir sample when reading reservoirs? Let's not read it if not needed.
 // - Enable non-canonical confidence scaling on specular surfaces if sharing samples that are not very far away: sharing samples far away is fine because the
 // resampled direction to x2 basically stays the same.

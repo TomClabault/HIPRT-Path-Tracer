@@ -44,20 +44,7 @@ struct ReSTIRPTReservoirSample
 	// Used by some algorithms such as ReSTIR PG
 	unsigned int pixel_index = static_cast<unsigned int>(-1);
 
-	// Whether or not the sample point is on a material that is rough enough to be reconnected
-	// If the sample point is on a mirror for example, reconnecting to that point from our center pixel
-	// is going to change the view direction of the mirror BSDF without changing the incident light
-	// direction of the mirror BSDF and that's not going to work
-	//
-	// Also, because we do not re-evaluate the BSDF at the sample point, this would lead to some brightening
-	// bias because this would be assuming that reconnecting to the mirror has non-zero energy, even with
-	// the new view direction which is incorrect
-	//
-	// Is the bias bad if not using this?
-	//
-	// TODO true by default
-	bool sample_point_rough_enough = false;
-	bool di_sample				   = false;
+	bool di_sample = false;
 
 	HIPRT_DEVICE bool is_envmap_path() const
 	{

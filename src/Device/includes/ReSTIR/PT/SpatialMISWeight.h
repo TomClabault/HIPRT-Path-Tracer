@@ -87,11 +87,11 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			float target_function_at_j;
 			if (j == current_neighbor_index)
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility, /* resampling neighbor */ false>(
-					render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+																											 neighbor_surface, random_number_generator);
 			else
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility, /* resampling neighbor */ true>(
-					render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				target_function_at_j = ReSTIR_PT_evaluate_target_function<ReSTIR_PT_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+																											 neighbor_surface, random_number_generator);
 
 			if (!reservoir_being_resampled_sample.is_envmap_path())
 				// Applying the jacobian to get "p_hat_from_i"
