@@ -149,7 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 									  ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_M_COUNT)
 		path_tracing_accumulate_color(render_data, pixel_index,
-									  ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
+									  ColorRGB32F(resampling_reservoir.confidence) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_REUSE_RADIUS &&
 			 render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{

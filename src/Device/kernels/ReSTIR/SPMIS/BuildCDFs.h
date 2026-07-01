@@ -52,7 +52,8 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 				unsigned int pixel_index = pixel_indices_sorted[cell_offset + i];
 
 				out_cdfs[cell_offset + i] = running_sum;
-				running_sum += input_reservoirs[pixel_index].UCW * input_reservoirs[pixel_index].sample.target_function * input_reservoirs[pixel_index].M;
+				running_sum +=
+					input_reservoirs[pixel_index].UCW * input_reservoirs[pixel_index].sample.target_function * input_reservoirs[pixel_index].confidence;
 			}
 
 			// Normalization
@@ -105,7 +106,7 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 	{
 		unsigned int pixel_index		  = pixel_indices_sorted[index];
 		ReSTIRPTReservoir input_reservoir = input_reservoirs[pixel_index];
-		pixel_importance				  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.M;
+		pixel_importance				  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.confidence;
 	}
 
 	float prefix_scanned = block_prefix_scan_exclusive<1024>(pixel_importance);

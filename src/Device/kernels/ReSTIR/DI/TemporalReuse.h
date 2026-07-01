@@ -101,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir =
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	if (temporal_neighbor_reservoir.M == 0)
+	if (temporal_neighbor_reservoir.confidence == 0)
 	{
 		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] =
@@ -137,7 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// /* ------------------------------- */
 
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	if (temporal_neighbor_reservoir.M > 0)
+	if (temporal_neighbor_reservoir.confidence > 0)
 	{
 		float target_function_at_center = 0.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f)
@@ -177,9 +177,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			temporal_neighbor_reservoir.sample, initial_candidates_reservoir.M,
+			temporal_neighbor_reservoir.sample, initial_candidates_reservoir.confidence,
 
-			temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.confidence, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight =
 			mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -188,12 +188,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 														  temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 
 #if DO_DEBUG
-		float gbh_mis = mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
+		float gbh_mis = mis_weight_function_gbh.get_resampling_MIS_weight(
+			render_data,
 
-																		  temporal_neighbor_reservoir.sample, initial_candidates_reservoir.M,
+			temporal_neighbor_reservoir.sample, initial_candidates_reservoir.confidence,
 
-																		  temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M,
-																		  TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.confidence, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 		if (temporal_neighbor_resampling_mis_weight != gbh_mis)
 			hippt::debugbreak();
 #endif
@@ -243,9 +243,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 		render_data,
 
-		initial_candidates_reservoir.sample, initial_candidates_reservoir.M,
+		initial_candidates_reservoir.sample, initial_candidates_reservoir.confidence,
 
-		temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
+		temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.confidence, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
@@ -254,13 +254,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 
 #if DO_DEBUG
-	if (initial_candidates_mis_weight != mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
+	if (initial_candidates_mis_weight !=
+		mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
 
-																						   initial_candidates_reservoir.sample, initial_candidates_reservoir.M,
+														  initial_candidates_reservoir.sample, initial_candidates_reservoir.confidence,
 
-																						   temporal_neighbor_surface, center_pixel_surface,
-																						   temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID,
-																						   random_number_generator))
+														  temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.confidence,
+														  INITIAL_CANDIDATES_ID, random_number_generator))
 		hippt::debugbreak();
 #endif
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
@@ -296,16 +296,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_MISWeightsType> normalization_function;
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
-	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
-											 normalization_numerator, normalization_denominator);
+	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum, initial_candidates_reservoir.confidence,
+											 temporal_neighbor_reservoir.confidence, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
-											 initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
-											 normalization_numerator, normalization_denominator, random_number_generator);
+											 initial_candidates_reservoir.confidence, temporal_neighbor_reservoir.confidence, center_pixel_surface,
+											 temporal_neighbor_surface, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
-											 initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
-											 selected_neighbor, normalization_numerator, normalization_denominator, random_number_generator);
+											 initial_candidates_reservoir.confidence, temporal_neighbor_reservoir.confidence, center_pixel_surface,
+											 temporal_neighbor_surface, selected_neighbor, normalization_numerator, normalization_denominator,
+											 random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
@@ -322,7 +323,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
-		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+		temporal_reuse_output_reservoir.confidence =
+			hippt::min(temporal_reuse_output_reservoir.confidence, render_data.render_settings.restir_di_settings.m_cap);
 
 	ReSTIR_DI_visibility_test_kill_reservoir(render_data, temporal_reuse_output_reservoir, center_pixel_surface.shading_point,
 											 center_pixel_surface.primitive_index, random_number_generator);

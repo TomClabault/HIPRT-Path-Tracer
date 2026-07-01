@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRGIReservoir temporal_neighbor_reservoir =
 		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	if (temporal_neighbor_reservoir.M == 0)
+	if (temporal_neighbor_reservoir.confidence == 0)
 	{
 		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] =
@@ -117,7 +117,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRGIReservoir initial_candidates_reservoir =
 		render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
-	if (temporal_neighbor_reservoir.M > 0)
+	if (temporal_neighbor_reservoir.confidence > 0)
 	{
 		float target_function_at_center = 0.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f)
@@ -156,7 +156,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		float temporal_neighbor_resampling_mis_weight =
 			mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-														  center_pixel_surface, temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+														  center_pixel_surface, temporal_neighbor_reservoir.confidence, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
@@ -189,7 +189,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	float initial_candidates_mis_weight =
 		mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-													  center_pixel_surface, temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
+													  center_pixel_surface, temporal_neighbor_reservoir.confidence, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
@@ -231,7 +231,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
-		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
+		temporal_reuse_output_reservoir.confidence = hippt::min(temporal_reuse_output_reservoir.confidence, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);

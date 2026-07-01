@@ -256,7 +256,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
  * A neighbor is not eligible if it is outside of the viewport or if
  * it doesn't satisfy the normal/plane/roughness heuristics
  *
- * 'out_valid_neighbor_M_sum' is the sum of the M values (confidences) of the
+ * 'out_valid_neighbor_confidence_sum' is the sum of the M values (confidences) of the
  * valid neighbors. Used by confidence-weights pairwise MIS weights
  *
  * The bits of 'out_neighbor_heuristics_cache' are 1 or 0 depending on whether or not
@@ -268,7 +268,7 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 												const ReSTIRSurface& center_pixel_surface,
 												int2_t center_pixel_coords,
 												int& out_valid_neighbor_count,
-												int& out_valid_neighbor_M_sum,
+												int& out_valid_neighbor_confidence_sum,
 												int& out_neighbor_heuristics_cache)
 {
 	out_valid_neighbor_count = 0;
@@ -294,7 +294,8 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 				ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIRVariant>(render_data, center_pixel_surface)))
 			continue;
 
-		out_valid_neighbor_M_sum += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIRVariant>(render_data, neighbor_pixel_index);
+		out_valid_neighbor_confidence_sum +=
+			ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant>(render_data, neighbor_pixel_index);
 		out_valid_neighbor_count++;
 		out_neighbor_heuristics_cache |= (1 << neighbor_index);
 	}

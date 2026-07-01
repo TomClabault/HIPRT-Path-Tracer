@@ -109,14 +109,14 @@ struct ReSTIRSettingsHelper
 	 * The template argument can be used to select between ReSTIR DI and ReSTIR GI spatial buffers
 	 */
 	template <int ReSTIRVariant>
-	HIPRT_HOST_DEVICE static int get_restir_spatial_pass_input_reservoir_M(const HIPRTRenderData& render_data, int pixel_index)
+	HIPRT_HOST_DEVICE static int get_restir_spatial_pass_input_reservoir_confidence(const HIPRTRenderData& render_data, int pixel_index)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-			return render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[pixel_index].M;
+			return render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[pixel_index].confidence;
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-			return render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[pixel_index].M;
+			return render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[pixel_index].confidence;
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			return render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[pixel_index].M;
+			return render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[pixel_index].confidence;
 		else
 			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
 	}

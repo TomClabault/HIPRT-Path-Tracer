@@ -77,12 +77,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	setup_adaptive_directional_spatial_reuse<ReSTIR_VARIANT_DI>(render_data, center_pixel_index, random_number_generator);
 
 	// Only used with MIS-like weight
-	int selected_neighbor		  = 0;
-	int neighbor_heuristics_cache = 0;
-	int valid_neighbors_count	  = 0;
-	int valid_neighbors_M_sum	  = 0;
-	count_valid_spatial_neighbors<ReSTIR_VARIANT_DI>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count, valid_neighbors_M_sum,
-													 neighbor_heuristics_cache);
+	int selected_neighbor			   = 0;
+	int neighbor_heuristics_cache	   = 0;
+	int valid_neighbors_count		   = 0;
+	int valid_neighbors_confidence_sum = 0;
+	count_valid_spatial_neighbors<ReSTIR_VARIANT_DI>(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count,
+													 valid_neighbors_confidence_sum, neighbor_heuristics_cache);
 
 	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_MISWeightsType> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
@@ -93,7 +93,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/DI/Utils.h
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index			   = 0;
-	if (valid_neighbors_M_sum == 0)
+	if (valid_neighbors_confidence_sum == 0)
 		// No valid neighbor to resample from, skip to the initial candidate right away
 		start_index = reused_neighbors_count;
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
@@ -138,11 +138,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		}
 
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.confidence);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.confidence);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.confidence);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
@@ -150,26 +150,26 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 																		 center_pixel_surface, neighbor_index, center_pixel_coords, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
-		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
+		bool update_mc = center_pixel_reservoir.confidence > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			neighbor_reservoir.confidence, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.confidence,
 			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
 
-			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum, update_mc,
+			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_confidence_sum, update_mc,
 			/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
-		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
+		bool update_mc = center_pixel_reservoir.confidence > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+			neighbor_reservoir.confidence, neighbor_reservoir.sample.target_function, center_pixel_reservoir.sample, center_pixel_reservoir.confidence,
 			center_pixel_reservoir.sample.target_function, neighbor_reservoir,
 
-			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum, update_mc,
+			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_confidence_sum, update_mc,
 			/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #else
 #error "Unsupported mis weight type"
@@ -292,7 +292,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
-		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+		spatial_reuse_output_reservoir.confidence = hippt::min(spatial_reuse_output_reservoir.confidence, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);

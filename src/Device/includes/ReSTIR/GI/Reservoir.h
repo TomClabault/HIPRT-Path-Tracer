@@ -65,7 +65,7 @@ struct ReSTIRGIReservoir
 {
 	HIPRT_DEVICE void add_one_candidate(ReSTIRGIReservoirSample new_sample, float weight, Xorshift32Generator& random_number_generator)
 	{
-		M++;
+		confidence++;
 		weight_sum += weight;
 
 		if (random_number_generator() < weight / weight_sum)
@@ -96,7 +96,7 @@ struct ReSTIRGIReservoir
 		float reservoir_resampling_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
 		weight_sum += reservoir_resampling_weight;
-		M += other_reservoir.M;
+		confidence += other_reservoir.confidence;
 
 		if (random_number_generator() < reservoir_resampling_weight / weight_sum)
 		{
@@ -125,17 +125,17 @@ struct ReSTIRGIReservoir
 		else
 			UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
 
-		// Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
-		M = hippt::min(M, 1000000);
+		// Hard limiting confidence to avoid explosions if the user decides not to use any confidence-cap (confidence-cap == 0)
+		confidence = hippt::min(confidence, 1000000);
 	}
 
 	HIPRT_DEVICE void sanity_check(int2_t pixel_coords)
 	{
 #ifndef __KERNELCC__
-		if (M < 0)
+		if (confidence < 0)
 		{
 			std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
-			std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
+			std::cerr << "Negative reservoir confidence value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << confidence << std::endl;
 			Debug::debugbreak();
 		}
 		else if (std::isnan(weight_sum) || std::isinf(weight_sum))
@@ -188,7 +188,7 @@ struct ReSTIRGIReservoir
 
 	ReSTIRGIReservoirSample sample;
 
-	int M = 0;
+	int confidence = 0;
 	// TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
 	float weight_sum = 0.0f;
 	// If the UCW is set to -1, this is because the reservoir was killed by visibility reuse

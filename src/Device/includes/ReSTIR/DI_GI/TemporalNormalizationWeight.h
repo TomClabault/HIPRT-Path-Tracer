@@ -41,8 +41,11 @@ struct ReSTIRTemporalNormalizationWeight
 template <int ReSTIRVariant>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIRVariant>
 {
-	HIPRT_HOST_DEVICE void get_normalization(
-		float final_reservoir_weight_sum, int initial_candidates_M, int temporal_neighbor_M, float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
+											 float& out_normalization_nume,
+											 float& out_normalization_denom)
 	{
 		if (final_reservoir_weight_sum <= 0)
 		{
@@ -59,7 +62,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTI
 		out_normalization_nume = 1.0f;
 		// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
 		// so we're only going to set the denominator to that and the numerator isn't going to change
-		out_normalization_denom = initial_candidates_M + temporal_neighbor_M;
+		out_normalization_denom = initial_candidates_confidence + temporal_neighbor_confidence;
 	}
 };
 
@@ -71,8 +74,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRSampleType<ReSTIRVariant>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 int initial_candidates_M,
-											 int temporal_neighbor_M,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
 											 ReSTIRSurface& center_pixel_surface,
 											 ReSTIRSurface& temporal_neighbor_surface,
 											 float& out_normalization_nume,
@@ -114,9 +117,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
-		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_M;
+		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_confidence;
 
-		if (temporal_neighbor_M > 0)
+		if (temporal_neighbor_confidence > 0)
 		{
 			// We only want to check if the temporal could have produced the sample if we actually have a temporal neighbor
 			float temporal_neighbor_target_function;
@@ -128,7 +131,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 				// ReSTIR DI target function
 				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
 					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
-			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
+			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_confidence;
 		}
 	}
 };
@@ -141,8 +144,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRSampleType<ReSTIRVariant>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 int initial_candidates_M,
-											 int temporal_neighbor_M,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
 											 ReSTIRSurface& center_pixel_surface,
 											 ReSTIRSurface& temporal_neighbor_surface,
 											 int selected_neighbor,
@@ -170,7 +173,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 																												 center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
-		if (temporal_neighbor_M > 0)
+		if (temporal_neighbor_confidence > 0)
 		{
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
@@ -202,11 +205,12 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 		if (!render_data.render_settings.restir_di_settings.use_confidence_weights)
 		{
 			// If not using confidence weights, settings the weights to 1 so that everyone has the same weight
-			initial_candidates_M = 1;
-			temporal_neighbor_M	 = 1;
+			initial_candidates_confidence = 1;
+			temporal_neighbor_confidence  = 1;
 		}
 
-		out_normalization_denom = center_pixel_target_function * initial_candidates_M + temporal_neighbor_target_function * temporal_neighbor_M;
+		out_normalization_denom =
+			center_pixel_target_function * initial_candidates_confidence + temporal_neighbor_target_function * temporal_neighbor_confidence;
 	}
 };
 

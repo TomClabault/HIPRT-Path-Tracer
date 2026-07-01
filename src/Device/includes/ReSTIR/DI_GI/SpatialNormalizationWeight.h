@@ -61,7 +61,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIR
 					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIRVariant, false>(render_data, center_pixel_surface)))
 				continue;
 
-			out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
+			out_normalization_denom +=
+				ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
 		}
 	}
 };
@@ -138,7 +139,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIR
 			if (target_function_at_neighbor > 0.0f)
 				// If the neighbor could have produced this sample...
 				out_normalization_denom +=
-					ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
+					ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
 		}
 	}
 };
@@ -214,7 +215,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 			{
 				int M = 1;
 				if (ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant, false>(render_data).use_confidence_weights)
-					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
+					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we

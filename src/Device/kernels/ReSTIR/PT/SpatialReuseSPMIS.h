@@ -80,7 +80,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
-	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].M;
+	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].confidence;
 	if (render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
 		// Resampling only the neighbors, canonical resampling is further below
@@ -109,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 					render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 			float mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
-				neighbor_reservoir.M * non_canonical_confidence_scaling,
+				neighbor_reservoir.confidence * non_canonical_confidence_scaling,
 				shift_mapping_jacobian == 0.0f ? 0.0f : neighbor_reservoir.sample.target_function / shift_mapping_jacobian, center_pixel_reservoir_confidence,
 
 				target_function_at_center, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability);
@@ -137,12 +137,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 			unsigned int neighbor_pixel_index	 = spmis_settings.pixel_indices_sorted[cell_start_index + random_index];
 			float neighbor_selection_probability = 1.0f / reuse_cell_pixel_count;
 
-			int neighbor_reservoir_confidence = input_reservoir_buffer[neighbor_pixel_index].M;
+			int neighbor_reservoir_confidence = input_reservoir_buffer[neighbor_pixel_index].confidence;
 
 			mis_weight += mis_weight_function.get_resampling_MIS_weight_canonical(
 				render_data,
 
-				neighbor_reservoir_confidence * non_canonical_confidence_scaling, center_pixel_reservoir.sample, center_pixel_reservoir.M,
+				neighbor_reservoir_confidence * non_canonical_confidence_scaling, center_pixel_reservoir.sample, center_pixel_reservoir.confidence,
 				center_pixel_reservoir.sample.target_function,
 
 				center_pixel_surface, neighbor_pixel_index, neighbors_confidence_sum, reused_neighbors_count, neighbor_selection_probability,
@@ -151,7 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 		// First term of Eq. 18 in the paper (only for the defensive formulation)
-		float defensive_addition = center_pixel_reservoir.M / (center_pixel_reservoir.M + neighbors_confidence_sum);
+		float defensive_addition = center_pixel_reservoir.confidence / (center_pixel_reservoir.confidence + neighbors_confidence_sum);
 		mis_weight += defensive_addition;
 #endif
 
@@ -162,7 +162,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
-	spatial_reuse_output_reservoir.M = reused_neighbors_count + center_pixel_reservoir.M;
+	spatial_reuse_output_reservoir.confidence = reused_neighbors_count + center_pixel_reservoir.confidence;
 	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
@@ -180,7 +180,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	bool m_cap_enabled = render_data.render_settings.restir_pt_settings.m_cap > 0;
 	if (last_spatial_pass && m_cap_enabled)
 		// M-capping the spatial neighbor if an M-cap has been given
-		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_pt_settings.m_cap);
+		spatial_reuse_output_reservoir.confidence = hippt::min(spatial_reuse_output_reservoir.confidence, render_data.render_settings.restir_pt_settings.m_cap);
 
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);

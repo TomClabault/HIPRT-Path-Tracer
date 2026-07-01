@@ -51,7 +51,7 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 	if ((count_important && important) || (!count_important && !important))
 	{
 		unsigned short int index_in_cell = hippt::atomic_fetch_add(&cell_counters[cell_index], (unsigned short int)1);
-		hippt::atomic_fetch_add(&cell_confidence_sums[cell_index], (unsigned int)reservoirs[linear_pixel_index].M);
+		hippt::atomic_fetch_add(&cell_confidence_sums[cell_index], (unsigned int)reservoirs[linear_pixel_index].confidence);
 		if (important)
 			hippt::atomic_fetch_add(&cell_non_zero_reservoir_counters[cell_index], (unsigned short int)1);
 

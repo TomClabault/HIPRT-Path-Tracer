@@ -237,7 +237,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
 			// RIS for selecting the neighbor
-			float neighbor_importance = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+			float neighbor_importance = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.confidence;
 			// The total sum weight is stored in cdf[0] by the build cdf kernel
 			float neighbor_importance_sum = spmis_settings.cell_cdfs[cell_start_index];
 			float source_pdf			  = neighbor_importance / neighbor_importance_sum; // Importance sampling of the pixel in the cell
@@ -315,7 +315,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 
 			// RIS for selecting the neighbor
 			float source_pdf	  = 1.0f / non_zero_cell_size; // Uniform sampling of the pixels in the cell
-			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.M;
+			float target_function = neighbor_reservoir.UCW * neighbor_reservoir.sample.target_function * neighbor_reservoir.confidence;
 			float mis_weight	  = 1.0f / spmis_settings.ris_neighbor_count;
 			float weight		  = mis_weight * target_function / source_pdf;
 

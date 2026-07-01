@@ -41,8 +41,11 @@ struct ReSTIRPTTemporalNormalizationWeight
 template <>
 struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 {
-	HIPRT_HOST_DEVICE void get_normalization(
-		float final_reservoir_weight_sum, int initial_candidates_M, int temporal_neighbor_M, float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
+											 float& out_normalization_nume,
+											 float& out_normalization_denom)
 	{
 		if (final_reservoir_weight_sum <= 0)
 		{
@@ -59,7 +62,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 		out_normalization_nume = 1.0f;
 		// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
 		// so we're only going to set the denominator to that and the numerator isn't going to change
-		out_normalization_denom = initial_candidates_M + temporal_neighbor_M;
+		out_normalization_denom = initial_candidates_confidence + temporal_neighbor_confidence;
 	}
 };
 
@@ -69,8 +72,8 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 int initial_candidates_M,
-											 int temporal_neighbor_M,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
 											 ReSTIRSurface& center_pixel_surface,
 											 ReSTIRSurface& temporal_neighbor_surface,
 											 float& out_normalization_nume,
@@ -100,19 +103,19 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 		// that sample is > so we're going to check both target function here.
 
 		// Evaluating the target function at the center pixel because this is the pixel of the initial candidates
-		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<true>(
-			render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+		float center_pixel_target_function =
+			ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
-		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_M;
+		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_confidence;
 
-		if (temporal_neighbor_M > 0)
+		if (temporal_neighbor_confidence > 0)
 		{
 			// We only want to check if the temporal could have produced the sample if we actually have a temporal neighbor
-			float temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
-			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
+			float temporal_neighbor_target_function =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_confidence;
 		}
 	}
 };
@@ -123,8 +126,8 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 int initial_candidates_M,
-											 int temporal_neighbor_M,
+											 int initial_candidates_confidence,
+											 int temporal_neighbor_confidence,
 											 ReSTIRSurface& center_pixel_surface,
 											 ReSTIRSurface& temporal_neighbor_surface,
 											 int selected_neighbor,
@@ -141,18 +144,18 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			return;
 		}
 
-		float center_pixel_target_function = ReSTIR_PT_evaluate_target_function<true>(
-			render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+		float center_pixel_target_function =
+			ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
-		if (temporal_neighbor_M > 0)
+		if (temporal_neighbor_confidence > 0)
 		{
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-			temporal_neighbor_target_function = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			temporal_neighbor_target_function =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
@@ -171,11 +174,12 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 		if (!render_data.render_settings.restir_pt_settings.use_confidence_weights)
 		{
 			// If not using confidence weights, settings the weights to 1 so that everyone has the same weight
-			initial_candidates_M = 1;
-			temporal_neighbor_M	 = 1;
+			initial_candidates_confidence = 1;
+			temporal_neighbor_confidence  = 1;
 		}
 
-		out_normalization_denom = center_pixel_target_function * initial_candidates_M + temporal_neighbor_target_function * temporal_neighbor_M;
+		out_normalization_denom =
+			center_pixel_target_function * initial_candidates_confidence + temporal_neighbor_target_function * temporal_neighbor_confidence;
 	}
 };
 

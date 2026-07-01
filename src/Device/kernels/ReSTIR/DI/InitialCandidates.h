@@ -388,7 +388,7 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
 	// There's no need to keep M > 1 here, if you have 4 light candidates and 1 BSDF candidates, that's 5 samples.
 	// But if you divide everyone by 5, everything stays correct. That allows manipulating the M-cap without having
 	// to take the number of initial candidates into account
-	reservoir.M = 1;
+	reservoir.confidence = 1;
 
 	return reservoir;
 }

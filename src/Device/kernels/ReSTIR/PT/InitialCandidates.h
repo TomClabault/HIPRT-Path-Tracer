@@ -408,7 +408,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	// the same value
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-	restir_pt_initial_reservoir.M = 1;
+	restir_pt_initial_reservoir.confidence = 1;
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 

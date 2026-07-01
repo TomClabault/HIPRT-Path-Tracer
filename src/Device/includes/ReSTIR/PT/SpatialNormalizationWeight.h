@@ -59,7 +59,8 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface)))
 				continue;
 
-			out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
+			out_normalization_denom +=
+				ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
 		}
 	}
 };
@@ -116,13 +117,13 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 					final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
 					neighbor_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
-			float target_function_at_neighbor = jacobian * ReSTIR_PT_evaluate_target_function<true>(
-															   render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+			float target_function_at_neighbor =
+				jacobian * ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
 				// If the neighbor could have produced this sample...
 				out_normalization_denom +=
-					ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
+					ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
 		}
 	}
 };
@@ -172,8 +173,8 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			// Getting the surface data at the neighbor
 			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-			float target_function_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+			float target_function_at_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (!final_reservoir_sample.is_envmap_path())
 				// Applying the jacobian to get "p_hat_from_i"
@@ -186,7 +187,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			{
 				int M = 1;
 				if (ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT>(render_data).use_confidence_weights)
-					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
+					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we
