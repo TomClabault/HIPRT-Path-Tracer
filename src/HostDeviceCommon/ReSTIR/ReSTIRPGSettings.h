@@ -53,6 +53,9 @@ struct ReSTIRPGSettings
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_collision_resolved(float3_t position, float3_t surface_normal, const HIPRTCamera& current_camera) const
 	{
+		if (hash_grid_checksums == nullptr || hash_grid_total_number_of_cells == 0)
+			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
 		unsigned int checksum;
 		unsigned int cell_index = get_hash_grid_cell_index_from_position_data(position, surface_normal, current_camera, checksum);
 		if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, false>(hash_grid_checksums, hash_grid_total_number_of_cells, cell_index,

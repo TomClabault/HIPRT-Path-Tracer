@@ -445,7 +445,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	ColorRGB32F color;
 
-	if (render_data.render_settings.sample_number == 0)
+	if (render_data.render_settings.sample_number == 0 || render_data.render_settings.nb_bounces == 0)
 	{
 		// At sample 0 we don't have the distributions yet so we can't fetch the directions from the distributions themselves but we can just display the
 		// directions that the directions are initialized with which are directions on the fibonacci sphere

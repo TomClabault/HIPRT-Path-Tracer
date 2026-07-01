@@ -43,14 +43,14 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 	unsigned int linear_thread_index  = threadIdx.x + threadIdx.y * blockDim.x;
 	unsigned int lane_index			  = linear_thread_index & 31;
 
-	// The leader thread summs up the contributions of all the threads in the warp that have the same index and then atomically adds the sum to memory.
+	// The leader thread sums up the contributions of all the threads in the warp that have the same index and then atomically adds the sum to memory.
 	// There could be a faster way to do this but good enough
 	for (int src = 0; src < 32; ++src)
 	{
 		float other_lane_sum_x				= hippt::warp_shfl(sample_direction.x * responsibility, src);
 		float other_lane_sum_y				= hippt::warp_shfl(sample_direction.y * responsibility, src);
 		float other_lane_sum_z				= hippt::warp_shfl(sample_direction.z * responsibility, src);
-		float other_lane_sum_responsibility = hippt::warp_shfl(same_index_mask, responsibility, src);
+		float other_lane_sum_responsibility = hippt::warp_shfl_sync(same_index_mask, responsibility, src);
 
 		if (lane_index == first_active_in_mask && src != first_active_in_mask && (same_index_mask & (1u << src)) == 1)
 		{

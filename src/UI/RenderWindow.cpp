@@ -28,11 +28,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Issue with last BSDF sample and envmap in scandinavian studio
 // - ReSTIR Spatial reuse doesn't have to store the sample for the output reservoir, we can just store the pixel index of the sample and then fetch it when
 // needed, massively reduce registers needed since we don't keep the selected sample in the output reservoir anymore
-// - Remove use_confidence_weights option from ReSTIR, we always use it anyways
 // - Issue with alpha testing windows in scandinavian studio, unusual noise
-// - Remove alpha testing bounce limit, too anoying and never used
 // - Can we use a target function without the second BSDF for performance?
-// - No N-steps RIS pixel in cell sampling for SPMIS, just full linear WRS
 // - fp16 wherever possible and compression and everything for SPMIS
 // - Could it be possible to precompute spatial reuse neighbors ahead of time to be able to share computations with pairwise MIS, basically doing paired spatial
 // reuse of restir pt enhanced but while keeping SPMIS capability
