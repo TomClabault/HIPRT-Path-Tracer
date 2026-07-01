@@ -87,8 +87,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		neighbor_sample_point_roughness_threshold	  = 0.1f;
 
 		// Very very small m-cap to avoid correlations
-		m_cap				   = 1;
-		use_confidence_weights = true;
+		m_cap = 1;
 
 		debug_view				= ReSTIRGIDebugView::GI_NO_DEBUG;
 		debug_view_scale_factor = 1.0f;

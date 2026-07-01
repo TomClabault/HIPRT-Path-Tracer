@@ -72,24 +72,12 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
-		if (ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights)
-		{
-			// MIS-like MIS weights with confidence weights are basically a mix of 1/Z
-			// and MIS like for the normalization so we're just returning the confidence here
-			// so that a reservoir that is being resampled gets a bigger weight depending on its
-			// confidence weight (M).
+		// MIS-like MIS weights with confidence weights are basically a mix of 1/Z
+		// and MIS like for the normalization so we're just returning the confidence here
+		// so that a reservoir that is being resampled gets a bigger weight depending on its
+		// confidence weight (M).
 
-			return reservoir_being_resampled.confidence;
-		}
-		else
-		{
-			// MIS-like MIS weights without confidence weights do not weight the neighbor reservoirs
-			// during resampling. We're thus returning 1.0f.
-			//
-			// The bulk of the work of the MIS-like weights is done in during the normalization of the reservoir
-
-			return 1.0f;
-		}
+		return reservoir_being_resampled.confidence;
 	}
 };
 
@@ -150,11 +138,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR
 
 		int temporal_M					= temporal_neighbor_reservoir_confidence;
 		int center_reservoir_confidence = initial_candidates_reservoir_confidence;
-		if (!ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights)
-		{
-			temporal_M					= 1;
-			center_reservoir_confidence = 1;
-		}
 
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 			nume = target_function_at_temporal_neighbor * temporal_M;
@@ -198,10 +181,9 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, R
 			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights		   = ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights;
-			float temporal_neighbor_confidence = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence  = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_reservoir.confidence;
 
 			float nume	= target_function_at_neighbor * temporal_neighbor_confidence;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
@@ -248,9 +230,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, R
 			float denom_mc =
 				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_confidence;
 
-			float confidence_multiplier = 1.0f;
-			if (use_confidence_weights)
-				confidence_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
+			float confidence_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
 
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc * confidence_multiplier;
@@ -303,17 +283,15 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DE
 			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights		   = ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights;
-			float temporal_neighbor_confidence = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence  = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_reservoir.confidence;
 
 			float nume	= target_function_at_neighbor * temporal_neighbor_confidence;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
 			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
-			if (use_confidence_weights)
-				// Eq 7.8
-				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
+			// Eq 7.8
+			mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
 
 			float target_function_center_sample_at_neighbor;
 			if constexpr (IsReSTIRGI)
@@ -355,22 +333,12 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DE
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_confidence;
 			float denom_mc =
 				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_confidence;
-			float confidence_multiplier = 1.0f;
-			if (use_confidence_weights)
-				confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
+			float confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
 
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			if (use_confidence_weights)
-				return mi;
-			else
-				// In the defensive formulation, we want to divide by M, not M-1.
-				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				// And we only want to divide if not using confidence weights
-				//
-				// M = 2 (center reservoir + temporal reservoir)
-				return mi * 0.5f;
+			return mi;
 		}
 		else
 		{
@@ -389,11 +357,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DE
 
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				if (ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights)
-					return mc + static_cast<float>(initial_candidates_reservoir.confidence) /
-									static_cast<float>(initial_candidates_reservoir.confidence + temporal_neighbor_reservoir.confidence);
-				else
-					return (1.0f + mc) * 0.5f;
+				return mc + static_cast<float>(initial_candidates_reservoir.confidence) /
+								static_cast<float>(initial_candidates_reservoir.confidence + temporal_neighbor_reservoir.confidence);
 			}
 		}
 	}
@@ -425,10 +390,9 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO
 			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_neighbor_sample_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights		   = ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights;
-			float temporal_neighbor_confidence = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence  = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum	   = use_confidence_weights ? temporal_neighbor_confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_reservoir.confidence;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
@@ -484,15 +448,10 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO
 											   ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 
 			float confidence_weights_multiplier;
-			if (use_confidence_weights)
-			{
-				if (neighbors_confidence_sum == 0.0f)
-					confidence_weights_multiplier = 0.0f;
-				else
-					confidence_weights_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
-			}
+			if (neighbors_confidence_sum == 0.0f)
+				confidence_weights_multiplier = 0.0f;
 			else
-				confidence_weights_multiplier = 1.0f;
+				confidence_weights_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
 
 			mc += confidence_weights_multiplier * nume_mc / denom_mc;
 
@@ -542,10 +501,9 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_function;
 
-			bool use_confidence_weights		   = ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant>(render_data).use_confidence_weights;
-			float temporal_neighbor_confidence = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence  = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum	   = use_confidence_weights ? temporal_neighbor_confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_reservoir.confidence;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights

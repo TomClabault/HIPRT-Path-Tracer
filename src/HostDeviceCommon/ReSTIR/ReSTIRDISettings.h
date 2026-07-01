@@ -77,8 +77,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		neighbor_similarity_settings.roughness_similarity_threshold		= 0.25f;
 
-		m_cap				   = 3;
-		use_confidence_weights = true;
+		m_cap = 3;
 	}
 
 	// Settings for the initial candidates generation pass

@@ -4040,16 +4040,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		ImGui::BeginDisabled(disable_confidence_weights);
-		if (ImGui::Checkbox("Use confidence weights", &common_settings.use_confidence_weights))
-			m_render_window->set_render_dirty(true);
-		std::string confidence_weight_help_string =
-			"Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
-		if (disable_confidence_weights)
-			confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
-		ImGuiRenderer::show_help_marker(confidence_weight_help_string);
-		ImGui::EndDisabled();
-
 		// No visibility for 1/M weights
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI || ReSTIRVariant == ReSTIR_VARIANT_GI)
 		{

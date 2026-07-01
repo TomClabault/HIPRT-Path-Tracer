@@ -148,9 +148,6 @@ struct ReSTIRCommonSettings
 	// 0 for infinite M-cap (don't...)
 	int m_cap;
 
-	// Whether or not to use confidence weights when resampling neighbors.
-	bool use_confidence_weights;
-
 	// Beta exponent to the difference function for symmetric and asymmetric ratio MIS weights
 	float symmetric_ratio_mis_weights_beta_exponent = 2.0f;
 };

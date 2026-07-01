@@ -71,24 +71,12 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRPTReservoir& reservoir_being_resampled)
 	{
-		if (render_data.render_settings.restir_pt_settings.use_confidence_weights)
-		{
-			// MIS-like MIS weights with confidence weights are basically a mix of 1/Z
-			// and MIS like for the normalization so we're just returning the confidence here
-			// so that a reservoir that is being resampled gets a bigger weight depending on its
-			// confidence weight (M).
+		// MIS-like MIS weights with confidence weights are basically a mix of 1/Z
+		// and MIS like for the normalization so we're just returning the confidence here
+		// so that a reservoir that is being resampled gets a bigger weight depending on its
+		// confidence weight (M).
 
-			return reservoir_being_resampled.confidence;
-		}
-		else
-		{
-			// MIS-like MIS weights without confidence weights do not weight the neighbor reservoirs
-			// during resampling. We're thus returning 1.0f.
-			//
-			// The bulk of the work of the MIS-like weights is done in during the normalization of the reservoir
-
-			return 1.0f;
-		}
+		return reservoir_being_resampled.confidence;
 	}
 };
 
@@ -116,8 +104,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 		{
 			// Only computing the target function if we do have a temporal neighbor
 
-			target_function_at_temporal_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_temporal_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
@@ -129,16 +117,11 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 			// compute anything else, we can already return 0.0f for the MIS weight.
 			return 0.0f;
 
-		float target_function_at_center = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
-																												center_pixel_surface, random_number_generator);
+		float target_function_at_center =
+			ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample, center_pixel_surface, random_number_generator);
 
-		int temporal_confidence		   = temporal_neighbor_reservoir_confidence;
+		int temporal_confidence			= temporal_neighbor_reservoir_confidence;
 		int center_reservoir_confidence = initial_candidates_reservoir_confidence;
-		if (!render_data.render_settings.restir_pt_settings.use_confidence_weights)
-		{
-			temporal_confidence		   = 1;
-			center_reservoir_confidence = 1;
-		}
 
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 			nume = target_function_at_temporal_neighbor * temporal_confidence;
@@ -180,17 +163,16 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float temporal_neighbor_confidence	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence	   = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_confidence;
 
 			float nume	= target_function_at_neighbor * temporal_neighbor_confidence;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
 			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+			float target_function_center_sample_at_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
 			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -221,9 +203,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float denom_mc =
 				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_confidence;
 
-			float confidence_multiplier = 1.0f;
-			if (use_confidence_weights)
-				confidence_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
+			float confidence_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
 
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc * confidence_multiplier;
@@ -274,20 +254,18 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float temporal_neighbor_confidence	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence	   = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_confidence;
 
 			float nume	= target_function_at_neighbor * temporal_neighbor_confidence;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
 			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
-			if (use_confidence_weights)
-				// Eq 7.8
-				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
+			// Eq 7.8
+			mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+			float target_function_center_sample_at_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
 			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -317,22 +295,12 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 			float nume_mc = target_function_center_sample_at_center * center_reservoir_confidence;
 			float denom_mc =
 				target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center * center_reservoir_confidence;
-			float confidence_multiplier = 1.0f;
-			if (use_confidence_weights)
-				confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
+			float confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
 
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			if (use_confidence_weights)
-				return mi;
-			else
-				// In the defensive formulation, we want to divide by M, not M-1.
-				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				// And we only want to divide if not using confidence weights
-				//
-				// M = 2 (center reservoir + temporal reservoir)
-				return mi * 0.5f;
+			return mi;
 		}
 		else
 		{
@@ -351,11 +319,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				if (render_data.render_settings.restir_pt_settings.use_confidence_weights)
-					return mc + static_cast<float>(initial_candidates_reservoir.confidence) /
-									static_cast<float>(initial_candidates_reservoir.confidence + temporal_neighbor_reservoir.confidence);
-				else
-					return (1.0f + mc) * 0.5f;
+				return mc + static_cast<float>(initial_candidates_reservoir.confidence) /
+								static_cast<float>(initial_candidates_reservoir.confidence + temporal_neighbor_reservoir.confidence);
 			}
 		}
 	}
@@ -385,10 +350,9 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_neighbor_sample_at_center	  = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float temporal_neighbor_confidence	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence	   = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_confidence;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
@@ -399,8 +363,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 			float denom_mi = center_reservoir_confidence + neighbors_confidence_sum * difference_function;
 			float mi	   = nume_mi / denom_mi;
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+			float target_function_center_sample_at_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
 			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -427,22 +391,17 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
-			float nume_mc = center_reservoir_confidence;
-			float denom_mc =
-				center_reservoir_confidence + neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(
-																	target_function_center_sample_at_neighbor, target_function_center_sample_at_center,
-																	render_data.render_settings.restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent);
+			float nume_mc  = center_reservoir_confidence;
+			float denom_mc = center_reservoir_confidence +
+							 neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(
+															target_function_center_sample_at_neighbor, target_function_center_sample_at_center,
+															render_data.render_settings.restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent);
 
 			float confidence_weights_multiplier;
-			if (use_confidence_weights)
-			{
-				if (neighbors_confidence_sum == 0.0f)
-					confidence_weights_multiplier = 0.0f;
-				else
-					confidence_weights_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
-			}
+			if (neighbors_confidence_sum == 0.0f)
+				confidence_weights_multiplier = 0.0f;
 			else
-				confidence_weights_multiplier = 1.0f;
+				confidence_weights_multiplier = temporal_neighbor_confidence / neighbors_confidence_sum;
 
 			mc += confidence_weights_multiplier * nume_mc / denom_mc;
 
@@ -490,10 +449,9 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_center_sample_at_center	  = initial_candidates_reservoir.sample.target_function;
 
-			bool use_confidence_weights	   = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float temporal_neighbor_confidence	   = use_confidence_weights ? temporal_neighbor_reservoir.confidence : 1;
-			float center_reservoir_confidence	   = use_confidence_weights ? initial_candidates_reservoir.confidence : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_confidence : 1;
+			float temporal_neighbor_confidence = temporal_neighbor_reservoir.confidence;
+			float center_reservoir_confidence  = initial_candidates_reservoir.confidence;
+			float neighbors_confidence_sum	   = temporal_neighbor_confidence;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
@@ -517,8 +475,8 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 
 			float mi = nume_mi / denom_mi;
 
-			float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-				render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+			float target_function_center_sample_at_neighbor =
+				ReSTIR_PT_evaluate_target_function<true>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			// Because we're using the target function as a PDF here, we need to scale the PDF
 			// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"

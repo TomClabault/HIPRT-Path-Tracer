@@ -40,7 +40,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, int reservoir_being_resampled_confidence)
 	{
-		return render_data.render_settings.restir_pt_settings.use_confidence_weights ? reservoir_being_resampled_confidence : 1;
+		return reservoir_being_resampled_confidence;
 	}
 };
 
@@ -101,9 +101,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 										 center_pixel_surface.shading_point, neighbor_surface.shading_point,
 										 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
 
-			int confidence = 1;
-			if (render_data.render_settings.restir_pt_settings.use_confidence_weights)
-				confidence = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_index_j].confidence;
+			int confidence = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_index_j].confidence;
 			denom += target_function_at_j * confidence;
 			if (j == current_neighbor_index)
 				nume = target_function_at_j * confidence;
@@ -155,18 +153,13 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 			float target_function_at_neighbor			  = reservoir_being_resampled_target_function;
 			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights			 = ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT>(render_data).use_confidence_weights;
-			float reservoir_resampled_confidence = use_confidence_weights ? reservoir_being_resampled_confidence : 1;
-			float center_reservoir_confidence	 = use_confidence_weights ? center_pixel_reservoir_confidence : 1;
-			float neighbors_confidence_sum		 = use_confidence_weights ? valid_neighbors_confidence_sum : 1;
-			// We only want to divide by confidence-1 if we're not using confidence weights.
-			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
-			float valid_neighbor_division_term = use_confidence_weights ? 1 : valid_neighbors_count;
+			float reservoir_resampled_confidence = reservoir_being_resampled_confidence;
+			float center_reservoir_confidence	 = center_pixel_reservoir_confidence;
+			float neighbors_confidence_sum		 = valid_neighbors_confidence_sum;
 
-			float nume = target_function_at_neighbor * reservoir_resampled_confidence;
-			float denom =
-				target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_confidence;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float nume	= target_function_at_neighbor * reservoir_resampled_confidence;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
+			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
 
 			if (update_mc)
 			{
@@ -197,27 +190,22 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 					}
 				}
 
-				float nume_mc  = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_confidence;
+				float nume_mc  = target_function_center_sample_at_center * center_reservoir_confidence;
 				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
-								 target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_confidence;
+								 target_function_center_sample_at_center * center_reservoir_confidence;
 
 				float confidence_weights_multiplier;
-				if (use_confidence_weights)
-				{
-					if (neighbors_confidence_sum == 0.0f)
-						confidence_weights_multiplier = 0.0f;
-					else
-						confidence_weights_multiplier = reservoir_resampled_confidence / neighbors_confidence_sum;
-				}
+				if (neighbors_confidence_sum == 0.0f)
+					confidence_weights_multiplier = 0.0f;
 				else
-					confidence_weights_multiplier = 1.0f;
+					confidence_weights_multiplier = reservoir_resampled_confidence / neighbors_confidence_sum;
 
 				// (Eq. 7.7 of "A Gentle Introduction to ReSTIR"), c_j / (Sum_{k!=c}^M c_k)
 				if (denom_mc != 0.0f)
-					mc += nume_mc / denom_mc / valid_neighbor_division_term * confidence_weights_multiplier;
+					mc += nume_mc / denom_mc * confidence_weights_multiplier;
 			}
 
-			return mi / valid_neighbor_division_term;
+			return mi;
 		}
 		else
 		{
@@ -272,20 +260,14 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled_target_function;
 
-			bool use_confidence_weights			 = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float reservoir_resampled_confidence = use_confidence_weights ? reservoir_being_resampled_confidence : 1;
-			float center_reservoir_confidence	 = use_confidence_weights ? center_pixel_reservoir_confidence : 1;
-			float neighbors_confidence_sum		 = use_confidence_weights ? valid_neighbors_confidence_sum : 1;
-			// We only want to divide by confidence-1 if we're not using confidence weights.
-			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
-			float valid_neighbor_division_term = use_confidence_weights ? 1 : valid_neighbors_count;
+			float reservoir_resampled_confidence = reservoir_being_resampled_confidence;
+			float center_reservoir_confidence	 = center_pixel_reservoir_confidence;
+			float neighbors_confidence_sum		 = valid_neighbors_confidence_sum;
 
-			float nume = target_function_at_neighbor * reservoir_resampled_confidence;
-			float denom =
-				target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_confidence;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
-			if (use_confidence_weights)
-				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
+			float nume	= target_function_at_neighbor * reservoir_resampled_confidence;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_confidence;
+			float mi	= denom == 0.0f ? 0.0f : (nume / denom);
+			mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_confidence);
 
 			if (update_mc)
 			{
@@ -326,24 +308,15 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 
 				float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-				float nume_mc  = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_confidence;
+				float nume_mc  = target_function_center_sample_at_center * center_reservoir_confidence;
 				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
-								 target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_confidence;
-				float confidence_multiplier = 1.0f;
-				if (use_confidence_weights)
-					confidence_multiplier = reservoir_resampled_confidence / (center_reservoir_confidence + neighbors_confidence_sum);
+								 target_function_center_sample_at_center * center_reservoir_confidence;
+				float confidence_multiplier = reservoir_resampled_confidence / (center_reservoir_confidence + neighbors_confidence_sum);
 				if (denom_mc != 0.0f)
 					mc += nume_mc / denom_mc * confidence_multiplier;
 			}
 
-			if (use_confidence_weights)
-				return mi;
-			else
-				// In the defensive formulation, we want to divide by M, not M-1.
-				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				//
-				// We also only want that division when not using confidence weights
-				return mi / (valid_neighbors_count + 1.0f);
+			return mi;
 		}
 		else
 		{
@@ -360,13 +333,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 				//
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 
-				if (render_data.render_settings.restir_pt_settings.use_confidence_weights)
-					return mc + static_cast<float>(center_pixel_reservoir_confidence) /
-									static_cast<float>(center_pixel_reservoir_confidence + valid_neighbors_confidence_sum);
-				else
-					// In the defensive formulation, we want to divide by M, not M-1.
-					// (Eq. 7.6 of "A Gentle Introduction to ReSTIR") so 'valid_neighbors_count + 1'
-					return (1.0f + mc) / (valid_neighbors_count + 1.0f);
+				return mc + static_cast<float>(center_pixel_reservoir_confidence) /
+								static_cast<float>(center_pixel_reservoir_confidence + valid_neighbors_confidence_sum);
 			}
 		}
 	}
@@ -401,10 +369,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 			float target_function_neighbor_sample_at_neighbor = reservoir_being_resampled_target_function;
 			float target_function_center_sample_at_center	  = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights			 = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float reservoir_resampled_confidence = use_confidence_weights ? reservoir_being_resampled_confidence : 1;
-			float center_reservoir_confidence	 = use_confidence_weights ? center_pixel_reservoir_confidence : 1;
-			float neighbors_confidence_sum		 = use_confidence_weights ? valid_neighbors_confidence_sum : valid_neighbors_count;
+			float reservoir_resampled_confidence = reservoir_being_resampled_confidence;
+			float center_reservoir_confidence	 = center_pixel_reservoir_confidence;
+			float neighbors_confidence_sum		 = valid_neighbors_confidence_sum;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
@@ -452,15 +419,10 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 																render_data.render_settings.restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent);
 
 				float confidence_weights_multiplier;
-				if (use_confidence_weights)
-				{
-					if (neighbors_confidence_sum == 0.0f)
-						confidence_weights_multiplier = 0.0f;
-					else
-						confidence_weights_multiplier = reservoir_resampled_confidence / neighbors_confidence_sum;
-				}
+				if (neighbors_confidence_sum == 0.0f)
+					confidence_weights_multiplier = 0.0f;
 				else
-					confidence_weights_multiplier = 1.0f / valid_neighbors_count;
+					confidence_weights_multiplier = reservoir_resampled_confidence / neighbors_confidence_sum;
 
 				mc += confidence_weights_multiplier * nume_mc / denom_mc;
 			}
@@ -514,10 +476,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 			float target_function_neighbor_sample_at_neighbor = reservoir_being_resampled_target_function;
 			float target_function_center_sample_at_center	  = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights			 = render_data.render_settings.restir_pt_settings.use_confidence_weights;
-			float reservoir_resampled_confidence = use_confidence_weights ? reservoir_being_resampled_confidence : 1;
-			float center_reservoir_confidence	 = use_confidence_weights ? center_pixel_reservoir_confidence : 1;
-			float neighbors_confidence_sum		 = use_confidence_weights ? valid_neighbors_confidence_sum : valid_neighbors_count;
+			float reservoir_resampled_confidence = reservoir_being_resampled_confidence;
+			float center_reservoir_confidence	 = center_pixel_reservoir_confidence;
+			float neighbors_confidence_sum		 = valid_neighbors_confidence_sum;
 
 			// Eq. 16 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights

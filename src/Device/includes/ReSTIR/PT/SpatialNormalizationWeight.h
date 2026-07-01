@@ -185,9 +185,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 
 			if (target_function_at_neighbor > 0.0f)
 			{
-				int M = 1;
-				if (ReSTIRSettingsHelper::get_restir_settings<ReSTIR_VARIANT_PT>(render_data).use_confidence_weights)
-					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
+				int M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we

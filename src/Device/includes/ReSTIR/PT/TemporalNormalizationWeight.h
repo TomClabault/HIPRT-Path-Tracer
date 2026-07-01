@@ -171,13 +171,6 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			// neighbor's target function is the one in the numerator
 			out_normalization_nume = temporal_neighbor_target_function;
 
-		if (!render_data.render_settings.restir_pt_settings.use_confidence_weights)
-		{
-			// If not using confidence weights, settings the weights to 1 so that everyone has the same weight
-			initial_candidates_confidence = 1;
-			temporal_neighbor_confidence  = 1;
-		}
-
 		out_normalization_denom =
 			center_pixel_target_function * initial_candidates_confidence + temporal_neighbor_target_function * temporal_neighbor_confidence;
 	}
