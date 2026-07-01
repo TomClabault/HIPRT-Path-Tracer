@@ -423,7 +423,7 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_start, m_renderer->get_main_stream()));
 
-	const ReSTIRCommonSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	unsigned int num_cells			   = spmis_settings.pixel_hashes_count;
 	void* reset_counters_launch_args[] = { &render_data, &num_cells };
@@ -514,9 +514,9 @@ void ReSTIRPTRenderPass::resize_cdf_luts_buffer(HIPRTRenderData& render_data, un
 																											  1.05f);
 
 		// Settings the pointer in both the render data and the renderer render data to the new buffer pointer
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
 			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
-		m_renderer->get_render_data().render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+		m_renderer->get_render_data().render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
 			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
 	}
 }

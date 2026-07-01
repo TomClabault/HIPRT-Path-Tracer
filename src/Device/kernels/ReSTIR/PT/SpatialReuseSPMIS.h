@@ -72,17 +72,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
 	// Scaling the confidence sum, section 4.3 of the paper
-	float non_canonical_confidence_scaling =
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.do_non_canonical_confidence_adjustement
-			? reused_neighbors_count / (float)reuse_cell_pixel_count
-			: 1.0f;
-	float neighbors_confidence_sum = neighbors_confidence_sum_int * non_canonical_confidence_scaling;
+	float non_canonical_confidence_scaling = render_data.render_settings.restir_pt_settings.spmis_settings.do_non_canonical_confidence_adjustement
+												 ? reused_neighbors_count / (float)reuse_cell_pixel_count
+												 : 1.0f;
+	float neighbors_confidence_sum		   = neighbors_confidence_sum_int * non_canonical_confidence_scaling;
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
 	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].M;
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
+	if (render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
 		// Resampling only the neighbors, canonical resampling is further below
 		for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
@@ -128,7 +127,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		// Sampling one random neighbor with uniform selection over all reservoirs, zero importance or not, (N_c = 1, section 4.2 of "Stochastic Pairwise MIS
 		// for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026") and using that neighbor to estimate the MIS weight of the canonical sample
 
-		ReSTIRCommonSPMISSettings spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
+		const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 		float mis_weight = 0.0f;
 		for (int i = 0; i < spmis_settings.canonical_weight_estimation_count; i++)

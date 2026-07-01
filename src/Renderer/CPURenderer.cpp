@@ -1567,7 +1567,7 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	if (spmis_data.template get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
 	{
 		spmis_data.template resize_one_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize);
-		m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts =
+		m_render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
 			spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();
 	}
 	unsigned short int* cell_cdf_luts = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();

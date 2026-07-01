@@ -19,7 +19,7 @@ struct ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings
 	float solid_angle_omega = 0.05f;
 };
 
-struct ReSTIRCommonSPMISSettings
+struct ReSTIRPTSPMISSettings
 {
 	// Screen space tile size
 	int tile_size = 32;

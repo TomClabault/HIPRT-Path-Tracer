@@ -24,7 +24,7 @@ inline ReSTIR_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int siz
 	if (cell_index >= size)
 		return;
 
-	ReSTIRCommonSPMISSettings spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+	ReSTIRPTSPMISSettings spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	if (cell_index == 0)
 		*spmis_settings.cell_global_offset_counter = 0;

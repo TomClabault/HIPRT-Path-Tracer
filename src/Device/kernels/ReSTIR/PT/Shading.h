@@ -187,14 +187,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	}
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SPMIS_CELLS)
 	{
-		path_tracing_accumulate_color(
-			render_data, pixel_index, ray_payload.ray_color,
-			ColorRGB32F::random_color(render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes[pixel_index]));
+		path_tracing_accumulate_color(render_data, pixel_index, ray_payload.ray_color,
+									  ColorRGB32F::random_color(render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes[pixel_index]));
 	}
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_CELL_VARIANCE)
 	{
-		const auto& spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
-		unsigned int cell_index	   = spmis_settings.all_pixel_hashes[pixel_index];
+		ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
+		unsigned int cell_index				  = spmis_settings.all_pixel_hashes[pixel_index];
 		if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX || spmis_settings.cell_variance == nullptr)
 			debug_set_final_color(render_data, x, y, ColorRGB32F(0.0f));
 		else

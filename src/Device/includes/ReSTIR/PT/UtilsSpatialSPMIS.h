@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
-HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRCommonSPMISSettings& spmis_settings,
+HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMISSettings& spmis_settings,
 															  float3_t camera_position,
 															  float3_t center_pixel_shading_point,
 															  float3_t neighbor_pixel_shading_point,
@@ -47,8 +47,8 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 	Xorshift32Generator& rng // Passing the RNG by copy because we don't want the RNG used here to advance our global RNG
 )
 {
-	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
-	unsigned int cached_reuse_cell_pixel_index		= spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index];
+	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
+	unsigned int cached_reuse_cell_pixel_index	= spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index];
 	if (cached_reuse_cell_pixel_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		// We're going to reuse from the cell at the cached reuse pixel index to avoid running the expensive cell search each frame when we already have a good
@@ -187,7 +187,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 																 float& out_selection_probability,
 																 Xorshift32Generator& rng)
 {
-	const ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIR_VARIANT_PT>(render_data);
+	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	unsigned int cell_start_index	= spmis_settings.cell_offsets[neighbor_cell_index];
 	unsigned int non_zero_cell_size = spmis_settings.cell_non_zero_reservoir_counters[neighbor_cell_index];

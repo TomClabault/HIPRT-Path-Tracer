@@ -108,6 +108,7 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 	ReSTIRPTInitialCandidatesPassSettings initial_candidates;
 	ReSTIRPTTemporalPassSettings temporal_pass;
 	ReSTIRPTSpatialPassSettings spatial_pass;
+	ReSTIRPTSPMISSettings spmis_settings;
 
 	ReSTIRPTReservoir* restir_output_reservoirs = nullptr;
 

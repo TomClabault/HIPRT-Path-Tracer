@@ -99,68 +99,65 @@ struct ReSTIRSPMISDataHost
 	{
 		if (size() == 0)
 		{
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = 0;
+			render_data.render_settings.restir_pt_settings.spmis_settings.pixel_hashes_count = 0;
 
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes					= nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums		= nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell			= nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_reuse_cell_pixel_index = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted				= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes					= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums		= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_index_in_cell			= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_reuse_cell_pixel_index = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.pixel_indices_sorted				= nullptr;
 
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters			   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter	   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_total_count_counter		   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_occupied					   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_alive_list				   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets					   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums			   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs						   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts					   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets			   = nullptr;
-			render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_variance			   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_pixels_counters			   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_global_offset_counter	   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_total_count_counter		   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_occupied					   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_alive_list				   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_offsets					   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums			   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdfs						   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts					   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_lut_offsets			   = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance					   = nullptr;
 
 			return;
 		}
 
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes =
+		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixel_hashes_checksums =
+		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_index_in_cell =
+		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_index_in_cell =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.all_pixels_reuse_cell_pixel_index =
+		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_reuse_cell_pixel_index =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_hashes_count = (unsigned int)size();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.pixel_indices_sorted =
+		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_hashes_count = (unsigned int)size();
+		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_indices_sorted =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();
 
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_pixels_counters =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_pixels_counters =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_COUNTERS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_non_zero_reservoir_counters =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_global_offset_counter =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_global_offset_counter =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_total_count_counter =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_total_count_counter =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_occupied =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_occupied =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_OCCUPIED>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_alive_list =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_alive_list =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_ALIVE_LIST>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_offsets =
-			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_confidence_sums =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_offsets = m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_OFFSETS>();
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums =
 			m_spmis_data.template get_buffer_data_atomic_ptr<RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdfs =
-			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDFS>();
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdfs = m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDFS>();
 		// The pointer is not set here because the buffer is resized when creating the SPMIS cells, not here so we may not have a valid pointer to set at all
 		// since the buffer hasn't been allocated (resized)
-		// render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_luts = m_spmis_data.template
+		// render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts = m_spmis_data.template
 		// get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUTS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_cdf_lut_offsets =
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_lut_offsets =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>();
-		render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.cell_variance =
-			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_VARIANCE>();
+		render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance = m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_CELL_VARIANCE>();
 	}
 
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;

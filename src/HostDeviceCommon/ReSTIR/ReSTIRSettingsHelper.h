@@ -78,32 +78,6 @@ struct ReSTIRSettingsHelper
 	}
 
 	template <int ReSTIRVariant>
-	HIPRT_DEVICE static ReSTIRCommonSPMISSettings& get_restir_spmis_settings(HIPRTRenderData& render_data)
-	{
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-			return render_data.render_settings.restir_di_settings.common_spatial_pass.spmis_settings;
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-			return render_data.render_settings.restir_gi_settings.common_spatial_pass.spmis_settings;
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			return render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
-		else
-			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
-	}
-
-	template <int ReSTIRVariant>
-	HIPRT_DEVICE static const ReSTIRCommonSPMISSettings& get_restir_spmis_settings(const HIPRTRenderData& render_data)
-	{
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)
-			return render_data.render_settings.restir_di_settings.common_spatial_pass.spmis_settings;
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-			return render_data.render_settings.restir_gi_settings.common_spatial_pass.spmis_settings;
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-			return render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
-		else
-			static_assert(ReSTIRVariant == 0, "Invalid ReSTIR variant");
-	}
-
-	template <int ReSTIRVariant>
 	HIPRT_HOST_DEVICE static ReSTIRCommonTemporalPassSettings get_restir_temporal_pass_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_DI)

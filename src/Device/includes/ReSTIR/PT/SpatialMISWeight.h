@@ -87,11 +87,11 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			float target_function_at_j;
 			if (j == current_neighbor_index)
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
-																											 neighbor_surface, random_number_generator);
+				target_function_at_j =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
 			else
-				target_function_at_j = ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample,
-																											 neighbor_surface, random_number_generator);
+				target_function_at_j =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
 
 			if (!reservoir_being_resampled_sample.is_envmap_path())
 				// Applying the jacobian to get "p_hat_from_i"
@@ -170,9 +170,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 
 			if (update_mc)
 			{
-				ReSTIRSurface neighbor_pixel_surface			= get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+				float target_function_center_sample_at_neighbor =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -298,8 +298,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+				float target_function_center_sample_at_neighbor =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -418,8 +418,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+				float target_function_center_sample_at_neighbor =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -544,8 +544,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-				float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-					render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+				float target_function_center_sample_at_neighbor =
+					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -645,8 +645,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 
 		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-			render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+		float target_function_center_sample_at_neighbor =
+			ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
 		// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -683,8 +683,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			float spmis_proba = 1.0f;
 			if (neighbor_selection_probability > 0.0f)
 				// 1.0f / (N_c * P_c(i))
-				spmis_proba = 1.0f / (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.canonical_weight_estimation_count *
-									  neighbor_selection_probability);
+				spmis_proba =
+					1.0f / (render_data.render_settings.restir_pt_settings.spmis_settings.canonical_weight_estimation_count * neighbor_selection_probability);
 
 			return spmis_proba * confidence_multiplier * nume_mc / denom_mc;
 		}
@@ -742,8 +742,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 
 		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function<true>(
-			render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+		float target_function_center_sample_at_neighbor =
+			ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
 		// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -780,8 +780,8 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			float spmis_proba = 1.0f;
 			if (neighbor_selection_probability > 0.0f)
 				// 1.0f / (N_c * P_c(i))
-				spmis_proba = 1.0f / (render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings.canonical_weight_estimation_count *
-									  neighbor_selection_probability);
+				spmis_proba =
+					1.0f / (render_data.render_settings.restir_pt_settings.spmis_settings.canonical_weight_estimation_count * neighbor_selection_probability);
 
 			return spmis_proba * confidence_multiplier * nume_mc / denom_mc;
 		}

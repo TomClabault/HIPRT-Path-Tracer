@@ -4114,7 +4114,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 	{
 		ImGui::TreePush("SPMIS Settings tree");
 
-		ReSTIRCommonSPMISSettings& spmis_settings = render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+		ReSTIRPTSPMISSettings& spmis_settings = render_settings.restir_pt_settings.spmis_settings;
 
 		ImGui::SeparatorText("Neighbor cell search");
 

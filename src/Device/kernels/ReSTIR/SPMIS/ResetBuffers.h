@@ -24,7 +24,7 @@ inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 	if (index >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
 		return;
 
-	ReSTIRCommonSPMISSettings spmis_settings = render_data.render_settings.restir_pt_settings.common_spatial_pass.spmis_settings;
+	ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	spmis_settings.all_pixel_hashes[index]				   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	spmis_settings.all_pixel_hashes_checksums[index]	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;

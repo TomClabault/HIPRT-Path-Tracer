@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 
-#include "Device/includes/ReSTIR/SPMIS/ReSTIRCommonSPMISSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSPMISSettings.h"
 
 /**
  * Note that no default values are set here because they are all set in
@@ -94,8 +94,6 @@ struct ReSTIRCommonSpatialPassSettings
 	//
 	// This is purely to avoid passing yet another arguments to every function in the code...
 	unsigned long long int current_pixel_directions_reuse_mask = 0;
-
-	ReSTIRCommonSPMISSettings spmis_settings;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

@@ -11,7 +11,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
 HIPRT_DEVICE unsigned int ReSTIR_spmis_hash(
-	ReSTIRCommonSPMISSettings& spmis_settings, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal, unsigned int& out_checksum)
+	const ReSTIRPTSPMISSettings& spmis_settings, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal, unsigned int& out_checksum)
 {
 	return screen_space_gbuffer_hash(pixel_x, pixel_y, spmis_settings.tile_size, shading_point, surface_normal, spmis_settings.hash_normal_precision,
 									 spmis_settings.hash_normal_jitter_strength, &out_checksum);
@@ -20,7 +20,7 @@ HIPRT_DEVICE unsigned int ReSTIR_spmis_hash(
 template <int ReSTIRVariant>
 HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal)
 {
-	ReSTIRCommonSPMISSettings& spmis_settings = ReSTIRSettingsHelper::get_restir_spmis_settings<ReSTIRVariant>(render_data);
+	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	unsigned int pixel_index = pixel_x + pixel_y * render_data.render_settings.render_resolution.x;
 
