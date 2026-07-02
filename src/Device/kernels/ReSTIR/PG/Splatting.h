@@ -52,7 +52,7 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 		float other_lane_sum_z				= hippt::warp_shfl(sample_direction.z * responsibility, src);
 		float other_lane_sum_responsibility = hippt::warp_shfl_sync(same_index_mask, responsibility, src);
 
-		if (lane_index == first_active_in_mask && src != first_active_in_mask && (same_index_mask & (1u << src)) == 1)
+		if (lane_index == first_active_in_mask && src != first_active_in_mask && (same_index_mask & (1u << src)) != 0)
 		{
 			sum_x += other_lane_sum_x;
 			sum_y += other_lane_sum_y;

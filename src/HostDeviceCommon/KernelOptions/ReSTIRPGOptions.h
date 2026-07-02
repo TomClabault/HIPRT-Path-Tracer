@@ -31,13 +31,13 @@
  *
  * This is an implementation of ["ReSTIR PG: Path Guiding with Spatiotemporally Resampled Paths", Zeng et al., 2025]
  */
-#define ReSTIRPGEnable KERNEL_OPTION_FALSE
+#define ReSTIRPGEnable KERNEL_OPTION_TRUE
 
 #define ReSTIRPGDistributionComponentCount 6
 
 #define ReSTIRPGHashGridCollisionResolveSteps 12
 
-#define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
+#define ReSTIRPGDebugMode RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
 
 #endif
 

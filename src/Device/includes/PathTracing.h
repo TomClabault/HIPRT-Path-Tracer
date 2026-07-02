@@ -462,6 +462,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 		if (distribution.distribution_components[0].weight == 0.0f)
 			color = ColorRGB32F(0.0f);
+		else if (!hippt::is_finite(distribution.distribution_components[0].weight))
+			color = ColorRGB32F(1.0e10f, 0.0e10f, 1.0e10f);
 		else
 			color = ColorRGB32F(
 						hippt::normalize(
