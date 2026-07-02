@@ -93,8 +93,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 
 	// Normalize components weights, this is useful to help with precision issues but also to re-normalize components that were not updated by the fitting pass
 	// because they had too few samples assigned to them (and thus we kept their old parameters/weights but we want to make sure that the weights sum to 1.0f)
+	float total_weights = 0.0f;
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
-		updated_distribution.distribution_components[component_index].weight /= component_weights_sum;
+		total_weights += updated_distribution.distribution_components[component_index].weight;
+	float inv_total_weights = 1.0f / total_weights;
+	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
+		updated_distribution.distribution_components[component_index].weight *= inv_total_weights;
 
 	restir_pg_settings.hash_grid_distributions_soa.set_distribution(hash_grid_cell_index, updated_distribution);
 }
