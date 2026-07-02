@@ -41,7 +41,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		sum_responsibilities_weight_sum +=
 			sufficient_statistics_soa.responsibility_weights_sum[component_index * restir_pg_settings.hash_grid_total_number_of_cells + hash_grid_cell_index];
 
-	ReSTIRPGDistribution updated_distribution;
+	ReSTIRPGDistribution updated_distribution = current_distribution;
 
 	// Keeping the sum to normalize weights at the end
 	float component_weights_sum = 0.0f;
