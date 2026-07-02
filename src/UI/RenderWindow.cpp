@@ -25,7 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Ray volume state reconstruction @ sample point
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
-// - Issue with last BSDF sample and envmap in scandinavian studio
 // - ReSTIR Spatial reuse doesn't have to store the sample for the output reservoir, we can just store the pixel index of the sample and then fetch it when
 // needed, massively reduce registers needed since we don't keep the selected sample in the output reservoir anymore
 // - Issue with alpha testing windows in scandinavian studio, unusual noise

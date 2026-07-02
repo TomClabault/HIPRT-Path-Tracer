@@ -447,8 +447,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 		ColorRGB32F radiance_to_camera;
 		if (restir_pt_initial_reservoir.sample.is_envmap_path())
-			radiance_to_camera = bsdf_first_hit * hippt::abs(hippt::dot(initial_surface.shading_normal, to_light_direction)) *
-								 restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
+			radiance_to_camera = bsdf_first_hit * restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 		else if (!restir_pt_initial_reservoir.sample.di_sample)
 		{
 			// TODO the ray volume state should be updated here
@@ -459,7 +458,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			DeviceUnpackedEffectiveMaterial rc_vertex_material = get_intersection_material(
 				render_data, rc_vertex_material_index,
 				make_float2(restir_pt_initial_reservoir.sample.rc_vertex_texcoords_u, restir_pt_initial_reservoir.sample.rc_vertex_texcoords_v));
-			BSDFContext secondary_hit_eval_context(view_direction, initial_surface.shading_normal, initial_surface.geometric_normal,
+			float3_t rc_vertex_shading_normal   = restir_pt_initial_reservoir.sample.rc_vertex_shading_normal.unpack();
+			float3_t rc_vertex_geometric_normal = restir_pt_initial_reservoir.sample.rc_vertex_geometric_normal.unpack();
+			BSDFContext secondary_hit_eval_context(view_direction, rc_vertex_shading_normal, rc_vertex_geometric_normal,
 												   to_light_direction_sample_point, restir_pt_initial_reservoir.sample.incident_light_info_at_sample_point,
 												   initial_surface.ray_volume_state, false, rc_vertex_material, 0.0f);
 
