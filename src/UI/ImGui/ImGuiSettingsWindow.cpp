@@ -1662,7 +1662,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						{
 							int macro_value_before =
 								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
-							if (render_settings.restir_pt_settings.debug_view == ReSTIRGIDebugView::GI_SHADE_ONLY_INITIAL_CANDIDATES)
+							if (render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SHADE_ONLY_INITIAL_CANDIDATES)
 								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
 																	   KERNEL_OPTION_TRUE);
 							else

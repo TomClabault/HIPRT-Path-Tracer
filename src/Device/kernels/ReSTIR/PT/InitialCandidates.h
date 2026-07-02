@@ -472,7 +472,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		else
 			radiance_to_camera = bsdf_first_hit * restir_pt_initial_reservoir.sample.rc_vertex_incident_radiance * restir_pt_initial_reservoir.UCW;
 
-		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera * restir_pt_initial_reservoir.UCW;
+		render_data.buffers.accumulated_ray_colors[pixel_index] = radiance_to_camera;
 	}
 }
 
