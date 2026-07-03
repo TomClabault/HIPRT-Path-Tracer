@@ -14,7 +14,7 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /*
- * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * Copyright 2026 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
