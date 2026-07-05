@@ -38,7 +38,7 @@ public:
 
 private:
 	MLPDataHost<OrochiBuffer> m_mlp;
-	Image8Bit m_apple;
+	Image8Bit m_image;
 	OrochiBuffer<unsigned char> m_texture_data;
 	OrochiBuffer<unsigned char> m_out_predicted_texture;
 };

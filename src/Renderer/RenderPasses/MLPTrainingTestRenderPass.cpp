@@ -75,9 +75,24 @@ bool MLPTrainingTestRenderPass::pre_render_update(float delta_time)
 		m_mlp.resize();
 		m_mlp.initialize();
 
-		m_apple					= Image8Bit::read_image("F:\\Repos\\Dx12NN\\src\\assets\\circle.png", 3, true);
-		m_texture_data			= OrochiBuffer<unsigned char>(m_apple.data());
-		m_out_predicted_texture = OrochiBuffer<unsigned char>(m_apple.width * m_apple.height * 3);
+		Image32Bit image_exr = Image32Bit::read_image_exr("../data/Skyspheres/envmap.exr", true);
+
+		// Convert image to 8 bit just for testing
+		m_image = Image8Bit(image_exr.width, image_exr.height, 3);
+		for (unsigned int y = 0; y < image_exr.height; ++y)
+		{
+			for (unsigned int x = 0; x < image_exr.width; ++x)
+			{
+				ColorRGB32F pixel = image_exr.get_pixel_ColorRGB32F(y * image_exr.width + x);
+
+				m_image.data()[(y * image_exr.width + x) * 3 + 0] = static_cast<unsigned char>(std::clamp(pixel.r * 255.0f, 0.0f, 255.0f));
+				m_image.data()[(y * image_exr.width + x) * 3 + 1] = static_cast<unsigned char>(std::clamp(pixel.g * 255.0f, 0.0f, 255.0f));
+				m_image.data()[(y * image_exr.width + x) * 3 + 2] = static_cast<unsigned char>(std::clamp(pixel.b * 255.0f, 0.0f, 255.0f));
+			}
+		}
+
+		m_texture_data			= OrochiBuffer<unsigned char>(m_image.data());
+		m_out_predicted_texture = OrochiBuffer<unsigned char>(m_image.width * m_image.height * 3);
 	}
 
 	return false;
@@ -93,8 +108,8 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	unsigned int batch_size		= 2048;
 	unsigned char* texture_data = m_texture_data.get_device_pointer();
-	unsigned int tex_w			= m_apple.width;
-	unsigned int tex_h			= m_apple.height;
+	unsigned int tex_w			= m_image.width;
+	unsigned int tex_h			= m_image.height;
 
 	// Train
 	unsigned int frame_number = render_data.render_settings.sample_number;
@@ -111,18 +126,21 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	// Predict
 	unsigned char* predicted_texture_data = m_out_predicted_texture.get_device_pointer();
-	unsigned int predicted_texture_width  = m_apple.width;
-	unsigned int predicted_texture_height = m_apple.height;
+	unsigned int predicted_texture_width  = m_image.width;
+	unsigned int predicted_texture_height = m_image.height;
 	void* predict_launch_args[]			  = { &mlp_device, &predicted_texture_data, &predicted_texture_width, &predicted_texture_height };
-	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_apple.width, m_apple.height,
+	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_image.width, m_image.height,
 																		   predict_launch_args, m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
 
 	// Save prediction
-	std::vector<unsigned char> out_predicted_texture = m_out_predicted_texture.download_data();
-	Image8Bit predicted_image(out_predicted_texture, m_apple.width, m_apple.height, 3);
-	std::string out_name = "image_predicted" + std::to_string(render_data.render_settings.sample_number) + ".png";
-	predicted_image.write_image_png(out_name);
+	if (render_data.render_settings.sample_number % 8 == 0)
+	{
+		std::vector<unsigned char> out_predicted_texture = m_out_predicted_texture.download_data();
+		Image8Bit predicted_image(out_predicted_texture, m_image.width, m_image.height, 3);
+		std::string out_name = "image_predicted" + std::to_string(render_data.render_settings.sample_number) + ".png";
+		predicted_image.write_image_png(out_name);
+	}
 
 	// Reset gradient counter for next frame
 	m_mlp.m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(0);

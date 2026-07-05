@@ -22,6 +22,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
+// - What if we select the reuse cell based on sum luminance * UCW instead of confidence?
 // - Brightening bias at > 32 neighbors pairwise MIS?
 // - Ray volume state reconstruction @ sample point
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
