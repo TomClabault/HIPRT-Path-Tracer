@@ -37,7 +37,7 @@
 
 #define ReSTIRPGHashGridCollisionResolveSteps 12
 
-#define ReSTIRPGDebugMode RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION
+#define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
 
 #endif
 

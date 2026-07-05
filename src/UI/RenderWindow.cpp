@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Brightening bias at > 32 neighbors pairwise MIS?
 // - Ray volume state reconstruction @ sample point
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
 // - Remove all BSDF incident light info optimizations, so annoying to maintain and probably not that much perf to gain? Test perf loss
