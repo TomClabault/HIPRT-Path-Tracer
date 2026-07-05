@@ -51,6 +51,8 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
 
+		Debug::debugbreak();
+
 		return;
 	}
 
@@ -63,7 +65,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 	int bits_channel_z = (channels >= 3) ? 8 : 0; // Third channel (e.g., Blue)
 	int bits_channel_w = (channels == 4) ? 8 : 0; // Fourth channel (e.g., Alpha)
 	oroChannelFormatDesc channel_descriptor =
-							oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindUnsigned);
+		oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindUnsigned);
 
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
 
@@ -102,6 +104,8 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 	if (channels == 3 || channels > 4)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
+
+		Debug::debugbreak();
 
 		return;
 	}
