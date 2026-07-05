@@ -30,6 +30,7 @@
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
+#include "Renderer/RenderPasses/MLPTrainingTestRenderPass.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"

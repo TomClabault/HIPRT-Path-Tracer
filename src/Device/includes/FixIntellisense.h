@@ -52,6 +52,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define __restrict__
 #define __host__
 #define __device__
+#define __launch_bounds__(x)
 
 #define HIPRT_HOST_DEVICE __host__ __device__
 #define HIPRT_DEVICE	  __device__
