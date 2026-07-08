@@ -25,7 +25,9 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPTrain(MLPDevice mlp, unsigned char* texture, un
 	float color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
 
 	float activations[MLP_NEURON_COUNT];
-	mlp.forward_pass(uv, activations);
+
+	MLPDevice::InputLayer input = { { uv[0], uv[1] } };
+	mlp.forward_pass(input, activations);
 
 	mlp.backpropagation(activations, color);
 }

@@ -17,16 +17,12 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPPredict(MLPDevice mlp, unsigned char* out_predi
 	if (x >= width || y >= height)
 		return;
 
-	float uv[2] = { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) };
+	MLPDevice::InputLayer input	  = { { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) } };
+	MLPDevice::OutputLayer output = mlp.inference(input);
 
-	float activations[MLP_NEURON_COUNT];
-	mlp.forward_pass(uv, activations);
-
-	unsigned int output_layer_data_start = MLPDevice::get_neuron_data_index(MLP_LAYER_COUNT - 1, 0);
-
-	float r = hippt::clamp(0.0f, 1.0f, activations[output_layer_data_start + 0]);
-	float g = hippt::clamp(0.0f, 1.0f, activations[output_layer_data_start + 1]);
-	float b = hippt::clamp(0.0f, 1.0f, activations[output_layer_data_start + 2]);
+	float r = hippt::clamp(0.0f, 1.0f, output.output[0]);
+	float g = hippt::clamp(0.0f, 1.0f, output.output[1]);
+	float b = hippt::clamp(0.0f, 1.0f, output.output[2]);
 
 	unsigned int pixel_index = x + y * width;
 

@@ -40,6 +40,16 @@
 
 struct MLPDevice
 {
+	struct OutputLayer
+	{
+		float output[MLP_OUTPUT_SIZE];
+	};
+
+	struct InputLayer
+	{
+		float input[MLP_INPUT_SIZE_RAW];
+	};
+
 	HIPRT_DEVICE static constexpr unsigned int get_layer_neuron_count(unsigned int layer)
 	{
 		return layer == 0 ? MLP_INPUT_SIZE : (layer == MLP_HIDDEN_LAYER_COUNT + 1 ? MLP_OUTPUT_SIZE : MLP_HIDDEN_LAYER_SIZE);
@@ -83,9 +93,51 @@ struct MLPDevice
 #endif
 	}
 
-	HIPRT_DEVICE void forward_pass(float* input, float* out_activations) const
+	HIPRT_DEVICE OutputLayer inference(InputLayer input) const
 	{
-		encode_input(input, out_activations);
+		float activations[MLP_HIDDEN_LAYER_SIZE * 2];
+
+		encode_input(input.input, activations);
+
+#define PING_PONG_ACTIATIONS_OFFSET(layer) (((layer) & 1) * MLP_HIDDEN_LAYER_SIZE)
+
+		OutputLayer output_layer;
+
+		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
+		{
+			unsigned int neurons_current_layer	= get_layer_neuron_count(layer_index);
+			unsigned int neurons_previous_layer = get_layer_neuron_count(layer_index - 1);
+
+			for (unsigned int neuron_index = 0; neuron_index < neurons_current_layer; neuron_index++)
+			{
+				float activation = 0.0f;
+
+				for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+				{
+					unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+
+					activation += connection_weights[connection_data_index] * activations[previous_neuron_index + PING_PONG_ACTIATIONS_OFFSET(layer_index - 1)];
+				}
+
+				unsigned int current_neuron_data_index = get_neuron_data_index(layer_index, neuron_index);
+
+				activation += neurons_biases[current_neuron_data_index];
+				activation = activation_function(activation);
+
+				if (layer_index == MLP_LAYER_COUNT - 1)
+					output_layer.output[neuron_index] = activation;
+				else
+					activations[neuron_index + PING_PONG_ACTIATIONS_OFFSET(layer_index)] = activation;
+			}
+
+			if (layer_index == MLP_LAYER_COUNT - 1)
+				return output_layer;
+		}
+	}
+
+	HIPRT_DEVICE void forward_pass(InputLayer input, float* out_activations) const
+	{
+		encode_input(input.input, out_activations);
 
 		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
 		{
