@@ -3,13 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_MLP_PREDICT_H
-#define KERNELS_MLP_PREDICT_H
+#ifndef KERNELS_MLP_FULLY_FUSED_PREDICT_H
+#define KERNELS_MLP_FULLY_FUSED_PREDICT_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/Neural/MLPDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDevice.h"
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPPredict(MLPDevice mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
+GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(MLPFullyFusedDevice mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -17,8 +17,9 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPPredict(MLPDevice mlp, unsigned char* out_predi
 	if (x >= width || y >= height)
 		return;
 
-	MLPDevice::InputLayer input	  = { { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) } };
-	MLPDevice::OutputLayer output = mlp.inference(input);
+	MLPFullyFusedDevice::InputLayer input	= { { static_cast<float>(x) / static_cast<float>(width - 1),
+												  static_cast<float>(y) / static_cast<float>(height - 1) } };
+	MLPFullyFusedDevice::OutputLayer output = mlp.inference(input);
 
 	float r = hippt::clamp(0.0f, 1.0f, output.output[0]);
 	float g = hippt::clamp(0.0f, 1.0f, output.output[1]);

@@ -20,16 +20,16 @@ MLPTrainingTestRenderPass::MLPTrainingTestRenderPass(const std::string& name, GP
 	: RenderPass(name, renderer, options)
 {
 	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN] = std::make_shared<GPUKernel>(this->get_name() + "::" + MLPTrainingTestRenderPass::MLP_TRAIN);
-	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPTrain.h");
-	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->set_kernel_function_name("MLPTrain");
+	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPFullyFusedTrain.h");
+	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->set_kernel_function_name("MLPFullyFusedTrain");
 
 	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE] = std::make_shared<GPUKernel>(this->get_name() + "::" + MLPTrainingTestRenderPass::MLP_OPTIMIZE);
-	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPOptimize.h");
-	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->set_kernel_function_name("MLPOptimize");
+	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPFullyFusedOptimize.h");
+	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->set_kernel_function_name("MLPFullyFusedOptimize");
 
 	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT] = std::make_shared<GPUKernel>(this->get_name() + "::" + MLPTrainingTestRenderPass::MLP_PREDICT);
-	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPPredict.h");
-	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->set_kernel_function_name("MLPPredict");
+	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/Testing/MLPFullyFusedPredict.h");
+	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->set_kernel_function_name("MLPFullyFusedPredict");
 }
 
 bool MLPTrainingTestRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -103,8 +103,8 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	MLPDevice mlp_device	 = m_mlp.to_device();
-	mlp_device.training_step = render_data.render_settings.sample_number;
+	MLPFullyFusedDevice mlp_device = m_mlp.to_device();
+	mlp_device.training_step	   = render_data.render_settings.sample_number;
 
 	unsigned int batch_size		= 2048;
 	unsigned char* texture_data = m_texture_data.get_device_pointer();

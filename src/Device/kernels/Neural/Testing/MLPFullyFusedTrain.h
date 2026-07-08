@@ -3,14 +3,15 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_MLP_TRAIN_H
-#define KERNELS_MLP_TRAIN_H
+#ifndef KERNELS_MLP_FULLY_FUSED_TRAIN_H
+#define KERNELS_MLP_FULLY_FUSED_TRAIN_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/Neural/MLPDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPTrain(MLPDevice mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)
+GLOBAL_KERNEL_SIGNATURE(void)
+MLPFullyFusedTrain(MLPFullyFusedDevice mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -26,7 +27,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPTrain(MLPDevice mlp, unsigned char* texture, un
 
 	float activations[MLP_NEURON_COUNT];
 
-	MLPDevice::InputLayer input = { { uv[0], uv[1] } };
+	MLPFullyFusedDevice::InputLayer input = { { uv[0], uv[1] } };
 	mlp.forward_pass(input, activations);
 
 	mlp.backpropagation(activations, color);

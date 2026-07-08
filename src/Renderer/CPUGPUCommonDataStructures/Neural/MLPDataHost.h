@@ -7,22 +7,22 @@
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_MLP_DATA_HOST_H
 
 #include "Device/includes/HashGridHash.h"
-#include "Device/includes/Neural/MLPDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
 using MLPDataHostInternal = GenericSoA<DataContainer,
-									   float,										  // Neurons biases
-									   GenericAtomicType<float, DataContainer>,		  // Gradient biases
-									   float,										  // Connection weights
-									   GenericAtomicType<float, DataContainer>,		  // Gradient weights
+									   float,										   // Neurons biases
+									   GenericAtomicType<float, DataContainer>,		   // Gradient biases
+									   float,										   // Connection weights
+									   GenericAtomicType<float, DataContainer>,		   // Gradient weights
 									   GenericAtomicType<unsigned int, DataContainer>, // Last training sample count
-									   float,										  // Adam weights means
-									   float,										  // Adam weights variances
-									   float,										  // Adam biases means
-									   float>;										  // Adam biases variances
+									   float,										   // Adam weights means
+									   float,										   // Adam weights variances
+									   float,										   // Adam biases means
+									   float>;										   // Adam biases variances
 
 enum MLPDataHostBuffers
 {
@@ -66,14 +66,16 @@ struct MLPDataHost
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(0.0f);
 
 		// Initializing weights using Xavier's uniform distribution
-		Xorshift32Generator rng(h1_pcg(static_cast<unsigned int>(MLP_INPUT_SIZE) + h1_pcg(static_cast<unsigned int>(MLP_OUTPUT_SIZE) + h1_pcg(static_cast<unsigned int>(MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE)))));
+		Xorshift32Generator rng(
+			h1_pcg(static_cast<unsigned int>(MLP_INPUT_SIZE) +
+				   h1_pcg(static_cast<unsigned int>(MLP_OUTPUT_SIZE) + h1_pcg(static_cast<unsigned int>(MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE)))));
 
 		std::vector<float> weights = m_mlp_data.download_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
 
 		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
 		{
-			unsigned int neurons_count_previous_layer = MLPDevice::get_layer_neuron_count(layer_index - 1);
-			unsigned int neurons_count_current_layer  = MLPDevice::get_layer_neuron_count(layer_index);
+			unsigned int neurons_count_previous_layer = MLPFullyFusedDevice::get_layer_neuron_count(layer_index - 1);
+			unsigned int neurons_count_current_layer  = MLPFullyFusedDevice::get_layer_neuron_count(layer_index);
 
 			float random_range = hippt::sqrt(6.0f / (neurons_count_previous_layer + neurons_count_current_layer));
 
@@ -81,7 +83,8 @@ struct MLPDataHost
 			{
 				for (unsigned int neuron_index_previous_layer = 0; neuron_index_previous_layer < neurons_count_previous_layer; neuron_index_previous_layer++)
 				{
-					unsigned int connection_data_index = MLPDevice::get_connection_data_index(layer_index, neuron_index_previous_layer, neuron_index_current_layer);
+					unsigned int connection_data_index =
+						MLPFullyFusedDevice::get_connection_data_index(layer_index, neuron_index_previous_layer, neuron_index_current_layer);
 
 					weights[connection_data_index] = rng() * 2.0f * random_range - random_range;
 				}
@@ -121,9 +124,9 @@ struct MLPDataHost
 		return m_mlp_data.size();
 	}
 
-	MLPDevice to_device()
+	MLPFullyFusedDevice to_device()
 	{
-		MLPDevice mlp_device;
+		MLPFullyFusedDevice mlp_device;
 
 		if (size() == 0)
 			return mlp_device;

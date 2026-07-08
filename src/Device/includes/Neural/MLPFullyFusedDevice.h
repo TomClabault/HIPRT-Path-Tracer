@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_MLP_DEVICE_H
-#define DEVICE_INCLUDES_NEURAL_MLP_DEVICE_H
+#ifndef DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_H
+#define DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Color.h"
@@ -38,7 +38,7 @@
 	((MLP_INPUT_SIZE * MLP_HIDDEN_LAYER_SIZE) + ((MLP_HIDDEN_LAYER_COUNT - 1) * MLP_HIDDEN_LAYER_SIZE * MLP_HIDDEN_LAYER_SIZE) +                               \
 	 (MLP_OUTPUT_SIZE * MLP_HIDDEN_LAYER_SIZE))
 
-struct MLPDevice
+struct MLPFullyFusedDevice
 {
 	struct OutputLayer
 	{
@@ -95,7 +95,7 @@ struct MLPDevice
 
 	HIPRT_DEVICE OutputLayer inference(InputLayer input) const
 	{
-		float activations[MLP_HIDDEN_LAYER_SIZE * 2];
+		__shared__ float activations[MLP_HIDDEN_LAYER_SIZE * 2];
 
 		encode_input(input.input, activations);
 

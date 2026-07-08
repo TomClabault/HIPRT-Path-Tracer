@@ -3,13 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_MLP_OPTIMIZE_H
-#define KERNELS_MLP_OPTIMIZE_H
+#ifndef KERNELS_MLP_FULLY_FUSED_OPTIMIZE_H
+#define KERNELS_MLP_FULLY_FUSED_OPTIMIZE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/Neural/MLPDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDevice.h"
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPOptimize(MLPDevice mlp)
+GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 {
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 
