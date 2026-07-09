@@ -10,33 +10,24 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#define IDENTITY_ENCODING  0
-#define FREQUENCY_ENCODING 1
+#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 64
+#define MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK  MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE
 
 #define FREQUENCY_ENCODING_NUM_FREQUENCIES 8
 
-#define INPUT_ENCODING FREQUENCY_ENCODING
-
-#define MLP_INPUT_SIZE_RAW 2
-#if INPUT_ENCODING == IDENTITY_ENCODING
-#define MLP_INPUT_SIZE MLP_INPUT_SIZE_RAW
-#else
-#define MLP_INPUT_SIZE (MLP_INPUT_SIZE_RAW * 2 * FREQUENCY_ENCODING_NUM_FREQUENCIES)
-#endif
+#define MLP_INPUT_SIZE_RAW	   2
+#define MLP_INPUT_SIZE		   (MLP_INPUT_SIZE_RAW * 2 * FREQUENCY_ENCODING_NUM_FREQUENCIES)
 #define MLP_OUTPUT_SIZE		   3
 #define MLP_HIDDEN_LAYER_COUNT 3
 #define MLP_HIDDEN_LAYER_SIZE  64
-
-#define ADAM_BETA1	 0.9f
-#define ADAM_BETA2	 0.999f
-#define ADAM_EPSILON 1e-8f
-#define ADAM_LR		 0.001f
 
 #define MLP_LAYER_COUNT	 (MLP_HIDDEN_LAYER_COUNT + 2)
 #define MLP_NEURON_COUNT (MLP_INPUT_SIZE + MLP_OUTPUT_SIZE + (MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE))
 #define MLP_CONNECTIONS_COUNT                                                                                                                                  \
 	((MLP_INPUT_SIZE * MLP_HIDDEN_LAYER_SIZE) + ((MLP_HIDDEN_LAYER_COUNT - 1) * MLP_HIDDEN_LAYER_SIZE * MLP_HIDDEN_LAYER_SIZE) +                               \
 	 (MLP_OUTPUT_SIZE * MLP_HIDDEN_LAYER_SIZE))
+
+#define PING_PONG_ACTIVATIONS_OFFSET(layer) (((layer) & 1) * MLP_HIDDEN_LAYER_SIZE)
 
 struct MLPFullyFusedDevice
 {
@@ -71,12 +62,26 @@ struct MLPFullyFusedDevice
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void encode_input(float* input, float* out_activations) const
+	HIPRT_DEVICE void encode_input(float* input, float out_activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
 	{
-#if INPUT_ENCODING == IDENTITY_ENCODING
-		for (unsigned int i = 0; i < MLP_INPUT_SIZE; i++)
-			out_activations[i] = input[i];
-#elif INPUT_ENCODING == FREQUENCY_ENCODING
+		unsigned int sample_in_chunk = threadIdx.x;
+		for (unsigned int input_raw_index = 0; input_raw_index < MLP_INPUT_SIZE_RAW; input_raw_index++)
+		{
+			float input_value = input[input_raw_index];
+
+			for (unsigned int frequency_index = 0; frequency_index < FREQUENCY_ENCODING_NUM_FREQUENCIES; frequency_index++)
+			{
+				float frequency = static_cast<float>(1 << frequency_index);
+				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 0][sample_in_chunk] =
+					sinf(frequency * input_value * hippt::M_Pi);
+				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 1][sample_in_chunk] =
+					cosf(frequency * input_value * hippt::M_Pi);
+			}
+		}
+	}
+
+	HIPRT_DEVICE void encode_input_ref(float* input, float* out_activations) const
+	{
 		for (unsigned int input_raw_index = 0; input_raw_index < MLP_INPUT_SIZE_RAW; input_raw_index++)
 		{
 			float input_value = input[input_raw_index];
@@ -90,54 +95,69 @@ struct MLPFullyFusedDevice
 					cosf(frequency * input_value * hippt::M_Pi);
 			}
 		}
-#endif
 	}
 
-	HIPRT_DEVICE OutputLayer inference(InputLayer input) const
+	HIPRT_DEVICE OutputLayer get_output_layer(float activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
 	{
-		__shared__ float activations[MLP_HIDDEN_LAYER_SIZE * 2];
+		OutputLayer output;
 
-		encode_input(input.input, activations);
+		constexpr unsigned int output_layer_index = MLP_LAYER_COUNT - 1;
+		unsigned int shared_mem_ping_pong_offset  = PING_PONG_ACTIVATIONS_OFFSET(output_layer_index);
 
-#define PING_PONG_ACTIATIONS_OFFSET(layer) (((layer) & 1) * MLP_HIDDEN_LAYER_SIZE)
+		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < MLP_OUTPUT_SIZE; neuron_index_in_output_layer++)
+			output.output[neuron_index_in_output_layer] = activations_buffer[shared_mem_ping_pong_offset + neuron_index_in_output_layer][threadIdx.x];
 
-		OutputLayer output_layer;
+		return output;
+	}
+
+	HIPRT_DEVICE void inference(InputLayer input, float activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	{
+		encode_input(input.input, activations_buffer);
+
+		unsigned int warp_id = threadIdx.x / 32;
+		unsigned int lane_id = threadIdx.x & 31;
 
 		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer	= get_layer_neuron_count(layer_index);
 			unsigned int neurons_previous_layer = get_layer_neuron_count(layer_index - 1);
 
-			for (unsigned int neuron_index = 0; neuron_index < neurons_current_layer; neuron_index++)
+			unsigned int in_shared_mem_ping_pong_offset	 = PING_PONG_ACTIVATIONS_OFFSET(layer_index - 1);
+			unsigned int out_shared_mem_ping_pong_offset = PING_PONG_ACTIVATIONS_OFFSET(layer_index);
+
+			// The 4 warps of the thread block will compute 16 neurons each, for a total of 64 neurons per layer
+			unsigned int neuron_base = warp_id * 16;
+
+			for (unsigned int n = 0; n < 16 && (n + neuron_base) < neurons_current_layer; n++)
 			{
-				float activation = 0.0f;
+				unsigned int neuron_index = n + neuron_base;
 
-				for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+				// Because each warp goes through all samples in the thread block, that's MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32 samples per lane, 128 /
+				// 32 = 4 samples per lane with thread block size 128 for example
+				for (unsigned int s = 0; s < MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32; s++)
 				{
-					unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+					float activation = 0.0f;
+					for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+					{
+						unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+						activation += connection_weights[connection_data_index] *
+									  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
+					}
 
-					activation += connection_weights[connection_data_index] * activations[previous_neuron_index + PING_PONG_ACTIATIONS_OFFSET(layer_index - 1)];
+					activation += neurons_biases[get_neuron_data_index(layer_index, neuron_index)];
+					activation = activation_function(activation);
+
+					activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
 				}
-
-				unsigned int current_neuron_data_index = get_neuron_data_index(layer_index, neuron_index);
-
-				activation += neurons_biases[current_neuron_data_index];
-				activation = activation_function(activation);
-
-				if (layer_index == MLP_LAYER_COUNT - 1)
-					output_layer.output[neuron_index] = activation;
-				else
-					activations[neuron_index + PING_PONG_ACTIATIONS_OFFSET(layer_index)] = activation;
 			}
 
-			if (layer_index == MLP_LAYER_COUNT - 1)
-				return output_layer;
+			__syncthreads();
 		}
 	}
 
 	HIPRT_DEVICE void forward_pass(InputLayer input, float* out_activations) const
 	{
-		encode_input(input.input, out_activations);
+		encode_input_ref(input.input, out_activations);
 
 		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
 		{
@@ -296,7 +316,7 @@ struct MLPFullyFusedDevice
 	unsigned int training_step = 0;
 
 	// Adam optimizer parameters
-	float learning_rate = ADAM_LR;
+	float adam_learning_rate = 0.001f;
 };
 
 #endif

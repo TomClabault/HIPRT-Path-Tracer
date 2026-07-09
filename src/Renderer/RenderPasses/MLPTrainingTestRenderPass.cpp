@@ -129,7 +129,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	unsigned int predicted_texture_width  = m_image.width;
 	unsigned int predicted_texture_height = m_image.height;
 	void* predict_launch_args[]			  = { &mlp_device, &predicted_texture_data, &predicted_texture_width, &predicted_texture_height };
-	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_image.width, m_image.height,
+	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE, 1, m_image.width * m_image.height, 1,
 																		   predict_launch_args, m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
 

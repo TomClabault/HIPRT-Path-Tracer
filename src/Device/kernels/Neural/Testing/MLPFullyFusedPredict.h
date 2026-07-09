@@ -11,15 +11,25 @@
 
 GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(MLPFullyFusedDevice mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
 {
-	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	unsigned int global_sample_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int sample_in_chunk	 = threadIdx.x;
 
+	unsigned int x	   = global_sample_index % width;
+	unsigned int y	   = global_sample_index / width;
+	bool active_thread = true;
 	if (x >= width || y >= height)
-		return;
+		active_thread = false;
 
-	MLPFullyFusedDevice::InputLayer input	= { { static_cast<float>(x) / static_cast<float>(width - 1),
-												  static_cast<float>(y) / static_cast<float>(height - 1) } };
-	MLPFullyFusedDevice::OutputLayer output = mlp.inference(input);
+	MLPFullyFusedDevice::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1),
+												static_cast<float>(y) / static_cast<float>(height - 1) } };
+
+	__shared__ float activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE];
+
+	mlp.inference(input, activations);
+
+	MLPFullyFusedDevice::OutputLayer output;
+	if (active_thread)
+		output = mlp.get_output_layer(activations);
 
 	float r = hippt::clamp(0.0f, 1.0f, output.output[0]);
 	float g = hippt::clamp(0.0f, 1.0f, output.output[1]);

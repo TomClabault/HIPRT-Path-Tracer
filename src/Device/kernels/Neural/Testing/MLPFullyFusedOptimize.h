@@ -9,6 +9,10 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 
+#define ADAM_BETA1	 0.9f
+#define ADAM_BETA2	 0.999f
+#define ADAM_EPSILON 1e-8f
+
 GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 {
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -43,7 +47,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 		float corrected_mean	 = mean / b1c;
 		float corrected_variance = variance / b2c;
 
-		mlp.connection_weights[connection_index] -= mlp.learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+		mlp.connection_weights[connection_index] -= mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
 	}
 
 	// Updating biases with Adam
@@ -67,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 		float corrected_mean	 = mean / b1c;
 		float corrected_variance = variance / b2c;
 
-		mlp.neurons_biases[neuron_index] -= mlp.learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+		mlp.neurons_biases[neuron_index] -= mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
 	}
 }
 
