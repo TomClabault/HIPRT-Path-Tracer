@@ -17,7 +17,8 @@ template <unsigned int InputSizeRaw_,
 		  unsigned int HiddenLayerCount_,
 		  unsigned int HiddenLayerSize_,
 		  unsigned int OutputSize_,
-		  unsigned int BlockSize_>
+		  unsigned int BlockSize_,
+		  bool UseBiases_ = true>
 struct MLPFullyFusedDevice
 {
 	static constexpr unsigned int INPUT_SIZE			  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
@@ -33,7 +34,8 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int HIDDEN_LAYER_COUNT			= HiddenLayerCount_;
 	static constexpr unsigned int HIDDEN_LAYER_SIZE				= HiddenLayerSize_;
 	static constexpr unsigned int OUTPUT_SIZE					= OutputSize_;
-	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
+	static constexpr unsigned int BLOCK_SIZE					 = BlockSize_;
+	static constexpr bool USE_BIASES							 = UseBiases_;
 
 	struct OutputLayer
 	{
@@ -196,8 +198,10 @@ struct MLPFullyFusedDevice
 							unsigned int m = current_neuron_base + r;
 							unsigned int n = n_tile * 16 + lane_id_wmma;
 
-							float val = activation_tiles[n_tile][ele * 2] + neurons_biases[layer_neuron_offset + m];
-							val		  = activation_function(val);
+							float val = activation_tiles[n_tile][ele * 2];
+							if constexpr (USE_BIASES)
+								val += neurons_biases[layer_neuron_offset + m];
+							val = activation_function(val);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
 						}
@@ -226,7 +230,8 @@ struct MLPFullyFusedDevice
 											  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
 							}
 
-							activation += neurons_biases[layer_neuron_offset + neuron_index];
+							if constexpr (USE_BIASES)
+								activation += neurons_biases[layer_neuron_offset + neuron_index];
 							activation = activation_function(activation);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
@@ -263,7 +268,8 @@ struct MLPFullyFusedDevice
 					activation += connection_weights[connection_data_index] * out_activations[previous_neuron_data_index];
 				}
 
-				activation += neurons_biases[current_neuron_data_index];
+				if constexpr (USE_BIASES)
+					activation += neurons_biases[current_neuron_data_index];
 				activation = activation_function(activation);
 
 				out_activations[current_neuron_data_index] = activation;
@@ -289,7 +295,8 @@ struct MLPFullyFusedDevice
 			float d_cost_d_Zi = d_cost_d_Oi * d_Oi_d_Zi;
 
 			neurons_errors[current_neuron_data_index] = d_cost_d_Zi;
-			hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_Zi);
+			if constexpr (USE_BIASES)
+				hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_Zi);
 
 			// Gradient of weights
 			for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(output_layer_index - 1); previous_neuron_index++)
@@ -329,7 +336,8 @@ struct MLPFullyFusedDevice
 				d_cost_d_Zi *= d_Zi_d_Oi;
 
 				neurons_errors[current_neuron_data_index] = d_cost_d_Zi;
-				hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_Zi);
+				if constexpr (USE_BIASES)
+					hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_Zi);
 
 				for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(layer_index - 1); previous_neuron_index++)
 				{

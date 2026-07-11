@@ -17,7 +17,8 @@ using TrainingTestMLP = MLPFullyFusedDevice<
 	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
 	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
 	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
+	MLP_TRAINING_TEST_USE_BIASES>;
 
 GLOBAL_KERNEL_SIGNATURE(void)
 MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)

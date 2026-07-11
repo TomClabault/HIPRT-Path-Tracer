@@ -44,16 +44,20 @@ struct MLPDataHost
 {
 	void resize()
 	{
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(MLPType::NEURON_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(MLPType::NEURON_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(1);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>(MLPType::CONNECTIONS_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(MLPType::NEURON_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(MLPType::NEURON_COUNT);
+
+		if constexpr (MLPType::USE_BIASES)
+		{
+			m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(MLPType::NEURON_COUNT);
+			m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(MLPType::NEURON_COUNT);
+			m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(MLPType::NEURON_COUNT);
+			m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(MLPType::NEURON_COUNT);
+		}
 	}
 
 	/**
@@ -65,7 +69,6 @@ struct MLPDataHost
 			return;
 
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(0);
-		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(0.0f);
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(0.0f);
 
 		// Initializing weights using Xavier's uniform distribution
@@ -95,14 +98,18 @@ struct MLPDataHost
 		}
 		m_mlp_data.upload_to_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(weights);
 
-		// All biases are initialized to 0
-		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(0.0f);
-
 		// Adam state initialized to 0
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(0.0f);
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>(0.0f);
-		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(0.0f);
-		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(0.0f);
+
+		if constexpr (MLPType::USE_BIASES)
+		{
+			m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(0.0f);
+			// All biases are initialized to 0
+			m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(0.0f);
+			m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(0.0f);
+			m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(0.0f);
+		}
 	}
 
 	bool free()
@@ -134,8 +141,13 @@ struct MLPDataHost
 		if (maximum_size() == 0)
 			return mlp_device;
 
-		mlp_device.neurons_biases  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_NEURONS_BIASES>();
-		mlp_device.gradient_biases = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_GRADIENT_BIASES>();
+		if constexpr (MLPType::USE_BIASES)
+		{
+			mlp_device.neurons_biases  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_NEURONS_BIASES>();
+			mlp_device.gradient_biases = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_GRADIENT_BIASES>();
+			mlp_device.adam_biases_means	  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>();
+			mlp_device.adam_biases_variances  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>();
+		}
 
 		mlp_device.connection_weights	   = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
 		mlp_device.connection_weights_fp16 = reinterpret_cast<fp16*>(m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>());
@@ -145,8 +157,6 @@ struct MLPDataHost
 
 		mlp_device.adam_weights_means	  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>();
 		mlp_device.adam_weights_variances = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>();
-		mlp_device.adam_biases_means	  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>();
-		mlp_device.adam_biases_variances  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>();
 
 		return mlp_device;
 	}

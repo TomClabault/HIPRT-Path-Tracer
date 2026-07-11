@@ -16,7 +16,8 @@ using TrainingTestMLP = MLPFullyFusedDevice<
 	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
 	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
 	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
+	MLP_TRAINING_TEST_USE_BIASES>;
 
 #define ADAM_BETA1	 0.9f
 #define ADAM_BETA2	 0.999f
@@ -62,27 +63,30 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(TrainingTestMLP mlp)
 	}
 
 	// Updating biases with Adam
-	if (thread_index < TrainingTestMLP::NEURON_COUNT)
+	if constexpr (TrainingTestMLP::USE_BIASES)
 	{
-		unsigned int neuron_index = thread_index;
+		if (thread_index < TrainingTestMLP::NEURON_COUNT)
+		{
+			unsigned int neuron_index = thread_index;
 
-		float gradient_bias				  = hippt::atomic_load(&mlp.gradient_biases[neuron_index]);
-		mlp.gradient_biases[neuron_index] = 0.0f;
-		float grad						  = gradient_bias / static_cast<float>(last_training_sample_count);
+			float gradient_bias				  = hippt::atomic_load(&mlp.gradient_biases[neuron_index]);
+			mlp.gradient_biases[neuron_index] = 0.0f;
+			float grad						  = gradient_bias / static_cast<float>(last_training_sample_count);
 
-		float mean	   = mlp.adam_biases_means[neuron_index];
-		float variance = mlp.adam_biases_variances[neuron_index];
+			float mean	   = mlp.adam_biases_means[neuron_index];
+			float variance = mlp.adam_biases_variances[neuron_index];
 
-		mean	 = ADAM_BETA1 * mean + (1.0f - ADAM_BETA1) * grad;
-		variance = ADAM_BETA2 * variance + (1.0f - ADAM_BETA2) * grad * grad;
+			mean	 = ADAM_BETA1 * mean + (1.0f - ADAM_BETA1) * grad;
+			variance = ADAM_BETA2 * variance + (1.0f - ADAM_BETA2) * grad * grad;
 
-		mlp.adam_biases_means[neuron_index]		= mean;
-		mlp.adam_biases_variances[neuron_index] = variance;
+			mlp.adam_biases_means[neuron_index]		= mean;
+			mlp.adam_biases_variances[neuron_index] = variance;
 
-		float corrected_mean	 = mean / b1c;
-		float corrected_variance = variance / b2c;
+			float corrected_mean	 = mean / b1c;
+			float corrected_variance = variance / b2c;
 
-		mlp.neurons_biases[neuron_index] -= mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+			mlp.neurons_biases[neuron_index] -= mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+		}
 	}
 }
 
