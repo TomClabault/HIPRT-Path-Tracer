@@ -31,13 +31,13 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 
 	void reset()
 	{
-		if (size() == 0)
+		if (maximum_size() == 0)
 			return;
 	}
 
 	bool free()
 	{
-		if (size() > 0)
+		if (maximum_size() > 0)
 		{
 			m_spatial_reuse_data.free();
 
@@ -52,9 +52,9 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		return m_spatial_reuse_data.get_byte_size();
 	}
 
-	std::size_t size() const
+	std::size_t maximum_size() const
 	{
-		return m_spatial_reuse_data.size();
+		return m_spatial_reuse_data.maximum_size();
 	}
 
 	template <int ReSTIRVariant>
@@ -62,7 +62,7 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 	{
 		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
 
-		if (size() == 0)
+		if (maximum_size() == 0)
 		{
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 			common_spatial_pass_settings.per_pixel_spatial_reuse_radius				 = nullptr;

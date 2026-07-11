@@ -70,7 +70,7 @@ bool MLPTrainingTestRenderPass::pre_render_update(float delta_time)
 	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
-	if (m_mlp.size() == 0)
+	if (m_mlp.maximum_size() == 0)
 	{
 		m_mlp.resize();
 		m_mlp.initialize();

@@ -58,9 +58,9 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 		return m_sufficient_statistics_data.get_byte_size();
 	}
 
-	unsigned int size() const
+	unsigned int maximum_size() const
 	{
-		return m_sufficient_statistics_data.size();
+		return m_sufficient_statistics_data.maximum_size();
 	}
 
 	unsigned int get_last_resize_component_count() const

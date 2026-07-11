@@ -61,7 +61,7 @@ struct MLPDataHost
 	 */
 	void initialize()
 	{
-		if (size() == 0)
+		if (maximum_size() == 0)
 			return;
 
 		m_mlp_data.memset_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(0);
@@ -107,7 +107,7 @@ struct MLPDataHost
 
 	bool free()
 	{
-		if (size() > 0)
+		if (maximum_size() > 0)
 		{
 			m_mlp_data.free();
 
@@ -122,16 +122,16 @@ struct MLPDataHost
 		return m_mlp_data.get_byte_size();
 	}
 
-	std::size_t size() const
+	std::size_t maximum_size() const
 	{
-		return m_mlp_data.size();
+		return m_mlp_data.maximum_size();
 	}
 
 	MLPType to_device()
 	{
 		MLPType mlp_device;
 
-		if (size() == 0)
+		if (maximum_size() == 0)
 			return mlp_device;
 
 		mlp_device.neurons_biases  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_NEURONS_BIASES>();

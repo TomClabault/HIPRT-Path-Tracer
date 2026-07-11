@@ -348,7 +348,7 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& 
 	bool render_data_invalidated = false;
 	if (mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
-		if (m_spmis_data.size() == 0)
+		if (m_spmis_data.maximum_size() == 0)
 		{
 			m_spmis_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
 
@@ -357,7 +357,7 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& 
 	}
 	else
 	{
-		if (m_spmis_data.size() > 0)
+		if (m_spmis_data.maximum_size() > 0)
 		{
 			m_spmis_data.free();
 

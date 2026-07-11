@@ -1184,7 +1184,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit)
 											.m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
-	unsigned int old_cell_count		  = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).size();
+	unsigned int old_cell_count		  = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).maximum_size();
 	unsigned int old_cell_alive_count = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 
 	// The old number of cells alive is the number of cells that we're going to have to rehash

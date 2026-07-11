@@ -56,9 +56,9 @@ struct ReGIRHashGridSoAHost
 		return samples.get_byte_size() + reservoirs.get_byte_size();
 	}
 
-	unsigned int size_reservoirs() const
+	unsigned int maximum_size_reservoirs() const
 	{
-		return samples.size();
+		return samples.maximum_size();
 	}
 
 	void to_device(ReGIRHashGridSoADevice& out_soa_device)

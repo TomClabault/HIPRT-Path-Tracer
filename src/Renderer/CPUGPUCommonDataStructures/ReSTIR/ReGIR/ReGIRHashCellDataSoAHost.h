@@ -69,9 +69,9 @@ struct ReGIRHashCellDataSoAHost
 		return m_hash_cell_data.get_byte_size();
 	}
 
-	unsigned int size() const
+	unsigned int maximum_size() const
 	{
-		return m_hash_cell_data.size();
+		return m_hash_cell_data.maximum_size();
 	}
 
 	ReGIRHashCellDataSoADevice to_device()

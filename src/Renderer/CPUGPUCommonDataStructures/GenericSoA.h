@@ -59,6 +59,8 @@ struct GenericSoA
 
 	void resize(std::size_t new_element_count, std::unordered_set<int> excluded_buffer_indices = {})
 	{
+		m_maximum_size = new_element_count;
+
 		// Applies resize(new_element_count) on each buffer in the tuple and handles the excluded buffers
 		resize_with_exclusions_internal(new_element_count, excluded_buffer_indices, std::index_sequence_for<Types...>{});
 	}
@@ -66,6 +68,9 @@ struct GenericSoA
 	template <int bufferIndex>
 	void resize_one_buffer(std::size_t new_element_count)
 	{
+		if (new_element_count > m_maximum_size)
+			m_maximum_size = new_element_count;
+
 		resize_buffer_internal(get_buffer<bufferIndex>(), new_element_count);
 	}
 
@@ -79,9 +84,9 @@ struct GenericSoA
 		return total;
 	}
 
-	unsigned int size() const
+	std::size_t maximum_size() const
 	{
-		return std::get<0>(buffers).size();
+		return m_maximum_size;
 	}
 
 	template <int bufferIndex>
@@ -101,7 +106,7 @@ struct GenericSoA
 		}
 		else
 		{
-			std::vector<BufferTypeFromIndex<bufferIndex>> data(size(), memset_value);
+			std::vector<BufferTypeFromIndex<bufferIndex>> data(get_buffer<bufferIndex>().size(), memset_value);
 			get_buffer<bufferIndex>().upload_data(data);
 		}
 	}
@@ -185,6 +190,8 @@ struct GenericSoA
 
 	void free()
 	{
+		m_maximum_size = 0;
+
 		// Applies clear() on each buffer in the tuple
 		std::apply(
 			[](auto&... buffer)
@@ -217,6 +224,8 @@ private:
 	}
 
 	std::tuple<Container<Types>...> buffers;
+
+	std::size_t m_maximum_size = 0;
 };
 
 namespace GenericSoAHelpers

@@ -45,9 +45,9 @@ struct ReSTIRPGSplattingSampleSoAHost
 		return m_splatting_samples.get_byte_size();
 	}
 
-	std::size_t size() const
+	std::size_t maximum_size() const
 	{
-		return m_splatting_samples.size();
+		return m_splatting_samples.maximum_size();
 	}
 
 	ReSTIRPGSplattingSampleSoADevice to_device()

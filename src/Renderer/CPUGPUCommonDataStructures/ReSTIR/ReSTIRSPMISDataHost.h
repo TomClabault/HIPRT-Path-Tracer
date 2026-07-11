@@ -65,7 +65,7 @@ struct ReSTIRSPMISDataHost
 
 	void reset()
 	{
-		if (size() == 0)
+		if (maximum_size() == 0)
 			return;
 
 		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_OCCUPIED>(0);
@@ -75,7 +75,7 @@ struct ReSTIRSPMISDataHost
 
 	bool free()
 	{
-		if (size() > 0)
+		if (maximum_size() > 0)
 		{
 			m_spmis_data.free();
 
@@ -90,14 +90,14 @@ struct ReSTIRSPMISDataHost
 		return m_spmis_data.get_byte_size();
 	}
 
-	std::size_t size() const
+	std::size_t maximum_size() const
 	{
-		return m_spmis_data.size();
+		return m_spmis_data.maximum_size();
 	}
 
 	void to_device(HIPRTRenderData& render_data)
 	{
-		if (size() == 0)
+		if (maximum_size() == 0)
 		{
 			render_data.render_settings.restir_pt_settings.spmis_settings.pixel_hashes_count = 0;
 
@@ -131,7 +131,7 @@ struct ReSTIRSPMISDataHost
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>();
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_reuse_cell_pixel_index =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>();
-		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_hashes_count = (unsigned int)size();
+		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_hashes_count = (unsigned int)maximum_size();
 		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_indices_sorted =
 			m_spmis_data.template get_buffer_data_ptr<RESTIR_SPMIS_PIXEL_INDICES_SORTED>();
 

@@ -142,7 +142,7 @@ bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
 		unsigned int component_count =
 			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT);
 
-		if (m_splatting_samples_soa_buffer.size() !=
+		if (m_splatting_samples_soa_buffer.maximum_size() !=
 			render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.render_settings.nb_bounces)
 		{
 			m_splatting_samples_soa_buffer.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y,

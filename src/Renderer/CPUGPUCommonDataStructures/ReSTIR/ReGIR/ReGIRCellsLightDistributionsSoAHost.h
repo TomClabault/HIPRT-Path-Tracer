@@ -150,9 +150,9 @@ struct ReGIRCellsLightDistributionsSoAHost
 		return soa.get_byte_size();
 	}
 
-	unsigned int size() const
+	unsigned int maximum_size() const
 	{
-		return soa.size();
+		return soa.maximum_size();
 	}
 
 	ReGIRCellsLightDistributionsSoADevice to_device(const HIPRTRenderData& render_data, bool only_pointers = false)

@@ -43,7 +43,7 @@ public:
 		bool render_data_invalidated = false;
 		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 		{
-			if (directional_spatial_reuse_data.size() == 0)
+			if (directional_spatial_reuse_data.maximum_size() == 0)
 			{
 				directional_spatial_reuse_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
 
@@ -52,7 +52,7 @@ public:
 		}
 		else
 		{
-			if (directional_spatial_reuse_data.size() > 0)
+			if (directional_spatial_reuse_data.maximum_size() > 0)
 			{
 				directional_spatial_reuse_data.free();
 

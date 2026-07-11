@@ -52,9 +52,9 @@ struct ReGIRGridBufferSoAHost
 		return samples.get_byte_size() + reservoirs.get_byte_size();
 	}
 
-	unsigned int size() const
+	unsigned int maximum_size() const
 	{
-		return samples.size();
+		return samples.maximum_size();
 	}
 
 	ReGIRSampleSoAHost<DataContainer> samples;
