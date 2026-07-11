@@ -6,6 +6,7 @@
 #ifndef RENDERER_GENERIC_SOA_H
 #define RENDERER_GENERIC_SOA_H
 
+#include <atomic>
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
@@ -13,10 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include "HostDeviceCommon/AtomicType.h"
-
-template <typename T, template <typename> class Container>
-using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>, std::vector<T>>::value, AtomicType<T>, T>;
+#include "Renderer/CPUGPUCommonDataStructures/GenericAtomicType.h"
+#include "Renderer/CPUGPUCommonDataStructures/GenericFP16Type.h"
 
 // Helper to detect std::atomic<...>
 //

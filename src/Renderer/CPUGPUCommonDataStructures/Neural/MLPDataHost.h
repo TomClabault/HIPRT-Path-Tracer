@@ -17,6 +17,7 @@ using MLPDataHostInternal = GenericSoA<DataContainer,
 									   float,										   // Neurons biases
 									   GenericAtomicType<float, DataContainer>,		   // Gradient biases
 									   float,										   // Connection weights
+									   GenericFP16Type<DataContainer>,				   // Gradient weights FP16
 									   GenericAtomicType<float, DataContainer>,		   // Gradient weights
 									   GenericAtomicType<unsigned int, DataContainer>, // Last training sample count
 									   float,										   // Adam weights means
@@ -29,6 +30,7 @@ enum MLPDataHostBuffers
 	MLP_NEURONS_BIASES,
 	MLP_GRADIENT_BIASES,
 	MLP_CONNECTION_WEIGHTS,
+	MLP_CONNECTION_WEIGHTS_FP16,
 	MLP_GRADIENT_WEIGHTS,
 	MLP_LAST_TRAINING_SAMPLE_COUNT,
 	MLP_ADAM_WEIGHTS_MEANS,
@@ -45,6 +47,7 @@ struct MLPDataHost
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(MLP_NEURON_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(MLP_NEURON_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(MLP_CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(MLP_CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(MLP_CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(1);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(MLP_CONNECTIONS_COUNT);
@@ -134,8 +137,9 @@ struct MLPDataHost
 		mlp_device.neurons_biases  = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_NEURONS_BIASES>();
 		mlp_device.gradient_biases = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_GRADIENT_BIASES>();
 
-		mlp_device.connection_weights = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
-		mlp_device.gradient_weights	  = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>();
+		mlp_device.connection_weights	   = m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
+		mlp_device.connection_weights_fp16 = reinterpret_cast<fp16*>(m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>());
+		mlp_device.gradient_weights		   = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>();
 
 		mlp_device.last_training_sample_count = m_mlp_data.get_buffer_data_atomic_ptr<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>();
 

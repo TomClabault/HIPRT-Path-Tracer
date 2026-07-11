@@ -23,7 +23,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(MLPFullyFusedDevice mlp, unsi
 	MLPFullyFusedDevice::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1),
 												static_cast<float>(y) / static_cast<float>(height - 1) } };
 
-	__shared__ float activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE];
+	__shared__ fp16 activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE];
 
 	mlp.inference(input, activations);
 

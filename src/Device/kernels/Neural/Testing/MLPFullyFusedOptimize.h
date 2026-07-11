@@ -47,7 +47,9 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 		float corrected_mean	 = mean / b1c;
 		float corrected_variance = variance / b2c;
 
-		mlp.connection_weights[connection_index] -= mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+		float updated_weight = mlp.connection_weights[connection_index] - mlp.adam_learning_rate * corrected_mean / (sqrtf(corrected_variance) + ADAM_EPSILON);
+		mlp.connection_weights[connection_index]	  = updated_weight;
+		mlp.connection_weights_fp16[connection_index] = static_cast<fp16>(updated_weight);
 	}
 
 	// Updating biases with Adam

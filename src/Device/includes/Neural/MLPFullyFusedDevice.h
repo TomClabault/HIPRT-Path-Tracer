@@ -10,24 +10,28 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 64
+#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 128
 #define MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK  MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE
 
 #define FREQUENCY_ENCODING_NUM_FREQUENCIES 8
 
-#define MLP_INPUT_SIZE_RAW	   2
-#define MLP_INPUT_SIZE		   (MLP_INPUT_SIZE_RAW * 2 * FREQUENCY_ENCODING_NUM_FREQUENCIES)
-#define MLP_OUTPUT_SIZE		   3
+#define MLP_INPUT_SIZE_RAW 2
+#define MLP_INPUT_SIZE	   (MLP_INPUT_SIZE_RAW * 2 * FREQUENCY_ENCODING_NUM_FREQUENCIES)
+
+#define MLP_OUTPUT_SIZE				3
+#define MLP_OUTPUT_SIZE_PADDED_WMMA ((MLP_OUTPUT_SIZE + 15) / 16 * 16)
+
 #define MLP_HIDDEN_LAYER_COUNT 3
 #define MLP_HIDDEN_LAYER_SIZE  64
 
 #define MLP_LAYER_COUNT	 (MLP_HIDDEN_LAYER_COUNT + 2)
-#define MLP_NEURON_COUNT (MLP_INPUT_SIZE + MLP_OUTPUT_SIZE + (MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE))
+#define MLP_NEURON_COUNT (MLP_INPUT_SIZE + MLP_OUTPUT_SIZE_PADDED_WMMA + (MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE))
 #define MLP_CONNECTIONS_COUNT                                                                                                                                  \
 	((MLP_INPUT_SIZE * MLP_HIDDEN_LAYER_SIZE) + ((MLP_HIDDEN_LAYER_COUNT - 1) * MLP_HIDDEN_LAYER_SIZE * MLP_HIDDEN_LAYER_SIZE) +                               \
-	 (MLP_OUTPUT_SIZE * MLP_HIDDEN_LAYER_SIZE))
+	 (MLP_OUTPUT_SIZE_PADDED_WMMA * MLP_HIDDEN_LAYER_SIZE))
 
 #define PING_PONG_ACTIVATIONS_OFFSET(layer) (((layer) & 1) * MLP_HIDDEN_LAYER_SIZE)
+#define PAD_SIZE_WMMA(size)					((size + 15) / 16 * 16)
 
 struct MLPFullyFusedDevice
 {
@@ -48,21 +52,25 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE static constexpr unsigned int get_neuron_data_index(unsigned int layer, unsigned int neuron)
 	{
+		// TODO replace by a single precomputed buffer would be faster?
 		unsigned int offset = 0;
 		for (unsigned int l = 0; l < layer; l++)
 			offset += get_layer_neuron_count(l);
+
 		return offset + neuron;
 	}
 
 	HIPRT_DEVICE static constexpr unsigned int get_connection_data_index(unsigned int layer, unsigned int neuron_from, unsigned int neuron_to)
 	{
+		// TODO replace by a single precomputed buffer would be faster?
 		unsigned int offset = 0;
 		for (unsigned int l = 1; l < layer; l++)
 			offset += get_layer_neuron_count(l) * get_layer_neuron_count(l - 1);
+
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void encode_input(float* input, float out_activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
 	{
 		unsigned int sample_in_chunk = threadIdx.x;
 		for (unsigned int input_raw_index = 0; input_raw_index < MLP_INPUT_SIZE_RAW; input_raw_index++)
@@ -73,9 +81,9 @@ struct MLPFullyFusedDevice
 			{
 				float frequency = static_cast<float>(1 << frequency_index);
 				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 0][sample_in_chunk] =
-					sinf(frequency * input_value * hippt::M_Pi);
+					static_cast<fp16>(sinf(frequency * input_value * hippt::M_Pi));
 				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 1][sample_in_chunk] =
-					cosf(frequency * input_value * hippt::M_Pi);
+					static_cast<fp16>(cosf(frequency * input_value * hippt::M_Pi));
 			}
 		}
 	}
@@ -97,7 +105,7 @@ struct MLPFullyFusedDevice
 		}
 	}
 
-	HIPRT_DEVICE OutputLayer get_output_layer(float activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
 	{
 		OutputLayer output;
 
@@ -105,35 +113,110 @@ struct MLPFullyFusedDevice
 		unsigned int shared_mem_ping_pong_offset  = PING_PONG_ACTIVATIONS_OFFSET(output_layer_index);
 
 		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < MLP_OUTPUT_SIZE; neuron_index_in_output_layer++)
-			output.output[neuron_index_in_output_layer] = activations_buffer[shared_mem_ping_pong_offset + neuron_index_in_output_layer][threadIdx.x];
+			output.output[neuron_index_in_output_layer] =
+				static_cast<float>(activations_buffer[shared_mem_ping_pong_offset + neuron_index_in_output_layer][threadIdx.x]);
 
 		return output;
 	}
 
-	HIPRT_DEVICE void inference(InputLayer input, float activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
 	{
-		encode_input(input.input, activations_buffer);
+		static_assert(MLP_INPUT_SIZE % 16 == 0, "MLP_INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(MLP_HIDDEN_LAYER_SIZE % 16 == 0, "MLP_HIDDEN_LAYER_SIZE must be a multiple of 16 for WMMA");
+		static_assert(MLP_OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "MLP_OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
-		unsigned int warp_id = threadIdx.x / 32;
-		unsigned int lane_id = threadIdx.x & 31;
+		encode_input(input.input, activations_buffer);
+		__syncthreads();
 
 		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
 		{
-			unsigned int neurons_current_layer	= get_layer_neuron_count(layer_index);
-			unsigned int neurons_previous_layer = get_layer_neuron_count(layer_index - 1);
+			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
+			unsigned int neurons_current_layer_padded_wmma	= PAD_SIZE_WMMA(neurons_current_layer);
+			unsigned int neurons_previous_layer				= get_layer_neuron_count(layer_index - 1);
+			unsigned int neurons_previous_layer_padded_wmma = PAD_SIZE_WMMA(neurons_previous_layer);
 
 			unsigned int in_shared_mem_ping_pong_offset	 = PING_PONG_ACTIVATIONS_OFFSET(layer_index - 1);
 			unsigned int out_shared_mem_ping_pong_offset = PING_PONG_ACTIVATIONS_OFFSET(layer_index);
 
 			// The 4 warps of the thread block will compute 16 neurons each, for a total of 64 neurons per layer
-			unsigned int neuron_base = warp_id * 16;
+			unsigned int warp_id	  = threadIdx.x / 32;
+			unsigned int lane_id	  = threadIdx.x & 31;
+			unsigned int lane_id_wmma = lane_id & 15; // Lane [0 - 15] need to be duplicated in [16 - 31] for WMMA on RDNA3
 
+			unsigned int previous_neurons_tile_count = neurons_previous_layer_padded_wmma / 16;
+			unsigned int current_neuron_tile_count	 = neurons_current_layer_padded_wmma / 16;
+			constexpr unsigned int sample_tile_count = MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16;
+
+			// WMMA compatible architectures #if guard
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+			if (warp_id < current_neuron_tile_count)
+			{
+				fp16x16 activation_tiles[MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16] = {};
+
+				unsigned int current_neuron_base = warp_id * 16;
+				for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
+				{
+					fp16x16 neuron_weights_fragment;
+
+					unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
+					for (unsigned int w = 0; w < 16; w++)
+						// Loads the weights in column major order for WMMA
+						//
+						// Loading weights in row major would mean loading the weights in the fragment in their natural order:
+						//	- Lane 0 loads weights 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 from neuron 0 (previous layer) to neuron 0 (current
+						// layer)
+						//
+						// But what we want is column major order so instead:
+						//	- Lane 0 loads:
+						//		- weight 0 (from neuron 0, previous layer) to 0 (current layer),
+						//		- weight 0 (from neuron 1, previous layer) to 0 (current layer),
+						//		- ...
+						//		- weight 0 (from neuron 15, previous layer) to 0 (current layer)
+						// Jumping from one neuron to the next in the previous layer, but staying on the same neuron in the current layer
+						neuron_weights_fragment[w] =
+							connection_weights_fp16[get_connection_data_index(layer_index, previous_neuron_base + w, current_neuron_base + lane_id_wmma)];
+
+					for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
+					{
+						fp16x16 previous_activations_fragment;
+
+						unsigned int sample_base = sample_tile_index * 16;
+						for (unsigned int a = 0; a < 16; a++)
+							// Loads the activations in row major order for WMMA
+							previous_activations_fragment[a] =
+								activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
+
+						activation_tiles[sample_tile_index] = hippt::amdgcn_wmma_f16_16x16x16_f16_w32(neuron_weights_fragment, previous_activations_fragment,
+																									  activation_tiles[sample_tile_index]);
+					}
+				}
+
+				// Add the bias and apply the activation function
+				for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
+				{
+					for (int ele = 0; ele < 8; ++ele)
+					{
+						unsigned int r = ele * 2 + (lane_id / 16);
+						unsigned int m = current_neuron_base + r;
+						unsigned int n = n_tile * 16 + lane_id_wmma;
+
+						float val = activation_tiles[n_tile][ele * 2] + neurons_biases[get_neuron_data_index(layer_index, m)];
+						val		  = activation_function(val);
+
+						activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
+					}
+				}
+			}
+#else
+			// Non WMMA codepath, slow AF
+
+			unsigned int neuron_base = warp_id * 16;
 			for (unsigned int n = 0; n < 16 && (n + neuron_base) < neurons_current_layer; n++)
 			{
 				unsigned int neuron_index = n + neuron_base;
 
-				// Because each warp goes through all samples in the thread block, that's MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32 samples per lane, 128 /
-				// 32 = 4 samples per lane with thread block size 128 for example
+				// Because each warp goes through all samples in the thread block, that's MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32 samples per lane,
+				// 128 / 32 = 4 samples per lane with thread block size 128 for example
 				for (unsigned int s = 0; s < MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32; s++)
 				{
 					float activation = 0.0f;
@@ -150,6 +233,7 @@ struct MLPFullyFusedDevice
 					activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
 				}
 			}
+#endif
 
 			__syncthreads();
 		}
@@ -304,6 +388,7 @@ struct MLPFullyFusedDevice
 	AtomicType<float>* gradient_biases = nullptr;
 
 	float* connection_weights			= nullptr;
+	fp16* connection_weights_fp16		= nullptr;
 	AtomicType<float>* gradient_weights = nullptr;
 
 	AtomicType<unsigned int>* last_training_sample_count = nullptr;

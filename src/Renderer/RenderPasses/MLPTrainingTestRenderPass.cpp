@@ -134,7 +134,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	oroStreamSynchronize(m_renderer->get_main_stream());
 
 	// Save prediction
-	if (render_data.render_settings.sample_number == m_renderer->get_application_settings()->max_sample_count - 1)
+	if (render_data.render_settings.sample_number % (m_renderer->get_application_settings()->max_sample_count / 4) == 0)
 	{
 		std::vector<unsigned char> out_predicted_texture = m_out_predicted_texture.download_data();
 		Image8Bit predicted_image(out_predicted_texture, m_image.width, m_image.height, 3);

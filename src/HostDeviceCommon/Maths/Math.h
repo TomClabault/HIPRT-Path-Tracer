@@ -1031,24 +1031,17 @@ namespace hippt
 		return __shfl_up_sync(static_cast<unsigned long long int>(mask), var, delta, width);
 	}
 
-	template <typename T>
-	__device__ T warp_reduce_max(unsigned long long int thread_mask, T variable)
-	{
-#ifdef __CUDACC__
-		return __reduce_max_sync(static_cast<unsigned int>(thread_mask & 0xFFFFFFFF), variable);
-#else
-		for (int offset = warpSize / 2; offset > 0; offset >>= 1)
-			variable = max(variable, __shfl_down(variable, offset));
-
-		return variable;
-#endif
-	}
-
 	__device__ void syncwarp(unsigned int mask)
 	{
 #ifdef __CUDACC__
 		__syncwarp(mask);
 #endif
+	}
+
+	template <bool opsel = false>
+	__device__ fp16x16 amdgcn_wmma_f16_16x16x16_f16_w32(fp16x16 a, fp16x16 b, fp16x16 c)
+	{
+		return __builtin_amdgcn_wmma_f16_16x16x16_f16_w32(a, b, c, opsel);
 	}
 
 	/**
@@ -1891,13 +1884,14 @@ namespace hippt
 		return var;
 	}
 
-	template <typename T>
-	static constexpr T warp_reduce_max(unsigned long long int mask, T variable)
-	{
-		return variable;
-	}
-
 	static constexpr void syncwarp(unsigned int mask) {}
+
+	template <bool opsel = false>
+	static fp16x16 amdgcn_wmma_f16_16x16x16_f16_w32(fp16x16 a, fp16x16 b, fp16x16 c)
+	{
+		// Not available on the CPU
+		return fp16x16{};
+	}
 
 	/**
 	 * Returns the index within its warp (not group) of the calling thread
