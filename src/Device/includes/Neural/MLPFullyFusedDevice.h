@@ -79,9 +79,9 @@ struct MLPFullyFusedDevice
 			{
 				float frequency = static_cast<float>(1 << frequency_index);
 				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0][sample_in_chunk] =
-					static_cast<fp16>(sinf(frequency * input_value * hippt::M_Pi));
+					static_cast<fp16>(hippt::intrin_sinf(frequency * input_value * hippt::M_Pi));
 				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1][sample_in_chunk] =
-					static_cast<fp16>(cosf(frequency * input_value * hippt::M_Pi));
+					static_cast<fp16>(hippt::intrin_cosf(frequency * input_value * hippt::M_Pi));
 			}
 		}
 	}
@@ -95,8 +95,8 @@ struct MLPFullyFusedDevice
 			for (unsigned int frequency_index = 0; frequency_index < FreqEncodingFreqs_; frequency_index++)
 			{
 				float frequency																		= static_cast<float>(1 << frequency_index);
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0] = sinf(frequency * input_value * hippt::M_Pi);
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1] = cosf(frequency * input_value * hippt::M_Pi);
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0] = hippt::intrin_sinf(frequency * input_value * hippt::M_Pi);
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1] = hippt::intrin_cosf(frequency * input_value * hippt::M_Pi);
 			}
 		}
 	}
