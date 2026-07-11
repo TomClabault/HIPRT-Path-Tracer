@@ -103,8 +103,8 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	MLPFullyFusedDevice mlp_device = m_mlp.to_device();
-	mlp_device.training_step	   = render_data.render_settings.sample_number;
+	TrainingTestMLP mlp_device = m_mlp.to_device();
+	mlp_device.training_step   = render_data.render_settings.sample_number;
 
 	unsigned int batch_size		= 2048;
 	unsigned char* texture_data = m_texture_data.get_device_pointer();
@@ -120,7 +120,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	// Optimize
 	void* optimize_launch_args[] = { &mlp_device };
-	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->launch_asynchronous(1024, 1, MLP_CONNECTIONS_COUNT, 1, optimize_launch_args,
+	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->launch_asynchronous(1024, 1, TrainingTestMLP::CONNECTIONS_COUNT, 1, optimize_launch_args,
 																			m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
 
@@ -129,7 +129,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	unsigned int predicted_texture_width  = m_image.width;
 	unsigned int predicted_texture_height = m_image.height;
 	void* predict_launch_args[]			  = { &mlp_device, &predicted_texture_data, &predicted_texture_width, &predicted_texture_height };
-	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE, 1, m_image.width * m_image.height, 1,
+	m_kernels[MLPTrainingTestRenderPass::MLP_PREDICT]->launch_asynchronous(TrainingTestMLP::BLOCK_SIZE, 1, m_image.width * m_image.height, 1,
 																		   predict_launch_args, m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
 

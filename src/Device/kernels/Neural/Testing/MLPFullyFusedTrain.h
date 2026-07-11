@@ -8,10 +8,19 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+using TrainingTestMLP = MLPFullyFusedDevice<
+	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+	MLP_TRAINING_TEST_OUTPUT_SIZE,
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
+
 GLOBAL_KERNEL_SIGNATURE(void)
-MLPFullyFusedTrain(MLPFullyFusedDevice mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)
+MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -25,9 +34,9 @@ MLPFullyFusedTrain(MLPFullyFusedDevice mlp, unsigned char* texture, unsigned int
 
 	float color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
 
-	float activations[MLP_NEURON_COUNT];
+	float activations[TrainingTestMLP::NEURON_COUNT];
 
-	MLPFullyFusedDevice::InputLayer input = { { uv[0], uv[1] } };
+	TrainingTestMLP::InputLayer input = { { uv[0], uv[1] } };
 	mlp.forward_pass(input, activations);
 
 	mlp.backpropagation(activations, color);

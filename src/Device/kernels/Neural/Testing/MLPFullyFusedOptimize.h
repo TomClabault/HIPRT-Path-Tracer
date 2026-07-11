@@ -8,12 +8,21 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
+
+using TrainingTestMLP = MLPFullyFusedDevice<
+	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+	MLP_TRAINING_TEST_OUTPUT_SIZE,
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
 
 #define ADAM_BETA1	 0.9f
 #define ADAM_BETA2	 0.999f
 #define ADAM_EPSILON 1e-8f
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
+GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(TrainingTestMLP mlp)
 {
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -27,7 +36,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 	float b2c = 1.0f - b2t;
 
 	// Updating weights with Adam
-	if (thread_index < MLP_CONNECTIONS_COUNT)
+	if (thread_index < TrainingTestMLP::CONNECTIONS_COUNT)
 	{
 		unsigned int connection_index = thread_index;
 
@@ -53,7 +62,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(MLPFullyFusedDevice mlp)
 	}
 
 	// Updating biases with Adam
-	if (thread_index < MLP_NEURON_COUNT)
+	if (thread_index < TrainingTestMLP::NEURON_COUNT)
 	{
 		unsigned int neuron_index = thread_index;
 

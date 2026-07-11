@@ -8,8 +8,17 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(MLPFullyFusedDevice mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
+using TrainingTestMLP = MLPFullyFusedDevice<
+	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+	MLP_TRAINING_TEST_OUTPUT_SIZE,
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
+
+GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(TrainingTestMLP mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
 {
 	unsigned int global_sample_index = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int sample_in_chunk	 = threadIdx.x;
@@ -20,14 +29,14 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(MLPFullyFusedDevice mlp, unsi
 	if (x >= width || y >= height)
 		active_thread = false;
 
-	MLPFullyFusedDevice::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1),
-												static_cast<float>(y) / static_cast<float>(height - 1) } };
+	TrainingTestMLP::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1),
+											static_cast<float>(y) / static_cast<float>(height - 1) } };
 
-	__shared__ fp16 activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE];
+	__shared__ fp16 activations[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
 
 	mlp.inference(input, activations);
 
-	MLPFullyFusedDevice::OutputLayer output;
+	TrainingTestMLP::OutputLayer output;
 	if (active_thread)
 		output = mlp.get_output_layer(activations);
 

@@ -6,8 +6,18 @@
 #ifndef MLP_TRAINING_TEST_RENDER_PASS_H
 #define MLP_TRAINING_TEST_RENDER_PASS_H
 
+#include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
+
+using TrainingTestMLP = MLPFullyFusedDevice<
+	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+	MLP_TRAINING_TEST_OUTPUT_SIZE,
+	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
 
 class MLPTrainingTestRenderPass : public RenderPass
 {
@@ -37,7 +47,7 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 private:
-	MLPDataHost<OrochiBuffer> m_mlp;
+	MLPDataHost<OrochiBuffer, TrainingTestMLP> m_mlp;
 	Image8Bit m_image;
 	OrochiBuffer<unsigned char> m_texture_data;
 	OrochiBuffer<unsigned char> m_out_predicted_texture;

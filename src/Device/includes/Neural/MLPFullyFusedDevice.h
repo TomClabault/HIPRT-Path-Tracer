@@ -10,49 +10,48 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 64
-#define MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK  MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE
+#define PAD_SIZE_WMMA(size) ((size + 15) / 16 * 16)
 
-#define FREQUENCY_ENCODING_NUM_FREQUENCIES 8
-
-#define MLP_INPUT_SIZE_RAW 2
-#define MLP_INPUT_SIZE	   (MLP_INPUT_SIZE_RAW * 2 * FREQUENCY_ENCODING_NUM_FREQUENCIES)
-
-#define MLP_OUTPUT_SIZE				3
-#define MLP_OUTPUT_SIZE_PADDED_WMMA ((MLP_OUTPUT_SIZE + 15) / 16 * 16)
-
-#define MLP_HIDDEN_LAYER_COUNT 3
-#define MLP_HIDDEN_LAYER_SIZE  64
-
-#define MLP_LAYER_COUNT	 (MLP_HIDDEN_LAYER_COUNT + 2)
-#define MLP_NEURON_COUNT (MLP_INPUT_SIZE + MLP_OUTPUT_SIZE_PADDED_WMMA + (MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE))
-#define MLP_CONNECTIONS_COUNT                                                                                                                                  \
-	((MLP_INPUT_SIZE * MLP_HIDDEN_LAYER_SIZE) + ((MLP_HIDDEN_LAYER_COUNT - 1) * MLP_HIDDEN_LAYER_SIZE * MLP_HIDDEN_LAYER_SIZE) +                               \
-	 (MLP_OUTPUT_SIZE_PADDED_WMMA * MLP_HIDDEN_LAYER_SIZE))
-
-#define PING_PONG_ACTIVATIONS_OFFSET(layer) (((layer) & 1) * MLP_HIDDEN_LAYER_SIZE)
-#define PAD_SIZE_WMMA(size)					((size + 15) / 16 * 16)
-
+template <unsigned int InputSizeRaw_,
+		  unsigned int FreqEncodingFreqs_,
+		  unsigned int HiddenLayerCount_,
+		  unsigned int HiddenLayerSize_,
+		  unsigned int OutputSize_,
+		  unsigned int BlockSize_>
 struct MLPFullyFusedDevice
 {
+	static constexpr unsigned int INPUT_SIZE			  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
+	static constexpr unsigned int OUTPUT_SIZE_PADDED_WMMA = (OutputSize_ + 15) / 16 * 16;
+	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
+	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
+	static constexpr unsigned int CONNECTIONS_COUNT =
+		(INPUT_SIZE * HiddenLayerSize_) + ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) + (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
+	static constexpr unsigned int SAMPLES_PER_BLOCK = BlockSize_;
+
+	static constexpr unsigned int INPUT_SIZE_RAW				= InputSizeRaw_;
+	static constexpr unsigned int FREQ_ENCODING_NUM_FREQUENCIES = FreqEncodingFreqs_;
+	static constexpr unsigned int HIDDEN_LAYER_COUNT			= HiddenLayerCount_;
+	static constexpr unsigned int HIDDEN_LAYER_SIZE				= HiddenLayerSize_;
+	static constexpr unsigned int OUTPUT_SIZE					= OutputSize_;
+	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
+
 	struct OutputLayer
 	{
-		float output[MLP_OUTPUT_SIZE];
+		float output[OutputSize_];
 	};
 
 	struct InputLayer
 	{
-		float input[MLP_INPUT_SIZE_RAW];
+		float input[InputSizeRaw_];
 	};
 
 	HIPRT_DEVICE static constexpr unsigned int get_layer_neuron_count(unsigned int layer)
 	{
-		return layer == 0 ? MLP_INPUT_SIZE : (layer == MLP_HIDDEN_LAYER_COUNT + 1 ? MLP_OUTPUT_SIZE : MLP_HIDDEN_LAYER_SIZE);
+		return layer == 0 ? INPUT_SIZE : (layer == LAYER_COUNT - 1 ? OUTPUT_SIZE : HIDDEN_LAYER_SIZE);
 	}
 
 	HIPRT_DEVICE static constexpr unsigned int get_neuron_data_index(unsigned int layer, unsigned int neuron)
 	{
-		// TODO replace by a single precomputed buffer would be faster?
 		unsigned int offset = 0;
 		for (unsigned int l = 0; l < layer; l++)
 			offset += get_layer_neuron_count(l);
@@ -62,7 +61,6 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE static constexpr unsigned int get_connection_data_index(unsigned int layer, unsigned int neuron_from, unsigned int neuron_to)
 	{
-		// TODO replace by a single precomputed buffer would be faster?
 		unsigned int offset = 0;
 		for (unsigned int l = 1; l < layer; l++)
 			offset += get_layer_neuron_count(l) * get_layer_neuron_count(l - 1);
@@ -70,19 +68,19 @@ struct MLPFullyFusedDevice
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[HiddenLayerSize_ * 2][BlockSize_]) const
 	{
 		unsigned int sample_in_chunk = threadIdx.x;
-		for (unsigned int input_raw_index = 0; input_raw_index < MLP_INPUT_SIZE_RAW; input_raw_index++)
+		for (unsigned int input_raw_index = 0; input_raw_index < InputSizeRaw_; input_raw_index++)
 		{
 			float input_value = input[input_raw_index];
 
-			for (unsigned int frequency_index = 0; frequency_index < FREQUENCY_ENCODING_NUM_FREQUENCIES; frequency_index++)
+			for (unsigned int frequency_index = 0; frequency_index < FreqEncodingFreqs_; frequency_index++)
 			{
 				float frequency = static_cast<float>(1 << frequency_index);
-				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 0][sample_in_chunk] =
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0][sample_in_chunk] =
 					static_cast<fp16>(sinf(frequency * input_value * hippt::M_Pi));
-				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 1][sample_in_chunk] =
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1][sample_in_chunk] =
 					static_cast<fp16>(cosf(frequency * input_value * hippt::M_Pi));
 			}
 		}
@@ -90,45 +88,43 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE void encode_input_ref(float* input, float* out_activations) const
 	{
-		for (unsigned int input_raw_index = 0; input_raw_index < MLP_INPUT_SIZE_RAW; input_raw_index++)
+		for (unsigned int input_raw_index = 0; input_raw_index < InputSizeRaw_; input_raw_index++)
 		{
 			float input_value = input[input_raw_index];
 
-			for (unsigned int frequency_index = 0; frequency_index < FREQUENCY_ENCODING_NUM_FREQUENCIES; frequency_index++)
+			for (unsigned int frequency_index = 0; frequency_index < FreqEncodingFreqs_; frequency_index++)
 			{
-				float frequency = static_cast<float>(1 << frequency_index);
-				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 0] =
-					sinf(frequency * input_value * hippt::M_Pi);
-				out_activations[input_raw_index * FREQUENCY_ENCODING_NUM_FREQUENCIES * 2 + frequency_index * 2 + 1] =
-					cosf(frequency * input_value * hippt::M_Pi);
+				float frequency																		= static_cast<float>(1 << frequency_index);
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0] = sinf(frequency * input_value * hippt::M_Pi);
+				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1] = cosf(frequency * input_value * hippt::M_Pi);
 			}
 		}
 	}
 
-	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_]) const
 	{
 		OutputLayer output;
 
-		constexpr unsigned int output_layer_index = MLP_LAYER_COUNT - 1;
-		unsigned int shared_mem_ping_pong_offset  = PING_PONG_ACTIVATIONS_OFFSET(output_layer_index);
+		constexpr unsigned int output_layer_index = LAYER_COUNT - 1;
+		unsigned int shared_mem_ping_pong_offset  = (output_layer_index & 1) * HiddenLayerSize_;
 
-		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < MLP_OUTPUT_SIZE; neuron_index_in_output_layer++)
+		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < OutputSize_; neuron_index_in_output_layer++)
 			output.output[neuron_index_in_output_layer] =
 				static_cast<float>(activations_buffer[shared_mem_ping_pong_offset + neuron_index_in_output_layer][threadIdx.x]);
 
 		return output;
 	}
 
-	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[MLP_HIDDEN_LAYER_SIZE * 2][MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK]) const
+	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_]) const
 	{
-		static_assert(MLP_INPUT_SIZE % 16 == 0, "MLP_INPUT_SIZE must be a multiple of 16 for WMMA");
-		static_assert(MLP_HIDDEN_LAYER_SIZE % 16 == 0, "MLP_HIDDEN_LAYER_SIZE must be a multiple of 16 for WMMA");
-		static_assert(MLP_OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "MLP_OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
+		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
+		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
 		encode_input(input.input, activations_buffer);
 		__syncthreads();
 
-		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
+		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
 			unsigned int neurons_current_layer_padded_wmma	= PAD_SIZE_WMMA(neurons_current_layer);
@@ -138,12 +134,12 @@ struct MLPFullyFusedDevice
 			unsigned int layer_neuron_offset	 = get_neuron_data_index(layer_index, 0);
 			unsigned int layer_connection_offset = get_connection_data_index(layer_index, 0, 0);
 
-			unsigned int in_shared_mem_ping_pong_offset	 = PING_PONG_ACTIVATIONS_OFFSET(layer_index - 1);
-			unsigned int out_shared_mem_ping_pong_offset = PING_PONG_ACTIVATIONS_OFFSET(layer_index);
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
 
 			// Each warp computes TILES_PER_WARP tiles of 16 neurons. With block size 64
 			// (2 warps), each warp handles 2 tiles to cover 64 hidden neurons for example.
-			constexpr unsigned int TILES_PER_WARP = MLP_HIDDEN_LAYER_SIZE / 16 / (MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE / 32);
+			constexpr unsigned int TILES_PER_WARP = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
 
 			unsigned int warp_id = threadIdx.x / 32;
 			unsigned int lane_id = threadIdx.x & 31;
@@ -151,18 +147,18 @@ struct MLPFullyFusedDevice
 			unsigned int previous_neurons_tile_count = neurons_previous_layer_padded_wmma / 16;
 			unsigned int current_neuron_tile_count	 = neurons_current_layer_padded_wmma / 16;
 			unsigned int warp_first_tile			 = warp_id * TILES_PER_WARP;
-			constexpr unsigned int sample_tile_count = MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16;
+			constexpr unsigned int sample_tile_count = BlockSize_ / 16;
 
 			// WMMA compatible architectures #if guard
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 			unsigned int lane_id_wmma = lane_id & 15; // Lane [0 - 15] need to be duplicated in [16 - 31] for WMMA on RDNA3
-			unsigned int lane_high    = lane_id / 16;
+			unsigned int lane_high	  = lane_id / 16;
 
 			if (warp_first_tile < current_neuron_tile_count)
 			{
 				for (unsigned int tile = 0; tile < TILES_PER_WARP && (warp_first_tile + tile) < current_neuron_tile_count; tile++)
 				{
-					fp16x16 activation_tiles[MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16] = {};
+					fp16x16 activation_tiles[BlockSize_ / 16] = {};
 
 					unsigned int current_neuron_base = (warp_first_tile + tile) * 16;
 					for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
@@ -171,19 +167,6 @@ struct MLPFullyFusedDevice
 
 						unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
 						for (unsigned int w = 0; w < 16; w++)
-							// Loads the weights in column major order for WMMA
-							//
-							// Loading weights in row major would mean loading the weights in the fragment in their natural order:
-							//	- Lane 0 loads weights 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 from neuron 0 (previous layer) to neuron 0 (current
-							// layer)
-							//
-							// But what we want is column major order so instead:
-							//	- Lane 0 loads:
-							//		- weight 0 (from neuron 0, previous layer) to 0 (current layer),
-							//		- weight 0 (from neuron 1, previous layer) to 0 (current layer),
-							//		- ...
-							//		- weight 0 (from neuron 15, previous layer) to 0 (current layer)
-							// Jumping from one neuron to the next in the previous layer, but staying on the same neuron in the current layer
 							neuron_weights_fragment[w] =
 								connection_weights_fp16[layer_connection_offset + (current_neuron_base + lane_id_wmma) * neurons_previous_layer +
 														previous_neuron_base + w];
@@ -194,7 +177,6 @@ struct MLPFullyFusedDevice
 
 							unsigned int sample_base = sample_tile_index * 16;
 							for (unsigned int a = 0; a < 16; a++)
-								// Loads the activations in row major order for WMMA
 								previous_activations_fragment[a] =
 									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
 
@@ -232,7 +214,7 @@ struct MLPFullyFusedDevice
 					{
 						unsigned int neuron_index = n + neuron_base;
 
-						for (unsigned int s = 0; s < MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32; s++)
+						for (unsigned int s = 0; s < BlockSize_ / 32; s++)
 						{
 							float activation = 0.0f;
 							for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
@@ -260,7 +242,7 @@ struct MLPFullyFusedDevice
 	{
 		encode_input_ref(input.input, out_activations);
 
-		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
+		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer	= get_layer_neuron_count(layer_index);
 			unsigned int neurons_previous_layer = get_layer_neuron_count(layer_index - 1);
@@ -289,10 +271,10 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE void backpropagation(float* neurons_activations, float* target_output) const
 	{
-		float neurons_errors[MLP_NEURON_COUNT];
+		float neurons_errors[NEURON_COUNT];
 
 		// Output layer bias and weights gradients
-		unsigned int output_layer_index = MLP_LAYER_COUNT - 1;
+		unsigned int output_layer_index = LAYER_COUNT - 1;
 		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < get_layer_neuron_count(output_layer_index);
 			 neuron_index_in_output_layer++)
 		{
@@ -322,7 +304,7 @@ struct MLPFullyFusedDevice
 		}
 
 		// Hidden layers bias and weights gradients
-		for (unsigned int layer_index = MLP_LAYER_COUNT - 2; layer_index > 0; layer_index--)
+		for (unsigned int layer_index = LAYER_COUNT - 2; layer_index > 0; layer_index--)
 		{
 			for (unsigned int neuron_index = 0; neuron_index < get_layer_neuron_count(layer_index); neuron_index++)
 			{

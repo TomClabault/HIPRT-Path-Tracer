@@ -39,21 +39,21 @@ enum MLPDataHostBuffers
 	MLP_ADAM_BIASES_VARIANCES
 };
 
-template <template <typename> typename DataContainer>
+template <template <typename> typename DataContainer, typename MLPType>
 struct MLPDataHost
 {
 	void resize()
 	{
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(MLP_NEURON_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(MLP_NEURON_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(MLP_CONNECTIONS_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(MLP_CONNECTIONS_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(MLP_CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>(MLPType::NEURON_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>(MLPType::NEURON_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(MLPType::CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(MLPType::CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(1);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(MLP_CONNECTIONS_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>(MLP_CONNECTIONS_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(MLP_NEURON_COUNT);
-		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(MLP_NEURON_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(MLPType::CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>(MLPType::CONNECTIONS_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(MLPType::NEURON_COUNT);
+		m_mlp_data.resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(MLPType::NEURON_COUNT);
 	}
 
 	/**
@@ -70,15 +70,15 @@ struct MLPDataHost
 
 		// Initializing weights using Xavier's uniform distribution
 		Xorshift32Generator rng(
-			h1_pcg(static_cast<unsigned int>(MLP_INPUT_SIZE) +
-				   h1_pcg(static_cast<unsigned int>(MLP_OUTPUT_SIZE) + h1_pcg(static_cast<unsigned int>(MLP_HIDDEN_LAYER_COUNT * MLP_HIDDEN_LAYER_SIZE)))));
+			h1_pcg(static_cast<unsigned int>(MLPType::INPUT_SIZE) +
+				   h1_pcg(static_cast<unsigned int>(MLPType::OUTPUT_SIZE) + h1_pcg(static_cast<unsigned int>(MLPType::HIDDEN_LAYER_COUNT * MLPType::HIDDEN_LAYER_SIZE)))));
 
 		std::vector<float> weights = m_mlp_data.download_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
 
-		for (unsigned int layer_index = 1; layer_index < MLP_LAYER_COUNT; layer_index++)
+		for (unsigned int layer_index = 1; layer_index < MLPType::LAYER_COUNT; layer_index++)
 		{
-			unsigned int neurons_count_previous_layer = MLPFullyFusedDevice::get_layer_neuron_count(layer_index - 1);
-			unsigned int neurons_count_current_layer  = MLPFullyFusedDevice::get_layer_neuron_count(layer_index);
+			unsigned int neurons_count_previous_layer = MLPType::get_layer_neuron_count(layer_index - 1);
+			unsigned int neurons_count_current_layer  = MLPType::get_layer_neuron_count(layer_index);
 
 			float random_range = hippt::sqrt(6.0f / (neurons_count_previous_layer + neurons_count_current_layer));
 
@@ -87,7 +87,7 @@ struct MLPDataHost
 				for (unsigned int neuron_index_previous_layer = 0; neuron_index_previous_layer < neurons_count_previous_layer; neuron_index_previous_layer++)
 				{
 					unsigned int connection_data_index =
-						MLPFullyFusedDevice::get_connection_data_index(layer_index, neuron_index_previous_layer, neuron_index_current_layer);
+						MLPType::get_connection_data_index(layer_index, neuron_index_previous_layer, neuron_index_current_layer);
 
 					weights[connection_data_index] = rng() * 2.0f * random_range - random_range;
 				}
@@ -127,9 +127,9 @@ struct MLPDataHost
 		return m_mlp_data.size();
 	}
 
-	MLPFullyFusedDevice to_device()
+	MLPType to_device()
 	{
-		MLPFullyFusedDevice mlp_device;
+		MLPType mlp_device;
 
 		if (size() == 0)
 			return mlp_device;
