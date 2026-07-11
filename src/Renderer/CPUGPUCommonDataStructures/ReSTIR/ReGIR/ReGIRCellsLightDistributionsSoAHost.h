@@ -110,11 +110,11 @@ struct ReGIRCellsLightDistributionsSoAHost
 
 	void resize(size_t new_number_of_cells, unsigned int light_distribution_size, unsigned int emissive_meshes_count)
 	{
-		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().resize(new_number_of_cells * light_distribution_size);
-		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().resize(
+		soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(new_number_of_cells * light_distribution_size);
+		soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(
 								new_number_of_cells *
 								ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_meshes_count, light_distribution_size));
-		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>().resize(new_number_of_cells);
+		soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>(new_number_of_cells);
 
 		if constexpr (IsCPUBuffer)
 		{
