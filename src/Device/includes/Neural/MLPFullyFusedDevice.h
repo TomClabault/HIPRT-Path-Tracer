@@ -156,6 +156,7 @@ struct MLPFullyFusedDevice
 			// WMMA compatible architectures #if guard
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 			unsigned int lane_id_wmma = lane_id & 15; // Lane [0 - 15] need to be duplicated in [16 - 31] for WMMA on RDNA3
+			unsigned int lane_high    = lane_id / 16;
 
 			if (warp_first_tile < current_neuron_tile_count)
 			{
@@ -207,7 +208,7 @@ struct MLPFullyFusedDevice
 					{
 						for (int ele = 0; ele < 8; ++ele)
 						{
-							unsigned int r = ele * 2 + (lane_id / 16);
+							unsigned int r = ele * 2 + lane_high;
 							unsigned int m = current_neuron_base + r;
 							unsigned int n = n_tile * 16 + lane_id_wmma;
 
