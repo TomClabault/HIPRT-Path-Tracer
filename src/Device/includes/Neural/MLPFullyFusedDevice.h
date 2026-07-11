@@ -135,6 +135,9 @@ struct MLPFullyFusedDevice
 			unsigned int neurons_previous_layer				= get_layer_neuron_count(layer_index - 1);
 			unsigned int neurons_previous_layer_padded_wmma = PAD_SIZE_WMMA(neurons_previous_layer);
 
+			unsigned int layer_neuron_offset	 = get_neuron_data_index(layer_index, 0);
+			unsigned int layer_connection_offset = get_connection_data_index(layer_index, 0, 0);
+
 			unsigned int in_shared_mem_ping_pong_offset	 = PING_PONG_ACTIVATIONS_OFFSET(layer_index - 1);
 			unsigned int out_shared_mem_ping_pong_offset = PING_PONG_ACTIVATIONS_OFFSET(layer_index);
 
@@ -181,7 +184,8 @@ struct MLPFullyFusedDevice
 							//		- weight 0 (from neuron 15, previous layer) to 0 (current layer)
 							// Jumping from one neuron to the next in the previous layer, but staying on the same neuron in the current layer
 							neuron_weights_fragment[w] =
-								connection_weights_fp16[get_connection_data_index(layer_index, previous_neuron_base + w, current_neuron_base + lane_id_wmma)];
+								connection_weights_fp16[layer_connection_offset + (current_neuron_base + lane_id_wmma) * neurons_previous_layer +
+														previous_neuron_base + w];
 
 						for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
 						{
@@ -207,7 +211,7 @@ struct MLPFullyFusedDevice
 							unsigned int m = current_neuron_base + r;
 							unsigned int n = n_tile * 16 + lane_id_wmma;
 
-							float val = activation_tiles[n_tile][ele * 2] + neurons_biases[get_neuron_data_index(layer_index, m)];
+							float val = activation_tiles[n_tile][ele * 2] + neurons_biases[layer_neuron_offset + m];
 							val		  = activation_function(val);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
@@ -232,12 +236,12 @@ struct MLPFullyFusedDevice
 							float activation = 0.0f;
 							for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
 							{
-								unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+								unsigned int connection_data_index = layer_connection_offset + neuron_index * neurons_previous_layer + previous_neuron_index;
 								activation += connection_weights[connection_data_index] *
 											  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
 							}
 
-							activation += neurons_biases[get_neuron_data_index(layer_index, neuron_index)];
+							activation += neurons_biases[layer_neuron_offset + neuron_index];
 							activation = activation_function(activation);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
