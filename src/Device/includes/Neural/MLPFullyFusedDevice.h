@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 128
+#define MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE 64
 #define MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK  MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE
 
 #define FREQUENCY_ENCODING_NUM_FREQUENCIES 8
@@ -138,99 +138,111 @@ struct MLPFullyFusedDevice
 			unsigned int in_shared_mem_ping_pong_offset	 = PING_PONG_ACTIVATIONS_OFFSET(layer_index - 1);
 			unsigned int out_shared_mem_ping_pong_offset = PING_PONG_ACTIVATIONS_OFFSET(layer_index);
 
-			// The 4 warps of the thread block will compute 16 neurons each, for a total of 64 neurons per layer
-			unsigned int warp_id	  = threadIdx.x / 32;
-			unsigned int lane_id	  = threadIdx.x & 31;
-			unsigned int lane_id_wmma = lane_id & 15; // Lane [0 - 15] need to be duplicated in [16 - 31] for WMMA on RDNA3
+			// Each warp computes TILES_PER_WARP tiles of 16 neurons. With block size 64
+			// (2 warps), each warp handles 2 tiles to cover 64 hidden neurons for example.
+			constexpr unsigned int TILES_PER_WARP = MLP_HIDDEN_LAYER_SIZE / 16 / (MLP_FULLY_FUSED_PREDICT_THREAD_BLOCK_SIZE / 32);
+
+			unsigned int warp_id = threadIdx.x / 32;
+			unsigned int lane_id = threadIdx.x & 31;
 
 			unsigned int previous_neurons_tile_count = neurons_previous_layer_padded_wmma / 16;
 			unsigned int current_neuron_tile_count	 = neurons_current_layer_padded_wmma / 16;
+			unsigned int warp_first_tile			 = warp_id * TILES_PER_WARP;
 			constexpr unsigned int sample_tile_count = MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16;
 
 			// WMMA compatible architectures #if guard
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
-			if (warp_id < current_neuron_tile_count)
+			unsigned int lane_id_wmma = lane_id & 15; // Lane [0 - 15] need to be duplicated in [16 - 31] for WMMA on RDNA3
+
+			if (warp_first_tile < current_neuron_tile_count)
 			{
-				fp16x16 activation_tiles[MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16] = {};
-
-				unsigned int current_neuron_base = warp_id * 16;
-				for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
+				for (unsigned int tile = 0; tile < TILES_PER_WARP && (warp_first_tile + tile) < current_neuron_tile_count; tile++)
 				{
-					fp16x16 neuron_weights_fragment;
+					fp16x16 activation_tiles[MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 16] = {};
 
-					unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
-					for (unsigned int w = 0; w < 16; w++)
-						// Loads the weights in column major order for WMMA
-						//
-						// Loading weights in row major would mean loading the weights in the fragment in their natural order:
-						//	- Lane 0 loads weights 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 from neuron 0 (previous layer) to neuron 0 (current
-						// layer)
-						//
-						// But what we want is column major order so instead:
-						//	- Lane 0 loads:
-						//		- weight 0 (from neuron 0, previous layer) to 0 (current layer),
-						//		- weight 0 (from neuron 1, previous layer) to 0 (current layer),
-						//		- ...
-						//		- weight 0 (from neuron 15, previous layer) to 0 (current layer)
-						// Jumping from one neuron to the next in the previous layer, but staying on the same neuron in the current layer
-						neuron_weights_fragment[w] =
-							connection_weights_fp16[get_connection_data_index(layer_index, previous_neuron_base + w, current_neuron_base + lane_id_wmma)];
-
-					for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
+					unsigned int current_neuron_base = (warp_first_tile + tile) * 16;
+					for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
 					{
-						fp16x16 previous_activations_fragment;
+						fp16x16 neuron_weights_fragment;
 
-						unsigned int sample_base = sample_tile_index * 16;
-						for (unsigned int a = 0; a < 16; a++)
-							// Loads the activations in row major order for WMMA
-							previous_activations_fragment[a] =
-								activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
+						unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
+						for (unsigned int w = 0; w < 16; w++)
+							// Loads the weights in column major order for WMMA
+							//
+							// Loading weights in row major would mean loading the weights in the fragment in their natural order:
+							//	- Lane 0 loads weights 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 from neuron 0 (previous layer) to neuron 0 (current
+							// layer)
+							//
+							// But what we want is column major order so instead:
+							//	- Lane 0 loads:
+							//		- weight 0 (from neuron 0, previous layer) to 0 (current layer),
+							//		- weight 0 (from neuron 1, previous layer) to 0 (current layer),
+							//		- ...
+							//		- weight 0 (from neuron 15, previous layer) to 0 (current layer)
+							// Jumping from one neuron to the next in the previous layer, but staying on the same neuron in the current layer
+							neuron_weights_fragment[w] =
+								connection_weights_fp16[get_connection_data_index(layer_index, previous_neuron_base + w, current_neuron_base + lane_id_wmma)];
 
-						activation_tiles[sample_tile_index] = hippt::amdgcn_wmma_f16_16x16x16_f16_w32(neuron_weights_fragment, previous_activations_fragment,
-																									  activation_tiles[sample_tile_index]);
+						for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
+						{
+							fp16x16 previous_activations_fragment;
+
+							unsigned int sample_base = sample_tile_index * 16;
+							for (unsigned int a = 0; a < 16; a++)
+								// Loads the activations in row major order for WMMA
+								previous_activations_fragment[a] =
+									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
+
+							activation_tiles[sample_tile_index] = hippt::amdgcn_wmma_f16_16x16x16_f16_w32(
+								neuron_weights_fragment, previous_activations_fragment, activation_tiles[sample_tile_index]);
+						}
 					}
-				}
 
-				// Add the bias and apply the activation function
-				for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
-				{
-					for (int ele = 0; ele < 8; ++ele)
+					// Add the bias and apply the activation function
+					for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
 					{
-						unsigned int r = ele * 2 + (lane_id / 16);
-						unsigned int m = current_neuron_base + r;
-						unsigned int n = n_tile * 16 + lane_id_wmma;
+						for (int ele = 0; ele < 8; ++ele)
+						{
+							unsigned int r = ele * 2 + (lane_id / 16);
+							unsigned int m = current_neuron_base + r;
+							unsigned int n = n_tile * 16 + lane_id_wmma;
 
-						float val = activation_tiles[n_tile][ele * 2] + neurons_biases[get_neuron_data_index(layer_index, m)];
-						val		  = activation_function(val);
+							float val = activation_tiles[n_tile][ele * 2] + neurons_biases[get_neuron_data_index(layer_index, m)];
+							val		  = activation_function(val);
 
-						activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
+							activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
+						}
 					}
 				}
 			}
 #else
 			// Non WMMA codepath, slow AF
 
-			unsigned int neuron_base = warp_id * 16;
-			for (unsigned int n = 0; n < 16 && (n + neuron_base) < neurons_current_layer; n++)
+			if (warp_first_tile < current_neuron_tile_count)
 			{
-				unsigned int neuron_index = n + neuron_base;
-
-				// Because each warp goes through all samples in the thread block, that's MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32 samples per lane,
-				// 128 / 32 = 4 samples per lane with thread block size 128 for example
-				for (unsigned int s = 0; s < MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32; s++)
+				for (unsigned int tile = 0; tile < TILES_PER_WARP && (warp_first_tile + tile) < current_neuron_tile_count; tile++)
 				{
-					float activation = 0.0f;
-					for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+					unsigned int neuron_base = (warp_first_tile + tile) * 16;
+					for (unsigned int n = 0; n < 16 && (n + neuron_base) < neurons_current_layer; n++)
 					{
-						unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
-						activation += connection_weights[connection_data_index] *
-									  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
+						unsigned int neuron_index = n + neuron_base;
+
+						for (unsigned int s = 0; s < MLP_FULLY_FUSED_SAMPLES_PER_THREAD_BLOCK / 32; s++)
+						{
+							float activation = 0.0f;
+							for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+							{
+								unsigned int connection_data_index = get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+								activation += connection_weights[connection_data_index] *
+											  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
+							}
+
+							activation += neurons_biases[get_neuron_data_index(layer_index, neuron_index)];
+							activation = activation_function(activation);
+
+							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
+						}
 					}
-
-					activation += neurons_biases[get_neuron_data_index(layer_index, neuron_index)];
-					activation = activation_function(activation);
-
-					activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
 				}
 			}
 #endif
