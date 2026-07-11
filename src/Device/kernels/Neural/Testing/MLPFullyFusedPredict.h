@@ -10,15 +10,16 @@
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<
-	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
-	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+											MLP_TRAINING_TEST_OUTPUT_SIZE,
+											MLP_TRAINING_TEST_THREAD_BLOCK_SIZE>;
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(TrainingTestMLP mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
+GLOBAL_KERNEL_SIGNATURE(void)
+__launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
+	MLPFullyFusedPredict(TrainingTestMLP mlp, unsigned char* out_predicted_texture, unsigned int width, unsigned int height)
 {
 	unsigned int global_sample_index = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int sample_in_chunk	 = threadIdx.x;
@@ -29,8 +30,7 @@ GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedPredict(TrainingTestMLP mlp, unsigned
 	if (x >= width || y >= height)
 		active_thread = false;
 
-	TrainingTestMLP::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1),
-											static_cast<float>(y) / static_cast<float>(height - 1) } };
+	TrainingTestMLP::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) } };
 
 	__shared__ fp16 activations[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
 

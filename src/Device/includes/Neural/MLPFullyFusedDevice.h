@@ -140,6 +140,8 @@ struct MLPFullyFusedDevice
 			// Each warp computes TILES_PER_WARP tiles of 16 neurons. With block size 64
 			// (2 warps), each warp handles 2 tiles to cover 64 hidden neurons for example.
 			constexpr unsigned int TILES_PER_WARP = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
+			static_assert(BlockSize_ % 32 == 0, "BlockSize_ must be a multiple of 32 for MLP");
+			static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 
 			unsigned int warp_id = threadIdx.x / 32;
 			unsigned int lane_id = threadIdx.x & 31;
