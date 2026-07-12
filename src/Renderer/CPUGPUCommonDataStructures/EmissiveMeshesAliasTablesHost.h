@@ -44,11 +44,49 @@ struct EmissiveMeshesAliasTablesHost
 			device_buffer.upload_data_partial(start_index, input_data.data(), element_count);
 	}
 
+	void free()
+	{
+		if constexpr (std::is_same<DataContainer<int>, std::vector<int>>::value)
+		{
+			m_offsets_into_alias_table.clear();
+			m_meshes_alias_tables_sizes.clear();
+			m_meshes_PDFs.clear();
+			m_meshes_average_points.clear();
+			m_meshes_representative_normals.clear();
+			m_meshes_total_power.clear();
+			m_alias_tables_probas.clear();
+			m_alias_tables_aliases.clear();
+			m_meshes_emissive_triangles_PDFs.clear();
+			m_meshes_emissive_triangles_indices.clear();
+			m_global_triangle_index_to_emissive_mesh_index.clear();
+			m_meshes_alias_table.free();
+		}
+		else
+		{
+			m_offsets_into_alias_table.free();
+			m_meshes_alias_tables_sizes.free();
+			m_meshes_PDFs.free();
+			m_meshes_average_points.free();
+			m_meshes_representative_normals.free();
+			m_meshes_total_power.free();
+			m_alias_tables_probas.free();
+			m_alias_tables_aliases.free();
+			m_meshes_emissive_triangles_PDFs.free();
+			m_meshes_emissive_triangles_indices.free();
+			m_global_triangle_index_to_emissive_mesh_index.free();
+			m_meshes_alias_table.free();
+		}
+	}
+
 	void load_from_emissive_meshes(const Scene& parsed_scene)
 	{
 		const std::vector<ParsedEmissiveMesh>& emissive_meshes = parsed_scene.parsed_emissive_meshes.emissive_meshes;
 		if (emissive_meshes.size() == 0)
+		{
+			free();
+
 			return;
+		}
 
 		std::vector<unsigned int> offsets(emissive_meshes.size());
 		std::vector<unsigned int> alias_tables_sizes(emissive_meshes.size());

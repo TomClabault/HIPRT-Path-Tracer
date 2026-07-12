@@ -27,6 +27,7 @@ struct LightTreeATSBuilderDeviceData
 		{
 			m_device_nodes_buffer.free();
 			m_device_indices_array_buffer.free();
+			m_bit_trails_buffer.free();
 		}
 	}
 

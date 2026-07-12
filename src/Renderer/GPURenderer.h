@@ -264,6 +264,9 @@ public:
 	const std::vector<CPUMaterial>& get_current_materials();
 	const std::vector<std::string>& get_material_names();
 
+	const std::string& get_scene_filepath() const;
+	void set_scene_filepath(const std::string& filepath);
+
 	/**
 	 * Updates all the materials of the renderer and reuploads them all to the GPU
 	 */
@@ -507,6 +510,10 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
+
+	// Filepath of the currently loaded scene
+	std::string m_scene_filepath;
+	
 	PowerSamplingDataStructure m_power_sampling_data_structure;
 	LightTreeATSSamplingDataStructure m_light_tree_ats_sampling_data_structure;
 	LightTreeSGSamplingDataStructure m_light_tree_sg_sampling_data_structure;

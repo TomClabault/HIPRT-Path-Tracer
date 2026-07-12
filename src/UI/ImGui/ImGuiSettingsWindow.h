@@ -46,6 +46,7 @@ private:
 	// to render the same panel
 	void draw_environment_panel();
 	void load_new_envmap(const std::string& filepath);
+	void load_new_scene(std::string filepath);
 
 	void draw_sampling_panel();
 	void draw_material_settings_panel();

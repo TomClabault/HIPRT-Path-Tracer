@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
 	renderer->set_envmap(envmap_image, cmd_arguments.skysphere_file_path);
 	renderer->set_camera(parsed_scene.camera);
 	renderer->set_scene(parsed_scene);
+	renderer->set_scene_filepath(cmd_arguments.scene_file_path);
 
 	// Joining everyone before starting the render except the precompilation threads
 	ThreadManager::join_all_threads();

@@ -34,6 +34,16 @@ struct HIPRTGeometry
 			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
 	}
 
+	HIPRTGeometry& operator=(HIPRTGeometry&& other) noexcept
+	{
+		std::swap(m_mesh, other.m_mesh);
+		std::swap(m_geometry, other.m_geometry);
+		std::swap(m_hiprt_ctx, other.m_hiprt_ctx);
+		std::swap(m_allow_free_mesh_vertices, other.m_allow_free_mesh_vertices);
+
+		return *this;
+	}
+
 	void upload_triangle_indices(const std::vector<int>& triangles_indices)
 	{
 		int triangle_count = triangles_indices.size() / 3;

@@ -10,6 +10,13 @@
 
 void LightTreeSGSamplingDataStructure::compute_from_scene(const Scene& scene, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
 {
+	if (!is_needed(scene.emissive_triangles_primitive_indices.size(), compiler_options))
+	{
+		free();
+
+		return;
+	}
+
 	compute(compiler_options,
 
 			scene.emissive_triangles_primitive_indices, scene.triangles_average_emissive_power_luminance, scene.vertices_positions,
@@ -54,7 +61,11 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 		return;
 
 	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count, compiler_options))
+	{
+		free();
+
 		return;
+	}
 
 	m_renderer->synchronize_all_kernels();
 

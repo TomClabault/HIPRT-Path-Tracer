@@ -851,6 +851,11 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		// Empty scene, nothing todo
 		return;
 
+	// Free the old GPU scene resources before uploading the new one.
+	// Assigning a fresh HIPRTScene destroys the old one's GPU buffers
+	// via destructors of HIPRTGeometry, OrochiBuffer, and OrochiTexture.
+	m_hiprt_scene = HIPRTScene();
+
 	m_hiprt_scene.whole_scene_BLAS.upload_triangle_indices(scene.triangles_vertex_indices);
 	m_hiprt_scene.whole_scene_BLAS.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.whole_scene_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
@@ -997,6 +1002,8 @@ void GPURenderer::set_scene(const Scene& scene)
 	m_original_materials	= scene.materials;
 	m_current_materials		= scene.materials;
 	m_parsed_scene_metadata = scene.metadata;
+
+	m_render_data_buffers_invalidated = true;
 }
 
 void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& envmap_filepath)
@@ -1046,6 +1053,16 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 bool GPURenderer::has_envmap()
 {
 	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
+}
+
+const std::string& GPURenderer::get_scene_filepath() const
+{
+	return m_scene_filepath;
+}
+
+void GPURenderer::set_scene_filepath(const std::string& filepath)
+{
+	m_scene_filepath = filepath;
 }
 
 const std::vector<CPUMaterial>& GPURenderer::get_original_materials()

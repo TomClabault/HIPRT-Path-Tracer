@@ -19,10 +19,32 @@
 #include <filesystem>
 #include <format>
 #include <iostream>
+#include <algorithm>
+#include <sstream>
 
 #include "Threads/ThreadFunctions.h"
 
+#include "Scene/SceneParser.h"
+
 extern GPUKernelCompiler g_gpu_kernel_compiler;
+
+static const std::vector<std::string>& assimp_supported_extensions()
+{
+	static std::vector<std::string> extensions;
+	if (extensions.empty())
+	{
+		Assimp::Importer importer;
+		std::string ext_list;
+		importer.GetExtensionList(ext_list);
+
+		std::istringstream ss(ext_list);
+		std::string token;
+		while (std::getline(ss, token, ';'))
+			if (token.size() >= 2 && token[0] == '*')
+				extensions.push_back(token.substr(1));
+	}
+	return extensions;
+}
 
 const char* ImGuiSettingsWindow::TITLE	   = "Render settings";
 const float ImGuiSettingsWindow::BASE_SIZE = 630.0f;
@@ -55,6 +77,91 @@ void ImGuiSettingsWindow::draw()
 	ImGui::Begin(ImGuiSettingsWindow::TITLE, nullptr, ImGuiWindowFlags_NoDecoration);
 
 	draw_header();
+
+	// Scene file chooser
+	{
+		std::string current_scene_filepath = m_renderer->get_scene_filepath();
+		std::string current_scene_filename = current_scene_filepath.empty() ? "None" :
+			std::filesystem::path(current_scene_filepath).filename().string();
+
+		static ImGuiComboFlags scene_combo_flags = ImGuiComboFlags_HeightLarge;
+		if (ImGui::BeginCombo("Scene file", current_scene_filename.c_str(), scene_combo_flags))
+		{
+			static char scene_filter_buf[256] = "";
+
+			if (ImGui::IsWindowAppearing())
+			{
+				scene_filter_buf[0] = '\0';
+
+				ImGui::SetKeyboardFocusHere();
+			}
+
+			ImGui::InputTextWithHint("##scene_filter", "Filter...", scene_filter_buf, IM_ARRAYSIZE(scene_filter_buf));
+
+			std::string filter_str = scene_filter_buf;
+			std::transform(filter_str.begin(), filter_str.end(), filter_str.begin(), ::tolower);
+
+			// File chooser first item
+			if (ImGui::Selectable("..."))
+			{
+				const char* filters[] = { "*" };
+				std::string custom_path = Utils::open_file_dialog(filters, 1);
+
+				if (!custom_path.empty())
+					load_new_scene(custom_path);
+			}
+
+			ImGui::Separator();
+
+			std::vector<std::string> scene_files;
+			const std::vector<std::string>& supported_exts = assimp_supported_extensions();
+
+			if (std::filesystem::exists(DATA_DIRECTORY "/GLTFs/"))
+			{
+				for (const auto& entry : std::filesystem::directory_iterator(DATA_DIRECTORY "/GLTFs/"))
+				{
+					if (entry.is_regular_file())
+					{
+						std::string ext = entry.path().extension().string();
+						bool supported	= false;
+						for (const std::string& supported_ext : supported_exts)
+						{
+							if (ext == supported_ext)
+							{
+								supported = true;
+								break;
+							}
+						}
+
+						if (supported)
+							scene_files.push_back(entry.path().filename().string());
+					}
+				}
+			}
+
+			for (const std::string& filename : scene_files)
+			{
+				std::string lower_filename = filename;
+				std::transform(lower_filename.begin(), lower_filename.end(), lower_filename.begin(), ::tolower);
+
+				bool passes_filter = filter_str.empty() || lower_filename.find(filter_str) != std::string::npos;
+				if (!passes_filter)
+					continue;
+
+				bool is_selected = (filename == current_scene_filename);
+
+				if (ImGui::Selectable(filename.c_str(), is_selected))
+				{
+					load_new_scene(DATA_DIRECTORY "/GLTFs/" + filename);
+				}
+
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+
+			ImGui::EndCombo();
+		}
+	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("General render settings");
@@ -939,6 +1046,24 @@ void ImGuiSettingsWindow::load_new_envmap(const std::string& filepath)
 	ThreadManager::join_threads(ThreadManager::RENDERER_SET_ENVMAP);
 
 	envmap_image.free();
+}
+
+void ImGuiSettingsWindow::load_new_scene(std::string filepath)
+{
+	Assimp::Importer assimp_importer;
+	Scene parsed_scene;
+	SceneParserOptions options(filepath);
+	options.override_aspect_ratio = m_renderer->get_camera().aspect;
+
+	SceneParser::parse_scene_file(filepath, assimp_importer, parsed_scene, options);
+
+	m_renderer->set_camera(parsed_scene.camera);
+	m_renderer->set_scene(parsed_scene);
+	m_renderer->set_scene_filepath(filepath);
+
+	ThreadManager::join_all_threads();
+
+	m_render_window->set_render_dirty(true);
 }
 
 void ImGuiSettingsWindow::draw_environment_panel()

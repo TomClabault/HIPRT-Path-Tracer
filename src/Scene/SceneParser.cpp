@@ -20,7 +20,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
+void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
 	const aiScene* scene;
 	// TODO MATERIAL DEDUPLICATION: we don't want ASSIMP::PreTransform but then this is going to duplicate materials for each mesh that use the same material

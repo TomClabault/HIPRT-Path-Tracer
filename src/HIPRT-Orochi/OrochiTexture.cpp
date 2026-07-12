@@ -37,6 +37,12 @@ OrochiTexture::~OrochiTexture()
 
 void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 {
+	if (m_texture)
+		oroDestroyTextureObject(m_texture);
+
+	if (m_texture_array)
+		oroFree(m_texture_array);
+
 	m_texture_array = std::move(other.m_texture_array);
 	m_texture		= std::move(other.m_texture);
 	width			= other.width;

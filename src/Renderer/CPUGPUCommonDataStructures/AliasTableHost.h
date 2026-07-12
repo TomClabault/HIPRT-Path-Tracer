@@ -24,6 +24,20 @@ struct AliasTableHost
 		return out;
 	}
 
+	void free()
+	{
+		if constexpr (std::is_same<DataContainer<int>, std::vector<int>>::value)
+		{
+			probas.clear();
+			aliases.clear();
+		}
+		else if constexpr (std::is_same<DataContainer<int>, OrochiBuffer<int>>::value)
+		{
+			probas.free();
+			aliases.free();
+		}
+	}
+
 	DataContainer<float> probas;
 	DataContainer<int> aliases;
 
