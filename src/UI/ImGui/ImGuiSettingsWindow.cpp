@@ -16,8 +16,11 @@
 #include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/RenderWindow.h"
 
+#include <filesystem>
 #include <format>
 #include <iostream>
+
+#include "Threads/ThreadFunctions.h"
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 
@@ -927,6 +930,17 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 	}
 }
 
+void ImGuiSettingsWindow::load_new_envmap(const std::string& filepath)
+{
+	Image32Bit envmap_image;
+
+	ThreadManager::start_serial_thread(ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD, ThreadFunctions::read_envmap, std::ref(envmap_image), filepath, 4, true);
+	m_renderer->set_envmap(envmap_image, filepath);
+	ThreadManager::join_threads(ThreadManager::RENDERER_SET_ENVMAP);
+
+	envmap_image.free();
+}
+
 void ImGuiSettingsWindow::draw_environment_panel()
 {
 	bool render_made_piggy = false;
@@ -956,6 +970,50 @@ void ImGuiSettingsWindow::draw_environment_panel()
 		}
 		else if (world_settings.ambient_light_type == AmbientLightType::ENVMAP)
 		{
+			std::string current_envmap_filepath = m_renderer->get_envmap().get_envmap_filepath();
+			std::string current_envmap_filename = current_envmap_filepath.empty() ? "None" : std::filesystem::path(current_envmap_filepath).filename().string();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::BeginCombo("Envmap file", current_envmap_filename.c_str()))
+			{
+				std::vector<std::string> skysphere_files;
+
+				if (std::filesystem::exists(DATA_DIRECTORY "/Skyspheres/"))
+					for (const auto& entry : std::filesystem::directory_iterator(DATA_DIRECTORY "/Skyspheres/"))
+						if (entry.is_regular_file())
+							skysphere_files.push_back(entry.path().filename().string());
+
+				if (ImGui::Selectable("..."))
+				{
+					const char* filters[]	= { "*.hdr", "*.exr" };
+					std::string custom_path = Utils::open_file_dialog(filters, 2);
+
+					if (!custom_path.empty())
+					{
+						load_new_envmap(custom_path);
+						render_made_piggy = true;
+					}
+				}
+
+				ImGui::Separator();
+
+				for (const std::string& filename : skysphere_files)
+				{
+					bool is_selected = (filename == current_envmap_filename);
+
+					if (ImGui::Selectable(filename.c_str(), is_selected))
+					{
+						load_new_envmap(DATA_DIRECTORY "/Skyspheres/" + filename);
+						render_made_piggy = true;
+					}
+
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+
 			float& rota_X = m_renderer->get_envmap().rotation_X;
 			float& rota_Y = m_renderer->get_envmap().rotation_Y;
 			float& rota_Z = m_renderer->get_envmap().rotation_Z;

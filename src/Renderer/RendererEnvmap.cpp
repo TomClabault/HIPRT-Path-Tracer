@@ -130,6 +130,11 @@ float RendererEnvmap::get_envmap_packed_scaling_factor() const
 	return m_envmap_packed_scaling_factor;
 }
 
+const std::string& RendererEnvmap::get_envmap_filepath() const
+{
+	return m_envmap_filepath;
+}
+
 float RendererEnvmap::get_sampling_structure_VRAM_usage() const
 {
 	// Just return the sum of everything (both the CDF and alias table) because only one can be

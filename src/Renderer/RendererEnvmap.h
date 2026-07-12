@@ -56,6 +56,7 @@ public:
 	unsigned int get_width() const;
 	unsigned int get_height() const;
 	float get_envmap_packed_scaling_factor() const;
+	const std::string& get_envmap_filepath() const;
 
 	/**
 	 * Returns the VRAM used by the sampling structure of the envmap in MB
