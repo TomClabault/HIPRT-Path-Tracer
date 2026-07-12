@@ -183,16 +183,15 @@ public:
 	 * Parses the scene file at @filepath and stores the parsed data in the parsed_scene parameter.
 	 * All formats supported by the ASSIMP library are supported by the renderer.
 	 *
-	 * If provided, the @frame_aspect_override parameter in the options structure is meant to override
-	 * the aspect ratio of the camera of the scene file (if any). This is useful because the renderer
-	 * uses a default aspect ratio of 16:9 but the camera of the scene file may not use the same aspect.
-	 * Without this parameter, this would result in rendering the scene with an aspect different of 16:9 in the default
-	 * framebuffer of the renderer which is 16:9, resulting in deformations.
+	 * The aspect ratio in the options structure is the aspect ratio of the renderer viewport. It is used
+	 * to build the parsed camera projection matrix. It does not affect the FOV authored by the scene file.
 	 */
 	static void parse_scene_file(std::string& filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options);
 
 private:
-	static void parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override);
+	static bool is_gltf_scene_file(const std::string& scene_filepath);
+
+	static void parse_camera(const aiScene* scene, Scene& parsed_scene, float viewport_aspect, bool is_gltf_scene);
 
 	/**
 	 * Prepares all the necessary data for multithreaded texture-loading

@@ -15,6 +15,7 @@
 #include "glm/gtx/matrix_decompose.hpp"
 
 #include <chrono>
+#include <cctype>
 #include <functional>
 #include <memory>
 
@@ -93,7 +94,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 	assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
 	dispatch_texture_loading(scene, parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
 
-	parse_camera(scene, parsed_scene, options.override_aspect_ratio);
+	parse_camera(scene, parsed_scene, options.override_aspect_ratio, is_gltf_scene_file(scene_filepath));
 
 	// Used to quickly check whether we've already seen a material based on its
 	// index (because multiple meshes may share the same material, we don't want
@@ -282,7 +283,16 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 								std::ref(parsed_scene));
 }
 
-void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)
+bool SceneParser::is_gltf_scene_file(const std::string& scene_filepath)
+{
+	std::string extension = std::filesystem::path(scene_filepath).extension().string();
+	for (char& character : extension)
+		character = std::tolower(static_cast<unsigned char>(character));
+
+	return extension == ".gltf" || extension == ".glb";
+}
+
+void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float viewport_aspect, bool is_gltf_scene)
 {
 	// Taking the first camera as the camera of the scene
 	if (scene->mNumCameras > 0)
@@ -307,10 +317,24 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 		parsed_scene.camera.m_translation = translation;
 		parsed_scene.camera.m_rotation	  = orientation;
 
-		float aspect_ratio					  = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
-		float vertical_fov					  = 2.0f * std::atan(std::tan(camera->mHorizontalFOV * 0.5f) * aspect_ratio) + 0.425f;
-		parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar);
+		float vertical_fov;
+		if (is_gltf_scene && camera->mAspect == 0.0f)
+		{
+			// The glTF specification stores a vertical FOV. When aspectRatio is omitted, Assimp
+			// leaves that value in mHorizontalFOV because it cannot derive a horizontal FOV.
+			vertical_fov = camera->mHorizontalFOV;
+		}
+		else
+		{
+			// Assimp stores a horizontal FOV. The aspect ratio below is only used to decode the
+			// authored vertical FOV; the renderer viewport aspect is applied to the projection afterwards.
+			float fov_aspect = camera->mAspect == 0.0f ? viewport_aspect : camera->mAspect;
+			vertical_fov	 = 2.0f * std::atan(std::tan(camera->mHorizontalFOV * 0.5f) / fov_aspect);
+		}
+
 		parsed_scene.camera.vertical_fov	  = vertical_fov;
+		parsed_scene.camera.aspect			  = viewport_aspect;
+		parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, viewport_aspect, camera->mClipPlaneNear, camera->mClipPlaneFar);
 
 		// Custom clip planes distances are not supported by the renderer so hardcoding to 0.1f and 100.0f
 		// instead of reading from the camera properties
@@ -331,11 +355,12 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 		parsed_scene.camera.m_translation = translation;
 		parsed_scene.camera.m_rotation	  = orientation;
 
-		float aspect_ratio					  = 1280.0f / 720.0f;
+		float aspect_ratio					  = viewport_aspect;
 		float horizontal_fov				  = 40.0f / 180 * M_PI;
 		float vertical_fov					  = 2.0f * std::atan(std::tan(horizontal_fov * 0.5f) * aspect_ratio) + 0.425f;
 		parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f);
 		parsed_scene.camera.vertical_fov	  = vertical_fov;
+		parsed_scene.camera.aspect			  = viewport_aspect;
 		parsed_scene.camera.near_plane		  = 0.1f;
 		parsed_scene.camera.far_plane		  = 100.0f;
 	}
