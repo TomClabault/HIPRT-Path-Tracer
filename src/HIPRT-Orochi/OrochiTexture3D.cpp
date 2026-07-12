@@ -46,6 +46,18 @@ void OrochiTexture3D::operator=(OrochiTexture3D&& other) noexcept
 
 void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIPfilter_mode filtering_mode, HIPaddress_mode address_mode)
 {
+	if (m_texture_array)
+	{
+		oroFree(m_texture_array);
+		m_texture_array = nullptr;
+	}
+
+	if (m_texture)
+	{
+		oroDestroyTextureObject(m_texture);
+		m_texture = nullptr;
+	}
+
 	int channels = images[0].channels;
 	if (channels == 3 || channels > 4)
 	{
@@ -69,7 +81,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
 
-	// Because we'r ecopying to a CUDA/HIP array, we need the input data
+	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
 	std::vector<float> linear_image_data(width * height * depth);
 	for (int i = 0; i < images.size(); i++)
@@ -96,10 +108,23 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 	texture_descriptor.filterMode	  = filtering_mode;
 
 	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+	fprintf(stderr, "[GPU-MEM] ALLOC TEXTURE_OBJECT %p OrochiTexture3D.cpp:103\n", (void*)m_texture);
 }
 
 void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HIPfilter_mode filtering_mode, HIPaddress_mode address_mode)
 {
+	if (m_texture_array)
+	{
+		oroFree(m_texture_array);
+		m_texture_array = nullptr;
+	}
+
+	if (m_texture)
+	{
+		oroDestroyTextureObject(m_texture);
+		m_texture = nullptr;
+	}
+
 	int channels = images[0].channels;
 	if (channels == 3 || channels > 4)
 	{
@@ -122,7 +147,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
 
-	// Because we'r ecopying to a CUDA/HIP array, we need the input data
+	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
 	std::vector<float> linear_image_data(width * height * depth * channels);
 	for (int i = 0; i < images.size(); i++)

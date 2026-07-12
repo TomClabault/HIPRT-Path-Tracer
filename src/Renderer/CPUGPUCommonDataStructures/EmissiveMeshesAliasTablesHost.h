@@ -63,18 +63,18 @@ struct EmissiveMeshesAliasTablesHost
 		}
 		else
 		{
-			m_offsets_into_alias_table.free();
-			m_meshes_alias_tables_sizes.free();
-			m_meshes_PDFs.free();
-			m_meshes_average_points.free();
-			m_meshes_representative_normals.free();
-			m_meshes_total_power.free();
-			m_alias_tables_probas.free();
-			m_alias_tables_aliases.free();
-			m_meshes_emissive_triangles_PDFs.free();
-			m_meshes_emissive_triangles_indices.free();
-			m_global_triangle_index_to_emissive_mesh_index.free();
-			m_meshes_alias_table.free();
+			m_offsets_into_alias_table.free_no_error();
+			m_meshes_alias_tables_sizes.free_no_error();
+			m_meshes_PDFs.free_no_error();
+			m_meshes_average_points.free_no_error();
+			m_meshes_representative_normals.free_no_error();
+			m_meshes_total_power.free_no_error();
+			m_alias_tables_probas.free_no_error();
+			m_alias_tables_aliases.free_no_error();
+			m_meshes_emissive_triangles_PDFs.free_no_error();
+			m_meshes_emissive_triangles_indices.free_no_error();
+			m_global_triangle_index_to_emissive_mesh_index.free_no_error();
+			m_meshes_alias_table.free_no_error();
 		}
 	}
 

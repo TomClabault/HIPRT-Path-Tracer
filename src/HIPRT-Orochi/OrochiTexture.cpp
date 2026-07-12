@@ -85,6 +85,18 @@ void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mod
 
 void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
+	if (m_texture_array)
+	{
+		oroFree(m_texture_array);
+		m_texture_array = nullptr;
+	}
+
+	if (m_texture)
+	{
+		oroDestroyTextureObject(m_texture);
+		m_texture = nullptr;
+	}
+
 	int channels = image.channels;
 	if (channels == 3 || channels > 4)
 	{
