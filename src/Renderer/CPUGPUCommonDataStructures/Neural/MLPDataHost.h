@@ -10,6 +10,7 @@
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
@@ -17,13 +18,14 @@ using MLPDataHostInternal = GenericSoA<DataContainer,
 									   float,										   // Neurons biases
 									   GenericAtomicType<float, DataContainer>,		   // Gradient biases
 									   float,										   // Connection weights
-									   GenericFP16Type<DataContainer>,				   // Gradient weights FP16
+									   GenericFP16Type<DataContainer>,				   // Connection weights FP16
 									   GenericAtomicType<float, DataContainer>,		   // Gradient weights
 									   GenericAtomicType<unsigned int, DataContainer>, // Last training sample count
 									   float,										   // Adam weights means
 									   float,										   // Adam weights variances
 									   float,										   // Adam biases means
-									   float>;										   // Adam biases variances
+									   float,										   // Adam biases variances
+									   GenericFP16Type<DataContainer>>;				   // Train activations
 
 enum MLPDataHostBuffers
 {
@@ -36,13 +38,14 @@ enum MLPDataHostBuffers
 	MLP_ADAM_WEIGHTS_MEANS,
 	MLP_ADAM_WEIGHTS_VARIANCES,
 	MLP_ADAM_BIASES_MEANS,
-	MLP_ADAM_BIASES_VARIANCES
+	MLP_ADAM_BIASES_VARIANCES,
+	MLP_TRAIN_ACTIVATIONS
 };
 
 template <template <typename> typename DataContainer, typename MLPType>
 struct MLPDataHost
 {
-	void resize()
+	void resize(unsigned int batch_size = 0)
 	{
 		m_mlp_data.template resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(MLPType::CONNECTIONS_COUNT);
 		m_mlp_data.template resize_one_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(MLPType::CONNECTIONS_COUNT);
@@ -58,6 +61,9 @@ struct MLPDataHost
 			m_mlp_data.template resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>(MLPType::NEURON_COUNT);
 			m_mlp_data.template resize_one_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>(MLPType::NEURON_COUNT);
 		}
+
+		if (batch_size > 0)
+			m_mlp_data.template resize_one_buffer<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>(batch_size * MLPType::NEURON_COUNT);
 	}
 
 	/**

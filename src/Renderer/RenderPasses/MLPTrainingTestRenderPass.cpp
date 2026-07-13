@@ -72,7 +72,8 @@ bool MLPTrainingTestRenderPass::pre_render_update(float delta_time)
 
 	if (m_mlp.maximum_size() == 0)
 	{
-		m_mlp.resize();
+		unsigned int batch_size = 2048;
+		m_mlp.resize(batch_size);
 		m_mlp.initialize();
 
 		Image32Bit image_exr = Image32Bit::read_image_exr("../data/Skyspheres/envmap.exr", true);
@@ -112,9 +113,10 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	unsigned int tex_h			= m_image.height;
 
 	// Train
-	unsigned int frame_number = render_data.render_settings.sample_number;
-	void* train_launch_args[] = { &mlp_device, &texture_data, &tex_w, &tex_h, &frame_number };
-	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->launch_asynchronous(KernelBlockWidthHeight, 1, batch_size, 1, train_launch_args,
+	unsigned int frame_number	= render_data.render_settings.sample_number;
+	fp16* train_activations_ptr = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
+	void* train_launch_args[]	= { &mlp_device, &texture_data, &tex_w, &tex_h, &frame_number, &train_activations_ptr };
+	m_kernels[MLPTrainingTestRenderPass::MLP_TRAIN]->launch_asynchronous(TrainingTestMLP::BLOCK_SIZE, 1, batch_size, 1, train_launch_args,
 																		 m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
 

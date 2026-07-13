@@ -86,6 +86,8 @@ struct MLPFullyFusedDevice
 					static_cast<fp16>(hippt::intrin_cosf(frequency * input_value * hippt::M_Pi));
 			}
 		}
+
+		__syncthreads();
 	}
 
 	HIPRT_DEVICE void encode_input_ref(float* input, float* out_activations) const
@@ -242,6 +244,130 @@ struct MLPFullyFusedDevice
 #endif
 
 			__syncthreads();
+		}
+	}
+
+	HIPRT_DEVICE void forward_train(fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_], fp16* train_activations_global, unsigned int sample_offset) const
+	{
+		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
+		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
+
+		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
+		{
+			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
+			unsigned int neurons_current_layer_padded_wmma	= PAD_SIZE_WMMA(neurons_current_layer);
+			unsigned int neurons_previous_layer				= get_layer_neuron_count(layer_index - 1);
+			unsigned int neurons_previous_layer_padded_wmma = PAD_SIZE_WMMA(neurons_previous_layer);
+
+			unsigned int layer_neuron_offset	 = get_neuron_data_index(layer_index, 0);
+			unsigned int layer_connection_offset = get_connection_data_index(layer_index, 0, 0);
+
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
+
+			constexpr unsigned int TILES_PER_WARP = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
+			static_assert(BlockSize_ % 32 == 0, "BlockSize_ must be a multiple of 32 for MLP");
+			static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
+
+			unsigned int warp_id = threadIdx.x / 32;
+			unsigned int lane_id = threadIdx.x & 31;
+
+			unsigned int previous_neurons_tile_count = neurons_previous_layer_padded_wmma / 16;
+			unsigned int current_neuron_tile_count	 = neurons_current_layer_padded_wmma / 16;
+			unsigned int warp_first_tile			 = warp_id * TILES_PER_WARP;
+			constexpr unsigned int sample_tile_count = BlockSize_ / 16;
+
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+			unsigned int lane_id_wmma = lane_id & 15;
+			unsigned int lane_high	  = lane_id / 16;
+
+			if (warp_first_tile < current_neuron_tile_count)
+			{
+				for (unsigned int tile = 0; tile < TILES_PER_WARP && (warp_first_tile + tile) < current_neuron_tile_count; tile++)
+				{
+					fp16x16 activation_tiles[BlockSize_ / 16] = {};
+
+					unsigned int current_neuron_base = (warp_first_tile + tile) * 16;
+					for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
+					{
+						fp16x16 neuron_weights_fragment;
+
+						unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
+						for (unsigned int w = 0; w < 16; w++)
+							neuron_weights_fragment[w] =
+								connection_weights_fp16[layer_connection_offset + (current_neuron_base + lane_id_wmma) * neurons_previous_layer +
+														previous_neuron_base + w];
+
+						for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
+						{
+							fp16x16 previous_activations_fragment;
+
+							unsigned int sample_base = sample_tile_index * 16;
+							for (unsigned int a = 0; a < 16; a++)
+								previous_activations_fragment[a] =
+									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
+
+							activation_tiles[sample_tile_index] = hippt::amdgcn_wmma_f16_16x16x16_f16_w32(
+								neuron_weights_fragment, previous_activations_fragment, activation_tiles[sample_tile_index]);
+						}
+					}
+
+					for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
+					{
+						for (int ele = 0; ele < 8; ++ele)
+						{
+							unsigned int r = ele * 2 + lane_high;
+							unsigned int m = current_neuron_base + r;
+							unsigned int n = n_tile * 16 + lane_id_wmma;
+
+							float val = activation_tiles[n_tile][ele * 2];
+							if constexpr (USE_BIASES)
+								val += neurons_biases[layer_neuron_offset + m];
+							val = activation_function(val);
+
+							activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
+							train_activations_global[(sample_offset + n) * NEURON_COUNT + layer_neuron_offset + m] = static_cast<fp16>(val);
+						}
+					}
+				}
+			}
+#else
+			// Non WMMA codepath - slow fallback
+			if (warp_first_tile < current_neuron_tile_count)
+			{
+				for (unsigned int tile = 0; tile < TILES_PER_WARP && (warp_first_tile + tile) < current_neuron_tile_count; tile++)
+				{
+					unsigned int neuron_base = (warp_first_tile + tile) * 16;
+					for (unsigned int n = 0; n < 16 && (n + neuron_base) < neurons_current_layer; n++)
+					{
+						unsigned int neuron_index = n + neuron_base;
+
+						for (unsigned int s = 0; s < BlockSize_ / 32; s++)
+						{
+							float activation = 0.0f;
+							for (unsigned int previous_neuron_index = 0; previous_neuron_index < neurons_previous_layer; previous_neuron_index++)
+							{
+								unsigned int connection_data_index = layer_connection_offset + neuron_index * neurons_previous_layer + previous_neuron_index;
+								activation += connection_weights[connection_data_index] *
+											  activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_index][lane_id + s * 32];
+							}
+
+							if constexpr (USE_BIASES)
+								activation += neurons_biases[layer_neuron_offset + neuron_index];
+							activation = activation_function(activation);
+
+							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][lane_id + s * 32] = activation;
+							train_activations_global[(sample_offset + lane_id + s * 32) * NEURON_COUNT + layer_neuron_offset + neuron_index] = static_cast<fp16>(activation);
+						}
+					}
+				}
+			}
+#endif
+
+			__syncthreads();
+
+
 		}
 	}
 

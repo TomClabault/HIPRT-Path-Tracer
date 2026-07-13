@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - n-ary light tree
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?
 // - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
 // - What if we select the reuse cell based on sum luminance * UCW instead of confidence?

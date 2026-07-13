@@ -20,12 +20,12 @@ using TrainingTestMLP = MLPFullyFusedDevice<
 	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
 	MLP_TRAINING_TEST_USE_BIASES>;
 
-GLOBAL_KERNEL_SIGNATURE(void)
-MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
+MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number, fp16* train_activations)
 {
-	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	Xorshift32Generator rng(x * 19741 + frame_number * 31337);
+	Xorshift32Generator rng(sample_index * 19741 + frame_number * 31337);
 
 	float uv[2] = { rng(), rng() };
 
@@ -33,14 +33,27 @@ MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex
 	unsigned int ty = static_cast<unsigned int>(uv[1] * (tex_h - 1));
 	unsigned int pi = (ty * tex_w + tx) * 3;
 
-	float color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
+	float target_color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
 
-	float activations[TrainingTestMLP::NEURON_COUNT];
+	__shared__ fp16 activations_buffer[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
 
 	TrainingTestMLP::InputLayer input = { { uv[0], uv[1] } };
-	mlp.forward_pass(input, activations);
+	mlp.encode_input(input.input, activations_buffer);
 
-	mlp.backpropagation(activations, color);
+	// Save layer 0 (frequency-encoded input) activations for the backward pass
+	fp16* sample_activations = train_activations + sample_index * TrainingTestMLP::NEURON_COUNT;
+	for (unsigned int n = 0; n < TrainingTestMLP::INPUT_SIZE; n++)
+		sample_activations[TrainingTestMLP::get_neuron_data_index(0, n)] = activations_buffer[n][threadIdx.x];
+
+	// WMMA forward pass, saves layers 1..LAYER_COUNT-1 activations to global memory
+	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
+
+	// Read activations for scalar backward
+	float activations[TrainingTestMLP::NEURON_COUNT];
+	for (unsigned int i = 0; i < TrainingTestMLP::NEURON_COUNT; i++)
+		activations[i] = static_cast<float>(sample_activations[i]);
+
+	mlp.backpropagation(activations, target_color);
 }
 
 #endif
