@@ -7,21 +7,22 @@
 #define KERNELS_MLP_FULLY_FUSED_TRAIN_H
 
 #include "Device/includes/FixIntellisense.h"
+
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<
-	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
-	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
-	MLP_TRAINING_TEST_USE_BIASES>;
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+											MLP_TRAINING_TEST_OUTPUT_SIZE,
+											MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
+											MLP_TRAINING_TEST_USE_BIASES>;
 
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
-MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number, fp16* train_activations)
+GLOBAL_KERNEL_SIGNATURE(void)
+__launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
+	MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex_w, unsigned int tex_h, unsigned int frame_number, fp16* train_activations)
 {
 	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -36,6 +37,7 @@ MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex
 	float target_color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
 
 	__shared__ fp16 activations_buffer[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
+	__shared__ fp16 errors_buffer[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
 
 	TrainingTestMLP::InputLayer input = { { uv[0], uv[1] } };
 	mlp.encode_input(input.input, activations_buffer);
@@ -53,7 +55,11 @@ MLPFullyFusedTrain(TrainingTestMLP mlp, unsigned char* texture, unsigned int tex
 	for (unsigned int i = 0; i < TrainingTestMLP::NEURON_COUNT; i++)
 		activations[i] = static_cast<float>(sample_activations[i]);
 
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, target_color);
+#else
 	mlp.backpropagation(activations, target_color);
+#endif
 }
 
 #endif
