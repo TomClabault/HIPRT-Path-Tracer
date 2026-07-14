@@ -47,8 +47,12 @@ __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
 	for (unsigned int n = 0; n < TrainingTestMLP::INPUT_SIZE; n++)
 		sample_activations[TrainingTestMLP::get_neuron_data_index(0, n)] = activations_buffer[n][threadIdx.x];
 
-	// WMMA forward pass, saves layers 1..LAYER_COUNT-1 activations to global memory
+	// Forward pass, saves layers 1..LAYER_COUNT-1 activations to global memory
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+	mlp.forward_train_wmma(activations_buffer, train_activations, blockIdx.x * blockDim.x);
+#else
 	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
+#endif
 
 	// Read activations for scalar backward
 	float activations[TrainingTestMLP::NEURON_COUNT];

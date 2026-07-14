@@ -76,7 +76,6 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 
 	void* launch_args[] = { &render_data };
 
-	std::cerr << "Batch " << render_data.render_settings.sample_number << std::endl;
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
 																			m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
