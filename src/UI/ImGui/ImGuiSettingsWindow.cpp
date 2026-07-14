@@ -3696,6 +3696,56 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Sampling");
+
+		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
+		if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
+												   do_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		if (do_splitting)
+		{
+			ImGui::TreePush("Split variance threshold SG tree");
+
+			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_sg.settings.light_tree_sg_splitting_variance, 0.0f, 1.0f, "%.3f",
+								   ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("User defined split threshold proposed in the paper of Conty & Kulla 2018."
+											" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+
+			static int splitting_max_light_samples_count =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES);
+			ImGui::SliderInt("Max light samples", &splitting_max_light_samples_count, 1, 16);
+			ImGuiRenderer::show_help_marker("If splitting is enabled, how many light samples, at most, per shading point is allowed.\n"
+											"Higher values result in higher quality but at a higher performance cost.");
+
+			if (splitting_max_light_samples_count !=
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES))
+			{
+				ImGui::TreePush("Apply button tree splitting max light sample count");
+
+				if (ImGui::Button("Apply"))
+				{
+					splitting_max_light_samples_count = hippt::clamp(1, 2000000000, splitting_max_light_samples_count);
+
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
+														   splitting_max_light_samples_count);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Importance function");
 		static bool importance_function_do_specular =
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);

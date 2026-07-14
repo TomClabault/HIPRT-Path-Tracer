@@ -30,6 +30,11 @@ struct LightTreeSGNode
 			vmf.sharpness = hippt::min((3.0f * mean_axis_length - hippt::pow_3(mean_axis_length)) / (1.0f - hippt::square(mean_axis_length)), 2199023255552.0f);
 	}
 
+	// For adaptive splitting
+	float energy_average			 = 0.0f;
+	float energy_variance			 = 0.0f;
+	unsigned int total_emitter_count = 0;
+
 	float3_t spatial_mean  = make_float3(0.0f, 0.0f, 0.0f);
 	float spatial_variance = 0.0f;
 

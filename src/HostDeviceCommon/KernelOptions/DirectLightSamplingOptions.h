@@ -10,6 +10,7 @@
 #include "HostDeviceCommon/KernelOptions/Common.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
+#include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT				 1
@@ -84,7 +85,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_POWER
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
 
 /**
  * What direct lighting sampling strategy to use.
@@ -244,7 +245,7 @@
 #ifdef LightTreeATSDoSplitting
 // Some kernels are not meant to be compiled with kernel compiler options
 // so this function below will not compile for those kernels because they don't
-// have LightTreeATSDoSplitting defined for example. So we're guarding that function
+// have the splitting macros defined for example. So we're guarding that function
 // if #ifdef to avoid compilation issues.
 
 template <int lightSamplingStrategy>
@@ -253,6 +254,8 @@ HIPRT_DEVICE constexpr int DirectLightSampleCount()
 	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
 		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
 		return LightTreeATSSplittingMaxLightSamples;
+	else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG && LightTreeSGDoSplitting == KERNEL_OPTION_TRUE)
+		return LightTreeSGSplittingMaxLightSamples;
 	else
 		// Other strategies just return 1 light sample per path vertex
 		return 1;
@@ -268,6 +271,8 @@ HIPRT_DEVICE constexpr int DirectLightIntegrationFactor()
 		// So need not average the 4 (if splitting max light samples is 4) NEE samples together for example
 		// but just sum them up. So we're returning 1 here such that the division by the integration factor
 		// does not average the 4 samples.
+		return 1;
+	else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG && LightTreeSGDoSplitting == KERNEL_OPTION_TRUE)
 		return 1;
 	else
 		return DirectLightSampleCount<lightSamplingStrategy>();

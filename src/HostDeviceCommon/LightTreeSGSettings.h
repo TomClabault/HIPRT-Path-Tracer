@@ -8,6 +8,7 @@
 
 struct LightTreeSGSettings
 {
+	float light_tree_sg_splitting_variance = 0.92f;
 };
 
 #endif

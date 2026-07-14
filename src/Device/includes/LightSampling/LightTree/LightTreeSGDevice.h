@@ -13,6 +13,12 @@
 
 struct LightTreeSGNodeDevice
 {
+	HIPRT_DEVICE float get_energy_average() const
+	{
+		// Returns the raw (non-SG-divided) average power, matching the scale of energy_variance
+		return energy_average;
+	}
+
 	VMF vmf;
 
 	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
@@ -22,6 +28,10 @@ struct LightTreeSGNodeDevice
 
 	// This contains a baked in division by SG_integral(node.vmf.sharpness)
 	float total_power = 0.0f;
+
+	float energy_variance			 = 0.0f;
+	float energy_average			 = 0.0f;
+	unsigned int total_emitter_count = 0;
 
 	// If triangle count is 0, this contains the left child index
 	// If triangle count is > 0, this is the first triangle index in the leaf node

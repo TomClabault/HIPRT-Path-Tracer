@@ -110,6 +110,9 @@ public:
 
 	static const std::string LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE;
 
+	static const std::string LIGHT_TREE_SG_DO_SPLITTING;
+	static const std::string LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES;
+
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
 	static const std::string ENVMAP_SAMPLING_DO_BILINEAR_FILTERING;

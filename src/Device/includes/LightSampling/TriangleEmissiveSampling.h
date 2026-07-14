@@ -140,8 +140,8 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	{
-		light_samples[0] = sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																	  ray_payload.material, last_hit_primitive_index, random_number_generator);
+		light_samples = sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal,
+																   ray_payload.material, last_hit_primitive_index, random_number_generator);
 	}
 
 	return light_samples;
@@ -197,15 +197,20 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	{
-		LightSampleInformation light_sample =
-			sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, ray_payload.material,
-													   last_hit_primitive_index, random_number_generator);
+		unsigned int seed_before				 = random_number_generator.m_state.seed;
+		random_number_generator.m_state.seed = seed_before;
 
-		light_point_samples[0] =
-			sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
-																	light_sample.emissive_triangle_global_index, random_number_generator);
+		LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_SG>()> light_samples = sample_one_emissive_triangle_light_tree_sg(
+			render_data, shading_point, view_direction, shading_normal, geometric_normal, ray_payload.material, last_hit_primitive_index,
+			random_number_generator);
 
-		light_point_samples[0].area_measure_pdf *= light_sample.pdf;
+		for (int i = 0; i < DirectLightSampleCount<LSS_BASE_LIGHT_TREE_SG>(); i++)
+		{
+			light_point_samples[i] =
+				sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, ray_payload.material,
+																		light_samples[i].emissive_triangle_global_index, random_number_generator);
+			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
+		}
 	}
 	else if constexpr (samplingStrategy == LSS_BASE_REGIR)
 	{

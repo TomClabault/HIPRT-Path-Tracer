@@ -61,6 +61,18 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.spatial_variance = left_weight * left_node.spatial_variance + right_weight * right_node.spatial_variance +
 								   left_weight * right_weight * hippt::length2(left_node.spatial_mean - right_node.spatial_mean);
 
+		sg_node.total_emitter_count = left_node.total_emitter_count + right_node.total_emitter_count;
+		if (sg_node.total_emitter_count > 0)
+		{
+			sg_node.energy_average = (left_node.total_emitter_count * left_node.energy_average + right_node.total_emitter_count * right_node.energy_average) /
+									 sg_node.total_emitter_count;
+			sg_node.energy_variance =
+				hippt::max(0.0f, (left_node.total_emitter_count * (left_node.energy_variance + left_node.energy_average * left_node.energy_average) +
+								  right_node.total_emitter_count * (right_node.energy_variance + right_node.energy_average * right_node.energy_average)) /
+										 sg_node.total_emitter_count -
+									 sg_node.energy_average * sg_node.energy_average);
+		}
+
 		sg_node.compute_vmf();
 
 		sg_node.bounding_sphere_radius = hippt::max(hippt::length(left_node.spatial_mean - sg_node.spatial_mean) + left_node.bounding_sphere_radius,
@@ -78,6 +90,8 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		float sum_positions_squared = 0.0f;
 
 		float single_triangle_variance	  = 0.0f;
+		double sum_energy				  = 0.0;
+		double sum_energy_squared		  = 0.0;
 		unsigned int valid_triangle_count = 0;
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
@@ -107,8 +121,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			sum_positions += triangle.centroid * triangle.power;
 			sum_positions_squared += hippt::dot(triangle.centroid, triangle.centroid) * triangle.power;
 
+			sum_energy += triangle.power;
+			sum_energy_squared += hippt::square(triangle.power);
 			valid_triangle_count++;
 		}
+
+		sg_node.total_emitter_count = valid_triangle_count;
 
 		if (valid_triangle_count == 0)
 			return;
@@ -117,6 +135,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		sum_positions /= sg_node.total_power;
 		sum_positions_squared /= sg_node.total_power;
+
+		sg_node.energy_average = sum_energy / valid_triangle_count;
+		sg_node.energy_variance =
+			hippt::max(0.0f, static_cast<float>(sum_energy_squared / valid_triangle_count - hippt::square(sum_energy / valid_triangle_count)));
 
 		sg_node.mean_axis /= sg_node.total_power;
 		sg_node.spatial_mean = sum_positions;
