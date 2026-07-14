@@ -168,7 +168,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float light_tree_sg_node_variance(const LightTreeSGNodeDevice& node, float3_t shading_point)
+HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
 	float3_t node_center		 = node.gaussian_spatial_mean;
 	float bounding_sphere_radius = node.bounding_sphere_radius;
@@ -237,8 +237,8 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 			light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (node_importance > 0.0f)
 		{
-			float node_variance = light_tree_sg_node_variance(current_node, shading_point);
-			if (node_variance < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
+			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
+			if (node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold not met, exploring both branches of the tree
 
@@ -436,8 +436,8 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 			light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (node_importance > 0.0f)
 		{
-			float node_variance = light_tree_sg_node_variance(current_node, shading_point);
-			if (node_variance < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
+			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
+			if (node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold not met, exploring both branches of the tree
 
@@ -544,8 +544,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		bool node_split = false;
 		if (collected_split_samples < LightTreeSGSplittingMaxLightSamples && can_split)
 		{
-			float node_variance = light_tree_sg_node_variance(current_node, shading_point);
-			node_split			= node_variance < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0;
+			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
+			node_split			 = node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0;
 		}
 
 		if (node_split)

@@ -6,8 +6,8 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_ATS_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_ATS_SAMPLING_H
 
-#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
@@ -175,7 +175,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 #define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 2
 
-HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& node, float3_t shading_point)
+HIPRT_DEVICE float light_tree_ats_node_coherence(const LightTreeATSNodeDevice& node, float3_t shading_point)
 {
 	float3_t node_center		 = (node.bounds_max + node.bounds_min) * 0.5f;
 	float3_t half_extents		 = (node.bounds_max - node.bounds_min) * 0.5f;
@@ -227,13 +227,13 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 		float node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 		if (node_importance > 0.0f)
 		{
-			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
-			if (node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
+			float node_coherence = light_tree_ats_node_coherence(current_node, shading_point);
+			if (node_coherence < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold exceeded, exploring both branches of the tree
 
-				float node_importance_left	= light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index],
-																							 shading_point, shading_normal);
+				float node_importance_left =
+					light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
 				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1],
 																							 shading_point, shading_normal);
 
@@ -417,13 +417,13 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 		float node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 		if (node_importance > 0.0f)
 		{
-			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
-			if (node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
+			float node_coherence = light_tree_ats_node_coherence(current_node, shading_point);
+			if (node_coherence < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold exceeded, exploring both branches of the tree
 
-				float node_importance_left	= light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index],
-																							 shading_point, shading_normal);
+				float node_importance_left =
+					light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
 				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1],
 																							 shading_point, shading_normal);
 
@@ -511,8 +511,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 		bool node_split = false;
 		if (collected_split_samples < LightTreeATSSplittingMaxLightSamples && can_split)
 		{
-			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
-			node_split			= node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0;
+			float node_coherence = light_tree_ats_node_coherence(current_node, shading_point);
+			node_split			 = node_coherence < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0;
 		}
 
 		if (node_split)
