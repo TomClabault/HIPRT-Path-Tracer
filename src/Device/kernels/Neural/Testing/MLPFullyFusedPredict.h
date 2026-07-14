@@ -35,7 +35,11 @@ __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
 
 	__shared__ fp16 activations[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
 
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+	mlp.inference_wmma(input, activations);
+#else
 	mlp.inference(input, activations);
+#endif
 
 	TrainingTestMLP::OutputLayer output;
 	if (active_thread)
