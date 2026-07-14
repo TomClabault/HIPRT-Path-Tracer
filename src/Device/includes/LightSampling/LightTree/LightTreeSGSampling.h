@@ -240,7 +240,7 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 			float node_variance = light_tree_sg_node_variance(current_node, shading_point);
 			if (node_variance < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
-				// Variance threshold exceeded, exploring both branches of the tree
+				// Variance threshold not met, exploring both branches of the tree
 
 				float node_importance_left = light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index], spec_data,
 																		   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
@@ -439,7 +439,7 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 			float node_variance = light_tree_sg_node_variance(current_node, shading_point);
 			if (node_variance < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
-				// Variance threshold exceeded, exploring both branches of the tree
+				// Variance threshold not met, exploring both branches of the tree
 
 				float node_importance_left = light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index], spec_data,
 																		   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
