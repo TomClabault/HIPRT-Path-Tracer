@@ -32,11 +32,21 @@
 #define LightTreeSGDoSplitting KERNEL_OPTION_TRUE
 
 /**
- * If splitting is enabled, how many light samples, at most, per shading point
- * is allowed
+ * If this is true, light-tree splitting uses the best-first variance-reduction model instead of the
+ * original coherence-threshold model.
+ */
+#define LightTreeSGUseBestFirstSplitting KERNEL_OPTION_TRUE
+
+/**
+ * If splitting is enabled, how many light samples, at most, per shading point is allowed
  */
 #define LightTreeSGSplittingMaxLightSamples 8
 
 #endif // #ifndef __KERNELCC__
+
+/**
+ * If this is true, bounded diagnostics for best-first light-tree splitting are printed for the center pixel.
+ */
+#define LightTreeSGDebugBestFirstSplitting KERNEL_OPTION_FALSE
 
 #endif

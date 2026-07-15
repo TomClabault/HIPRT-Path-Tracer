@@ -112,6 +112,7 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_S
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE = "LightTreeSGDoSpecularImportance";
 
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING = "LightTreeSGDoSplitting";
+const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING = "LightTreeSGUseBestFirstSplitting";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeSGSplittingMaxLightSamples";
 
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
@@ -244,6 +245,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE,
 
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
+	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
 
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
@@ -380,6 +382,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE] = std::make_shared<int>(LightTreeSGDoSpecularImportance);
 
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING] = std::make_shared<int>(LightTreeSGDoSplitting);
+	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING] = std::make_shared<int>(LightTreeSGUseBestFirstSplitting);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeSGSplittingMaxLightSamples);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);

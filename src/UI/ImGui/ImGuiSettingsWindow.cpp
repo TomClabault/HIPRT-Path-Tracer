@@ -16,10 +16,10 @@
 #include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/RenderWindow.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <iostream>
-#include <algorithm>
 #include <sstream>
 
 #include "Threads/ThreadFunctions.h"
@@ -81,8 +81,7 @@ void ImGuiSettingsWindow::draw()
 	// Scene file chooser
 	{
 		std::string current_scene_filepath = m_renderer->get_scene_filepath();
-		std::string current_scene_filename = current_scene_filepath.empty() ? "None" :
-			std::filesystem::path(current_scene_filepath).filename().string();
+		std::string current_scene_filename = current_scene_filepath.empty() ? "None" : std::filesystem::path(current_scene_filepath).filename().string();
 
 		static ImGuiComboFlags scene_combo_flags = ImGuiComboFlags_HeightLarge;
 		if (ImGui::BeginCombo("Scene file", current_scene_filename.c_str(), scene_combo_flags))
@@ -104,7 +103,7 @@ void ImGuiSettingsWindow::draw()
 			// File chooser first item
 			if (ImGui::Selectable("..."))
 			{
-				const char* filters[] = { "*" };
+				const char* filters[]	= { "*" };
 				std::string custom_path = Utils::open_file_dialog(filters, 1);
 
 				if (!custom_path.empty())
@@ -3710,13 +3709,31 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 		if (do_splitting)
 		{
-			ImGui::TreePush("Split variance threshold SG tree");
+			ImGui::TreePush("SG light tree adaptive splitting tree");
 
-			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_sg.settings.light_tree_sg_splitting_variance, 0.0f, 1.0f, "%.3f",
-								   ImGuiSliderFlags_AlwaysClamp))
+			static bool use_best_first_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING);
+			if (ImGui::Checkbox("Use best-first splitting", &use_best_first_splitting))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING,
+													   use_best_first_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("User defined split threshold proposed in the paper of Conty & Kulla 2018."
-											" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+			}
+
+			if (!use_best_first_splitting)
+			{
+				ImGui::TreePush("Split variance threshold SG tree");
+
+				if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_sg.settings.light_tree_sg_splitting_variance, 0.0f, 1.0f, "%.3f",
+									   ImGuiSliderFlags_AlwaysClamp))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker(
+					"User defined split threshold proposed in the paper of Conty & Kulla 2018."
+					" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+
+				ImGui::TreePop();
+			}
 
 			static int splitting_max_light_samples_count =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES);

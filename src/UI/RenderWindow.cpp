@@ -22,9 +22,14 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// TODO SG Light tree
+//	- Fix SG light tree bad with lights behind the surface?
+//		- Can we somehow have a middle ground between ATS which doesn't have that issue and SG light tree which has better quality overall?
+//	- Fix splitting factor light trees scene depenedent
+//		- Try importance-variance based splitting factor
+//		- Introduce cost in the splitting factor because splitting as long as we reduce variance forgets about cost and we could be splitting for little gains
+//	- Fix bug in PDF replay?
 // - Fix mem leak textures reloading scene
-// - Fix SG light tree bad with lights behind the surface?
-// - Fix splitting factor light trees scene depenedent
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?
 // - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
 // - What if we select the reuse cell based on sum luminance * UCW instead of confidence?
