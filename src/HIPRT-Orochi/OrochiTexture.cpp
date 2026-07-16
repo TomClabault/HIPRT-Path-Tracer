@@ -32,7 +32,7 @@ OrochiTexture::~OrochiTexture()
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
-		oroFree(m_texture_array);
+		oroFreeArray(m_texture_array);
 }
 
 void OrochiTexture::operator=(OrochiTexture&& other) noexcept
@@ -41,7 +41,7 @@ void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
-		oroFree(m_texture_array);
+		oroFreeArray(m_texture_array);
 
 	m_texture_array = std::move(other.m_texture_array);
 	m_texture		= std::move(other.m_texture);
@@ -87,7 +87,7 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 {
 	if (m_texture_array)
 	{
-		oroFree(m_texture_array);
+		oroFreeArray(m_texture_array);
 		m_texture_array = nullptr;
 	}
 
