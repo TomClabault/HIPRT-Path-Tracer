@@ -889,6 +889,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_best_first(const HIPRT
 	unsigned int current_node_index = 0;
 	float cumulative_probability	= 1.0f;
 
+	bool inside_terminal_subtree = false;
 	while (nodes[current_node_index].triangle_count == 0)
 	{
 		const LightTreeSGNodeDevice& current_node = nodes[current_node_index];
@@ -909,8 +910,12 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_best_first(const HIPRT
 		if (next_node_importance <= 0.0f)
 			return 0.0f;
 
-		if (light_tree_sg_plan_contains_node(terminal_node_indices, terminal_node_count, current_node_index))
+		if (inside_terminal_subtree || light_tree_sg_plan_contains_node(terminal_node_indices, terminal_node_count, current_node_index))
+		{
+			inside_terminal_subtree = true;
+
 			cumulative_probability *= go_right ? 1.0f - left_probability : left_probability;
+		}
 
 		current_node_index = next_node_index;
 		current_depth++;

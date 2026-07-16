@@ -28,7 +28,8 @@ extern ImGuiLogger g_imgui_logger;
 //	- Fix splitting factor light trees scene depenedent
 //		- Try importance-variance based splitting factor
 //		- Introduce cost in the splitting factor because splitting as long as we reduce variance forgets about cost and we could be splitting for little gains
-//	- Fix bug in PDF replay?
+//	- How to reduce splitting when specular dominates? LTC Sampling + BSDF MIS (RIS incident lighting even?) should be enough for that
+//
 // - Fix mem leak textures reloading scene
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?
 // - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?

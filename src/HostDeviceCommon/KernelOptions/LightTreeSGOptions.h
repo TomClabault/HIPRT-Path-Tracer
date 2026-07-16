@@ -43,7 +43,10 @@
  */
 #define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_FALSE
 
-#define LightTreeSGUseCoefficientVariation KERNEL_OPTION_TRUE
+/**
+ * TODO remove, this is just bad variance, not good
+ */
+#define LightTreeSGUseCoefficientVariation KERNEL_OPTION_FALSE
 
 /**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed
