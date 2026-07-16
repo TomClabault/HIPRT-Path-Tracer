@@ -111,7 +111,8 @@ public:
 	static const std::string LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE;
 
 	static const std::string LIGHT_TREE_SG_DO_SPLITTING;
-	static const std::string LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING;
+	static const std::string LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL;
+	static const std::string LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE;
 	static const std::string LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES;
 
 	static const std::string ENVMAP_SAMPLING_STRATEGY;

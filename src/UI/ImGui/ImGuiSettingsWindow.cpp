@@ -2384,7 +2384,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2565,7 +2565,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3711,17 +3711,17 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		{
 			ImGui::TreePush("SG light tree adaptive splitting tree");
 
-			static bool use_best_first_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING);
-			if (ImGui::Checkbox("Use best-first splitting", &use_best_first_splitting))
+			static bool use_new_splitting_model = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL);
+			if (ImGui::Checkbox("Use new splitting model", &use_new_splitting_model))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_BEST_FIRST_SPLITTING,
-													   use_best_first_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL,
+													   use_new_splitting_model ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (!use_best_first_splitting)
+			if (!use_new_splitting_model)
 			{
 				ImGui::TreePush("Split variance threshold SG tree");
 
@@ -3731,6 +3731,23 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGuiRenderer::show_help_marker(
 					"User defined split threshold proposed in the paper of Conty & Kulla 2018."
 					" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+
+				ImGui::TreePop();
+			}
+			else
+			{
+				ImGui::TreePush("SG tree new splitting model tree");
+
+				bool split_first_candidate =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE);
+				if (ImGui::Checkbox("Always split first candidate", &split_first_candidate))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
+														   split_first_candidate ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
 
 				ImGui::TreePop();
 			}
@@ -5238,7 +5255,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

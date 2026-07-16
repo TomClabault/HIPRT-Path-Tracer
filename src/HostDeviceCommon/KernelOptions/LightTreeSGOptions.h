@@ -35,7 +35,13 @@
  * If this is true, light-tree splitting uses the best-first variance-reduction model instead of the
  * original coherence-threshold model.
  */
-#define LightTreeSGUseBestFirstSplitting KERNEL_OPTION_TRUE
+#define LightTreeSGUseNewSplittingModel KERNEL_OPTION_TRUE
+
+/**
+ * If using the new splitting model, splits the first splitting candidate instead of splitting the one that reduces variance the most according to the
+ * heuristic.
+ */
+#define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_TRUE
 
 /**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed

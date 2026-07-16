@@ -196,7 +196,7 @@ HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& nod
 	return hippt::sqrt(hippt::sqrt(1.0f / (1.0f + hippt::sqrt(variance))));
 }
 
-#if LightTreeSGUseBestFirstSplitting == KERNEL_OPTION_TRUE
+#if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(unsigned int node_index,
 															 const LightTreeSGNodeDevice& node,
@@ -384,6 +384,10 @@ HIPRT_DEVICE void light_tree_sg_build_best_first_split_plan(const LightTreeSGNod
 				best_candidate_position = candidate_position;
 				best_score				= score;
 				best_node_index			= node_index;
+
+#if LightTreeSGAlwaysSplitFirstCandidate == KERNEL_OPTION_TRUE
+				break;
+#endif
 			}
 		}
 
@@ -436,7 +440,7 @@ HIPRT_DEVICE bool light_tree_sg_plan_contains_node(const unsigned int* terminal_
 
 #endif
 
-#if LightTreeSGUseBestFirstSplitting == KERNEL_OPTION_TRUE
+#if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_emissive_triangle_light_tree_sg_best_first(
 	const HIPRTRenderData& render_data,
@@ -554,7 +558,7 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 	SGSpecularImportanceData spec_data;
 #endif
 
-#if LightTreeSGUseBestFirstSplitting == KERNEL_OPTION_TRUE
+#if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 	return sample_one_emissive_triangle_light_tree_sg_best_first(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight,
 																 alpha_x, alpha_y, rng);
 #else
@@ -822,7 +826,7 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 	}
 }
 
-#if LightTreeSGUseBestFirstSplitting == KERNEL_OPTION_TRUE
+#if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_best_first(const HIPRTRenderData& render_data,
 																	 float3_t shading_point,
@@ -917,7 +921,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	SGSpecularImportanceData spec_data;
 #endif
 
-#if LightTreeSGUseBestFirstSplitting == KERNEL_OPTION_TRUE
+#if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 	return pdf_of_emissive_triangle_light_tree_sg_best_first(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight, alpha_x,
 															 alpha_y, global_emissive_triangle_index);
 #else
