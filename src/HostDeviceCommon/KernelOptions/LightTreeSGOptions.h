@@ -55,9 +55,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-/**
- * If this is true, bounded diagnostics for best-first light-tree splitting are printed for the center pixel.
- */
-#define LightTreeSGDebugBestFirstSplitting KERNEL_OPTION_FALSE
-
 #endif

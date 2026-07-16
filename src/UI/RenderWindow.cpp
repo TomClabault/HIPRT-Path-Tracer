@@ -29,6 +29,9 @@ extern ImGuiLogger g_imgui_logger;
 //		- Try importance-variance based splitting factor
 //		- Introduce cost in the splitting factor because splitting as long as we reduce variance forgets about cost and we could be splitting for little gains
 //	- How to reduce splitting when specular dominates? LTC Sampling + BSDF MIS (RIS incident lighting even?) should be enough for that
+//	- How to approximate the PDF to gain in speed for MIS?
+//	- Implement new splitting factors and everything in ATS as well and see
+//	- Can we vary the MaxLightSamples of splitting based on NEE variance at the shading point?
 //
 // - Fix mem leak textures reloading scene
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?

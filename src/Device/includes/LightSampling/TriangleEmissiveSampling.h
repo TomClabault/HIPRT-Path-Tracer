@@ -144,19 +144,6 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 																   ray_payload.material, last_hit_primitive_index, random_number_generator);
 	}
 
-#if LightTreeSGDebugBestFirstSplitting == KERNEL_OPTION_TRUE
-	if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
-	{
-		if (hippt::is_pixel_index(render_data.render_settings.render_resolution.x / 2, render_data.render_settings.render_resolution.y / 2))
-		{
-			printf("[DEBUG-LTSG] consumed primitive=%d sample_count=%d\n", last_hit_primitive_index, DirectLightSampleCount<samplingStrategy>());
-			for (int sample_index = 0; sample_index < DirectLightSampleCount<samplingStrategy>(); sample_index++)
-				printf("[DEBUG-LTSG] consumed sample=%d triangle=%d pdf=%f\n", sample_index, light_samples[sample_index].emissive_triangle_global_index,
-					   light_samples[sample_index].pdf);
-		}
-	}
-#endif
-
 	return light_samples;
 }
 
