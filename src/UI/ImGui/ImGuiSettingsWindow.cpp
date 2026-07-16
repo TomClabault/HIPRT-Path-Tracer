@@ -3749,6 +3749,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+				bool use_coefficient_of_variation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_COEFFICIENT_VARIATION);
+				if (ImGui::Checkbox("Use coefficient of variation", &use_coefficient_of_variation))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_COEFFICIENT_VARIATION,
+														   use_coefficient_of_variation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
 				ImGui::TreePop();
 			}
 

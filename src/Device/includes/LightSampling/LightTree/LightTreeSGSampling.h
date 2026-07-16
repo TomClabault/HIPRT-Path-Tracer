@@ -189,6 +189,26 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	return variance;
 }
 
+HIPRT_DEVICE float light_tree_sg_node_coefficient_variation_2(const LightTreeSGNodeDevice& node, float3_t shading_point)
+{
+	const float distance = hippt::length(shading_point - node.gaussian_spatial_mean);
+
+	const float a = hippt::max(distance - node.bounding_sphere_radius, 1.0e-3f);
+	const float b = distance + node.bounding_sphere_radius;
+
+	const float mean_geometric = 1.0f / (a * b);
+
+	const float raw_mean	 = float(node.total_emitter_count) * node.get_energy_average() * mean_geometric;
+	const float raw_variance = hippt::max(light_tree_sg_node_raw_variance(node, shading_point), 0.0f);
+
+	const float mean_squared = raw_mean * raw_mean;
+
+	if (!hippt::is_finite(raw_variance) || !hippt::is_finite(mean_squared))
+		return 0.0f;
+
+	return raw_variance / hippt::max(mean_squared, 1.0e-20f);
+}
+
 HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
 	float variance = light_tree_sg_node_raw_variance(node, shading_point);
@@ -223,7 +243,6 @@ HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(unsigned int node_i
 	float children_variance			  = 0.0f;
 	float variance_reduction		  = 0.0f;
 	float relative_variance_reduction = 0.0f;
-	float between_child_variance	  = 0.0f;
 	float score						  = 0.0f;
 
 	if (node.triangle_count != 0)
@@ -246,31 +265,44 @@ HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(unsigned int node_i
 
 	if (rejection_reason == 0)
 	{
-		const float importance_sum = left_importance + right_importance;
-		const float q_left		   = left_importance / importance_sum;
-		const float q_right		   = right_importance / importance_sum;
+#if LightTreeSGUseCoefficientVariation == KERNEL_OPTION_TRUE
+		float q_left  = left_importance / (left_importance + right_importance);
+		float q_right = 1.0f - q_left;
 
-		const float variance_left  = hippt::max(light_tree_sg_node_raw_variance(left_child, shading_point), 0.0f);
-		const float variance_right = hippt::max(light_tree_sg_node_raw_variance(right_child, shading_point), 0.0f);
+		float left_cv2	= light_tree_sg_node_coefficient_variation_2(left_child, shading_point);
+		float right_cv2 = light_tree_sg_node_coefficient_variation_2(right_child, shading_point);
 
-		const float variance_reduction = variance_left * (q_right / q_left) + variance_right * (q_left / q_right);
-		const float unsplit_variance   = variance_left / q_left + variance_right / q_right;
+		float left_variance	 = hippt::square(left_importance) * left_cv2;
+		float right_variance = hippt::square(right_importance) * right_cv2;
 
-		const float relative_reduction = variance_reduction / hippt::max(unsplit_variance, 1.0e-20f);
+		score = left_variance * (q_right / q_left) + right_variance * (q_left / q_right);
+#else
+		float importance_sum = left_importance + right_importance;
+		float q_left		 = left_importance / importance_sum;
+		float q_right		 = right_importance / importance_sum;
+
+		float variance_left	 = hippt::max(light_tree_sg_node_raw_variance(left_child, shading_point), 0.0f);
+		float variance_right = hippt::max(light_tree_sg_node_raw_variance(right_child, shading_point), 0.0f);
+
+		float variance_reduction = variance_left * (q_right / q_left) + variance_right * (q_left / q_right);
+		float unsplit_variance	 = variance_left / q_left + variance_right / q_right;
+
+		float relative_reduction = variance_reduction / hippt::max(unsplit_variance, 1.0e-20f);
 
 		// Use the children's local contribution estimate. The aggregate parent SG
 		// importance is not additive and can differ greatly from IL + IR.
-		const float local_importance = importance_sum;
+		float local_importance = importance_sum;
 
 		score = hippt::square(local_importance) * relative_reduction;
+#endif
 	}
 
 #if LightTreeSGDebugBestFirstSplitting == KERNEL_OPTION_TRUE
 	if (debug_logging && node_index == 0)
 		printf("[DEBUG-LTSG] root_score node=%u importance=%f child_imp=(%f,%f) q=(%f,%f) raw_var=(%f,%f,%f) children_var=%f reduction=%f relative=%f "
-			   "between=%f score=%f reason=%d\n",
+			   "score=%f reason=%d\n",
 			   node_index, node_importance, left_importance, right_importance, left_probability, right_probability, parent_variance, left_variance,
-			   right_variance, children_variance, variance_reduction, relative_variance_reduction, between_child_variance, score, rejection_reason);
+			   right_variance, children_variance, variance_reduction, relative_variance_reduction, score, rejection_reason);
 #endif
 
 	return score;
@@ -385,7 +417,7 @@ HIPRT_DEVICE void light_tree_sg_build_best_first_split_plan(const LightTreeSGNod
 				best_score				= score;
 				best_node_index			= node_index;
 
-#if LightTreeSGAlwaysSplitFirstCandidate == KERNEL_OPTION_TRUE
+#if LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate == KERNEL_OPTION_TRUE
 				break;
 #endif
 			}

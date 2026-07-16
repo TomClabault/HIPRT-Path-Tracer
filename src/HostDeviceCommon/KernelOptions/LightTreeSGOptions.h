@@ -41,7 +41,9 @@
  * If using the new splitting model, splits the first splitting candidate instead of splitting the one that reduces variance the most according to the
  * heuristic.
  */
-#define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_TRUE
+#define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_FALSE
+
+#define LightTreeSGUseCoefficientVariation KERNEL_OPTION_TRUE
 
 /**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed
