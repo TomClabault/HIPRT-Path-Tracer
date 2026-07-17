@@ -63,6 +63,26 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		// abs() here to allow backfacing light sources
 		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
 
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+		if (dot_light_source <= 0.0f && light_tree_debug_pixel())
+		{
+			const float point_pdf					 = 1.0f / light_sample.light_area;
+			const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
+			const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+			printf("[DI-RESULT] algo=SG light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
+				   "estimator_rgb=(0,0,0) "
+				   "estimator_lum=0\n",
+				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#else
+			printf("[DI-RESULT] algo=ATS light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
+				   "estimator_rgb=(0,0,0) "
+				   "estimator_lum=0\n",
+				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#endif
+		}
+#endif
+
 		if (dot_light_source > 0.0f)
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
@@ -70,6 +90,24 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 															   nee_plus_plus_context, random_number_generator);
+
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+			if (in_shadow && light_tree_debug_pixel())
+			{
+				const float point_pdf					 = 1.0f / light_sample.light_area;
+				const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
+				const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+				printf("[DI-RESULT] algo=SG light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
+					   "estimator_lum=0\n",
+					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#else
+				printf("[DI-RESULT] algo=ATS light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
+					   "estimator_lum=0\n",
+					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#endif
+			}
+#endif
 
 			if (!in_shadow)
 			{
@@ -93,9 +131,29 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
 					if (light_sample_solid_angle_pdf > 0.0f)
 					{
-						float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-						light_source_radiance +=
-							light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
+						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
+						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						light_source_radiance += estimator;
+
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+						if (light_tree_debug_pixel())
+						{
+							const float point_pdf = 1.0f / light_sample.light_area;
+							const float tree_pdf  = light_sample.area_measure_pdf / point_pdf;
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+							printf("[DI-RESULT] algo=SG light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
+								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
+								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
+								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
+#else
+							printf("[DI-RESULT] algo=ATS light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
+								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
+								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
+								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
+#endif
+						}
+#endif
 
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);

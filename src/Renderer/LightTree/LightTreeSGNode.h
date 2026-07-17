@@ -41,6 +41,10 @@ struct LightTreeSGNode
 	float3_t mean_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float total_power  = 0.0f;
 
+	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
+	// Orientation cone angle
+	float theta_o = 0.0f;
+
 	AABB bounds;
 
 	VMF vmf;

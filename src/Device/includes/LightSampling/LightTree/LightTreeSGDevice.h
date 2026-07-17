@@ -24,11 +24,15 @@ struct LightTreeSGNodeDevice
 	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
 	float gaussian_spatial_variance = 0.0f;
 
+	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
+	// Orientation cone angle
+	float cos_theta_o = 0.0f;
+	float sin_theta_o = 0.0f;
+
 	float bounding_sphere_radius = 0.0f;
 
 	// This contains a baked in division by SG_integral(node.vmf.sharpness)
-	float total_power = 0.0f;
-
+	float total_power				 = 0.0f;
 	float energy_variance			 = 0.0f;
 	float energy_average			 = 0.0f;
 	unsigned int total_emitter_count = 0;
@@ -36,11 +40,10 @@ struct LightTreeSGNodeDevice
 	// If triangle count is 0, this contains the left child index
 	// If triangle count is > 0, this is the first triangle index in the leaf node
 	unsigned int left_child_index_or_first_triangle_index;
-
 	unsigned int triangle_count;
 
-	/*float3_t bounds_min;
-	float3_t bounds_max;*/
+	float3_t bounds_min;
+	float3_t bounds_max;
 };
 
 struct LightTreeSGDevice

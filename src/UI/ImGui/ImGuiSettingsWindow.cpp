@@ -3697,6 +3697,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Sampling");
 
+		bool use_max_emitter_cosine = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_MAX_EMITTER_COSINE);
+		if (ImGui::Checkbox("Use max emitter cosine", &use_max_emitter_cosine))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_MAX_EMITTER_COSINE,
+												   use_max_emitter_cosine ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
 		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
 		if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
 		{

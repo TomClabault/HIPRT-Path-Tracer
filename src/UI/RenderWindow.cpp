@@ -32,6 +32,11 @@ extern ImGuiLogger g_imgui_logger;
 //	- How to approximate the PDF to gain in speed for MIS?
 //	- Implement new splitting factors and everything in ATS as well and see
 //	- Can we vary the MaxLightSamples of splitting based on NEE variance at the shading point?
+//	- How to reduce splitting intensity where variance is very low in the scene (back of the couch in the white room)
+//  - Max optimize SG tree
+//	- Can we do even better than SG-ATS hybrid while maybe more expensive
+//	- Compare current tree against best theoretical: where is the gap?
+//	- How to make splitting work with higher tree arity?
 //
 // - Fix mem leak textures reloading scene
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?

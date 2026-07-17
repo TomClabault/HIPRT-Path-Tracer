@@ -58,6 +58,76 @@ struct SGSpecularImportanceData
 	float2_t projected_roughness_2;
 };
 
+struct SGImportanceDebug
+{
+	float squared_distance;
+	float emitter_facing;
+	float spatial_variance;
+	float sharpness_clamp_variance;
+	float final_variance;
+	float emissive;
+	float light_sharpness;
+	float product_log_amplitude;
+	float product_sharpness;
+	float product_cosine;
+	float amplitude;
+	float diffuse_integral;
+	float final_importance;
+	float max_corner_dot;
+};
+
+HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDevice& node, float3_t shading_point)
+{
+#if LightTreeSGUseMaxEmitterCosine == KERNEL_OPTION_FALSE
+	return 1.0f;
+#endif
+
+	float3_t center_to_shading = shading_point - node.gaussian_spatial_mean;
+	float distance			   = hippt::length(center_to_shading);
+
+	/*
+	 * Positional direction cone.
+	 *
+	 * If the shading point lies inside the bounding sphere, emitters in the node may be seen in arbitrary directions. We cannot reject it.
+	 */
+	float radius = node.bounding_sphere_radius;
+	if (distance <= radius)
+		return 1.0f;
+
+	float sin_theta_u = hippt::clamp(0.0f, 1.0f, radius / distance);
+	float cos_theta_u = hippt::sqrt(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
+
+	/*
+	 * Expanded cone:
+	 *
+	 * theta_bound = theta_o + theta_u
+	 */
+	float cos_bound = node.cos_theta_o * cos_theta_u - node.sin_theta_o * sin_theta_u;
+	float sin_bound = node.sin_theta_o * cos_theta_u + node.cos_theta_o * sin_theta_u;
+
+	/*
+	 * If theta_o + theta_u >= pi, every orientation relative to the
+	 * shading point is possible.
+	 *
+	 * For angles in [0, 2*pi], negative sin indicates that the sum
+	 * passed pi. This assumes theta_o is stored in [0, pi].
+	 */
+	if (sin_bound <= 0.0f)
+		return 1.0f;
+
+	float3_t direction = center_to_shading / distance;
+	float cos_theta	   = hippt::clamp(-1.0f, 1.0f, hippt::dot(node.orientation_axis, direction));
+
+	// Query direction lies inside the expanded orientation cone.
+	if (cos_theta >= cos_bound)
+		return 1.0f;
+
+	float sin_theta = hippt::sqrt(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
+
+	// cos(theta - (theta_o + theta_u))
+	return cos_theta * cos_bound + sin_theta * sin_bound;
+}
+
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
 												 const SGSpecularImportanceData& spec_data,
 												 float3_t shading_point,
@@ -65,30 +135,43 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 												 float3_t shading_normal,
 												 float specular,
 												 float alpha_x,
-												 float alpha_y)
+												 float alpha_y,
+												 SGImportanceDebug* debug = nullptr)
 {
+	if (debug != nullptr)
+		*debug = SGImportanceDebug{};
+
 	if (node.total_power == 0.0f)
+	{
+		if (debug != nullptr)
+			debug->final_importance = 0.0f;
+
 		return 0.0f;
+	}
 
 	// Commented because too expensive (RIS 16 bistro: 38ms --> 40ms) but not massively better quality (just a little bit)
-	/*float3_t max_corner;
+	float3_t max_corner;
 	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
 	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
 	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
 
 	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
-		return 0.0f;*/
+		return 0.0f;
 
 	// Load an SG light.
-	const float3_t lightVec			  = node.gaussian_spatial_mean - shading_point;
-	const float squaredDistance		  = hippt::dot(lightVec, lightVec);
-	const float3_t to_light_direction = lightVec / hippt::sqrt(squaredDistance);
+	float3_t shading_to_node	= node.gaussian_spatial_mean - shading_point;
+	float squared_distance		= hippt::dot(shading_to_node, shading_to_node);
+	float3_t to_light_direction = shading_to_node / hippt::sqrt(squared_distance);
+	if (!DirectLightSamplingAllowBackfacingLights && light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f)
+		return 0.0f;
 
 	// Use conservative spatial variance for outliers
 	float c = hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, -to_light_direction));
 	// Clamp the variance for the numerical stability.
-	float variance = hippt::max(node.gaussian_spatial_variance, squaredDistance / SG_LIGHT_SHARPNESS_MAX);
-	variance	   = variance * (1.0f - c) + 0.5f * hippt::square(node.bounding_sphere_radius) * c;
+	float sharpness_clamp_variance = squared_distance / SG_LIGHT_SHARPNESS_MAX;
+	float initial_variance		   = hippt::max(node.gaussian_spatial_variance, sharpness_clamp_variance);
+	float variance				   = initial_variance;
+	variance					   = variance * (1.0f - c) + 0.5f * hippt::square(node.bounding_sphere_radius) * c;
 
 	// Compute the maximum emissive radiance of the SG light.
 	// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by spherical_gaussian_light.intensity.
@@ -97,19 +180,19 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	//
 	// 'emissive' should be divided by SG_integral(node.vmf.sharpness) but this is already baked in
 	// node.total_power
-	const float emissive = node.total_power / variance;
+	float emissive = node.total_power / variance;
 
 	// Compute SG sharpness for a light distribution viewed from the shading point.
-	const float light_sharpness = squaredDistance / variance;
+	float light_sharpness = squared_distance / variance;
 
 	// Light lobe given by the product of the light distribution viewed from the shading point and the directional distribution of the SG light.
-	const SGLobe lightLobe = SG_product(-node.vmf.axis, node.vmf.sharpness, to_light_direction, light_sharpness);
+	SGLobe lightLobe = SG_product(-node.vmf.axis, node.vmf.sharpness, to_light_direction, light_sharpness);
 
 	// Diffuse SG lighting.
 	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 4]
-	const float amplitude			 = hippt::intrin_expf(lightLobe.logAmplitude);
-	const float cosine				 = hippt::clamp(-1.0f, 1.0f, hippt::dot(lightLobe.axis, shading_normal));
-	const float diffuse_illumination = amplitude * SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
+	float amplitude			   = hippt::intrin_expf(lightLobe.logAmplitude);
+	float cosine			   = hippt::clamp(-1.0f, 1.0f, hippt::dot(lightLobe.axis, shading_normal));
+	float diffuse_illumination = amplitude * SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
 
 	float specular_illumination = 0.0f;
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
@@ -117,24 +200,23 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	{
 		// Glossy SG lighting.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5]
-		const float light_lobe_variance = 1.0f / lightLobe.sharpness;
-		const float2x2 filtered_proj_roughness_mat =
+		float light_lobe_variance = 1.0f / lightLobe.sharpness;
+		float2x2 filtered_proj_roughness_mat =
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		// Compute the determinant of JJ^T without catastrophic cancellation.
-		const float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z); // = 4 * determiant(JJ^T).
+		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z); // = 4 * determiant(JJ^T).
 		// Compute the determinant of filtered_proj_roughness_mat in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
-		const float det =
-			spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
-			2.0f * light_lobe_variance *
-				(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
-			light_lobe_variance * light_lobe_variance * det_JJ4;
+		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+					2.0f * light_lobe_variance *
+						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
+					light_lobe_variance * light_lobe_variance * det_JJ4;
 
 		// NDF filtering in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
-		const float tr = filtered_proj_roughness_mat.m[0][0] + filtered_proj_roughness_mat.m[1][1];
-		const float2x2 filtered_roughness_matrix =
+		float tr = filtered_proj_roughness_mat.m[0][0] + filtered_proj_roughness_mat.m[1][1];
+		float2x2 filtered_roughness_matrix =
 			hippt::is_finite(1.0f + tr + det) ? hippt::min(filtered_proj_roughness_mat + float2x2(det, 0.0f, 0.0f, det), hippt::FLOAT_MAX) / (1.0f + tr + det)
 											  : float2x2(hippt::min(filtered_proj_roughness_mat.m[0][0], hippt::FLOAT_MAX) /
 															 hippt::min(filtered_proj_roughness_mat.m[0][0] + 1.0f, hippt::FLOAT_MAX),
@@ -143,19 +225,19 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 															 hippt::min(filtered_proj_roughness_mat.m[1][1] + 1.0f, hippt::FLOAT_MAX));
 
 		// Evaluate the filtered reflection lobe.
-		const float3_t half_vector_unormalized = spec_data.wi + world_to_local_frame(spec_data.T, spec_data.B, shading_normal, lightLobe.axis);
-		const float3_t half_vector			   = half_vector_unormalized / hippt::max(hippt::length(half_vector_unormalized), hippt::FLOAT_MIN);
-		const float pdf						   = SGGX_reflection_PDF(spec_data.wi, half_vector, filtered_roughness_matrix);
+		float3_t half_vector_unormalized = spec_data.wi + world_to_local_frame(spec_data.T, spec_data.B, shading_normal, lightLobe.axis);
+		float3_t half_vector			 = half_vector_unormalized / hippt::max(hippt::length(half_vector_unormalized), hippt::FLOAT_MIN);
+		float pdf						 = SGGX_reflection_PDF(spec_data.wi, half_vector, filtered_roughness_matrix);
 
-		const float3_t dominant_normal =
+		float3_t dominant_normal =
 			local_to_world_frame(spec_data.T, spec_data.B, shading_normal, GGX_dominant_visible_normal(spec_data.wi, make_float2(alpha_x, alpha_y)));
-		const float3_t reflection_vector = reflect_ray(view_direction, dominant_normal) * spec_data.reflection_sharpness;
+		float3_t reflection_vector = reflect_ray(view_direction, dominant_normal) * spec_data.reflection_sharpness;
 
 		// Visibility of the SG light in the upper hemisphere.
-		const float3_t product_vector	 = reflection_vector + lightLobe.axis * lightLobe.sharpness; // Axis of the SG product lobe.
-		const float product_sharpness	 = hippt::length(product_vector);
-		const float3_t product_direction = product_vector / product_sharpness;
-		const float visibility			 = VMF_hemispherical_integral(hippt::dot(product_direction, shading_normal), product_sharpness);
+		float3_t product_vector	   = reflection_vector + lightLobe.axis * lightLobe.sharpness; // Axis of the SG product lobe.
+		float product_sharpness	   = hippt::length(product_vector);
+		float3_t product_direction = product_vector / product_sharpness;
+		float visibility		   = VMF_hemispherical_integral(hippt::dot(product_direction, shading_normal), product_sharpness);
 
 		// Eq. 12 of the paper.
 		specular_illumination = amplitude * visibility * pdf * SG_integral(lightLobe.sharpness);
@@ -163,7 +245,32 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 #endif
 
 	// Finally, we multiply the common SG-light coefficient.
-	return emissive * (diffuse_illumination + specular * specular_illumination);
+	float final_importance = emissive * (diffuse_illumination + specular * specular_illumination);
+	if (debug != nullptr)
+	{
+		debug->squared_distance			= squared_distance;
+		debug->emitter_facing			= hippt::dot(node.vmf.axis, -to_light_direction);
+		debug->spatial_variance			= node.gaussian_spatial_variance;
+		debug->sharpness_clamp_variance = sharpness_clamp_variance;
+		debug->final_variance			= variance;
+		debug->emissive					= emissive;
+		debug->light_sharpness			= light_sharpness;
+		debug->product_log_amplitude	= lightLobe.logAmplitude;
+		debug->product_sharpness		= lightLobe.sharpness;
+		debug->product_cosine			= cosine;
+		debug->amplitude				= amplitude;
+		debug->diffuse_integral			= SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
+		debug->final_importance			= final_importance;
+
+		float3_t max_corner;
+		max_corner.x		  = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+		max_corner.y		  = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+		max_corner.z		  = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+		float max_corner_dot  = hippt::dot(max_corner - shading_point, shading_normal);
+		debug->max_corner_dot = max_corner_dot;
+	}
+
+	return final_importance;
 }
 
 #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE
@@ -987,8 +1094,14 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 																			Xorshift32Generator& rng)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	const bool debug				   = false; // light_tree_debug_pixel();
 
-	LightTreeSGNodeDevice current_node = nodes[0];
+	if (debug)
+		printf("[LT-BEGIN] algo=SG P=(%.9g,%.9g,%.9g) Ns=(%.9g,%.9g,%.9g) Ng=(%.9g,%.9g,%.9g)\n", shading_point.x, shading_point.y, shading_point.z,
+			   shading_normal.x, shading_normal.y, shading_normal.z, geometric_normal.x, geometric_normal.y, geometric_normal.z);
+
+	unsigned int current_node_index = 0;
+	unsigned int depth				= 0;
 
 	float material_specular_weight =
 		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
@@ -1010,41 +1123,91 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 #endif
 
 	float cumulative_probability = 1.0f;
-	while (current_node.triangle_count == 0)
+	while (nodes[current_node_index].triangle_count == 0)
 	{
-		LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
-		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+		const LightTreeSGNodeDevice& current_node = nodes[current_node_index];
+		const unsigned int left_index			  = current_node.left_child_index_or_first_triangle_index;
+		const unsigned int right_index			  = left_index + 1;
+		const LightTreeSGNodeDevice& left_child	  = nodes[left_index];
+		const LightTreeSGNodeDevice& right_child  = nodes[right_index];
+		SGImportanceDebug left_debug{};
+		SGImportanceDebug right_debug{};
 
-		float left_importance =
-			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-		float right_importance =
-			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-		if (left_importance == 0.0f && right_importance == 0.0f)
-			return LightSampleArray<1>{ LightSampleInformation() };
-
-		float p_left = left_importance / (left_importance + right_importance);
-
-		if (rng() < p_left)
+		float left_importance = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x,
+															  alpha_y, debug ? &left_debug : nullptr);
+		float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight,
+															   alpha_x, alpha_y, debug ? &right_debug : nullptr);
+		if (debug)
 		{
-			current_node = left_child;
+			printf("[SG-NODE] depth=%u side=L node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
+				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
+				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g spatial_var=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g light_kappa=%.9g "
+				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
+				   depth, left_index, left_child.total_power, left_child.total_emitter_count, left_child.gaussian_spatial_mean.x,
+				   left_child.gaussian_spatial_mean.y, left_child.gaussian_spatial_mean.z, left_child.bounding_sphere_radius, left_child.vmf.axis.x,
+				   left_child.vmf.axis.y, left_child.vmf.axis.z, left_child.orientation_axis.x, left_child.orientation_axis.y, left_child.orientation_axis.z,
+				   left_child.vmf.sharpness, left_debug.squared_distance, left_debug.max_corner_dot, left_debug.emitter_facing, left_debug.spatial_variance,
+				   left_debug.sharpness_clamp_variance, left_debug.final_variance, left_debug.emissive, left_debug.light_sharpness,
+				   left_debug.product_log_amplitude, left_debug.product_sharpness, left_debug.product_cosine, left_debug.amplitude, left_debug.diffuse_integral,
+				   left_debug.final_importance);
+			printf("[SG-NODE] depth=%u side=R node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
+				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
+				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g spatial_var=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g light_kappa=%.9g "
+				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
+				   depth, right_index, right_child.total_power, right_child.total_emitter_count, right_child.gaussian_spatial_mean.x,
+				   right_child.gaussian_spatial_mean.y, right_child.gaussian_spatial_mean.z, right_child.bounding_sphere_radius, right_child.vmf.axis.x,
+				   right_child.vmf.axis.y, right_child.vmf.axis.z, right_child.orientation_axis.x, right_child.orientation_axis.y,
+				   right_child.orientation_axis.z, right_child.vmf.sharpness, right_debug.squared_distance, right_debug.max_corner_dot,
+				   right_debug.emitter_facing, right_debug.spatial_variance, right_debug.sharpness_clamp_variance, right_debug.final_variance,
+				   right_debug.emissive, right_debug.light_sharpness, right_debug.product_log_amplitude, right_debug.product_sharpness,
+				   right_debug.product_cosine, right_debug.amplitude, right_debug.diffuse_integral, right_debug.final_importance);
+		}
+		if (left_importance == 0.0f && right_importance == 0.0f)
+		{
+			if (debug)
+				printf("[LT-ERROR] algo=SG depth=%u node=%u reason=both_children_zero\n", depth, current_node_index);
+
+			return LightSampleArray<1>{ LightSampleInformation() };
+		}
+
+		float p_left				  = left_importance / (left_importance + right_importance);
+		const float cumulative_before = cumulative_probability;
+		const float u				  = rng();
+		const bool choose_left		  = u < p_left;
+		if (debug)
+			printf("[LT-STEP] algo=SG depth=%u node=%u left=%u right=%u triangles=(%u,%u) emitters=(%u,%u) I=(%.9g,%.9g) pL=%.9g u=%.9g choice=%c "
+				   "cum_before=%.9g cum_after=%.9g\n",
+				   depth, current_node_index, left_index, right_index, left_child.triangle_count, right_child.triangle_count, left_child.total_emitter_count,
+				   right_child.total_emitter_count, left_importance, right_importance, p_left, u, choose_left ? 'L' : 'R', cumulative_before,
+				   cumulative_before * (choose_left ? p_left : 1.0f - p_left));
+
+		if (choose_left)
+		{
+			current_node_index = left_index;
 
 			cumulative_probability *= p_left;
 		}
 		else
 		{
-			current_node = right_child;
+			current_node_index = right_index;
 
 			cumulative_probability *= 1.0f - p_left;
 		}
+
+		depth++;
 	}
 
-	int index					= current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
-	int triangle_index			= render_data.light_tree_sg.indices_array[index];
-	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
+	const LightTreeSGNodeDevice& current_node = nodes[current_node_index];
+	int index								  = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
+	int triangle_index						  = render_data.light_tree_sg.indices_array[index];
+	int emissive_triangle_index				  = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample;
 	light_sample.emissive_triangle_global_index = emissive_triangle_index;
 	light_sample.pdf							= cumulative_probability * (1.0f / current_node.triangle_count); // PDF of sampling that triangle in that node
+	if (debug)
+		printf("[LT-END] algo=SG depth=%u leaf=%u triangle_count=%u local_slot=%d triangle_index=%d emissive_global=%d cumulative=%.9g final_pdf=%.9g\n", depth,
+			   current_node_index, current_node.triangle_count, index, triangle_index, emissive_triangle_index, cumulative_probability, light_sample.pdf);
 
 	return LightSampleArray<1>{ light_sample };
 }

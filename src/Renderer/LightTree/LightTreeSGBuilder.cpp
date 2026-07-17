@@ -53,8 +53,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		left_weight	 = left_node.total_power / (left_node.total_power + right_node.total_power);
 		right_weight = right_node.total_power / (left_node.total_power + right_node.total_power);
 
-		sg_node.mean_axis	= left_weight * left_node.mean_axis + right_weight * right_node.mean_axis;
-		sg_node.total_power = left_node.total_power + right_node.total_power;
+		sg_node.orientation_axis = ats_node.orientation_data.axis;
+		sg_node.theta_o			 = ats_node.orientation_data.theta_o;
+		sg_node.mean_axis		 = left_weight * left_node.mean_axis + right_weight * right_node.mean_axis;
+		sg_node.total_power		 = left_node.total_power + right_node.total_power;
 		sg_node.bounds.extend(left_node.bounds);
 		sg_node.bounds.extend(right_node.bounds);
 		sg_node.spatial_mean	 = left_weight * left_node.spatial_mean + right_weight * right_node.spatial_mean;
@@ -178,6 +180,8 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.triangle_count		   = valid_triangle_count;
 		sg_node.first_triangle_index   = ats_node.first_triangle_index;
 		sg_node.bounding_sphere_radius = bounding_sphere_radius;
+		sg_node.orientation_axis	   = ats_node.orientation_data.axis;
+		sg_node.theta_o				   = ats_node.orientation_data.theta_o;
 	}
 }
 

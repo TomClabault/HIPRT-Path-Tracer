@@ -29,7 +29,7 @@
  * If this is true, adaptive tree splitting will be used as described in section 5.4 of
  * [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla 2018]
  */
-#define LightTreeSGDoSplitting KERNEL_OPTION_TRUE
+#define LightTreeSGDoSplitting KERNEL_OPTION_FALSE
 
 /**
  * If this is true, light-tree splitting uses the best-first variance-reduction model instead of the
@@ -47,6 +47,8 @@
  * TODO remove, this is just bad variance, not good
  */
 #define LightTreeSGUseCoefficientVariation KERNEL_OPTION_FALSE
+
+#define LightTreeSGUseMaxEmitterCosine KERNEL_OPTION_TRUE
 
 /**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed
