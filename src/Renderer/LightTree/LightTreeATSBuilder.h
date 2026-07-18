@@ -99,7 +99,7 @@ private:
 	std::vector<LightTreeATSNode> m_nodes;
 
 	std::vector<PrefetchedTriangle> m_prefetched_triangles;
-	std::vector<int> m_triangle_indices;	// Indices of the emissive triangles from 0 to N - 1
+	std::vector<int> m_triangle_indices;	// Original emissive-list indices of non-degenerate triangles
 	std::vector<unsigned int> m_bit_trails; // Indices of the emissive triangles from 0 to N - 1
 };
 

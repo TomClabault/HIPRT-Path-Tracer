@@ -17,8 +17,8 @@
 
 #ifndef LIGHT_TREE_DEBUG_PIXEL_HELPER
 #define LIGHT_TREE_DEBUG_PIXEL_HELPER
-#define LT_DEBUG_X 758
-#define LT_DEBUG_Y 692 - 1 - 234
+#define LT_DEBUG_X 1201
+#define LT_DEBUG_Y 692 - 1 - 85
 
 HIPRT_DEVICE bool light_tree_debug_pixel()
 {

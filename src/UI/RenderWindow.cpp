@@ -37,6 +37,9 @@ extern ImGuiLogger g_imgui_logger;
 //	- Can we do even better than SG-ATS hybrid while maybe more expensive
 //	- Compare current tree against best theoretical: where is the gap?
 //	- How to make splitting work with higher tree arity?
+//	- Updating the formula of the bounding sphere helped a lot but can we do even better?
+//	- Still one SG tree inefficiency in minecraft harbor
+//	- VMF mixture per each node instead of just one VMF?
 //
 // - Fix mem leak textures reloading scene
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?

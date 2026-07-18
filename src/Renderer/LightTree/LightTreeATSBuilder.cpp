@@ -35,9 +35,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	m_current_node_index = std::make_shared<std::atomic<unsigned int>>(0);
 	m_max_tree_depth	 = std::make_shared<std::atomic<unsigned int>>(0);
 
-	m_nodes.resize(emissive_triangles_primitive_indices.size() * 2 - 1);
 	m_triangle_indices.resize(emissive_triangles_primitive_indices.size());
-	m_bit_trails.resize(emissive_triangles_primitive_indices.size(), 0u);
 	std::iota(m_triangle_indices.begin(), m_triangle_indices.end(), 0);
 
 	m_prefetched_triangles.resize(emissive_triangles_primitive_indices.size());
@@ -53,7 +51,8 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		float triangle_area		 = 0.0f;
 		if (normal_length > TriangleSamplingNormalLengthRejectionThreshold)
 			triangle_area = normal_length * 0.5f;
-		triangle_normal /= normal_length;
+		if (normal_length > 0.0f)
+			triangle_normal /= normal_length;
 
 		m_prefetched_triangles[i].bounds.extend(v0);
 		m_prefetched_triangles[i].bounds.extend(v1);
@@ -67,12 +66,33 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		m_prefetched_triangles[i].power = triangles_average_emissive_power_luminance[global_triangle_index];
 	}
 
+	unsigned int valid_triangle_count = 0;
+	for (unsigned int emissive_triangle_index = 0; emissive_triangle_index < emissive_triangles_primitive_indices.size(); emissive_triangle_index++)
+	{
+		if (m_prefetched_triangles[emissive_triangle_index].area == 0.0f)
+			continue;
+
+		m_triangle_indices[valid_triangle_count++] = emissive_triangle_index;
+	}
+
+	m_triangle_indices.resize(valid_triangle_count);
+	m_bit_trails.resize(valid_triangle_count, 0u);
+	m_nodes.resize(valid_triangle_count == 0 ? 0 : valid_triangle_count * 2 - 1);
+	if (valid_triangle_count == 0)
+	{
+		auto stop = std::chrono::high_resolution_clock::now();
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms",
+								std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+
+		return;
+	}
+
 	m_current_node_index->store(0);
 
 	LightTreeATSNode& root	  = m_nodes[*m_current_node_index];
 	root.left_child_index	  = 0;
 	root.first_triangle_index = 0;
-	root.triangle_count		  = (unsigned int)emissive_triangles_primitive_indices.size();
+	root.triangle_count		  = valid_triangle_count;
 
 	update_node_bounds(*m_current_node_index, triangles_data);
 	subdivide_node((*m_current_node_index)++, triangles_data, 0);

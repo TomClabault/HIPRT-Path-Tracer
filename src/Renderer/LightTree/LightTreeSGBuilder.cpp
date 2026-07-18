@@ -14,6 +14,8 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 											  vertices_positions);
 
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
+	if (m_nodes.empty())
+		return;
 
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 }
@@ -104,18 +106,15 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		float3_t sum_positions		= make_float3(0.0f, 0.0f, 0.0f);
 		float sum_positions_squared = 0.0f;
 
-		float single_triangle_variance	  = 0.0f;
-		double sum_energy				  = 0.0;
-		double sum_energy_squared		  = 0.0;
-		unsigned int valid_triangle_count = 0;
+		float single_triangle_variance = 0.0f;
+		double sum_energy			   = 0.0;
+		double sum_energy_squared	   = 0.0;
+		unsigned int triangle_count	   = ats_node.triangle_count;
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
 			int emissive_triangle_index = m_light_tree_ats_builder.bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 			const LightTreeATSBuilder::PrefetchedTriangle& triangle = prefetched_triangles[emissive_triangle_index];
-			if (triangle.area == 0.0f)
-				// Degenerate triangle
-				continue;
 
 			float3_t p0 = triangle_data.vertices_positions
 							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
@@ -138,12 +137,11 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 			sum_energy += triangle.power;
 			sum_energy_squared += hippt::square(triangle.power);
-			valid_triangle_count++;
 		}
 
-		sg_node.total_emitter_count = valid_triangle_count;
+		sg_node.total_emitter_count = triangle_count;
 
-		if (valid_triangle_count == 0)
+		if (triangle_count == 0)
 			return;
 		else if (sg_node.total_power == 0.0f)
 			return;
@@ -151,13 +149,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sum_positions /= sg_node.total_power;
 		sum_positions_squared /= sg_node.total_power;
 
-		sg_node.energy_average = sum_energy / valid_triangle_count;
-		sg_node.energy_variance =
-			hippt::max(0.0f, static_cast<float>(sum_energy_squared / valid_triangle_count - hippt::square(sum_energy / valid_triangle_count)));
+		sg_node.energy_average	= sum_energy / triangle_count;
+		sg_node.energy_variance = hippt::max(0.0f, static_cast<float>(sum_energy_squared / triangle_count - hippt::square(sum_energy / triangle_count)));
 
 		sg_node.mean_axis /= sg_node.total_power;
 		sg_node.spatial_mean = sum_positions;
-		if (valid_triangle_count == 1)
+		if (triangle_count == 1)
 			sg_node.spatial_variance = single_triangle_variance;
 		else
 			sg_node.spatial_variance = sum_positions_squared - hippt::dot(sg_node.spatial_mean, sg_node.spatial_mean);
@@ -168,9 +165,6 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
 			int emissive_triangle_index = m_light_tree_ats_builder.bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 			const LightTreeATSBuilder::PrefetchedTriangle& triangle = prefetched_triangles[emissive_triangle_index];
-			if (triangle.area == 0.0f)
-				// Degenerate triangle
-				continue;
 
 			float3_t p0 = triangle_data.vertices_positions
 							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
@@ -190,7 +184,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		// Computes vMF parameters with the mean axis (normalized by the function)
 		sg_node.compute_vmf();
-		sg_node.triangle_count		   = valid_triangle_count;
+		sg_node.triangle_count		   = triangle_count;
 		sg_node.first_triangle_index   = ats_node.first_triangle_index;
 		sg_node.bounding_sphere_radius = bounding_sphere_radius;
 		sg_node.orientation_axis	   = ats_node.orientation_data.axis;
