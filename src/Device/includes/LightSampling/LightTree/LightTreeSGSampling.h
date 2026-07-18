@@ -296,26 +296,6 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	return variance;
 }
 
-HIPRT_DEVICE float light_tree_sg_node_coefficient_variation_2(const LightTreeSGNodeDevice& node, float3_t shading_point)
-{
-	const float distance = hippt::length(shading_point - node.gaussian_spatial_mean);
-
-	const float a = hippt::max(distance - node.bounding_sphere_radius, 1.0e-3f);
-	const float b = distance + node.bounding_sphere_radius;
-
-	const float mean_geometric = 1.0f / (a * b);
-
-	const float raw_mean	 = float(node.total_emitter_count) * node.get_energy_average() * mean_geometric;
-	const float raw_variance = hippt::max(light_tree_sg_node_raw_variance(node, shading_point), 0.0f);
-
-	const float mean_squared = raw_mean * raw_mean;
-
-	if (!hippt::is_finite(raw_variance) || !hippt::is_finite(mean_squared))
-		return 0.0f;
-
-	return raw_variance / hippt::max(mean_squared, 1.0e-20f);
-}
-
 HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
 	float variance = light_tree_sg_node_raw_variance(node, shading_point);
@@ -341,18 +321,6 @@ HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(unsigned int node_i
 	float left_importance  = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 	float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 
-#if LightTreeSGUseCoefficientVariation == KERNEL_OPTION_TRUE
-	float q_left  = left_importance / (left_importance + right_importance);
-	float q_right = 1.0f - q_left;
-
-	float left_cv2	= light_tree_sg_node_coefficient_variation_2(left_child, shading_point);
-	float right_cv2 = light_tree_sg_node_coefficient_variation_2(right_child, shading_point);
-
-	float left_variance	 = hippt::square(left_importance) * left_cv2;
-	float right_variance = hippt::square(right_importance) * right_cv2;
-
-	float score = left_variance * (q_right / q_left) + right_variance * (q_left / q_right);
-#else
 	float importance_sum = left_importance + right_importance;
 	float q_left		 = left_importance / importance_sum;
 	float q_right		 = right_importance / importance_sum;
@@ -370,7 +338,6 @@ HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(unsigned int node_i
 	float local_importance = importance_sum;
 
 	float score = hippt::square(local_importance) * relative_reduction;
-#endif
 
 	return score;
 }

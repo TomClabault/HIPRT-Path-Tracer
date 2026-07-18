@@ -114,7 +114,6 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORT
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING = "LightTreeSGDoSplitting";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL = "LightTreeSGUseNewSplittingModel";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE = "LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate";
-const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_COEFFICIENT_VARIATION = "LightTreeSGUseCoefficientVariation";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_MAX_EMITTER_COSINE = "LightTreeSGUseMaxEmitterCosine";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeSGSplittingMaxLightSamples";
 
@@ -250,7 +249,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
-	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_COEFFICIENT_VARIATION,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_MAX_EMITTER_COSINE,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
 
@@ -390,7 +388,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING] = std::make_shared<int>(LightTreeSGDoSplitting);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL] = std::make_shared<int>(LightTreeSGUseNewSplittingModel);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE] = std::make_shared<int>(LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate);
-	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_COEFFICIENT_VARIATION] = std::make_shared<int>(LightTreeSGUseCoefficientVariation);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_MAX_EMITTER_COSINE] = std::make_shared<int>(LightTreeSGUseMaxEmitterCosine);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeSGSplittingMaxLightSamples);
 

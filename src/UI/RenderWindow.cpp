@@ -23,7 +23,6 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO SG Light tree
-//	- Add a scene statistics panel in the UI, rename "Objects" as "Scene"
 //	- Fix SG light tree bad with lights behind the surface?
 //		- Can we somehow have a middle ground between ATS which doesn't have that issue and SG light tree which has better quality overall?
 //	- Fix splitting factor light trees scene depenedent
@@ -42,7 +41,8 @@ extern ImGuiLogger g_imgui_logger;
 //	- Still one SG tree inefficiency in minecraft harbor
 //	- VMF mixture per each node instead of just one VMF?
 //
-// - Fix mem leak textures reloading scene
+//	- Add a scene statistics panel in the UI, rename "Objects" as "Scene"
+//	- Multithread app startup scene loading with kernel compilation
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?
 // - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
 // - What if we select the reuse cell based on sum luminance * UCW instead of confidence?

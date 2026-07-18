@@ -43,11 +43,6 @@
  */
 #define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_FALSE
 
-/**
- * TODO remove, this is just bad variance, not good
- */
-#define LightTreeSGUseCoefficientVariation KERNEL_OPTION_FALSE
-
 #define LightTreeSGUseMaxEmitterCosine KERNEL_OPTION_TRUE
 
 /**
