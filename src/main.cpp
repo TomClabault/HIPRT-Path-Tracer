@@ -31,8 +31,6 @@ int main(int argc, char* argv[])
 	int width  = cmd_arguments.render_width;
 	int height = cmd_arguments.render_height;
 
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Reading scene file %s...", cmd_arguments.scene_file_path.c_str());
-
 	std::chrono::high_resolution_clock::time_point start_scene, start_full;
 	std::chrono::high_resolution_clock::time_point stop_scene, stop_full;
 	Scene parsed_scene;

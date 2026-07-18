@@ -155,24 +155,27 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 	float split_position;
 	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data, m_build_options.build_split_method);
 
-	if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
+	if (m_build_options.stop_splitting_if_cost_not_worth_it || split_cost == 0.0f)
 	{
-		float no_split_cost = compute_node_cost(node);
-		if (split_cost >= no_split_cost)
+		if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
 		{
-			register_node_bit_trail(node, triangles_data);
+			float no_split_cost = compute_node_cost(node);
+			if (split_cost >= no_split_cost)
+			{
+				register_node_bit_trail(node, triangles_data);
 
-			return;
+				return;
+			}
 		}
-	}
-	else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
-	{
-		float no_split_cost_saoh = node.total_power;
-		if (no_split_cost_saoh <= split_cost || node.triangle_count <= 1)
+		else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
 		{
-			register_node_bit_trail(node, triangles_data);
+			float no_split_cost_saoh = node.total_power;
+			if (no_split_cost_saoh <= split_cost || node.triangle_count <= 1)
+			{
+				register_node_bit_trail(node, triangles_data);
 
-			return;
+				return;
+			}
 		}
 	}
 

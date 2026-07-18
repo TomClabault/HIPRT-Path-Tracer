@@ -17,7 +17,8 @@ struct LightTreeATSBuilderOptions
 	int build_split_method = LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED;
 	int bin_count		   = 64;
 
-	int cost_function = LIGHT_TREE_BUILD_COST_FUNCTION_SAOH;
+	int cost_function						 = LIGHT_TREE_BUILD_COST_FUNCTION_SAOH;
+	bool stop_splitting_if_cost_not_worth_it = false;
 
 	int max_triangles_per_leaf = 1;
 };

@@ -3563,6 +3563,23 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			ImGui::TreePop();
 		}
 
+		static bool stop_splitting_if_cost_not_worth_it = build_options.stop_splitting_if_cost_not_worth_it;
+		ImGui::Checkbox("Stop splitting if cost not worth it", &stop_splitting_if_cost_not_worth_it);
+		if (stop_splitting_if_cost_not_worth_it != build_options.stop_splitting_if_cost_not_worth_it)
+		{
+			ImGui::TreePush("Apply button stop splitting if cost not worth it");
+
+			if (ImGui::Button("Apply"))
+			{
+				build_options.stop_splitting_if_cost_not_worth_it = stop_splitting_if_cost_not_worth_it;
+
+				m_renderer->recompute_emissives_sampling_data_structure();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Sampling");
 
@@ -3676,7 +3693,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
 		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
-
 		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
 		{
 			ImGui::TreePush("Apply button triangles per leaf light tree");
@@ -3688,6 +3704,23 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 				m_renderer->recompute_emissives_sampling_data_structure();
 
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
+
+		static bool stop_splitting_if_cost_not_worth_it = build_options.stop_splitting_if_cost_not_worth_it;
+		ImGui::Checkbox("Stop splitting if cost not worth it", &stop_splitting_if_cost_not_worth_it);
+		if (stop_splitting_if_cost_not_worth_it != build_options.stop_splitting_if_cost_not_worth_it)
+		{
+			ImGui::TreePush("Apply button stop splitting if cost not worth it");
+
+			if (ImGui::Button("Apply"))
+			{
+				build_options.stop_splitting_if_cost_not_worth_it = stop_splitting_if_cost_not_worth_it;
+
+				m_renderer->recompute_emissives_sampling_data_structure();
 				m_render_window->set_render_dirty(true);
 			}
 

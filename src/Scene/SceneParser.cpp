@@ -14,8 +14,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_decompose.hpp"
 
-#include <chrono>
 #include <cctype>
+#include <chrono>
 #include <functional>
 #include <memory>
 
@@ -23,6 +23,8 @@ extern ImGuiLogger g_imgui_logger;
 
 void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Reading scene file %s...", scene_filepath.c_str());
+
 	const aiScene* scene;
 	// TODO MATERIAL DEDUPLICATION: we don't want ASSIMP::PreTransform but then this is going to duplicate materials for each mesh that use the same material
 	// We don't want the duplicate materials but we do want separate meshes that use the same material
@@ -243,7 +245,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 	assign_node_names_to_meshes = [&](aiNode* node)
 	{
 		std::string node_name = node->mName.C_Str();
-		bool node_has_name = !node_name.empty();
+		bool node_has_name	  = !node_name.empty();
 
 		for (int m = 0; m < node->mNumMeshes; m++)
 		{
@@ -476,16 +478,16 @@ void SceneParser::dispatch_texture_loading(const aiScene* assimp_scene,
 
 	// Creating a state to keep the data that the threads need alive
 	std::shared_ptr<TextureLoadingThreadState> texture_threads_state = std::make_shared<TextureLoadingThreadState>();
-	texture_threads_state->assimp_scene		  = assimp_scene;
-	texture_threads_state->scene_filepath	  = scene_path;
-	texture_threads_state->texture_paths	  = texture_paths;
-	texture_threads_state->material_indices	  = material_indices;
+	texture_threads_state->assimp_scene								 = assimp_scene;
+	texture_threads_state->scene_filepath							 = scene_path;
+	texture_threads_state->texture_paths							 = texture_paths;
+	texture_threads_state->material_indices							 = material_indices;
 
 	ThreadManager::set_thread_data(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, texture_threads_state);
 
 	for (int i = 0; i < nb_threads; i++)
-		ThreadManager::start_thread(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, ThreadFunctions::load_scene_texture, assimp_scene,
-									std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths),
+		ThreadManager::start_thread(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, ThreadFunctions::load_scene_texture, assimp_scene, std::ref(parsed_scene),
+									texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths),
 									std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 
