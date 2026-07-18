@@ -23,9 +23,9 @@ struct SGSpecularImportanceData
 
 		wi = world_to_local_frame(T, B, ws_shading_normal, ws_view_direction);
 
-		const float vlen = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
-		const float2_t v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
-		const float2x2 jacobian_matrix =
+		float vlen = hippt::sqrt(hippt::square(wi.x) + hippt::square(wi.y));
+		float2_t v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
+		float2x2 jacobian_matrix =
 			float2x2(v.x, -v.y, v.y, v.x) * float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
 
 		// Compute JJ^T for NDF filtering.
@@ -33,15 +33,15 @@ struct SGSpecularImportanceData
 
 		// Convert the roughness parameter from slope space to the orthographically projected space.
 		// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
-		const float2_t roughness_2 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
+		float2_t roughness_2 = make_float2(alpha_x * alpha_x, alpha_y * alpha_y);
 
 		// Preprocess for the lobe visibility.
 		// Approximate the reflection lobe with an SG whose axis is a dominant reflection vector.
 		// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
 		// Unlike the paper, we use a dominant visible microfacet normal instead of the shading normal to obtain the dominant reflection vector.
-		const float roughness_max_2 = hippt::max(roughness_2.x, roughness_2.y);
-		reflection_sharpness		= (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
+		float roughness_max_2 = hippt::max(roughness_2.x, roughness_2.y);
+		reflection_sharpness  = (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
 
 		projected_roughness_2 =
 			make_float2(roughness_2.x / hippt::max(1.0f - roughness_2.x, 1.0e-8f), roughness_2.y / hippt::max(1.0f - roughness_2.y, 1.0e-8f));
@@ -62,7 +62,7 @@ struct SGImportanceDebug
 {
 	float squared_distance;
 	float emitter_facing;
-	float spatial_variance;
+	float effective_spatial_variance;
 	float sharpness_clamp_variance;
 	float final_variance;
 	float emissive;
@@ -125,6 +125,18 @@ HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDe
 	return cos_theta * cos_bound + sin_theta * sin_bound;
 }
 
+HIPRT_DEVICE float light_tree_sg_node_effective_spatial_variance(const LightTreeSGNodeDevice& node, float3_t to_light_direction)
+{
+	float3_t direction_squared =
+		make_float3(to_light_direction.x * to_light_direction.x, to_light_direction.y * to_light_direction.y, to_light_direction.z * to_light_direction.z);
+
+	float trace_variance	  = node.gaussian_spatial_variance_diag.x + node.gaussian_spatial_variance_diag.y + node.gaussian_spatial_variance_diag.z;
+	float radial_variance	  = hippt::dot(node.gaussian_spatial_variance_diag, direction_squared);
+	float transverse_variance = hippt::max(0.0f, trace_variance - radial_variance);
+
+	return hippt::max(1.5f * transverse_variance, 0.1f * trace_variance);
+}
+
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
 												 const SGSpecularImportanceData& spec_data,
 												 float3_t shading_point,
@@ -166,19 +178,11 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	// Use conservative spatial variance for outliers
 	float c = hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, -to_light_direction));
 	// Clamp the variance for the numerical stability.
-	float sharpness_clamp_variance = squared_distance / SG_LIGHT_SHARPNESS_MAX;
-	float spatial_variance		   = node.gaussian_spatial_variance;
-#if LightTreeSGUseDiagonalSpatialVariance == KERNEL_OPTION_TRUE
-	const float3_t direction_squared =
-		make_float3(to_light_direction.x * to_light_direction.x, to_light_direction.y * to_light_direction.y, to_light_direction.z * to_light_direction.z);
-	const float trace_variance		= node.gaussian_spatial_variance_diag.x + node.gaussian_spatial_variance_diag.y + node.gaussian_spatial_variance_diag.z;
-	const float radial_variance		= hippt::dot(node.gaussian_spatial_variance_diag, direction_squared);
-	const float transverse_variance = hippt::max(0.0f, trace_variance - radial_variance);
-	spatial_variance				= hippt::max(1.5f * transverse_variance, 0.1f * trace_variance);
-#endif
-	float initial_variance = hippt::max(spatial_variance, sharpness_clamp_variance);
-	float variance		   = initial_variance;
-	variance			   = variance * (1.0f - c) + 0.5f * hippt::square(node.bounding_sphere_radius) * c;
+	float sharpness_clamp_variance	 = squared_distance / SG_LIGHT_SHARPNESS_MAX;
+	float effective_spatial_variance = light_tree_sg_node_effective_spatial_variance(node, to_light_direction);
+	float initial_variance			 = hippt::max(effective_spatial_variance, sharpness_clamp_variance);
+	float variance					 = initial_variance;
+	variance						 = variance * (1.0f - c) + 0.5f * hippt::square(node.bounding_sphere_radius) * c;
 
 	// Compute the maximum emissive radiance of the SG light.
 	// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by spherical_gaussian_light.intensity.
@@ -255,19 +259,19 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	float final_importance = emissive * (diffuse_illumination + specular * specular_illumination);
 	if (debug != nullptr)
 	{
-		debug->squared_distance			= squared_distance;
-		debug->emitter_facing			= hippt::dot(node.vmf.axis, -to_light_direction);
-		debug->spatial_variance			= spatial_variance;
-		debug->sharpness_clamp_variance = sharpness_clamp_variance;
-		debug->final_variance			= variance;
-		debug->emissive					= emissive;
-		debug->light_sharpness			= light_sharpness;
-		debug->product_log_amplitude	= lightLobe.logAmplitude;
-		debug->product_sharpness		= lightLobe.sharpness;
-		debug->product_cosine			= cosine;
-		debug->amplitude				= amplitude;
-		debug->diffuse_integral			= SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
-		debug->final_importance			= final_importance;
+		debug->squared_distance			  = squared_distance;
+		debug->emitter_facing			  = hippt::dot(node.vmf.axis, -to_light_direction);
+		debug->effective_spatial_variance = effective_spatial_variance;
+		debug->sharpness_clamp_variance	  = sharpness_clamp_variance;
+		debug->final_variance			  = variance;
+		debug->emissive					  = emissive;
+		debug->light_sharpness			  = light_sharpness;
+		debug->product_log_amplitude	  = lightLobe.logAmplitude;
+		debug->product_sharpness		  = lightLobe.sharpness;
+		debug->product_cosine			  = cosine;
+		debug->amplitude				  = amplitude;
+		debug->diffuse_integral			  = SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
+		debug->final_importance			  = final_importance;
 
 		float3_t max_corner;
 		max_corner.x		  = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
@@ -297,8 +301,8 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance			 = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) +
-																								 hippt::square(node.get_energy_average()) * variance_geometric) *
-																									 hippt::square(node.total_emitter_count);
+								hippt::square(node.get_energy_average()) * variance_geometric) *
+							   hippt::square(node.total_emitter_count);
 
 	return variance;
 }
@@ -563,7 +567,7 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-																																			 material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -931,7 +935,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1085,7 +1089,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1115,24 +1119,26 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 		{
 			printf("[SG-NODE] depth=%u side=L node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
 				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
-				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g spatial_var=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g light_kappa=%.9g "
+				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g effective_spatial_variance=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g "
+				   "light_kappa=%.9g "
 				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
 				   depth, left_index, left_child.total_power, left_child.total_emitter_count, left_child.gaussian_spatial_mean.x,
 				   left_child.gaussian_spatial_mean.y, left_child.gaussian_spatial_mean.z, left_child.bounding_sphere_radius, left_child.vmf.axis.x,
 				   left_child.vmf.axis.y, left_child.vmf.axis.z, left_child.orientation_axis.x, left_child.orientation_axis.y, left_child.orientation_axis.z,
-				   left_child.vmf.sharpness, left_debug.squared_distance, left_debug.max_corner_dot, left_debug.emitter_facing, left_debug.spatial_variance,
-				   left_debug.sharpness_clamp_variance, left_debug.final_variance, left_debug.emissive, left_debug.light_sharpness,
-				   left_debug.product_log_amplitude, left_debug.product_sharpness, left_debug.product_cosine, left_debug.amplitude, left_debug.diffuse_integral,
-				   left_debug.final_importance);
+				   left_child.vmf.sharpness, left_debug.squared_distance, left_debug.max_corner_dot, left_debug.emitter_facing,
+				   left_debug.effective_spatial_variance, left_debug.sharpness_clamp_variance, left_debug.final_variance, left_debug.emissive,
+				   left_debug.light_sharpness, left_debug.product_log_amplitude, left_debug.product_sharpness, left_debug.product_cosine, left_debug.amplitude,
+				   left_debug.diffuse_integral, left_debug.final_importance);
 			printf("[SG-NODE] depth=%u side=R node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
 				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
-				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g spatial_var=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g light_kappa=%.9g "
+				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g effective_spatial_variance=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g "
+				   "light_kappa=%.9g "
 				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
 				   depth, right_index, right_child.total_power, right_child.total_emitter_count, right_child.gaussian_spatial_mean.x,
 				   right_child.gaussian_spatial_mean.y, right_child.gaussian_spatial_mean.z, right_child.bounding_sphere_radius, right_child.vmf.axis.x,
 				   right_child.vmf.axis.y, right_child.vmf.axis.z, right_child.orientation_axis.x, right_child.orientation_axis.y,
 				   right_child.orientation_axis.z, right_child.vmf.sharpness, right_debug.squared_distance, right_debug.max_corner_dot,
-				   right_debug.emitter_facing, right_debug.spatial_variance, right_debug.sharpness_clamp_variance, right_debug.final_variance,
+				   right_debug.emitter_facing, right_debug.effective_spatial_variance, right_debug.sharpness_clamp_variance, right_debug.final_variance,
 				   right_debug.emissive, right_debug.light_sharpness, right_debug.product_log_amplitude, right_debug.product_sharpness,
 				   right_debug.product_cosine, right_debug.amplitude, right_debug.diffuse_integral, right_debug.final_importance);
 		}
@@ -1144,10 +1150,10 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 			return LightSampleArray<1>{ LightSampleInformation() };
 		}
 
-		float p_left				  = left_importance / (left_importance + right_importance);
-		const float cumulative_before = cumulative_probability;
-		const float u				  = rng();
-		const bool choose_left		  = u < p_left;
+		float p_left			= left_importance / (left_importance + right_importance);
+		float cumulative_before = cumulative_probability;
+		float u					= rng();
+		bool choose_left		= u < p_left;
 		if (debug)
 			printf("[LT-STEP] algo=SG depth=%u node=%u left=%u right=%u triangles=(%u,%u) emitters=(%u,%u) I=(%.9g,%.9g) pL=%.9g u=%.9g choice=%c "
 				   "cum_before=%.9g cum_after=%.9g\n",
@@ -1210,7 +1216,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1232,15 +1238,17 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
-		const unsigned int left_index	  = current_node.left_child_index_or_first_triangle_index;
-		const unsigned int right_index	  = left_index + 1;
+		unsigned int left_index			  = current_node.left_child_index_or_first_triangle_index;
+		unsigned int right_index		  = left_index + 1;
 		LightTreeSGNodeDevice left_child  = nodes[left_index];
 		LightTreeSGNodeDevice right_child = nodes[right_index];
+		SGImportanceDebug left_debug{};
+		SGImportanceDebug right_debug{};
 
-		float left_importance =
-			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-		float right_importance =
-			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float left_importance = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x,
+															  alpha_y, debug ? &left_debug : nullptr);
+		float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight,
+															   alpha_x, alpha_y, debug ? &right_debug : nullptr);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
@@ -1252,11 +1260,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		if (debug)
 			printf("[SG PDF REPLAY %d] depth=%u node=%u target_side=%c left_importance=%.9g right_importance=%.9g target_branch_probability=%.9g "
 				   "cumulative_target_probability=%.9g left_spatial_mean=(%.9g,%.9g,%.9g) right_spatial_mean=(%.9g,%.9g,%.9g) "
-				   "left_spatial_variance=%.9g right_spatial_variance=%.9g left_vmf_sharpness=%.9g right_vmf_sharpness=%.9g\n",
+				   "left_effective_spatial_variance=%.9g right_effective_spatial_variance=%.9g left_vmf_sharpness=%.9g right_vmf_sharpness=%.9g\n",
 				   fixed_target_light, current_depth, current_node_index, target_is_left ? 'L' : 'R', left_importance, right_importance,
 				   target_branch_probability, cumulative_probability, left_child.gaussian_spatial_mean.x, left_child.gaussian_spatial_mean.y,
 				   left_child.gaussian_spatial_mean.z, right_child.gaussian_spatial_mean.x, right_child.gaussian_spatial_mean.y,
-				   right_child.gaussian_spatial_mean.z, left_child.gaussian_spatial_variance, right_child.gaussian_spatial_variance, left_child.vmf.sharpness,
+				   right_child.gaussian_spatial_mean.z, left_debug.effective_spatial_variance, right_debug.effective_spatial_variance, left_child.vmf.sharpness,
 				   right_child.vmf.sharpness);
 
 		if (target_is_left)

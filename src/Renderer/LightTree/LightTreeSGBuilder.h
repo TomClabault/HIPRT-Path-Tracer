@@ -56,7 +56,6 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].vmf.axis					   = m_nodes[i].vmf.axis;
 		device_data_out.nodes_device[i].vmf.sharpness				   = m_nodes[i].vmf.sharpness;
 		device_data_out.nodes_device[i].gaussian_spatial_mean		   = m_nodes[i].spatial_mean;
-		device_data_out.nodes_device[i].gaussian_spatial_variance	   = m_nodes[i].spatial_variance;
 		device_data_out.nodes_device[i].gaussian_spatial_variance_diag = m_nodes[i].spatial_variance_diag;
 		device_data_out.nodes_device[i].orientation_axis			   = m_nodes[i].orientation_axis;
 		device_data_out.nodes_device[i].cos_theta_o					   = cosf(m_nodes[i].theta_o);

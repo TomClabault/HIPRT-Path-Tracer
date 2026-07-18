@@ -21,8 +21,9 @@ struct LightTreeSGNodeDevice
 
 	VMF vmf;
 
-	float3_t gaussian_spatial_mean			= make_float3(0.0f, 0.0f, 0.0f);
-	float gaussian_spatial_variance			= 0.0f;
+	float3_t gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
+	// This is the diagonal of the covariance matrix of the spatial distribution, this is more precise for elongated nodes where scalar variance would have just
+	// inflated every direction
 	float3_t gaussian_spatial_variance_diag = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);

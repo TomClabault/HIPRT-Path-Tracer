@@ -3740,19 +3740,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
-		bool use_diagonal_spatial_variance = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_DIAGONAL_SPATIAL_VARIANCE);
-		if (ImGui::Checkbox("Use diagonal spatial variance", &use_diagonal_spatial_variance))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_DIAGONAL_SPATIAL_VARIANCE,
-												   use_diagonal_spatial_variance ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker(
-			"If enabled, SG importance uses the diagonal spatial covariance projected perpendicular to the shading-to-node direction. "
-			"If disabled, the scalar spatial variance is used.");
-
 		if (do_splitting)
 		{
 			ImGui::TreePush("SG light tree adaptive splitting tree");
