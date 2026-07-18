@@ -77,10 +77,23 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		sg_node.compute_vmf();
 
-		sg_node.bounding_sphere_radius = hippt::max(hippt::length(left_node.spatial_mean - sg_node.spatial_mean) + left_node.bounding_sphere_radius,
-													hippt::length(right_node.spatial_mean - sg_node.spatial_mean) + right_node.bounding_sphere_radius);
-		sg_node.left_child_index	   = ats_node.left_child_index;
-		sg_node.triangle_count		   = 0;
+		float radius_squared = 0.0f;
+
+		// Computing the bounding sphere of the node from the AABB of the node
+		for (int corner_index = 0; corner_index < 8; ++corner_index)
+		{
+			const float3_t corner = make_float3((corner_index & 1) ? sg_node.bounds.mini.x : sg_node.bounds.maxi.x,
+												(corner_index & 2) ? sg_node.bounds.mini.y : sg_node.bounds.maxi.y,
+												(corner_index & 4) ? sg_node.bounds.mini.z : sg_node.bounds.maxi.z);
+
+			radius_squared = hippt::max(radius_squared, hippt::length2(corner - sg_node.spatial_mean));
+		}
+
+		sg_node.bounding_sphere_radius = hippt::sqrt(radius_squared);
+		/*sg_node.bounding_sphere_radius = hippt::max(hippt::length(left_node.spatial_mean - sg_node.spatial_mean) + left_node.bounding_sphere_radius,
+													hippt::length(right_node.spatial_mean - sg_node.spatial_mean) + right_node.bounding_sphere_radius);*/
+		sg_node.left_child_index = ats_node.left_child_index;
+		sg_node.triangle_count	 = 0;
 	}
 	else
 	{
