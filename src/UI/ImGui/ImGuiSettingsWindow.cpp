@@ -3546,9 +3546,6 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
 		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Sampling");
 		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
 		{
 			ImGui::TreePush("Apply button triangles per leaf light tree");
@@ -3565,6 +3562,9 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 			ImGui::TreePop();
 		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Sampling");
 
 		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING);
 		if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
