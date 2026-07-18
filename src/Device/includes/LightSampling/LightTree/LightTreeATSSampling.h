@@ -22,6 +22,7 @@
 
 HIPRT_DEVICE bool light_tree_debug_pixel()
 {
+	return false;
 	return hippt::is_pixel_index(LT_DEBUG_X, LT_DEBUG_Y);
 }
 #endif
@@ -798,40 +799,61 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 		return 0.0f;
 
 	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
+	const bool debug					= light_tree_debug_pixel();
+	constexpr int fixed_target_light	= 7612794;
+	if (debug)
+		global_emissive_triangle_index = fixed_target_light;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
+	unsigned int current_node_index		= 0;
 
 	float root_node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
-	unsigned int bit_trail		= render_data.light_tree_ats.bit_trails[global_emissive_triangle_index];
-	unsigned char current_depth = 0;
+	unsigned int bit_trail	   = render_data.light_tree_ats.bit_trails[global_emissive_triangle_index];
+	unsigned int current_depth = 0;
 
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
-		LightTreeATSNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
-		LightTreeATSNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+		const unsigned int left_index	   = current_node.left_child_index_or_first_triangle_index;
+		const unsigned int right_index	   = left_index + 1;
+		LightTreeATSNodeDevice left_child  = nodes[left_index];
+		LightTreeATSNodeDevice right_child = nodes[right_index];
 
 		float left_importance  = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
 		float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
-		float p_left = left_importance / (left_importance + right_importance);
-		if (!(bit_trail & (1 << current_depth)))
+		float p_left					= left_importance / (left_importance + right_importance);
+		bool target_is_left				= !(bit_trail & (1 << current_depth));
+		float target_branch_probability = target_is_left ? p_left : 1.0f - p_left;
+		cumulative_probability *= target_branch_probability;
+
+		if (debug)
+			printf("[ATS PDF REPLAY %d] depth=%u node=%u target_side=%c left_importance=%.9g right_importance=%.9g target_branch_probability=%.9g "
+				   "cumulative_target_probability=%.9g left_bounds_min=(%.9g,%.9g,%.9g) left_bounds_max=(%.9g,%.9g,%.9g) "
+				   "right_bounds_min=(%.9g,%.9g,%.9g) right_bounds_max=(%.9g,%.9g,%.9g) left_axis=(%.9g,%.9g,%.9g) right_axis=(%.9g,%.9g,%.9g) "
+				   "left_cos_theta_o=%.9g left_sin_theta_o=%.9g right_cos_theta_o=%.9g right_sin_theta_o=%.9g\n",
+				   fixed_target_light, current_depth, current_node_index, target_is_left ? 'L' : 'R', left_importance, right_importance,
+				   target_branch_probability, cumulative_probability, left_child.bounds_min.x, left_child.bounds_min.y, left_child.bounds_min.z,
+				   left_child.bounds_max.x, left_child.bounds_max.y, left_child.bounds_max.z, right_child.bounds_min.x, right_child.bounds_min.y,
+				   right_child.bounds_min.z, right_child.bounds_max.x, right_child.bounds_max.y, right_child.bounds_max.z, left_child.axis.x, left_child.axis.y,
+				   left_child.axis.z, right_child.axis.x, right_child.axis.y, right_child.axis.z, left_child.cos_theta_o, left_child.sin_theta_o,
+				   right_child.cos_theta_o, right_child.sin_theta_o);
+
+		if (target_is_left)
 		{
 			// If the bit is not set we're going to the left
-			current_node = left_child;
-
-			cumulative_probability *= p_left;
+			current_node	   = left_child;
+			current_node_index = left_index;
 		}
 		else
 		{
-			current_node = right_child;
-
-			cumulative_probability *= 1.0f - p_left;
+			current_node	   = right_child;
+			current_node_index = right_index;
 		}
 
 		current_depth++;

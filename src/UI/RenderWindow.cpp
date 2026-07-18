@@ -23,6 +23,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO SG Light tree
+//	- Add a scene statistics panel in the UI, rename "Objects" as "Scene"
 //	- Fix SG light tree bad with lights behind the surface?
 //		- Can we somehow have a middle ground between ATS which doesn't have that issue and SG light tree which has better quality overall?
 //	- Fix splitting factor light trees scene depenedent

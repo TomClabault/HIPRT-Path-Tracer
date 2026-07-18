@@ -1220,8 +1220,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 														  int global_emissive_triangle_index)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	const bool debug				   = light_tree_debug_pixel();
+	constexpr int fixed_target_light   = 7612794;
+	if (debug)
+		global_emissive_triangle_index = fixed_target_light;
 
 	LightTreeSGNodeDevice current_node = nodes[0];
+	unsigned int current_node_index	   = 0;
 
 	float material_specular_weight =
 		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
@@ -1247,14 +1252,16 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
-	unsigned int bit_trail		= render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
-	unsigned char current_depth = 0;
+	unsigned int bit_trail	   = render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
+	unsigned int current_depth = 0;
 
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
-		LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
-		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+		const unsigned int left_index	  = current_node.left_child_index_or_first_triangle_index;
+		const unsigned int right_index	  = left_index + 1;
+		LightTreeSGNodeDevice left_child  = nodes[left_index];
+		LightTreeSGNodeDevice right_child = nodes[right_index];
 
 		float left_importance =
 			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
@@ -1263,19 +1270,31 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
-		float p_left = left_importance / (left_importance + right_importance);
-		if (!(bit_trail & (1 << current_depth)))
+		float p_left					= left_importance / (left_importance + right_importance);
+		bool target_is_left				= !(bit_trail & (1 << current_depth));
+		float target_branch_probability = target_is_left ? p_left : 1.0f - p_left;
+		cumulative_probability *= target_branch_probability;
+
+		if (debug)
+			printf("[SG PDF REPLAY %d] depth=%u node=%u target_side=%c left_importance=%.9g right_importance=%.9g target_branch_probability=%.9g "
+				   "cumulative_target_probability=%.9g left_spatial_mean=(%.9g,%.9g,%.9g) right_spatial_mean=(%.9g,%.9g,%.9g) "
+				   "left_spatial_variance=%.9g right_spatial_variance=%.9g left_vmf_sharpness=%.9g right_vmf_sharpness=%.9g\n",
+				   fixed_target_light, current_depth, current_node_index, target_is_left ? 'L' : 'R', left_importance, right_importance,
+				   target_branch_probability, cumulative_probability, left_child.gaussian_spatial_mean.x, left_child.gaussian_spatial_mean.y,
+				   left_child.gaussian_spatial_mean.z, right_child.gaussian_spatial_mean.x, right_child.gaussian_spatial_mean.y,
+				   right_child.gaussian_spatial_mean.z, left_child.gaussian_spatial_variance, right_child.gaussian_spatial_variance, left_child.vmf.sharpness,
+				   right_child.vmf.sharpness);
+
+		if (target_is_left)
 		{
 			// If the bit is not set we're going to the left
-			current_node = left_child;
-
-			cumulative_probability *= p_left;
+			current_node	   = left_child;
+			current_node_index = left_index;
 		}
 		else
 		{
-			current_node = right_child;
-
-			cumulative_probability *= 1.0f - p_left;
+			current_node	   = right_child;
+			current_node_index = right_index;
 		}
 
 		current_depth++;
