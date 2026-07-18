@@ -90,10 +90,8 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 			radius_squared = hippt::max(radius_squared, hippt::length2(corner - sg_node.spatial_mean));
 		}
-
 		sg_node.bounding_sphere_radius = hippt::sqrt(radius_squared);
-		/*sg_node.bounding_sphere_radius = hippt::max(hippt::length(left_node.spatial_mean - sg_node.spatial_mean) + left_node.bounding_sphere_radius,
-													hippt::length(right_node.spatial_mean - sg_node.spatial_mean) + right_node.bounding_sphere_radius);*/
+
 		sg_node.left_child_index = ats_node.left_child_index;
 		sg_node.triangle_count	 = 0;
 	}
@@ -106,10 +104,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		float3_t sum_positions		= make_float3(0.0f, 0.0f, 0.0f);
 		float sum_positions_squared = 0.0f;
 
-		float single_triangle_variance = 0.0f;
-		double sum_energy			   = 0.0;
-		double sum_energy_squared	   = 0.0;
-		unsigned int triangle_count	   = ats_node.triangle_count;
+		double sum_energy			= 0.0;
+		double sum_energy_squared	= 0.0;
+		float sum_triangle_variance = 0.0f;
+		unsigned int triangle_count = ats_node.triangle_count;
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
@@ -123,10 +121,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			float3_t p2 = triangle_data.vertices_positions
 							  [triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
-			float3_t e1 = p1 - p0;
-			float3_t e2 = p2 - p0;
-			// Formula from the paper to use when there is a single triangle in the leaf
-			single_triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
+			float3_t e1				= p1 - p0;
+			float3_t e2				= p2 - p0;
+			float triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
+			sum_triangle_variance += (hippt::dot(triangle.centroid, triangle.centroid) + triangle_variance) * triangle.power;
 
 			// 0.5f * triangle normal from the paper
 			sg_node.mean_axis += 0.5f * triangle.normal * triangle.power;
@@ -154,10 +152,8 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		sg_node.mean_axis /= sg_node.total_power;
 		sg_node.spatial_mean = sum_positions;
-		if (triangle_count == 1)
-			sg_node.spatial_variance = single_triangle_variance;
-		else
-			sg_node.spatial_variance = sum_positions_squared - hippt::dot(sg_node.spatial_mean, sg_node.spatial_mean);
+		sg_node.spatial_variance =
+			hippt::max(0.0f, float(sum_triangle_variance / sg_node.total_power) - hippt::dot(sg_node.spatial_mean, sg_node.spatial_mean));
 
 		float bounding_sphere_radius = 0.0f;
 		for (int i = 0; i < ats_node.triangle_count; i++)
