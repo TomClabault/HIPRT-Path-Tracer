@@ -92,6 +92,17 @@ struct DevicePackedTexturedMaterialSoAGPUData : public DevicePackedEffectiveMate
 	OrochiBuffer<Uint2xPacked> coat_sheen_index;
 	OrochiBuffer<Uint2xPacked> specular_transmission_index;
 
+	size_t get_byte_size() const
+	{
+		DECLARE_ALL_MEMBERS_STD_TIE;
+
+		size_t byte_size		  = 0;
+		auto accumulate_byte_size = [&byte_size](const auto& buffer) { byte_size += buffer.get_byte_size(); };
+		std::apply([&](const auto&... buffers) { (accumulate_byte_size(buffers), ...); }, all_members);
+
+		return byte_size;
+	}
+
 	// Resize function using the generic for_each_member
 	void resize(size_t new_element_count)
 	{

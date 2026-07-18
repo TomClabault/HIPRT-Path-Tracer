@@ -30,6 +30,7 @@ public:
 						 hipTextureAddressMode address_mode	 = hipAddressModeWrap);
 
 	oroTextureObject_t get_device_texture();
+	size_t get_byte_size() const;
 
 	unsigned int width = 0, height = 0;
 
@@ -39,6 +40,7 @@ private:
 	oroArray_t m_texture_array = nullptr;
 
 	oroTextureObject_t m_texture = nullptr;
+	size_t m_byte_size = 0;
 };
 
 #endif

@@ -21,9 +21,11 @@ OrochiTexture::OrochiTexture(OrochiTexture&& other) noexcept
 {
 	m_texture_array = std::move(other.m_texture_array);
 	m_texture		= std::move(other.m_texture);
+	m_byte_size		= other.m_byte_size;
 
 	other.m_texture		  = nullptr;
 	other.m_texture_array = nullptr;
+	other.m_byte_size	  = 0;
 }
 
 OrochiTexture::~OrochiTexture()
@@ -47,11 +49,13 @@ void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 	m_texture		= std::move(other.m_texture);
 	width			= other.width;
 	height			= other.height;
+	m_byte_size		= other.m_byte_size;
 
 	other.m_texture		  = nullptr;
 	other.m_texture_array = nullptr;
 	other.width			  = 0;
 	other.height		  = 0;
+	other.m_byte_size	  = 0;
 }
 
 void create_texture_from_array_cuda(void* m_texture_array, void* m_texture, void* filtering_mode, void* address_mode, bool read_mode_float_normalized);
@@ -97,6 +101,8 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 		m_texture = nullptr;
 	}
 
+	m_byte_size = 0;
+
 	int channels = image.channels;
 	if (channels == 3 || channels > 4)
 	{
@@ -107,8 +113,9 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 		return;
 	}
 
-	width  = image.width;
-	height = image.height;
+	width		= image.width;
+	height		= image.height;
+	m_byte_size = image.byte_size();
 
 	if (width == 0 || height == 0)
 	{
@@ -132,6 +139,8 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 
 void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
+	m_byte_size = 0;
+
 	int channels = image.channels;
 	if (channels == 3 || channels > 4)
 	{
@@ -142,8 +151,9 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 		return;
 	}
 
-	width  = image.width;
-	height = image.height;
+	width		= image.width;
+	height		= image.height;
+	m_byte_size = image.byte_size();
 
 	if (width == 0 || height == 0)
 	{
@@ -168,4 +178,9 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 oroTextureObject_t OrochiTexture::get_device_texture()
 {
 	return m_texture;
+}
+
+size_t OrochiTexture::get_byte_size() const
+{
+	return m_byte_size;
 }

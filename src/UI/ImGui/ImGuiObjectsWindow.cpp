@@ -9,6 +9,9 @@
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 
+#include <iomanip>
+#include <sstream>
+
 const char* ImGuiObjectsWindow::TITLE = "Objects";
 
 struct MaterialOverrideState
@@ -80,10 +83,111 @@ void ImGuiObjectsWindow::draw()
 {
 	ImGui::Begin(ImGuiObjectsWindow::TITLE);
 
+	draw_scene_statistics_panel();
 	draw_global_objects_panel();
 	draw_objects_panel();
 
 	ImGui::End();
+}
+
+void ImGuiObjectsWindow::draw_scene_statistics_panel()
+{
+	if (!ImGui::CollapsingHeader("Scene statistics"))
+		return;
+
+	auto format_memory_size = [](size_t byte_size)
+	{
+		std::ostringstream stream;
+		stream << std::fixed << std::setprecision(3);
+
+		if (byte_size >= 1024ull * 1024ull * 1024ull)
+			stream << static_cast<double>(byte_size) / (1024.0 * 1024.0 * 1024.0) << " GiB";
+		else if (byte_size >= 1024ull * 1024ull)
+			stream << static_cast<double>(byte_size) / (1024.0 * 1024.0) << " MiB";
+		else if (byte_size >= 1024ull)
+			stream << static_cast<double>(byte_size) / 1024.0 << " KiB";
+		else
+			stream << byte_size << " B";
+
+		return stream.str();
+	};
+
+	auto draw_memory_stat = [&](const char* name, size_t byte_size) { ImGui::Text("%s: %s", name, format_memory_size(byte_size).c_str()); };
+
+	const HIPRTScene& scene					  = m_renderer->get_hiprt_scene();
+	const HIPRTGeometry& whole_scene_geometry = scene.whole_scene_BLAS;
+	const HIPRTGeometry& emissive_geometry	  = scene.emissive_triangles_BLAS;
+
+	ImGui::Text("Scene: %s", m_renderer->get_scene_filepath().c_str());
+	ImGui::SeparatorText("Objects");
+
+	ImGui::TreePush("Objects");
+	ImGui::Text("Meshes: %zu", m_renderer->get_mesh_names().size());
+	ImGui::Text("Materials: %zu", m_renderer->get_current_materials().size());
+	ImGui::Text("Textures: %zu", scene.orochi_materials_textures.size());
+	ImGui::Text("Triangles: %u", scene.total_triangle_count);
+	ImGui::Text("Vertices: %u", whole_scene_geometry.m_mesh.vertexCount);
+	ImGui::Text("Vertex normals: %zu", scene.vertex_normals.get_element_count());
+	ImGui::Text("Texture coordinates: %zu", scene.texcoords_buffer.get_element_count());
+	ImGui::TreePop();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("Geometry memory");
+	ImGui::TreePush("Geometry memory");
+	const size_t whole_scene_vertex_memory = static_cast<size_t>(whole_scene_geometry.m_mesh.vertexCount) * whole_scene_geometry.m_mesh.vertexStride;
+	const size_t whole_scene_index_memory  = static_cast<size_t>(whole_scene_geometry.m_mesh.triangleCount) * whole_scene_geometry.m_mesh.triangleStride;
+	const size_t emissive_index_memory	   = static_cast<size_t>(emissive_geometry.m_mesh.triangleCount) * emissive_geometry.m_mesh.triangleStride;
+	draw_memory_stat("Whole-scene vertices", whole_scene_vertex_memory);
+	draw_memory_stat("Whole-scene triangle indices", whole_scene_index_memory);
+	draw_memory_stat("Triangle areas", scene.triangle_areas.get_byte_size());
+	draw_memory_stat("Per-tri has vertex normals flags", scene.has_vertex_normals.get_byte_size());
+	draw_memory_stat("Vertex normals", scene.vertex_normals.get_byte_size());
+	draw_memory_stat("Material indices", scene.material_indices.get_byte_size());
+	draw_memory_stat("Texture coordinates", scene.texcoords_buffer.get_byte_size());
+	ImGui::TreePop();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("Material and texture memory");
+	ImGui::TreePush("Material and texture memory");
+	draw_memory_stat("Packed material parameters", scene.materials_buffer.get_byte_size());
+	draw_memory_stat("Material opaque flags", scene.material_opaque.get_byte_size());
+	draw_memory_stat("Material texture handles", scene.gpu_materials_textures.get_byte_size());
+
+	size_t texture_memory = 0;
+	for (const OrochiTexture& texture : scene.orochi_materials_textures)
+		texture_memory += texture.get_byte_size();
+	draw_memory_stat("Material textures", texture_memory);
+	ImGui::TreePop();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("Lights & light sampling memory");
+	ImGui::TreePush("Emissive and light-tree memory");
+	ImGui::Text("Emissive triangles: %u", scene.emissive_triangles_count);
+	ImGui::Text("Emissive meshes: %u", scene.emissive_meshes_data.m_meshes_PDFs.size());
+	ImGui::Text("Triangles with emissive textures: %zu", scene.emissive_triangles_indices_and_emissive_textures.get_element_count());
+	draw_memory_stat("Emissive triangle indices", emissive_index_memory);
+	draw_memory_stat("Emissive luminance", scene.triangle_average_emissive_luminance.get_byte_size());
+	draw_memory_stat("Emissive power luminance", scene.triangle_average_emissive_power_luminance.get_byte_size());
+	draw_memory_stat("Emissive primitive indices", scene.emissive_triangles_primitive_indices.get_byte_size());
+	draw_memory_stat("Emissive textured primitive indices", scene.emissive_triangles_indices_and_emissive_textures.get_byte_size());
+	draw_memory_stat("Emissive mesh alias tables", scene.emissive_meshes_data.get_byte_size());
+	draw_memory_stat("ATS light tree", m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes());
+	draw_memory_stat("SG light tree", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes());
+
+	const size_t scene_gpu_memory = whole_scene_vertex_memory + whole_scene_index_memory + emissive_index_memory + scene.triangle_areas.get_byte_size() +
+									scene.triangle_average_emissive_luminance.get_byte_size() +
+									scene.triangle_average_emissive_power_luminance.get_byte_size() + scene.has_vertex_normals.get_byte_size() +
+									scene.vertex_normals.get_byte_size() + scene.material_indices.get_byte_size() + scene.materials_buffer.get_byte_size() +
+									scene.material_opaque.get_byte_size() + scene.gpu_materials_textures.get_byte_size() +
+									scene.texcoords_buffer.get_byte_size() + scene.emissive_triangles_primitive_indices.get_byte_size() +
+									scene.emissive_triangles_indices_and_emissive_textures.get_byte_size() + scene.emissive_meshes_data.get_byte_size() +
+									texture_memory + m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes() +
+									m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("Total tracked GPU memory");
+	draw_memory_stat("Total", scene_gpu_memory);
+	ImGui::TreePop();
 }
 
 template <typename T>
@@ -110,12 +214,8 @@ bool draw_material_override_line_common(bool& override_state_bool)
 	return changed;
 }
 
-bool draw_material_override_line(const std::string& text,
-								 bool& override_state_bool,
-								 float& material_override_property,
-								 float v_min,
-								 float v_max,
-								 const char* format = "%.3f")
+bool draw_material_override_line(
+	const std::string& text, bool& override_state_bool, float& material_override_property, float v_min, float v_max, const char* format = "%.3f")
 {
 	bool changed = draw_material_override_line_common(override_state_bool);
 
@@ -209,13 +309,13 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 2:
-					material_override_changed |= draw_material_override_line("Roughness", override_state.override_roughness, material_override.roughness, 0.0f,
-																			 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Roughness", override_state.override_roughness, material_override.roughness, 0.0f, 1.0f);
 					break;
 
 				case 3:
-					material_override_changed |= draw_material_override_line("Anisotropy", override_state.override_anisotropy, material_override.anisotropy,
-																			 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Anisotropy", override_state.override_anisotropy, material_override.anisotropy, 0.0f, 1.0f);
 					break;
 
 				case 4:
@@ -263,12 +363,12 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 1:
 					material_override_changed |=
-											draw_material_override_line("Specular", override_state.override_specular, material_override.specular, 0.0f, 1.0f);
+						draw_material_override_line("Specular", override_state.override_specular, material_override.specular, 0.0f, 1.0f);
 					break;
 
 				case 2:
-					material_override_changed |= draw_material_override_line("Specular color", override_state.override_specular_color,
-																			 material_override.specular_color);
+					material_override_changed |=
+						draw_material_override_line("Specular color", override_state.override_specular_color, material_override.specular_color);
 					break;
 
 				case 3:
@@ -309,12 +409,12 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 1:
 					material_override_changed |=
-											draw_material_override_line("Metallic", override_state.override_metallic, material_override.metallic, 0.0f, 1.0f);
+						draw_material_override_line("Metallic", override_state.override_metallic, material_override.metallic, 0.0f, 1.0f);
 					break;
 
 				case 2:
 					material_override_changed |=
-											draw_material_override_line("F0 Reflectivity", override_state.override_base_color, material_override.base_color);
+						draw_material_override_line("F0 Reflectivity", override_state.override_base_color, material_override.base_color);
 					ImGuiRenderer::show_help_marker("Reflectivity color at 0 degree angles: microfacet-normal "
 													"and view direction perfectly aligned: looking straigth into "
 													"the object.");
@@ -322,16 +422,16 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 3:
-					material_override_changed |= draw_material_override_line("F82 Reflectivity", override_state.override_F82_reflectivity,
-																			 material_override.metallic_F82);
+					material_override_changed |=
+						draw_material_override_line("F82 Reflectivity", override_state.override_F82_reflectivity, material_override.metallic_F82);
 					ImGuiRenderer::show_help_marker("Reflectivity color at 82 degree angles: microfacet-normal "
 													"and view direction almost orthogonal.");
 
 					break;
 
 				case 4:
-					material_override_changed |= draw_material_override_line("F90 Reflectivity", override_state.override_F90_reflectivity,
-																			 material_override.metallic_F90);
+					material_override_changed |=
+						draw_material_override_line("F90 Reflectivity", override_state.override_F90_reflectivity, material_override.metallic_F90);
 					ImGuiRenderer::show_help_marker("Reflectivity color at 90 degree angles: microfacet-normal "
 													"and view direction perfectly orthogonal.");
 
@@ -401,8 +501,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-					material_override_changed |= draw_material_override_line("Sheen strength", override_state.override_sheen_strength, material_override.sheen,
-																			 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Sheen strength", override_state.override_sheen_strength, material_override.sheen, 0.0f, 1.0f);
 					break;
 
 				case 2:
@@ -410,8 +510,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 3:
-					material_override_changed |= draw_material_override_line("Sheen roughness", override_state.override_sheen_roughness,
-																			 material_override.sheen_roughness, 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Sheen roughness", override_state.override_sheen_roughness, material_override.sheen_roughness, 0.0f, 1.0f);
 					break;
 				}
 			}
@@ -441,8 +541,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-					material_override_changed |= draw_material_override_line("Coat strength", override_state.override_coat_strength, material_override.coat,
-																			 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Coat strength", override_state.override_coat_strength, material_override.coat, 0.0f, 1.0f);
 					break;
 
 				case 2:
@@ -456,13 +556,13 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 4:
-					material_override_changed |= draw_material_override_line("Coat roughness", override_state.override_coat_roughness,
-																			 material_override.coat_roughness, 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Coat roughness", override_state.override_coat_roughness, material_override.coat_roughness, 0.0f, 1.0f);
 					break;
 
 				case 5:
-					material_override_changed |= draw_material_override_line("Coat roughening", override_state.override_coat_roughening,
-																			 material_override.coat_roughening, 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Coat roughening", override_state.override_coat_roughening, material_override.coat_roughening, 0.0f, 1.0f);
 					ImGuiRenderer::show_help_marker("Physical accuracy requires that a rough clearcoat also roughens what's underneath it "
 													"i.e. the specular/metallic/transmission layers.\n"
 													"The option is however given here to artistically disable "
@@ -471,8 +571,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 6:
-					material_override_changed |= draw_material_override_line("Coat darkening", override_state.override_coat_darkening,
-																			 material_override.coat_darkening, 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Coat darkening", override_state.override_coat_darkening, material_override.coat_darkening, 0.0f, 1.0f);
 					ImGuiRenderer::show_help_marker("Because of the total internal reflection that can happen inside the coat layer (i.e. "
 													"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear "
 													"will increased "
@@ -483,8 +583,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 7:
-					material_override_changed |= draw_material_override_line("Coat anisotropy", override_state.override_coat_anisotropy,
-																			 material_override.coat_anisotropy, 0.0f, 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Coat anisotropy", override_state.override_coat_anisotropy, material_override.coat_anisotropy, 0.0f, 1.0f);
 					break;
 
 				case 8:
@@ -494,7 +594,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 9:
 					material_override_changed |=
-											draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 1.0f, 3.0f);
+						draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 1.0f, 3.0f);
 					break;
 				}
 			}
@@ -551,8 +651,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 5:
-					material_override_changed |= draw_material_override_line("Absorption color", override_state.override_absorption_color,
-																			 material_override.absorption_color);
+					material_override_changed |=
+						draw_material_override_line("Absorption color", override_state.override_absorption_color, material_override.absorption_color);
 					break;
 
 				case 6:
@@ -573,7 +673,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 9:
 					material_override_changed |=
-											draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
+						draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
 					break;
 				}
 			}
@@ -603,8 +703,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-					material_override_changed |= draw_material_override_line("Thin film", override_state.override_thin_film, material_override.thin_film, 0.0f,
-																			 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Thin film", override_state.override_thin_film, material_override.thin_film, 0.0f, 1.0f);
 					break;
 
 				case 2:
@@ -613,8 +713,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 3:
-					material_override_changed |= draw_material_override_line("Thin film IOR", override_state.override_thin_film_ior,
-																			 material_override.thin_film_ior, 1.0f, 3.0f);
+					material_override_changed |=
+						draw_material_override_line("Thin film IOR", override_state.override_thin_film_ior, material_override.thin_film_ior, 1.0f, 3.0f);
 					break;
 
 				case 4:
@@ -712,13 +812,13 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-					material_override_changed |= draw_material_override_line("Opacity", override_state.override_opacity, material_override.alpha_opacity, 0.0f,
-																			 1.0f);
+					material_override_changed |=
+						draw_material_override_line("Opacity", override_state.override_opacity, material_override.alpha_opacity, 0.0f, 1.0f);
 					break;
 
 				case 2:
 					material_override_changed |=
-											draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
+						draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
 					break;
 				}
 			}
@@ -868,7 +968,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				}
 
 				const bool is_selected = (currently_selected_material_index == material_index);
-				std::string text		 = mesh_names[mesh_index] + " (" + material_names[material_index] + ")";
+				std::string text	   = mesh_names[mesh_index] + " (" + material_names[material_index] + ")";
 				if (ImGui::Selectable(text.c_str(), is_selected))
 					currently_selected_material_index = material_index;
 
@@ -912,7 +1012,8 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		// 'accepted_material_indices' set
 		bool first_time = filter_string == "" && filtered_material_indices.size() == 0 && materials.size() > 0;
 		if (ImGui::InputText("Search", &filter_string) || first_time)
-			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, m_renderer->get_mesh_material_indices(), filter_string);
+			filtered_material_indices =
+				filter_displayed_materials(materials.size(), material_names, mesh_names, m_renderer->get_mesh_material_indices(), filter_string);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -957,8 +1058,8 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		CPUMaterial& material									 = materials[currently_selected_material_index];
 
 		bool emission_changed;
-		material_changed |= ImGuiObjectsWindow::draw_material_editor(material, material_names[currently_selected_material_index], kernel_options,
-																	 emission_changed);
+		material_changed |=
+			ImGuiObjectsWindow::draw_material_editor(material, material_names[currently_selected_material_index], kernel_options, emission_changed);
 
 		if (material_changed)
 		{
@@ -1143,12 +1244,12 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 										"that behavior by using coat roughening = 0.0f.");
 		material_changed |= ImGui::SliderFloat("Coat darkening", &material.coat_darkening, 0.0f, 1.0f);
 		ImGuiRenderer::show_help_marker(
-								"Because of the total internal reflection that can happen inside the coat layer (i.e. "
-								"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
-								"saturation.\n\n"
-								""
-								"This parameter controls the strength of that darkening/increase in saturation.\n"
-								"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
+			"Because of the total internal reflection that can happen inside the coat layer (i.e. "
+			"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
+			"saturation.\n\n"
+			""
+			"This parameter controls the strength of that darkening/increase in saturation.\n"
+			"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
 		material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat anisotropy rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);

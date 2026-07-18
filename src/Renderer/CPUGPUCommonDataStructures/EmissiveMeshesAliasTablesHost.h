@@ -174,6 +174,18 @@ struct EmissiveMeshesAliasTablesHost
 		return static_cast<unsigned int>(m_offsets_into_alias_table.size());
 	}
 
+	size_t get_byte_size() const
+	{
+		if constexpr (std::is_same<DataContainer<int>, OrochiBuffer<int>>::value)
+			return m_meshes_alias_table.probas.get_byte_size() + m_meshes_alias_table.aliases.get_byte_size() + m_offsets_into_alias_table.get_byte_size() +
+				   m_meshes_alias_tables_sizes.get_byte_size() + m_meshes_PDFs.get_byte_size() + m_meshes_average_points.get_byte_size() +
+				   m_meshes_representative_normals.get_byte_size() + m_meshes_total_power.get_byte_size() + m_alias_tables_probas.get_byte_size() +
+				   m_alias_tables_aliases.get_byte_size() + m_meshes_emissive_triangles_PDFs.get_byte_size() +
+				   m_meshes_emissive_triangles_indices.get_byte_size() + m_global_triangle_index_to_emissive_mesh_index.get_byte_size();
+		else
+			return 0;
+	}
+
 	EmissiveMeshesAliasTablesDevice to_device()
 	{
 		EmissiveMeshesAliasTablesDevice out;

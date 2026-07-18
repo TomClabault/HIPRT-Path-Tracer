@@ -18,6 +18,7 @@ public:
 	void set_render_window(RenderWindow* render_window);
 
 	void draw();
+	void draw_scene_statistics_panel();
 	void draw_global_objects_panel();
 	void draw_objects_panel();
 

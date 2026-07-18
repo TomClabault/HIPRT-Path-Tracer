@@ -23,6 +23,12 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO SG Light tree
+//	- Only do the expensive max corner test if the spatial mean is behind the shading point (dot product < 0) because if it's in front, the max corner test is
+// useless, save some perf?
+//	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for
+//		ReGIR: one CDF per spatial cell in the scene and one distribution over the 1024 root nodes per spatial cell.
+//		We can theory test this by having a 1024 wide root node and just brute force WRS 1024x over it just to see if quality would at least be good. And if
+//yes, then use the CDF + spatial structure that will be an approximation but useable in speed at least
 //	- Fix SG light tree bad with lights behind the surface?
 //		- Can we somehow have a middle ground between ATS which doesn't have that issue and SG light tree which has better quality overall?
 //	- Fix splitting factor light trees scene depenedent
