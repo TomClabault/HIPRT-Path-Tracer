@@ -44,6 +44,11 @@
 #define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_FALSE
 
 /**
+ * If this is true, SG importance uses the projected diagonal spatial covariance. If false, it uses the scalar spatial variance.
+ */
+#define LightTreeSGUseDiagonalSpatialVariance KERNEL_OPTION_FALSE
+
+/**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed
  */
 #define LightTreeSGSplittingMaxLightSamples 8

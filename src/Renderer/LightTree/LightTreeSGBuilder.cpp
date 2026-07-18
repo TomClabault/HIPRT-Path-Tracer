@@ -65,6 +65,11 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.spatial_variance = left_weight * left_node.spatial_variance + right_weight * right_node.spatial_variance +
 								   left_weight * right_weight * hippt::length2(left_node.spatial_mean - right_node.spatial_mean);
 
+		const float3_t mean_delta		  = left_node.spatial_mean - right_node.spatial_mean;
+		const float3_t mean_delta_squared = make_float3(mean_delta.x * mean_delta.x, mean_delta.y * mean_delta.y, mean_delta.z * mean_delta.z);
+		sg_node.spatial_variance_diag =
+			left_weight * left_node.spatial_variance_diag + right_weight * right_node.spatial_variance_diag + left_weight * right_weight * mean_delta_squared;
+
 		sg_node.total_emitter_count = left_node.total_emitter_count + right_node.total_emitter_count;
 		if (sg_node.total_emitter_count > 0)
 		{
@@ -101,8 +106,9 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.mean_axis	= make_float3(0.0f, 0.0f, 0.0f);
 		sg_node.total_power = 0.0f;
 
-		float3_t sum_positions		= make_float3(0.0f, 0.0f, 0.0f);
-		float sum_positions_squared = 0.0f;
+		float3_t sum_positions			= make_float3(0.0f, 0.0f, 0.0f);
+		float3_t sum_second_moment_diag = make_float3(0.0f, 0.0f, 0.0f);
+		float sum_positions_squared		= 0.0f;
 
 		double sum_energy			= 0.0;
 		double sum_energy_squared	= 0.0;
@@ -124,6 +130,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			float3_t e1				= p1 - p0;
 			float3_t e2				= p2 - p0;
 			float triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
+			const float3_t triangle_variance_diag =
+				make_float3((e1.x * e1.x + e2.x * e2.x - e1.x * e2.x) / 18.0f, (e1.y * e1.y + e2.y * e2.y - e1.y * e2.y) / 18.0f,
+							(e1.z * e1.z + e2.z * e2.z - e1.z * e2.z) / 18.0f);
+			const float3_t centroid_squared =
+				make_float3(triangle.centroid.x * triangle.centroid.x, triangle.centroid.y * triangle.centroid.y, triangle.centroid.z * triangle.centroid.z);
+			sum_second_moment_diag += (centroid_squared + triangle_variance_diag) * triangle.power;
 			sum_triangle_variance += (hippt::dot(triangle.centroid, triangle.centroid) + triangle_variance) * triangle.power;
 
 			// 0.5f * triangle normal from the paper
@@ -154,6 +166,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.spatial_mean = sum_positions;
 		sg_node.spatial_variance =
 			hippt::max(0.0f, float(sum_triangle_variance / sg_node.total_power) - hippt::dot(sg_node.spatial_mean, sg_node.spatial_mean));
+
+		const float3_t mean_squared	  = make_float3(sg_node.spatial_mean.x * sg_node.spatial_mean.x, sg_node.spatial_mean.y * sg_node.spatial_mean.y,
+													sg_node.spatial_mean.z * sg_node.spatial_mean.z);
+		sg_node.spatial_variance_diag = hippt::max(make_float3(0.0f, 0.0f, 0.0f), sum_second_moment_diag / sg_node.total_power - mean_squared);
 
 		float bounding_sphere_radius = 0.0f;
 		for (int i = 0; i < ats_node.triangle_count; i++)

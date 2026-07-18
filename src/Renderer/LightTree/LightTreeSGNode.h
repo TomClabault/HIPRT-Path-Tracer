@@ -35,8 +35,9 @@ struct LightTreeSGNode
 	float energy_variance			 = 0.0f;
 	unsigned int total_emitter_count = 0;
 
-	float3_t spatial_mean  = make_float3(0.0f, 0.0f, 0.0f);
-	float spatial_variance = 0.0f;
+	float3_t spatial_mean		   = make_float3(0.0f, 0.0f, 0.0f);
+	float spatial_variance		   = 0.0f;
+	float3_t spatial_variance_diag = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t mean_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float total_power  = 0.0f;

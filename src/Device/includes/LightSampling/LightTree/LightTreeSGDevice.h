@@ -21,8 +21,9 @@ struct LightTreeSGNodeDevice
 
 	VMF vmf;
 
-	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
-	float gaussian_spatial_variance = 0.0f;
+	float3_t gaussian_spatial_mean			= make_float3(0.0f, 0.0f, 0.0f);
+	float gaussian_spatial_variance			= 0.0f;
+	float3_t gaussian_spatial_variance_diag = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Orientation cone angle
