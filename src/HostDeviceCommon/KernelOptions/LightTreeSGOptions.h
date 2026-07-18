@@ -43,8 +43,6 @@
  */
 #define LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate KERNEL_OPTION_FALSE
 
-#define LightTreeSGUseMaxEmitterCosine KERNEL_OPTION_TRUE
-
 /**
  * If splitting is enabled, how many light samples, at most, per shading point is allowed
  */

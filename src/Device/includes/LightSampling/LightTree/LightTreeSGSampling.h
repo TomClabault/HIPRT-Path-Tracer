@@ -78,19 +78,16 @@ struct SGImportanceDebug
 
 HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
-#if LightTreeSGUseMaxEmitterCosine == KERNEL_OPTION_FALSE
-	return 1.0f;
-#endif
-
 	float3_t center_to_shading = shading_point - node.gaussian_spatial_mean;
 	float distance			   = hippt::length(center_to_shading);
+	float support_radius	   = node.bounding_sphere_radius;
 
 	/*
 	 * Positional direction cone.
 	 *
 	 * If the shading point lies inside the bounding sphere, emitters in the node may be seen in arbitrary directions. We cannot reject it.
 	 */
-	float radius = node.bounding_sphere_radius;
+	float radius = support_radius;
 	if (distance <= radius)
 		return 1.0f;
 
@@ -163,6 +160,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	float squared_distance		= hippt::dot(shading_to_node, shading_to_node);
 	float3_t to_light_direction = shading_to_node / hippt::sqrt(squared_distance);
 	if (!DirectLightSamplingAllowBackfacingLights && light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f)
+		// Reject backfacing lights
 		return 0.0f;
 
 	// Use conservative spatial variance for outliers
