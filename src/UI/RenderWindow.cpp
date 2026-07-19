@@ -23,34 +23,37 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO SG Light tree
-//	- Multiple lobes per node is really good, we should keep that
-//		- Adaptive number of lobes per node to reduce number of lobes where not needed?
+//	- Adaptive number of lobes per node to reduce number of lobes where not needed instead of brute-forcing always 8 lobes per node?
 //
-//	- Only do the expensive max corner test if the spatial mean is behind the shading point (dot product < 0) because if it's in front, the max corner test is
-// useless, save some perf?
 //	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for
 //		ReGIR: one CDF per spatial cell in the scene and one distribution over the 1024 root nodes per spatial cell.
 //		We can theory test this by having a 1024 wide root node and just brute force WRS 1024x over it just to see if quality would at least be good. And if
+//		yes, then use the CDF + spatial structure that will be an approximation but useable in speed at least
+//
 //		We could go a bit potato with the number of lobes per node because this is all precomputation so
 //
-// yes, then use the CDF + spatial structure that will be an approximation but useable in speed at least
-//	- Fix SG light tree bad with lights behind the surface?
-//		- Can we somehow have a middle ground between ATS which doesn't have that issue and SG light tree which has better quality overall?
-//	- Fix splitting factor light trees scene depenedent
-//		- Try importance-variance based splitting factor
-//		- Introduce cost in the splitting factor because splitting as long as we reduce variance forgets about cost and we could be splitting for little gains
+//		We'll have to cover the bias or not use hard rejections in the tree importance, see which one is better for efficiency
+//
+//		Adaptive number of nodes per distribution to cover ~95% or something of the incoming energy? Same as ReGIR, for memory savings
+//
+//		To produce the 1024 root nodes, what if we use splitting until we have 1024 samples? instead of the same 1024 nodes for every cell? For the PDF: Store a
+//		macro-root ID on every light primitive.
+//
+//	- Can the 1024-wide root node approach even be combined with a tree wider than binary below the 1024 nodes?
+//	- For visibility, maybe drop splitting and use some NEE++ style thing between shading points and all those 1024 nodes
+//	- Introduce cost in the splitting factor because splitting as long as we reduce variance forgets about cost and we could be splitting for little gains
 //	- How to reduce splitting when specular dominates? LTC Sampling + BSDF MIS (RIS incident lighting even?) should be enough for that
-//	- How to approximate the PDF to gain in speed for MIS?
+//	- How to approximate the PDF to gain in speed for MIS? PDF replay is super expensive with splitting
 //	- Implement new splitting factors and everything in ATS as well and see
 //	- Can we vary the MaxLightSamples of splitting based on NEE variance at the shading point?
 //	- How to reduce splitting intensity where variance is very low in the scene (back of the couch in the white room)
 //  - Max optimize SG tree
 //	- Can we do even better than SG-ATS hybrid while maybe more expensive
-//	- Compare current tree against best theoretical: where is the gap?
+//	- Compare current tree against best theoretical (importance of node = iterate over all triangles and sum contributions): where is the gap?
 //	- How to make splitting work with higher tree arity?
-//	- Updating the formula of the bounding sphere helped a lot but can we do even better?
-//	- Still one SG tree inefficiency in minecraft harbor
-//	- VMF mixture per each node instead of just one VMF?
+//
+//
+//
 //
 //	- Add a scene statistics panel in the UI, rename "Objects" as "Scene"
 //	- Multithread app startup scene loading with kernel compilation

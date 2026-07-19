@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <limits>
 
+/**
+ * Merges multiple SG spatial lobes into a single lobe, weighted by their power. The membership bitmask indicates which lobe of 'lobes' to merge.
+ */
 LightTreeSGSpatialLobeBuild LightTreeSGBuilder::light_tree_sg_lobes_merge(const LightTreeSGSpatialLobeBuild* lobes,
 																		  int lobe_count,
 																		  unsigned int membership_mask)
@@ -51,6 +54,10 @@ LightTreeSGSpatialLobeBuild LightTreeSGBuilder::light_tree_sg_merge_lobes(const 
 	return light_tree_sg_lobes_merge(lobes, 2, 0b11);
 }
 
+/**
+ * Takes a bunch of SG spatial nodes (typically 4: 2 of the left child and 2 of the right child) and reduces them to a target number of lobes (typically 2)
+ * for the merged parent node.
+ */
 LightTreeSGBuilder::LightTreeSGLobeReduction LightTreeSGBuilder::light_tree_sg_reduce_lobes(const LightTreeSGSpatialLobeBuild* lobes,
 																							int lobe_count,
 																							int target_lobe_count)
@@ -76,9 +83,11 @@ LightTreeSGBuilder::LightTreeSGLobeReduction LightTreeSGBuilder::light_tree_sg_r
 			for (int second_index = first_index + 1; second_index < lobe_count; second_index++)
 			{
 				const double combined_power = working_lobes[first_index].power + working_lobes[second_index].power;
-				const double merge_cost		= combined_power > 0.0 ? working_lobes[first_index].power * working_lobes[second_index].power / combined_power *
-																		 hippt::length2(working_lobes[first_index].mean - working_lobes[second_index].mean)
-																   : 0.0;
+
+				// Ward's cost: https://en.wikipedia.org/wiki/Ward%27s_method
+				const double merge_cost = combined_power > 0.0 ? working_lobes[first_index].power * working_lobes[second_index].power / combined_power *
+																	 hippt::length2(working_lobes[first_index].mean - working_lobes[second_index].mean)
+															   : 0.0;
 
 				if (merge_cost < lowest_merge_cost)
 				{

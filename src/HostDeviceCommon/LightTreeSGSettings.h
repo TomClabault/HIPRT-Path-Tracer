@@ -11,6 +11,7 @@ static constexpr int LIGHT_TREE_SG_MAX_SPATIAL_LOBES = 8;
 struct LightTreeSGSettings
 {
 	float light_tree_sg_splitting_variance = 0.92f;
+	unsigned int spatial_lobe_count		   = 1;
 };
 
 #endif

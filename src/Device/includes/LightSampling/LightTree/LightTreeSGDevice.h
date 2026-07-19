@@ -27,12 +27,16 @@ struct LightTreeSGNodeDevice
 		return energy_average;
 	}
 
+	// Note that this VMF is shared for all lobes of the node. One VMF distribution per each lobe yielded a bit better quality when I tried but the increased
+	// size of the nodes made fetching nodes during traversal more expensive and it wasn't worth it overall. So this is instead an "average VMF" fitted over the
+	// whole node.
 	VMF vmf;
 
-	// Multiple spatial SG lobes per node so we can better approximate the incoming light distribution in case it's multi-modal.
-	SpatialSGLobeDevice spatial_lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
-	unsigned int spatial_lobe_count = 1;
-	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
+	// Points to this node's contiguous spatial SG lobe range in LightTreeSGDevice storage.
+	SpatialSGLobeDevice* spatial_lobes = nullptr;
+	unsigned int spatial_lobe_count	   = 1;
+
+	float3_t gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Orientation cone angle
@@ -60,7 +64,8 @@ struct LightTreeSGDevice
 {
 	LightTreeSGSettings settings;
 
-	LightTreeSGNodeDevice* nodes = nullptr;
+	LightTreeSGNodeDevice* nodes	   = nullptr;
+	SpatialSGLobeDevice* spatial_lobes = nullptr;
 
 	int* indices_array		 = nullptr;
 	unsigned int* bit_trails = nullptr;
