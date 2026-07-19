@@ -506,21 +506,24 @@ math_vector<T, 4> operator/(const math_vector<T, 4>& a, T b)
 	return math_vector<T, 4>{ a.x / b, a.y / b, a.z / b, a.w / b };
 }
 
-using uchar2_t = math_vector<unsigned char, 2>;
-using uchar3_t = math_vector<unsigned char, 3>;
-using uchar4_t = math_vector<unsigned char, 4>;
-using short2_t = math_vector<short int, 2>;
-using short3_t = math_vector<short int, 3>;
-using short4_t = math_vector<short int, 4>;
-using int2_t   = math_vector<int, 2>;
-using int3_t   = math_vector<int, 3>;
-using int4_t   = math_vector<int, 4>;
-using uint2_t  = math_vector<unsigned int, 2>;
-using uint3_t  = math_vector<unsigned int, 3>;
-using uint4_t  = math_vector<unsigned int, 4>;
-using float2_t = math_vector<float, 2>;
-using float3_t = math_vector<float, 3>;
-using float4_t = math_vector<float, 4>;
+using uchar2_t	= math_vector<unsigned char, 2>;
+using uchar3_t	= math_vector<unsigned char, 3>;
+using uchar4_t	= math_vector<unsigned char, 4>;
+using short2_t	= math_vector<short int, 2>;
+using short3_t	= math_vector<short int, 3>;
+using short4_t	= math_vector<short int, 4>;
+using int2_t	= math_vector<int, 2>;
+using int3_t	= math_vector<int, 3>;
+using int4_t	= math_vector<int, 4>;
+using uint2_t	= math_vector<unsigned int, 2>;
+using uint3_t	= math_vector<unsigned int, 3>;
+using uint4_t	= math_vector<unsigned int, 4>;
+using float2_t	= math_vector<float, 2>;
+using float3_t	= math_vector<float, 3>;
+using float4_t	= math_vector<float, 4>;
+using double2_t = math_vector<double, 2>;
+using double3_t = math_vector<double, 3>;
+using double4_t = math_vector<double, 4>;
 
 inline constexpr uchar2_t make_uchar2(unsigned char x, unsigned char y)
 {
@@ -671,25 +674,58 @@ inline constexpr float4_t make_float4(float v)
 	return float4_t(v, v, v, v);
 }
 
+inline constexpr double2_t make_double2(double x, double y)
+{
+	return double2_t(x, y);
+}
+
+inline constexpr double2_t make_double2(double v)
+{
+	return double2_t(v, v);
+}
+
+inline constexpr double3_t make_double3(double x, double y, double z)
+{
+	return double3_t(x, y, z);
+}
+
+inline constexpr double3_t make_double3(double v)
+{
+	return double3_t(v, v, v);
+}
+
+inline constexpr double4_t make_double4(double x, double y, double z, double w)
+{
+	return double4_t(x, y, z, w);
+}
+
+inline constexpr double4_t make_double4(double v)
+{
+	return double4_t(v, v, v, v);
+}
+
 #else // __KERNELCC__
 
 #include "Device/includes/FixIntellisense.h"
 
-using uchar2_t = uchar2;
-using uchar3_t = uchar3;
-using uchar4_t = uchar4;
-using short2_t = short2;
-using short3_t = short3;
-using short4_t = short4;
-using int2_t   = int2;
-using int3_t   = int3;
-using int4_t   = int4;
-using uint2_t  = uint2;
-using uint3_t  = uint3;
-using uint4_t  = uint4;
-using float2_t = float2;
-using float3_t = float3;
-using float4_t = float4;
+using uchar2_t	= uchar2;
+using uchar3_t	= uchar3;
+using uchar4_t	= uchar4;
+using short2_t	= short2;
+using short3_t	= short3;
+using short4_t	= short4;
+using int2_t	= int2;
+using int3_t	= int3;
+using int4_t	= int4;
+using uint2_t	= uint2;
+using uint3_t	= uint3;
+using uint4_t	= uint4;
+using float2_t	= float2;
+using float3_t	= float3;
+using float4_t	= float4;
+using double2_t = double2;
+using double3_t = double3;
+using double4_t = double4;
 
 // Defining the missing one-value constructors
 HIPRT_DEVICE inline constexpr uchar2_t make_uchar2(unsigned char v)
@@ -765,6 +801,21 @@ HIPRT_DEVICE inline constexpr float3_t make_float3(float v)
 HIPRT_DEVICE inline constexpr float4_t make_float4(float v)
 {
 	return make_float4(v, v, v, v);
+}
+
+HIPRT_DEVICE inline constexpr double2_t make_double2(double v)
+{
+	return make_double2(v, v);
+}
+
+HIPRT_DEVICE inline constexpr double3_t make_double3(double v)
+{
+	return make_double3(v, v, v);
+}
+
+HIPRT_DEVICE inline constexpr double4_t make_double4(double v)
+{
+	return make_double4(v, v, v, v);
 }
 
 #endif // !__KERNELCC__

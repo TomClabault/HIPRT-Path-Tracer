@@ -16,6 +16,12 @@
 class LightTreeSGBuilder
 {
 public:
+	struct LightTreeSGLobeReduction
+	{
+		LightTreeSGSpatialLobeBuild lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
+	};
+
+public:
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 						  const std::vector<float>& triangles_average_emissive_power_luminance,
 						  const std::vector<int>& triangle_indices,
@@ -39,6 +45,19 @@ public:
 	void set_spatial_lobe_count(int spatial_lobe_count);
 
 private:
+	/**
+	 * Merges multiple SG spatial lobes into a single lobe, weighted by their power. The membership bitmask indicates which lobe of 'lobes' to merge.
+	 */
+	static LightTreeSGSpatialLobeBuild light_tree_sg_lobes_merge(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count, unsigned int membership_mask);
+	static LightTreeSGSpatialLobeBuild light_tree_sg_merge_lobes(const LightTreeSGSpatialLobeBuild& first, const LightTreeSGSpatialLobeBuild& second);
+	/**
+	 * Takes a bunch of SG spatial nodes (typically 4: 2 of the left child and 2 of the right child) and reduces them to a target number of lobes (typically 2)
+	 * for the merged parent node.
+	 */
+	static LightTreeSGLobeReduction light_tree_sg_reduce_lobes(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count, int target_lobe_count);
+	static float3_t light_tree_sg_lobes_mean(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count);
+
+private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
 
 	std::vector<LightTreeSGNode> m_nodes;
@@ -60,13 +79,15 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].vmf.sharpness		  = m_nodes[i].vmf.sharpness;
 		device_data_out.nodes_device[i].gaussian_spatial_mean = m_nodes[i].spatial_mean;
 		device_data_out.nodes_device[i].spatial_lobe_count	  = m_spatial_lobe_count;
+
 		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 		{
 			const LightTreeSGSpatialLobeBuild& lobe = m_nodes[i].spatial_lobes[lobe_index];
-			SpatialSGLobeDevice& device_lobe		= device_data_out.nodes_device[i].spatial_lobes[lobe_index];
-			device_lobe.mean	 = make_float3(static_cast<float>(lobe.mean_x), static_cast<float>(lobe.mean_y), static_cast<float>(lobe.mean_z));
-			device_lobe.variance = static_cast<float>(lobe.variance);
-			device_lobe.power	 = static_cast<float>(lobe.power / SG_integral(m_nodes[i].vmf.sharpness));
+
+			SpatialSGLobeDevice& device_lobe = device_data_out.nodes_device[i].spatial_lobes[lobe_index];
+			device_lobe.mean				 = make_float3(static_cast<float>(lobe.mean.x), static_cast<float>(lobe.mean.y), static_cast<float>(lobe.mean.z));
+			device_lobe.variance			 = static_cast<float>(lobe.variance);
+			device_lobe.power				 = static_cast<float>(lobe.power / SG_integral(m_nodes[i].vmf.sharpness));
 
 			float radius_squared = 0.0f;
 			for (int corner_index = 0; corner_index < 8; corner_index++)
@@ -76,8 +97,10 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 								(corner_index & 4) ? lobe.bounds.mini.z : lobe.bounds.maxi.z);
 				radius_squared = hippt::max(radius_squared, hippt::length2(corner - device_lobe.mean));
 			}
+
 			device_lobe.support_radius = hippt::sqrt(radius_squared);
 		}
+
 		device_data_out.nodes_device[i].orientation_axis	   = m_nodes[i].orientation_axis;
 		device_data_out.nodes_device[i].cos_theta_o			   = cosf(m_nodes[i].theta_o);
 		device_data_out.nodes_device[i].sin_theta_o			   = sinf(m_nodes[i].theta_o);
@@ -89,6 +112,7 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].bounds_min			   = m_nodes[i].bounds.mini;
 		device_data_out.nodes_device[i].bounds_max			   = m_nodes[i].bounds.maxi;
 		device_data_out.nodes_device[i].triangle_count		   = m_nodes[i].triangle_count;
+
 		if (m_nodes[i].triangle_count == 0)
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;
 		else

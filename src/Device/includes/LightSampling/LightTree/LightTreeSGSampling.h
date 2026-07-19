@@ -166,7 +166,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z);
-		float det	  = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
 					2.0f * light_lobe_variance *
 						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
 					light_lobe_variance * light_lobe_variance * det_JJ4;
@@ -218,6 +218,9 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 	if (hippt::dot(shading_normal, node.gaussian_spatial_mean - shading_point) <= 0.0f)
 	{
+		// Only checking the full bounds of the node if the spatial mean is behind the surface (if it's in front of the surface the node definitely cannot be
+		// rejected for sure so we don't even have to do the test).
+
 		float3_t max_corner;
 		max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
 		max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
@@ -228,6 +231,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	}
 
 	if (!DirectLightSamplingAllowBackfacingLights && light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f)
+		// Light is backfacing and backfacing lights are not allowed, so the importance is 0, rejecting it immediately
 		return 0.0f;
 
 	float final_importance = 0.0f;
@@ -270,8 +274,8 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance			 = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) +
-						hippt::square(node.get_energy_average()) * variance_geometric) *
-					 hippt::square(node.total_emitter_count);
+								hippt::square(node.get_energy_average()) * variance_geometric) *
+							   hippt::square(node.total_emitter_count);
 
 	return variance;
 }
@@ -536,7 +540,7 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -904,7 +908,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1058,7 +1062,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1185,7 +1189,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-						  material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);

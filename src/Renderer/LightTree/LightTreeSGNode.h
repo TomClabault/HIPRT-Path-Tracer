@@ -6,16 +6,16 @@
 #ifndef RENDERER_LIGHT_TREE_SG_NODE_H
 #define RENDERER_LIGHT_TREE_SG_NODE_H
 
-#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct LightTreeSGSpatialLobeBuild
 {
-	double power	= 0.0;
-	double mean_x	= 0.0;
-	double mean_y	= 0.0;
-	double mean_z	= 0.0;
+	double power = 0.0;
+
+	double3_t mean	= make_double3(0.0, 0.0, 0.0);
 	double variance = 0.0;
+
 	AABB bounds;
 };
 

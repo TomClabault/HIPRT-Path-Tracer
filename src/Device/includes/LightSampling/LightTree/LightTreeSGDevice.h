@@ -29,6 +29,7 @@ struct LightTreeSGNodeDevice
 
 	VMF vmf;
 
+	// Multiple spatial SG lobes per node so we can better approximate the incoming light distribution in case it's multi-modal.
 	SpatialSGLobeDevice spatial_lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
 	unsigned int spatial_lobe_count = 1;
 	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);

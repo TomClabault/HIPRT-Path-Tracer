@@ -97,6 +97,11 @@ namespace hippt
 		return __ldg(address);
 	}
 
+	__device__ static double dot(double3_t u, double3_t v)
+	{
+		return u.x * v.x + u.y * v.y + u.z * v.z;
+	}
+
 	__device__ static float3_t cross(float3_t u, float3_t v)
 	{
 		return hiprt::cross(u, v);
@@ -148,6 +153,11 @@ namespace hippt
 	}
 
 	__device__ static float length2(float3_t u)
+	{
+		return hippt::dot(u, u);
+	}
+
+	__device__ static double length2(double3_t u)
 	{
 		return hippt::dot(u, u);
 	}
@@ -1126,6 +1136,11 @@ namespace hippt
 		return make_float3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
 	}
 
+	static constexpr double dot(double3_t u, double3_t v)
+	{
+		return u.x * v.x + u.y * v.y + u.z * v.z;
+	}
+
 	static constexpr float dot(float3_t u, float3_t v)
 	{
 		return u.x * v.x + u.y * v.y + u.z * v.z;
@@ -1179,6 +1194,11 @@ namespace hippt
 	static float3_t abs(float3_t u)
 	{
 		return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z));
+	}
+
+	static constexpr double length2(double3_t u)
+	{
+		return hippt::dot(u, u);
 	}
 
 	template <typename T>
