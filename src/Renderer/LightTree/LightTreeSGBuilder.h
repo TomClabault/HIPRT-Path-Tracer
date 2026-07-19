@@ -53,21 +53,38 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
-		device_data_out.nodes_device[i].vmf.axis					   = m_nodes[i].vmf.axis;
-		device_data_out.nodes_device[i].vmf.sharpness				   = m_nodes[i].vmf.sharpness;
-		device_data_out.nodes_device[i].gaussian_spatial_mean		   = m_nodes[i].spatial_mean;
-		device_data_out.nodes_device[i].gaussian_spatial_variance_diag = m_nodes[i].spatial_variance_diag;
-		device_data_out.nodes_device[i].orientation_axis			   = m_nodes[i].orientation_axis;
-		device_data_out.nodes_device[i].cos_theta_o					   = cosf(m_nodes[i].theta_o);
-		device_data_out.nodes_device[i].sin_theta_o					   = sinf(m_nodes[i].theta_o);
-		device_data_out.nodes_device[i].bounding_sphere_radius		   = m_nodes[i].bounding_sphere_radius;
-		device_data_out.nodes_device[i].total_power					   = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf.sharpness);
-		device_data_out.nodes_device[i].energy_variance				   = m_nodes[i].energy_variance;
-		device_data_out.nodes_device[i].energy_average				   = m_nodes[i].energy_average;
-		device_data_out.nodes_device[i].total_emitter_count			   = m_nodes[i].total_emitter_count;
-		device_data_out.nodes_device[i].bounds_min					   = m_nodes[i].bounds.mini;
-		device_data_out.nodes_device[i].bounds_max					   = m_nodes[i].bounds.maxi;
-		device_data_out.nodes_device[i].triangle_count				   = m_nodes[i].triangle_count;
+		device_data_out.nodes_device[i].vmf.axis			  = m_nodes[i].vmf.axis;
+		device_data_out.nodes_device[i].vmf.sharpness		  = m_nodes[i].vmf.sharpness;
+		device_data_out.nodes_device[i].gaussian_spatial_mean = m_nodes[i].spatial_mean;
+		for (int lobe_index = 0; lobe_index < 2; lobe_index++)
+		{
+			const LightTreeSGSpatialLobeBuild& lobe = m_nodes[i].spatial_lobes[lobe_index];
+			SpatialSGLobeDevice& device_lobe		= device_data_out.nodes_device[i].spatial_lobes[lobe_index];
+			device_lobe.mean	 = make_float3(static_cast<float>(lobe.mean_x), static_cast<float>(lobe.mean_y), static_cast<float>(lobe.mean_z));
+			device_lobe.variance = static_cast<float>(lobe.variance);
+			device_lobe.power	 = static_cast<float>(lobe.power / SG_integral(m_nodes[i].vmf.sharpness));
+
+			float radius_squared = 0.0f;
+			for (int corner_index = 0; corner_index < 8; corner_index++)
+			{
+				const float3_t corner =
+					make_float3((corner_index & 1) ? lobe.bounds.mini.x : lobe.bounds.maxi.x, (corner_index & 2) ? lobe.bounds.mini.y : lobe.bounds.maxi.y,
+								(corner_index & 4) ? lobe.bounds.mini.z : lobe.bounds.maxi.z);
+				radius_squared = hippt::max(radius_squared, hippt::length2(corner - device_lobe.mean));
+			}
+			device_lobe.support_radius = hippt::sqrt(radius_squared);
+		}
+		device_data_out.nodes_device[i].orientation_axis	   = m_nodes[i].orientation_axis;
+		device_data_out.nodes_device[i].cos_theta_o			   = cosf(m_nodes[i].theta_o);
+		device_data_out.nodes_device[i].sin_theta_o			   = sinf(m_nodes[i].theta_o);
+		device_data_out.nodes_device[i].bounding_sphere_radius = m_nodes[i].bounding_sphere_radius;
+		device_data_out.nodes_device[i].total_power			   = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf.sharpness);
+		device_data_out.nodes_device[i].energy_variance		   = m_nodes[i].energy_variance;
+		device_data_out.nodes_device[i].energy_average		   = m_nodes[i].energy_average;
+		device_data_out.nodes_device[i].total_emitter_count	   = m_nodes[i].total_emitter_count;
+		device_data_out.nodes_device[i].bounds_min			   = m_nodes[i].bounds.mini;
+		device_data_out.nodes_device[i].bounds_max			   = m_nodes[i].bounds.maxi;
+		device_data_out.nodes_device[i].triangle_count		   = m_nodes[i].triangle_count;
 		if (m_nodes[i].triangle_count == 0)
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;
 		else

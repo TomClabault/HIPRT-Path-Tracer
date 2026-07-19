@@ -11,6 +11,14 @@
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "Renderer/LightTree/LightTreeATSConstants.h"
 
+struct SpatialSGLobeDevice
+{
+	float3_t mean;
+	float variance		 = 0.0f;
+	float power			 = 0.0f;
+	float support_radius = 0.0f;
+};
+
 struct LightTreeSGNodeDevice
 {
 	HIPRT_DEVICE float get_energy_average() const
@@ -21,10 +29,8 @@ struct LightTreeSGNodeDevice
 
 	VMF vmf;
 
+	SpatialSGLobeDevice spatial_lobes[2];
 	float3_t gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
-	// This is the diagonal of the covariance matrix of the spatial distribution, this is more precise for elongated nodes where scalar variance would have just
-	// inflated every direction
-	float3_t gaussian_spatial_variance_diag = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Orientation cone angle

@@ -5,6 +5,122 @@
 
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 
+#include <algorithm>
+#include <limits>
+
+struct LightTreeSGTwoLobeReduction
+{
+	LightTreeSGSpatialLobeBuild lobes[2];
+	double cost = std::numeric_limits<double>::infinity();
+};
+
+static double light_tree_sg_squared_distance(const LightTreeSGSpatialLobeBuild& first, const LightTreeSGSpatialLobeBuild& second)
+{
+	double delta_x = first.mean_x - second.mean_x;
+	double delta_y = first.mean_y - second.mean_y;
+	double delta_z = first.mean_z - second.mean_z;
+
+	return delta_x * delta_x + delta_y * delta_y + delta_z * delta_z;
+}
+
+static LightTreeSGSpatialLobeBuild light_tree_sg_moment_match(const LightTreeSGSpatialLobeBuild* components, int component_count, unsigned int membership_mask)
+{
+	LightTreeSGSpatialLobeBuild result;
+
+	for (int component_index = 0; component_index < component_count; component_index++)
+	{
+		if ((membership_mask & (1u << component_index)) == 0)
+			continue;
+
+		const LightTreeSGSpatialLobeBuild& component = components[component_index];
+		result.power += component.power;
+		result.mean_x += component.power * component.mean_x;
+		result.mean_y += component.power * component.mean_y;
+		result.mean_z += component.power * component.mean_z;
+		result.bounds.extend(component.bounds);
+	}
+
+	if (result.power <= 0.0)
+		return result;
+
+	result.mean_x /= result.power;
+	result.mean_y /= result.power;
+	result.mean_z /= result.power;
+
+	for (int component_index = 0; component_index < component_count; component_index++)
+	{
+		if ((membership_mask & (1u << component_index)) == 0)
+			continue;
+
+		const LightTreeSGSpatialLobeBuild& component = components[component_index];
+		result.variance += component.power * (component.variance + light_tree_sg_squared_distance(component, result));
+	}
+
+	result.variance /= result.power;
+
+	return result;
+}
+
+static LightTreeSGTwoLobeReduction light_tree_sg_reduce_components_to_two(const LightTreeSGSpatialLobeBuild* components, int component_count)
+{
+	LightTreeSGTwoLobeReduction result;
+	if (component_count == 0)
+	{
+		result.cost = 0.0;
+
+		return result;
+	}
+
+	if (component_count <= 2)
+	{
+		for (int component_index = 0; component_index < component_count; component_index++)
+			result.lobes[component_index] = components[component_index];
+
+		for (int component_index = 0; component_index < component_count; component_index++)
+			result.cost += components[component_index].power * components[component_index].variance;
+
+		if (result.lobes[1].power > result.lobes[0].power)
+			std::swap(result.lobes[0], result.lobes[1]);
+
+		return result;
+	}
+
+	const unsigned int complete_mask = (1u << component_count) - 1u;
+	for (unsigned int mask = 1; mask < complete_mask; mask++)
+	{
+		if ((mask & 1u) == 0)
+			continue;
+
+		const unsigned int complement			= complete_mask ^ mask;
+		LightTreeSGSpatialLobeBuild first_lobe	= light_tree_sg_moment_match(components, component_count, mask);
+		LightTreeSGSpatialLobeBuild second_lobe = light_tree_sg_moment_match(components, component_count, complement);
+		const double cost						= first_lobe.power * first_lobe.variance + second_lobe.power * second_lobe.variance;
+
+		if (cost < result.cost)
+		{
+			result.cost		= cost;
+			result.lobes[0] = first_lobe;
+			result.lobes[1] = second_lobe;
+		}
+	}
+
+	if (result.lobes[1].power > result.lobes[0].power)
+		std::swap(result.lobes[0], result.lobes[1]);
+
+	return result;
+}
+
+static float3_t light_tree_sg_lobes_mean(const LightTreeSGSpatialLobeBuild* lobes)
+{
+	double total_power = lobes[0].power + lobes[1].power;
+	if (total_power <= 0.0)
+		return make_float3(0.0f, 0.0f, 0.0f);
+
+	return make_float3(static_cast<float>((lobes[0].power * lobes[0].mean_x + lobes[1].power * lobes[1].mean_x) / total_power),
+					   static_cast<float>((lobes[0].power * lobes[0].mean_y + lobes[1].power * lobes[1].mean_y) / total_power),
+					   static_cast<float>((lobes[0].power * lobes[0].mean_z + lobes[1].power * lobes[1].mean_z) / total_power));
+}
+
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 										  const std::vector<float>& triangles_average_emissive_power_luminance,
 										  const std::vector<int>& triangle_indices,
@@ -61,11 +177,20 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.total_power		 = left_node.total_power + right_node.total_power;
 		sg_node.bounds.extend(left_node.bounds);
 		sg_node.bounds.extend(right_node.bounds);
-		sg_node.spatial_mean			  = left_weight * left_node.spatial_mean + right_weight * right_node.spatial_mean;
-		const float3_t mean_delta		  = left_node.spatial_mean - right_node.spatial_mean;
-		const float3_t mean_delta_squared = make_float3(mean_delta.x * mean_delta.x, mean_delta.y * mean_delta.y, mean_delta.z * mean_delta.z);
-		sg_node.spatial_variance_diag =
-			left_weight * left_node.spatial_variance_diag + right_weight * right_node.spatial_variance_diag + left_weight * right_weight * mean_delta_squared;
+		LightTreeSGSpatialLobeBuild components[4];
+		int component_count = 0;
+		for (int lobe_index = 0; lobe_index < 2; lobe_index++)
+		{
+			if (left_node.spatial_lobes[lobe_index].power > 0.0)
+				components[component_count++] = left_node.spatial_lobes[lobe_index];
+			if (right_node.spatial_lobes[lobe_index].power > 0.0)
+				components[component_count++] = right_node.spatial_lobes[lobe_index];
+		}
+
+		LightTreeSGTwoLobeReduction reduction = light_tree_sg_reduce_components_to_two(components, component_count);
+		sg_node.spatial_lobes[0]			  = reduction.lobes[0];
+		sg_node.spatial_lobes[1]			  = reduction.lobes[1];
+		sg_node.spatial_mean				  = light_tree_sg_lobes_mean(sg_node.spatial_lobes);
 
 		sg_node.total_emitter_count = left_node.total_emitter_count + right_node.total_emitter_count;
 		if (sg_node.total_emitter_count > 0)
@@ -100,11 +225,16 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 	else
 	{
 		// Leaf node, compute data necessary for building the spherical gaussian
-		sg_node.mean_axis	= make_float3(0.0f, 0.0f, 0.0f);
-		sg_node.total_power = 0.0f;
+		sg_node.mean_axis		 = make_float3(0.0f, 0.0f, 0.0f);
+		sg_node.total_power		 = 0.0f;
+		sg_node.spatial_lobes[0] = LightTreeSGSpatialLobeBuild();
+		sg_node.spatial_lobes[1] = LightTreeSGSpatialLobeBuild();
 
-		float3_t sum_positions			= make_float3(0.0f, 0.0f, 0.0f);
-		float3_t sum_second_moment_diag = make_float3(0.0f, 0.0f, 0.0f);
+		double sum_position_x	 = 0.0;
+		double sum_position_y	 = 0.0;
+		double sum_position_z	 = 0.0;
+		double sum_second_moment = 0.0;
+		double sum_power		 = 0.0;
 
 		double sum_energy			= 0.0;
 		double sum_energy_squared	= 0.0;
@@ -127,15 +257,20 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			const float3_t triangle_variance_diag =
 				make_float3((e1.x * e1.x + e2.x * e2.x - e1.x * e2.x) / 18.0f, (e1.y * e1.y + e2.y * e2.y - e1.y * e2.y) / 18.0f,
 							(e1.z * e1.z + e2.z * e2.z - e1.z * e2.z) / 18.0f);
-			const float3_t centroid_squared =
-				make_float3(triangle.centroid.x * triangle.centroid.x, triangle.centroid.y * triangle.centroid.y, triangle.centroid.z * triangle.centroid.z);
-			sum_second_moment_diag += (centroid_squared + triangle_variance_diag) * triangle.power;
+			const double centroid_squared = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
+											static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
+											static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
+			const double triangle_intrinsic_variance = triangle_variance_diag.x + triangle_variance_diag.y + triangle_variance_diag.z;
+			sum_second_moment += (centroid_squared + triangle_intrinsic_variance) * triangle.power;
 
 			// 0.5f * triangle normal from the paper
 			sg_node.mean_axis += 0.5f * triangle.normal * triangle.power;
 			sg_node.total_power += triangle.power;
+			sum_power += triangle.power;
 
-			sum_positions += triangle.centroid * triangle.power;
+			sum_position_x += static_cast<double>(triangle.centroid.x) * triangle.power;
+			sum_position_y += static_cast<double>(triangle.centroid.y) * triangle.power;
+			sum_position_z += static_cast<double>(triangle.centroid.z) * triangle.power;
 
 			sum_energy += triangle.power;
 			sum_energy_squared += hippt::square(triangle.power);
@@ -145,18 +280,24 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		if (triangle_count == 0)
 			return;
-		else if (sg_node.total_power == 0.0f)
+		else if (sum_power <= 0.0)
 			return;
 
-		sum_positions /= sg_node.total_power;
+		const double mean_x		= sum_position_x / sum_power;
+		const double mean_y		= sum_position_y / sum_power;
+		const double mean_z		= sum_position_z / sum_power;
 		sg_node.energy_average	= sum_energy / triangle_count;
 		sg_node.energy_variance = hippt::max(0.0f, static_cast<float>(sum_energy_squared / triangle_count - hippt::square(sum_energy / triangle_count)));
 
 		sg_node.mean_axis /= sg_node.total_power;
-		sg_node.spatial_mean		  = sum_positions;
-		const float3_t mean_squared	  = make_float3(sg_node.spatial_mean.x * sg_node.spatial_mean.x, sg_node.spatial_mean.y * sg_node.spatial_mean.y,
-													sg_node.spatial_mean.z * sg_node.spatial_mean.z);
-		sg_node.spatial_variance_diag = hippt::max(make_float3(0.0f, 0.0f, 0.0f), sum_second_moment_diag / sg_node.total_power - mean_squared);
+		sg_node.spatial_mean			  = make_float3(static_cast<float>(mean_x), static_cast<float>(mean_y), static_cast<float>(mean_z));
+		const double mean_squared		  = mean_x * mean_x + mean_y * mean_y + mean_z * mean_z;
+		const double variance			  = std::max(0.0, sum_second_moment / sum_power - mean_squared);
+		sg_node.spatial_lobes[0].power	  = sum_power;
+		sg_node.spatial_lobes[0].mean_x	  = mean_x;
+		sg_node.spatial_lobes[0].mean_y	  = mean_y;
+		sg_node.spatial_lobes[0].mean_z	  = mean_z;
+		sg_node.spatial_lobes[0].variance = variance;
 
 		float bounding_sphere_radius = 0.0f;
 		for (int i = 0; i < ats_node.triangle_count; i++)
@@ -182,6 +323,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		}
 
 		// Computes vMF parameters with the mean axis (normalized by the function)
+		sg_node.spatial_lobes[0].bounds = sg_node.bounds;
 		sg_node.compute_vmf();
 		sg_node.triangle_count		   = triangle_count;
 		sg_node.first_triangle_index   = ats_node.first_triangle_index;
