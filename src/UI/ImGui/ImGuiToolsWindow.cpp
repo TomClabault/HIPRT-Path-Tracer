@@ -694,12 +694,24 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			}
 			if (ImGui::Button("Start capture"))
 			{
-				// Removing auto samples per frame for consistency and to avoid
-				// that multiple samples are rendered between two captures (especially when using sample-based captures)
-				render_settings.samples_per_frame								   = 1;
-				m_render_window->get_application_settings()->auto_sample_per_frame = false;
-				m_render_window->get_application_settings()->max_sample_count	   = 0;
-				m_render_window->get_application_settings()->max_render_time	   = 0;
+				if (capture_interval_type == 0)
+				{
+					// Capture every N seconds
+
+					m_render_window->get_application_settings()->auto_sample_per_frame = true;
+				}
+				else
+				{
+					// Capture per samples
+
+					// Removing auto samples per frame for consistency and to avoid
+					// that more samples than requested are rendered
+					render_settings.samples_per_frame								   = 1;
+					m_render_window->get_application_settings()->auto_sample_per_frame = false;
+				}
+
+				m_render_window->get_application_settings()->max_sample_count = 0;
+				m_render_window->get_application_settings()->max_render_time  = 0;
 
 				captures_taken		   = 0;
 				last_captured_ratio	   = 0.0f;
@@ -820,7 +832,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		static std::string legend = "Data legend";
 		ImGui::InputText("Legend", &legend);
-		ImGui::BeginDisabled(current_recorded_xs.size() == 0);
+		ImGui::BeginDisabled(current_recorded_xs.size() == 0 || capture_started);
 		if (ImGui::Button("Add Step 4 captured data"))
 		{
 			recorded_legends.push_back(legend);
