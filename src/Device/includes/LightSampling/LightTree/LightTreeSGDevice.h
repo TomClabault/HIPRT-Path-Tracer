@@ -29,8 +29,9 @@ struct LightTreeSGNodeDevice
 
 	VMF vmf;
 
-	SpatialSGLobeDevice spatial_lobes[2];
-	float3_t gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
+	SpatialSGLobeDevice spatial_lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
+	unsigned int spatial_lobe_count = 1;
+	float3_t gaussian_spatial_mean	= make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Orientation cone angle

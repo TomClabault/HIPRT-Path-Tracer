@@ -7,6 +7,7 @@
 #define RENDERER_LIGHT_TREE_SG_NODE_H
 
 #include "HostDeviceCommon/Maths/Math.h"
+#include "HostDeviceCommon/LightTreeSGSettings.h"
 
 struct LightTreeSGSpatialLobeBuild
 {
@@ -45,7 +46,7 @@ struct LightTreeSGNode
 	float energy_variance			 = 0.0f;
 	unsigned int total_emitter_count = 0;
 
-	LightTreeSGSpatialLobeBuild spatial_lobes[2];
+	LightTreeSGSpatialLobeBuild spatial_lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
 	float3_t spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
 
 	float3_t mean_axis = make_float3(0.0f, 0.0f, 0.0f);

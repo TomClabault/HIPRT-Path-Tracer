@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_LIGHT_TREE_SG_SETTINGS_H
 #define HOST_DEVICE_COMMON_LIGHT_TREE_SG_SETTINGS_H
 
+static constexpr int LIGHT_TREE_SG_MAX_SPATIAL_LOBES = 8;
+
 struct LightTreeSGSettings
 {
 	float light_tree_sg_splitting_variance = 0.92f;

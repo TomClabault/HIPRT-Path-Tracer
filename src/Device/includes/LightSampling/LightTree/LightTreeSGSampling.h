@@ -231,7 +231,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 		return 0.0f;
 
 	float final_importance = 0.0f;
-	for (int lobe_index = 0; lobe_index < 2; lobe_index++)
+	for (unsigned int lobe_index = 0; lobe_index < node.spatial_lobe_count; lobe_index++)
 		final_importance += light_tree_sg_evaluate_spatial_lobe(node.spatial_lobes[lobe_index], node.vmf, spec_data, shading_point, view_direction,
 																shading_normal, specular, alpha_x, alpha_y);
 

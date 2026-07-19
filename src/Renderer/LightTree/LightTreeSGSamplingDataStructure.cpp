@@ -108,3 +108,13 @@ LightTreeATSBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_option
 {
 	return m_light_tree_builder_sg.get_build_options();
 }
+
+int LightTreeSGSamplingDataStructure::get_spatial_lobe_count() const
+{
+	return m_light_tree_builder_sg.get_spatial_lobe_count();
+}
+
+void LightTreeSGSamplingDataStructure::set_spatial_lobe_count(int spatial_lobe_count)
+{
+	m_light_tree_builder_sg.set_spatial_lobe_count(spatial_lobe_count);
+}

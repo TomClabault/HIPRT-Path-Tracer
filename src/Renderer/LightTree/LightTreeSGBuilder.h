@@ -35,11 +35,14 @@ public:
 	void cleanup();
 
 	LightTreeATSBuilderOptions& get_build_options();
+	int get_spatial_lobe_count() const;
+	void set_spatial_lobe_count(int spatial_lobe_count);
 
 private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
 
 	std::vector<LightTreeSGNode> m_nodes;
+	int m_spatial_lobe_count = 2;
 };
 
 template <template <typename> typename DataContainer>
@@ -56,7 +59,8 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].vmf.axis			  = m_nodes[i].vmf.axis;
 		device_data_out.nodes_device[i].vmf.sharpness		  = m_nodes[i].vmf.sharpness;
 		device_data_out.nodes_device[i].gaussian_spatial_mean = m_nodes[i].spatial_mean;
-		for (int lobe_index = 0; lobe_index < 2; lobe_index++)
+		device_data_out.nodes_device[i].spatial_lobe_count	  = m_spatial_lobe_count;
+		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 		{
 			const LightTreeSGSpatialLobeBuild& lobe = m_nodes[i].spatial_lobes[lobe_index];
 			SpatialSGLobeDevice& device_lobe		= device_data_out.nodes_device[i].spatial_lobes[lobe_index];
