@@ -23,6 +23,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO SG Light tree
+//	- Anyway to split triangles while keeping the primitiveID -> tree cut node good?
 //	- Adaptive number of lobes per node to reduce number of lobes where not needed instead of brute-forcing always 8 lobes per node?
 //
 //	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for
@@ -34,10 +35,18 @@ extern ImGuiLogger g_imgui_logger;
 //
 //		We'll have to cover the bias or not use hard rejections in the tree importance, see which one is better for efficiency
 //
-//		Adaptive number of nodes per distribution to cover ~95% or something of the incoming energy? Same as ReGIR, for memory savings
+//		Adaptive number of nodes per distribution to cover ~95% or something of the incoming energy (that incoming energy can be estimated by the importance of
+//		the root node of the tree? se we don't have to loop through all 1024 nodes, sum the importances and then only keep the 95% best, that would be looping
+//		twice)?
 //
 //		To produce the 1024 root nodes, what if we use splitting until we have 1024 samples? instead of the same 1024 nodes for every cell? For the PDF: Store a
 //		macro-root ID on every light primitive.
+//
+//		We can also re-compute the tree cut per each cell after we've learnt a bit more the importance estimates to have a better cut for the cell by rejecting
+//		nodes that we've learnt don't contribute much
+//
+//		We're going to need a fallback for the cached light distributions so we need a wide tree for that, because we're not going to use splitting for the
+//		fallback so we can use a wide tree for lower variance
 //
 //	- Can the 1024-wide root node approach even be combined with a tree wider than binary below the 1024 nodes?
 //	- For visibility, maybe drop splitting and use some NEE++ style thing between shading points and all those 1024 nodes
