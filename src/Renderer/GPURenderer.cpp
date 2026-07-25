@@ -213,7 +213,9 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 	m_light_tree_ats_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options());
 	m_light_tree_sg_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options());
 
-	get_NEE_plus_plus_render_pass()->reset(false);
+	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = get_NEE_plus_plus_render_pass();
+	if (nee_plus_plus_render_pass)
+		nee_plus_plus_render_pass->reset(false);
 }
 
 LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()

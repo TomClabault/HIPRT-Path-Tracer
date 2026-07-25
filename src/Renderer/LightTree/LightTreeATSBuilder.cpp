@@ -27,7 +27,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 										   const std::vector<int>& triangle_vertex_indices,
 										   const std::vector<float3_t>& vertices_positions)
 {
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building light tree...");
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building ATS light tree...");
 	auto start = std::chrono::high_resolution_clock::now();
 
 	LightTreeBuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions);
@@ -81,7 +81,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	if (valid_triangle_count == 0)
 	{
 		auto stop = std::chrono::high_resolution_clock::now();
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms",
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "ATS Light tree construction time: %ldms",
 								std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 
 		return;
@@ -98,7 +98,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	subdivide_node((*m_current_node_index)++, triangles_data, 0);
 
 	auto stop = std::chrono::high_resolution_clock::now();
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms",
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "ATS Light tree construction time: %ldms",
 							std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Maximum tree depth: %d", m_max_tree_depth->load());
 }
