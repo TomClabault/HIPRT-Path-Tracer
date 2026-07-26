@@ -25,9 +25,9 @@ struct IlluminationAwareKDTreeNode
 
 	// Index of the left child.
 	//
-	// The right child is always child_base_index + 1.
+	// The right child is always left_child_index + 1.
 	// INVALID_NODE_INDEX means that this node currently has no children.
-	uint32_t child_base_index;
+	uint32_t left_child_index;
 
 	// Index of the NEE distribution used by this guiding cell.
 	//

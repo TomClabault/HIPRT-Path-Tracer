@@ -34,6 +34,15 @@ struct IsStdAtomic<std::atomic<U>> : std::true_type
 {
 };
 
+namespace GenericSoAHelpers
+{
+	template <template <typename> class BufferContainer, typename T>
+	std::size_t get_byte_size(const BufferContainer<T>& buffer)
+	{
+		return buffer.size() * sizeof(typename BufferContainer<T>::value_type);
+	}
+} // namespace GenericSoAHelpers
+
 /**
  * Can be used to create a structure of arrays for multiple buffers of different types.
  *
@@ -79,7 +88,7 @@ struct GenericSoA
 		std::size_t total = 0;
 
 		// For each container, add sizeof(value_type) * size()
-		std::apply([&](auto const&... buffer) { ((total += buffer.size() * sizeof(BufferTypeFromVariable<decltype(buffer)>)), ...); }, buffers);
+		std::apply([&](const auto&... buffer) { ((total += GenericSoAHelpers::get_byte_size(buffer)), ...); }, buffers);
 
 		return total;
 	}
