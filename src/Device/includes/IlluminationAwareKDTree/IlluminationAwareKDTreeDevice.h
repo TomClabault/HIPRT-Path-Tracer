@@ -9,9 +9,9 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include <cstdint>
 
@@ -61,6 +61,84 @@ struct IlluminationAwareKDTreeDevice
 			const uint32_t right_child_index = left_child_index + 1;
 			const float* position_components = &position.x;
 
+			if (position_components[node.split_axis] < node.split_position)
+				node_index = left_child_index;
+			else
+				node_index = right_child_index;
+		}
+	}
+
+	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
+														const uint32_t node_index,
+														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	{
+		const float radiance_weight = sample.radiance_weight;
+
+		// b0 counts all valid samples, including samples with L == 0.
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].valid_observation_count, 1u);
+
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].scalar_radiance_sum, radiance_weight);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].squared_scalar_radiance_sum, radiance_weight * radiance_weight);
+
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.x, radiance_weight * sample.incoming_direction.x);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.y, radiance_weight * sample.incoming_direction.y);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, radiance_weight * sample.incoming_direction.z);
+	}
+
+	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, const uint32_t node_index, const float3_t position)
+	{
+		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1.0f);
+
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.x, position.x);
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.y, position.y);
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.z, position.z);
+
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.x, position.x * position.x);
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.y, position.y * position.y);
+		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.z, position.z * position.z);
+	}
+
+	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	{
+		// First find the active guiding cell used at this position.
+		uint32_t node_index = find_guiding_cell(sample.position);
+
+		// Invalid traversal indicates a broken topology.
+		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			return;
+
+		// Level zero is the guiding cell.
+		//
+		// Levels one through six are the lookahead cells along the sample's
+		// unique spatial path.
+		for (uint32_t level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
+		{
+			atomic_add_illumination_signature(batch_signatures, node_index, sample);
+
+			// Candidate k-d split placement uses only non-zero samples.
+			//
+			// Zero-radiance samples still contribute to the illumination
+			// signature above, but not to the spatial mean and variance.
+			if (sample.radiance_weight > 0.0f)
+				atomic_add_spatial_moments(batch_spatial_moments, node_index, sample.position);
+
+			// Level six is the deepest lookahead level.
+			if (level == IlluminationAwareKDTreeMaximumLookaheadDepth)
+				break;
+
+			const IlluminationAwareKDTreeNode& node = nodes[node_index];
+
+			// A missing child means that this lookahead path has not yet been
+			// constructed deeply enough. Accumulation stops here.
+			if (!(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
+				break;
+
+			const uint32_t left_child_index	 = node.left_child_index;
+			const uint32_t right_child_index = left_child_index + 1;
+			const float* position_components = &sample.position.x;
+
+			// Follow exactly one child because the sample position belongs to
+			// exactly one k-d cell at this level.
 			if (position_components[node.split_axis] < node.split_position)
 				node_index = left_child_index;
 			else
