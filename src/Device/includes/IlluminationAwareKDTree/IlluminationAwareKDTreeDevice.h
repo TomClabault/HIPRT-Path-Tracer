@@ -3,10 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
-#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
-#include "Device/includes/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
 #include <cstdint>
 

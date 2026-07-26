@@ -113,6 +113,10 @@
 
 	return 0;*/
 
+/**
+ * The goal of these macros is to avoid using local arrays for storing the g and lambda values for each bounce because local arrays tend to spill on the GPU.
+ * Using a switch statement with a fixed number of variables I've measured was faster on my GPU
+ */
 #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0;
@@ -2179,7 +2183,7 @@
 #define MS_CUI2023_DECLARE_G fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, g14;
 #define MS_CUI2023_DECLARE_LAMBDAS                                                                                                                             \
 	fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6, lambda_7, lambda_8, lambda_9, lambda_10, lambda_11, lambda_12, lambda_13,       \
-							lambda_14;
+		lambda_14;
 
 #define MS_CUI2023_GET_G_BODY                                                                                                                                  \
 	switch (i)                                                                                                                                                 \

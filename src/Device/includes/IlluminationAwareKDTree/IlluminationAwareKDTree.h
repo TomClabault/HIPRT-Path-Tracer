@@ -1,0 +1,24 @@
+/*
+ * Copyright 2026 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_H
+
+#include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/Maths/VecTypes.h"
+
+#include <cstdint>
+
+struct IlluminationAwareKDTreeDirectIlluminationTrainingSample
+{
+	float3_t position			= float3_t(0.0f, 0.0f, 0.0f);
+	float3_t incoming_direction = float3_t(0.0f, 0.0f, 0.0f);
+
+	float radiance_weight = 0.0f;
+
+	unsigned int valid = false;
+};
+
+#endif

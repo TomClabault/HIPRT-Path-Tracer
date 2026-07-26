@@ -10,6 +10,7 @@
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTree.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
@@ -83,6 +84,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		}
 #endif
 
+		IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
+		training_sample.position		   = closest_hit_info.inter_point;
+		training_sample.incoming_direction = shadow_ray.direction;
+		training_sample.valid			   = true;
+
 		if (dot_light_source > 0.0f)
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
@@ -111,25 +117,29 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 
 			if (!in_shadow)
 			{
-				float bsdf_pdf;
-
-				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
-				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
-				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-
-				if (bsdf_pdf != 0.0f)
+				// Conversion to solid angle from surface area measure
+				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+				if (light_sample_solid_angle_pdf > 0.0f)
 				{
-					// Conversion to solid angle from surface area measure
-					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-					if (light_sample_solid_angle_pdf > 0.0f)
+					// The NEE sample is non-zero (if we omit BSDF evaluation), we can compute the radiance weight. Taking max_component() and not luminance as
+					// in the paper
+					training_sample.radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
+
+					float bsdf_pdf;
+
+					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
+					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
+					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
+					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+					if (bsdf_pdf != 0.0f)
 					{
 						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
 						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;

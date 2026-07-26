@@ -100,7 +100,8 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	// TODO should SG tree + illum aware be a separate DIRECT_LIGHT_SAMPLING_STRATEGY or NEE Estimator?
+	// TODO should SG tree + illum aware be a separate DIRECT_LIGHT_SAMPLING_STRATEGY or NEE Estimator? Maybe an estimator, this would avoid bloating all the
+	// other estimators with the training stuff
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
 		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 }
