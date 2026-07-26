@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 #define HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
+#include "HostDeviceCommon/IlluminationAwareKDTreeNodeDevice.h"
+
 #include <cstdint>
 
 enum class IlluminationAwareKDTreeSubdivisionMode
