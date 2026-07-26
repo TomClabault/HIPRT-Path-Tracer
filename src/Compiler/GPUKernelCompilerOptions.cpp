@@ -116,6 +116,7 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODE
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE = "LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeSGSplittingMaxLightSamples";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS = "LightTreeSGUseIlluminationAwareDistributions";
+const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE = "LightTreeSGDebugMode";
 
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
@@ -251,6 +252,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS,
+	GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
@@ -391,6 +393,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeSGSplittingMaxLightSamples);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS] =
 		std::make_shared<int>(LightTreeSGUseIlluminationAwareDistributions);
+	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE] = std::make_shared<int>(LightTreeSGDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);

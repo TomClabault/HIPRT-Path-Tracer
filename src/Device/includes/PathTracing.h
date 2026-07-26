@@ -414,6 +414,19 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 #endif // ReGIR debug mode
 
+#elif LightTreeSGDebugMode != LIGHT_TREE_SG_DEBUG_MODE_NO_DEBUG && LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE
+#if LightTreeSGDebugMode == LIGHT_TREE_SG_DEBUG_MODE_KD_TREE_LEAF
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		// We have a first hit
+		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
+		uint32_t guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
+
+		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			out_debug_color = ColorRGB32F::random_color(guiding_cell_index);
+	}
+#endif // LightTreeSG debug mode
+
 #elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE
 	ColorRGB32F color = ColorRGB32F::random_color(render_data.ssbn_settings.screen_space_hash_grid[pixel_index].x);
 	color *= render_data.render_settings.sample_number + 1;

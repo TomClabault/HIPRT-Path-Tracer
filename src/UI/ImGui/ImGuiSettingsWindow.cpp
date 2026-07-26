@@ -3844,6 +3844,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Illumination aware distributions");
 		static bool use_illumination_aware_distributions =
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS);
@@ -3858,6 +3859,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 		if (use_illumination_aware_distributions)
 		{
+			const char* debug_view_items[] = { "- No debug", "- KD tree leaf" };
+			if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE),
+							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
