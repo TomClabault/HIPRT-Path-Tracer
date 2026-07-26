@@ -6,7 +6,7 @@
 #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_DATA_HOST_H
 #define RENDERER_ILLUMINATION_AWARE_KD_TREE_DATA_HOST_H
 
-#include "HostDeviceCommon/IlluminationAwareKDTreeDevice.h"
+#include "Device/includes/IlluminationAwareKDTreeDevice.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"

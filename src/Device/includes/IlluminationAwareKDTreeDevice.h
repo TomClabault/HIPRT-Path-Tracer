@@ -3,10 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
-#define HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
-#include "HostDeviceCommon/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTreeNodeDevice.h"
 
 #include <cstdint>
 
@@ -40,6 +40,29 @@ struct IlluminationTreeDebugCounters
 
 struct IlluminationAwareKDTreeDevice
 {
+	HIPRT_DEVICE uint32_t find_guiding_cell(const float3_t position) const
+	{
+		uint32_t node_index = 0;
+
+		while (true)
+		{
+			const IlluminationAwareKDTreeNode& node = nodes[node_index];
+
+			if (node.flags & IlluminationAwareKDTreeNodeFlag_Guiding)
+				// We stop at the first guiding cell, even if it may have lookahead cells, we only want guiding cells from this function
+				return node_index;
+
+			const uint32_t left_child_index	 = node.left_child_index;
+			const uint32_t right_child_index = left_child_index + 1;
+			const float* position_components = &position.x;
+
+			if (position_components[node.split_axis] < node.split_position)
+				node_index = left_child_index;
+			else
+				node_index = right_child_index;
+		}
+	}
+
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 	IlluminationTreeDebugCounters debug_counters			= {};
 
