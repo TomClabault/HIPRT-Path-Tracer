@@ -22,6 +22,7 @@ struct IlluminationAwareKDTreeNode
 	static constexpr uint32_t INVALID_NODE_INDEX   = 0xFFFFFFFFu;
 	static constexpr uint32_t INVALID_GUIDING_SLOT = 0xFFFFFFFFu;
 	static constexpr uint32_t INVALID_CREATION_TAG = 0xFFFFFFFFu;
+	static constexpr uint8_t INVALID_SPLIT_AXIS	   = 255;
 
 	// Index of the left child.
 	//
@@ -38,13 +39,13 @@ struct IlluminationAwareKDTreeNode
 	//
 	// It is used when replaying the current SPP's samples into only
 	// newly created nodes.
-	uint32_t creation_tag;
+	uint32_t creation_tag = 0xFFFFFFFFu;
 
 	// The split plane belongs to this parent node, not to its children.
-	float split_position;
+	float split_position = 0.0f;
 
-	uint8_t split_axis;
-	uint8_t flags;
+	uint8_t split_axis = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
+	uint8_t flags	   = 0;
 	uint16_t padding;
 };
 

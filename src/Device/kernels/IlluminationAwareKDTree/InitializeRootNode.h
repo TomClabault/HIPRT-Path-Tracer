@@ -13,18 +13,18 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 inline initialize_illumination_tree_root(IlluminationAwareKDTreeNode* nodes,
 										 IlluminationAwareKDTreeNodeBounds* bounds,
-										 uint32_t* node_count,
+										 AtomicType<uint32_t>* node_count,
 										 uint32_t* active_guiding_nodes,
-										 uint32_t* active_guiding_node_count,
+										 AtomicType<uint32_t>* active_guiding_node_count,
 										 const float3_t scene_bounds_minimum,
 										 const float3_t scene_bounds_maximum)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 initialize_illumination_tree_root(IlluminationAwareKDTreeNode* nodes,
 								  IlluminationAwareKDTreeNodeBounds* bounds,
-								  uint32_t* node_count,
+								  AtomicType<uint32_t>* node_count,
 								  uint32_t* active_guiding_nodes,
-								  uint32_t* active_guiding_node_count,
+								  AtomicType<uint32_t>* active_guiding_node_count,
 								  const float3 scene_bounds_minimum,
 								  const float3 scene_bounds_maximum)
 #endif

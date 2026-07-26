@@ -54,7 +54,7 @@
 /**
  * If true, the illumination-aware guiding distributions are used by the SG light tree.
  */
-#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_FALSE
+#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_TRUE
 
 /**
  * Debug view for the illumination-aware KD-tree.

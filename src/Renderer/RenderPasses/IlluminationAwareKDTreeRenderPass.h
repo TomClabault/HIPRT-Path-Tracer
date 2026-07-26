@@ -19,6 +19,8 @@ public:
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;
 	static const std::string RESET_BATCH_STATISTICS_KERNEL_ID;
+	static const std::string EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID;
+	static const std::string REPLAY_TRAINING_SAMPLES_KERNEL_ID;
 
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
@@ -31,7 +33,6 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 private:
-	static constexpr unsigned int MINIMUM_SAMPLE_COUNT		= 1000;
 	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
 	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
 	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;
@@ -39,6 +40,8 @@ private:
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
+	bool m_lookahead_frontier_initialized	  = false;
+	bool m_current_frontier_uses_first_buffer = true;
 };
 
 #endif

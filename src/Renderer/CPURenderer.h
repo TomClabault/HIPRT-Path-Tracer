@@ -279,7 +279,13 @@ private:
 		AtomicType<unsigned int> grid_cells_alive_count;
 	} m_regir_state;
 
-	IlluminationAwareKDTreeDataHost<std::vector> m_illumination_aware_kd_tree;
+	struct IlluminationAwareKDTreeState
+	{
+		IlluminationAwareKDTreeDataHost<std::vector> illumination_aware_kd_tree;
+
+		bool lookahead_frontier_initialized		= false;
+		bool current_frontier_uses_first_buffer = true;
+	} m_illumination_aware_kd_tree_state;
 
 	BSDFDataHost m_bsdf_data_cpu_data;
 

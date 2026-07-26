@@ -23,31 +23,11 @@ enum class IlluminationAwareKDTreeSubdivisionMode
 	FULL
 };
 
-struct IlluminationTreeDebugCounters
-{
-	uint32_t training_sample_count;
-	uint32_t invalid_training_sample_count;
-	uint32_t training_buffer_overflow_count;
-
-	uint32_t physical_node_count;
-	uint32_t active_guiding_cell_count;
-	uint32_t lookahead_node_count;
-
-	uint32_t created_lookahead_count;
-	uint32_t real_split_count;
-
-	uint32_t mean_radiance_split_count;
-	uint32_t mean_direction_split_count;
-
-	uint32_t invalid_tree_traversal_count;
-	uint32_t node_capacity_overflow_count;
-};
-
 struct IlluminationAwareKDTreeDevice
 {
-	HIPRT_DEVICE uint32_t find_guiding_cell(const float3_t position) const
+	HIPRT_DEVICE unsigned int find_guiding_cell(const float3_t position) const
 	{
-		uint32_t node_index = 0;
+		unsigned int node_index = 0;
 
 		while (true)
 		{
@@ -57,9 +37,9 @@ struct IlluminationAwareKDTreeDevice
 				// We stop at the first guiding cell, even if it may have lookahead cells, we only want guiding cells from this function
 				return node_index;
 
-			const uint32_t left_child_index	 = node.left_child_index;
-			const uint32_t right_child_index = left_child_index + 1;
-			const float* position_components = &position.x;
+			const unsigned int left_child_index	 = node.left_child_index;
+			const unsigned int right_child_index = left_child_index + 1;
+			const float* position_components	 = &position.x;
 
 			if (position_components[node.split_axis] < node.split_position)
 				node_index = left_child_index;
@@ -69,7 +49,7 @@ struct IlluminationAwareKDTreeDevice
 	}
 
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
-														const uint32_t node_index,
+														const unsigned int node_index,
 														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
 		const float radiance_weight = sample.radiance_weight;
@@ -85,7 +65,7 @@ struct IlluminationAwareKDTreeDevice
 		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, radiance_weight * sample.incoming_direction.z);
 	}
 
-	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, const uint32_t node_index, const float3_t position)
+	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, const unsigned int node_index, const float3_t position)
 	{
 		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1u);
 
@@ -101,7 +81,7 @@ struct IlluminationAwareKDTreeDevice
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
 		// First find the active guiding cell used at this position.
-		uint32_t node_index = find_guiding_cell(sample.position);
+		unsigned int node_index = find_guiding_cell(sample.position);
 
 		// Invalid traversal indicates a broken topology.
 		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
@@ -111,7 +91,7 @@ struct IlluminationAwareKDTreeDevice
 		//
 		// Levels one through six are the lookahead cells along the sample's
 		// unique spatial path.
-		for (uint32_t level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
+		for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
 		{
 			atomic_add_illumination_signature(batch_signatures, node_index, sample);
 
@@ -133,8 +113,8 @@ struct IlluminationAwareKDTreeDevice
 			if (!(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 				break;
 
-			uint32_t left_child_index		 = node.left_child_index;
-			uint32_t right_child_index		 = left_child_index + 1;
+			unsigned int left_child_index	 = node.left_child_index;
+			unsigned int right_child_index	 = left_child_index + 1;
 			const float* position_components = &sample.position.x;
 
 			// Follow exactly one child because the sample position belongs to
@@ -152,7 +132,7 @@ struct IlluminationAwareKDTreeDevice
 		if (!sample.valid)
 			return;
 
-		uint32_t sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
+		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
 
 		// The counter may exceed capacity, but memory must never be written
 		// outside the allocated buffer.
@@ -169,7 +149,7 @@ struct IlluminationAwareKDTreeDevice
 		float countf = static_cast<float>(moments.positive_radiance_sample_count);
 		if (countf <= 0.0f)
 		{
-			out_split_axis	   = 255;
+			out_split_axis	   = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
 			out_split_position = 0.0f;
 
 			return;
@@ -195,21 +175,70 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
+	HIPRT_DEVICE unsigned int reserve_physical_nodes(const unsigned int amount_to_reserve)
+	{
+		// Read the current value without modifying it.
+		unsigned int current_count = hippt::atomic_fetch_add(node_count, 0u);
+
+		// Another thread may modify node_count between our read and write,
+		// so retry until we either reserve the range or discover that the
+		// pool is full.
+		while (true)
+		{
+			// Writing "current_count + amount > capacity" could overflow.
+			// This equivalent form is safe for unsigned integers.
+			if (current_count + amount_to_reserve > node_capacity)
+				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+			unsigned int desired_count	= current_count + amount_to_reserve;
+			unsigned int observed_count = hippt::atomic_compare_exchange(node_count, current_count, desired_count);
+
+			if (observed_count == current_count)
+				// The compare-and-swap succeeded.
+				return current_count;
+
+			// Another thread allocated nodes first, atomicCAS returned the newer counter value, so retry from it.
+			current_count = observed_count;
+		}
+	}
+
+	HIPRT_DEVICE void append_child_pair_to_frontier(unsigned int* next_frontier,
+													AtomicType<unsigned int>* next_frontier_count,
+													const unsigned int left_child,
+													const unsigned int right_child)
+	{
+		// Atomically reserve two contiguous frontier entries.
+		const unsigned int output_index = hippt::atomic_fetch_add(next_frontier_count, 2u);
+
+		next_frontier[output_index + 0] = left_child;
+		next_frontier[output_index + 1] = right_child;
+	}
+
+	int minimum_sample_count_for_lookahead_creation = 1000;
+
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
-	IlluminationTreeDebugCounters debug_counters			= {};
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;
 
-	uint32_t* node_count   = nullptr;
-	uint32_t node_capacity = 0;
+	AtomicType<unsigned int>* node_count = nullptr;
+	unsigned int node_capacity			 = 0;
 
-	uint32_t* active_guiding_nodes		= nullptr;
-	uint32_t* active_guiding_node_count = nullptr;
+	unsigned int* active_guiding_nodes					= nullptr;
+	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
+
+	// Two ping ponging frontier buffers for when we create lookahead cells
+	//
+	// Nodes at the lookahead depth currently being processed.
+	unsigned int* current_frontier					 = nullptr;
+	AtomicType<unsigned int>* current_frontier_count = nullptr;
+	// Children that form the next lookahead depth.
+	unsigned int* next_frontier					  = nullptr;
+	AtomicType<unsigned int>* next_frontier_count = nullptr;
 
 	IlluminationAwareKDTreeDirectIlluminationTrainingSample* training_samples = nullptr;
-	AtomicType<uint32_t>* training_sample_count								  = nullptr;
-	uint32_t training_sample_capacity										  = 0;
+	AtomicType<unsigned int>* training_sample_count							  = nullptr;
+	unsigned int training_sample_capacity									  = 0;
 
 	IlluminationAwareKDTreeIlluminationSignature* batch_signatures	 = nullptr;
 	IlluminationAwareKDTreeIlluminationSignature* history_signatures = nullptr;

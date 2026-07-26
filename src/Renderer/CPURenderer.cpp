@@ -50,9 +50,11 @@
 #include "Device/kernels/ReSTIR/PG/Splatting.h"
 
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
-#include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
+#include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootNode.h"
+#include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchStatistics.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
@@ -221,7 +223,7 @@ void CPURenderer::setup_buffers()
 	m_g_buffer_prev_frame.resize(width * height);
 
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES);
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES);
 #endif
 
 	setup_bsdfs_data();
@@ -531,7 +533,7 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
 #else
 	m_render_data.illumination_aware_kd_tree = {};
 #endif
@@ -706,7 +708,7 @@ void CPURenderer::render()
 void CPURenderer::pre_render_update(int frame_number)
 {
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
 	for (uint32_t node_index = 0; node_index < illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTreeDevice_ResetBatchStatistics(illumination_aware_kd_tree, node_index);
 #endif
@@ -750,25 +752,29 @@ void CPURenderer::reset()
 void CPURenderer::illumination_aware_kd_tree_reset()
 {
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	m_illumination_aware_kd_tree.reset();
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
+	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
+	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
 
-	IlluminationAwareKDTreeNode* nodes		  = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
-	IlluminationAwareKDTreeNodeBounds* bounds = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
-	uint32_t* node_count					  = m_illumination_aware_kd_tree.m_node_count.data();
-	uint32_t* active_guiding_nodes			  = m_illumination_aware_kd_tree.m_active_guiding_nodes.data();
-	uint32_t* active_guiding_node_count		  = m_illumination_aware_kd_tree.m_active_guiding_node_count.data();
+	IlluminationAwareKDTreeNode* nodes =
+		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
+	IlluminationAwareKDTreeNodeBounds* bounds =
+		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
+	AtomicType<uint32_t>* node_count				= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_node_count.data();
+	uint32_t* active_guiding_nodes					= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_nodes.data();
+	AtomicType<uint32_t>* active_guiding_node_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_node_count.data();
 
 	initialize_illumination_tree_root(nodes, bounds, node_count, active_guiding_nodes, active_guiding_node_count, m_scene_bounding_box.mini,
 									  m_scene_bounding_box.maxi);
 
-	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
 #endif
 }
 
 void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
 	const uint32_t sample_count								 = illumination_aware_kd_tree.training_sample_count->load();
 
 	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
@@ -777,6 +783,19 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
 	for (uint32_t node_index = 0; node_index < node_count; node_index++)
 		IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(illumination_aware_kd_tree, node_index);
+
+	illumination_aware_kd_tree.current_frontier		  = illumination_aware_kd_tree.active_guiding_nodes;
+	illumination_aware_kd_tree.current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
+	illumination_aware_kd_tree.next_frontier		  = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
+	illumination_aware_kd_tree.next_frontier_count	  = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count[0].store(0);
+
+	const uint32_t current_frontier_count = illumination_aware_kd_tree.current_frontier_count->load();
+	for (uint32_t frontier_index = 0; frontier_index < current_frontier_count; frontier_index++)
+		IlluminationAwareKDTreeDevice_ExpandOneLookaheadLevel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, frontier_index);
+
+	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
+		IlluminationAwareKDTree_ReplayTrainingSamplesKernel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, sample_index);
 #endif
 }
 
