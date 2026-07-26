@@ -3859,6 +3859,25 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 		if (use_illumination_aware_distributions)
 		{
+			static int maximum_lookahead_depth =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH);
+			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 16);
+			if (maximum_lookahead_depth != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH))
+			{
+				ImGui::TreePush("Illumination-aware KD-tree maximum lookahead depth apply button");
+
+				if (ImGui::Button("Apply##Illumination-aware KD-tree maximum lookahead depth"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH,
+														   maximum_lookahead_depth);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaf" };
 			if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))

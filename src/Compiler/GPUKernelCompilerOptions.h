@@ -117,6 +117,8 @@ public:
 	static const std::string LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS;
 	static const std::string LIGHT_TREE_SG_DEBUG_MODE;
 
+	static const std::string ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH;
+
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
 	static const std::string ENVMAP_SAMPLING_DO_BILINEAR_FILTERING;

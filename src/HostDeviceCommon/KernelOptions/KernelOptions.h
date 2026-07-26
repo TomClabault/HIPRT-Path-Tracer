@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"

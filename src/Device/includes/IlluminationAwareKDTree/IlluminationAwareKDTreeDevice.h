@@ -8,6 +8,8 @@
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
 
@@ -43,8 +45,6 @@ struct IlluminationTreeDebugCounters
 
 struct IlluminationAwareKDTreeDevice
 {
-	static constexpr unsigned int MAXIMUM_LOOKAHEAD_DEPTH = 6;
-
 	HIPRT_DEVICE uint32_t find_guiding_cell(const float3_t position) const
 	{
 		uint32_t node_index = 0;
