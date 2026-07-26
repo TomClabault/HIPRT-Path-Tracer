@@ -6,6 +6,7 @@
 #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
 #define RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
 
+#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include <cstdint>
@@ -26,11 +27,13 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 private:
-	static constexpr uint32_t MINIMUM_SAMPLE_COUNT			= 1000;
-	static constexpr uint32_t MAXIMUM_LOOKAHEAD_DEPTH		= 6;
+	static constexpr unsigned int MINIMUM_SAMPLE_COUNT		= 1000;
+	static constexpr unsigned int MAXIMUM_LOOKAHEAD_DEPTH	= 6;
 	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
 	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
 	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;
+
+	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 };
 
 #endif

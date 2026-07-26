@@ -42,6 +42,12 @@ struct IlluminationAwareKDTreeDevice
 {
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::Disabled;
 	IlluminationTreeDebugCounters debug_counters			= {};
+
+	IlluminationAwareKDTreeNode* nodes			   = nullptr;
+	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;
+
+	uint32_t* node_count   = nullptr;
+	uint32_t node_capacity = 0;
 };
 
 #endif

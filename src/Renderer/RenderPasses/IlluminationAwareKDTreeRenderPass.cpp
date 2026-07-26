@@ -19,6 +19,13 @@ void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned 
 
 bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 {
+	if (m_illumination_aware_kd_tree.maximum_size() == 0)
+	{
+		m_illumination_aware_kd_tree.resize(1);
+
+		return true;
+	}
+
 	return false;
 }
 
@@ -29,11 +36,19 @@ bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_dat
 
 void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
 
-void IlluminationAwareKDTreeRenderPass::update_render_data() {}
+void IlluminationAwareKDTreeRenderPass::update_render_data()
+{
+	IlluminationAwareKDTreeDevice device = m_illumination_aware_kd_tree.to_device();
+
+	device.subdivision_mode									 = m_renderer->get_render_data().illumination_aware_kd_tree.subdivision_mode;
+	device.debug_counters									 = m_renderer->get_render_data().illumination_aware_kd_tree.debug_counters;
+	m_renderer->get_render_data().illumination_aware_kd_tree = device;
+}
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 {
-	m_renderer->get_render_data().illumination_aware_kd_tree = {};
+	m_illumination_aware_kd_tree.reset();
+	m_renderer->get_render_data().illumination_aware_kd_tree.debug_counters = {};
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
