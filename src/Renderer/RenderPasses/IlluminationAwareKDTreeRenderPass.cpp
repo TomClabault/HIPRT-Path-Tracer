@@ -22,10 +22,17 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
-void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
+void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height)
+{
+	if (!is_render_pass_used(*m_compiler_options))
+		m_illumination_aware_kd_tree.free();
+}
 
 bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 {
+	if (!is_render_pass_used(*m_compiler_options))
+		return m_illumination_aware_kd_tree.free();
+
 	if (m_illumination_aware_kd_tree.maximum_size() == 0)
 	{
 		m_illumination_aware_kd_tree.resize(1);
@@ -38,13 +45,27 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
+	if (!is_render_pass_used(compiler_options))
+		return false;
+
 	return false;
 }
 
-void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
+void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	if (!is_render_pass_used(compiler_options))
+		return;
+}
 
 void IlluminationAwareKDTreeRenderPass::update_render_data()
 {
+	if (!is_render_pass_used(*m_compiler_options))
+	{
+		m_renderer->get_render_data().illumination_aware_kd_tree = {};
+
+		return;
+	}
+
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	render_data.illumination_aware_kd_tree					= m_illumination_aware_kd_tree.to_device();
@@ -53,6 +74,9 @@ void IlluminationAwareKDTreeRenderPass::update_render_data()
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 {
+	if (!is_render_pass_used(*m_compiler_options))
+		return;
+
 	if (m_illumination_aware_kd_tree.maximum_size() == 0)
 		// Nothing to reset
 		return;
@@ -76,5 +100,7 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return true;
+	// TODO should SG tree + illum aware be a separate DIRECT_LIGHT_SAMPLING_STRATEGY or NEE Estimator?
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
+		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 }

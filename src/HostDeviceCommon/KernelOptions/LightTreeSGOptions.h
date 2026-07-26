@@ -48,6 +48,11 @@
  */
 #define LightTreeSGSplittingMaxLightSamples 8
 
+/**
+ * If true, the illumination-aware guiding distributions are used by the SG light tree.
+ */
+#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 #endif
