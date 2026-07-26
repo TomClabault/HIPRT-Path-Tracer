@@ -46,9 +46,11 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Light hierarchies:
 		- Importance Sampling of Many Lights with Adaptive Tree Splitting [\[Conty et al., 2018\]](https://dl.acm.org/doi/10.1145/3233305)
 			- SAH and SAOH tree build cost functions
-			- Adaptive tree splitting
+			- Adaptive tree splitting, shading multiple light samples per shading point
 		- Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
-	- ReGIR
+			- Improved rejection of backfacing lights with -style orientation cone
+			- Support for multiple spherical gaussian spatial lobes per tree node to improve importance estimates on multi-modal incoming radiance
+	- ReGIR (more details on what was implemented below)
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
 	- All light sampling techniques support MIS with BSDF samples
 	
@@ -67,7 +69,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Spatial reuse
 		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support
 		- Hash grid
-		- The implementation is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
+		- The implementation and logic is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
 	- RIS (Resampled Importance Sampling) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)with Weighted Reservoir Sampling (WRS) [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- RISLTC [\[Shash et al., 2023\]](https://ishaanshah.xyz/risltc/)
 	- ReSTIR DI
