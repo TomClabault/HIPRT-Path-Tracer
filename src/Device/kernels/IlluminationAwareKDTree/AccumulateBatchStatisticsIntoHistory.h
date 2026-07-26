@@ -11,9 +11,9 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline accumulate_batch_statistics_into_history(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
+inline IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) accumulate_batch_statistics_into_history(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
+GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__

@@ -12,6 +12,7 @@ const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID						= "Initialize Root Node";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID					= "Reset Batch Statistics";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
@@ -27,7 +28,8 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
 		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name("accumulate_batch_training_samples");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTreeDevice_AccumulateBatchTrainingSamples");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
@@ -35,8 +37,15 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_file_path(
 		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_function_name(
-		"accumulate_batch_statistics_into_history");
+		"IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																										 "/IlluminationAwareKDTree/ResetBatchStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTreeDevice_ResetBatchStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -50,14 +59,19 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 	if (!is_render_pass_used(*m_compiler_options))
 		return m_illumination_aware_kd_tree.free();
 
+	bool render_data_invalidated = false;
 	if (m_illumination_aware_kd_tree.maximum_size() == 0)
 	{
 		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES);
-
-		return true;
+		render_data_invalidated = true;
 	}
 
-	return false;
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	void* launch_args[]										 = { &illumination_aware_kd_tree };
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
+																										launch_args, m_renderer->get_main_stream());
+
+	return render_data_invalidated;
 }
 
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
