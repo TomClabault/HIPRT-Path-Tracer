@@ -11,10 +11,10 @@
 struct IlluminationAwareKDTreeSpatialSampleMoments
 {
 	// Only positive-radiance samples contribute here.
-	float positive_radiance_sample_count;
+	unsigned int positive_radiance_sample_count = 0;
 
-	float3_t position_sum;
-	float3_t position_squared_sum;
+	float3_t position_sum		  = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t position_squared_sum = make_float3(0.0f, 0.0f, 0.0f);
 };
 
 #endif

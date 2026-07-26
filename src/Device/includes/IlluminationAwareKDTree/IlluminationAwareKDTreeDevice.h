@@ -87,7 +87,7 @@ struct IlluminationAwareKDTreeDevice
 
 	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, const uint32_t node_index, const float3_t position)
 	{
-		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1.0f);
+		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1u);
 
 		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.x, position.x);
 		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.y, position.y);
@@ -126,15 +126,15 @@ struct IlluminationAwareKDTreeDevice
 			if (level == IlluminationAwareKDTreeMaximumLookaheadDepth)
 				break;
 
-			const IlluminationAwareKDTreeNode& node = nodes[node_index];
+			IlluminationAwareKDTreeNode& node = nodes[node_index];
 
 			// A missing child means that this lookahead path has not yet been
 			// constructed deeply enough. Accumulation stops here.
 			if (!(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 				break;
 
-			const uint32_t left_child_index	 = node.left_child_index;
-			const uint32_t right_child_index = left_child_index + 1;
+			uint32_t left_child_index		 = node.left_child_index;
+			uint32_t right_child_index		 = left_child_index + 1;
 			const float* position_components = &sample.position.x;
 
 			// Follow exactly one child because the sample position belongs to
@@ -152,7 +152,7 @@ struct IlluminationAwareKDTreeDevice
 		if (!sample.valid)
 			return;
 
-		const uint32_t sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
+		uint32_t sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
 
 		// The counter may exceed capacity, but memory must never be written
 		// outside the allocated buffer.
@@ -160,6 +160,39 @@ struct IlluminationAwareKDTreeDevice
 			return;
 
 		training_samples[sample_index] = sample;
+	}
+
+	HIPRT_DEVICE void compute_split_axis_and_position(const IlluminationAwareKDTreeSpatialSampleMoments& moments,
+													  uint8_t& out_split_axis,
+													  float& out_split_position) const
+	{
+		float countf = static_cast<float>(moments.positive_radiance_sample_count);
+		if (countf <= 0.0f)
+		{
+			out_split_axis	   = 255;
+			out_split_position = 0.0f;
+
+			return;
+		}
+
+		float3_t mean_position = moments.position_sum / countf;
+		float3_t variance	   = (moments.position_squared_sum / countf) - (mean_position * mean_position);
+
+		if (variance.x >= variance.y && variance.x >= variance.z)
+		{
+			out_split_axis	   = 0;
+			out_split_position = mean_position.x;
+		}
+		else if (variance.y >= variance.z)
+		{
+			out_split_axis	   = 1;
+			out_split_position = mean_position.y;
+		}
+		else
+		{
+			out_split_axis	   = 2;
+			out_split_position = mean_position.z;
+		}
 	}
 
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
