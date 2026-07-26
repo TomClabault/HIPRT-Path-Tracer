@@ -70,6 +70,7 @@ public:
 
 	void reset();
 	void illumination_aware_kd_tree_reset();
+	void illumination_aware_kd_tree_post_sample_update();
 
 	void debug_render_pass(std::function<void(int, int)> render_pass_function);
 

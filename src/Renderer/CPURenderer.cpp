@@ -50,6 +50,8 @@
 #include "Device/kernels/ReSTIR/PG/Splatting.h"
 
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
+#include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootNode.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
@@ -723,6 +725,7 @@ void CPURenderer::post_sample_update(int frame_number)
 	GMoN_post_sample_update();
 	ReGIR_post_sample_update();
 	ReSTIR_PT_post_sample_update();
+	illumination_aware_kd_tree_post_sample_update();
 }
 
 void CPURenderer::update_cameras(int sample)
@@ -752,6 +755,21 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 									  m_scene_bounding_box.maxi);
 
 	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+#endif
+}
+
+void CPURenderer::illumination_aware_kd_tree_post_sample_update()
+{
+#if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	const uint32_t sample_count								 = illumination_aware_kd_tree.training_sample_count->load();
+
+	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
+		accumulate_batch_training_samples(illumination_aware_kd_tree, sample_index);
+
+	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
+	for (uint32_t node_index = 0; node_index < node_count; node_index++)
+		accumulate_batch_statistics_into_history(illumination_aware_kd_tree, node_index);
 #endif
 }
 

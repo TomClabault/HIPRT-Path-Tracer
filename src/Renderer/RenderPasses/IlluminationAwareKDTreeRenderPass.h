@@ -16,6 +16,8 @@ class IlluminationAwareKDTreeRenderPass : public RenderPass
 public:
 	static const std::string ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME;
 	static const std::string INITIALIZE_ROOT_NODE_KERNEL_ID;
+	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
+	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;
 
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
