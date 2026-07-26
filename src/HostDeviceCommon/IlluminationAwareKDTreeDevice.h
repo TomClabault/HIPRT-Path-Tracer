@@ -12,10 +12,10 @@
 
 enum class IlluminationAwareKDTreeSubdivisionMode
 {
-	Disabled,
-	RecordSamplesOnly,
-	MeanRadianceOnly,
-	Full
+	DISABLED,
+	RECORD_SAMPLES_ONLY,
+	MEAN_RADIANCE_ONLY,
+	FULL
 };
 
 struct IlluminationTreeDebugCounters
@@ -40,7 +40,7 @@ struct IlluminationTreeDebugCounters
 
 struct IlluminationAwareKDTreeDevice
 {
-	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::Disabled;
+	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 	IlluminationTreeDebugCounters debug_counters			= {};
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
@@ -48,6 +48,9 @@ struct IlluminationAwareKDTreeDevice
 
 	uint32_t* node_count   = nullptr;
 	uint32_t node_capacity = 0;
+
+	uint32_t* active_guiding_nodes		= nullptr;
+	uint32_t* active_guiding_node_count = nullptr;
 };
 
 #endif

@@ -45,11 +45,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 void IlluminationAwareKDTreeRenderPass::update_render_data()
 {
-	IlluminationAwareKDTreeDevice device = m_illumination_aware_kd_tree.to_device();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	device.subdivision_mode									 = m_renderer->get_render_data().illumination_aware_kd_tree.subdivision_mode;
-	device.debug_counters									 = m_renderer->get_render_data().illumination_aware_kd_tree.debug_counters;
-	m_renderer->get_render_data().illumination_aware_kd_tree = device;
+	render_data.illumination_aware_kd_tree					= m_illumination_aware_kd_tree.to_device();
+	render_data.illumination_aware_kd_tree.subdivision_mode = m_subdivision_mode;
 }
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
@@ -66,9 +65,11 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	IlluminationAwareKDTreeNode* nodes		  = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
 	IlluminationAwareKDTreeNodeBounds* bounds = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
 	uint32_t* node_count					  = m_illumination_aware_kd_tree.m_node_count.get_device_pointer();
+	uint32_t* active_guiding_nodes			  = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_device_pointer();
+	uint32_t* active_guiding_node_count		  = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_device_pointer();
 	float3_t scene_bounds_minimum			  = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 	float3_t scene_bounds_maximum			  = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
-	void* launch_args[]						  = { &nodes, &bounds, &node_count, &scene_bounds_minimum, &scene_bounds_maximum };
+	void* launch_args[] = { &nodes, &bounds, &node_count, &active_guiding_nodes, &active_guiding_node_count, &scene_bounds_minimum, &scene_bounds_maximum };
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
 }

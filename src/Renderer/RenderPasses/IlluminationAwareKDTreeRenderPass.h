@@ -34,6 +34,8 @@ private:
 	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
 	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;
 
+	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
+
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 };
 
