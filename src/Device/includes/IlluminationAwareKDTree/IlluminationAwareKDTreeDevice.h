@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
 #include <cstdint>
@@ -63,6 +64,22 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
+	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	{
+		// Invalid samples must not consume buffer space or affect b0.
+		if (!sample.valid)
+			return;
+
+		const uint32_t sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
+
+		// The counter may exceed capacity, but memory must never be written
+		// outside the allocated buffer.
+		if (sample_index >= training_sample_capacity)
+			return;
+
+		training_samples[sample_index] = sample;
+	}
+
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 	IlluminationTreeDebugCounters debug_counters			= {};
 
@@ -74,6 +91,10 @@ struct IlluminationAwareKDTreeDevice
 
 	uint32_t* active_guiding_nodes		= nullptr;
 	uint32_t* active_guiding_node_count = nullptr;
+
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample* training_samples = nullptr;
+	AtomicType<uint32_t>* training_sample_count								  = nullptr;
+	uint32_t training_sample_capacity										  = 0;
 };
 
 #endif

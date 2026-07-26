@@ -10,7 +10,7 @@
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTree.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
@@ -171,6 +171,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 				}
 			}
 		}
+
+		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();

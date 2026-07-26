@@ -7,8 +7,8 @@
 #define DEVICE_INCLUDES_PATH_TRACING_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTree.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"

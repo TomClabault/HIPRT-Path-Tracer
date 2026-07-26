@@ -23,6 +23,8 @@ enum IlluminationAwareKDTreeDataHostBuffers
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeDataHost
 {
+	static constexpr uint32_t INITIAL_TRAINING_SAMPLE_CAPACITY = 2000000;
+
 	void resize(uint32_t new_node_capacity)
 	{
 		m_nodes_and_bounds.resize(new_node_capacity);
@@ -30,6 +32,8 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_nodes, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_training_samples, INITIAL_TRAINING_SAMPLE_CAPACITY);
+		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
 
 		reset();
 	}
@@ -41,6 +45,7 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_node_count, 0u);
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_active_guiding_node_count, 0u);
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_training_sample_count, 0u);
 	}
 
 	bool free()
@@ -52,6 +57,8 @@ struct IlluminationAwareKDTreeDataHost
 		m_node_count				= DataContainer<unsigned int>();
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
+		m_training_samples			= DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
+		m_training_sample_count		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		return true;
 	}
@@ -59,7 +66,8 @@ struct IlluminationAwareKDTreeDataHost
 	std::size_t get_byte_size() const
 	{
 		return m_nodes_and_bounds.get_byte_size() + GenericSoAHelpers::get_byte_size(m_node_count) + GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) +
-			   GenericSoAHelpers::get_byte_size(m_active_guiding_node_count);
+			   GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) + GenericSoAHelpers::get_byte_size(m_training_samples) +
+			   GenericSoAHelpers::get_byte_size(m_training_sample_count);
 	}
 
 	std::size_t maximum_size() const
@@ -77,6 +85,13 @@ struct IlluminationAwareKDTreeDataHost
 		device.node_capacity			 = static_cast<uint32_t>(maximum_size());
 		device.active_guiding_nodes		 = m_active_guiding_nodes.data();
 		device.active_guiding_node_count = m_active_guiding_node_count.data();
+		device.training_samples			 = m_training_samples.data();
+		device.training_sample_capacity	 = static_cast<uint32_t>(m_training_samples.size());
+
+		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
+			device.training_sample_count = m_training_sample_count.data();
+		else
+			device.training_sample_count = m_training_sample_count.get_atomic_device_pointer();
 
 		return device;
 	}
@@ -85,6 +100,8 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<uint32_t> m_node_count;
 	DataContainer<uint32_t> m_active_guiding_nodes;
 	DataContainer<uint32_t> m_active_guiding_node_count;
+	DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample> m_training_samples;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_sample_count;
 };
 
 #endif
