@@ -53,6 +53,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
+#include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootNode.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchStatistics.h"
@@ -796,6 +797,10 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
 		IlluminationAwareKDTree_ReplayTrainingSamplesKernel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, sample_index);
+
+	const uint32_t updated_node_count = *illumination_aware_kd_tree.node_count;
+	for (uint32_t node_index = 0; node_index < updated_node_count; node_index++)
+		IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, node_index);
 #endif
 }
 

@@ -21,6 +21,7 @@ public:
 	static const std::string RESET_BATCH_STATISTICS_KERNEL_ID;
 	static const std::string EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID;
 	static const std::string REPLAY_TRAINING_SAMPLES_KERNEL_ID;
+	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;
 
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
