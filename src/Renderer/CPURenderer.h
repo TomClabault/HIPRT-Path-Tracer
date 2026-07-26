@@ -20,6 +20,7 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
@@ -68,6 +69,7 @@ public:
 	void update_cameras(int sample);
 
 	void reset();
+	void illumination_aware_kd_tree_reset();
 
 	void debug_render_pass(std::function<void(int, int)> render_pass_function);
 
@@ -276,6 +278,8 @@ private:
 		AtomicType<unsigned int> grid_cells_alive_count;
 	} m_regir_state;
 
+	IlluminationAwareKDTreeDataHost<std::vector> m_illumination_aware_kd_tree;
+
 	BSDFDataHost m_bsdf_data_cpu_data;
 
 	std::vector<Triangle> m_triangle_buffer;
@@ -288,6 +292,7 @@ private:
 	std::shared_ptr<BVH> m_light_bvh;
 
 	Camera m_camera;
+	AABB m_scene_bounding_box;
 	HIPRTRenderData m_render_data;
 };
 

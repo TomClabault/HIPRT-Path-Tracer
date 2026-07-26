@@ -50,6 +50,7 @@
 #include "Device/kernels/ReSTIR/PG/Splatting.h"
 
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
+#include "Device/kernels/IlluminationAwareKDTree/InitializeRootNode.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -216,6 +217,10 @@ void CPURenderer::setup_buffers()
 	m_g_buffer.resize(width * height);
 	m_g_buffer_prev_frame.resize(width * height);
 
+#if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES);
+#endif
+
 	setup_bsdfs_data();
 	setup_nee_plus_plus();
 	setup_gmon();
@@ -333,6 +338,7 @@ void CPURenderer::ReSTIR_PT_post_sample_update()
 void CPURenderer::set_scene(Scene& parsed_scene)
 {
 	m_render_data.GPU_BVH = nullptr;
+	m_scene_bounding_box  = parsed_scene.metadata.scene_bounding_box;
 
 	std::vector<DevicePackedTexturedMaterial> gpu_packed_materials;
 	gpu_packed_materials.resize(parsed_scene.materials.size());
@@ -520,6 +526,12 @@ void CPURenderer::update_render_data()
 
 	m_render_data.cpu_only.bvh		 = m_bvh.get();
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
+
+#if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+#else
+	m_render_data.illumination_aware_kd_tree = {};
+#endif
 }
 
 void CPURenderer::bsdfs_data_to_device()
@@ -643,6 +655,10 @@ void CPURenderer::render()
 	ReSTIR_PG_reset_distributions();
 #endif
 
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG && LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE
+	illumination_aware_kd_tree_reset();
+#endif
+
 	// Using 'samples_per_frame' as the number of samples to render on the CPU
 	for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
 	{
@@ -719,6 +735,24 @@ void CPURenderer::reset()
 {
 	m_render_data.render_settings.need_to_reset = true;
 	m_render_data.render_settings.sample_number = 0;
+}
+
+void CPURenderer::illumination_aware_kd_tree_reset()
+{
+#if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	m_illumination_aware_kd_tree.reset();
+
+	IlluminationAwareKDTreeNode* nodes		  = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
+	IlluminationAwareKDTreeNodeBounds* bounds = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
+	uint32_t* node_count					  = m_illumination_aware_kd_tree.m_node_count.data();
+	uint32_t* active_guiding_nodes			  = m_illumination_aware_kd_tree.m_active_guiding_nodes.data();
+	uint32_t* active_guiding_node_count		  = m_illumination_aware_kd_tree.m_active_guiding_node_count.data();
+
+	initialize_illumination_tree_root(nodes, bounds, node_count, active_guiding_nodes, active_guiding_node_count, m_scene_bounding_box.mini,
+									  m_scene_bounding_box.maxi);
+
+	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+#endif
 }
 
 void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_function)

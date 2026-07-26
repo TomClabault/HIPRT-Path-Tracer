@@ -35,10 +35,10 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, INITIAL_TRAINING_SAMPLE_CAPACITY);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, MAXIMUM_NUMBER_OF_NODES);
-		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, MAXIMUM_NUMBER_OF_NODES);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, MAXIMUM_NUMBER_OF_NODES);
-		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
 
 		reset();
 	}

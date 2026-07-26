@@ -29,7 +29,6 @@ public:
 
 private:
 	static constexpr unsigned int MINIMUM_SAMPLE_COUNT		= 1000;
-	static constexpr unsigned int MAXIMUM_LOOKAHEAD_DEPTH	= 6;
 	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
 	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
 	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;

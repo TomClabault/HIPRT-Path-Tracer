@@ -35,7 +35,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 
 	if (m_illumination_aware_kd_tree.maximum_size() == 0)
 	{
-		m_illumination_aware_kd_tree.resize(1);
+		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES);
 
 		return true;
 	}
