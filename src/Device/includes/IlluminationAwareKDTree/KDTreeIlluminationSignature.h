@@ -11,7 +11,7 @@
 struct IlluminationAwareKDTreeIlluminationSignature
 {
 	// Number of valid NEE observations, including zero-radiance samples.
-	float valid_observation_count;
+	unsigned int valid_observation_count;
 
 	// Sum of scalar incoming-radiance estimates.
 	float scalar_radiance_sum;

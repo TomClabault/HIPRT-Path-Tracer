@@ -23,6 +23,7 @@ enum IlluminationAwareKDTreeDataHostBuffers
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeDataHost
 {
+	static constexpr uint32_t MAXIMUM_NUMBER_OF_NODES		   = 100000;
 	static constexpr uint32_t INITIAL_TRAINING_SAMPLE_CAPACITY = 2000000;
 
 	void resize(uint32_t new_node_capacity)
@@ -34,6 +35,10 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, INITIAL_TRAINING_SAMPLE_CAPACITY);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, MAXIMUM_NUMBER_OF_NODES);
 
 		reset();
 	}
@@ -46,6 +51,10 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_node_count, 0u);
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_active_guiding_node_count, 0u);
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_training_sample_count, 0u);
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_batch_signatures, IlluminationAwareKDTreeIlluminationSignature{});
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_history_signatures, IlluminationAwareKDTreeIlluminationSignature{});
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_batch_spatial_moments, IlluminationAwareKDTreeSpatialSampleMoments{});
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_history_spatial_moments, IlluminationAwareKDTreeSpatialSampleMoments{});
 	}
 
 	bool free()
@@ -59,6 +68,10 @@ struct IlluminationAwareKDTreeDataHost
 		m_active_guiding_node_count = DataContainer<unsigned int>();
 		m_training_samples			= DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
 		m_training_sample_count		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_batch_signatures			= DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
+		m_history_signatures		= DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
+		m_batch_spatial_moments		= DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
+		m_history_spatial_moments	= DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 
 		return true;
 	}
@@ -67,7 +80,9 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		return m_nodes_and_bounds.get_byte_size() + GenericSoAHelpers::get_byte_size(m_node_count) + GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) +
 			   GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) + GenericSoAHelpers::get_byte_size(m_training_samples) +
-			   GenericSoAHelpers::get_byte_size(m_training_sample_count);
+			   GenericSoAHelpers::get_byte_size(m_training_sample_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
+			   GenericSoAHelpers::get_byte_size(m_history_signatures) + GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) +
+			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments);
 	}
 
 	std::size_t maximum_size() const
@@ -93,6 +108,11 @@ struct IlluminationAwareKDTreeDataHost
 		else
 			device.training_sample_count = m_training_sample_count.get_atomic_device_pointer();
 
+		device.batch_signatures		   = m_batch_signatures.data();
+		device.history_signatures	   = m_history_signatures.data();
+		device.batch_spatial_moments   = m_batch_spatial_moments.data();
+		device.history_spatial_moments = m_history_spatial_moments.data();
+
 		return device;
 	}
 
@@ -102,6 +122,10 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<uint32_t> m_active_guiding_node_count;
 	DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample> m_training_samples;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_sample_count;
+	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_batch_signatures;
+	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;
+	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_batch_spatial_moments;
+	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_history_spatial_moments;
 };
 
 #endif

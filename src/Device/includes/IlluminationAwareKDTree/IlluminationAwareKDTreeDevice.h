@@ -97,6 +97,12 @@ struct IlluminationAwareKDTreeDevice
 	IlluminationAwareKDTreeDirectIlluminationTrainingSample* training_samples = nullptr;
 	AtomicType<uint32_t>* training_sample_count								  = nullptr;
 	uint32_t training_sample_capacity										  = 0;
+
+	IlluminationAwareKDTreeIlluminationSignature* batch_signatures	 = nullptr;
+	IlluminationAwareKDTreeIlluminationSignature* history_signatures = nullptr;
+
+	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
+	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
 };
 
 #endif
