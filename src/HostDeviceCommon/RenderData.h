@@ -14,6 +14,7 @@
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
+#include "HostDeviceCommon/IlluminationAwareKDTreeDevice.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/SSBNPermutationSettings.h"
@@ -68,6 +69,7 @@ struct HIPRTRenderData
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree;
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
 

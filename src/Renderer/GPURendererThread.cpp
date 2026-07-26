@@ -68,6 +68,8 @@ void GPURendererThread::setup_render_graphs()
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass	 = render_graph_full.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = render_graph_full.create_render_pass<NEEPlusPlusRenderPass>();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
+		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
 
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass = render_graph_full.create_render_pass<ReGIRRenderPass>();
 	regir_render_pass->add_dependency(camera_rays_render_pass);
@@ -117,6 +119,7 @@ void GPURendererThread::setup_render_graphs()
 
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
+	render_graph_full.add_render_pass(illumination_aware_kd_tree_render_pass);
 	render_graph_full.add_render_pass(regir_render_pass);
 	render_graph_full.add_render_pass(restir_di_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);

@@ -1,0 +1,36 @@
+/*
+ * Copyright 2026 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
+#define RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
+
+#include "Renderer/RenderPasses/RenderPass.h"
+
+#include <cstdint>
+
+class IlluminationAwareKDTreeRenderPass : public RenderPass
+{
+public:
+	static const std::string ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME;
+
+	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
+
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
+	virtual bool pre_render_update(float delta_time) override;
+	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual void update_render_data() override;
+	virtual void reset(bool reset_by_camera_movement) override;
+	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
+
+private:
+	static constexpr uint32_t MINIMUM_SAMPLE_COUNT			= 1000;
+	static constexpr uint32_t MAXIMUM_LOOKAHEAD_DEPTH		= 6;
+	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
+	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
+	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;
+};
+
+#endif
