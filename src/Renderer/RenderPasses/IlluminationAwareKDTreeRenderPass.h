@@ -43,6 +43,7 @@ private:
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 	bool m_lookahead_frontier_initialized	  = false;
 	bool m_current_frontier_uses_first_buffer = true;
+	uint32_t m_next_creation_tag			  = 0;
 };
 
 #endif

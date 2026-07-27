@@ -11,19 +11,18 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTreeDevice_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
+inline IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
+GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t sample_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
 #else
-	const uint32_t sample_index = x;
+	unsigned int sample_index = x;
 #endif
-	const uint32_t sample_count = *illumination_aware_kd_tree.training_sample_count;
 
-	// Threads beyond the current compact sample array do nothing.
+	unsigned int sample_count = *illumination_aware_kd_tree.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 

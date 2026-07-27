@@ -285,6 +285,7 @@ private:
 
 		bool lookahead_frontier_initialized		= false;
 		bool current_frontier_uses_first_buffer = true;
+		uint32_t next_creation_tag				= 0;
 	} m_illumination_aware_kd_tree_state;
 
 	BSDFDataHost m_bsdf_data_cpu_data;

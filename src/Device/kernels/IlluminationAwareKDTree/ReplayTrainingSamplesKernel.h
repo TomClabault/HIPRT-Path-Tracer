@@ -22,18 +22,14 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 #else
 	unsigned int sample_index = x;
 #endif
-	unsigned int sample_count = *illumination_aware_kd_tree.training_sample_count;
 
+	unsigned int sample_count = *illumination_aware_kd_tree.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 
 	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = illumination_aware_kd_tree.training_samples[sample_index];
 
 	unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(sample.position);
-
-	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return;
-
 	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
 	{
 		const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.nodes[node_index];

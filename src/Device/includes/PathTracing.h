@@ -420,8 +420,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
-		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
-		uint32_t guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
+		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
 
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index);

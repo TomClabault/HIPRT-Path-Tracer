@@ -11,10 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTreeDevice_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int creation_tag, int x)
+inline IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int creation_tag, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTreeDevice_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int creation_tag)
+IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int creation_tag)
 #endif
 {
 #ifdef __KERNELCC__

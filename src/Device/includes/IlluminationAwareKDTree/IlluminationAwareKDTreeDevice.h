@@ -83,10 +83,6 @@ struct IlluminationAwareKDTreeDevice
 		// First find the active guiding cell used at this position.
 		unsigned int node_index = find_guiding_cell(sample.position);
 
-		// Invalid traversal indicates a broken topology.
-		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-			return;
-
 		// Level zero is the guiding cell.
 		//
 		// Levels one through six are the lookahead cells along the sample's
@@ -132,10 +128,13 @@ struct IlluminationAwareKDTreeDevice
 		if (!sample.valid)
 			return;
 
-		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
-
+		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 		// The counter may exceed capacity, but memory must never be written
 		// outside the allocated buffer.
+		if (sample_index >= training_sample_capacity)
+			return;
+
+		sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
 		if (sample_index >= training_sample_capacity)
 			return;
 
@@ -185,8 +184,7 @@ struct IlluminationAwareKDTreeDevice
 		// pool is full.
 		while (true)
 		{
-			// Writing "current_count + amount > capacity" could overflow.
-			// This equivalent form is safe for unsigned integers.
+			// Writing "current_count + amount > capacity" could overflow
 			if (current_count + amount_to_reserve > node_capacity)
 				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 

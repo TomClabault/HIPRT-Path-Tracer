@@ -11,9 +11,9 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
+inline IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
+GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
@@ -28,8 +28,8 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_AccumulateBatchStati
 	if (node_index >= node_count)
 		return;
 
-	if (illumination_aware_kd_tree.nodes[node_index].flags == IlluminationAwareKDTreeNodeFlag_None)
-		// No data in that node yet
+	bool node_allocated = node_index < node_count;
+	if (!node_allocated)
 		return;
 
 	IlluminationAwareKDTreeIlluminationSignature& history_signature		= illumination_aware_kd_tree.history_signatures[node_index];

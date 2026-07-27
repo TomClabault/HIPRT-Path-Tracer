@@ -710,8 +710,8 @@ void CPURenderer::pre_render_update(int frame_number)
 {
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
-	for (uint32_t node_index = 0; node_index < illumination_aware_kd_tree.node_capacity; node_index++)
-		IlluminationAwareKDTreeDevice_ResetBatchStatistics(illumination_aware_kd_tree, node_index);
+	for (unsigned int node_index = 0; node_index < illumination_aware_kd_tree.node_capacity; node_index++)
+		IlluminationAwareKDTree_ResetBatchStatistics(illumination_aware_kd_tree, node_index);
 #endif
 
 	// Resetting the status buffers
@@ -756,14 +756,15 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
 	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
 	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
+	m_illumination_aware_kd_tree_state.next_creation_tag				  = 0;
 
 	IlluminationAwareKDTreeNode* nodes =
 		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
 	IlluminationAwareKDTreeNodeBounds* bounds =
 		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
-	AtomicType<uint32_t>* node_count				= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_node_count.data();
-	uint32_t* active_guiding_nodes					= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_nodes.data();
-	AtomicType<uint32_t>* active_guiding_node_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_node_count.data();
+	AtomicType<unsigned int>* node_count				= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_node_count.data();
+	unsigned int* active_guiding_nodes					= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_nodes.data();
+	AtomicType<unsigned int>* active_guiding_node_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_node_count.data();
 
 	initialize_illumination_tree_root(nodes, bounds, node_count, active_guiding_nodes, active_guiding_node_count, m_scene_bounding_box.mini,
 									  m_scene_bounding_box.maxi);
@@ -776,31 +777,59 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
-	const uint32_t sample_count								 = illumination_aware_kd_tree.training_sample_count->load();
+	unsigned int sample_count								 = illumination_aware_kd_tree.training_sample_count->load();
 
-	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
-		IlluminationAwareKDTreeDevice_AccumulateBatchTrainingSamples(illumination_aware_kd_tree, sample_index);
+	for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
+		IlluminationAwareKDTree_AccumulateBatchTrainingSamples(illumination_aware_kd_tree, sample_index);
 
-	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
-	for (uint32_t node_index = 0; node_index < node_count; node_index++)
-		IlluminationAwareKDTreeDevice_AccumulateBatchStatisticsIntoHistory(illumination_aware_kd_tree, node_index);
+	const unsigned int node_count = *illumination_aware_kd_tree.node_count;
+	for (unsigned int node_index = 0; node_index < node_count; node_index++)
+		IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory(illumination_aware_kd_tree, node_index);
 
-	illumination_aware_kd_tree.current_frontier		  = illumination_aware_kd_tree.active_guiding_nodes;
-	illumination_aware_kd_tree.current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
-	illumination_aware_kd_tree.next_frontier		  = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
-	illumination_aware_kd_tree.next_frontier_count	  = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
-	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count[0].store(0);
+	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
+	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
+	unsigned int* next_frontier						 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
+	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
+	bool next_frontier_uses_first_buffer			 = true;
 
-	const uint32_t current_frontier_count = illumination_aware_kd_tree.current_frontier_count->load();
-	for (uint32_t frontier_index = 0; frontier_index < current_frontier_count; frontier_index++)
-		IlluminationAwareKDTreeDevice_ExpandOneLookaheadLevel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, frontier_index);
+	for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadDepth; depth++)
+	{
+		illumination_aware_kd_tree.current_frontier		  = current_frontier;
+		illumination_aware_kd_tree.current_frontier_count = current_frontier_count;
+		illumination_aware_kd_tree.next_frontier		  = next_frontier;
+		illumination_aware_kd_tree.next_frontier_count	  = next_frontier_count;
+		next_frontier_count->store(0u);
 
-	for (uint32_t sample_index = 0; sample_index < sample_count; sample_index++)
-		IlluminationAwareKDTree_ReplayTrainingSamplesKernel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, sample_index);
+		const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
+		const unsigned int current_frontier_count_value = current_frontier_count->load();
+		for (unsigned int frontier_index = 0; frontier_index < current_frontier_count_value; frontier_index++)
+			IlluminationAwareKDTree_ExpandOneLookaheadLevel(illumination_aware_kd_tree, creation_tag, frontier_index);
 
-	const uint32_t updated_node_count = *illumination_aware_kd_tree.node_count;
-	for (uint32_t node_index = 0; node_index < updated_node_count; node_index++)
-		IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(illumination_aware_kd_tree, m_render_data.render_settings.sample_number, node_index);
+		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
+			IlluminationAwareKDTree_ReplayTrainingSamplesKernel(illumination_aware_kd_tree, creation_tag, sample_index);
+
+		const unsigned int updated_node_count = *illumination_aware_kd_tree.node_count;
+		for (unsigned int node_index = 0; node_index < updated_node_count; node_index++)
+			IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(illumination_aware_kd_tree, creation_tag, node_index);
+
+		const unsigned int next_frontier_count_value = next_frontier_count->load();
+		current_frontier							 = next_frontier;
+		current_frontier_count						 = next_frontier_count;
+		if (next_frontier_uses_first_buffer)
+		{
+			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_next_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_next_frontier_count.data();
+		}
+		else
+		{
+			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
+		}
+		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
+
+		if (next_frontier_count_value == 0)
+			break;
+	}
 #endif
 }
 

@@ -33,9 +33,9 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_nodes, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
-		GenericSoAHelpers::resize<DataContainer>(m_current_frontier, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_current_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier_count, 1);
-		GenericSoAHelpers::resize<DataContainer>(m_next_frontier, MAXIMUM_NUMBER_OF_NODES);
+		GenericSoAHelpers::resize<DataContainer>(m_next_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_next_frontier_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, INITIAL_TRAINING_SAMPLE_CAPACITY);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
@@ -61,6 +61,13 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_history_signatures, IlluminationAwareKDTreeIlluminationSignature{});
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_batch_spatial_moments, IlluminationAwareKDTreeSpatialSampleMoments{});
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_history_spatial_moments, IlluminationAwareKDTreeSpatialSampleMoments{});
+
+		IlluminationAwareKDTreeNode root_node_init;
+		root_node_init.left_child_index			  = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+		root_node_init.guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_SLOT;
+		root_node_init.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
+
+		m_nodes_and_bounds.upload_to_buffer_partial<ILLUMINATION_AWARE_KD_TREE_NODES>(0, &root_node_init, 1);
 	}
 
 	bool free()
