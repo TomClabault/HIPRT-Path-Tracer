@@ -8,6 +8,13 @@
 
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
+struct IlluminationAwareKDTreeIlluminationSignatureDouble
+{
+	unsigned int valid_observation_count;
+	double scalar_radiance_sum;
+	double squared_scalar_radiance_sum;
+};
+
 struct IlluminationAwareKDTreeIlluminationSignature
 {
 	// Number of valid NEE observations, including zero-radiance samples.
