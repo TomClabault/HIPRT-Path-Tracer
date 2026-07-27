@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+#include "HostDeviceCommon/AtomicType.h"
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)

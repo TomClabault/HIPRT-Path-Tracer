@@ -68,8 +68,6 @@ void GPURendererThread::setup_render_graphs()
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass	 = render_graph_full.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = render_graph_full.create_render_pass<NEEPlusPlusRenderPass>();
-	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
-		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
 
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass = render_graph_full.create_render_pass<ReGIRRenderPass>();
 	regir_render_pass->add_dependency(camera_rays_render_pass);
@@ -111,6 +109,12 @@ void GPURendererThread::setup_render_graphs()
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 	gmon_render_pass->add_dependency(restir_pt_render_pass);
+
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
+		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
+	illumination_aware_kd_tree_render_pass->add_dependency(megakernel_render_pass);
+	illumination_aware_kd_tree_render_pass->add_dependency(restir_gi_render_pass);
+	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_render_pass);
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
 	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);

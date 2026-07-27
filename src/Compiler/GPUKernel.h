@@ -206,6 +206,12 @@ private:
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event  = nullptr;
 	float m_last_execution_time		   = 0.0f;
+	// If true, the execution time of this kernel will be measured with CUDA/HIP events and returned by compute_execution_time() and get_last_execution_time().
+	// If false, the execution time returned by these functions will be 0.0f.
+	//
+	// Launching CUDA events can have non negligible overhead, so for some very fast kernels, it can be better to disable the execution time measurement to
+	// avoid that overhead.
+	bool m_measure_execution_time = true;
 
 	// Whether or not the macros used by this kernel have been modified recently.
 	// Only adding new macros / removing macros invalidate the macros.
@@ -235,13 +241,6 @@ private:
 	// the counter of the ImGuiLoggerLine that counts how many kernels have been precompiled
 	// so far
 	bool m_is_precompiled_kernel = false;
-
-	// If true, the execution time of this kernel will be measured with CUDA/HIP events and returned by compute_execution_time() and get_last_execution_time().
-	// If false, the execution time returned by these functions will be 0.0f.
-	//
-	// Launching CUDA events can have non negligible overhead, so for some very fast kernels, it can be better to disable the execution time measurement to
-	// avoid that overhead.
-	bool m_measure_execution_time = true;
 };
 
 #endif
