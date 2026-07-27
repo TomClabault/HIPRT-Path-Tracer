@@ -11,6 +11,7 @@
 
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include <cstdint>
@@ -22,6 +23,8 @@ enum class IlluminationAwareKDTreeSubdivisionMode
 	MEAN_RADIANCE_ONLY,
 	FULL
 };
+
+using NEEGuidingDistribution = LightTreeSGNodeDevice;
 
 struct IlluminationAwareKDTreeDevice
 {
@@ -316,10 +319,12 @@ struct IlluminationAwareKDTreeDevice
 	AtomicType<unsigned int>* node_count = nullptr;
 	unsigned int node_capacity			 = 0;
 
-	unsigned int* active_guiding_nodes					= nullptr;
-	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
-	uint8_t* needs_split								= nullptr;
-	unsigned int* triggering_lookahead_nodes			= nullptr;
+	unsigned int* active_guiding_nodes					 = nullptr;
+	AtomicType<unsigned int>* active_guiding_node_count	 = nullptr;
+	uint8_t* needs_split								 = nullptr;
+	unsigned int* triggering_lookahead_nodes			 = nullptr;
+	AtomicType<unsigned int>* guiding_distribution_count = nullptr;
+	NEEGuidingDistribution* guiding_distributions		 = nullptr;
 
 	// Two ping ponging frontier buffers for when we create lookahead cells
 	//

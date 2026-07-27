@@ -221,6 +221,7 @@ const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_
 const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID					= "Replay Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID			= "Initialize Created Node History";
 const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID			= "Mark Guiding Cells For Splitting";
+const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID					= "Promote Guiding Cells";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
@@ -286,6 +287,13 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting");
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																										"/IlluminationAwareKDTree/PromoteGuidingCells.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
@@ -379,9 +387,15 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
 	}
 
-	void* evaluation_launch_args[] = { &illumination_aware_kd_tree };
+	void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.node_capacity, 1, evaluation_launch_args, m_renderer->get_main_stream());
+		256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
+
+	// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
+	unsigned int active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+	void* promotion_launch_args[]		   = { &illumination_aware_kd_tree, &active_guiding_node_count };
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
+																									   promotion_launch_args, m_renderer->get_main_stream());
 
 	// DEBUG block
 	{
@@ -484,7 +498,7 @@ void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_deb
 	// This descendant has a mean radiance of 1.5 while its guiding ancestor has a mean of 1.0.
 	synthetic_history_signatures[0].valid_observation_count									  = 2000;
 	synthetic_history_signatures[0].scalar_radiance_sum										  = 2000.0f;
-	synthetic_history_signatures[0].squared_scalar_radiance_sum								  = 2000.0f;
+	synthetic_history_signatures[0].squared_scalar_radiance_sum								  = 2500.0f;
 	synthetic_history_signatures[SYNTHETIC_TRIGGERING_NODE_INDEX].scalar_radiance_sum		  = 1500.0f;
 	synthetic_history_signatures[SYNTHETIC_TRIGGERING_NODE_INDEX].squared_scalar_radiance_sum = 2250.0f;
 	synthetic_tree.m_history_signatures.upload_data(synthetic_history_signatures);
