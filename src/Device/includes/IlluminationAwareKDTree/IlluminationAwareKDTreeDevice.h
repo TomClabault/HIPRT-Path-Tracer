@@ -318,6 +318,8 @@ struct IlluminationAwareKDTreeDevice
 
 	unsigned int* active_guiding_nodes					= nullptr;
 	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
+	uint8_t* needs_split								= nullptr;
+	unsigned int* triggering_lookahead_nodes			= nullptr;
 
 	// Two ping ponging frontier buffers for when we create lookahead cells
 	//
