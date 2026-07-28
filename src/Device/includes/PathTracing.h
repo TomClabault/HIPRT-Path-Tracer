@@ -415,8 +415,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 #endif // ReGIR debug mode
 
-#elif LightTreeSGDebugMode != LIGHT_TREE_SG_DEBUG_MODE_NO_DEBUG && LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE
-#if LightTreeSGDebugMode == LIGHT_TREE_SG_DEBUG_MODE_KD_TREE_LEAF
+#elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG && LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE
+#if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit

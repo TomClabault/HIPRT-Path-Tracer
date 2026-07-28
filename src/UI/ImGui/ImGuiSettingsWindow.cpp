@@ -3879,7 +3879,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaf" };
-			if (ImGui::Combo("Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DEBUG_MODE),
+			if (ImGui::Combo("Debug view",
+							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 			{
 				m_renderer->recompile_kernels();

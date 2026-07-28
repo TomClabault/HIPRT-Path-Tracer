@@ -10,7 +10,7 @@
 
 struct IlluminationAwareKDTreeIlluminationSignatureDouble
 {
-	unsigned int valid_observation_count;
+	double valid_observation_count;
 	double scalar_radiance_sum;
 	double squared_scalar_radiance_sum;
 };

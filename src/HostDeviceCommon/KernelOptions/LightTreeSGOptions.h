@@ -8,9 +8,6 @@
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
-#define LIGHT_TREE_SG_DEBUG_MODE_NO_DEBUG	  0
-#define LIGHT_TREE_SG_DEBUG_MODE_KD_TREE_LEAF 1
-
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *     - If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -55,11 +52,6 @@
  * If true, the illumination-aware guiding distributions are used by the SG light tree.
  */
 #define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_TRUE
-
-/**
- * Debug view for the illumination-aware KD-tree.
- */
-#define LightTreeSGDebugMode LIGHT_TREE_SG_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 

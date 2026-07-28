@@ -36,7 +36,7 @@ struct IlluminationAwareKDTreeDevice
 	HIPRT_DEVICE static IlluminationAwareKDTreeIlluminationSignatureDouble convert_signature_to_double(
 		const IlluminationAwareKDTreeIlluminationSignature& signature)
 	{
-		return { signature.valid_observation_count, static_cast<double>(signature.scalar_radiance_sum),
+		return { static_cast<double>(signature.valid_observation_count), static_cast<double>(signature.scalar_radiance_sum),
 				 static_cast<double>(signature.squared_scalar_radiance_sum) };
 	}
 
@@ -89,7 +89,7 @@ struct IlluminationAwareKDTreeDevice
 		IlluminationAwareKDTreeIlluminationSignatureDouble guiding	 = convert_signature_to_double(guiding_signature_float);
 		IlluminationAwareKDTreeIlluminationSignatureDouble lookahead = convert_signature_to_double(lookahead_signature_float);
 
-		if (guiding.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT || lookahead.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
+		if (lookahead.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
 			return false;
 
 		IlluminationAwareKDTreeIlluminationSignatureDouble difference_cell;
@@ -102,7 +102,7 @@ struct IlluminationAwareKDTreeDevice
 														  ? guiding.squared_scalar_radiance_sum - lookahead.squared_scalar_radiance_sum
 														  : 0.0;
 
-		if (difference_cell.valid_observation_count < 2.0)
+		if (difference_cell.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
 			return false;
 
 		double guiding_sample_count	  = guiding.valid_observation_count;
