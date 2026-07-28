@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <iostream>
+#include <string>
 #include <vector>
 
 IlluminationAwareKDTreeNode make_debug_node(const uint32_t left_child_index, const uint8_t flags, const uint8_t split_axis, const float split_position)
@@ -31,6 +33,68 @@ bool debug_nodes_match(const IlluminationAwareKDTreeNode& first, const Illuminat
 	return first.left_child_index == second.left_child_index && first.guiding_distribution_index == second.guiding_distribution_index &&
 		   first.creation_tag == second.creation_tag && first.split_position == second.split_position && first.split_axis == second.split_axis &&
 		   first.flags == second.flags && first.padding == second.padding;
+}
+
+void print_debug_signature(std::ostream& output,
+						   const char* name,
+						   const IlluminationAwareKDTreeIlluminationSignature& signature,
+						   const std::string& indentation)
+{
+	output << indentation << name << " samples=" << signature.valid_observation_count << " radiance_sum=" << signature.scalar_radiance_sum
+		   << " radiance_squared_sum=" << signature.squared_scalar_radiance_sum << '\n';
+}
+
+void print_debug_spatial_moments(std::ostream& output,
+								 const char* name,
+								 const IlluminationAwareKDTreeSpatialSampleMoments& moments,
+								 const std::string& indentation)
+{
+	output << indentation << name << " positive_samples=" << moments.positive_radiance_sample_count << " position_sum=(" << moments.position_sum.x << ", "
+		   << moments.position_sum.y << ", " << moments.position_sum.z << ") position_squared_sum=(" << moments.position_squared_sum.x << ", "
+		   << moments.position_squared_sum.y << ", " << moments.position_squared_sum.z << ")\n";
+}
+
+void print_debug_tree_node(std::ostream& output,
+						   const uint32_t node_index,
+						   const uint32_t node_count,
+						   const uint32_t depth,
+						   const std::vector<IlluminationAwareKDTreeNode>& nodes,
+						   const std::vector<uint8_t>& active_nodes,
+						   const std::vector<IlluminationAwareKDTreeIlluminationSignature>& batch_signatures,
+						   const std::vector<IlluminationAwareKDTreeIlluminationSignature>& history_signatures,
+						   const std::vector<IlluminationAwareKDTreeSpatialSampleMoments>& batch_spatial_moments,
+						   const std::vector<IlluminationAwareKDTreeSpatialSampleMoments>& history_spatial_moments,
+						   std::vector<uint8_t>& visited_nodes)
+{
+	if (node_index >= node_count || node_index >= nodes.size() || visited_nodes[node_index] != 0)
+		return;
+
+	visited_nodes[node_index]				= 1;
+	const IlluminationAwareKDTreeNode& node = nodes[node_index];
+	const std::string indentation(depth * 2, ' ');
+	const bool is_guiding	= (node.flags & IlluminationAwareKDTreeNodeFlag_Guiding) != 0;
+	const bool has_children = (node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren) != 0;
+
+	std::cerr << indentation << "node " << node_index << " [" << (is_guiding ? "guiding" : "inner")
+			  << "] active=" << (active_nodes[node_index] != 0 ? "yes" : "no") << " distribution=" << node.guiding_distribution_index
+			  << " flags=" << static_cast<unsigned int>(node.flags) << " split_axis=" << static_cast<unsigned int>(node.split_axis)
+			  << " split_position=" << node.split_position;
+	if (has_children)
+		std::cerr << " children=(" << node.left_child_index << ", " << node.left_child_index + 1 << ")";
+	std::cerr << '\n';
+
+	print_debug_signature(output, "batch", batch_signatures[node_index], indentation + "  ");
+	print_debug_signature(output, "history", history_signatures[node_index], indentation + "  ");
+	print_debug_spatial_moments(output, "batch_moments", batch_spatial_moments[node_index], indentation + "  ");
+	print_debug_spatial_moments(output, "history_moments", history_spatial_moments[node_index], indentation + "  ");
+
+	if (has_children)
+	{
+		print_debug_tree_node(output, node.left_child_index, node_count, depth + 1, nodes, active_nodes, batch_signatures, history_signatures,
+							  batch_spatial_moments, history_spatial_moments, visited_nodes);
+		print_debug_tree_node(output, node.left_child_index + 1, node_count, depth + 1, nodes, active_nodes, batch_signatures, history_signatures,
+							  batch_spatial_moments, history_spatial_moments, visited_nodes);
+	}
 }
 
 float get_bound_component(const float3_t& value, const uint8_t axis)
@@ -400,38 +464,14 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	// DEBUG block
 	{
-		run_mark_guiding_cells_for_splitting_debug_check();
+		/*run_mark_guiding_cells_for_splitting_debug_check();
 		run_promote_guiding_cells_debug_check();
+		run_debug_check*/
 
 		// The verification intentionally synchronizes the stream and downloads the tree because it is only meant for CPU-side development validation.
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-		const std::vector<IlluminationAwareKDTreeNode> nodes =
-			m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().download_data();
-		const std::vector<IlluminationAwareKDTreeNodeBounds> node_bounds =
-			m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().download_data();
-		const std::vector<unsigned int> node_count_data				   = m_illumination_aware_kd_tree.m_node_count.download_data();
-		const std::vector<unsigned int> active_guiding_node_count_data = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data();
-
-		if (!node_count_data.empty() && !active_guiding_node_count_data.empty())
-		{
-			const uint32_t node_count						 = std::min(node_count_data[0], static_cast<uint32_t>(nodes.size()));
-			const uint32_t active_guiding_node_count		 = active_guiding_node_count_data[0];
-			const std::vector<uint32_t> active_guiding_nodes = m_illumination_aware_kd_tree.m_active_guiding_nodes.download_data_partial(
-				0, std::min(active_guiding_node_count, static_cast<uint32_t>(m_illumination_aware_kd_tree.m_active_guiding_nodes.size())));
-
-			const std::vector<unsigned int> training_sample_count_data = m_illumination_aware_kd_tree.m_training_sample_count.download_data();
-			std::vector<IlluminationAwareKDTreeDirectIlluminationTrainingSample> training_samples;
-			if (!training_sample_count_data.empty())
-			{
-				const uint32_t training_sample_count =
-					std::min(training_sample_count_data[0], static_cast<uint32_t>(m_illumination_aware_kd_tree.m_training_samples.size()));
-				if (training_sample_count > 0)
-					training_samples = m_illumination_aware_kd_tree.m_training_samples.download_data_partial(0, training_sample_count);
-			}
-
-			verify_illumination_aware_kd_tree(nodes, node_bounds, node_count, active_guiding_nodes, active_guiding_node_count, training_samples);
-		}
+		std::ofstream output("output.txt");
+		print_current_tree_debug_info(output);
 	}
 }
 
@@ -599,21 +639,21 @@ void IlluminationAwareKDTreeRenderPass::run_promote_guiding_cells_debug_check()
 	const bool active_count_is_correct	= active_guiding_node_count.size() == 1 && active_guiding_node_count[0] == 2;
 	const bool active_nodes_are_correct = active_guiding_nodes_after.size() == 2 && active_guiding_nodes_after[0] == SYNTHETIC_LEFT_CHILD_INDEX &&
 										  active_guiding_nodes_after[1] == SYNTHETIC_RIGHT_CHILD_INDEX;
-	const bool flags_are_correct = nodes_after.size() == SYNTHETIC_NODE_COUNT &&
-								   !(nodes_after[SYNTHETIC_PARENT_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
-								   (nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
-								   (nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding);
+	const bool flags_are_correct		= nodes_after.size() == SYNTHETIC_NODE_COUNT &&
+										  !(nodes_after[SYNTHETIC_PARENT_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
+										  (nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
+										  (nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding);
 	const bool distribution_slots_are_correct =
 		nodes_after.size() == SYNTHETIC_NODE_COUNT &&
 		nodes_after[SYNTHETIC_PARENT_INDEX].guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_SLOT &&
 		nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].guiding_distribution_index == 0 && nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].guiding_distribution_index == 1;
-	const bool node_indices_are_unchanged = nodes_after.size() == SYNTHETIC_NODE_COUNT &&
-											nodes_after[SYNTHETIC_PARENT_INDEX].left_child_index == SYNTHETIC_LEFT_CHILD_INDEX &&
-											nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX &&
-											nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	const bool distributions_were_inherited = distributions_after.size() == 2 &&
-											  std::memcmp(&distributions_after[0], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0 &&
-											  std::memcmp(&distributions_after[1], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0;
+	const bool node_indices_are_unchanged	 = nodes_after.size() == SYNTHETIC_NODE_COUNT &&
+											   nodes_after[SYNTHETIC_PARENT_INDEX].left_child_index == SYNTHETIC_LEFT_CHILD_INDEX &&
+											   nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX &&
+											   nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	const bool distributions_were_inherited	 = distributions_after.size() == 2 &&
+											   std::memcmp(&distributions_after[0], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0 &&
+											   std::memcmp(&distributions_after[1], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0;
 	const bool distribution_count_is_correct = guiding_distribution_count.size() == 1 && guiding_distribution_count[0] == 2;
 
 	if (!active_count_is_correct || !active_nodes_are_correct || !flags_are_correct || !distribution_slots_are_correct || !node_indices_are_unchanged ||
@@ -624,6 +664,114 @@ void IlluminationAwareKDTreeRenderPass::run_promote_guiding_cells_debug_check()
 	}
 	else
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Illumination-aware KD-tree PromoteGuidingCells debug check passed.");
+}
+
+void IlluminationAwareKDTreeRenderPass::run_debug_check()
+{
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	const std::vector<IlluminationAwareKDTreeNode> nodes =
+		m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().download_data();
+	const std::vector<IlluminationAwareKDTreeNodeBounds> node_bounds =
+		m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().download_data();
+	const std::vector<unsigned int> node_count_data				   = m_illumination_aware_kd_tree.m_node_count.download_data();
+	const std::vector<unsigned int> active_guiding_node_count_data = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data();
+
+	if (!node_count_data.empty() && !active_guiding_node_count_data.empty())
+	{
+		const uint32_t node_count						 = std::min(node_count_data[0], static_cast<uint32_t>(nodes.size()));
+		const uint32_t active_guiding_node_count		 = active_guiding_node_count_data[0];
+		const std::vector<uint32_t> active_guiding_nodes = m_illumination_aware_kd_tree.m_active_guiding_nodes.download_data_partial(
+			0, std::min(active_guiding_node_count, static_cast<uint32_t>(m_illumination_aware_kd_tree.m_active_guiding_nodes.size())));
+
+		const std::vector<unsigned int> training_sample_count_data = m_illumination_aware_kd_tree.m_training_sample_count.download_data();
+		std::vector<IlluminationAwareKDTreeDirectIlluminationTrainingSample> training_samples;
+		if (!training_sample_count_data.empty())
+		{
+			const uint32_t training_sample_count =
+				std::min(training_sample_count_data[0], static_cast<uint32_t>(m_illumination_aware_kd_tree.m_training_samples.size()));
+			if (training_sample_count > 0)
+				training_samples = m_illumination_aware_kd_tree.m_training_samples.download_data_partial(0, training_sample_count);
+		}
+
+		verify_illumination_aware_kd_tree(nodes, node_bounds, node_count, active_guiding_nodes, active_guiding_node_count, training_samples);
+	}
+}
+
+void IlluminationAwareKDTreeRenderPass::print_current_tree_debug_info(std::ostream& output)
+{
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	const std::vector<unsigned int> node_count_data				   = m_illumination_aware_kd_tree.m_node_count.download_data();
+	const std::vector<unsigned int> active_guiding_node_count_data = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data();
+	if (node_count_data.empty() || active_guiding_node_count_data.empty())
+	{
+		output << "Illumination-aware KD-tree is unavailable for debug printing.\n";
+		return;
+	}
+
+	const uint32_t node_count = std::min(node_count_data[0], static_cast<uint32_t>(m_illumination_aware_kd_tree.maximum_size()));
+	const uint32_t active_guiding_node_count =
+		std::min(active_guiding_node_count_data[0], static_cast<uint32_t>(m_illumination_aware_kd_tree.m_active_guiding_nodes.size()));
+	const std::vector<uint32_t> active_guiding_nodes = m_illumination_aware_kd_tree.m_active_guiding_nodes.download_data_partial(0, active_guiding_node_count);
+	const std::vector<IlluminationAwareKDTreeNode> nodes =
+		m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().download_data_partial(0, node_count);
+	const std::vector<IlluminationAwareKDTreeIlluminationSignature> batch_signatures =
+		m_illumination_aware_kd_tree.m_batch_signatures.download_data_partial(0, node_count);
+	const std::vector<IlluminationAwareKDTreeIlluminationSignature> history_signatures =
+		m_illumination_aware_kd_tree.m_history_signatures.download_data_partial(0, node_count);
+	const std::vector<IlluminationAwareKDTreeSpatialSampleMoments> batch_spatial_moments =
+		m_illumination_aware_kd_tree.m_batch_spatial_moments.download_data_partial(0, node_count);
+	const std::vector<IlluminationAwareKDTreeSpatialSampleMoments> history_spatial_moments =
+		m_illumination_aware_kd_tree.m_history_spatial_moments.download_data_partial(0, node_count);
+
+	std::vector<uint8_t> active_nodes(node_count, 0);
+	for (const uint32_t active_node_index : active_guiding_nodes)
+	{
+		if (active_node_index < node_count)
+			active_nodes[active_node_index] = 1;
+	}
+
+	std::vector<uint8_t> visited_nodes(node_count, 0);
+	std::vector<uint8_t> has_parent(node_count, 0);
+	for (uint32_t node_index = 0; node_index < node_count && node_index < nodes.size(); ++node_index)
+	{
+		const IlluminationAwareKDTreeNode& node = nodes[node_index];
+		if (!(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
+			continue;
+
+		if (node.left_child_index < node_count && node.left_child_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		{
+			has_parent[node.left_child_index] = 1;
+			if (node.left_child_index + 1 < node_count)
+				has_parent[node.left_child_index + 1] = 1;
+		}
+	}
+
+	output << "\n=== Illumination-aware KD-tree ===\n";
+	output << "physical_nodes=" << node_count << " active_guides=" << active_guiding_node_count << " active_guide_indices=";
+	for (const uint32_t active_node_index : active_guiding_nodes)
+		output << active_node_index << ' ';
+	output << "\n";
+
+	for (uint32_t node_index = 0; node_index < node_count; ++node_index)
+	{
+		if (has_parent[node_index] == 0)
+			print_debug_tree_node(output, node_index, node_count, 0, nodes, active_nodes, batch_signatures, history_signatures, batch_spatial_moments,
+								  history_spatial_moments, visited_nodes);
+	}
+
+	for (uint32_t node_index = 0; node_index < node_count; ++node_index)
+	{
+		if (visited_nodes[node_index] == 0)
+		{
+			output << "unreachable ";
+			print_debug_tree_node(output, node_index, node_count, 0, nodes, active_nodes, batch_signatures, history_signatures, batch_spatial_moments,
+								  history_spatial_moments, visited_nodes);
+		}
+	}
+
+	output << "=== End illumination-aware KD-tree ===\n\n";
 }
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)

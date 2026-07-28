@@ -39,6 +39,8 @@ private:
 	// DEBUG
 	void run_mark_guiding_cells_for_splitting_debug_check();
 	void run_promote_guiding_cells_debug_check();
+	void run_debug_check();
+	void print_current_tree_debug_info(std::ostream& output);
 	// DEBUG
 
 	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
