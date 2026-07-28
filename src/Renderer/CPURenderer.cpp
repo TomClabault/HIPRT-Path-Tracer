@@ -785,7 +785,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
 	bool next_frontier_uses_first_buffer			 = true;
 
-	for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadDepth; depth++)
+	for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadLevelCount; depth++)
 	{
 		illumination_aware_kd_tree.current_frontier		  = current_frontier;
 		illumination_aware_kd_tree.current_frontier_count = current_frontier_count;

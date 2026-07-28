@@ -30,7 +30,7 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = illumination_aware_kd_tree.training_samples[sample_index];
 
 	unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(sample.position);
-	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
+	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
 	{
 		const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.nodes[node_index];
 		if (node.creation_tag == creation_tag)
@@ -41,7 +41,7 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 				illumination_aware_kd_tree.atomic_add_spatial_moments(illumination_aware_kd_tree.batch_spatial_moments, node_index, sample.position);
 		}
 
-		if (level == IlluminationAwareKDTreeMaximumLookaheadDepth || !(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
+		if (level == IlluminationAwareKDTreeMaximumLookaheadLevelCount || !(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 			break;
 
 		const float* position_components = &sample.position.x;

@@ -213,7 +213,7 @@ struct IlluminationAwareKDTreeDevice
 		//
 		// Levels one through six are the lookahead cells along the sample's
 		// unique spatial path.
-		for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
+		for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
 		{
 			atomic_add_illumination_signature(batch_signatures, node_index, sample);
 
@@ -225,7 +225,7 @@ struct IlluminationAwareKDTreeDevice
 				atomic_add_spatial_moments(batch_spatial_moments, node_index, sample.position);
 
 			// Level six is the deepest lookahead level.
-			if (level == IlluminationAwareKDTreeMaximumLookaheadDepth)
+			if (level == IlluminationAwareKDTreeMaximumLookaheadLevelCount)
 				break;
 
 			IlluminationAwareKDTreeNode& node = nodes[node_index];

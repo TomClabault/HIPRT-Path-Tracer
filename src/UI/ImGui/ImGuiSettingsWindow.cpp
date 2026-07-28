@@ -3860,15 +3860,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		if (use_illumination_aware_distributions)
 		{
 			static int maximum_lookahead_depth =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH);
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
 			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 16);
-			if (maximum_lookahead_depth != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH))
+			if (maximum_lookahead_depth !=
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT))
 			{
 				ImGui::TreePush("Illumination-aware KD-tree maximum lookahead depth apply button");
 
 				if (ImGui::Button("Apply##Illumination-aware KD-tree maximum lookahead depth"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_DEPTH,
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
 														   maximum_lookahead_depth);
 
 					m_renderer->recompile_kernels();
@@ -3876,6 +3877,14 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				}
 
 				ImGui::TreePop();
+			}
+
+			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
+				m_renderer->get_illumination_aware_kd_tree_render_pass();
+			if (illumination_aware_kd_tree_render_pass)
+			{
+				if (ImGui::SliderInt("Split iterations per SPP", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
+					m_render_window->set_render_dirty(true);
 			}
 
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",

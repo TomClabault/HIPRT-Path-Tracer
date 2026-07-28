@@ -25,12 +25,12 @@
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
+#include "Renderer/RenderPasses/MLPTrainingTestRenderPass.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
-#include "Renderer/RenderPasses/MLPTrainingTestRenderPass.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
@@ -115,6 +115,7 @@ public:
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 	std::shared_ptr<ReSTIRPTRenderPass> get_ReSTIR_PT_render_pass();
 	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> get_illumination_aware_kd_tree_render_pass();
 
 	NEEPlusPlusHashGridStorage& get_nee_plus_plus_storage();
 
@@ -513,7 +514,7 @@ private:
 
 	// Filepath of the currently loaded scene
 	std::string m_scene_filepath;
-	
+
 	PowerSamplingDataStructure m_power_sampling_data_structure;
 	LightTreeATSSamplingDataStructure m_light_tree_ats_sampling_data_structure;
 	LightTreeSGSamplingDataStructure m_light_tree_sg_sampling_data_structure;

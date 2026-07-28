@@ -450,6 +450,12 @@ std::shared_ptr<ReSTIRPGRenderPass> GPURendererThread::get_ReSTIR_PG_render_pass
 	return std::dynamic_pointer_cast<ReSTIRPGRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 }
 
+std::shared_ptr<IlluminationAwareKDTreeRenderPass> GPURendererThread::get_illumination_aware_kd_tree_render_pass()
+{
+	return std::dynamic_pointer_cast<IlluminationAwareKDTreeRenderPass>(
+		m_active_render_graph->get_render_pass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME));
+}
+
 std::shared_ptr<NEEPlusPlusRenderPass> GPURendererThread::get_NEE_plus_plus_render_pass()
 {
 	return std::dynamic_pointer_cast<NEEPlusPlusRenderPass>(m_active_render_graph->get_render_pass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME));

@@ -30,16 +30,21 @@ public:
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	void ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
+
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
+
+	int& get_split_iterations_per_SPP();
 
 private:
 	// DEBUG
 	void run_mark_guiding_cells_for_splitting_debug_check();
 	void run_promote_guiding_cells_debug_check();
-	void run_debug_check();
+	void run_debug_check(const GPUKernelCompilerOptions& compiler_options);
 	void print_current_tree_debug_info(std::ostream& output);
 	// DEBUG
 
@@ -50,9 +55,22 @@ private:
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
-	bool m_lookahead_frontier_initialized		  = false;
-	bool m_current_frontier_uses_first_buffer	  = true;
-	uint32_t m_next_creation_tag				  = 0;
+
+	// How many times to:
+	//	for (int split; split < m_split_iterations; split++)
+	//	{
+	//		- Create lookahead nodes below guiding cells
+	//		- Replay training samples to the newly created lookahead nodes
+	//		- Split guiding cells that have been marked for splitting
+	//		- Accumulate the statistics of the newly created lookahead nodes into their history
+	//	}
+	// per each SPP
+	int m_split_iterations_per_SPP			  = 1;
+	bool m_lookahead_frontier_initialized	  = false;
+	bool m_current_frontier_uses_first_buffer = true;
+
+	unsigned int m_next_creation_tag = 0;
+
 	bool m_mark_guiding_cells_debug_check_done	  = false;
 	bool m_promote_guiding_cells_debug_check_done = false;
 };
