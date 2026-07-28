@@ -38,6 +38,7 @@ public:
 private:
 	// DEBUG
 	void run_mark_guiding_cells_for_splitting_debug_check();
+	void run_promote_guiding_cells_debug_check();
 	// DEBUG
 
 	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
@@ -47,10 +48,11 @@ private:
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
-	bool m_lookahead_frontier_initialized	   = false;
-	bool m_current_frontier_uses_first_buffer  = true;
-	uint32_t m_next_creation_tag			   = 0;
-	bool m_mark_guiding_cells_debug_check_done = false;
+	bool m_lookahead_frontier_initialized		  = false;
+	bool m_current_frontier_uses_first_buffer	  = true;
+	uint32_t m_next_creation_tag				  = 0;
+	bool m_mark_guiding_cells_debug_check_done	  = false;
+	bool m_promote_guiding_cells_debug_check_done = false;
 };
 
 #endif

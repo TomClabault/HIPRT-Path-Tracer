@@ -9,6 +9,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 IlluminationAwareKDTreeNode make_debug_node(const uint32_t left_child_index, const uint8_t flags, const uint8_t split_axis, const float split_position)
@@ -400,6 +401,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	// DEBUG block
 	{
 		run_mark_guiding_cells_for_splitting_debug_check();
+		run_promote_guiding_cells_debug_check();
 
 		// The verification intentionally synchronizes the stream and downloads the tree because it is only meant for CPU-side development validation.
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
@@ -539,6 +541,91 @@ void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_deb
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Illumination-aware KD-tree MarkGuidingCellsForSplitting debug check passed.");
 }
 
+void IlluminationAwareKDTreeRenderPass::run_promote_guiding_cells_debug_check()
+{
+	if (m_promote_guiding_cells_debug_check_done)
+		return;
+
+	m_promote_guiding_cells_debug_check_done = true;
+
+	constexpr uint32_t SYNTHETIC_NODE_COUNT		   = 3;
+	constexpr uint32_t SYNTHETIC_PARENT_INDEX	   = 0;
+	constexpr uint32_t SYNTHETIC_LEFT_CHILD_INDEX  = 1;
+	constexpr uint32_t SYNTHETIC_RIGHT_CHILD_INDEX = 2;
+
+	IlluminationAwareKDTreeDataHost<OrochiBuffer> synthetic_tree;
+	synthetic_tree.resize(SYNTHETIC_NODE_COUNT);
+
+	std::vector<IlluminationAwareKDTreeNode> synthetic_nodes(SYNTHETIC_NODE_COUNT);
+	synthetic_nodes[SYNTHETIC_PARENT_INDEX] =
+		make_debug_node(SYNTHETIC_LEFT_CHILD_INDEX, IlluminationAwareKDTreeNodeFlag_Guiding | IlluminationAwareKDTreeNodeFlag_HasChildren, 0, 0.5f);
+	synthetic_nodes[SYNTHETIC_PARENT_INDEX].guiding_distribution_index = 0;
+	synthetic_nodes[SYNTHETIC_LEFT_CHILD_INDEX]	 = make_debug_node(IlluminationAwareKDTreeNode::INVALID_NODE_INDEX, IlluminationAwareKDTreeNodeFlag_None,
+																   IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS, 0.0f);
+	synthetic_nodes[SYNTHETIC_RIGHT_CHILD_INDEX] = synthetic_nodes[SYNTHETIC_LEFT_CHILD_INDEX];
+
+	synthetic_tree.m_nodes_and_bounds.upload_to_buffer_partial<ILLUMINATION_AWARE_KD_TREE_NODES>(0, synthetic_nodes, SYNTHETIC_NODE_COUNT);
+	synthetic_tree.m_node_count.upload_data(std::vector<unsigned int>{ SYNTHETIC_NODE_COUNT });
+	const std::vector<uint32_t> active_guiding_nodes = { SYNTHETIC_PARENT_INDEX };
+	synthetic_tree.m_active_guiding_nodes.upload_data_partial(0, active_guiding_nodes.data(), 1);
+	synthetic_tree.m_active_guiding_node_count.upload_data(std::vector<unsigned int>{ 1 });
+	const std::vector<uint8_t> needs_split = { 1 };
+	synthetic_tree.m_needs_split.upload_data_partial(0, needs_split.data(), 1);
+	synthetic_tree.m_guiding_distribution_count.upload_data(std::vector<unsigned int>{ 1 });
+
+	std::vector<NEEGuidingDistribution> synthetic_distributions(SYNTHETIC_NODE_COUNT);
+	synthetic_distributions[0].energy_average	   = 3.5f;
+	synthetic_distributions[0].energy_variance	   = 1.25f;
+	synthetic_distributions[0].total_power		   = 17.0f;
+	synthetic_distributions[0].total_emitter_count = 9;
+	synthetic_tree.m_guiding_distributions.upload_data(synthetic_distributions);
+
+	const NEEGuidingDistribution expected_parent_distribution = synthetic_distributions[0];
+	IlluminationAwareKDTreeDevice synthetic_device			  = synthetic_tree.to_device();
+	unsigned int original_guiding_node_count				  = 1;
+	void* launch_arguments[]								  = { &synthetic_device, &original_guiding_node_count };
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(256, 1, SYNTHETIC_NODE_COUNT, 1, launch_arguments,
+																									   m_renderer->get_main_stream());
+
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	const std::vector<unsigned int> active_guiding_node_count = synthetic_tree.m_active_guiding_node_count.download_data();
+	const std::vector<uint32_t> active_guiding_nodes_after	  = synthetic_tree.m_active_guiding_nodes.download_data_partial(0, 2);
+	const std::vector<IlluminationAwareKDTreeNode> nodes_after =
+		synthetic_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().download_data_partial(0, SYNTHETIC_NODE_COUNT);
+	const std::vector<unsigned int> guiding_distribution_count	  = synthetic_tree.m_guiding_distribution_count.download_data();
+	const std::vector<NEEGuidingDistribution> distributions_after = synthetic_tree.m_guiding_distributions.download_data_partial(0, 2);
+
+	const bool active_count_is_correct	= active_guiding_node_count.size() == 1 && active_guiding_node_count[0] == 2;
+	const bool active_nodes_are_correct = active_guiding_nodes_after.size() == 2 && active_guiding_nodes_after[0] == SYNTHETIC_LEFT_CHILD_INDEX &&
+										  active_guiding_nodes_after[1] == SYNTHETIC_RIGHT_CHILD_INDEX;
+	const bool flags_are_correct = nodes_after.size() == SYNTHETIC_NODE_COUNT &&
+								   !(nodes_after[SYNTHETIC_PARENT_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
+								   (nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding) &&
+								   (nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].flags & IlluminationAwareKDTreeNodeFlag_Guiding);
+	const bool distribution_slots_are_correct =
+		nodes_after.size() == SYNTHETIC_NODE_COUNT &&
+		nodes_after[SYNTHETIC_PARENT_INDEX].guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_SLOT &&
+		nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].guiding_distribution_index == 0 && nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].guiding_distribution_index == 1;
+	const bool node_indices_are_unchanged = nodes_after.size() == SYNTHETIC_NODE_COUNT &&
+											nodes_after[SYNTHETIC_PARENT_INDEX].left_child_index == SYNTHETIC_LEFT_CHILD_INDEX &&
+											nodes_after[SYNTHETIC_LEFT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX &&
+											nodes_after[SYNTHETIC_RIGHT_CHILD_INDEX].left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	const bool distributions_were_inherited = distributions_after.size() == 2 &&
+											  std::memcmp(&distributions_after[0], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0 &&
+											  std::memcmp(&distributions_after[1], &expected_parent_distribution, sizeof(NEEGuidingDistribution)) == 0;
+	const bool distribution_count_is_correct = guiding_distribution_count.size() == 1 && guiding_distribution_count[0] == 2;
+
+	if (!active_count_is_correct || !active_nodes_are_correct || !flags_are_correct || !distribution_slots_are_correct || !node_indices_are_unchanged ||
+		!distributions_were_inherited || !distribution_count_is_correct)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Illumination-aware KD-tree PromoteGuidingCells debug check failed.");
+		Debug::debugbreak();
+	}
+	else
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Illumination-aware KD-tree PromoteGuidingCells debug check passed.");
+}
+
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (!is_render_pass_used(*m_compiler_options))
@@ -549,9 +636,10 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		return;
 
 	m_illumination_aware_kd_tree.reset();
-	m_lookahead_frontier_initialized	  = false;
-	m_next_creation_tag					  = 0;
-	m_mark_guiding_cells_debug_check_done = false;
+	m_lookahead_frontier_initialized		 = false;
+	m_next_creation_tag						 = 0;
+	m_mark_guiding_cells_debug_check_done	 = false;
+	m_promote_guiding_cells_debug_check_done = false;
 
 	IlluminationAwareKDTreeNode* nodes		  = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
 	IlluminationAwareKDTreeNodeBounds* bounds = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();

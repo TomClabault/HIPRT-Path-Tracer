@@ -424,7 +424,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
 
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-			out_debug_color = ColorRGB32F::random_color(guiding_cell_index);
+			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
 #endif // LightTreeSG debug mode
 
