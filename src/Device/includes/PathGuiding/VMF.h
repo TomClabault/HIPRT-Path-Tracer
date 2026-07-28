@@ -6,7 +6,9 @@
 #ifndef DEVICE_INCLUDES_VMF_H
 #define DEVICE_INCLUDES_VMF_H
 
+#include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 /**
  * Reference: [Numerically Stable Implementation of the von Mises–Fisher Distribution on S2, Tokuyoshi, 2024]
