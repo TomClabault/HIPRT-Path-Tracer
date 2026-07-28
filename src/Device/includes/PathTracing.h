@@ -426,6 +426,120 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
+		const unsigned int guiding_cell_index =
+			render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		const unsigned int image_width	= render_data.render_settings.render_resolution.x;
+		const unsigned int image_height = render_data.render_settings.render_resolution.y;
+		const unsigned int pixel_x		= pixel_index % image_width;
+		const unsigned int pixel_y		= pixel_index / image_width;
+		bool is_cell_outline			= false;
+
+		if (pixel_x > 0)
+		{
+			const unsigned int neighbor_pixel_index = pixel_index - 1;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+		}
+
+		if (pixel_x + 1 < image_width)
+		{
+			const unsigned int neighbor_pixel_index = pixel_index + 1;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+		}
+
+		if (pixel_y > 0)
+		{
+			const unsigned int neighbor_pixel_index = pixel_index - image_width;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+		}
+
+		if (pixel_y + 1 < image_height)
+		{
+			const unsigned int neighbor_pixel_index = pixel_index + image_width;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+		}
+
+		if (is_cell_outline && guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
+	}
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE_AND_LOOKAHEAD
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
+		unsigned int guiding_cell_index	  = render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		unsigned int lookahead_cell_index = render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		unsigned int image_width		  = render_data.render_settings.render_resolution.x;
+		unsigned int image_height		  = render_data.render_settings.render_resolution.y;
+		unsigned int pixel_x			  = pixel_index % image_width;
+		unsigned int pixel_y			  = pixel_index / image_width;
+
+		bool is_cell_outline		   = false;
+		bool is_lookahead_cell_outline = false;
+		if (pixel_x > 0)
+		{
+			unsigned int neighbor_pixel_index = pixel_index - 1;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+						 lookahead_cell_index)
+				is_lookahead_cell_outline = true;
+		}
+
+		if (pixel_x + 1 < image_width)
+		{
+			unsigned int neighbor_pixel_index = pixel_index + 1;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+						 lookahead_cell_index)
+				is_lookahead_cell_outline = true;
+		}
+
+		if (pixel_y > 0)
+		{
+			unsigned int neighbor_pixel_index = pixel_index - image_width;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+						 lookahead_cell_index)
+				is_lookahead_cell_outline = true;
+		}
+
+		if (pixel_y + 1 < image_height)
+		{
+			unsigned int neighbor_pixel_index = pixel_index + image_width;
+			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				is_cell_outline = true;
+			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
+					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+						 lookahead_cell_index)
+				is_lookahead_cell_outline = true;
+		}
+
+		if (is_cell_outline && guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
+		else if (is_lookahead_cell_outline && lookahead_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			// Using the same color as the encompassing guiding cell but darker
+			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1) * 0.5f;
+	}
 #endif // LightTreeSG debug mode
 
 #elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE

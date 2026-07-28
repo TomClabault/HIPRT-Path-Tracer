@@ -8,8 +8,10 @@
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
-#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG	   0
-#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF 1
+#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG						0
+#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF					1
+#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE				2
+#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE_AND_LOOKAHEAD 3
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because the GPU compiler
@@ -20,12 +22,12 @@
 /**
  * Maximum depth of physical lookahead nodes created below a guiding cell.
  */
-#define IlluminationAwareKDTreeMaximumLookaheadDepth 1
+#define IlluminationAwareKDTreeMaximumLookaheadDepth 6
 
 /**
  * Debug view for the illumination-aware KD-tree.
  */
-#define IlluminationAwareKDTreeDebugMode ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF
+#define IlluminationAwareKDTreeDebugMode ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE_AND_LOOKAHEAD
 
 #endif // #ifndef __KERNELCC__
 

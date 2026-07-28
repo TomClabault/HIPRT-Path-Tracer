@@ -55,7 +55,9 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	right_child.guiding_distribution_index = right_distribution_index;
 
 	left_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
+	left_child.flags &= ~IlluminationAwareKDTreeNodeFlag_Lookahead;
 	right_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
+	right_child.flags &= ~IlluminationAwareKDTreeNodeFlag_Lookahead;
 
 	// The parent is no longer a guiding node
 	parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;

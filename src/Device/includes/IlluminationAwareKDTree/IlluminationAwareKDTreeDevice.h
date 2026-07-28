@@ -145,6 +145,35 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
+	HIPRT_DEVICE unsigned int find_lookahead_cell(float3_t position) const
+	{
+		unsigned int node_index = 0;
+
+		while (true)
+		{
+			const IlluminationAwareKDTreeNode& node = nodes[node_index];
+
+			unsigned int left_child_index  = node.left_child_index;
+			unsigned int right_child_index = left_child_index + 1;
+
+			if (node.flags & IlluminationAwareKDTreeNodeFlag_Lookahead &&
+				(left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX))
+				// We found the deepest lookahead cell which doesn't have children so we stop here
+				return node_index;
+
+			if (left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+				// If we're here, the cell doesn't have children and it's not a lookahead cell either so we return an invalid index to indicate that the
+				// position is not inside a lookahead cell
+				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+			const float* position_components = &position.x;
+			if (position_components[node.split_axis] < node.split_position)
+				node_index = left_child_index;
+			else
+				node_index = right_child_index;
+		}
+	}
+
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
 														unsigned int node_index,
 														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)

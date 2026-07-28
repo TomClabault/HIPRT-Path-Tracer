@@ -3878,7 +3878,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
-			const char* debug_view_items[] = { "- No debug", "- KD tree leaf" };
+			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",
+											   "- KD tree leaves outlines and lookaheads" };
 			if (ImGui::Combo("Debug view",
 							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))

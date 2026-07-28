@@ -14,7 +14,8 @@ enum IlluminationAwareKDTreeNodeFlags : uint8_t
 {
 	IlluminationAwareKDTreeNodeFlag_None		= 0,
 	IlluminationAwareKDTreeNodeFlag_Guiding		= 1u << 0,
-	IlluminationAwareKDTreeNodeFlag_HasChildren = 1u << 1
+	IlluminationAwareKDTreeNodeFlag_Lookahead	= 1u << 1,
+	IlluminationAwareKDTreeNodeFlag_HasChildren = 1u << 2
 };
 
 struct IlluminationAwareKDTreeNode

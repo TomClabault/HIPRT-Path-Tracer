@@ -85,7 +85,7 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 	left_node.guiding_distribution_index   = IlluminationAwareKDTreeNode::INVALID_GUIDING_SLOT;
 	left_node.creation_tag				   = creation_tag;
 	left_node.split_axis				   = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
-	left_node.flags						   = IlluminationAwareKDTreeNodeFlag_None;
+	left_node.flags						   = IlluminationAwareKDTreeNodeFlag_Lookahead;
 	IlluminationAwareKDTreeNode right_node = left_node;
 
 	illumination_aware_kd_tree.nodes[left_child]		= left_node;
