@@ -416,7 +416,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #endif // ReGIR debug mode
 
 #elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG && LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE
-#if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF
+#if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
@@ -426,7 +426,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
-#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
@@ -473,7 +473,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		if (is_cell_outline && guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
-#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_OUTLINE_AND_LOOKAHEAD
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.

@@ -687,6 +687,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 {
 	if (!is_render_pass_used(compiler_options))
 		return;
+	else if (m_frozen_tree)
+		// Not doing any work if the tree is frozen
+		return;
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
@@ -698,6 +701,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
 		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
 
+	// TODO make this lower and lower as SPPs progress because we mostly need a lot of iterations at the beginning but then it naturally slows down anyways
 	for (int split = 0; split < m_split_iterations_per_SPP; split++)
 	{
 		ensure_all_lookahead_cell_levels(render_data, compiler_options);
@@ -705,6 +709,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
 		m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 			256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
+		// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
 		// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
 		unsigned int active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
@@ -802,6 +807,11 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		// Nothing to reset
 		return;
 
+	if (m_frozen_tree)
+		// If the tree is frozen, we don't want to reset it even if the camera moves. Useful for debugging to see how the tree is subdivided over the scene by
+		// moving around
+		return;
+
 	m_illumination_aware_kd_tree.reset();
 	m_lookahead_frontier_initialized		 = false;
 	m_next_creation_tag						 = 0;
@@ -838,6 +848,11 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()
 {
 	m_buffers_need_reallocation = true;
+}
+
+bool& IlluminationAwareKDTreeRenderPass::get_frozen_tree()
+{
+	return m_frozen_tree;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_vram_usage_bytes() const

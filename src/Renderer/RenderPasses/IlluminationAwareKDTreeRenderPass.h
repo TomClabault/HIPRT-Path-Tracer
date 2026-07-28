@@ -45,6 +45,8 @@ public:
 	int& get_training_sample_buffer_capacity();
 	void mark_buffers_need_reallocation();
 
+	bool& get_frozen_tree();
+
 	std::size_t get_vram_usage_bytes() const;
 
 private:
@@ -57,6 +59,7 @@ private:
 
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
+	bool m_frozen_tree				 = false;
 	bool m_buffers_need_reallocation = true;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 
