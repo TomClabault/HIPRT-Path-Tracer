@@ -75,13 +75,13 @@ void print_debug_tree_node(std::ostream& output,
 	const bool is_guiding	= (node.flags & IlluminationAwareKDTreeNodeFlag_Guiding) != 0;
 	const bool has_children = (node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren) != 0;
 
-	std::cerr << indentation << "node " << node_index << " [" << (is_guiding ? "guiding" : "inner")
-			  << "] active=" << (active_nodes[node_index] != 0 ? "yes" : "no") << " distribution=" << node.guiding_distribution_index
-			  << " flags=" << static_cast<unsigned int>(node.flags) << " split_axis=" << static_cast<unsigned int>(node.split_axis)
-			  << " split_position=" << node.split_position;
+	output << indentation << "node " << node_index << " [" << (is_guiding ? "guiding" : "inner")
+		   << "] active=" << (active_nodes[node_index] != 0 ? "yes" : "no") << " distribution=" << node.guiding_distribution_index
+		   << " flags=" << static_cast<unsigned int>(node.flags) << " split_axis=" << static_cast<unsigned int>(node.split_axis)
+		   << " split_position=" << node.split_position;
 	if (has_children)
-		std::cerr << " children=(" << node.left_child_index << ", " << node.left_child_index + 1 << ")";
-	std::cerr << '\n';
+		output << " children=(" << node.left_child_index << ", " << node.left_child_index + 1 << ")";
+	output << '\n';
 
 	print_debug_signature(output, "batch", batch_signatures[node_index], indentation + "  ");
 	print_debug_signature(output, "history", history_signatures[node_index], indentation + "  ");
@@ -269,225 +269,15 @@ void verify_illumination_aware_kd_tree(const std::vector<IlluminationAwareKDTree
 
 	if (active_guiding_node_count == 1 && node_count == 127)
 	{
-		const uint32_t expected_level_counts[IlluminationAwareKDTreeMaximumLookaheadDepth + 1u] = { 1, 2, 4, 8, 16, 32, 64 };
+		std::vector<uint32_t> expected_level_counts;
+		for (uint32_t level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
+			expected_level_counts.push_back(1u << level);
+
 		for (uint32_t level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadDepth; level++)
 			if (level_counts[level] != expected_level_counts[level])
 				report_verification_failure(invalid_level_counts_reported,
 											"a complete tree does not contain the expected 1, 2, 4, 8, 16, 32, 64 nodes per level");
 	}
-}
-
-const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME		= "Illumination-Aware KD-Tree Render Pass";
-const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID						= "Initialize Root Node";
-const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID					= "Reset Batch Statistics";
-const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID				= "Expand One Lookahead Level";
-const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID					= "Replay Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID			= "Initialize Created Node History";
-const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID			= "Mark Guiding Cells For Splitting";
-const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID					= "Promote Guiding Cells";
-
-IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
-{
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																									   "/IlluminationAwareKDTree/InitializeRootNode.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->set_kernel_function_name("initialize_illumination_tree_root");
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateBatchTrainingSamples");
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory");
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																										 "/IlluminationAwareKDTree/ResetBatchStatistics.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetBatchStatistics");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ExpandOneLookaheadLevel");
-	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ReplayTrainingSamplesKernel");
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel");
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting");
-	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																										"/IlluminationAwareKDTree/PromoteGuidingCells.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-}
-
-void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
-
-bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
-{
-	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
-		return m_illumination_aware_kd_tree.free();
-
-	bool render_data_invalidated = false;
-	if (m_illumination_aware_kd_tree.maximum_size() == 0)
-	{
-		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES);
-
-		render_data_invalidated = true;
-	}
-
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
-	void* launch_args[]										 = { &illumination_aware_kd_tree };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
-																										launch_args, m_renderer->get_main_stream());
-
-	return render_data_invalidated;
-}
-
-bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
-{
-	if (!is_render_pass_used(compiler_options))
-		return false;
-
-	// Returning true because this pass is going to run in post sample update
-	return true;
-}
-
-void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
-{
-	if (!is_render_pass_used(compiler_options))
-		return;
-
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
-	void* launch_args[]										 = { &illumination_aware_kd_tree };
-
-	// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads and
-	// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
-
-	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
-	unsigned int* next_frontier						 = m_illumination_aware_kd_tree.m_current_frontier.data();
-	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
-	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
-
-	bool next_frontier_uses_first_buffer = true;
-
-	for (uint32_t depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadDepth; depth++)
-	{
-		illumination_aware_kd_tree.current_frontier		  = current_frontier;
-		illumination_aware_kd_tree.current_frontier_count = current_frontier_count;
-		illumination_aware_kd_tree.next_frontier		  = next_frontier;
-		illumination_aware_kd_tree.next_frontier_count	  = next_frontier_count;
-		if (next_frontier_uses_first_buffer)
-			m_illumination_aware_kd_tree.m_current_frontier_count.memset_whole_buffer(0u);
-		else
-			m_illumination_aware_kd_tree.m_next_frontier_count.memset_whole_buffer(0u);
-
-		uint32_t creation_tag		  = m_next_creation_tag++;
-		void* expansion_launch_args[] = { &illumination_aware_kd_tree, &creation_tag };
-		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-
-		current_frontier	   = next_frontier;
-		current_frontier_count = next_frontier_count;
-
-		if (next_frontier_uses_first_buffer)
-		{
-			next_frontier		= m_illumination_aware_kd_tree.m_next_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree.m_next_frontier_count.get_atomic_device_pointer();
-		}
-		else
-		{
-			next_frontier		= m_illumination_aware_kd_tree.m_current_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
-		}
-
-		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
-	}
-
-	void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
-	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
-
-	// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
-	unsigned int active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
-	void* promotion_launch_args[]		   = { &illumination_aware_kd_tree, &active_guiding_node_count };
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
-																									   promotion_launch_args, m_renderer->get_main_stream());
-
-	// DEBUG block
-	{
-		/*run_mark_guiding_cells_for_splitting_debug_check();
-		run_promote_guiding_cells_debug_check();
-		run_debug_check*/
-
-		// The verification intentionally synchronizes the stream and downloads the tree because it is only meant for CPU-side development validation.
-
-		std::ofstream output("output.txt");
-		print_current_tree_debug_info(output);
-	}
-}
-
-void IlluminationAwareKDTreeRenderPass::update_render_data()
-{
-	if (!is_render_pass_used(*m_compiler_options))
-	{
-		m_renderer->get_render_data().illumination_aware_kd_tree = {};
-
-		return;
-	}
-
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	render_data.illumination_aware_kd_tree					= m_illumination_aware_kd_tree.to_device();
-	render_data.illumination_aware_kd_tree.subdivision_mode = m_subdivision_mode;
 }
 
 void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_debug_check()
@@ -774,6 +564,220 @@ void IlluminationAwareKDTreeRenderPass::print_current_tree_debug_info(std::ostre
 	output << "=== End illumination-aware KD-tree ===\n\n";
 }
 
+const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME		= "Illumination-Aware KD-Tree Render Pass";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID								= "Reset Tree";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID					= "Reset Batch Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID				= "Expand One Lookahead Level";
+const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID					= "Replay Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID			= "Initialize Created Node History";
+const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID			= "Mark Guiding Cells For Splitting";
+const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID					= "Promote Guiding Cells";
+
+IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
+{
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetTree.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetTree");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AccumulateBatchTrainingSamples");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																										 "/IlluminationAwareKDTree/ResetBatchStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetBatchStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ExpandOneLookaheadLevel");
+	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ReplayTrainingSamplesKernel");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting");
+	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																										"/IlluminationAwareKDTree/PromoteGuidingCells.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+}
+
+void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
+
+bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
+{
+	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
+		return m_illumination_aware_kd_tree.free();
+
+	bool render_data_invalidated = false;
+	if (m_illumination_aware_kd_tree.maximum_size() == 0)
+	{
+		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES);
+
+		render_data_invalidated = true;
+	}
+
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	void* launch_args[]										 = { &illumination_aware_kd_tree };
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
+																										launch_args, m_renderer->get_main_stream());
+
+	return render_data_invalidated;
+}
+
+bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	if (!is_render_pass_used(compiler_options))
+		return false;
+
+	// Returning true because this pass is going to run in post sample update
+	return true;
+}
+
+void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	if (!is_render_pass_used(compiler_options))
+		return;
+
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
+	void* launch_args[]										 = { &illumination_aware_kd_tree };
+
+	// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads and
+	// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
+		256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
+		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
+
+	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
+	unsigned int* next_frontier						 = m_illumination_aware_kd_tree.m_current_frontier.data();
+	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
+	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
+
+	bool next_frontier_uses_first_buffer = true;
+
+	for (uint32_t depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadDepth; depth++)
+	{
+		illumination_aware_kd_tree.current_frontier		  = current_frontier;
+		illumination_aware_kd_tree.current_frontier_count = current_frontier_count;
+		illumination_aware_kd_tree.next_frontier		  = next_frontier;
+		illumination_aware_kd_tree.next_frontier_count	  = next_frontier_count;
+		if (next_frontier_uses_first_buffer)
+			m_illumination_aware_kd_tree.m_current_frontier_count.memset_whole_buffer(0u);
+		else
+			m_illumination_aware_kd_tree.m_next_frontier_count.memset_whole_buffer(0u);
+
+		uint32_t creation_tag		  = m_next_creation_tag++;
+		void* expansion_launch_args[] = { &illumination_aware_kd_tree, &creation_tag };
+		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
+			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
+			256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
+			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+
+		current_frontier	   = next_frontier;
+		current_frontier_count = next_frontier_count;
+
+		if (next_frontier_uses_first_buffer)
+		{
+			next_frontier		= m_illumination_aware_kd_tree.m_next_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree.m_next_frontier_count.get_atomic_device_pointer();
+		}
+		else
+		{
+			next_frontier		= m_illumination_aware_kd_tree.m_current_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
+		}
+
+		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
+	}
+
+	void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
+	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
+		256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
+
+	// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
+	unsigned int active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+	void* promotion_launch_args[]		   = { &illumination_aware_kd_tree, &active_guiding_node_count };
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
+																									   promotion_launch_args, m_renderer->get_main_stream());
+
+	// DEBUG block
+	{
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		/*run_mark_guiding_cells_for_splitting_debug_check();
+		run_promote_guiding_cells_debug_check();
+		run_debug_check*/
+
+		// The verification intentionally synchronizes the stream and downloads the tree because it is only meant for CPU-side development validation.
+
+		std::ofstream output("output.txt");
+		print_current_tree_debug_info(output);
+	}
+}
+
+void IlluminationAwareKDTreeRenderPass::update_render_data()
+{
+	if (!is_render_pass_used(*m_compiler_options))
+	{
+		m_renderer->get_render_data().illumination_aware_kd_tree = {};
+
+		return;
+	}
+
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	render_data.illumination_aware_kd_tree					= m_illumination_aware_kd_tree.to_device();
+	render_data.illumination_aware_kd_tree.subdivision_mode = m_subdivision_mode;
+}
+
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (!is_render_pass_used(*m_compiler_options))
@@ -789,16 +793,11 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	m_mark_guiding_cells_debug_check_done	 = false;
 	m_promote_guiding_cells_debug_check_done = false;
 
-	IlluminationAwareKDTreeNode* nodes		  = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
-	IlluminationAwareKDTreeNodeBounds* bounds = m_illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
-	AtomicType<uint32_t>* node_count		  = m_illumination_aware_kd_tree.m_node_count.get_atomic_device_pointer();
-	uint32_t* active_guiding_nodes			  = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_device_pointer();
-	uint32_t* active_guiding_node_count		  = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_device_pointer();
-	float3_t scene_bounds_minimum			  = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-	float3_t scene_bounds_maximum			  = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
-	void* launch_args[] = { &nodes, &bounds, &node_count, &active_guiding_nodes, &active_guiding_node_count, &scene_bounds_minimum, &scene_bounds_maximum };
+	float3_t scene_bounds_minimum = m_renderer->get_scene_metadata().scene_bounding_box.mini;
+	float3_t scene_bounds_maximum = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
+	void* launch_args[]			  = { &m_renderer->get_render_data().illumination_aware_kd_tree, &scene_bounds_minimum, &scene_bounds_maximum };
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_NODE_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

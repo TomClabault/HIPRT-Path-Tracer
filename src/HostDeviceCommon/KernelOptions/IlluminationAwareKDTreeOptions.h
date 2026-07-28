@@ -17,7 +17,7 @@
 /**
  * Maximum depth of physical lookahead nodes created below a guiding cell.
  */
-#define IlluminationAwareKDTreeMaximumLookaheadDepth 6
+#define IlluminationAwareKDTreeMaximumLookaheadDepth 1
 
 #endif // #ifndef __KERNELCC__
 

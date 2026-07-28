@@ -28,12 +28,12 @@ struct IlluminationAwareKDTreeNode
 	//
 	// The right child is always left_child_index + 1.
 	// INVALID_NODE_INDEX means that this node currently has no children.
-	uint32_t left_child_index;
+	uint32_t left_child_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 	// Index of the NEE distribution used by this guiding cell.
 	//
 	// Real inner nodes and lookahead-only nodes use INVALID_GUIDING_SLOT.
-	uint32_t guiding_distribution_index;
+	uint32_t guiding_distribution_index = 0;
 
 	// Identifies the lookahead-allocation pass that created this node.
 	//

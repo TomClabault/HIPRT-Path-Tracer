@@ -54,11 +54,11 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeRootNode.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -760,18 +760,9 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
 	m_illumination_aware_kd_tree_state.next_creation_tag				  = 0;
 
-	IlluminationAwareKDTreeNode* nodes =
-		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().data();
-	IlluminationAwareKDTreeNodeBounds* bounds =
-		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>().data();
-	AtomicType<unsigned int>* node_count				= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_node_count.data();
-	unsigned int* active_guiding_nodes					= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_nodes.data();
-	AtomicType<unsigned int>* active_guiding_node_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_active_guiding_node_count.data();
-
-	initialize_illumination_tree_root(nodes, bounds, node_count, active_guiding_nodes, active_guiding_node_count, m_scene_bounding_box.mini,
-									  m_scene_bounding_box.maxi);
-
 	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device();
+
+	IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi);
 #endif
 }
 
