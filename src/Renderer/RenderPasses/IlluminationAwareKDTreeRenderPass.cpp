@@ -293,7 +293,7 @@ void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_deb
 	constexpr unsigned int SYNTHETIC_TRIGGERING_NODE_INDEX = 6;
 
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> synthetic_tree;
-	synthetic_tree.resize(SYNTHETIC_NODE_COUNT);
+	synthetic_tree.resize(SYNTHETIC_NODE_COUNT, INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 
 	std::vector<IlluminationAwareKDTreeNode> synthetic_nodes(SYNTHETIC_NODE_COUNT);
 	synthetic_nodes[0] = make_debug_node(1, IlluminationAwareKDTreeNodeFlag_Guiding | IlluminationAwareKDTreeNodeFlag_HasChildren, 0, 0.5f);
@@ -344,8 +344,7 @@ void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_deb
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-	const std::vector<uint8_t> needs_split			 = synthetic_tree.m_needs_split.download_data_partial(0, 1);
-	const std::vector<unsigned int> triggering_nodes = synthetic_tree.m_triggering_lookahead_nodes.download_data_partial(0, 1);
+	const std::vector<uint8_t> needs_split = synthetic_tree.m_needs_split.download_data_partial(0, 1);
 	const std::vector<IlluminationAwareKDTreeNode> nodes_after =
 		synthetic_tree.m_nodes_and_bounds.get_buffer<ILLUMINATION_AWARE_KD_TREE_NODES>().download_data_partial(0, SYNTHETIC_NODE_COUNT);
 
@@ -362,9 +361,8 @@ void IlluminationAwareKDTreeRenderPass::run_mark_guiding_cells_for_splitting_deb
 		}
 	}
 
-	const bool root_was_marked			 = needs_split.size() == 1 && needs_split[0] == 1;
-	const bool triggering_node_was_found = triggering_nodes.size() == 1 && triggering_nodes[0] == SYNTHETIC_TRIGGERING_NODE_INDEX;
-	if (!root_was_marked || !triggering_node_was_found || !topology_unchanged)
+	const bool root_was_marked = needs_split.size() == 1 && needs_split[0] == 1;
+	if (!root_was_marked || !topology_unchanged)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Illumination-aware KD-tree MarkGuidingCellsForSplitting debug check failed.");
 		Debug::debugbreak();
@@ -386,7 +384,7 @@ void IlluminationAwareKDTreeRenderPass::run_promote_guiding_cells_debug_check()
 	constexpr unsigned int SYNTHETIC_RIGHT_CHILD_INDEX = 2;
 
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> synthetic_tree;
-	synthetic_tree.resize(SYNTHETIC_NODE_COUNT);
+	synthetic_tree.resize(SYNTHETIC_NODE_COUNT, INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 
 	std::vector<IlluminationAwareKDTreeNode> synthetic_nodes(SYNTHETIC_NODE_COUNT);
 	synthetic_nodes[SYNTHETIC_PARENT_INDEX] =
@@ -658,11 +656,14 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 		return m_illumination_aware_kd_tree.free();
 
 	bool render_data_invalidated = false;
-	if (m_illumination_aware_kd_tree.maximum_size() == 0)
+	if (m_buffers_need_reallocation)
 	{
-		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES);
+		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity);
 
-		render_data_invalidated = true;
+		m_buffers_need_reallocation = false;
+		render_data_invalidated		= true;
+
+		reset(false);
 	}
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
@@ -807,11 +808,13 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	m_mark_guiding_cells_debug_check_done	 = false;
 	m_promote_guiding_cells_debug_check_done = false;
 
-	float3_t scene_bounds_minimum = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-	float3_t scene_bounds_maximum = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
-	void* launch_args[]			  = { &m_renderer->get_render_data().illumination_aware_kd_tree, &scene_bounds_minimum, &scene_bounds_maximum };
+	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device();
+	float3_t scene_bounds_minimum				 = m_renderer->get_scene_metadata().scene_bounding_box.mini;
+	float3_t scene_bounds_maximum				 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
+	void* launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(
+		256, 1, m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size(), 1, launch_args, m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
@@ -825,4 +828,19 @@ bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompi
 int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 {
 	return m_split_iterations_per_SPP;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
+{
+	return m_training_sample_buffer_capacity;
+}
+
+void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()
+{
+	m_buffers_need_reallocation = true;
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_vram_usage_bytes() const
+{
+	return m_illumination_aware_kd_tree.get_byte_size();
 }

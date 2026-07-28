@@ -14,7 +14,8 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
 										 const float3_t scene_bounds_minimum,
-										 const float3_t scene_bounds_maximum)
+										 const float3_t scene_bounds_maximum,
+										 unsigned int node_index)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
@@ -23,35 +24,39 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 #endif
 {
 #ifdef __KERNELCC__
-	// Only one thread initializes the root.
-	if (blockIdx.x != 0 || threadIdx.x != 0)
-		return;
+	unsigned int node_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
-	IlluminationAwareKDTreeNode root{};
-	root.flags = IlluminationAwareKDTreeNodeFlag_Guiding;
+	if (node_index >= illumination_aware_kd_tree.node_capacity)
+		return;
 
-	illumination_aware_kd_tree.nodes[0] = root;
+	if (node_index == 0)
+	{
+		IlluminationAwareKDTreeNode root{};
+		root.flags = IlluminationAwareKDTreeNodeFlag_Guiding;
 
-	illumination_aware_kd_tree.node_bounds[0].minimum = scene_bounds_minimum;
-	illumination_aware_kd_tree.node_bounds[0].maximum = scene_bounds_maximum;
+		illumination_aware_kd_tree.nodes[0] = root;
 
-	*illumination_aware_kd_tree.node_count				   = 1;
-	*illumination_aware_kd_tree.active_guiding_node_count  = 1;
-	illumination_aware_kd_tree.active_guiding_nodes[0]	   = 0;
-	*illumination_aware_kd_tree.guiding_distribution_count = 1;
-	*illumination_aware_kd_tree.training_sample_count	   = 0;
+		illumination_aware_kd_tree.node_bounds[0].minimum = scene_bounds_minimum;
+		illumination_aware_kd_tree.node_bounds[0].maximum = scene_bounds_maximum;
 
-	*illumination_aware_kd_tree.current_frontier_count = 0;
-	*illumination_aware_kd_tree.next_frontier_count	   = 0;
+		*illumination_aware_kd_tree.node_count				   = 1;
+		*illumination_aware_kd_tree.guiding_distribution_count = 1;
+		*illumination_aware_kd_tree.active_guiding_node_count  = 1;
+		illumination_aware_kd_tree.active_guiding_nodes[0]	   = 0;
+		*illumination_aware_kd_tree.training_sample_count	   = 0;
 
-	illumination_aware_kd_tree.history_signatures[0]	  = {};
-	illumination_aware_kd_tree.history_spatial_moments[0] = {};
+		*illumination_aware_kd_tree.current_frontier_count = 0;
+		*illumination_aware_kd_tree.next_frontier_count	   = 0;
+	}
 
-	illumination_aware_kd_tree.batch_signatures[0]		= {};
-	illumination_aware_kd_tree.batch_spatial_moments[0] = {};
+	illumination_aware_kd_tree.history_signatures[node_index]	   = {};
+	illumination_aware_kd_tree.history_spatial_moments[node_index] = {};
 
-	illumination_aware_kd_tree.needs_split[0] = 0;
+	illumination_aware_kd_tree.batch_signatures[node_index]		 = {};
+	illumination_aware_kd_tree.batch_spatial_moments[node_index] = {};
+
+	illumination_aware_kd_tree.needs_split[node_index] = 0;
 }
 
 #endif

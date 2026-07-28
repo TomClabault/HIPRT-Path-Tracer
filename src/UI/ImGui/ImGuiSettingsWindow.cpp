@@ -3859,6 +3859,23 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 		if (use_illumination_aware_distributions)
 		{
+			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
+				m_renderer->get_illumination_aware_kd_tree_render_pass();
+			std::size_t vram_usage_bytes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_vram_usage_bytes() : 0;
+			ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (illumination_aware_kd_tree_render_pass)
+			{
+				if (ImGui::InputInt("Training sample buffer capacity", &illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity()))
+				{
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+					m_render_window->set_render_dirty(true);
+				}
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			static int maximum_lookahead_depth =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
 			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 16);
@@ -3879,14 +3896,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
-			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
-				m_renderer->get_illumination_aware_kd_tree_render_pass();
 			if (illumination_aware_kd_tree_render_pass)
 			{
 				if (ImGui::SliderInt("Split iterations per SPP", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
 					m_render_window->set_render_dirty(true);
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",
 											   "- KD tree leaves outlines and lookaheads" };
 			if (ImGui::Combo("Debug view",

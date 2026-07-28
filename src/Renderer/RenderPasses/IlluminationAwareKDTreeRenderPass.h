@@ -25,6 +25,9 @@ public:
 	static const std::string MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID;
 	static const std::string PROMOTE_GUIDING_CELLS_KERNEL_ID;
 
+	static constexpr int INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY = 2000000;
+
+public:
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
@@ -39,6 +42,10 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	int& get_split_iterations_per_SPP();
+	int& get_training_sample_buffer_capacity();
+	void mark_buffers_need_reallocation();
+
+	std::size_t get_vram_usage_bytes() const;
 
 private:
 	// DEBUG
@@ -48,12 +55,9 @@ private:
 	void print_current_tree_debug_info(std::ostream& output);
 	// DEBUG
 
-	static constexpr float MEAN_RADIANCE_THRESHOLD			= 0.05f;
-	static constexpr float MEAN_DIRECTION_THRESHOLD_DEGREES = 3.0f;
-	static constexpr double FALSE_POSITIVE_PROBABILITY		= 1.0e-4;
-
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
+	bool m_buffers_need_reallocation = true;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 
 	// How many times to:
@@ -65,7 +69,9 @@ private:
 	//		- Accumulate the statistics of the newly created lookahead nodes into their history
 	//	}
 	// per each SPP
-	int m_split_iterations_per_SPP			  = 1;
+	int m_split_iterations_per_SPP		  = 1;
+	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+
 	bool m_lookahead_frontier_initialized	  = false;
 	bool m_current_frontier_uses_first_buffer = true;
 

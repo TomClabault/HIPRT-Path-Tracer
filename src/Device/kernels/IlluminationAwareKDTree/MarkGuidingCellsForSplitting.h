@@ -30,8 +30,7 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_MarkGuidingCellsForS
 	const uint32_t node_count		  = *illumination_aware_kd_tree.node_count;
 	if (guiding_node_index >= node_count)
 	{
-		illumination_aware_kd_tree.needs_split[guiding_list_index]				  = 0;
-		illumination_aware_kd_tree.triggering_lookahead_nodes[guiding_list_index] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+		illumination_aware_kd_tree.needs_split[guiding_list_index] = 0;
 
 		return;
 	}
@@ -41,8 +40,7 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_MarkGuidingCellsForS
 		guiding_node.left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_node.left_child_index >= node_count ||
 		guiding_node.left_child_index + 1u >= node_count)
 	{
-		illumination_aware_kd_tree.needs_split[guiding_list_index]				  = 0;
-		illumination_aware_kd_tree.triggering_lookahead_nodes[guiding_list_index] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+		illumination_aware_kd_tree.needs_split[guiding_list_index] = 0;
 
 		return;
 	}
@@ -79,8 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_MarkGuidingCellsForS
 		}
 	}
 
-	illumination_aware_kd_tree.needs_split[guiding_list_index]				  = needs_split;
-	illumination_aware_kd_tree.triggering_lookahead_nodes[guiding_list_index] = triggering_node;
+	illumination_aware_kd_tree.needs_split[guiding_list_index] = needs_split;
 }
 
 #endif
