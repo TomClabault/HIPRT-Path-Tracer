@@ -712,8 +712,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
 		// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
-		unsigned int active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
-		void* promotion_launch_args[]		   = { &illumination_aware_kd_tree, &active_guiding_node_count };
+		m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+		// TODO same here download async
+		m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+		void* promotion_launch_args[] = { &illumination_aware_kd_tree, &m_cached_current_guiding_node_count };
 		m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
 			256, 1, illumination_aware_kd_tree.node_capacity, 1, promotion_launch_args, m_renderer->get_main_stream());
 	}
@@ -843,6 +845,21 @@ int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
 	return m_training_sample_buffer_capacity;
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
+{
+	return m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size();
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_count() const
+{
+	return m_cached_current_node_count;
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_current_guiding_node_count() const
+{
+	return m_cached_current_guiding_node_count;
 }
 
 void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()

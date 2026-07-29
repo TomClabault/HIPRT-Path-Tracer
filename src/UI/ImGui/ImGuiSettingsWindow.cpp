@@ -3861,8 +3861,17 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		{
 			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
 				m_renderer->get_illumination_aware_kd_tree_render_pass();
+
 			std::size_t vram_usage_bytes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_vram_usage_bytes() : 0;
+			std::size_t node_capacity = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
+			std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
+			std::size_t guiding_node_count =
+				illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
+
 			ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
+			ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
+						node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
+			ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (illumination_aware_kd_tree_render_pass)

@@ -43,6 +43,9 @@ public:
 
 	int& get_split_iterations_per_SPP();
 	int& get_training_sample_buffer_capacity();
+	std::size_t get_current_node_buffer_capacity() const;
+	std::size_t get_current_node_count() const;
+	std::size_t get_current_guiding_node_count() const;
 	void mark_buffers_need_reallocation();
 
 	bool& get_frozen_tree();
@@ -74,6 +77,9 @@ private:
 	// per each SPP
 	int m_split_iterations_per_SPP		  = 1;
 	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+
+	std::size_t m_cached_current_node_count			= 1;
+	std::size_t m_cached_current_guiding_node_count = 1;
 
 	bool m_lookahead_frontier_initialized	  = false;
 	bool m_current_frontier_uses_first_buffer = true;
