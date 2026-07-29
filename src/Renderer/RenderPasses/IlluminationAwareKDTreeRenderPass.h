@@ -53,13 +53,6 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
-	// DEBUG
-	void run_mark_guiding_cells_for_splitting_debug_check();
-	void run_promote_guiding_cells_debug_check();
-	void run_debug_check(const GPUKernelCompilerOptions& compiler_options);
-	void print_current_tree_debug_info(std::ostream& output);
-	// DEBUG
-
 	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
 	bool m_frozen_tree				 = false;
@@ -75,6 +68,8 @@ private:
 	//		- Accumulate the statistics of the newly created lookahead nodes into their history
 	//	}
 	// per each SPP
+	//
+	// Higher number subdivide faster but is more expensive
 	int m_split_iterations_per_SPP		  = 1;
 	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
 
