@@ -51,7 +51,7 @@
 /**
  * If true, the illumination-aware guiding distributions are used by the SG light tree.
  */
-#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_TRUE
+#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

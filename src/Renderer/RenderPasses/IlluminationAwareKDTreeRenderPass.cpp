@@ -155,7 +155,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	{
 		ensure_all_lookahead_cell_levels(render_data, compiler_options);
 
-		void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
+		void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree, &m_subdivision_mode };
 		m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 			256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
 		// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
@@ -229,10 +229,7 @@ void IlluminationAwareKDTreeRenderPass::update_render_data()
 		return;
 	}
 
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	render_data.illumination_aware_kd_tree					= m_illumination_aware_kd_tree.to_device();
-	render_data.illumination_aware_kd_tree.subdivision_mode = m_subdivision_mode;
+	m_renderer->get_render_data().illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
 }
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
@@ -280,6 +277,11 @@ int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
 	return m_training_sample_buffer_capacity;
+}
+
+IlluminationAwareKDTreeSubdivisionMode& IlluminationAwareKDTreeRenderPass::get_subdivision_mode()
+{
+	return m_subdivision_mode;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const

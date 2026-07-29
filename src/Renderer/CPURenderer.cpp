@@ -828,7 +828,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	const unsigned int active_guiding_node_count = illumination_aware_kd_tree.active_guiding_node_count->load();
 	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(illumination_aware_kd_tree, guiding_list_index);
+		IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(illumination_aware_kd_tree, m_illumination_aware_kd_tree_state.subdivision_mode,
+																   guiding_list_index);
 
 	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
 		IlluminationAwareKDTree_PromoteGuidingCells(illumination_aware_kd_tree, active_guiding_node_count, guiding_list_index);

@@ -21,10 +21,10 @@
 
 enum class IlluminationAwareKDTreeSubdivisionMode
 {
-	DISABLED,
-	RECORD_SAMPLES_ONLY,
-	MEAN_RADIANCE_ONLY,
-	FULL
+	RECORD_SAMPLES_ONLY = 0,
+	MEAN_RADIANCE_ONLY	= 1,
+	MEAN_DIRECTION_ONLY = 2,
+	FULL_MODEL			= 3
 };
 
 // Placeholder
@@ -32,7 +32,7 @@ using NEEGuidingDistribution = LightTreeSGNodeDevice;
 
 // Indexed by sqrtf(1.0f / effectiveKappa) to get the cosine of the maximum angle allowed between two distributions VMF for the mean radiance weighted
 // directions split criterion.
-HIPRT_DEVICE __constant__ inline float DIRECTION_LUT[256] = {
+HIPRT_DEVICE __constant__ inline float COSINE_MAX_ANGLE_DIRECTION_LUT[256] = {
 	0.998629535f,	0.997953926f,	0.997154292f,	0.996233062f,	0.995192291f,	0.99403378f,	0.992759144f,	 0.991369859f,	 0.9898673f,
 	0.988252757f,	0.986527462f,	0.984692599f,	0.982749322f,	0.980698764f,	0.978542053f,	0.976280316f,	 0.973914694f,	 0.971446348f,
 	0.968876455f,	0.966206218f,	0.963436856f,	0.960569607f,	0.957605723f,	0.954546462f,	0.951393087f,	 0.948146858f,	 0.944809033f,
@@ -121,6 +121,11 @@ struct IlluminationAwareKDTreeDevice
 		double z_score = difference / sqrt(variance);
 
 		return z_score > z_threshold;
+	}
+
+	HIPRT_DEVICE static bool should_split_samples(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float)
+	{
+		return guiding_signature_float.valid_observation_count >= MINIMUM_CELL_SPLIT_SAMPLE_COUNT;
 	}
 
 	HIPRT_DEVICE static bool should_split_mean_radiance(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float,
@@ -229,6 +234,42 @@ struct IlluminationAwareKDTreeDevice
 		result.sharpness = concentration;
 
 		return result;
+	}
+
+	HIPRT_DEVICE static bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
+														 const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
+	{
+		// Use the same minimum sample requirement as mean radiance.
+		if (guiding_signature.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT ||
+			lookahead_signature.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
+			return false;
+
+		VMF guiding_model	= estimate_mean_direction_model(guiding_signature);
+		VMF lookahead_model = estimate_mean_direction_model(lookahead_signature);
+
+		// An undefined mean direction cannot justify an angular split.
+		if (guiding_model.sharpness == VMF::INVALID_SHARPNESS || lookahead_model.sharpness == VMF::INVALID_SHARPNESS)
+			return false;
+
+		double denominator = guiding_model.sharpness + lookahead_model.sharpness;
+
+		double effective_concentration = guiding_model.sharpness * lookahead_model.sharpness / denominator;
+		double u					   = sqrt(1.0 / effective_concentration);
+
+		// Beyond the table's maximum uncertainty, no observed angle provides enough confidence for the requested alpha and angle threshold.
+		if (u >= DIRECTION_LUT_MAX_U)
+			return false;
+
+		double table_position = u / DIRECTION_LUT_MAX_U * 255.0;
+
+		uint32_t lower_index = hippt::min(static_cast<uint32_t>(table_position), 254u);
+		float interpolation	 = static_cast<float>(table_position - static_cast<double>(lower_index));
+
+		float threshold_cosine = hippt::lerp(COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index], COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index + 1], interpolation);
+		float measured_cosine  = hippt::dot(guiding_model.axis, lookahead_model.axis);
+
+		// A smaller cosine means a greater observed angle which would be no good and we no to split that bad boy
+		return measured_cosine < threshold_cosine;
 	}
 
 	HIPRT_DEVICE unsigned int find_guiding_cell(float3_t position) const
@@ -452,8 +493,6 @@ struct IlluminationAwareKDTreeDevice
 	}
 
 	int minimum_sample_count_for_lookahead_creation = 1000;
-
-	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::DISABLED;
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;

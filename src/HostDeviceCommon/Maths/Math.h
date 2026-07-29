@@ -137,7 +137,7 @@ namespace hippt
 		return 1.0f / hippt::sqrt(x);
 	}
 
-	__device static float length(double3_t u)
+	__device__ static float length(double3_t u)
 	{
 		return hippt::sqrt(hippt::dot(u, u));
 	}

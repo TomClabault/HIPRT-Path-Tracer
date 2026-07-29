@@ -11,9 +11,13 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
+inline IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+																  IlluminationAwareKDTreeSubdivisionMode subdivision_mode,
+																  int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
+GLOBAL_KERNEL_SIGNATURE(void)
+IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+														   IlluminationAwareKDTreeSubdivisionMode subdivision_mode)
 #endif
 {
 #ifdef __KERNELCC__
@@ -50,20 +54,38 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTreeDevice_MarkGuidingCellsForS
 	stack[stack_size++] = guiding_node.left_child_index;
 	stack[stack_size++] = guiding_node.left_child_index + 1u;
 
-	uint8_t needs_split		 = 0;
-	uint32_t triggering_node = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-
+	bool needs_split = false;
 	while (stack_size > 0)
 	{
 		const uint32_t lookahead_node_index = stack[--stack_size];
 		if (lookahead_node_index >= node_count)
 			continue;
 
-		if (illumination_aware_kd_tree.should_split_mean_radiance(illumination_aware_kd_tree.history_signatures[guiding_node_index],
-																  illumination_aware_kd_tree.history_signatures[lookahead_node_index]))
+		bool split_samples = false;
+		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::RECORD_SAMPLES_ONLY)
 		{
-			needs_split		= 1;
-			triggering_node = lookahead_node_index;
+			split_samples = illumination_aware_kd_tree.should_split_samples(illumination_aware_kd_tree.history_signatures[guiding_node_index]);
+		}
+
+		bool split_mean_radiance = false;
+		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
+			subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
+		{
+			split_mean_radiance = illumination_aware_kd_tree.should_split_mean_radiance(illumination_aware_kd_tree.history_signatures[guiding_node_index],
+																						illumination_aware_kd_tree.history_signatures[lookahead_node_index]);
+		}
+
+		bool split_mean_direction = false;
+		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_DIRECTION_ONLY ||
+			subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
+		{
+			split_mean_direction = illumination_aware_kd_tree.should_split_mean_direction(illumination_aware_kd_tree.history_signatures[guiding_node_index],
+																						  illumination_aware_kd_tree.history_signatures[lookahead_node_index]);
+		}
+
+		if (split_samples || split_mean_radiance || split_mean_direction)
+		{
+			needs_split = true;
 
 			break;
 		}

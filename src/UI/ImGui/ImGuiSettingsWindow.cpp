@@ -3921,6 +3921,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			{
 				if (ImGui::SliderInt("Split iterations per SPP", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
 					m_render_window->set_render_dirty(true);
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::Text("Splitting mode");
+				bool splitting_mode_changed = false;
+				splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 0);
+				splitting_mode_changed |= ImGui::RadioButton("Mean radiance only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 1);
+				splitting_mode_changed |= ImGui::RadioButton("Mean direction only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 2);
+				splitting_mode_changed |= ImGui::RadioButton("Full model", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 3);
+				if (splitting_mode_changed)
+					m_render_window->set_render_dirty(true);
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
