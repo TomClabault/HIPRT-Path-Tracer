@@ -50,6 +50,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 
 #define __shared__
 #define __restrict__
+#define __constant__
 #define __host__
 #define __device__
 #define __launch_bounds__(x)
