@@ -15,8 +15,10 @@
  */
 struct VMF
 {
+	static constexpr float INVALID_SHARPNESS = -42.0f;
+
 	float3_t axis	= make_float3(0.0f, 0.0f, 0.0f);
-	float sharpness = 0.0f;
+	float sharpness = INVALID_SHARPNESS;
 
 	HIPRT_DEVICE float density_evaluation(float3_t direction) const
 	{

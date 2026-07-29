@@ -137,6 +137,11 @@ namespace hippt
 		return 1.0f / hippt::sqrt(x);
 	}
 
+	__device static float length(double3_t u)
+	{
+		return hippt::sqrt(hippt::dot(u, u));
+	}
+
 	__device__ static float length(float3_t u)
 	{
 		return hippt::sqrt(hippt::dot(u, u));
@@ -322,6 +327,16 @@ namespace hippt
 	__device__ static float3_t atan2(float3_t y, float3_t x)
 	{
 		return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z));
+	}
+
+	__device__ static float tanhf(float x)
+	{
+		return tanh(x);
+	}
+
+	__device__ static double tanhd(double x)
+	{
+		return tanh(x);
 	}
 
 	__device__ static float2_t exp(float2_t x)
@@ -1171,6 +1186,11 @@ namespace hippt
 		return 1.0f / hippt::sqrt(x);
 	}
 
+	static float length(double3_t u)
+	{
+		return hippt::sqrt(hippt::dot(u, u));
+	}
+
 	static float length(float3_t u)
 	{
 		return hippt::sqrt(hippt::dot(u, u));
@@ -1364,6 +1384,16 @@ namespace hippt
 	static float3_t atan2(float3_t y, float3_t x)
 	{
 		return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z));
+	}
+
+	static float tanhf(float x)
+	{
+		return std::tanh(x);
+	}
+
+	static double tanhd(double x)
+	{
+		return std::tanh(x);
 	}
 
 	static float2_t exp(float2_t x)

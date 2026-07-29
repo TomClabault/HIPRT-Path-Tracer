@@ -125,6 +125,75 @@ struct IlluminationAwareKDTreeDevice
 		return significantly_brighter_guiding_cell || significantly_brighter_lookahead;
 	}
 
+	HIPRT_DEVICE static double kappa_coth_kappa_minus_one(double kappa)
+	{
+		if (kappa < 1.0e-3)
+		{
+			// Near zero, direct evaluation suffers catastrophic cancellation, using a Taylor expansion instead.
+			double kappa_squared = kappa * kappa;
+			double kappa_fourth	 = kappa_squared * kappa_squared;
+			double kappa_sixth	 = kappa_fourth * kappa_squared;
+
+			return kappa_squared / 3.0 - kappa_fourth / 45.0 + 2.0 * kappa_sixth / 945.0;
+		}
+
+		// coth(kappa) is basically 1 for sufficiently large positive kappa
+		if (kappa > 20.0)
+			return kappa - 1.0;
+
+		// coth(kappa) = cosh(kappa) / sinh(kappa) = 1/tanh(kappa)
+		return kappa / hippt::tanhd(kappa) - 1.0;
+	}
+
+	HIPRT_DEVICE static VMF estimate_mean_direction_model(const IlluminationAwareKDTreeIlluminationSignature& signature)
+	{
+		VMF result{};
+		result.sharpness = VMF::INVALID_SHARPNESS;
+
+		double b1 = static_cast<double>(signature.scalar_radiance_sum);
+		double b2 = static_cast<double>(signature.squared_scalar_radiance_sum);
+
+		// No positive radiance means that no directional information exists.
+		if (!(b1 > 0.0) || !(b2 > 0.0))
+			return result;
+
+		double3_t direction_sum = make_double3(static_cast<double>(signature.weighted_direction_sum.x), static_cast<double>(signature.weighted_direction_sum.y),
+											   static_cast<double>(signature.weighted_direction_sum.z));
+		double direction_sum_length = hippt::length(direction_sum);
+
+		// Opposing or isotropically distributed directions may cancel almost completely, making the mean direction undefined.
+		if (!(direction_sum_length > 1.0e-20))
+			return result;
+
+		double resultant_length = direction_sum_length / b1;
+
+		// The exact value lies in [0,1]. Clamp atomic-rounding violations and avoid division by zero at exactly one.
+		if (resultant_length < 0.0)
+			resultant_length = 0.0;
+		if (resultant_length > 1.0 - 1.0e-8)
+			resultant_length = 1.0 - 1.0e-8;
+
+		double resultant_length_squared = resultant_length * resultant_length;
+		double underlying_concentration = resultant_length * (3.0 - resultant_length_squared) / (1.0 - resultant_length_squared);
+		double angular_term				= kappa_coth_kappa_minus_one(underlying_concentration);
+
+		// Eq. 4 of the paper
+		double y		   = (b1 * b1 / b2) * angular_term + 1.0;
+		double y_squared   = y * y;
+		double y_cubed	   = y_squared * y;
+		double numerator   = y_cubed + 1.69934861 * y_squared + 5.38753272 * y + 9.85021305;
+		double denominator = y_squared + 0.67453491 * y + 4.31180006;
+		// Eq. 4 of the paper
+		double concentration = sqrt(((y - 1.0) * numerator / denominator) > 0.0 ? (y - 1.0) * numerator / denominator : 0.0);
+
+		direction_sum /= direction_sum_length;
+
+		result.axis		 = make_float3(static_cast<float>(direction_sum.x), static_cast<float>(direction_sum.y), static_cast<float>(direction_sum.z));
+		result.sharpness = concentration;
+
+		return result;
+	}
+
 	HIPRT_DEVICE unsigned int find_guiding_cell(float3_t position) const
 	{
 		unsigned int node_index = 0;
