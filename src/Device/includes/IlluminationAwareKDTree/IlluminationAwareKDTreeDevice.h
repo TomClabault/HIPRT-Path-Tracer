@@ -12,7 +12,9 @@
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
 #include <cstdint>
 
@@ -251,6 +253,10 @@ struct IlluminationAwareKDTreeDevice
 
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_FALSE
+		return;
+#endif
+
 		// Invalid samples must not consume buffer space or affect b0.
 		if (!sample.valid)
 			return;

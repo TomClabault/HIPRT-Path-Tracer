@@ -3890,7 +3890,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			static int maximum_lookahead_depth =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
-			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 16);
+			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 10);
 			if (maximum_lookahead_depth !=
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT))
 			{
