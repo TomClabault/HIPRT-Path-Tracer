@@ -1035,6 +1035,191 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 #else
 
+#if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
+
+HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRenderData& render_data,
+																					 float3_t shading_point,
+																					 float3_t view_direction,
+																					 float3_t shading_normal,
+																					 const SGSpecularImportanceData& spec_data,
+																					 float sg_specular_weight,
+																					 float alpha_x,
+																					 float alpha_y,
+																					 Xorshift32Generator& rng)
+{
+	const LightTreeSGNodeDevice* nodes	  = render_data.light_tree_sg.nodes;
+	const unsigned int invalid_node_index = 0xFFFFFFFF;
+
+	// Sampling one node of the tree cut based on importance with WRS
+	unsigned int selected_node_index = invalid_node_index;
+	float selected_node_importance	 = 0.0f;
+	float total_importance			 = 0.0f;
+	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+	{
+		unsigned int node_index = render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position];
+		if (node_index == invalid_node_index)
+			continue;
+
+		const LightTreeSGNodeDevice& node = nodes[node_index];
+		float node_importance =
+			light_tree_sg_node_importance(node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		if (node_importance <= 0.0f)
+			continue;
+
+		total_importance += node_importance;
+		if (rng() < node_importance / total_importance)
+		{
+			selected_node_index		 = node_index;
+			selected_node_importance = node_importance;
+		}
+	}
+
+	if (selected_node_index == invalid_node_index || total_importance <= 0.0f)
+		return LightSampleArray<1>{ LightSampleInformation() };
+
+	LightTreeSGNodeDevice current_node = nodes[selected_node_index];
+
+	// Now sampling one triangle from the subtree of the selected tree cut node
+	float cumulative_probability = selected_node_importance / total_importance;
+	while (current_node.triangle_count == 0)
+	{
+		const unsigned int left_index  = current_node.left_child_index_or_first_triangle_index;
+		const unsigned int right_index = left_index + 1;
+
+		const LightTreeSGNodeDevice& left_child	 = nodes[left_index];
+		const LightTreeSGNodeDevice& right_child = nodes[right_index];
+
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+
+		// If both children have zero importance, return an empty light sample
+		if (left_importance <= 0.0f && right_importance <= 0.0f)
+			return LightSampleArray<1>{ LightSampleInformation() };
+
+		float left_probability = left_importance / (left_importance + right_importance);
+		if (rng() < left_probability)
+		{
+			current_node = left_child;
+			cumulative_probability *= left_probability;
+		}
+		else
+		{
+			current_node = right_child;
+			cumulative_probability *= 1.0f - left_probability;
+		}
+	}
+
+	int index					= current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
+	int triangle_index			= render_data.light_tree_sg.indices_array[index];
+	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
+
+	LightSampleInformation light_sample;
+	light_sample.emissive_triangle_global_index = emissive_triangle_index;
+	light_sample.pdf							= cumulative_probability / current_node.triangle_count;
+
+	return LightSampleArray<1>{ light_sample };
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRenderData& render_data,
+																   float3_t shading_point,
+																   float3_t view_direction,
+																   float3_t shading_normal,
+																   const SGSpecularImportanceData& spec_data,
+																   float sg_specular_weight,
+																   float alpha_x,
+																   float alpha_y,
+																   int global_emissive_triangle_index)
+{
+	if (global_emissive_triangle_index == -1)
+		return 0.0f;
+
+	const LightTreeSGNodeDevice* nodes	  = render_data.light_tree_sg.nodes;
+	const unsigned int invalid_node_index = 0xFFFFFFFF;
+	const unsigned int bit_trail		  = render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
+
+	unsigned int target_tree_cut_node_index = invalid_node_index;
+	unsigned int target_tree_cut_node_depth = 0;
+	unsigned int current_node_index			= 0;
+	unsigned int current_depth				= 0;
+	while (true)
+	{
+		for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+		{
+			if (render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position] == current_node_index)
+			{
+				target_tree_cut_node_index = current_node_index;
+				target_tree_cut_node_depth = current_depth;
+				break;
+			}
+		}
+
+		if (nodes[current_node_index].triangle_count != 0)
+			break;
+
+		unsigned int left_index = nodes[current_node_index].left_child_index_or_first_triangle_index;
+		current_node_index		= (bit_trail & (1 << current_depth)) == 0 ? left_index : left_index + 1;
+		current_depth++;
+	}
+
+	if (target_tree_cut_node_index == invalid_node_index)
+		return 0.0f;
+
+	float total_importance		 = 0.0f;
+	float target_node_importance = 0.0f;
+	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+	{
+		unsigned int node_index = render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position];
+		if (node_index == invalid_node_index)
+			continue;
+
+		float node_importance =
+			light_tree_sg_node_importance(nodes[node_index], spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		total_importance += node_importance;
+		if (node_index == target_tree_cut_node_index)
+			target_node_importance = node_importance;
+	}
+
+	if (total_importance <= 0.0f || target_node_importance <= 0.0f)
+		return 0.0f;
+
+	float cumulative_probability = target_node_importance / total_importance;
+	current_node_index			 = target_tree_cut_node_index;
+	current_depth				 = target_tree_cut_node_depth;
+	while (nodes[current_node_index].triangle_count == 0)
+	{
+		unsigned int left_index					 = nodes[current_node_index].left_child_index_or_first_triangle_index;
+		unsigned int right_index				 = left_index + 1;
+		const LightTreeSGNodeDevice& left_child	 = nodes[left_index];
+		const LightTreeSGNodeDevice& right_child = nodes[right_index];
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		if (left_importance <= 0.0f && right_importance <= 0.0f)
+			return 0.0f;
+
+		float left_probability = left_importance / (left_importance + right_importance);
+		if ((bit_trail & (1 << current_depth)) == 0)
+		{
+			current_node_index = left_index;
+			cumulative_probability *= left_probability;
+		}
+		else
+		{
+			current_node_index = right_index;
+			cumulative_probability *= 1.0f - left_probability;
+		}
+
+		current_depth++;
+	}
+
+	return cumulative_probability / nodes[current_node_index].triangle_count;
+}
+
+#endif
+
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
 																			float3_t shading_point,
 																			float3_t view_direction,
@@ -1071,6 +1256,11 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
+#endif
+
+#if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
+	return sample_one_emissive_triangle_light_tree_sg_tree_cut(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight,
+															   alpha_x, alpha_y, rng);
 #endif
 
 	float cumulative_probability = 1.0f;
@@ -1198,6 +1388,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
+#endif
+
+#if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
+	return pdf_of_emissive_triangle_light_tree_sg_tree_cut(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight, alpha_x,
+														   alpha_y, global_emissive_triangle_index);
 #endif
 
 	float root_node_importance =

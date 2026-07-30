@@ -26,8 +26,12 @@ extern ImGuiLogger g_imgui_logger;
 //		- How to not wait 1000 samples for cells that have low variance radiance estimates, we don't need 1000 samples in these cases to trust the estimates
 //		- When to stop splitting the tree?
 //		- Possible to use non-axis aligned splits?
+//		- For the learnt distributions, can we update trees cuts per each cell by subdividing nodes of the tree cut that accumulate all the probability mass and
+//merging nodes that have very little mass
 //
 // TODO SG Light tree
+//	- How to use more SG spatial lobes per precomputed nodes of the tree cut (which is basically free quality) but no more of these lobes when traversing the
+// subtrees to not tank perf
 //	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for
 //		ReGIR: one CDF per spatial cell in the scene and one distribution over the 1024 root nodes per spatial cell.
 //		We can theory test this by having a 1024 wide root node and just brute force WRS 1024x over it just to see if quality would at least be good. And if

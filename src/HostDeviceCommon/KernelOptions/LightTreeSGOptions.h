@@ -53,6 +53,13 @@
  */
 #define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_FALSE
 
+/**
+ * If true, non-splitting SG light sampling selects a node from the precomputed tree cut using weighted reservoir sampling.
+ * Adaptive splitting keeps
+ * using its existing sampling path.
+ */
+#define LightTreeSGUseTreeCut KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 #endif
