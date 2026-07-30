@@ -36,6 +36,8 @@ public:
 	LightTreeATSBuilderOptions& get_builder_options();
 	int get_spatial_lobe_count() const;
 	void set_spatial_lobe_count(int spatial_lobe_count);
+	int get_tree_cut_size() const;
+	void set_tree_cut_size(int tree_cut_size);
 
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;

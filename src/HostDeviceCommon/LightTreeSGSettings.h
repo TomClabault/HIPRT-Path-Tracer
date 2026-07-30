@@ -12,6 +12,7 @@ struct LightTreeSGSettings
 {
 	float light_tree_sg_splitting_variance = 0.92f;
 	unsigned int spatial_lobe_count		   = 1;
+	unsigned int tree_cut_size			   = 64;
 };
 
 #endif

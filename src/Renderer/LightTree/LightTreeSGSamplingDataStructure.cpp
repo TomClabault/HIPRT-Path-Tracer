@@ -118,3 +118,13 @@ void LightTreeSGSamplingDataStructure::set_spatial_lobe_count(int spatial_lobe_c
 {
 	m_light_tree_builder_sg.set_spatial_lobe_count(spatial_lobe_count);
 }
+
+int LightTreeSGSamplingDataStructure::get_tree_cut_size() const
+{
+	return m_light_tree_builder_sg.get_tree_cut_size();
+}
+
+void LightTreeSGSamplingDataStructure::set_tree_cut_size(int tree_cut_size)
+{
+	m_light_tree_builder_sg.set_tree_cut_size(tree_cut_size);
+}

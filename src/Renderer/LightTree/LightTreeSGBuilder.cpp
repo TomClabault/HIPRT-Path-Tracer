@@ -21,14 +21,41 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	auto start = std::chrono::high_resolution_clock::now();
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
 	if (m_nodes.empty())
+	{
+		m_tree_cut_node_indices.clear();
+
 		return;
+	}
 
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
+	compute_tree_cut();
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "SG Light tree construction time: %ldms",
-		std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+							std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+}
+
+void LightTreeSGBuilder::compute_tree_cut()
+{
+	const std::vector<LightTreeATSNode>& ats_nodes = m_light_tree_ats_builder.get_nodes();
+	m_tree_cut_node_indices.assign(static_cast<size_t>(m_tree_cut_size), 0xFFFFFFFF);
+
+	std::vector<unsigned int> node_indices_to_visit = { 0 };
+	size_t node_position							= 0;
+	size_t tree_cut_node_count						= 0;
+	while (node_position < node_indices_to_visit.size() && tree_cut_node_count < m_tree_cut_node_indices.size())
+	{
+		unsigned int node_index						   = node_indices_to_visit[node_position++];
+		m_tree_cut_node_indices[tree_cut_node_count++] = node_index;
+
+		const LightTreeATSNode& ats_node = ats_nodes[node_index];
+		if (ats_node.triangle_count == 0)
+		{
+			node_indices_to_visit.push_back(ats_node.left_child_index);
+			node_indices_to_visit.push_back(ats_node.left_child_index + 1);
+		}
+	}
 }
 
 void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data)
@@ -152,9 +179,9 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			const float3_t triangle_variance_diag =
 				make_float3((e1.x * e1.x + e2.x * e2.x - e1.x * e2.x) / 18.0f, (e1.y * e1.y + e2.y * e2.y - e1.y * e2.y) / 18.0f,
 							(e1.z * e1.z + e2.z * e2.z - e1.z * e2.z) / 18.0f);
-			const double centroid_squared			 = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
-													   static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
-													   static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
+			const double centroid_squared = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
+											static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
+											static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
 			const double triangle_intrinsic_variance = triangle_variance_diag.x + triangle_variance_diag.y + triangle_variance_diag.z;
 			sum_second_moment += (centroid_squared + triangle_intrinsic_variance) * triangle.power;
 
@@ -353,6 +380,7 @@ void LightTreeSGBuilder::cleanup()
 {
 	m_light_tree_ats_builder.cleanup();
 	m_nodes.clear();
+	m_tree_cut_node_indices.clear();
 }
 
 LightTreeATSBuilderOptions& LightTreeSGBuilder::get_build_options()
@@ -368,4 +396,14 @@ int LightTreeSGBuilder::get_spatial_lobe_count() const
 void LightTreeSGBuilder::set_spatial_lobe_count(int spatial_lobe_count)
 {
 	m_spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, spatial_lobe_count);
+}
+
+int LightTreeSGBuilder::get_tree_cut_size() const
+{
+	return m_tree_cut_size;
+}
+
+void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
+{
+	m_tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
 }

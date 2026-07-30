@@ -43,8 +43,12 @@ public:
 	LightTreeATSBuilderOptions& get_build_options();
 	int get_spatial_lobe_count() const;
 	void set_spatial_lobe_count(int spatial_lobe_count);
+	int get_tree_cut_size() const;
+	void set_tree_cut_size(int tree_cut_size);
 
 private:
+	void compute_tree_cut();
+
 	/**
 	 * Merges multiple SG spatial lobes into a single lobe, weighted by their power. The membership bitmask indicates which lobe of 'lobes' to merge.
 	 */
@@ -61,7 +65,9 @@ private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
 
 	std::vector<LightTreeSGNode> m_nodes;
+	std::vector<unsigned int> m_tree_cut_node_indices;
 	int m_spatial_lobe_count = 8;
+	int m_tree_cut_size		 = 64;
 };
 
 template <template <typename> typename DataContainer>
@@ -73,6 +79,7 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 	LightTreeSGBuilderDeviceData<DataContainer> device_data_out;
 	device_data_out.nodes_device.resize(m_nodes.size());
 	device_data_out.spatial_lobes_device.resize(m_nodes.size() * m_spatial_lobe_count);
+	device_data_out.tree_cut_node_indices_device = m_tree_cut_node_indices;
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
@@ -138,7 +145,8 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{
-		device_data.m_device_spatial_lobes_buffer = device_data.spatial_lobes_device;
+		device_data.m_device_spatial_lobes_buffer		  = device_data.spatial_lobes_device;
+		device_data.m_device_tree_cut_node_indices_buffer = device_data.tree_cut_node_indices_device;
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes = device_data.m_device_spatial_lobes_buffer.data() + node_index * m_spatial_lobe_count;
 
@@ -148,7 +156,8 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 	else
 	{
-		device_data.m_device_spatial_lobes_buffer = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
+		device_data.m_device_spatial_lobes_buffer		  = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
+		device_data.m_device_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes = device_data.m_device_spatial_lobes_buffer.data() + node_index * m_spatial_lobe_count;
 
@@ -158,8 +167,10 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 
 	render_data.light_tree_sg.settings.spatial_lobe_count = m_spatial_lobe_count;
+	render_data.light_tree_sg.settings.tree_cut_size	  = static_cast<unsigned int>(m_tree_cut_node_indices.size());
 	render_data.light_tree_sg.nodes						  = device_data.m_device_nodes_buffer.data();
 	render_data.light_tree_sg.spatial_lobes				  = device_data.m_device_spatial_lobes_buffer.data();
+	render_data.light_tree_sg.tree_cut_node_indices		  = device_data.m_device_tree_cut_node_indices_buffer.data();
 	render_data.light_tree_sg.indices_array				  = device_data.m_device_indices_array_buffer.data();
 	render_data.light_tree_sg.bit_trails				  = device_data.m_bit_trails_buffer.data();
 }
