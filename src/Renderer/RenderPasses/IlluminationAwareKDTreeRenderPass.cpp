@@ -117,7 +117,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 		reset(false);
 	}
 
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_STATISTICS_KERNEL_ID]->launch_asynchronous(256, 1, illumination_aware_kd_tree.node_capacity, 1,
 																										launch_args, m_renderer->get_main_stream());
@@ -167,7 +167,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	{
 		ensure_all_lookahead_cell_levels(render_data, compiler_options);
 
-		void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree, &m_subdivision_mode };
+		void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
 		m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 			256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
 		// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
@@ -241,7 +241,7 @@ void IlluminationAwareKDTreeRenderPass::update_render_data()
 		return;
 	}
 
-	m_renderer->get_render_data().illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device();
+	m_renderer->get_render_data().illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 }
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
@@ -264,7 +264,7 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	m_mark_guiding_cells_debug_check_done	 = false;
 	m_promote_guiding_cells_debug_check_done = false;
 
-	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device();
+	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	float3_t scene_bounds_minimum				 = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 	float3_t scene_bounds_maximum				 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
 	void* launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
@@ -292,11 +292,6 @@ bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
 	return m_training_sample_buffer_capacity;
-}
-
-IlluminationAwareKDTreeSubdivisionMode& IlluminationAwareKDTreeRenderPass::get_subdivision_mode()
-{
-	return m_subdivision_mode;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const

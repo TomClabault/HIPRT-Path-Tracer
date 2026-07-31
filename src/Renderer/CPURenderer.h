@@ -281,7 +281,6 @@ private:
 
 	struct IlluminationAwareKDTreeState
 	{
-		IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY;
 		IlluminationAwareKDTreeDataHost<std::vector> illumination_aware_kd_tree;
 
 		bool lookahead_frontier_initialized		= false;

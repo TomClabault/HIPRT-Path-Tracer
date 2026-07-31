@@ -23,11 +23,14 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO Illumination aware KD tree
+//		- How to subdivide based on the sampler's variance? We don't want to subdivide at all at the back of the couch in the white room for example, but we
+//		want to subdivide a lot where the sampler is having trouble
 //		- How to not wait 1000 samples for cells that have low variance radiance estimates, we don't need 1000 samples in these cases to trust the estimates
 //		- When to stop splitting the tree?
 //		- Possible to use non-axis aligned splits?
 //		- For the learnt distributions, can we update trees cuts per each cell by subdividing nodes of the tree cut that accumulate all the probability mass and
-//merging nodes that have very little mass
+// merging nodes that have very little mass
+//		- Can we not use doubles in should split mean radiance and still get away with it?
 //
 // TODO SG Light tree
 //	- How to use more SG spatial lobes per precomputed nodes of the tree cut (which is basically free quality) but no more of these lobes when traversing the

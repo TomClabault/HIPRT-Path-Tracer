@@ -97,9 +97,11 @@ struct IlluminationAwareKDTreeDataHost
 		return m_nodes_and_bounds.maximum_size();
 	}
 
-	IlluminationAwareKDTreeDevice to_device()
+	IlluminationAwareKDTreeDevice to_device(HIPRTRenderData& render_data)
 	{
 		IlluminationAwareKDTreeDevice device;
+
+		device.user_settings = render_data.illumination_aware_kd_tree.user_settings;
 
 		device.nodes				= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODES>();
 		device.node_bounds			= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>();

@@ -11,13 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-																  IlluminationAwareKDTreeSubdivisionMode subdivision_mode,
-																  int x)
+inline IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-														   IlluminationAwareKDTreeSubdivisionMode subdivision_mode)
+IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
@@ -60,6 +57,8 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 		const uint32_t lookahead_node_index = stack[--stack_size];
 		if (lookahead_node_index >= node_count)
 			continue;
+
+		IlluminationAwareKDTreeSubdivisionMode subdivision_mode = illumination_aware_kd_tree.user_settings.subdivision_mode;
 
 		bool split_samples = false;
 		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::RECORD_SAMPLES_ONLY)

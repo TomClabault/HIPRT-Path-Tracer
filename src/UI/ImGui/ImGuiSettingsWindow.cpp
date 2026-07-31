@@ -3972,6 +3972,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
+			if (ImGui::SliderInt("Min. sample count for lookahead creation",
+								 &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
+				m_render_window->set_render_dirty(true);
+
 			if (illumination_aware_kd_tree_render_pass)
 			{
 				ImGui::BeginDisabled(illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP());
@@ -3984,13 +3988,25 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::Text("Splitting mode");
+
+				IlluminationAwareKDTreeSubdivisionMode& subdivision_mode = render_data.illumination_aware_kd_tree.user_settings.subdivision_mode;
+
 				bool splitting_mode_changed = false;
-				splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 0);
-				splitting_mode_changed |= ImGui::RadioButton("Mean radiance only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 1);
-				splitting_mode_changed |= ImGui::RadioButton("Mean direction only", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 2);
-				splitting_mode_changed |= ImGui::RadioButton("Full model", ((int*)&illumination_aware_kd_tree_render_pass->get_subdivision_mode()), 3);
+				splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&subdivision_mode), 0);
+				splitting_mode_changed |= ImGui::RadioButton("Mean radiance only", ((int*)&subdivision_mode), 1);
+				splitting_mode_changed |= ImGui::RadioButton("Mean direction only", ((int*)&subdivision_mode), 2);
+				splitting_mode_changed |= ImGui::RadioButton("Full model", ((int*)&subdivision_mode), 3);
 				if (splitting_mode_changed)
 					m_render_window->set_render_dirty(true);
+
+				if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
+					subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
+				{
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					if (ImGui::SliderFloat("Mean radiance threshold", &render_data.illumination_aware_kd_tree.user_settings.mean_radiance_split_threshold,
+										   0.01f, 1.0f, "%.3f"))
+						m_render_window->set_render_dirty(true);
+				}
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

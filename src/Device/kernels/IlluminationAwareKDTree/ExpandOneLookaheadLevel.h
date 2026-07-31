@@ -41,7 +41,7 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 
 	// The paper waits until the parent has at least 1000 observations.
 	if (illumination_aware_kd_tree.history_signatures[parent_index].valid_observation_count <
-		illumination_aware_kd_tree.minimum_sample_count_for_lookahead_creation)
+		illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation)
 		return;
 
 	uint8_t split_axis	 = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;

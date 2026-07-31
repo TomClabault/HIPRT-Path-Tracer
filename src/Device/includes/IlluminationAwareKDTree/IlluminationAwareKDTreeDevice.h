@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
@@ -18,14 +19,6 @@
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
 #include <cstdint>
-
-enum class IlluminationAwareKDTreeSubdivisionMode
-{
-	RECORD_SAMPLES_ONLY = 0,
-	MEAN_RADIANCE_ONLY	= 1,
-	MEAN_DIRECTION_ONLY = 2,
-	FULL_MODEL			= 3
-};
 
 // Placeholder
 using NEEGuidingDistribution = LightTreeSGNodeDevice;
@@ -69,7 +62,6 @@ struct IlluminationAwareKDTreeDevice
 	static constexpr float DIRECTION_LUT_MAX_U = 0.802656898f;
 
 	static constexpr double MINIMUM_CELL_SPLIT_SAMPLE_COUNT = 1000.0;
-	static constexpr double MEAN_RADIANCE_THRESHOLD			= 0.05;
 	// phi^-1(1 - 1e-4) = 3.7190164854557084
 	static constexpr double Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190164854557084;
 
@@ -128,8 +120,8 @@ struct IlluminationAwareKDTreeDevice
 		return guiding_signature_float.valid_observation_count >= MINIMUM_CELL_SPLIT_SAMPLE_COUNT;
 	}
 
-	HIPRT_DEVICE static bool should_split_mean_radiance(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float,
-														const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature_float)
+	HIPRT_DEVICE bool should_split_mean_radiance(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float,
+												 const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature_float)
 	{
 		IlluminationAwareKDTreeIlluminationSignatureDouble guiding	 = convert_signature_to_double(guiding_signature_float);
 		IlluminationAwareKDTreeIlluminationSignatureDouble lookahead = convert_signature_to_double(lookahead_signature_float);
@@ -152,7 +144,7 @@ struct IlluminationAwareKDTreeDevice
 
 		double guiding_sample_count	  = guiding.valid_observation_count;
 		double lookahead_sample_count = lookahead.valid_observation_count;
-		double threshold			  = MEAN_RADIANCE_THRESHOLD;
+		double threshold			  = static_cast<double>(user_settings.mean_radiance_split_threshold);
 
 		double positive_difference_coefficient	 = (1.0 - threshold) * (guiding_sample_count - lookahead_sample_count);
 		double positive_lookahead_coefficient	 = guiding_sample_count - (1.0 - threshold) * lookahead_sample_count;
@@ -492,7 +484,7 @@ struct IlluminationAwareKDTreeDevice
 		next_frontier[output_index + 1] = right_child;
 	}
 
-	int minimum_sample_count_for_lookahead_creation = 1000;
+	IlluminationAwareKDTreeUserSettings user_settings;
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;

@@ -44,7 +44,6 @@ public:
 	int& get_split_iterations_per_SPP();
 	bool& get_auto_split_iterations_per_SPP();
 	int& get_training_sample_buffer_capacity();
-	IlluminationAwareKDTreeSubdivisionMode& get_subdivision_mode();
 
 	std::size_t get_current_node_buffer_capacity() const;
 	std::size_t get_current_node_count() const;
@@ -57,9 +56,10 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
-	bool m_frozen_tree										  = false;
-	bool m_buffers_need_reallocation						  = true;
-	IlluminationAwareKDTreeSubdivisionMode m_subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY;
+	bool m_frozen_tree				 = false;
+	bool m_buffers_need_reallocation = true;
+
+	IlluminationAwareKDTreeUserSettings m_user_settings;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 
 	// How many times to:
