@@ -59,8 +59,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetBatchNEEDistributionsStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
@@ -718,14 +717,12 @@ void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	for (unsigned int node_index = 0; node_index < illumination_aware_kd_tree.node_capacity; node_index++)
-		IlluminationAwareKDTree_ResetBatchKDTreeStatistics(illumination_aware_kd_tree, node_index);
-
-	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.tree_cut_size;
-	unsigned int node_count				 = *illumination_aware_kd_tree.node_count;
-	unsigned int distribution_slot_count = node_count * tree_cut_size;
-	for (unsigned int distribution_slot = 0; distribution_slot < distribution_slot_count; distribution_slot++)
-		IlluminationAwareKDTree_ResetBatchNEEDistributionsStatistics(illumination_aware_kd_tree, tree_cut_size, distribution_slot);
+	unsigned int tree_cut_size								 = m_render_data.light_tree_sg.settings.tree_cut_size;
+	unsigned int node_count									 = *illumination_aware_kd_tree.node_count;
+	unsigned int distribution_slot_count					 = node_count * tree_cut_size;
+	unsigned int reset_thread_count							 = std::max(node_count, distribution_slot_count);
+	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
+		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(illumination_aware_kd_tree, tree_cut_size, reset_index);
 #endif
 
 	// Resetting the status buffers

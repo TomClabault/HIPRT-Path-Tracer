@@ -24,13 +24,13 @@ const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SA
 	"Initialize Root Tree Cut Sampling Distribution";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID			= "Reset Batch KD-Tree Statistics";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID = "Reset Batch NEE Distributions Statistics";
-const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID				= "Expand One Lookahead Level";
-const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID					= "Replay Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID			= "Initialize Created Node History";
-const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID			= "Mark Guiding Cells For Splitting";
-const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID					= "Promote Guiding Cells";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID =
+	"Reset Batch KD-Tree And NEE Distributions Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID		= "Expand One Lookahead Level";
+const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID			= "Replay Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID	= "Initialize Created Node History";
+const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID = "Mark Guiding Cells For Splitting";
+const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID			= "Promote Guiding Cells";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
@@ -82,21 +82,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 		"IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ResetBatchKDTreeStatistics");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchNEEDistributionsStatistics.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ResetBatchNEEDistributionsStatistics");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID] = std::make_shared<GPUKernel>(
+		this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
+																																		   {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
@@ -163,16 +156,14 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	}
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
-	void* launch_args[]										 = { &illumination_aware_kd_tree };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
 
 	unsigned int tree_cut_size			 = m_renderer->get_render_data().light_tree_sg.settings.tree_cut_size;
 	unsigned int active_node_count		 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
 	unsigned int distribution_slot_count = active_node_count * tree_cut_size;
-	void* nee_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		256, 1, distribution_slot_count, 1, nee_distribution_launch_args, m_renderer->get_main_stream());
+	unsigned int reset_thread_count		 = std::max(active_node_count, distribution_slot_count);
+	void* launch_args[]					 = { &illumination_aware_kd_tree, &tree_cut_size };
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
+		256, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
 
 	return render_data_invalidated;
 }
