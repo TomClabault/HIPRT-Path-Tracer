@@ -133,7 +133,11 @@ void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned 
 bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
+	{
+		m_buffers_need_reallocation = true;
+
 		return m_illumination_aware_kd_tree.free();
+	}
 
 	bool render_data_invalidated = false;
 	if (m_buffers_need_reallocation)
