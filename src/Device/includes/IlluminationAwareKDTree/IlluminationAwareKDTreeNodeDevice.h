@@ -21,7 +21,7 @@ enum IlluminationAwareKDTreeNodeFlags : uint8_t
 struct IlluminationAwareKDTreeNode
 {
 	static constexpr uint32_t INVALID_NODE_INDEX   = 0xFFFFFFFFu;
-	static constexpr uint32_t INVALID_GUIDING_SLOT = 0xFFFFFFFFu;
+	static constexpr uint32_t INVALID_GUIDING_DISTRIBUTION_INDEX = 0xFFFFFFFFu;
 	static constexpr uint32_t INVALID_CREATION_TAG = 0xFFFFFFFFu;
 	static constexpr uint8_t INVALID_SPLIT_AXIS	   = 255;
 
@@ -33,7 +33,7 @@ struct IlluminationAwareKDTreeNode
 
 	// Index of the NEE distribution used by this guiding cell.
 	//
-	// Real inner nodes and lookahead-only nodes use INVALID_GUIDING_SLOT.
+	// Real inner nodes and lookahead-only nodes use INVALID_GUIDING_DISTRIBUTION_INDEX.
 	uint32_t guiding_distribution_index = 0;
 
 	// Identifies the lookahead-allocation pass that created this node.

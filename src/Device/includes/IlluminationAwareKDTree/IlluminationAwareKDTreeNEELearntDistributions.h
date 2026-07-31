@@ -19,8 +19,7 @@ struct IlluminationAwareKDTreeNEEDistributionTrainingRecord
 	// Used after spatial splitting to locate the final guiding cell.
 	float3_t shading_position;
 
-	// Used to measure whether the cell contains compatible surface
-	// orientations.
+	// Used to measure whether the cell contains compatible surface orientations.
 	float3_t shading_normal;
 
 	// Global cut slot selected for this sample.
@@ -125,6 +124,7 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
 
+	// NEE samples gathered during path tracing used for training distributions
 	IlluminationAwareKDTreeNEEDistributionTrainingRecord* nee_training_records = nullptr;
 	AtomicType<unsigned int>* nee_training_record_count						   = nullptr;
 	unsigned int nee_training_record_capacity								   = 0;
@@ -133,11 +133,16 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 	// probabilities for sampling the nodes of the tree cut of the SG light tree.
 	float* tree_cut_sampling_probabilities = nullptr;
 	float* tree_cut_sampling_cdfs		   = nullptr;
-	float* estimated_second_moment		   = nullptr;
-	float* effective_sample_count		   = nullptr;
-	float* batch_second_moment_sum		   = nullptr;
-	unsigned int* batch_sample_count	   = nullptr;
 
+	// For each cut node * guiding cell, the history of all observed second moments of the NEE estimator + how many samples have been observed.
+	float* estimated_second_moment = nullptr;
+	float* effective_sample_count  = nullptr;
+	// For each cut node * guiding cell, the sum of all observed second moments of the NEE estimator and how many samples have been observed in the current
+	// batch (current SPP)
+	float* batch_second_moment_sum	 = nullptr;
+	unsigned int* batch_sample_count = nullptr;
+
+	// Global prior distribution for sampling the tree cut nodes.
 	float* tree_cut_sampling_prior_pdfs = nullptr;
 	float* tree_cut_sampling_prior_cdfs = nullptr;
 };
