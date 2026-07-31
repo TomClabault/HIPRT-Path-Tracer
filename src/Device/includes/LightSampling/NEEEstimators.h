@@ -84,11 +84,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		}
 #endif
 
-		IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
-		training_sample.position		   = closest_hit_info.inter_point;
-		training_sample.incoming_direction = shadow_ray.direction;
-		training_sample.valid			   = true;
-
 		if (dot_light_source > 0.0f)
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
@@ -121,10 +116,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
 				if (light_sample_solid_angle_pdf > 0.0f)
 				{
-					// The NEE sample is non-zero (if we omit BSDF evaluation), we can compute the radiance weight. Taking max_component() and not luminance as
-					// in the paper
-					training_sample.radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
-
 					float bsdf_pdf;
 
 					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
@@ -171,8 +162,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 				}
 			}
 		}
-
-		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
@@ -506,6 +495,156 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 	return total_outgoing_radiance / valid_light_sample_count;
 }
 
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HIPRTRenderData& render_data,
+																			  RayPayload& ray_payload,
+																			  const HitInfo closest_hit_info,
+																			  const float3_t& view_direction,
+																			  Xorshift32Generator& random_number_generator)
+{
+	if (!ray_payload.material.can_do_light_sampling())
+		return ColorRGB32F(0.0f);
+
+	ColorRGB32F light_source_radiance;
+
+	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
+
+	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+	{
+		LightSamplePointInformation& light_sample = light_samples[i];
+
+		if (light_sample.area_measure_pdf <= 0.0f)
+			// Can happen for very small triangles or the light
+			// sampling technique couldn't sample a triangle
+			continue;
+
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+		float distance_to_light					 = hippt::length(shadow_ray_direction);
+		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+		hiprtRay shadow_ray;
+		shadow_ray.origin	 = shadow_ray_origin;
+		shadow_ray.direction = shadow_ray_direction_normalized;
+
+		// abs() here to allow backfacing light sources
+		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
+
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+		if (dot_light_source <= 0.0f && light_tree_debug_pixel())
+		{
+			const float point_pdf					 = 1.0f / light_sample.light_area;
+			const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
+			const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+			printf("[DI-RESULT] algo=SG light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
+				   "estimator_rgb=(0,0,0) "
+				   "estimator_lum=0\n",
+				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#else
+			printf("[DI-RESULT] algo=ATS light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
+				   "estimator_rgb=(0,0,0) "
+				   "estimator_lum=0\n",
+				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#endif
+		}
+#endif
+
+		IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
+		training_sample.position		   = closest_hit_info.inter_point;
+		training_sample.incoming_direction = shadow_ray.direction;
+		training_sample.valid			   = true;
+
+		if (dot_light_source > 0.0f)
+		{
+			NEEPlusPlusContext nee_plus_plus_context;
+			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+															   nee_plus_plus_context, random_number_generator);
+
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+			if (in_shadow && light_tree_debug_pixel())
+			{
+				const float point_pdf					 = 1.0f / light_sample.light_area;
+				const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
+				const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+				printf("[DI-RESULT] algo=SG light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
+					   "estimator_lum=0\n",
+					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#else
+				printf("[DI-RESULT] algo=ATS light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
+					   "estimator_lum=0\n",
+					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
+#endif
+			}
+#endif
+
+			if (!in_shadow)
+			{
+				// Conversion to solid angle from surface area measure
+				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+				if (light_sample_solid_angle_pdf > 0.0f)
+				{
+					// The NEE sample is non-zero (if we omit BSDF evaluation), we can compute the radiance weight. Taking max_component() and not luminance as
+					// in the paper
+					training_sample.radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
+
+					float bsdf_pdf;
+
+					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
+					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
+					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
+					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+					if (bsdf_pdf != 0.0f)
+					{
+						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
+						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
+						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						light_source_radiance += estimator;
+
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
+						if (light_tree_debug_pixel())
+						{
+							const float point_pdf = 1.0f / light_sample.light_area;
+							const float tree_pdf  = light_sample.area_measure_pdf / point_pdf;
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+							printf("[DI-RESULT] algo=SG light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
+								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
+								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
+								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
+#else
+							printf("[DI-RESULT] algo=ATS light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
+								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
+								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
+								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
+#endif
+						}
+#endif
+
+						// Just a CPU-only sanity check
+						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
+					}
+				}
+			}
+		}
+
+		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
+	}
+
+	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+}
+
 template <bool deferred_BSDF_MIS = true>
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data,
 														   RayPayload& ray_payload,
@@ -551,6 +690,9 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	direct_light_contribution = sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_LTC_SHADING
 	direct_light_contribution = sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+	direct_light_contribution =
+		sample_one_light_no_MIS_SG_tree_learnt_distributions(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 
 #endif // #if ReGIR

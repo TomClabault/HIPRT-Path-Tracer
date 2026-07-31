@@ -115,7 +115,6 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING = "LightT
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL = "LightTreeSGUseNewSplittingModel";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE = "LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeSGSplittingMaxLightSamples";
-const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS = "LightTreeSGUseIlluminationAwareDistributions";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT = "LightTreeSGUseTreeCut";
 
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT = "IlluminationAwareKDTreeMaximumLookaheadLevelCount";
@@ -254,7 +253,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
-	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS,
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT,
 
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
@@ -397,8 +395,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL] = std::make_shared<int>(LightTreeSGUseNewSplittingModel);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE] = std::make_shared<int>(LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeSGSplittingMaxLightSamples);
-	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS] =
-		std::make_shared<int>(LightTreeSGUseIlluminationAwareDistributions);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT] = std::make_shared<int>(LightTreeSGUseTreeCut);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT] =

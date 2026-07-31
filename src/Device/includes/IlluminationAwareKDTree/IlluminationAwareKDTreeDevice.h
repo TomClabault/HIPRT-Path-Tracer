@@ -400,7 +400,7 @@ struct IlluminationAwareKDTreeDevice
 
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_FALSE
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
 		return;
 #endif
 

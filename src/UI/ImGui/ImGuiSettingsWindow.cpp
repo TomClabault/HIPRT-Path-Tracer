@@ -1270,9 +1270,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
+			bool light_sampling_base_strategy_disabled =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
+			ImGui::BeginDisabled(light_sampling_base_strategy_disabled);
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips(
 				"Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY),
 				items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
+			ImGui::EndDisabled(); // light_sampling_base_strategy_disabled
 
 			const char* items[]	   = { "- No direct light sampling",
 									   "- Light sampling",
@@ -1281,6 +1285,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									   "- RIS BDSF + Light candidates",
 									   "- RISLTC BSDF + Light candidates",
 									   "- LTC Shading",
+									   "- Illumination aware KD Tree + SG Tree guiding",
 									   "- ReSTIR DI (Primary hit only)" };
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
@@ -1303,9 +1308,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"account. Not all BSDF lobe "
 				"configurations are supported.",
 
+				"Uses the illumination aware KD tree of Zheng et al. 2026 to spatially subdivide the scene based on illumination frequency. A tree cut of the "
+				"spherical gaussian tree is precomputed for the whole and probabilities of sampling the nodes of the tree cut are learnt at each cell of the "
+				"KD-tree based on observed NEE contributions collected at sampling time",
+
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be "
 				"changed in the ReSTIR DI settings.",
 			};
+			static_assert(IM_ARRAYSIZE(items) == IM_ARRAYSIZE(tooltips));
 
 			const bool no_direct_light_sampling_disabled = false;
 			const bool uniform_one_light_disabled =
@@ -1315,10 +1325,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool regir		= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool mis_disabled = regir;
 
-			const bool ris_disabled			= false;
-			const bool risltc_disabled		= regir;
-			const bool ltc_shading_disabled = regir;
-			const bool restir_di_disabled	= false;
+			const bool ris_disabled							 = false;
+			const bool risltc_disabled						 = regir;
+			const bool ltc_shading_disabled					 = regir;
+			const bool sg_tree_learnt_distributions_disabled = regir;
+			const bool restir_di_disabled					 = false;
 
 			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
 											   uniform_one_light_disabled,
@@ -1327,6 +1338,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 											   ris_disabled,
 											   risltc_disabled,
 											   ltc_shading_disabled,
+											   sg_tree_learnt_distributions_disabled,
 											   restir_di_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
@@ -1334,12 +1346,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
 			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_base_strategy));
 
+			bool nee_estimator_changed	= false;
 			bool nee_estimator_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
 			ImGui::BeginDisabled(nee_estimator_disabled);
 			if (ImGuiRenderer::ComboWithTooltips("NEE Estimator",
 												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 												 items, IM_ARRAYSIZE(items), tooltips, disabled_items))
 			{
+				nee_estimator_changed = true;
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
@@ -1387,11 +1402,27 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				// If the base light sampling strategy changed, we need to update the
 				// kernels
 
-				// Will recompute the alias table if necessary
+				// Will recompute the alias tables and light trees etc... if necessary
 				m_renderer->recompute_emissives_sampling_data_structure();
-
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+
+			if (nee_estimator_changed)
+			{
+				int nee_estimator				 = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+				int base_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+
+				if (nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && base_light_sampling_strategy != LSS_BASE_LIGHT_TREE_SG)
+				{
+					// If we're using the learnt SG distributions, we need to use the SG light tree as well because it's a part of it, automatically changing to
+					// that then
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
 			}
 
 			const char* items_triangle_sampling[]	 = { "- Uniform area", "- Solid angle", "- Projected solid angle" };
@@ -3876,21 +3907,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Illumination aware distributions");
-		static bool use_illumination_aware_distributions =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS);
-		if (ImGui::Checkbox("Use illumination aware distributions", &use_illumination_aware_distributions))
+		bool use_learnt_distributions =
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
+		if (use_learnt_distributions)
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_ILLUMINATION_AWARE_DISTRIBUTIONS,
-												   use_illumination_aware_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Illumination aware distributions");
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-
-		if (use_illumination_aware_distributions)
-		{
 			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
 				m_renderer->get_illumination_aware_kd_tree_render_pass();
 
