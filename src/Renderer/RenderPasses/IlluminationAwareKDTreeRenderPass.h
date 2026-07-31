@@ -42,6 +42,7 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	int& get_split_iterations_per_SPP();
+	bool& get_auto_split_iterations_per_SPP();
 	int& get_training_sample_buffer_capacity();
 	IlluminationAwareKDTreeSubdivisionMode& get_subdivision_mode();
 
@@ -72,7 +73,9 @@ private:
 	// per each SPP
 	//
 	// Higher number subdivide faster but is more expensive
-	int m_split_iterations_per_SPP		  = 1;
+	int m_split_iterations_per_SPP = 3;
+	// If true, the number of split iterations per SPP will be automatically adjusted based on the current SPP for efficiency
+	bool m_auto_split_iterations_per_SPP  = true;
 	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
 
 	std::size_t m_cached_current_node_count			= 1;

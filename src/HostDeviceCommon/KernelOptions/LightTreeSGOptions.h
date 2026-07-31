@@ -51,7 +51,7 @@
 /**
  * If true, the illumination-aware guiding distributions are used by the SG light tree.
  */
-#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_FALSE
+#define LightTreeSGUseIlluminationAwareDistributions KERNEL_OPTION_TRUE
 
 /**
  * If true, non-splitting SG light sampling selects a node from the precomputed tree cut using weighted reservoir sampling.

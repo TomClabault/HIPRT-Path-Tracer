@@ -3951,7 +3951,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			if (illumination_aware_kd_tree_render_pass)
 			{
-				if (ImGui::SliderInt("Split iterations per SPP", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
+				ImGui::BeginDisabled(illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP());
+				if (ImGui::SliderInt("Split iterations", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
+					m_render_window->set_render_dirty(true);
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Auto", &illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP()))
 					m_render_window->set_render_dirty(true);
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));

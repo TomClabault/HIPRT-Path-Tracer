@@ -150,8 +150,18 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
 		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
 
-	// TODO make this lower and lower as SPPs progress because we mostly need a lot of iterations at the beginning but then it naturally slows down anyways
-	for (int split = 0; split < m_split_iterations_per_SPP; split++)
+	int split_iterations = m_split_iterations_per_SPP;
+	if (m_auto_split_iterations_per_SPP)
+	{
+		if (render_data.render_settings.sample_number == 0)
+			// Lots of splits at the very first SPP to quickly get a good tree structure, then we can slow down the splits
+			split_iterations = 16;
+		else
+			// Maximum 3 because we don't really need more after the first few SPPs
+			split_iterations = std::min(split_iterations, 3);
+	}
+
+	for (int split = 0; split < split_iterations; split++)
 	{
 		ensure_all_lookahead_cell_levels(render_data, compiler_options);
 
@@ -272,6 +282,11 @@ bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompi
 int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 {
 	return m_split_iterations_per_SPP;
+}
+
+bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
+{
+	return m_auto_split_iterations_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
