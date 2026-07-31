@@ -2,24 +2,16 @@
  * Copyright 2026 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
-
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
-#include "Device/includes/CDF.h"
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningNEESettings.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNEELearntDistributions.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSampledCutNode.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
-#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
-
-#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
-#include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
 #include <cstdint>
 
@@ -62,10 +54,7 @@ HIPRT_DEVICE __constant__ inline float COSINE_MAX_ANGLE_DIRECTION_LUT[256] = {
 
 struct IlluminationAwareKDTreeDevice
 {
-	static constexpr float DIRECTION_LUT_MAX_U								  = 0.802656898f;
-	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE = -1.0f;
-	static constexpr float ROOT_PRIOR_STRENGTH								  = 8.0f;
-
+	static constexpr float DIRECTION_LUT_MAX_U				= 0.802656898f;
 	static constexpr double MINIMUM_CELL_SPLIT_SAMPLE_COUNT = 1000.0;
 	// phi^-1(1 - 1e-4) = 3.7190164854557084
 	static constexpr double Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190164854557084;
@@ -327,6 +316,29 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
+	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	{
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+		return;
+#endif
+
+		// Invalid samples must not consume buffer space or affect b0.
+		if (!sample.valid)
+			return;
+
+		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
+		// The counter may exceed capacity, but memory must never be written
+		// outside the allocated buffer.
+		if (sample_index >= training_sample_capacity)
+			return;
+
+		sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
+		if (sample_index >= training_sample_capacity)
+			return;
+
+		training_samples[sample_index] = sample;
+	}
+
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
 														unsigned int node_index,
 														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
@@ -401,29 +413,6 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
-	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
-	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
-		return;
-#endif
-
-		// Invalid samples must not consume buffer space or affect b0.
-		if (!sample.valid)
-			return;
-
-		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
-		// The counter may exceed capacity, but memory must never be written
-		// outside the allocated buffer.
-		if (sample_index >= training_sample_capacity)
-			return;
-
-		sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
-		if (sample_index >= training_sample_capacity)
-			return;
-
-		training_samples[sample_index] = sample;
-	}
-
 	HIPRT_DEVICE void compute_split_axis_and_position(const IlluminationAwareKDTreeSpatialSampleMoments& moments,
 													  uint8_t& out_split_axis,
 													  float& out_split_position) const
@@ -495,36 +484,6 @@ struct IlluminationAwareKDTreeDevice
 		next_frontier[output_index + 1] = right_child;
 	}
 
-	HIPRT_DEVICE unsigned int get_tree_cut_offset(unsigned int guiding_distribution_index, unsigned int tree_cut_size) const
-	{
-		return guiding_distribution_index * tree_cut_size;
-	}
-
-	HIPRT_DEVICE IlluminationAwareKDTreeSampledCutNode sample_global_cut_node(const LightTreeSGDevice& light_tree_sg,
-																			  unsigned int guiding_distribution_index,
-																			  Xorshift32Generator& random_number_generator) const
-	{
-		IlluminationAwareKDTreeSampledCutNode result{};
-		unsigned int tree_cut_size = light_tree_sg.settings.tree_cut_size;
-		if (tree_cut_size == 0)
-			return result;
-
-		unsigned int tree_cut_offset = get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
-		CDFDevice tree_cut_cdf;
-		tree_cut_cdf.cdf  = tree_cut_sampling_cdfs + tree_cut_offset;
-		tree_cut_cdf.size = tree_cut_size;
-
-		unsigned int selected_slot	 = tree_cut_cdf.sample(random_number_generator);
-		selected_slot				 = hippt::min(selected_slot, tree_cut_size - 1);
-		unsigned int selected_offset = tree_cut_offset + selected_slot;
-
-		result.cut_slot				 = selected_slot;
-		result.light_tree_node_index = light_tree_sg.tree_cut_node_indices[selected_slot];
-		result.probability			 = tree_cut_sampling_probabilities[selected_offset];
-
-		return result;
-	}
-
 	IlluminationAwareKDTreeUserSettings user_settings;
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
@@ -557,20 +516,7 @@ struct IlluminationAwareKDTreeDevice
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
 
-	// Below is the stuff for learning NEE distributions
-	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
-
-	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
-	// probabilities for sampling the nodes of the tree cut of the SG light tree.
-	float* tree_cut_sampling_probabilities = nullptr;
-	float* tree_cut_sampling_cdfs		   = nullptr;
-	float* estimated_second_moment		   = nullptr;
-	float* effective_sample_count		   = nullptr;
-	float* batch_second_moment_sum		   = nullptr;
-	unsigned int* batch_sample_count	   = nullptr;
-
-	float* tree_cut_sampling_prior_pdfs = nullptr;
-	float* tree_cut_sampling_prior_cdfs = nullptr;
+	IlluminationAwareKDTreeNEELearnDistributions nee_learn_distributions;
 };
 
 #endif

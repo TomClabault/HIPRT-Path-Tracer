@@ -23,10 +23,10 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 	unsigned int distribution_slot_count = illumination_aware_kd_tree.node_capacity * tree_cut_size;
 	for (unsigned int distribution_slot = 0; distribution_slot < distribution_slot_count; distribution_slot++)
 	{
-		illumination_aware_kd_tree.tree_cut_sampling_probabilities[distribution_slot] =
-			IlluminationAwareKDTreeDevice::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
-		illumination_aware_kd_tree.tree_cut_sampling_cdfs[distribution_slot] =
-			IlluminationAwareKDTreeDevice::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+		illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_probabilities[distribution_slot] =
+			IlluminationAwareKDTreeNEELearnDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+		illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_cdfs[distribution_slot] =
+			IlluminationAwareKDTreeNEELearnDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
 	}
 #else
 	unsigned int distribution_slot		 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -34,9 +34,10 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 	if (distribution_slot >= distribution_slot_count)
 		return;
 
-	illumination_aware_kd_tree.tree_cut_sampling_probabilities[distribution_slot] =
-		IlluminationAwareKDTreeDevice::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
-	illumination_aware_kd_tree.tree_cut_sampling_cdfs[distribution_slot] = IlluminationAwareKDTreeDevice::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+	illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_probabilities[distribution_slot] =
+		IlluminationAwareKDTreeNEELearnDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+	illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_cdfs[distribution_slot] =
+		IlluminationAwareKDTreeNEELearnDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
 #endif
 }
 

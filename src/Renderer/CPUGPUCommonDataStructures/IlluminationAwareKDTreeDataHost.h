@@ -161,14 +161,14 @@ struct IlluminationAwareKDTreeDataHost
 		device.batch_spatial_moments   = m_batch_spatial_moments.data();
 		device.history_spatial_moments = m_history_spatial_moments.data();
 
-		device.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
-		device.tree_cut_sampling_cdfs		   = m_tree_cut_sampling_cdfs.data();
-		device.estimated_second_moment		   = m_estimated_second_moment.data();
-		device.effective_sample_count		   = m_effective_sample_count.data();
-		device.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
-		device.batch_sample_count			   = m_batch_sample_count.data();
-		device.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
-		device.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
+		device.nee_learn_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
+		device.nee_learn_distributions.tree_cut_sampling_cdfs		   = m_tree_cut_sampling_cdfs.data();
+		device.nee_learn_distributions.estimated_second_moment		   = m_estimated_second_moment.data();
+		device.nee_learn_distributions.effective_sample_count		   = m_effective_sample_count.data();
+		device.nee_learn_distributions.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
+		device.nee_learn_distributions.batch_sample_count			   = m_batch_sample_count.data();
+		device.nee_learn_distributions.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
+		device.nee_learn_distributions.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
 
 		return device;
 	}

@@ -60,8 +60,8 @@
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"

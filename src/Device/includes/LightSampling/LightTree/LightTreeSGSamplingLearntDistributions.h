@@ -98,8 +98,8 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	const IlluminationAwareKDTreeNode& guiding_node = render_data.illumination_aware_kd_tree.nodes[guiding_node_index];
 	unsigned int guiding_distribution_index			= guiding_node.guiding_distribution_index;
 
-	IlluminationAwareKDTreeSampledCutNode sampled_cut_node =
-		render_data.illumination_aware_kd_tree.sample_global_cut_node(render_data.light_tree_sg, guiding_distribution_index, random_number_generator);
+	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learn_distributions.sample_global_cut_node(
+		render_data.light_tree_sg, guiding_distribution_index, random_number_generator);
 
 	if (sampled_cut_node.light_tree_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || sampled_cut_node.probability <= 0.0f)
 		return LightSampleArray<1>{ LightSampleInformation() };

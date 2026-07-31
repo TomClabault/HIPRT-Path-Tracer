@@ -26,7 +26,7 @@ IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(IlluminationAw
 	if (guiding_distribution_index >= illumination_aware_kd_tree.node_capacity)
 		return;
 
-	unsigned int tree_cut_offset = illumination_aware_kd_tree.get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
+	unsigned int tree_cut_offset = illumination_aware_kd_tree.nee_learn_distributions.get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
 
 #ifndef __KERNELCC__
 	for (unsigned int slot = 0; slot < tree_cut_size; slot++)
@@ -38,15 +38,17 @@ IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(IlluminationAw
 	if (slot < tree_cut_size)
 #endif
 	{
-		float prior_probability		   = illumination_aware_kd_tree.tree_cut_sampling_prior_pdfs[slot];
+		float prior_probability		   = illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_prior_pdfs[slot];
 		unsigned int distribution_slot = tree_cut_offset + slot;
 
-		illumination_aware_kd_tree.estimated_second_moment[distribution_slot]		  = prior_probability * prior_probability;
-		illumination_aware_kd_tree.effective_sample_count[distribution_slot]		  = IlluminationAwareKDTreeDevice::ROOT_PRIOR_STRENGTH;
-		illumination_aware_kd_tree.batch_second_moment_sum[distribution_slot]		  = 0.0f;
-		illumination_aware_kd_tree.batch_sample_count[distribution_slot]			  = 0;
-		illumination_aware_kd_tree.tree_cut_sampling_probabilities[distribution_slot] = prior_probability;
-		illumination_aware_kd_tree.tree_cut_sampling_cdfs[distribution_slot]		  = illumination_aware_kd_tree.tree_cut_sampling_prior_cdfs[slot];
+		illumination_aware_kd_tree.nee_learn_distributions.estimated_second_moment[distribution_slot] = prior_probability * prior_probability;
+		illumination_aware_kd_tree.nee_learn_distributions.effective_sample_count[distribution_slot] =
+			IlluminationAwareKDTreeNEELearnDistributions::ROOT_PRIOR_STRENGTH;
+		illumination_aware_kd_tree.nee_learn_distributions.batch_second_moment_sum[distribution_slot]		  = 0.0f;
+		illumination_aware_kd_tree.nee_learn_distributions.batch_sample_count[distribution_slot]			  = 0;
+		illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_probabilities[distribution_slot] = prior_probability;
+		illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_cdfs[distribution_slot] =
+			illumination_aware_kd_tree.nee_learn_distributions.tree_cut_sampling_prior_cdfs[slot];
 
 		if (slot == 0)
 			*illumination_aware_kd_tree.guiding_distribution_count = 1;
