@@ -34,7 +34,6 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_needs_split, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_guiding_distribution_count, 1);
-		GenericSoAHelpers::resize<DataContainer>(m_guiding_distributions, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_next_frontier, new_node_capacity);
@@ -51,17 +50,7 @@ struct IlluminationAwareKDTreeDataHost
 
 	void reset()
 	{
-		if (maximum_size() == 0)
-			return;
-
-		GenericSoAHelpers::memset_buffer<DataContainer>(m_guiding_distributions, NEEGuidingDistribution{});
-
-		IlluminationAwareKDTreeNode root_node_init;
-		root_node_init.left_child_index			  = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-		root_node_init.guiding_distribution_index = 0;
-		root_node_init.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
-
-		m_nodes_and_bounds.upload_to_buffer_partial<ILLUMINATION_AWARE_KD_TREE_NODES>(0, &root_node_init, 1);
+		// All reset is already done by the render pass
 	}
 
 	bool free()
@@ -75,7 +64,6 @@ struct IlluminationAwareKDTreeDataHost
 		m_active_guiding_node_count	 = DataContainer<unsigned int>();
 		m_needs_split				 = DataContainer<uint8_t>();
 		m_guiding_distribution_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_guiding_distributions		 = DataContainer<NEEGuidingDistribution>();
 		m_current_frontier			 = DataContainer<unsigned int>();
 		m_current_frontier_count	 = DataContainer<unsigned int>();
 		m_next_frontier				 = DataContainer<unsigned int>();
@@ -94,12 +82,12 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		return m_nodes_and_bounds.get_byte_size() + GenericSoAHelpers::get_byte_size(m_node_count) + GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) +
 			   GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) + GenericSoAHelpers::get_byte_size(m_needs_split) +
-			   +GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) + GenericSoAHelpers::get_byte_size(m_guiding_distributions) +
-			   GenericSoAHelpers::get_byte_size(m_current_frontier) + GenericSoAHelpers::get_byte_size(m_current_frontier_count) +
-			   GenericSoAHelpers::get_byte_size(m_next_frontier) + GenericSoAHelpers::get_byte_size(m_next_frontier_count) +
-			   GenericSoAHelpers::get_byte_size(m_training_samples) + GenericSoAHelpers::get_byte_size(m_training_sample_count) +
-			   GenericSoAHelpers::get_byte_size(m_batch_signatures) + GenericSoAHelpers::get_byte_size(m_history_signatures) +
-			   GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) + GenericSoAHelpers::get_byte_size(m_history_spatial_moments);
+			   GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) + GenericSoAHelpers::get_byte_size(m_current_frontier) +
+			   GenericSoAHelpers::get_byte_size(m_current_frontier_count) + GenericSoAHelpers::get_byte_size(m_next_frontier) +
+			   GenericSoAHelpers::get_byte_size(m_next_frontier_count) + GenericSoAHelpers::get_byte_size(m_training_samples) +
+			   GenericSoAHelpers::get_byte_size(m_training_sample_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
+			   GenericSoAHelpers::get_byte_size(m_history_signatures) + GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) +
+			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments);
 	}
 
 	std::size_t maximum_size() const
@@ -111,14 +99,13 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		IlluminationAwareKDTreeDevice device;
 
-		device.nodes				 = m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODES>();
-		device.node_bounds			 = m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>();
-		device.node_capacity		 = static_cast<unsigned int>(maximum_size());
-		device.active_guiding_nodes	 = m_active_guiding_nodes.data();
-		device.needs_split			 = m_needs_split.data();
-		device.guiding_distributions = m_guiding_distributions.data();
-		device.current_frontier		 = m_current_frontier.data();
-		device.next_frontier		 = m_next_frontier.data();
+		device.nodes				= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODES>();
+		device.node_bounds			= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>();
+		device.node_capacity		= static_cast<unsigned int>(maximum_size());
+		device.active_guiding_nodes = m_active_guiding_nodes.data();
+		device.needs_split			= m_needs_split.data();
+		device.current_frontier		= m_current_frontier.data();
+		device.next_frontier		= m_next_frontier.data();
 
 		if constexpr (std::is_same_v<DataContainer<GenericAtomicType<unsigned int, DataContainer>>, std::vector<std::atomic<unsigned int>>>)
 		{
@@ -161,7 +148,6 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_active_guiding_node_count;
 	DataContainer<uint8_t> m_needs_split;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_guiding_distribution_count;
-	DataContainer<NEEGuidingDistribution> m_guiding_distributions;
 
 	DataContainer<unsigned int> m_current_frontier;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_current_frontier_count;

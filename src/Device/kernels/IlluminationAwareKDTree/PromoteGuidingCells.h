@@ -46,12 +46,11 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 	unsigned int parent_distribution_index = parent.guiding_distribution_index;
 
-	// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution
-	unsigned int right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.guiding_distribution_count, 1u);
-	illumination_aware_kd_tree.guiding_distributions[right_distribution_index] = illumination_aware_kd_tree.guiding_distributions[parent_distribution_index];
-
 	IlluminationAwareKDTreeNode& left_child	 = illumination_aware_kd_tree.nodes[left_child_index];
 	IlluminationAwareKDTreeNode& right_child = illumination_aware_kd_tree.nodes[right_child_index];
+
+	// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution index
+	unsigned int right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.guiding_distribution_count, 1u);
 
 	left_child.guiding_distribution_index  = parent_distribution_index;
 	right_child.guiding_distribution_index = right_distribution_index;
