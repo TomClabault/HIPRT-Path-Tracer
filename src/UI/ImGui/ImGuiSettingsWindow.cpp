@@ -3682,10 +3682,11 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 {
-	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
-	HIPRTRenderData& render_data									= m_renderer->get_render_data();
-	LightTreeATSBuilderOptions& build_options						= m_renderer->get_light_tree_sg_build_options();
-	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
+	LightTreeATSBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -3788,6 +3789,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			if (ImGui::Button("Apply"))
 			{
 				m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size(current_tree_cut_size);
+				illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
 
 				m_renderer->recompute_emissives_sampling_data_structure();
 				m_render_window->set_render_dirty(true);
@@ -3913,9 +3915,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Illumination aware distributions");
-
-			std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
-				m_renderer->get_illumination_aware_kd_tree_render_pass();
 
 			std::size_t vram_usage_bytes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_vram_usage_bytes() : 0;
 			std::size_t node_capacity = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;

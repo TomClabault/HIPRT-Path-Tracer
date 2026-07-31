@@ -282,10 +282,14 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(
 		256, 1, m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size(), 1, launch_args, m_renderer->get_main_stream());
 
-	LightTreeSGDevice light_tree_sg			= m_renderer->get_render_data().light_tree_sg;
+	LightTreeSGDevice light_tree_sg = m_renderer->get_render_data().light_tree_sg;
+	if (light_tree_sg.nodes == nullptr)
+		return;
+
 	void* initialize_tree_cut_launch_args[] = { &kd_tree_device, &light_tree_sg };
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
-		IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, 1, 1, initialize_tree_cut_launch_args, m_renderer->get_main_stream());
+		IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, initialize_tree_cut_launch_args,
+		m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

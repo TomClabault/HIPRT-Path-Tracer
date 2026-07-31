@@ -79,12 +79,7 @@ IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(IlluminationAw
 
 	unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
 	unsigned int invalid_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	if (tree_cut_size == 0 || light_tree_sg.nodes == nullptr || light_tree_sg.tree_cut_node_indices == nullptr)
-		return;
-
 	unsigned int guiding_distribution_index = illumination_aware_kd_tree.nodes[0].guiding_distribution_index;
-	if (guiding_distribution_index >= illumination_aware_kd_tree.node_capacity)
-		return;
 
 	unsigned int tree_cut_offset	 = guiding_distribution_index * tree_cut_size;
 	unsigned int tree_cut_node_index = slot < tree_cut_size ? light_tree_sg.tree_cut_node_indices[slot] : invalid_node_index;
