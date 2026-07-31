@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningNEESettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
@@ -515,6 +516,9 @@ struct IlluminationAwareKDTreeDevice
 
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
+
+	// Below is the stuff for learning NEE distributions
+	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
 
 	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding nodex index. Gives access to a tree cut size long array of
 	// probabilities for sampling the nodes of the tree cut of the SG light tree.

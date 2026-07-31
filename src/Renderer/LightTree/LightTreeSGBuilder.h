@@ -28,6 +28,7 @@ public:
 						  const std::vector<float3_t>& vertices_positions);
 
 	void compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data);
+	void compute_tree_cut();
 
 	template <template <typename> typename DataContainer>
 	LightTreeSGBuilderDeviceData<DataContainer> compute_device_data() const;
@@ -49,8 +50,6 @@ public:
 	void set_tree_cut_size(int tree_cut_size);
 
 private:
-	void compute_tree_cut();
-
 	/**
 	 * Merges multiple SG spatial lobes into a single lobe, weighted by their power. The membership bitmask indicates which lobe of 'lobes' to merge.
 	 */
