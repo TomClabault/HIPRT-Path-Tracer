@@ -40,6 +40,8 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_next_frontier_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, new_training_sample_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_nee_training_records, new_training_sample_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nee_training_record_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
@@ -79,6 +81,8 @@ struct IlluminationAwareKDTreeDataHost
 		m_next_frontier_count			  = DataContainer<unsigned int>();
 		m_training_samples				  = DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
 		m_training_sample_count			  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nee_training_records			  = DataContainer<IlluminationAwareKDTreeNEEDistributionTrainingRecord>();
+		m_nee_training_record_count		  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_batch_signatures				  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
 		m_history_signatures			  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
 		m_batch_spatial_moments			  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
@@ -102,7 +106,8 @@ struct IlluminationAwareKDTreeDataHost
 			   GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) + GenericSoAHelpers::get_byte_size(m_current_frontier) +
 			   GenericSoAHelpers::get_byte_size(m_current_frontier_count) + GenericSoAHelpers::get_byte_size(m_next_frontier) +
 			   GenericSoAHelpers::get_byte_size(m_next_frontier_count) + GenericSoAHelpers::get_byte_size(m_training_samples) +
-			   GenericSoAHelpers::get_byte_size(m_training_sample_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
+			   GenericSoAHelpers::get_byte_size(m_training_sample_count) + GenericSoAHelpers::get_byte_size(m_nee_training_records) +
+			   GenericSoAHelpers::get_byte_size(m_nee_training_record_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
 			   GenericSoAHelpers::get_byte_size(m_history_signatures) + GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) +
 			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) +
 			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) + GenericSoAHelpers::get_byte_size(m_estimated_second_moment) +
@@ -148,13 +153,20 @@ struct IlluminationAwareKDTreeDataHost
 			device.next_frontier_count		  = m_next_frontier_count.get_atomic_device_pointer();
 			device.guiding_distribution_count = m_guiding_distribution_count.get_atomic_device_pointer();
 		}
-		device.training_samples			= m_training_samples.data();
-		device.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
+		device.training_samples										= m_training_samples.data();
+		device.training_sample_capacity								= static_cast<unsigned int>(m_training_samples.size());
+		device.nee_learn_distributions.nee_training_records			= m_nee_training_records.data();
+		device.nee_learn_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_nee_training_records.size());
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
 			device.training_sample_count = m_training_sample_count.data();
 		else
 			device.training_sample_count = m_training_sample_count.get_atomic_device_pointer();
+
+		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
+			device.nee_learn_distributions.nee_training_record_count = m_nee_training_record_count.data();
+		else
+			device.nee_learn_distributions.nee_training_record_count = m_nee_training_record_count.get_atomic_device_pointer();
 
 		device.batch_signatures		   = m_batch_signatures.data();
 		device.history_signatures	   = m_history_signatures.data();
@@ -188,6 +200,8 @@ struct IlluminationAwareKDTreeDataHost
 
 	DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample> m_training_samples;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_sample_count;
+	DataContainer<IlluminationAwareKDTreeNEEDistributionTrainingRecord> m_nee_training_records;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_nee_training_record_count;
 
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_batch_signatures;
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;

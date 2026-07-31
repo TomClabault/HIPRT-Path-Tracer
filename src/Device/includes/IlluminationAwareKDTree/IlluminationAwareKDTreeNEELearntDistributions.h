@@ -14,24 +14,30 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
+struct IlluminationAwareKDTreeNEEDistributionTrainingRecord
+{
+	// Used after spatial splitting to locate the final guiding cell.
+	float3_t shading_position;
+
+	// Used to measure whether the cell contains compatible surface
+	// orientations.
+	float3_t shading_normal;
+
+	// Global cut slot selected for this sample.
+	unsigned int selected_cut_slot;
+
+	// One stochastic observation of A_j.
+	float conditional_second_moment_observation;
+
+	unsigned int valid;
+};
+
 struct IlluminationAwareKDTreeNEELearnDistributions
 {
 	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE = -1.0f;
-	static constexpr float ROOT_PRIOR_STRENGTH								  = 8.0f;
-
-	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
-
-	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
-	// probabilities for sampling the nodes of the tree cut of the SG light tree.
-	float* tree_cut_sampling_probabilities = nullptr;
-	float* tree_cut_sampling_cdfs		   = nullptr;
-	float* estimated_second_moment		   = nullptr;
-	float* effective_sample_count		   = nullptr;
-	float* batch_second_moment_sum		   = nullptr;
-	unsigned int* batch_sample_count	   = nullptr;
-
-	float* tree_cut_sampling_prior_pdfs = nullptr;
-	float* tree_cut_sampling_prior_cdfs = nullptr;
+	// When initializing a cell distribution with the prior distribution, how many samples that prio-distribution-initialization is going to be worth. This is
+	// basically as if the cell had learnt the prior distribution from this many samples.
+	static constexpr float ROOT_PRIOR_STRENGTH = 8.0f;
 
 	HIPRT_DEVICE unsigned int get_tree_cut_offset(unsigned int guiding_distribution_index, unsigned int tree_cut_size) const
 	{
@@ -72,6 +78,24 @@ struct IlluminationAwareKDTreeNEELearnDistributions
 
 		return result;
 	}
+
+	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
+
+	IlluminationAwareKDTreeNEEDistributionTrainingRecord* nee_training_records = nullptr;
+	AtomicType<unsigned int>* nee_training_record_count						   = nullptr;
+	unsigned int nee_training_record_capacity								   = 0;
+
+	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
+	// probabilities for sampling the nodes of the tree cut of the SG light tree.
+	float* tree_cut_sampling_probabilities = nullptr;
+	float* tree_cut_sampling_cdfs		   = nullptr;
+	float* estimated_second_moment		   = nullptr;
+	float* effective_sample_count		   = nullptr;
+	float* batch_second_moment_sum		   = nullptr;
+	unsigned int* batch_sample_count	   = nullptr;
+
+	float* tree_cut_sampling_prior_pdfs = nullptr;
+	float* tree_cut_sampling_prior_cdfs = nullptr;
 };
 
 #endif
