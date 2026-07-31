@@ -516,7 +516,7 @@ struct IlluminationAwareKDTreeDevice
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
 
-	IlluminationAwareKDTreeNEELearnDistributions nee_learn_distributions;
+	IlluminationAwareKDTreeNEELearntDistributions nee_learnt_distributions;
 };
 
 #endif

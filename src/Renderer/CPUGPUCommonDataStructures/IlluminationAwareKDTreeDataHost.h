@@ -155,8 +155,8 @@ struct IlluminationAwareKDTreeDataHost
 		}
 		device.training_samples										= m_training_samples.data();
 		device.training_sample_capacity								= static_cast<unsigned int>(m_training_samples.size());
-		device.nee_learn_distributions.nee_training_records			= m_nee_training_records.data();
-		device.nee_learn_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_nee_training_records.size());
+		device.nee_learnt_distributions.nee_training_records			= m_nee_training_records.data();
+		device.nee_learnt_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_nee_training_records.size());
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
 			device.training_sample_count = m_training_sample_count.data();
@@ -164,23 +164,23 @@ struct IlluminationAwareKDTreeDataHost
 			device.training_sample_count = m_training_sample_count.get_atomic_device_pointer();
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
-			device.nee_learn_distributions.nee_training_record_count = m_nee_training_record_count.data();
+			device.nee_learnt_distributions.nee_training_record_count = m_nee_training_record_count.data();
 		else
-			device.nee_learn_distributions.nee_training_record_count = m_nee_training_record_count.get_atomic_device_pointer();
+			device.nee_learnt_distributions.nee_training_record_count = m_nee_training_record_count.get_atomic_device_pointer();
 
 		device.batch_signatures		   = m_batch_signatures.data();
 		device.history_signatures	   = m_history_signatures.data();
 		device.batch_spatial_moments   = m_batch_spatial_moments.data();
 		device.history_spatial_moments = m_history_spatial_moments.data();
 
-		device.nee_learn_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
-		device.nee_learn_distributions.tree_cut_sampling_cdfs		   = m_tree_cut_sampling_cdfs.data();
-		device.nee_learn_distributions.estimated_second_moment		   = m_estimated_second_moment.data();
-		device.nee_learn_distributions.effective_sample_count		   = m_effective_sample_count.data();
-		device.nee_learn_distributions.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
-		device.nee_learn_distributions.batch_sample_count			   = m_batch_sample_count.data();
-		device.nee_learn_distributions.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
-		device.nee_learn_distributions.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
+		device.nee_learnt_distributions.tree_cut_sampling_cdfs		   = m_tree_cut_sampling_cdfs.data();
+		device.nee_learnt_distributions.estimated_second_moment		   = m_estimated_second_moment.data();
+		device.nee_learnt_distributions.effective_sample_count		   = m_effective_sample_count.data();
+		device.nee_learnt_distributions.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
+		device.nee_learnt_distributions.batch_sample_count			   = m_batch_sample_count.data();
+		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
 
 		return device;
 	}

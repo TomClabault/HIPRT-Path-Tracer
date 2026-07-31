@@ -26,13 +26,17 @@ struct IlluminationAwareKDTreeNEEDistributionTrainingRecord
 	// Global cut slot selected for this sample.
 	unsigned int selected_cut_slot;
 
-	// One stochastic observation of A_j.
-	float conditional_second_moment_observation;
-
-	unsigned int valid;
+	// One stochastic observation of NEEEstimate / pLightSampleSubtree / pLightSamplePoint, which is the contribution conditioned on having selected a given cut
+	// node.
+	//
+	// Note that this is not simply the full NEE estimate because this would have the distributions learn from average contributions, which is not optimal for
+	// variance reduction. Instead, the distributions learn from the second moment of the contribution conditioned on having selected a given cut node, which is
+	// the optimal objective for variance reduction, i.e. we learn from (NEEEstimate / pLightSampleSubtree / pLightSamplePoint)^2 which doesn't contain the
+	// top-level cut node selection probability.
+	float conditional_second_moment_contribution;
 };
 
-struct IlluminationAwareKDTreeNEELearnDistributions
+struct IlluminationAwareKDTreeNEELearntDistributions
 {
 	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE = -1.0f;
 	// When initializing a cell distribution with the prior distribution, how many samples that prio-distribution-initialization is going to be worth. This is
@@ -42,6 +46,24 @@ struct IlluminationAwareKDTreeNEELearnDistributions
 	HIPRT_DEVICE unsigned int get_tree_cut_offset(unsigned int guiding_distribution_index, unsigned int tree_cut_size) const
 	{
 		return guiding_distribution_index * tree_cut_size;
+	}
+
+	HIPRT_DEVICE void append_nee_distribution_training_record(const IlluminationAwareKDTreeNEEDistributionTrainingRecord& record)
+	{
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+		return;
+#endif
+
+		unsigned int record_index = hippt::atomic_fetch_add(nee_training_record_count, 0u);
+		// The counter may exceed capacity, but memory must never be written outside the allocated buffer.
+		if (record_index >= nee_training_record_capacity)
+			return;
+
+		record_index = hippt::atomic_fetch_add(nee_training_record_count, 1u);
+		if (record_index >= nee_training_record_capacity)
+			return;
+
+		nee_training_records[record_index] = record;
 	}
 
 	HIPRT_DEVICE IlluminationAwareKDTreeSampledCutNode sample_global_cut_node(const LightTreeSGDevice& light_tree_sg,
@@ -77,6 +99,28 @@ struct IlluminationAwareKDTreeNEELearnDistributions
 		result.probability			 = tree_cut_sampling_probabilities[selected_offset];
 
 		return result;
+	}
+
+	HIPRT_DEVICE IlluminationAwareKDTreeNEEDistributionTrainingRecord make_nee_distribution_training_record(
+		const IlluminationAwareKDTreeSampledCutNode& guided_sample, float3_t shading_position, float3_t shading_normal, ColorRGB32F full_local_nee_estimator)
+	{
+		IlluminationAwareKDTreeNEEDistributionTrainingRecord record{};
+
+		// The complete estimator contains division by (p_cut * q_subtree * p_point)
+		//
+		// Multiplying by p_cut removes that probability and what remains measures the contribution conditioned on having selected this cut node which is our
+		// learning objective
+		ColorRGB32F conditional_estimator = full_local_nee_estimator * guided_sample.probability;
+
+		float contribution_squared = conditional_estimator.r * conditional_estimator.r + conditional_estimator.g * conditional_estimator.g +
+									 conditional_estimator.b * conditional_estimator.b;
+
+		record.shading_position						  = shading_position;
+		record.shading_normal						  = hippt::normalize(shading_normal);
+		record.selected_cut_slot					  = guided_sample.cut_slot;
+		record.conditional_second_moment_contribution = contribution_squared;
+
+		return record;
 	}
 
 	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;

@@ -23,6 +23,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO Illumination aware KD tree
+//		- How to subdivide more where illumination changes a lot but keep a low subdivision where illumination is very uniform? How to replace the global
+//		threshold basically by 2 thresholds
 //		- Use CDFDevice16 for learnt distributions to save memory and bandwidth
 //		- How to improve the base prior distributions for the global cut better than power-based?
 //		- How to rely more on the base light tree when per-cell distributions are bad / not learnt enough? How to know when a distribution isn't learnt enough?

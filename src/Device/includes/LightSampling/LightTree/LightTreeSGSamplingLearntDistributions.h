@@ -69,8 +69,11 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 																								 float3_t geometric_normal,
 																								 const DeviceUnpackedEffectiveMaterial& material,
 																								 int last_hit_primitive_index,
-																								 Xorshift32Generator& random_number_generator)
+																								 Xorshift32Generator& random_number_generator,
+																								 IlluminationAwareKDTreeSampledCutNode& out_sampled_cut_node)
 {
+	out_sampled_cut_node = IlluminationAwareKDTreeSampledCutNode{};
+
 	float material_specular_weight =
 		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
 
@@ -79,7 +82,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	float roughness			 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-							   material_specular_weight * material.anisotropy / specular_lobes_sum;
+					   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x;
 	float alpha_y;
@@ -98,12 +101,14 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	const IlluminationAwareKDTreeNode& guiding_node = render_data.illumination_aware_kd_tree.nodes[guiding_node_index];
 	unsigned int guiding_distribution_index			= guiding_node.guiding_distribution_index;
 
-	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learn_distributions.sample_global_cut_node(
+	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learnt_distributions.sample_global_cut_node(
 		render_data.light_tree_sg, guiding_distribution_index, random_number_generator);
 
 	if (sampled_cut_node.probability == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)
 		// Returning a sample with invalid probability so we can detect that in the NEE estimator and fallback to normal light sampling
 		return LightSampleArray<1>{ LightSampleInformation{ -1, IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY } };
+
+	out_sampled_cut_node = sampled_cut_node;
 
 	IlluminationAwareKDTreeConditionalLightTreeSample sampled_subtree =
 		sample_light_tree_subtree(render_data.light_tree_sg.nodes, sampled_cut_node.light_tree_node_index, shading_point, view_direction, shading_normal,
