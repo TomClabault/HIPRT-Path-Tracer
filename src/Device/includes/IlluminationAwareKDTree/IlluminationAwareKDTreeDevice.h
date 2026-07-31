@@ -523,6 +523,10 @@ struct IlluminationAwareKDTreeDevice
 
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
+
+	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding nodex index. Gives access to a tree cut size long array of
+	// probabilities for sampling the nodes of the tree cut of the SG light tree.
+	float* tree_cut_sampling_probabilities = nullptr;
 };
 
 #endif

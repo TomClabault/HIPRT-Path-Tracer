@@ -227,7 +227,8 @@ void CPURenderer::setup_buffers()
 
 #if LightTreeSGUseIlluminationAwareDistributions == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
-																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
+																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY,
+																		 m_light_tree_builder_sg.get_tree_cut_size());
 #endif
 
 	setup_bsdfs_data();

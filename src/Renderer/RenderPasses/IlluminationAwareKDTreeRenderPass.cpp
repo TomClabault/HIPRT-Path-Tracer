@@ -107,7 +107,9 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
 	bool render_data_invalidated = false;
 	if (m_buffers_need_reallocation)
 	{
-		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity);
+		int sg_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
+		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity,
+											sg_tree_cut_size);
 
 		m_buffers_need_reallocation = false;
 		render_data_invalidated		= true;

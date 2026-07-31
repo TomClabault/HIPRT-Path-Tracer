@@ -25,7 +25,7 @@ struct IlluminationAwareKDTreeDataHost
 {
 	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES = 100000;
 
-	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity)
+	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity, int new_tree_cut_size)
 	{
 		m_nodes_and_bounds.resize(new_node_capacity);
 
@@ -44,6 +44,8 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
+
+		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, new_node_capacity * new_tree_cut_size);
 
 		reset();
 	}
@@ -138,6 +140,8 @@ struct IlluminationAwareKDTreeDataHost
 		device.batch_spatial_moments   = m_batch_spatial_moments.data();
 		device.history_spatial_moments = m_history_spatial_moments.data();
 
+		device.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
+
 		return device;
 	}
 
@@ -161,6 +165,9 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_batch_spatial_moments;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_history_spatial_moments;
+
+	// Buffers below that point are for learning NEE distributions per each guiding cell
+	DataContainer<float> m_tree_cut_sampling_probabilities;
 };
 
 #endif
