@@ -6,10 +6,12 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
+#include "Device/includes/CDF.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningNEESettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSampledCutNode.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
@@ -490,6 +492,31 @@ struct IlluminationAwareKDTreeDevice
 	HIPRT_DEVICE unsigned int get_tree_cut_offset(unsigned int guiding_distribution_index, unsigned int tree_cut_size) const
 	{
 		return guiding_distribution_index * tree_cut_size;
+	}
+
+	HIPRT_DEVICE IlluminationAwareKDTreeSampledCutNode sample_global_cut_node(const LightTreeSGDevice& light_tree_sg,
+																			  unsigned int guiding_distribution_index,
+																			  Xorshift32Generator& random_number_generator) const
+	{
+		IlluminationAwareKDTreeSampledCutNode result{};
+		unsigned int tree_cut_size = light_tree_sg.settings.tree_cut_size;
+		if (tree_cut_size == 0)
+			return result;
+
+		unsigned int tree_cut_offset = get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
+		CDFDevice tree_cut_cdf;
+		tree_cut_cdf.cdf  = tree_cut_sampling_cdfs + tree_cut_offset;
+		tree_cut_cdf.size = tree_cut_size;
+
+		unsigned int selected_slot	 = tree_cut_cdf.sample(random_number_generator);
+		selected_slot				 = hippt::min(selected_slot, tree_cut_size - 1);
+		unsigned int selected_offset = tree_cut_offset + selected_slot;
+
+		result.cut_slot				 = selected_slot;
+		result.light_tree_node_index = light_tree_sg.tree_cut_node_indices[selected_slot];
+		result.probability			 = tree_cut_sampling_probabilities[selected_offset];
+
+		return result;
 	}
 
 	IlluminationAwareKDTreeUserSettings user_settings;

@@ -23,6 +23,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO Illumination aware KD tree
+//		- Use CDFDevice16 for learnt distributions to save memory and bandwidth
 //		- How to improve the base prior distributions for the global cut better than power-based?
 //		- How to rely more on the base light tree when per-cell distributions are bad / not learnt enough? How to know when a distribution isn't learnt enough?
 //		- How to subdivide based on the sampler's variance? We don't want to subdivide at all at the back of the couch in the white room for example, but we
