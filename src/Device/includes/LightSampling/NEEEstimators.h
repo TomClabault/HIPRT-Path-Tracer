@@ -13,6 +13,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearntDistributions.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
@@ -506,11 +507,17 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 
 	ColorRGB32F light_source_radiance;
 
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
+	LightSampleArray<1> sampled_light = sample_one_emissive_triangle_light_tree_sg_learnt_distributions(
+		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
+		closest_hit_info.primitive_index, random_number_generator);
 
-	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+	LightSamplePointArray<1> light_samples;
+	light_samples[0] =
+		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																ray_payload.material, sampled_light[0].emissive_triangle_global_index, random_number_generator);
+	light_samples[0].area_measure_pdf *= sampled_light[0].pdf;
+
+	for (int i = 0; i < 1; i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
 

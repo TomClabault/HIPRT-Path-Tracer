@@ -281,8 +281,14 @@ struct IlluminationAwareKDTreeDevice
 				// We stop at the first guiding cell, even if it may have lookahead cells, we only want guiding cells from this function
 				return node_index;
 
-			unsigned int left_child_index	 = node.left_child_index;
-			unsigned int right_child_index	 = left_child_index + 1;
+			unsigned int left_child_index  = node.left_child_index;
+			unsigned int right_child_index = left_child_index + 1;
+
+			if (left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+				// If we're here, the cell doesn't have children and it's not a guiding cell either so we return an invalid index to indicate that the position
+				// is not inside a guiding cell
+				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
 			const float* position_components = &position.x;
 
 			if (position_components[node.split_axis] < node.split_position)
