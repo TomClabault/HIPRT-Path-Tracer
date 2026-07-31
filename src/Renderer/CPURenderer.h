@@ -64,7 +64,7 @@ public:
 	Image32Bit& get_framebuffer();
 
 	void render();
-	void pre_render_update(int frame_number);
+	void pre_sample_update(int frame_number);
 	void post_sample_update(int frame_number);
 	void update_cameras(int sample);
 

@@ -87,7 +87,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 		ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_RESTIR_VARIANT_COMPILE_OPTION_NAME, ReSTIR_VARIANT_DI);
 }
 
-bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
+bool ReSTIRDIRenderPass::pre_sample_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -115,8 +115,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		if (spatial_output_2_needs_resize)
 			m_spatial_output_reservoirs_2.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_DI>(
-			render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_DI>(render_data, m_directional_spatial_reuse_data);
 	}
 	else
 	{
@@ -160,8 +159,7 @@ void ReSTIRDIRenderPass::update_render_data()
 
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (is_render_pass_used(*m_compiler_options))
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(render_data,
-																					 m_directional_spatial_reuse_data);
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_DI>(render_data, m_directional_spatial_reuse_data);
 	else
 	{
 		render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;

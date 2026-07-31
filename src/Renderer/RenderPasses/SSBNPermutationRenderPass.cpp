@@ -144,7 +144,7 @@ std::string SSBNPermutationRenderPass::get_permutation_file_path_no_extension(in
 		   "-r" + std::to_string(retarget_radius);
 }
 
-bool SSBNPermutationRenderPass::pre_render_update(float delta_time)
+bool SSBNPermutationRenderPass::pre_sample_update(float delta_time)
 {
 	bool updated = false;
 	if (!is_render_pass_used(*m_compiler_options))

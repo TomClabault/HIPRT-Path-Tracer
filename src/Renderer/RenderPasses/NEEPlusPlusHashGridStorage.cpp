@@ -12,7 +12,7 @@ void NEEPlusPlusHashGridStorage::set_nee_plus_plus_render_pass(NEEPlusPlusRender
 	m_nee_plus_plus_render_pass = nee_plus_plus_render_pass;
 }
 
-bool NEEPlusPlusHashGridStorage::pre_render_update(HIPRTRenderData& render_data, bool is_interacting_camera)
+bool NEEPlusPlusHashGridStorage::pre_sample_update(HIPRTRenderData& render_data, bool is_interacting_camera)
 {
 	bool updated = false;
 

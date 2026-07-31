@@ -113,7 +113,7 @@ void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_splatting_samples_soa_buffer.resize(new_width, new_height, nb_bounces);
 }
 
-bool ReSTIRPGRenderPass::pre_render_update(float delta_time)
+bool ReSTIRPGRenderPass::pre_sample_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -248,8 +248,8 @@ bool ReSTIRPGRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& com
 {
 	bool restir_path_sampling_used = compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI ||
 									 compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
-	bool using_restir_pg = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
-	bool bounces		 = m_renderer->get_render_data().render_settings.nb_bounces > 0;
+	bool using_restir_pg		   = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
+	bool bounces				   = m_renderer->get_render_data().render_settings.nb_bounces > 0;
 
 	return restir_path_sampling_used && using_restir_pg && bounces;
 }
@@ -268,7 +268,7 @@ float ReSTIRPGRenderPass::get_hash_grid_load_factor() const
 		return 0.0f;
 
 	if (m_grid_cell_alive_count_buffer.size() == 0)
-		// This can happen just after the PG render pass is enabled but pre_render_update hasn't been called yet
+		// This can happen just after the PG render pass is enabled but pre_sample_update hasn't been called yet
 		return 0.0f;
 
 	return (float)m_grid_cell_alive_count_buffer.download_data()[0] / (float)m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells();

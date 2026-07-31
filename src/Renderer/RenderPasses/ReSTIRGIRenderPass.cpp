@@ -148,11 +148,11 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	return recompiled;
 }
 
-bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
+bool ReSTIRGIRenderPass::pre_sample_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	MegaKernelRenderPass::pre_render_update(delta_time);
+	MegaKernelRenderPass::pre_sample_update(delta_time);
 
 	bool render_data_invalidated = false;
 
@@ -178,8 +178,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_GI>(
-			render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_GI>(render_data, m_directional_spatial_reuse_data);
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
 		m_last_temporal_output_reservoirs = m_initial_candidates_buffer.get_device_pointer();
@@ -421,8 +420,7 @@ void ReSTIRGIRenderPass::update_render_data()
 		render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_GI>(render_data,
-																					 m_directional_spatial_reuse_data);
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_GI>(render_data, m_directional_spatial_reuse_data);
 	}
 	else
 	{

@@ -29,7 +29,7 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 		   m_cells_light_distributions_primary_hits.get_byte_size() + m_cells_light_distributions_secondary_hits.get_byte_size();
 }
 
-bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
+bool ReGIRHashGridStorage::pre_sample_update(HIPRTRenderData& render_data)
 {
 	bool updated = false;
 
@@ -55,9 +55,9 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	bool grid_not_allocated = get_total_number_of_cells(primary_hit) == 0;
 	bool grid_res_changed	= m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size ||
-							m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
+							  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed =
-							regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
+		regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
 
 	bool needs_grid_resize = grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
 
@@ -75,8 +75,8 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		m_regir_render_pass->synchronize_async_compute();
 
 		get_initial_grid_buffers(primary_hit)
-								.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
-										m_regir_render_pass->get_renderer()->get_total_triangle_count());
+			.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
+					m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 		get_hash_cell_data_soa(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
@@ -91,7 +91,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		// Cell light distribution allocations are done on the fly when the light distributions are computed, not here
 		// (that's why we're resizing with a dummy size of 1).
 		get_cell_light_distributions(primary_hit)
-								.resize(1, regir_settings.light_distribution_maximum_size, m_regir_render_pass->get_renderer()->get_emissive_mesh_count());
+			.resize(1, regir_settings.light_distribution_maximum_size, m_regir_render_pass->get_renderer()->get_emissive_mesh_count());
 
 		updated = true;
 	}
@@ -113,8 +113,8 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		{
 			// Resizing the spatial buffer
 			get_spatial_grid_buffers(primary_hit)
-									.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
-											m_regir_render_pass->get_renderer()->get_total_triangle_count());
+				.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
+						m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 			updated = true;
 		}
@@ -132,8 +132,8 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 		if (needs_async_grid_resize)
 			get_async_compute_staging_buffer(primary_hit)
-									.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
-											m_regir_render_pass->get_renderer()->get_total_triangle_count());
+				.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
+						m_regir_render_pass->get_renderer()->get_total_triangle_count());
 	}
 	else
 	{
@@ -145,18 +145,18 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 	{
 		if (regir_settings.correlation_reduction.do_correlation_reduction)
 		{
-			bool correlation_reduction_grid_not_allocated		= m_correlation_reduction_grid_primary_hits.m_total_number_of_cells == 0;
-			bool correlation_reduction_reservoirs_count_changed = regir_settings.get_number_of_reservoirs_per_cell(primary_hit) !=
-																  m_correlation_reduction_grid_primary_hits.m_reservoirs_per_cell /
-																						  regir_settings.correlation_reduction.correlation_reduction_factor;
+			bool correlation_reduction_grid_not_allocated = m_correlation_reduction_grid_primary_hits.m_total_number_of_cells == 0;
+			bool correlation_reduction_reservoirs_count_changed =
+				regir_settings.get_number_of_reservoirs_per_cell(primary_hit) !=
+				m_correlation_reduction_grid_primary_hits.m_reservoirs_per_cell / regir_settings.correlation_reduction.correlation_reduction_factor;
 			bool needs_correlation_reduction_grid_resize =
-									correlation_reduction_grid_not_allocated || grid_res_changed || correlation_reduction_reservoirs_count_changed;
+				correlation_reduction_grid_not_allocated || grid_res_changed || correlation_reduction_reservoirs_count_changed;
 
 			if (needs_correlation_reduction_grid_resize)
 			{
 				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true),
 																 regir_settings.get_number_of_reservoirs_per_cell(true) *
-																						 regir_settings.correlation_reduction.correlation_reduction_factor,
+																	 regir_settings.correlation_reduction.correlation_reduction_factor,
 																 m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 				m_correlation_reduction_current_grid_offset = 0;
@@ -186,8 +186,8 @@ void ReGIRHashGridStorage::increment_correlation_reduction_counters(HIPRTRenderD
 	m_correlation_reduction_current_grid_offset %= render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor;
 
 	m_correlation_reduction_frames_available++;
-	m_correlation_reduction_frames_available = hippt::min(m_correlation_reduction_frames_available,
-														  render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
+	m_correlation_reduction_frames_available =
+		hippt::min(m_correlation_reduction_frames_available, render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
 }
 
 bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
@@ -236,13 +236,13 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_initial_grid_buffers(primary_hit) = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				get_spatial_grid_buffers(primary_hit)
-										.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
-												m_regir_render_pass->get_renderer()->get_total_triangle_count());
+					.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
+							m_regir_render_pass->get_renderer()->get_total_triangle_count());
 			if (regir_settings.correlation_reduction.do_correlation_reduction && primary_hit)
 			{
 				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true),
 																 regir_settings.get_number_of_reservoirs_per_cell(true) *
-																						 regir_settings.correlation_reduction.correlation_reduction_factor,
+																	 regir_settings.correlation_reduction.correlation_reduction_factor,
 																 m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 				m_correlation_reduction_current_grid_offset = 0;
@@ -251,8 +251,8 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 			if (regir_settings.do_asynchronous_compute)
 				get_async_compute_staging_buffer(primary_hit)
-										.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
-												m_regir_render_pass->get_renderer()->get_total_triangle_count());
+					.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit),
+							m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 			get_hash_cell_data_soa(primary_hit) = std::move(new_hash_cell_data);
 
@@ -292,24 +292,24 @@ void ReGIRHashGridStorage::reset_internal(bool primary_hit)
 	get_hash_cell_data_soa(primary_hit).m_grid_cells_alive_count.memset_whole_buffer(0);
 
 	get_hash_cell_data_soa(primary_hit)
-							.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>()
-							.memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+		.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>()
+		.memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 	get_hash_cell_data_soa(primary_hit)
-							.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>()
-							.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+		.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>()
+		.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
 	// Resetting the reservoirs
 	get_initial_grid_buffers(primary_hit)
-							.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>()
-							.memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
+		.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>()
+		.memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
 	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 	{
 		if (get_spatial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().size() > 0)
-			// We need to check the size before the reset because the reset method is called before the pre_render_update method
+			// We need to check the size before the reset because the reset method is called before the pre_sample_update method
 			// (where the buffer is allocated) so this reset call may try to reset a buffer that wasn't allocated
 			get_spatial_grid_buffers(primary_hit)
-									.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>()
-									.memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
+				.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>()
+				.memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
 	}
 }
 
@@ -424,7 +424,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		// It may happen that the buffers are not allocated if update_render_data is called before the light distributions
 		// have been computed by a call to launch_async(). That's light distributions are computed and allocated and device
 		// pointers are set when the light distributions are actually computed in lauch_async(). This process isn't
-		// done ahead of time in pre_render_update() like the rest of the buffers so we may get here with unallocated buffers.
+		// done ahead of time in pre_sample_update() like the rest of the buffers so we may get here with unallocated buffers.
 		render_data.render_settings.regir_settings.cells_light_distributions_primary_hits = get_cell_light_distributions(true).to_device(render_data);
 
 	// Secondary hits grid cells
@@ -438,7 +438,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_hash_cell_data_secondary_hits.to_device();
 
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits =
-								get_non_canonical_factors(false).get_atomic_device_pointer();
+			get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
 
 		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions && get_cell_light_distributions(false).get_byte_size() > 0)

@@ -18,7 +18,7 @@ public:
 
 	void set_nee_plus_plus_render_pass(NEEPlusPlusRenderPass* nee_plus_plus_render_pass);
 
-	bool pre_render_update(HIPRTRenderData& render_data, bool is_interacting_camera);
+	bool pre_sample_update(HIPRTRenderData& render_data, bool is_interacting_camera);
 
 	void update_render_data(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	bool free();

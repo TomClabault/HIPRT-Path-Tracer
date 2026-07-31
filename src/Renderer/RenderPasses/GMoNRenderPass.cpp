@@ -20,7 +20,7 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelC
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(m_compiler_options, {});
 }
 
-bool GMoNRenderPass::pre_render_update(float delta_time)
+bool GMoNRenderPass::pre_sample_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

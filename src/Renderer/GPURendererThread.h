@@ -73,9 +73,9 @@ public:
 	 * in the code.
 	 *
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to pre_render_update()
+	 * call to pre_sample_update()
 	 */
-	void pre_render_update(float delta_time);
+	void pre_sample_update(float delta_time);
 
 	/**
 	 * This function increments some counters (such as the number of samples rendered so far) after a

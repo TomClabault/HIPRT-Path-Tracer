@@ -460,7 +460,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 
 	m_render_thread.set_active_render_graph(active_render_graph);
 
-	pre_render_update(delta_time_gpu);
+	pre_sample_update(delta_time_gpu);
 
 	// Mapping the render buffers on the main thread so that we can use them in the render thread.
 	//
@@ -478,9 +478,9 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
-void GPURenderer::pre_render_update(float delta_time)
+void GPURenderer::pre_sample_update(float delta_time)
 {
-	m_render_thread.pre_render_update(delta_time);
+	m_render_thread.pre_sample_update(delta_time);
 }
 
 void GPURenderer::map_buffers_for_render()

@@ -183,9 +183,9 @@ public:
 	 * in the code.
 	 *
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to pre_render_update()
+	 * call to pre_sample_update()
 	 */
-	void pre_render_update(float delta_time);
+	void pre_sample_update(float delta_time);
 
 	/**
 	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
@@ -378,11 +378,11 @@ private:
 	 */
 	void compute_render_pass_times();
 
-	// ---- Functions called by the pre_render_update() method ----
+	// ---- Functions called by the pre_sample_update() method ----
 	//
 
 	//
-	// -------- Functions called by the pre_render_update() method ---------
+	// -------- Functions called by the pre_sample_update() method ---------
 
 	void internal_clear_m_status_buffers();
 
@@ -400,16 +400,16 @@ private:
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
-	// If true, the buffer pointers of m_render_data will be updated when pre_render_update() is called.
+	// If true, the buffer pointers of m_render_data will be updated when pre_sample_update() is called.
 	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the
 	// buffers -> invalidates the pointer -> we need to set them back on render_data
 	//
 	// Modifying the scene also invalidates the m_render_data buffers.
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
-	// Whether or not the renderer was updated (with pre_render_update()) since the last render() call.
+	// Whether or not the renderer was updated (with pre_sample_update()) since the last render() call.
 	// This is only used as a security to avoid misusing the renderer class and calling render()
-	// without having called pre_render_update() before
+	// without having called pre_sample_update() before
 	bool m_updated = false;
 
 	// Time taken per each pass of the renderer for the last frame.
@@ -447,7 +447,7 @@ private:
 	// Whether or not the pixel at the given index is active and needs more samples
 	// Structure that holds the values of the one-variable buffers of the renderer.
 	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
-	// These values are updated when the pre_render_update() is called
+	// These values are updated when the pre_sample_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...

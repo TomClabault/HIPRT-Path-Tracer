@@ -11,14 +11,13 @@
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<
-	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
-	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
-	MLP_TRAINING_TEST_USE_BIASES>;
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+											MLP_TRAINING_TEST_OUTPUT_SIZE,
+											MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
+											MLP_TRAINING_TEST_USE_BIASES>;
 
 class MLPTrainingTestRenderPass : public RenderPass
 {
@@ -38,7 +37,7 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_render_update(float delta_time) override;
+	virtual bool pre_sample_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override {};
 

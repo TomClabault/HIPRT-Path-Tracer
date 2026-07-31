@@ -130,7 +130,7 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 
-bool IlluminationAwareKDTreeRenderPass::pre_render_update(float delta_time)
+bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
 	{

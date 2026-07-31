@@ -76,13 +76,13 @@ void RenderGraph::prepass()
 		name_to_render_pass.second->prepass();
 }
 
-bool RenderGraph::pre_render_update(float delta_time)
+bool RenderGraph::pre_sample_update(float delta_time)
 {
 	bool render_data_invalidated = false;
 	for (auto& name_to_render_pass : m_render_passes)
-		render_data_invalidated |= name_to_render_pass.second->pre_render_update(delta_time);
+		render_data_invalidated |= name_to_render_pass.second->pre_sample_update(delta_time);
 
-	// pre_render_update means that this is a new frame
+	// pre_sample_update means that this is a new frame
 	m_new_frame = true;
 
 	return render_data_invalidated;

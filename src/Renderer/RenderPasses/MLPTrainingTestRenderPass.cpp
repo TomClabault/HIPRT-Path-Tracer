@@ -65,7 +65,7 @@ bool MLPTrainingTestRenderPass::pre_render_compilation_check(std::shared_ptr<HIP
 
 void MLPTrainingTestRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 
-bool MLPTrainingTestRenderPass::pre_render_update(float delta_time)
+bool MLPTrainingTestRenderPass::pre_sample_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_compiler_options))
 		return false;

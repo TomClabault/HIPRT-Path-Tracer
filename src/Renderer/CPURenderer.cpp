@@ -677,7 +677,7 @@ void CPURenderer::render()
 	{
 		m_render_data.render_settings.do_update_status_buffers = true;
 
-		pre_render_update(frame_number);
+		pre_sample_update(frame_number);
 		update_cameras(frame_number);
 
 		camera_rays_pass();
@@ -713,7 +713,7 @@ void CPURenderer::render()
 	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
-void CPURenderer::pre_render_update(int frame_number)
+void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);

@@ -55,14 +55,14 @@ bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOr
 	return !nee_plus_plus__grid_populate_compiled;
 }
 
-bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
+bool NEEPlusPlusRenderPass::pre_sample_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_compiler_options))
 		return m_nee_plus_plus_storage.free();
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	return m_nee_plus_plus_storage.pre_render_update(render_data, m_render_window->is_interacting());
+	return m_nee_plus_plus_storage.pre_sample_update(render_data, m_render_window->is_interacting());
 }
 
 void NEEPlusPlusRenderPass::update_render_data()
