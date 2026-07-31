@@ -485,6 +485,11 @@ struct IlluminationAwareKDTreeDevice
 		next_frontier[output_index + 1] = right_child;
 	}
 
+	HIPRT_DEVICE unsigned int get_tree_cut_offset(unsigned int guiding_distribution_index, unsigned int tree_cut_size) const
+	{
+		return guiding_distribution_index * tree_cut_size;
+	}
+
 	IlluminationAwareKDTreeUserSettings user_settings;
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
@@ -520,9 +525,14 @@ struct IlluminationAwareKDTreeDevice
 	// Below is the stuff for learning NEE distributions
 	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
 
-	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding nodex index. Gives access to a tree cut size long array of
+	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
 	// probabilities for sampling the nodes of the tree cut of the SG light tree.
 	float* tree_cut_sampling_probabilities = nullptr;
+	float* tree_cut_sampling_cdfs		   = nullptr;
+	float* estimated_second_moment		   = nullptr;
+	float* effective_sample_count		   = nullptr;
+	float* batch_second_moment_sum		   = nullptr;
+	uint32_t* batch_sample_count		   = nullptr;
 };
 
 #endif

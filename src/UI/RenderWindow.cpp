@@ -23,6 +23,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
 // TODO Illumination aware KD tree
+//		- How to improve the base prior distributions for the global cut better than power-based?
+//		- How to rely more on the base light tree when per-cell distributions are bad / not learnt enough? How to know when a distribution isn't learnt enough?
 //		- How to subdivide based on the sampler's variance? We don't want to subdivide at all at the back of the couch in the white room for example, but we
 //		want to subdivide a lot where the sampler is having trouble
 //		- How to not wait 1000 samples for cells that have low variance radiance estimates, we don't need 1000 samples in these cases to trust the estimates

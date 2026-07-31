@@ -54,6 +54,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/InitializeRootTreeCutSamplingDistribution.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
@@ -766,6 +767,8 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 
 	for (unsigned int node_index = 0; node_index < m_render_data.illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
+
+	IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(m_render_data.illumination_aware_kd_tree, m_render_data.light_tree_sg, 0);
 #endif
 }
 

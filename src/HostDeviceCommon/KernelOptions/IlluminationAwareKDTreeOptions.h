@@ -13,6 +13,8 @@
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE				 2
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD 3
 
+#define IlluminationAwareKDTreeTreeCutInitializationBlockSize 1024
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because the GPU compiler
  * receives their values through -D compiler options.
