@@ -14,6 +14,10 @@
 #include <string>
 #include <vector>
 
+const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID = "Reset Tree Cut Sampling Distributions";
+const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID =
+	"Initialize Global Tree Cut Prior Sampling Distribution";
+
 const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME = "Illumination-Aware KD-Tree Render Pass";
 const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID						 = "Reset Tree";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID =
@@ -35,6 +39,23 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetTree.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetTree");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ResetTreeCutSamplingDistributions");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID] = std::make_shared<GPUKernel>(
+		this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeGlobalTreeCutPriorSamplingDistribution.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->synchronize_options_with(m_compiler_options,
+																																			 {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID);
@@ -154,6 +175,18 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
+
+	if (render_data.render_settings.sample_number == 0)
+	{
+		LightTreeSGDevice light_tree_sg = render_data.light_tree_sg;
+		unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
+		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
+		{
+			void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
+			m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+				IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
+		}
+	}
 
 	// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads and
 	// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
@@ -283,13 +316,14 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		256, 1, m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size(), 1, launch_args, m_renderer->get_main_stream());
 
 	LightTreeSGDevice light_tree_sg = m_renderer->get_render_data().light_tree_sg;
-	if (light_tree_sg.nodes == nullptr)
-		return;
-
-	void* initialize_tree_cut_launch_args[] = { &kd_tree_device, &light_tree_sg };
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
-		IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, initialize_tree_cut_launch_args,
-		m_renderer->get_main_stream());
+	unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
+	if (tree_cut_size > 0)
+	{
+		unsigned int distribution_slot_count   = kd_tree_device.node_capacity * tree_cut_size;
+		void* reset_distribution_launch_args[] = { &kd_tree_device, &tree_cut_size };
+		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
+			256, 1, distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
+	}
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

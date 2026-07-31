@@ -16,6 +16,8 @@ class IlluminationAwareKDTreeRenderPass : public RenderPass
 public:
 	static const std::string ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME;
 	static const std::string RESET_TREE_KERNEL_ID;
+	static const std::string RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID;
+	static const std::string INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID;
 	static const std::string INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;

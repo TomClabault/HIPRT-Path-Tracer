@@ -51,6 +51,8 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_effective_sample_count, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_second_moment_sum, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_sample_count, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_pdfs, new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_cdfs, new_tree_cut_size);
 
 		reset();
 	}
@@ -86,7 +88,9 @@ struct IlluminationAwareKDTreeDataHost
 		m_estimated_second_moment		  = DataContainer<float>();
 		m_effective_sample_count		  = DataContainer<float>();
 		m_batch_second_moment_sum		  = DataContainer<float>();
-		m_batch_sample_count			  = DataContainer<uint32_t>();
+		m_batch_sample_count			  = DataContainer<unsigned int>();
+		m_tree_cut_sampling_prior_pdfs	  = DataContainer<float>();
+		m_tree_cut_sampling_prior_cdfs	  = DataContainer<float>();
 
 		return true;
 	}
@@ -103,7 +107,8 @@ struct IlluminationAwareKDTreeDataHost
 			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) +
 			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) + GenericSoAHelpers::get_byte_size(m_estimated_second_moment) +
 			   GenericSoAHelpers::get_byte_size(m_effective_sample_count) + GenericSoAHelpers::get_byte_size(m_batch_second_moment_sum) +
-			   GenericSoAHelpers::get_byte_size(m_batch_sample_count);
+			   GenericSoAHelpers::get_byte_size(m_batch_sample_count) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_pdfs) +
+			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_cdfs);
 	}
 
 	std::size_t maximum_size() const
@@ -162,6 +167,8 @@ struct IlluminationAwareKDTreeDataHost
 		device.effective_sample_count		   = m_effective_sample_count.data();
 		device.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
 		device.batch_sample_count			   = m_batch_sample_count.data();
+		device.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
+		device.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
 
 		return device;
 	}
@@ -193,7 +200,10 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<float> m_estimated_second_moment;
 	DataContainer<float> m_effective_sample_count;
 	DataContainer<float> m_batch_second_moment_sum;
-	DataContainer<uint32_t> m_batch_sample_count;
+	DataContainer<unsigned int> m_batch_sample_count;
+
+	DataContainer<float> m_tree_cut_sampling_prior_pdfs;
+	DataContainer<float> m_tree_cut_sampling_prior_cdfs;
 };
 
 #endif

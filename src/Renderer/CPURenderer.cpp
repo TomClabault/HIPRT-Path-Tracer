@@ -54,11 +54,13 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/InitializeGlobalTreeCutPriorSamplingDistribution.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootTreeCutSamplingDistribution.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
@@ -731,8 +733,6 @@ void CPURenderer::pre_render_update(int frame_number)
 
 void CPURenderer::post_sample_update(int frame_number)
 {
-	if (m_render_data.render_settings.accumulate)
-		m_render_data.render_settings.sample_number++;
 	m_render_data.render_settings.need_to_reset = false;
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render
@@ -741,6 +741,9 @@ void CPURenderer::post_sample_update(int frame_number)
 	ReGIR_post_sample_update();
 	ReSTIR_PT_post_sample_update();
 	illumination_aware_kd_tree_post_sample_update();
+
+	if (m_render_data.render_settings.accumulate)
+		m_render_data.render_settings.sample_number++;
 }
 
 void CPURenderer::update_cameras(int sample)
@@ -768,7 +771,8 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	for (unsigned int node_index = 0; node_index < m_render_data.illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
-	IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(m_render_data.illumination_aware_kd_tree, m_render_data.light_tree_sg, 0);
+	unsigned int tree_cut_size = m_render_data.light_tree_sg.settings.tree_cut_size;
+	IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.illumination_aware_kd_tree, tree_cut_size, 0);
 #endif
 }
 
@@ -776,7 +780,15 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	unsigned int sample_count								 = illumination_aware_kd_tree.training_sample_count->load();
+	if (m_render_data.render_settings.sample_number == 0)
+	{
+		LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
+		unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
+		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
+			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(illumination_aware_kd_tree, light_tree_sg, 0);
+	}
+
+	unsigned int sample_count = illumination_aware_kd_tree.training_sample_count->load();
 
 	for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateBatchTrainingSamples(illumination_aware_kd_tree, sample_index);

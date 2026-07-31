@@ -60,7 +60,9 @@ HIPRT_DEVICE __constant__ inline float COSINE_MAX_ANGLE_DIRECTION_LUT[256] = {
 
 struct IlluminationAwareKDTreeDevice
 {
-	static constexpr float DIRECTION_LUT_MAX_U = 0.802656898f;
+	static constexpr float DIRECTION_LUT_MAX_U								  = 0.802656898f;
+	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE = -1.0f;
+	static constexpr float ROOT_PRIOR_STRENGTH								  = 8.0f;
 
 	static constexpr double MINIMUM_CELL_SPLIT_SAMPLE_COUNT = 1000.0;
 	// phi^-1(1 - 1e-4) = 3.7190164854557084
@@ -532,7 +534,10 @@ struct IlluminationAwareKDTreeDevice
 	float* estimated_second_moment		   = nullptr;
 	float* effective_sample_count		   = nullptr;
 	float* batch_second_moment_sum		   = nullptr;
-	uint32_t* batch_sample_count		   = nullptr;
+	unsigned int* batch_sample_count	   = nullptr;
+
+	float* tree_cut_sampling_prior_pdfs = nullptr;
+	float* tree_cut_sampling_prior_cdfs = nullptr;
 };
 
 #endif
