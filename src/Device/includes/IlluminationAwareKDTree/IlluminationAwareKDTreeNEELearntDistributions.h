@@ -52,6 +52,16 @@ struct IlluminationAwareKDTreeNEELearnDistributions
 		tree_cut_cdf.cdf  = tree_cut_sampling_cdfs + tree_cut_offset;
 		tree_cut_cdf.size = tree_cut_size;
 
+		if (tree_cut_cdf.cdf[0] == TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE)
+		{
+			// The distribution has not been initialized yet, return the first slot as a fallback
+			result.cut_slot				 = 0;
+			result.light_tree_node_index = 0;
+			result.probability			 = TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+
+			return result;
+		}
+
 		unsigned int selected_slot	 = tree_cut_cdf.sample(random_number_generator);
 		selected_slot				 = hippt::min(selected_slot, tree_cut_size - 1);
 		unsigned int selected_offset = tree_cut_offset + selected_slot;

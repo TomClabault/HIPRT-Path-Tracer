@@ -8,9 +8,13 @@
 
 struct IlluminationAwareKDTreeSampledCutNode
 {
+	// This value is used when sampling from a guiding distribution that has not been initialized yet. It is used to detect uninitialized distributions and
+	// avoid using them for sampling.
+	static constexpr float INVALID_PROBABILITY = -1.0f;
+
 	unsigned int cut_slot;
 	unsigned int light_tree_node_index;
-	float probability;
+	float probability = INVALID_PROBABILITY;
 };
 
 #endif

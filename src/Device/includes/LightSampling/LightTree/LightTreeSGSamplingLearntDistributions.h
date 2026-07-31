@@ -79,7 +79,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	float roughness			 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
 																				  material_specular_weight * material.roughness / specular_lobes_sum);
 	float anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-					   material_specular_weight * material.anisotropy / specular_lobes_sum;
+							   material_specular_weight * material.anisotropy / specular_lobes_sum;
 
 	float alpha_x;
 	float alpha_y;
@@ -101,8 +101,9 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learn_distributions.sample_global_cut_node(
 		render_data.light_tree_sg, guiding_distribution_index, random_number_generator);
 
-	if (sampled_cut_node.light_tree_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || sampled_cut_node.probability <= 0.0f)
-		return LightSampleArray<1>{ LightSampleInformation() };
+	if (sampled_cut_node.probability == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)
+		// Returning a sample with invalid probability so we can detect that in the NEE estimator and fallback to normal light sampling
+		return LightSampleArray<1>{ LightSampleInformation{ -1, IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY } };
 
 	IlluminationAwareKDTreeConditionalLightTreeSample sampled_subtree =
 		sample_light_tree_subtree(render_data.light_tree_sg.nodes, sampled_cut_node.light_tree_node_index, shading_point, view_direction, shading_normal,

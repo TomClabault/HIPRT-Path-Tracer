@@ -507,15 +507,20 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 
 	ColorRGB32F light_source_radiance;
 
-	LightSampleArray<1> sampled_light = sample_one_emissive_triangle_light_tree_sg_learnt_distributions(
+	LightSampleArray<1> sampled_lights = sample_one_emissive_triangle_light_tree_sg_learnt_distributions(
 		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
 		closest_hit_info.primitive_index, random_number_generator);
+	if (sampled_lights[0].pdf == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)
+		// No light distribution available at that point, falling back to usual SG tree sampling
+		sampled_lights = sample_one_emissive_triangle_light_tree_sg(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																	closest_hit_info.geometric_normal, ray_payload.material, closest_hit_info.primitive_index,
+																	random_number_generator);
 
 	LightSamplePointArray<1> light_samples;
-	light_samples[0] =
-		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																ray_payload.material, sampled_light[0].emissive_triangle_global_index, random_number_generator);
-	light_samples[0].area_measure_pdf *= sampled_light[0].pdf;
+	light_samples[0] = sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction,
+																			   closest_hit_info.shading_normal, ray_payload.material,
+																			   sampled_lights[0].emissive_triangle_global_index, random_number_generator);
+	light_samples[0].area_measure_pdf *= sampled_lights[0].pdf;
 
 	for (int i = 0; i < 1; i++)
 	{
