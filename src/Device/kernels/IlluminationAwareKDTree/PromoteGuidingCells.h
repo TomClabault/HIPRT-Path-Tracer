@@ -108,6 +108,14 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		// Fresh distributions have no history, so we reset the history sample counts
 		nee_learnt_distributions.history_per_cell_sample_count[left_child.guiding_distribution_index]  = 0;
 		nee_learnt_distributions.history_per_cell_sample_count[right_child.guiding_distribution_index] = 0;
+		nee_learnt_distributions.history_per_cell_normal_sum_x[left_child.guiding_distribution_index]  = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_sum_x[right_child.guiding_distribution_index] = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_sum_y[left_child.guiding_distribution_index]  = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_sum_y[right_child.guiding_distribution_index] = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_sum_z[left_child.guiding_distribution_index]  = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_sum_z[right_child.guiding_distribution_index] = 0.0f;
+		nee_learnt_distributions.history_per_cell_normal_count[left_child.guiding_distribution_index]  = 0;
+		nee_learnt_distributions.history_per_cell_normal_count[right_child.guiding_distribution_index] = 0;
 	}
 
 #ifndef __KERNELCC__

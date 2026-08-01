@@ -28,7 +28,13 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 		return;
 
 	if (reset_index < illumination_aware_kd_tree.node_capacity)
+	{
 		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_sample_count[reset_index] = 0;
+		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_x[reset_index] = 0.0f;
+		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_y[reset_index] = 0.0f;
+		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_z[reset_index] = 0.0f;
+		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_count[reset_index] = 0;
+	}
 
 	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[reset_index] =
 		IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;

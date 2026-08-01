@@ -53,6 +53,12 @@ IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(IlluminationAwa
 							record.conditional_second_moment_contribution);
 	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_sample_count[distribution_slot], 1u);
 	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_sample_count[distribution_index], 1u);
+
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_x[distribution_index], record.shading_normal.x);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_y[distribution_index], record.shading_normal.y);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_z[distribution_index], record.shading_normal.z);
+
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_count[distribution_index], 1u);
 }
 
 #endif

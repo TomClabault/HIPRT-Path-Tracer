@@ -136,6 +136,11 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 	// For each guiding cell (no cut node here), how many samples have been accumulated in that cell, accross all cut nodes
 	AtomicType<unsigned int>* history_per_cell_sample_count = nullptr;
+	// For each guiding cell, the sum of all observed shading normals and how many normals have been observed.
+	AtomicType<float>* history_per_cell_normal_sum_x		= nullptr;
+	AtomicType<float>* history_per_cell_normal_sum_y		= nullptr;
+	AtomicType<float>* history_per_cell_normal_sum_z		= nullptr;
+	AtomicType<unsigned int>* history_per_cell_normal_count = nullptr;
 	// For each cut node * guiding cell, the history of all observed second moments of the NEE estimator + how many samples have been observed.
 	AtomicType<float>* history_per_cut_node_estimated_second_moment = nullptr;
 	AtomicType<unsigned int>* history_per_cut_node_sample_count		= nullptr;

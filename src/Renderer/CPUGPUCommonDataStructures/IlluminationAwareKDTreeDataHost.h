@@ -46,6 +46,10 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_cdfs, new_node_capacity * new_tree_cut_size);
 
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_sample_count, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_x, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_y, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_z, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_count, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_estimated_second_moment, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_second_moment_sum, new_node_capacity * new_tree_cut_size);
@@ -94,6 +98,10 @@ struct IlluminationAwareKDTreeDataHost
 		m_tree_cut_sampling_cdfs		  = DataContainer<float>();
 
 		m_history_per_cell_sample_count				   = DataContainer<unsigned int>();
+		m_history_per_cell_normal_sum_x				   = DataContainer<GenericAtomicType<float, DataContainer>>();
+		m_history_per_cell_normal_sum_y				   = DataContainer<GenericAtomicType<float, DataContainer>>();
+		m_history_per_cell_normal_sum_z				   = DataContainer<GenericAtomicType<float, DataContainer>>();
+		m_history_per_cell_normal_count				   = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_history_per_cut_node_estimated_second_moment = DataContainer<float>();
 		m_history_per_cut_node_sample_count			   = DataContainer<unsigned int>();
 		m_batch_per_cut_node_second_moment_sum		   = DataContainer<float>();
@@ -117,7 +125,9 @@ struct IlluminationAwareKDTreeDataHost
 			   GenericSoAHelpers::get_byte_size(m_batch_signatures) + GenericSoAHelpers::get_byte_size(m_history_signatures) +
 			   GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) + GenericSoAHelpers::get_byte_size(m_history_spatial_moments) +
 			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) + GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_x) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_y) + GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_z) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_count) +
 			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_estimated_second_moment) +
 			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_sample_count) +
 			   GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_second_moment_sum) + GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_sample_count) +
@@ -167,6 +177,10 @@ struct IlluminationAwareKDTreeDataHost
 		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_cdfs);
 
 		device.nee_learnt_distributions.history_per_cell_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_sample_count);
+		device.nee_learnt_distributions.history_per_cell_normal_sum_x = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_x);
+		device.nee_learnt_distributions.history_per_cell_normal_sum_y = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_y);
+		device.nee_learnt_distributions.history_per_cell_normal_sum_z = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_z);
+		device.nee_learnt_distributions.history_per_cell_normal_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_count);
 		device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment =
 			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_estimated_second_moment);
 		device.nee_learnt_distributions.history_per_cut_node_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_sample_count);
@@ -209,6 +223,10 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<float> m_tree_cut_sampling_cdfs;
 
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cell_sample_count;
+	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cell_normal_sum_x;
+	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cell_normal_sum_y;
+	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cell_normal_sum_z;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cell_normal_count;
 	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cut_node_estimated_second_moment;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cut_node_sample_count;
 	DataContainer<GenericAtomicType<float, DataContainer>> m_batch_per_cut_node_second_moment_sum;
