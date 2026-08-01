@@ -62,6 +62,19 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution index
 		right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.guiding_distribution_count, 1u);
 
+		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
+		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.active_guiding_node_count, 1u);
+
+		allocation_valid =
+			right_distribution_index < illumination_aware_kd_tree.node_capacity && active_guiding_output_index < illumination_aware_kd_tree.node_capacity;
+	}
+	__syncthreads();
+
+	if (!allocation_valid)
+		return;
+
+	if (threadIdx.x == 0)
+	{
 		// The left child keeps the parent's distribution index, the right child gets a new distribution index but we will copy the parent's distribution into
 		// the right child so that it starts with the same distribution as the left child (same as the parent)
 		left_child.guiding_distribution_index  = parent_distribution_index;
@@ -76,19 +89,6 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
 		parent.guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
 
-		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
-		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.active_guiding_node_count, 1u);
-
-		allocation_valid =
-			right_distribution_index < illumination_aware_kd_tree.node_capacity && active_guiding_output_index < illumination_aware_kd_tree.node_capacity;
-	}
-	__syncthreads();
-
-	if (!allocation_valid)
-		return;
-
-	if (threadIdx.x == 0)
-	{
 		illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index]			 = left_child_index;
 		illumination_aware_kd_tree.active_guiding_nodes[active_guiding_output_index] = right_child_index;
 	}

@@ -56,8 +56,6 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_pdfs, new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_cdfs, new_tree_cut_size);
-
-		reset();
 	}
 
 	void reset()
