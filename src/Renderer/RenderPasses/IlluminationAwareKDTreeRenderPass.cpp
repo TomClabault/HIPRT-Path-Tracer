@@ -209,7 +209,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (render_data.render_settings.sample_number == 0)
 	{
-		unsigned int tree_cut_size		 = light_tree_sg.settings.tree_cut_size;
+		unsigned int tree_cut_size			   = light_tree_sg.settings.tree_cut_size;
+		unsigned int distribution_slot_count   = illumination_aware_kd_tree.node_capacity * tree_cut_size;
+		void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
+			256, 1, distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
+
 		void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
@@ -362,13 +367,6 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_nodes.size(), 1, launch_args,
 																							m_renderer->get_main_stream());
-
-	LightTreeSGDevice light_tree_sg		   = m_renderer->get_render_data().light_tree_sg;
-	unsigned int tree_cut_size			   = light_tree_sg.settings.tree_cut_size;
-	unsigned int distribution_slot_count   = kd_tree_device.node_capacity * tree_cut_size;
-	void* reset_distribution_launch_args[] = { &kd_tree_device, &tree_cut_size };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
-		256, 1, distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
