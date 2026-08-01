@@ -197,6 +197,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
 			m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
 				IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
+
+			void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+			m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+				256, 1, tree_cut_size, 1, root_distribution_launch_args, m_renderer->get_main_stream());
 		}
 	}
 

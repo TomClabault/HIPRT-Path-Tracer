@@ -791,7 +791,12 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 		unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
 		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
+		{
 			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(illumination_aware_kd_tree, light_tree_sg, 0);
+
+			for (unsigned int slot = 0; slot < tree_cut_size; slot++)
+				IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(illumination_aware_kd_tree, tree_cut_size, slot);
+		}
 	}
 
 	unsigned int sample_count = illumination_aware_kd_tree.training_sample_count->load();

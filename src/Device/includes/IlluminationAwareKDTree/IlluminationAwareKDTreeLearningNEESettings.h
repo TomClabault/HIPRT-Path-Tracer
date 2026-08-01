@@ -20,7 +20,7 @@ struct IlluminationAwareKDTreeLearningNEESettings
 	float local_evidence_scale = 256.0f;
 
 	// Each child treats the parent's second-moment estimate as if it had received this many local observations per slot.
-	float inherited_pseudo_count = 8.0f;
+	unsigned int inherited_pseudo_count = 8;
 
 	// Prevents the persistent count from becoming so large that the model can no longer adapt.
 	float maximum_effective_count = 4096.0f;
