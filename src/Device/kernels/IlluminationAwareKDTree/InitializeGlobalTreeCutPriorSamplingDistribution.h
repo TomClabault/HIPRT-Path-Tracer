@@ -39,7 +39,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 			continue;
 
 		valid_node_count++;
-		total_power += hippt::max(light_tree_sg.nodes[node_index].total_power, 0.0f);
+		total_power += hippt::max(light_tree_sg.nodes[node_index].get_total_power(), 0.0f);
 	}
 
 	float uniform_probability	  = valid_node_count > 0 ? 1.0f / static_cast<float>(valid_node_count) : 0.0f;
@@ -51,7 +51,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 		float probability		= 0.0f;
 		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		{
-			float power				= hippt::max(light_tree_sg.nodes[node_index].total_power, 0.0f);
+			float power				= hippt::max(light_tree_sg.nodes[node_index].get_total_power(), 0.0f);
 			float power_probability = total_power > 0.0f ? power / total_power : uniform_probability;
 			probability				= power_probability;
 			valid_slot_count++;
@@ -87,7 +87,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 	bool valid_slot					 = tree_cut_node_index != invalid_node_index;
 	float power						 = 0.0f;
 	if (valid_slot)
-		power = hippt::max(light_tree_sg.nodes[tree_cut_node_index].total_power, 0.0f);
+		power = hippt::max(light_tree_sg.nodes[tree_cut_node_index].get_total_power(), 0.0f);
 
 	unsigned int valid_node_count = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(valid_slot ? 1u : 0u);
 	float total_power			  = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(power);

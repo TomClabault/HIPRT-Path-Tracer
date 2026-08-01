@@ -181,17 +181,21 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	// Total number of nodes * tree cut node, to reset everything, not just active nodes as 'distribution_slot_count' represents
 	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_nodes.size() * tree_cut_size;
 
-	void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
-		256, 1, all_distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
+	if (m_renderer->get_render_data().render_settings.sample_number == 0)
+	{
+		void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
+			256, 1, all_distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
 
-	void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
-		IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
+		void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
+		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
 
-	void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
-	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
-		256, 1, tree_cut_size, 1, root_distribution_launch_args, m_renderer->get_main_stream());
+		void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+			256, 1, tree_cut_size, 1, root_distribution_launch_args, m_renderer->get_main_stream());
+	}
+
 	unsigned int reset_thread_count = std::max(active_node_count, distribution_slot_count);
 	void* launch_args[]				= { &illumination_aware_kd_tree, &tree_cut_size };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
@@ -268,6 +272,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
 		// Number of guiding nodes before the splitting
 		m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+		if (m_cached_current_guiding_node_count == 0)
+			// Should never happen we should at least have the root node
+			Debug::debugbreak();
 		// TODO same here download async
 		m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
 		void* promotion_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg.settings.tree_cut_size, &m_cached_current_guiding_node_count };

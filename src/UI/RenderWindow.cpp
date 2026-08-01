@@ -27,6 +27,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove NEE++ RR impl
 //
 // TODO Illumination aware KD tree
+//		- How to use the basic light tree as the very first SPP instead of the shit prior and then start learning distributions from that base light tree? We
+//		would somehow to recover the corresponding tree cut node + probability so that we can create a NEESampleRecord from that
 //		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
 //		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes
 //		- Instead of having a normal-coherence-dependent prior distribution defensive usage, can we just have different distributions per normal binning in a

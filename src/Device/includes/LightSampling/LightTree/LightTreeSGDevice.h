@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H
 
+#include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
 #include "Device/includes/PathGuiding/VMF.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
@@ -21,6 +22,12 @@ struct SpatialSGLobeDevice
 
 struct LightTreeSGNodeDevice
 {
+	HIPRT_DEVICE float get_total_power() const
+	{
+		// total_power stores the SG amplitude used during importance evaluation. Undo its baked-in normalization when an actual conserved power is needed.
+		return total_power * SG_integral(vmf.sharpness);
+	}
+
 	HIPRT_DEVICE float get_energy_average() const
 	{
 		// Returns the raw (non-SG-divided) average power, matching the scale of energy_variance
