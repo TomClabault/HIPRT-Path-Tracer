@@ -511,7 +511,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 	LightSampleArray<1> sampled_lights = sample_one_emissive_triangle_light_tree_sg_learnt_distributions(
 		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
 		closest_hit_info.primitive_index, random_number_generator, guided_sample);
-	if (sampled_lights[0].pdf == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)
+
+	bool valid_learnt_distribution_sample = sampled_lights[0].pdf != IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
+	if (!valid_learnt_distribution_sample)
 		// No light distribution available at that point, falling back to usual SG tree sampling
 		sampled_lights = sample_one_emissive_triangle_light_tree_sg(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																	closest_hit_info.geometric_normal, ray_payload.material, closest_hit_info.primitive_index,
@@ -656,12 +658,15 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 			}
 		}
 
-		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
+		if (valid_learnt_distribution_sample)
+		{
+			render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
 
-		IlluminationAwareKDTreeNEEDistributionTrainingRecord nee_training_record =
-			render_data.illumination_aware_kd_tree.nee_learnt_distributions.make_nee_distribution_training_record(
-				guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
-		render_data.illumination_aware_kd_tree.nee_learnt_distributions.append_nee_distribution_training_record(nee_training_record);
+			IlluminationAwareKDTreeNEEDistributionTrainingRecord nee_training_record =
+				render_data.illumination_aware_kd_tree.nee_learnt_distributions.make_nee_distribution_training_record(
+					guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
+			render_data.illumination_aware_kd_tree.nee_learnt_distributions.append_nee_distribution_training_record(nee_training_record);
+		}
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
