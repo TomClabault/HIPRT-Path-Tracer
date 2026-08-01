@@ -93,11 +93,14 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		illumination_aware_kd_tree.active_guiding_nodes[active_guiding_output_index] = right_child_index;
 	}
 
+	// We want thread 0 writes to be visible
+	__syncthreads();
+
 	// Now we can finally use all the threads of the thread block correctly to copy the parent's distribution into the left and right child distribution
 	IlluminationAwareKDTreeNEELearntDistributions& nee_learnt_distributions = illumination_aware_kd_tree.nee_learnt_distributions;
 
 	unsigned int parent_distribution_offset		 = nee_learnt_distributions.get_tree_cut_offset(parent_distribution_index, tree_cut_size);
-	unsigned int left_child_distribution_offset	 = nee_learnt_distributions.get_tree_cut_offset(left_child.guiding_distribution_index, tree_cut_size);
+	unsigned int left_child_distribution_offset	 = parent_distribution_offset;
 	unsigned int right_child_distribution_offset = nee_learnt_distributions.get_tree_cut_offset(right_child.guiding_distribution_index, tree_cut_size);
 
 	if (threadIdx.x == 0)
