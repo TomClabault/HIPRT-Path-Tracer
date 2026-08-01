@@ -143,7 +143,8 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		IlluminationAwareKDTreeDevice device;
 
-		device.user_settings = render_data.illumination_aware_kd_tree.user_settings;
+		device.user_settings								  = render_data.illumination_aware_kd_tree.user_settings;
+		device.nee_learnt_distributions.learning_nee_settings = render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
 
 		device.nodes		 = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
 		device.node_bounds	 = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
