@@ -512,12 +512,30 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
 		closest_hit_info.primitive_index, random_number_generator, guided_sample);
 
-	bool valid_learnt_distribution_sample = sampled_lights[0].pdf != IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
+	bool valid_learnt_distribution_sample	= sampled_lights[0].pdf != IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
+	const bool debug_illumination_aware_nee = render_data.render_settings.sample_number == 0 && ray_payload.bounce == 0 &&
+											  hippt::is_pixel_index(554, render_data.render_settings.render_resolution.y - 1 - 487);
+
+	if (debug_illumination_aware_nee)
+	{
+		printf("[DEBUG-IAKD-7F31] shader-stage=learnt-sample sample=%u bounce=%d valid=%d cut_slot=%u cut_node=%u cut_probability=%.9g "
+			   "triangle=%d conditional_triangle_pdf=%.9g position=(%.9g,%.9g,%.9g)\n",
+			   render_data.render_settings.sample_number, ray_payload.bounce, int(valid_learnt_distribution_sample), guided_sample.cut_slot,
+			   guided_sample.light_tree_node_index, guided_sample.probability, sampled_lights[0].emissive_triangle_global_index, sampled_lights[0].pdf,
+			   closest_hit_info.inter_point.x, closest_hit_info.inter_point.y, closest_hit_info.inter_point.z);
+	}
+
 	if (!valid_learnt_distribution_sample)
+	{
 		// No light distribution available at that point, falling back to usual SG tree sampling
 		sampled_lights = sample_one_emissive_triangle_light_tree_sg(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																	closest_hit_info.geometric_normal, ray_payload.material, closest_hit_info.primitive_index,
 																	random_number_generator);
+
+		if (debug_illumination_aware_nee)
+			printf("[DEBUG-IAKD-7F31] shader-stage=fallback-sample sample=%u triangle=%d conditional_triangle_pdf=%.9g\n",
+				   render_data.render_settings.sample_number, sampled_lights[0].emissive_triangle_global_index, sampled_lights[0].pdf);
+	}
 
 	LightSamplePointArray<1> light_samples;
 	light_samples[0] = sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction,
@@ -666,6 +684,14 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 				render_data.illumination_aware_kd_tree.nee_learnt_distributions.make_nee_distribution_training_record(
 					guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
 			render_data.illumination_aware_kd_tree.nee_learnt_distributions.append_nee_distribution_training_record(nee_training_record);
+		}
+
+		if (debug_illumination_aware_nee)
+		{
+			printf("[DEBUG-IAKD-7F31] shader-stage=nee-result sample=%u triangle=%d area_pdf=%.9g radiance=(%.9g,%.9g,%.9g) "
+				   "training_weight=%.9g\n",
+				   render_data.render_settings.sample_number, light_sample.emissive_triangle_global_index, light_sample.area_measure_pdf,
+				   full_local_nee_estimate.r, full_local_nee_estimate.g, full_local_nee_estimate.b, training_sample.radiance_weight);
 		}
 	}
 

@@ -174,12 +174,26 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	}
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
+	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
+	unsigned int tree_cut_size								 = light_tree_sg.settings.tree_cut_size;
+	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+	unsigned int distribution_slot_count					 = active_node_count * tree_cut_size;
+	// Total number of nodes * tree cut node, to reset everything, not just active nodes as 'distribution_slot_count' represents
+	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_nodes.size() * tree_cut_size;
 
-	unsigned int tree_cut_size			 = m_renderer->get_render_data().light_tree_sg.settings.tree_cut_size;
-	unsigned int active_node_count		 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
-	unsigned int distribution_slot_count = active_node_count * tree_cut_size;
-	unsigned int reset_thread_count		 = std::max(active_node_count, distribution_slot_count);
-	void* launch_args[]					 = { &illumination_aware_kd_tree, &tree_cut_size };
+	void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
+		256, 1, all_distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
+
+	void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+		IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
+
+	void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
+		256, 1, tree_cut_size, 1, root_distribution_launch_args, m_renderer->get_main_stream());
+	unsigned int reset_thread_count = std::max(active_node_count, distribution_slot_count);
+	void* launch_args[]				= { &illumination_aware_kd_tree, &tree_cut_size };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
 
@@ -205,9 +219,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	LightTreeSGDevice light_tree_sg							 = render_data.light_tree_sg;
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
-	void* launch_args[]										 = { &illumination_aware_kd_tree };
 
-	if (render_data.render_settings.sample_number == 0)
+	/*if (render_data.render_settings.sample_number == 0)
 	{
 		unsigned int tree_cut_size			   = light_tree_sg.settings.tree_cut_size;
 		unsigned int distribution_slot_count   = illumination_aware_kd_tree.node_capacity * tree_cut_size;
@@ -222,10 +235,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
 			256, 1, tree_cut_size, 1, root_distribution_launch_args, m_renderer->get_main_stream());
-	}
+	}*/
 
 	// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads and
 	// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
+	void* launch_args[] = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 		256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
