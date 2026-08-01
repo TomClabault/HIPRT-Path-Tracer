@@ -14,12 +14,12 @@
 #include <string>
 #include <vector>
 
+const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME = "Illumination-Aware KD-Tree Render Pass";
+
+const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID							 = "Reset Tree";
 const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID = "Reset Tree Cut Sampling Distributions";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID =
 	"Initialize Global Tree Cut Prior Sampling Distribution";
-
-const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME = "Illumination-Aware KD-Tree Render Pass";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID						 = "Reset Tree";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID =
 	"Initialize Root Tree Cut Sampling Distribution";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";

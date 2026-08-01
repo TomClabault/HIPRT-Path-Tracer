@@ -775,8 +775,10 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	for (unsigned int node_index = 0; node_index < m_render_data.illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
-	unsigned int tree_cut_size = m_render_data.light_tree_sg.settings.tree_cut_size;
-	IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.illumination_aware_kd_tree, tree_cut_size, 0);
+	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.tree_cut_size;
+	unsigned int distribution_slot_count = m_render_data.illumination_aware_kd_tree.node_capacity * tree_cut_size;
+	for (unsigned int reset_index = 0; reset_index < distribution_slot_count; reset_index++)
+		IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.illumination_aware_kd_tree, tree_cut_size, reset_index);
 #endif
 }
 
