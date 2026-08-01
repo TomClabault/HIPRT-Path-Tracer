@@ -6581,6 +6581,19 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 
 void ImGuiSettingsWindow::draw_debug_panel()
 {
+	// Putting that here so we don't have to always open the debug panel for auto sample to work
+	static bool display_only_sample				  = DisplayOnlySampleN;
+	static bool auto_sample_only_display_sample_N = true;
+	if (auto_sample_only_display_sample_N && display_only_sample)
+	{
+		int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
+
+		if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
+			m_render_window->set_render_dirty(true);
+
+		m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
+	}
+
 	if (!ImGui::CollapsingHeader("Debug"))
 		return;
 
@@ -6631,7 +6644,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::TreePop();
 	}
 
-	static bool display_only_sample = DisplayOnlySampleN;
 	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
 	{
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N,
@@ -6647,18 +6659,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
 			m_render_window->set_render_dirty(true);
 
-		static bool auto_sample = true;
 		ImGui::SameLine();
-		ImGui::Checkbox("Auto", &auto_sample);
-		if (auto_sample)
-		{
-			int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
-
-			if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
-				m_render_window->set_render_dirty(true);
-
-			m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
-		}
+		ImGui::Checkbox("Auto", &auto_sample_only_display_sample_N);
 	}
 
 	ImGui::TreePop();
