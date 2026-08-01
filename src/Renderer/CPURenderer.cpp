@@ -60,6 +60,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/RebuildActiveNEEDistributions.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
@@ -869,6 +870,10 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	for (unsigned int record_index = 0; record_index < nee_training_record_count; record_index++)
 		IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(illumination_aware_kd_tree, tree_cut_size, record_index);
+
+	unsigned int updated_active_guiding_node_count = illumination_aware_kd_tree.active_guiding_node_count->load();
+	for (unsigned int guiding_list_index = 0; guiding_list_index < updated_active_guiding_node_count; guiding_list_index++)
+		IlluminationAwareKDTree_RebuildActiveNEEDistributions(illumination_aware_kd_tree, tree_cut_size, updated_active_guiding_node_count, guiding_list_index);
 #endif
 }
 

@@ -25,6 +25,7 @@ public:
 	static const std::string EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID;
 	static const std::string REPLAY_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_NEE_DISTRIBUTION_TRAINING_RECORDS_KERNEL_ID;
+	static const std::string REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID;
 	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;
 	static const std::string MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID;
 	static const std::string PROMOTE_GUIDING_CELLS_KERNEL_ID;
