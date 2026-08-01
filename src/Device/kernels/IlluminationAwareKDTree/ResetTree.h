@@ -44,7 +44,9 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 		*illumination_aware_kd_tree.guiding_distribution_count = 1;
 		*illumination_aware_kd_tree.active_guiding_node_count  = 1;
 		illumination_aware_kd_tree.active_guiding_nodes[0]	   = 0;
-		*illumination_aware_kd_tree.training_sample_count	   = 0;
+
+		*illumination_aware_kd_tree.training_sample_count							   = 0;
+		*illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count = 0;
 
 		*illumination_aware_kd_tree.current_frontier_count = 0;
 		*illumination_aware_kd_tree.next_frontier_count	   = 0;

@@ -106,14 +106,9 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 
 	float learned_weight_sum = block_reduce<1024>(learned_weight);
 
-	__shared__ float shared_prior_mix;
-	if (slot == 0)
-	{
-		shared_prior_mix = 0.0f;
-		if (valid_distribution)
-			shared_prior_mix = nee_learnt_distributions.compute_global_prior_mix(distribution_index);
-	}
-	__syncthreads();
+	float shared_prior_mix = 0.0f;
+	if (valid_distribution)
+		shared_prior_mix = nee_learnt_distributions.compute_global_prior_mix(distribution_index);
 
 	float final_probability = 0.0f;
 	if (valid_distribution && valid_slot)

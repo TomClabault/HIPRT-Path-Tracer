@@ -4011,6 +4011,47 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				}
 			}
 
+			ImGui::SeparatorText("Learnt NEE distributions");
+			IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
+				render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
+
+			if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+			{
+				learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
+
+			if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+			{
+				learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
+
+			if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
+			{
+				learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
+
+			int inherited_pseudo_count = static_cast<int>(learning_nee_settings.inherited_pseudo_count);
+			if (ImGui::InputInt("Inherited pseudo-count", &inherited_pseudo_count))
+			{
+				inherited_pseudo_count						 = hippt::clamp(0, 2000000000, inherited_pseudo_count);
+				learning_nee_settings.inherited_pseudo_count = static_cast<unsigned int>(inherited_pseudo_count);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Effective observations inherited by each child distribution when a guiding cell is split.");
+
+			if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
+			{
+				learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",
 											   "- KD tree leaves outlines and lookaheads" };

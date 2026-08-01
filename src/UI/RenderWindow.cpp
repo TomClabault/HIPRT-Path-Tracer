@@ -22,6 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Remove ReSTIR DI impl
+// - Remove ReSTIR GI impl
+// - Remove NEE++ RR impl
+//
 // TODO Illumination aware KD tree
 //		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
 //		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes

@@ -29,7 +29,7 @@
 /**
  * Debug view for the illumination-aware KD-tree.
  */
-#define IlluminationAwareKDTreeDebugMode ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE
+#define IlluminationAwareKDTreeDebugMode ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 
