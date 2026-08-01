@@ -12,36 +12,31 @@
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using IlluminationAwareKDTreeDataHostInternal = GenericSoA<DataContainer, IlluminationAwareKDTreeNode, IlluminationAwareKDTreeNodeBounds>;
-
-enum IlluminationAwareKDTreeDataHostBuffers
-{
-	ILLUMINATION_AWARE_KD_TREE_NODES,
-	ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS
-};
-
-template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeDataHost
 {
 	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES = 100000;
 
 	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity, int new_tree_cut_size)
 	{
-		m_nodes_and_bounds.resize(new_node_capacity);
-
+		GenericSoAHelpers::resize<DataContainer>(m_nodes, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_node_bounds, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_node_count, 1);
+
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_nodes, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_needs_split, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_guiding_distribution_count, 1);
+
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_next_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_next_frontier_count, 1);
+
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, new_training_sample_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_nee_training_records, new_training_sample_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_nee_training_record_count, 1);
+
 		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
@@ -49,11 +44,13 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_cdfs, new_node_capacity * new_tree_cut_size);
+
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_sample_count, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_estimated_second_moment, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_second_moment_sum, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
+
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_pdfs, new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_cdfs, new_tree_cut_size);
 	}
@@ -68,8 +65,9 @@ struct IlluminationAwareKDTreeDataHost
 		if (maximum_size() == 0)
 			return false;
 
-		m_nodes_and_bounds.free();
-		m_node_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nodes		  = DataContainer<IlluminationAwareKDTreeNode>();
+		m_node_bounds = DataContainer<IlluminationAwareKDTreeNodeBounds>();
+		m_node_count  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
@@ -92,31 +90,34 @@ struct IlluminationAwareKDTreeDataHost
 		m_batch_spatial_moments	  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 		m_history_spatial_moments = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 
-		m_tree_cut_sampling_probabilities			   = DataContainer<float>();
-		m_tree_cut_sampling_cdfs					   = DataContainer<float>();
+		m_tree_cut_sampling_probabilities = DataContainer<float>();
+		m_tree_cut_sampling_cdfs		  = DataContainer<float>();
+
 		m_history_per_cell_sample_count				   = DataContainer<unsigned int>();
 		m_history_per_cut_node_estimated_second_moment = DataContainer<float>();
 		m_history_per_cut_node_sample_count			   = DataContainer<unsigned int>();
 		m_batch_per_cut_node_second_moment_sum		   = DataContainer<float>();
 		m_batch_per_cut_node_sample_count			   = DataContainer<unsigned int>();
-		m_tree_cut_sampling_prior_pdfs				   = DataContainer<float>();
-		m_tree_cut_sampling_prior_cdfs				   = DataContainer<float>();
+
+		m_tree_cut_sampling_prior_pdfs = DataContainer<float>();
+		m_tree_cut_sampling_prior_cdfs = DataContainer<float>();
 
 		return true;
 	}
 
 	std::size_t get_byte_size() const
 	{
-		return m_nodes_and_bounds.get_byte_size() + GenericSoAHelpers::get_byte_size(m_node_count) + GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) +
-			   GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) + GenericSoAHelpers::get_byte_size(m_needs_split) +
-			   GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) + GenericSoAHelpers::get_byte_size(m_current_frontier) +
-			   GenericSoAHelpers::get_byte_size(m_current_frontier_count) + GenericSoAHelpers::get_byte_size(m_next_frontier) +
-			   GenericSoAHelpers::get_byte_size(m_next_frontier_count) + GenericSoAHelpers::get_byte_size(m_training_samples) +
-			   GenericSoAHelpers::get_byte_size(m_training_sample_count) + GenericSoAHelpers::get_byte_size(m_nee_training_records) +
-			   GenericSoAHelpers::get_byte_size(m_nee_training_record_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
-			   GenericSoAHelpers::get_byte_size(m_history_signatures) + GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) +
-			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) +
-			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) + GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) +
+		return GenericSoAHelpers::get_byte_size(m_nodes) + GenericSoAHelpers::get_byte_size(m_node_bounds) + GenericSoAHelpers::get_byte_size(m_node_count) +
+			   GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) + GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) +
+			   GenericSoAHelpers::get_byte_size(m_needs_split) + GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) +
+			   GenericSoAHelpers::get_byte_size(m_current_frontier) + GenericSoAHelpers::get_byte_size(m_current_frontier_count) +
+			   GenericSoAHelpers::get_byte_size(m_next_frontier) + GenericSoAHelpers::get_byte_size(m_next_frontier_count) +
+			   GenericSoAHelpers::get_byte_size(m_training_samples) + GenericSoAHelpers::get_byte_size(m_training_sample_count) +
+			   GenericSoAHelpers::get_byte_size(m_nee_training_records) + GenericSoAHelpers::get_byte_size(m_nee_training_record_count) +
+			   GenericSoAHelpers::get_byte_size(m_batch_signatures) + GenericSoAHelpers::get_byte_size(m_history_signatures) +
+			   GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) + GenericSoAHelpers::get_byte_size(m_history_spatial_moments) +
+			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) +
 			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_estimated_second_moment) +
 			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_sample_count) +
 			   GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_second_moment_sum) + GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_sample_count) +
@@ -125,7 +126,7 @@ struct IlluminationAwareKDTreeDataHost
 
 	std::size_t maximum_size() const
 	{
-		return m_nodes_and_bounds.maximum_size();
+		return m_nodes.size();
 	}
 
 	IlluminationAwareKDTreeDevice to_device(HIPRTRenderData& render_data)
@@ -134,78 +135,53 @@ struct IlluminationAwareKDTreeDataHost
 
 		device.user_settings = render_data.illumination_aware_kd_tree.user_settings;
 
-		device.nodes				= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODES>();
-		device.node_bounds			= m_nodes_and_bounds.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_NODE_BOUNDS>();
-		device.node_capacity		= static_cast<unsigned int>(maximum_size());
-		device.active_guiding_nodes = m_active_guiding_nodes.data();
-		device.needs_split			= m_needs_split.data();
-		device.current_frontier		= m_current_frontier.data();
-		device.next_frontier		= m_next_frontier.data();
+		device.nodes		 = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
+		device.node_bounds	 = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
+		device.node_capacity = static_cast<unsigned int>(maximum_size());
 
-		if constexpr (std::is_same_v<DataContainer<GenericAtomicType<unsigned int, DataContainer>>, std::vector<std::atomic<unsigned int>>>)
-		{
-			device.active_guiding_node_count = m_active_guiding_node_count.data();
+		device.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
+		device.needs_split			= GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
+		device.current_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
+		device.next_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-			device.node_count				  = m_node_count.data();
-			device.current_frontier_count	  = m_current_frontier_count.data();
-			device.next_frontier_count		  = m_next_frontier_count.data();
-			device.guiding_distribution_count = m_guiding_distribution_count.data();
-		}
-		else
-		{
-			device.active_guiding_node_count = m_active_guiding_node_count.get_atomic_device_pointer();
+		device.active_guiding_node_count  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		device.node_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		device.current_frontier_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		device.next_frontier_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		device.guiding_distribution_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_guiding_distribution_count);
 
-			device.node_count				  = m_node_count.get_atomic_device_pointer();
-			device.current_frontier_count	  = m_current_frontier_count.get_atomic_device_pointer();
-			device.next_frontier_count		  = m_next_frontier_count.get_atomic_device_pointer();
-			device.guiding_distribution_count = m_guiding_distribution_count.get_atomic_device_pointer();
-		}
-		device.training_samples										 = m_training_samples.data();
+		device.training_samples										 = GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
 		device.training_sample_capacity								 = static_cast<unsigned int>(m_training_samples.size());
-		device.nee_learnt_distributions.nee_training_records		 = m_nee_training_records.data();
+		device.nee_learnt_distributions.nee_training_records		 = GenericSoAHelpers::get_buffer_data_ptr(m_nee_training_records);
 		device.nee_learnt_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_nee_training_records.size());
 
-		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
-			device.training_sample_count = m_training_sample_count.data();
-		else
-			device.training_sample_count = m_training_sample_count.get_atomic_device_pointer();
+		device.training_sample_count							  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
+		device.nee_learnt_distributions.nee_training_record_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_nee_training_record_count);
 
-		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
-			device.nee_learnt_distributions.nee_training_record_count = m_nee_training_record_count.data();
-		else
-			device.nee_learnt_distributions.nee_training_record_count = m_nee_training_record_count.get_atomic_device_pointer();
+		device.batch_signatures		   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
+		device.history_signatures	   = GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
+		device.batch_spatial_moments   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
+		device.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
 
-		device.batch_signatures		   = m_batch_signatures.data();
-		device.history_signatures	   = m_history_signatures.data();
-		device.batch_spatial_moments   = m_batch_spatial_moments.data();
-		device.history_spatial_moments = m_history_spatial_moments.data();
+		device.nee_learnt_distributions.tree_cut_sampling_probabilities = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_probabilities);
+		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_cdfs);
 
-		device.nee_learnt_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
-		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= m_tree_cut_sampling_cdfs.data();
-		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
-		{
-			device.nee_learnt_distributions.history_per_cell_sample_count				 = m_history_per_cell_sample_count.data();
-			device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment = m_history_per_cut_node_estimated_second_moment.data();
-			device.nee_learnt_distributions.history_per_cut_node_sample_count			 = m_history_per_cut_node_sample_count.data();
-			device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum		 = m_batch_per_cut_node_second_moment_sum.data();
-			device.nee_learnt_distributions.batch_per_cut_node_sample_count				 = m_batch_per_cut_node_sample_count.data();
-		}
-		else
-		{
-			device.nee_learnt_distributions.history_per_cell_sample_count = m_history_per_cell_sample_count.get_atomic_device_pointer();
-			device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment =
-				m_history_per_cut_node_estimated_second_moment.get_atomic_device_pointer();
-			device.nee_learnt_distributions.history_per_cut_node_sample_count	 = m_history_per_cut_node_sample_count.get_atomic_device_pointer();
-			device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum = m_batch_per_cut_node_second_moment_sum.get_atomic_device_pointer();
-			device.nee_learnt_distributions.batch_per_cut_node_sample_count		 = m_batch_per_cut_node_sample_count.get_atomic_device_pointer();
-		}
-		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs = m_tree_cut_sampling_prior_pdfs.data();
-		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs = m_tree_cut_sampling_prior_cdfs.data();
+		device.nee_learnt_distributions.history_per_cell_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_sample_count);
+		device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment =
+			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_estimated_second_moment);
+		device.nee_learnt_distributions.history_per_cut_node_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_sample_count);
+		device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum =
+			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_second_moment_sum);
+		device.nee_learnt_distributions.batch_per_cut_node_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_sample_count);
+
+		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_pdfs);
+		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_cdfs);
 
 		return device;
 	}
 
-	IlluminationAwareKDTreeDataHostInternal<DataContainer> m_nodes_and_bounds;
+	DataContainer<IlluminationAwareKDTreeNode> m_nodes;
+	DataContainer<IlluminationAwareKDTreeNodeBounds> m_node_bounds;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_node_count;
 
 	DataContainer<unsigned int> m_active_guiding_nodes;
@@ -231,6 +207,7 @@ struct IlluminationAwareKDTreeDataHost
 	// Buffers below that point are for learning NEE distributions per each guiding cell
 	DataContainer<float> m_tree_cut_sampling_probabilities;
 	DataContainer<float> m_tree_cut_sampling_cdfs;
+
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cell_sample_count;
 	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cut_node_estimated_second_moment;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cut_node_sample_count;

@@ -345,8 +345,8 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	float3_t scene_bounds_maximum				 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
 	void* launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(
-		256, 1, m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_nodes.size(), 1, launch_args,
+																							m_renderer->get_main_stream());
 
 	LightTreeSGDevice light_tree_sg		   = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size			   = light_tree_sg.settings.tree_cut_size;
@@ -379,7 +379,7 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
 {
-	return m_illumination_aware_kd_tree.m_nodes_and_bounds.maximum_size();
+	return m_illumination_aware_kd_tree.m_nodes.size();
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_count() const

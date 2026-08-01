@@ -41,6 +41,25 @@ namespace GenericSoAHelpers
 	{
 		return buffer.size() * sizeof(typename BufferContainer<T>::value_type);
 	}
+
+	template <typename Buffer>
+	auto* get_buffer_data_ptr(Buffer& buffer)
+	{
+		return buffer.data();
+	}
+
+	template <typename T, typename Allocator>
+	T* get_buffer_data_atomic_ptr(std::vector<T, Allocator>& buffer)
+	{
+		return buffer.data();
+	}
+
+	template <typename Buffer>
+	auto* get_buffer_data_atomic_ptr(Buffer& buffer)
+	{
+		// For the GPU, calling the 'get_atomic_device_pointer' of OrochiBuffer
+		return buffer.get_atomic_device_pointer();
+	}
 } // namespace GenericSoAHelpers
 
 /**
@@ -144,17 +163,13 @@ struct GenericSoA
 	template <int bufferIndex>
 	auto* get_buffer_data_ptr()
 	{
-		return std::get<bufferIndex>(buffers).data();
+		return GenericSoAHelpers::get_buffer_data_ptr(std::get<bufferIndex>(buffers));
 	}
 
 	template <int bufferIndex>
 	auto* get_buffer_data_atomic_ptr()
 	{
-		if constexpr (IsCPUBuffer::value)
-			return std::get<bufferIndex>(buffers).data();
-		else
-			// For the GPU, calling the 'get_atomic_device_pointer' of OrochiBuffer
-			return std::get<bufferIndex>(buffers).get_atomic_device_pointer();
+		return GenericSoAHelpers::get_buffer_data_atomic_ptr(std::get<bufferIndex>(buffers));
 	}
 
 	template <int bufferIndex>
