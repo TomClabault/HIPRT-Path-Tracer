@@ -125,10 +125,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 #endif
 	for (int slot_index = threadIdx.x; slot_index < tree_cut_size; slot_index += threads_per_block)
 	{
-		nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.learning_nee_settings.inherited_pseudo_count;
-		nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.learning_nee_settings.inherited_pseudo_count;
+		nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] = 1;
+		nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index]	 = 1;
 		hippt::atomic_exchange(
 			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
 			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));

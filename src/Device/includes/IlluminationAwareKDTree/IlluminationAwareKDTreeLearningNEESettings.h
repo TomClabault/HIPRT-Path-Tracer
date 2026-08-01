@@ -19,9 +19,6 @@ struct IlluminationAwareKDTreeLearningNEESettings
 	// Number of local observations required before the cell is considered well trained. This controls how quickly the global-prior mixture decreases.
 	float local_evidence_scale = 256.0f;
 
-	// Each child treats the parent's second-moment estimate as if it had received this many local observations per slot.
-	unsigned int inherited_pseudo_count = 8;
-
 	// Prevents the persistent count from becoming so large that the model can no longer adapt.
 	float maximum_effective_count = 4096.0f;
 };

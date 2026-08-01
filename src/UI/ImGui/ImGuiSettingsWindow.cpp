@@ -4011,6 +4011,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				}
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Learnt NEE distributions");
 			IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
 				render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
@@ -4035,15 +4036,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
-
-			int inherited_pseudo_count = static_cast<int>(learning_nee_settings.inherited_pseudo_count);
-			if (ImGui::InputInt("Inherited pseudo-count", &inherited_pseudo_count))
-			{
-				inherited_pseudo_count						 = hippt::clamp(0, 2000000000, inherited_pseudo_count);
-				learning_nee_settings.inherited_pseudo_count = static_cast<unsigned int>(inherited_pseudo_count);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Effective observations inherited by each child distribution when a guiding cell is split.");
 
 			if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
 			{
