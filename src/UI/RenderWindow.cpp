@@ -34,7 +34,7 @@ extern ImGuiLogger g_imgui_logger;
 //		- When to stop splitting the tree?
 //		- Possible to use non-axis aligned splits?
 //		- For the learnt distributions, can we update trees cuts per each cell by subdividing nodes of the tree cut that accumulate all the probability mass and
-// merging nodes that have very little mass
+//		merging nodes that have very little mass
 //		- Can we not use doubles in should split mean radiance and still get away with it?
 //
 // TODO SG Light tree

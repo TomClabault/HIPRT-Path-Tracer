@@ -40,7 +40,7 @@ inline void __syncwarp(unsigned int mask) {}
 
 struct dummyVec3
 {
-	int x, y, z;
+	int x = 0, y = 0, z = 0;
 };
 
 static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;

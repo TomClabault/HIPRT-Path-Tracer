@@ -163,7 +163,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int reset_thread_count		 = std::max(active_node_count, distribution_slot_count);
 	void* launch_args[]					 = { &illumination_aware_kd_tree, &tree_cut_size };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		256, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
+		1024, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
 
 	return render_data_invalidated;
 }
@@ -185,13 +185,13 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		// Not doing any work if the tree is frozen
 		return;
 
+	LightTreeSGDevice light_tree_sg							 = render_data.light_tree_sg;
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
 
 	if (render_data.render_settings.sample_number == 0)
 	{
-		LightTreeSGDevice light_tree_sg = render_data.light_tree_sg;
-		unsigned int tree_cut_size		= light_tree_sg.settings.tree_cut_size;
+		unsigned int tree_cut_size = light_tree_sg.settings.tree_cut_size;
 		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
 		{
 			void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
@@ -228,12 +228,17 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
 		// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
+		// Number of guiding nodes before the splitting
 		m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
 		// TODO same here download async
 		m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
-		void* promotion_launch_args[] = { &illumination_aware_kd_tree, &m_cached_current_guiding_node_count };
+		void* promotion_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg.settings.tree_cut_size, &m_cached_current_guiding_node_count };
+		// We launch blocks of 1024 threads here, and as many blocks as needed to cover all the guiding nodes that need to be promoted. This is because each
+		// thread block will be in charge of one cell to copy NEE guiding distributions from the parent to the 2 new children
+		//
+		// TODO we could be launching only number of blocks = nodes that have been marked for splitting instead of all the guiding nodes
 		m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, promotion_launch_args, m_renderer->get_main_stream());
+			1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
 	}
 }
 

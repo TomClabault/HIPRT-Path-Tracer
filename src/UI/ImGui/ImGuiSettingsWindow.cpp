@@ -3779,7 +3779,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 										"reservoir sampling. Changes require kernel recompilation.");
 
 		static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
-		ImGui::InputInt("Tree cut size", &current_tree_cut_size, 1, 16);
+		ImGui::InputInt("Tree cut size", &current_tree_cut_size);
+		// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
+		current_tree_cut_size = hippt::clamp(1, 1024, current_tree_cut_size);
+
 		ImGuiRenderer::show_help_marker(
 			"Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require rebuilding the light-tree data.");
 		if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())

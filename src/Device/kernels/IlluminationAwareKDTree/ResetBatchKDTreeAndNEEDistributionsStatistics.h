@@ -42,8 +42,8 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(Illuminati
 
 	if (reset_index < distribution_slot_count)
 	{
-		illumination_aware_kd_tree.nee_learnt_distributions.batch_second_moment_sum[reset_index] = 0.0f;
-		illumination_aware_kd_tree.nee_learnt_distributions.batch_sample_count[reset_index]		 = 0;
+		illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_second_moment_sum[reset_index] = 0.0f;
+		illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_sample_count[reset_index]	  = 0;
 	}
 }
 

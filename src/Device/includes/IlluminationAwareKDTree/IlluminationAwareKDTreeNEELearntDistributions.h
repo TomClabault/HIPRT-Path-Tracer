@@ -134,13 +134,15 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 	float* tree_cut_sampling_probabilities = nullptr;
 	float* tree_cut_sampling_cdfs		   = nullptr;
 
+	// For each guiding cell (no cut node here), how many samples have been accumulated in that cell, accross all cut nodes
+	unsigned int* history_per_cell_sample_count = nullptr;
 	// For each cut node * guiding cell, the history of all observed second moments of the NEE estimator + how many samples have been observed.
-	float* estimated_second_moment = nullptr;
-	float* effective_sample_count  = nullptr;
+	float* history_per_cut_node_estimated_second_moment = nullptr;
+	unsigned int* history_per_cut_node_sample_count		= nullptr;
 	// For each cut node * guiding cell, the sum of all observed second moments of the NEE estimator and how many samples have been observed in the current
 	// batch (current SPP)
-	float* batch_second_moment_sum	 = nullptr;
-	unsigned int* batch_sample_count = nullptr;
+	float* batch_per_cut_node_second_moment_sum	  = nullptr;
+	unsigned int* batch_per_cut_node_sample_count = nullptr;
 
 	// Global prior distribution for sampling the tree cut nodes.
 	float* tree_cut_sampling_prior_pdfs = nullptr;

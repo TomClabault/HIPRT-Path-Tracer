@@ -49,10 +49,11 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_cdfs, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_estimated_second_moment, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_effective_sample_count, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_second_moment_sum, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_sample_count, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_sample_count, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_estimated_second_moment, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_second_moment_sum, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_pdfs, new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_cdfs, new_tree_cut_size);
 
@@ -70,31 +71,38 @@ struct IlluminationAwareKDTreeDataHost
 			return false;
 
 		m_nodes_and_bounds.free();
-		m_node_count					  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_active_guiding_nodes			  = DataContainer<unsigned int>();
-		m_active_guiding_node_count		  = DataContainer<unsigned int>();
-		m_needs_split					  = DataContainer<uint8_t>();
-		m_guiding_distribution_count	  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_current_frontier				  = DataContainer<unsigned int>();
-		m_current_frontier_count		  = DataContainer<unsigned int>();
-		m_next_frontier					  = DataContainer<unsigned int>();
-		m_next_frontier_count			  = DataContainer<unsigned int>();
-		m_training_samples				  = DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
-		m_training_sample_count			  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_nee_training_records			  = DataContainer<IlluminationAwareKDTreeNEEDistributionTrainingRecord>();
-		m_nee_training_record_count		  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_batch_signatures				  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
-		m_history_signatures			  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
-		m_batch_spatial_moments			  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
-		m_history_spatial_moments		  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
-		m_tree_cut_sampling_probabilities = DataContainer<float>();
-		m_tree_cut_sampling_cdfs		  = DataContainer<float>();
-		m_estimated_second_moment		  = DataContainer<float>();
-		m_effective_sample_count		  = DataContainer<float>();
-		m_batch_second_moment_sum		  = DataContainer<float>();
-		m_batch_sample_count			  = DataContainer<unsigned int>();
-		m_tree_cut_sampling_prior_pdfs	  = DataContainer<float>();
-		m_tree_cut_sampling_prior_cdfs	  = DataContainer<float>();
+		m_node_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+
+		m_active_guiding_nodes		= DataContainer<unsigned int>();
+		m_active_guiding_node_count = DataContainer<unsigned int>();
+
+		m_needs_split				 = DataContainer<uint8_t>();
+		m_guiding_distribution_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+
+		m_current_frontier		 = DataContainer<unsigned int>();
+		m_current_frontier_count = DataContainer<unsigned int>();
+		m_next_frontier			 = DataContainer<unsigned int>();
+		m_next_frontier_count	 = DataContainer<unsigned int>();
+
+		m_training_samples			= DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
+		m_training_sample_count		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nee_training_records		= DataContainer<IlluminationAwareKDTreeNEEDistributionTrainingRecord>();
+		m_nee_training_record_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+
+		m_batch_signatures		  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
+		m_history_signatures	  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
+		m_batch_spatial_moments	  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
+		m_history_spatial_moments = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
+
+		m_tree_cut_sampling_probabilities			   = DataContainer<float>();
+		m_tree_cut_sampling_cdfs					   = DataContainer<float>();
+		m_history_per_cell_sample_count				   = DataContainer<unsigned int>();
+		m_history_per_cut_node_estimated_second_moment = DataContainer<float>();
+		m_history_per_cut_node_sample_count			   = DataContainer<unsigned int>();
+		m_batch_per_cut_node_second_moment_sum		   = DataContainer<float>();
+		m_batch_per_cut_node_sample_count			   = DataContainer<unsigned int>();
+		m_tree_cut_sampling_prior_pdfs				   = DataContainer<float>();
+		m_tree_cut_sampling_prior_cdfs				   = DataContainer<float>();
 
 		return true;
 	}
@@ -110,10 +118,11 @@ struct IlluminationAwareKDTreeDataHost
 			   GenericSoAHelpers::get_byte_size(m_nee_training_record_count) + GenericSoAHelpers::get_byte_size(m_batch_signatures) +
 			   GenericSoAHelpers::get_byte_size(m_history_signatures) + GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) +
 			   GenericSoAHelpers::get_byte_size(m_history_spatial_moments) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) +
-			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) + GenericSoAHelpers::get_byte_size(m_estimated_second_moment) +
-			   GenericSoAHelpers::get_byte_size(m_effective_sample_count) + GenericSoAHelpers::get_byte_size(m_batch_second_moment_sum) +
-			   GenericSoAHelpers::get_byte_size(m_batch_sample_count) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_pdfs) +
-			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_cdfs);
+			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) + GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_estimated_second_moment) +
+			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_sample_count) +
+			   GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_second_moment_sum) + GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_sample_count) +
+			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_pdfs) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_cdfs);
 	}
 
 	std::size_t maximum_size() const
@@ -153,9 +162,9 @@ struct IlluminationAwareKDTreeDataHost
 			device.next_frontier_count		  = m_next_frontier_count.get_atomic_device_pointer();
 			device.guiding_distribution_count = m_guiding_distribution_count.get_atomic_device_pointer();
 		}
-		device.training_samples										= m_training_samples.data();
-		device.training_sample_capacity								= static_cast<unsigned int>(m_training_samples.size());
-		device.nee_learnt_distributions.nee_training_records			= m_nee_training_records.data();
+		device.training_samples										 = m_training_samples.data();
+		device.training_sample_capacity								 = static_cast<unsigned int>(m_training_samples.size());
+		device.nee_learnt_distributions.nee_training_records		 = m_nee_training_records.data();
 		device.nee_learnt_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_nee_training_records.size());
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
@@ -173,14 +182,15 @@ struct IlluminationAwareKDTreeDataHost
 		device.batch_spatial_moments   = m_batch_spatial_moments.data();
 		device.history_spatial_moments = m_history_spatial_moments.data();
 
-		device.nee_learnt_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
-		device.nee_learnt_distributions.tree_cut_sampling_cdfs		   = m_tree_cut_sampling_cdfs.data();
-		device.nee_learnt_distributions.estimated_second_moment		   = m_estimated_second_moment.data();
-		device.nee_learnt_distributions.effective_sample_count		   = m_effective_sample_count.data();
-		device.nee_learnt_distributions.batch_second_moment_sum		   = m_batch_second_moment_sum.data();
-		device.nee_learnt_distributions.batch_sample_count			   = m_batch_sample_count.data();
-		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs	   = m_tree_cut_sampling_prior_pdfs.data();
-		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs	   = m_tree_cut_sampling_prior_cdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_probabilities				 = m_tree_cut_sampling_probabilities.data();
+		device.nee_learnt_distributions.tree_cut_sampling_cdfs						 = m_tree_cut_sampling_cdfs.data();
+		device.nee_learnt_distributions.history_per_cell_sample_count				 = m_history_per_cell_sample_count.data();
+		device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment = m_history_per_cut_node_estimated_second_moment.data();
+		device.nee_learnt_distributions.history_per_cut_node_sample_count			 = m_history_per_cut_node_sample_count.data();
+		device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum		 = m_batch_per_cut_node_second_moment_sum.data();
+		device.nee_learnt_distributions.batch_per_cut_node_sample_count				 = m_batch_per_cut_node_sample_count.data();
+		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs				 = m_tree_cut_sampling_prior_pdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs				 = m_tree_cut_sampling_prior_cdfs.data();
 
 		return device;
 	}
@@ -211,10 +221,11 @@ struct IlluminationAwareKDTreeDataHost
 	// Buffers below that point are for learning NEE distributions per each guiding cell
 	DataContainer<float> m_tree_cut_sampling_probabilities;
 	DataContainer<float> m_tree_cut_sampling_cdfs;
-	DataContainer<float> m_estimated_second_moment;
-	DataContainer<float> m_effective_sample_count;
-	DataContainer<float> m_batch_second_moment_sum;
-	DataContainer<unsigned int> m_batch_sample_count;
+	DataContainer<unsigned int> m_history_per_cell_sample_count;
+	DataContainer<float> m_history_per_cut_node_estimated_second_moment;
+	DataContainer<unsigned int> m_history_per_cut_node_sample_count;
+	DataContainer<float> m_batch_per_cut_node_second_moment_sum;
+	DataContainer<unsigned int> m_batch_per_cut_node_sample_count;
 
 	DataContainer<float> m_tree_cut_sampling_prior_pdfs;
 	DataContainer<float> m_tree_cut_sampling_prior_cdfs;
