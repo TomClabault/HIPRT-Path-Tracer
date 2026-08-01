@@ -50,6 +50,7 @@
 #include "Device/kernels/ReSTIR/PG/Splatting.h"
 
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
+#include "Device/kernels/IlluminationAwareKDTree/AccumulateNEEDistributionTrainingRecords.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
@@ -860,6 +861,14 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
 		IlluminationAwareKDTree_PromoteGuidingCells(illumination_aware_kd_tree, m_light_tree_builder_sg.get_tree_cut_size(), active_guiding_node_count,
 													guiding_list_index);
+
+	unsigned int tree_cut_size			   = m_render_data.light_tree_sg.settings.tree_cut_size;
+	unsigned int nee_training_record_count = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count->load();
+	if (nee_training_record_count > illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity)
+		nee_training_record_count = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity;
+
+	for (unsigned int record_index = 0; record_index < nee_training_record_count; record_index++)
+		IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(illumination_aware_kd_tree, tree_cut_size, record_index);
 #endif
 }
 

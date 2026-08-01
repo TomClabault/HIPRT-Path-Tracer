@@ -180,15 +180,27 @@ struct IlluminationAwareKDTreeDataHost
 		device.batch_spatial_moments   = m_batch_spatial_moments.data();
 		device.history_spatial_moments = m_history_spatial_moments.data();
 
-		device.nee_learnt_distributions.tree_cut_sampling_probabilities				 = m_tree_cut_sampling_probabilities.data();
-		device.nee_learnt_distributions.tree_cut_sampling_cdfs						 = m_tree_cut_sampling_cdfs.data();
-		device.nee_learnt_distributions.history_per_cell_sample_count				 = m_history_per_cell_sample_count.data();
-		device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment = m_history_per_cut_node_estimated_second_moment.data();
-		device.nee_learnt_distributions.history_per_cut_node_sample_count			 = m_history_per_cut_node_sample_count.data();
-		device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum		 = m_batch_per_cut_node_second_moment_sum.data();
-		device.nee_learnt_distributions.batch_per_cut_node_sample_count				 = m_batch_per_cut_node_sample_count.data();
-		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs				 = m_tree_cut_sampling_prior_pdfs.data();
-		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs				 = m_tree_cut_sampling_prior_cdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_probabilities = m_tree_cut_sampling_probabilities.data();
+		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= m_tree_cut_sampling_cdfs.data();
+		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
+		{
+			device.nee_learnt_distributions.history_per_cell_sample_count				 = m_history_per_cell_sample_count.data();
+			device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment = m_history_per_cut_node_estimated_second_moment.data();
+			device.nee_learnt_distributions.history_per_cut_node_sample_count			 = m_history_per_cut_node_sample_count.data();
+			device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum		 = m_batch_per_cut_node_second_moment_sum.data();
+			device.nee_learnt_distributions.batch_per_cut_node_sample_count				 = m_batch_per_cut_node_sample_count.data();
+		}
+		else
+		{
+			device.nee_learnt_distributions.history_per_cell_sample_count = m_history_per_cell_sample_count.get_atomic_device_pointer();
+			device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment =
+				m_history_per_cut_node_estimated_second_moment.get_atomic_device_pointer();
+			device.nee_learnt_distributions.history_per_cut_node_sample_count	 = m_history_per_cut_node_sample_count.get_atomic_device_pointer();
+			device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum = m_batch_per_cut_node_second_moment_sum.get_atomic_device_pointer();
+			device.nee_learnt_distributions.batch_per_cut_node_sample_count		 = m_batch_per_cut_node_sample_count.get_atomic_device_pointer();
+		}
+		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs = m_tree_cut_sampling_prior_pdfs.data();
+		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs = m_tree_cut_sampling_prior_cdfs.data();
 
 		return device;
 	}
@@ -219,11 +231,11 @@ struct IlluminationAwareKDTreeDataHost
 	// Buffers below that point are for learning NEE distributions per each guiding cell
 	DataContainer<float> m_tree_cut_sampling_probabilities;
 	DataContainer<float> m_tree_cut_sampling_cdfs;
-	DataContainer<unsigned int> m_history_per_cell_sample_count;
-	DataContainer<float> m_history_per_cut_node_estimated_second_moment;
-	DataContainer<unsigned int> m_history_per_cut_node_sample_count;
-	DataContainer<float> m_batch_per_cut_node_second_moment_sum;
-	DataContainer<unsigned int> m_batch_per_cut_node_sample_count;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cell_sample_count;
+	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cut_node_estimated_second_moment;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cut_node_sample_count;
+	DataContainer<GenericAtomicType<float, DataContainer>> m_batch_per_cut_node_second_moment_sum;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_batch_per_cut_node_sample_count;
 
 	DataContainer<float> m_tree_cut_sampling_prior_pdfs;
 	DataContainer<float> m_tree_cut_sampling_prior_cdfs;

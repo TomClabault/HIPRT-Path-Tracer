@@ -121,10 +121,12 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 			nee_learnt_distributions.learning_nee_settings.inherited_pseudo_count;
 		nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index] =
 			nee_learnt_distributions.learning_nee_settings.inherited_pseudo_count;
-		nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index];
+		hippt::atomic_exchange(
+			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
+			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
+		hippt::atomic_exchange(
+			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index],
+			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
 
 		nee_learnt_distributions.tree_cut_sampling_probabilities[right_child_distribution_offset + slot_index] =
 			nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];

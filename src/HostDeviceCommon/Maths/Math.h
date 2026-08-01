@@ -1620,12 +1620,12 @@ namespace hippt
 	}
 
 	/**
-	 * Reads the 32-bit or 64-bit word old located at the address 'address'
+	 * Reads the 32-bit or 64-bit word 'old' located at the address 'address'
 	 * in global or shared memory and stores 'value' to memory at the same address.
 	 *
 	 * These two operations are performed in one atomic transaction.
 	 *
-	 * The function returns old.
+	 * The function returns 'old'.
 	 */
 	template <typename T>
 	T atomic_exchange(std::atomic<T>* address, T value)
