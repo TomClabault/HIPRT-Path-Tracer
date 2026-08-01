@@ -122,6 +122,31 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 		return record;
 	}
 
+	/**
+	 * From the existing estimate of second moment and the number of samples that have been accumulated for that estimate (in a given guiding cell * cut node),
+	 * update the estimate with a new batch of samples and the result is returned in the same variables. The effective count is clamped to a maximum value to
+	 * prevent the estimate from becoming too rigid and unable to adapt
+	 */
+	HIPRT_DEVICE void update_cell_cut_node_second_moment_estimate(float& in_out_estimate,
+																  float& in_out_effective_count,
+																  float batch_sum,
+																  unsigned int batch_count)
+	{
+		// No samples selected this cut slot during the current batch.
+		if (batch_count == 0)
+			return;
+
+		float old_count		 = hippt::min(in_out_effective_count, learning_nee_settings.maximum_effective_count);
+		float incoming_count = static_cast<float>(batch_count);
+		float denominator	 = old_count + incoming_count;
+
+		if (!(denominator > 0.0f))
+			return;
+
+		in_out_estimate		   = (old_count * in_out_estimate + batch_sum) / denominator;
+		in_out_effective_count = hippt::min(denominator, learning_nee_settings.maximum_effective_count);
+	}
+
 	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
 
 	// NEE samples gathered during path tracing used for training distributions

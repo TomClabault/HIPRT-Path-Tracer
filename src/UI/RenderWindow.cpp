@@ -25,6 +25,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Illumination aware KD tree
 //		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
 //		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes
+//		- Instead of having a normal-coherence-dependent prior distribution defensive usage, can we just have different distributions per normal binning in a
+//		given guiding cell?
 //		- How to subdivide more where illumination changes a lot but keep a low subdivision where illumination is very uniform? How to replace the global
 //		threshold basically by 2 thresholds
 //		- Use CDFDevice16 for learnt distributions to save memory and bandwidth
