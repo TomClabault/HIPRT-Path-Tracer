@@ -537,10 +537,12 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
-																				  material_specular_weight * material.roughness / specular_lobes_sum);
-	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-							   material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
+																		 material_specular_weight * material.roughness) /
+																			specular_lobes_sum);
+	float sg_anisotropy =
+		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
+		specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -905,10 +907,12 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
-																				  material_specular_weight * material.roughness / specular_lobes_sum);
-	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-							   material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
+																		 material_specular_weight * material.roughness) /
+																			specular_lobes_sum);
+	float sg_anisotropy =
+		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
+		specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1244,10 +1248,12 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
-																				  material_specular_weight * material.roughness / specular_lobes_sum);
-	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-							   material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
+																		 material_specular_weight * material.roughness) /
+																			specular_lobes_sum);
+	float sg_anisotropy =
+		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
+		specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
@@ -1376,10 +1382,12 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness		 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
-																				  material_specular_weight * material.roughness / specular_lobes_sum);
-	float sg_anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-							   material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
+																		 material_specular_weight * material.roughness) /
+																			specular_lobes_sum);
+	float sg_anisotropy =
+		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
+		specular_lobes_sum;
 
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);

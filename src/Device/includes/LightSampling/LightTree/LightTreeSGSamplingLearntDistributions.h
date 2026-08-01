@@ -79,10 +79,11 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 
 	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 	float specular			 = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float roughness			 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, material.coat * material.coat_roughness + material.metallic * material.roughness +
-																				  material_specular_weight * material.roughness / specular_lobes_sum);
-	float anisotropy		 = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy +
-					   material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float roughness	 = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
+																	   material_specular_weight * material.roughness) /
+																		  specular_lobes_sum);
+	float anisotropy = (material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
+					   specular_lobes_sum;
 
 	float alpha_x;
 	float alpha_y;
