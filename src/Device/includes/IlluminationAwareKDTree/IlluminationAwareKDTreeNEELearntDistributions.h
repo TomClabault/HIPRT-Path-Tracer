@@ -147,6 +147,36 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 		in_out_effective_count = hippt::min(denominator, learning_nee_settings.maximum_effective_count);
 	}
 
+	HIPRT_DEVICE float compute_global_prior_mix(unsigned int distribution_index)
+	{
+		unsigned int normal_count = history_per_cell_normal_count[distribution_index];
+
+		float normal_coherence = 0.0f;
+		if (normal_count > 0)
+		{
+			float3_t normal_sum = make_float3(history_per_cell_normal_sum_x[distribution_index], history_per_cell_normal_sum_y[distribution_index],
+											  history_per_cell_normal_sum_z[distribution_index]);
+
+			// Normal coherence is just the length of the average normal vector, which is 1 for perfectly aligned normals and 0 for incoherent normals.
+			normal_coherence = hippt::length(normal_sum) / static_cast<float>(normal_count);
+			normal_coherence = hippt::clamp(0.0f, 1.0f, normal_coherence);
+		}
+
+		float local_sample_count = static_cast<float>(history_per_cell_sample_count[distribution_index]);
+
+		// Starts near zero and approaches one as sample count for that guiding distribution accumulates.
+		float guiding_distribution_confidence = local_sample_count / (local_sample_count + learning_nee_settings.local_evidence_scale);
+
+		// Strong specialization requires both enough evidence and compatible surface orientations. Strong specialization means that we're going to trust the
+		// NEE learnt distribution of that cell a lot for all shading points that fall into that cell. We have low specialization confidence when normals are
+		// incoherent for example, meaning that using the learnt distribution for all shading points of the cell may not be a good idea because shading points
+		// are all quite different (low normal coherence)
+		float specialization_confidence = guiding_distribution_confidence * normal_coherence;
+
+		// Untrained or incoherent cells remain close to the conservative global prior. Well-trained coherent cells retain only a small exploration component.
+		return hippt::lerp(learning_nee_settings.maximum_global_prior_mix, learning_nee_settings.minimum_global_prior_mix, specialization_confidence);
+	}
+
 	IlluminationAwareKDTreeLearningNEESettings learning_nee_settings;
 
 	// NEE samples gathered during path tracing used for training distributions
