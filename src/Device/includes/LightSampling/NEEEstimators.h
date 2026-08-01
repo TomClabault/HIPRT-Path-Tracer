@@ -65,26 +65,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		// abs() here to allow backfacing light sources
 		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
 
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-		if (dot_light_source <= 0.0f && light_tree_debug_pixel())
-		{
-			const float point_pdf					 = 1.0f / light_sample.light_area;
-			const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
-			const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-			printf("[DI-RESULT] algo=SG light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
-				   "estimator_rgb=(0,0,0) "
-				   "estimator_lum=0\n",
-				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#else
-			printf("[DI-RESULT] algo=ATS light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
-				   "estimator_rgb=(0,0,0) "
-				   "estimator_lum=0\n",
-				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#endif
-		}
-#endif
-
 		if (dot_light_source > 0.0f)
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
@@ -92,24 +72,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 															   nee_plus_plus_context, random_number_generator);
-
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-			if (in_shadow && light_tree_debug_pixel())
-			{
-				const float point_pdf					 = 1.0f / light_sample.light_area;
-				const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
-				const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-				printf("[DI-RESULT] algo=SG light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
-					   "estimator_lum=0\n",
-					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#else
-				printf("[DI-RESULT] algo=ATS light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
-					   "estimator_lum=0\n",
-					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#endif
-			}
-#endif
 
 			if (!in_shadow)
 			{
@@ -137,25 +99,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
 						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 						light_source_radiance += estimator;
-
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-						if (light_tree_debug_pixel())
-						{
-							const float point_pdf = 1.0f / light_sample.light_area;
-							const float tree_pdf  = light_sample.area_measure_pdf / point_pdf;
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-							printf("[DI-RESULT] algo=SG light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
-								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
-								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
-								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
-#else
-							printf("[DI-RESULT] algo=ATS light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
-								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
-								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
-								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
-#endif
-						}
-#endif
 
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -502,6 +445,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 																			  const float3_t& view_direction,
 																			  Xorshift32Generator& random_number_generator)
 {
+
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 
@@ -512,68 +456,16 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
 		closest_hit_info.primitive_index, random_number_generator, guided_sample);
 
-	bool valid_learnt_distribution_sample = sampled_lights[0].pdf > 0; // IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
-#ifdef __KERNELCC__
-	const bool debug_illumination_aware_nee = ray_payload.bounce == 0 && hippt::is_pixel_index(554, render_data.render_settings.render_resolution.y - 1 - 487);
-#else
-	const bool debug_illumination_aware_nee = false;
-#endif
+	bool valid_learnt_distribution_sample = sampled_lights[0].pdf > 0.0f;
+	bool fallback_to_standard_sg_sampling = sampled_lights[0].pdf == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
 
-	if (debug_illumination_aware_nee && valid_learnt_distribution_sample)
+	if (fallback_to_standard_sg_sampling)
 	{
-		const unsigned int tree_cut_size			  = render_data.light_tree_sg.settings.tree_cut_size;
-		const unsigned int guiding_node_index		  = render_data.illumination_aware_kd_tree.find_guiding_cell(closest_hit_info.inter_point);
-		const unsigned int guiding_distribution_index = render_data.illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
-		const unsigned int tree_cut_offset			  = guiding_distribution_index * tree_cut_size;
-		float sampling_probability_sum				  = 0.0f;
-		float prior_probability_sum					  = 0.0f;
-		float cut_power_sum							  = 0.0f;
-		unsigned int duplicate_node_count			  = 0;
-
-		for (unsigned int cut_slot = 0; cut_slot < tree_cut_size; cut_slot++)
-		{
-			const unsigned int cut_node_index = render_data.light_tree_sg.tree_cut_node_indices[cut_slot];
-
-			if (cut_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-				continue;
-
-			sampling_probability_sum +=
-				render_data.illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[tree_cut_offset + cut_slot];
-			prior_probability_sum += render_data.illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[cut_slot];
-			cut_power_sum += render_data.light_tree_sg.nodes[cut_node_index].get_total_power();
-
-			for (unsigned int previous_slot = 0; previous_slot < cut_slot; previous_slot++)
-			{
-				if (render_data.light_tree_sg.tree_cut_node_indices[previous_slot] == cut_node_index)
-					duplicate_node_count++;
-			}
-		}
-
-		const float root_power = render_data.light_tree_sg.nodes[0].get_total_power();
-		const float selected_prior_probability =
-			render_data.illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[guided_sample.cut_slot];
-
-		printf("[DEBUG-IAKD-7F31] shader-stage=learnt-sample sample=%u bounce=%d valid=%d cut_slot=%u cut_node=%u cut_probability=%.9g "
-			   "triangle=%d conditional_triangle_pdf=%.9g position=(%.9g,%.9g,%.9g)\n",
-			   render_data.render_settings.sample_number, ray_payload.bounce, int(valid_learnt_distribution_sample), guided_sample.cut_slot,
-			   guided_sample.light_tree_node_index, guided_sample.probability, sampled_lights[0].emissive_triangle_global_index, sampled_lights[0].pdf,
-			   closest_hit_info.inter_point.x, closest_hit_info.inter_point.y, closest_hit_info.inter_point.z);
-		printf("[DEBUG-IAKD-7F31] shader-stage=distribution-invariants sample=%u guiding_node=%u guiding_distribution=%u sampling_sum=%.9g "
-			   "prior_sum=%.9g selected_prior=%.9g cut_power_sum=%.9g root_power=%.9g cut_to_root_power=%.9g duplicate_nodes=%u\n",
-			   render_data.render_settings.sample_number, guiding_node_index, guiding_distribution_index, sampling_probability_sum, prior_probability_sum,
-			   selected_prior_probability, cut_power_sum, root_power, root_power > 0.0f ? cut_power_sum / root_power : -1.0f, duplicate_node_count);
-	}
-
-	if (!valid_learnt_distribution_sample)
-	{
-		// No light distribution available at that point, falling back to usual SG tree sampling
+		// No learnt light distribution is available at that point, falling back to usual SG tree sampling. A zero-PDF learnt sample is a failed subtree
+		// proposal and must not be replaced here because that would change the mixture PDF.
 		sampled_lights = sample_one_emissive_triangle_light_tree_sg(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																	closest_hit_info.geometric_normal, ray_payload.material, closest_hit_info.primitive_index,
 																	random_number_generator);
-
-		if (debug_illumination_aware_nee)
-			printf("[DEBUG-IAKD-7F31] shader-stage=fallback-sample sample=%u triangle=%d conditional_triangle_pdf=%.9g\n",
-				   render_data.render_settings.sample_number, sampled_lights[0].emissive_triangle_global_index, sampled_lights[0].pdf);
 	}
 
 	LightSamplePointArray<1> light_samples;
@@ -587,15 +479,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 		LightSamplePointInformation& light_sample = light_samples[i];
 
 		if (light_sample.area_measure_pdf <= 0.0f)
-		{
 			// Can happen for very small triangles or the light
 			// sampling technique couldn't sample a triangle
-			if (debug_illumination_aware_nee)
-				printf("[DEBUG-IAKD-7F31] shader-stage=nee-details sample=%u reason=invalid-area-pdf area_pdf=%.9g\n",
-					   render_data.render_settings.sample_number, light_sample.area_measure_pdf);
-
 			continue;
-		}
 
 		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
 		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
@@ -608,26 +494,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 
 		// abs() here to allow backfacing light sources
 		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-		if (dot_light_source <= 0.0f && light_tree_debug_pixel())
-		{
-			const float point_pdf					 = 1.0f / light_sample.light_area;
-			const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
-			const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-			printf("[DI-RESULT] algo=SG light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
-				   "estimator_rgb=(0,0,0) "
-				   "estimator_lum=0\n",
-				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#else
-			printf("[DI-RESULT] algo=ATS light=%d visible=dot_light_source<0.0f tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) "
-				   "estimator_rgb=(0,0,0) "
-				   "estimator_lum=0\n",
-				   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#endif
-		}
-#endif
 
 		IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
 		training_sample.position		   = closest_hit_info.inter_point;
@@ -653,24 +519,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 			debug_in_shadow				 = in_shadow;
 			debug_unoccluded_probability = nee_plus_plus_context.unoccluded_probability;
 			debug_rejection_reason		 = 2;
-
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-			if (in_shadow && light_tree_debug_pixel())
-			{
-				const float point_pdf					 = 1.0f / light_sample.light_area;
-				const float tree_pdf					 = light_sample.area_measure_pdf / point_pdf;
-				const float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-				printf("[DI-RESULT] algo=SG light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
-					   "estimator_lum=0\n",
-					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#else
-				printf("[DI-RESULT] algo=ATS light=%d visible=0 tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(0,0,0) estimator_rgb=(0,0,0) "
-					   "estimator_lum=0\n",
-					   light_sample.emissive_triangle_global_index, tree_pdf, point_pdf, light_sample_solid_angle_pdf);
-#endif
-			}
-#endif
 
 			if (!in_shadow)
 			{
@@ -710,25 +558,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 						light_source_radiance += estimator;
 						debug_rejection_reason = 0;
 
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG || DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS
-						if (light_tree_debug_pixel())
-						{
-							const float point_pdf = 1.0f / light_sample.light_area;
-							const float tree_pdf  = light_sample.area_measure_pdf / point_pdf;
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-							printf("[DI-RESULT] algo=SG light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
-								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
-								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
-								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
-#else
-							printf("[DI-RESULT] algo=ATS light=%d visible=%d tree_pdf=%.9g point_pdf=%.9g total_pdf=%.9g numerator_rgb=(%.9g,%.9g,%.9g) "
-								   "estimator_rgb=(%.9g,%.9g,%.9g) estimator_lum=%.9g\n",
-								   light_sample.emissive_triangle_global_index, int(!in_shadow), tree_pdf, point_pdf, light_sample_solid_angle_pdf, numerator.r,
-								   numerator.g, numerator.b, estimator.r, estimator.g, estimator.b, estimator.luminance());
-#endif
-						}
-#endif
-
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
 					}
@@ -744,21 +573,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 				render_data.illumination_aware_kd_tree.nee_learnt_distributions.make_nee_distribution_training_record(
 					guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
 			render_data.illumination_aware_kd_tree.nee_learnt_distributions.append_nee_distribution_training_record(nee_training_record);
-		}
-
-		if (debug_illumination_aware_nee)
-		{
-			printf("[DEBUG-IAKD-7F31] shader-stage=nee-result sample=%u triangle=%d area_pdf=%.9g radiance=(%.9g,%.9g,%.9g) "
-				   "training_weight=%.9g\n",
-				   render_data.render_settings.sample_number, light_sample.emissive_triangle_global_index, light_sample.area_measure_pdf,
-				   full_local_nee_estimate.r, full_local_nee_estimate.g, full_local_nee_estimate.b, training_sample.radiance_weight);
-			printf("[DEBUG-IAKD-7F31] shader-stage=nee-details sample=%u reason=%d dot_light=%.9g shadow_tested=%d in_shadow=%d distance=%.9g "
-				   "light_area=%.9g selection_pdf=%.9g point_pdf=%.9g area_pdf=%.9g solid_angle_pdf=%.9g bsdf_pdf=%.9g "
-				   "unoccluded_probability=%.9g emission=(%.9g,%.9g,%.9g) integration_factor=%d\n",
-				   render_data.render_settings.sample_number, debug_rejection_reason, dot_light_source, int(debug_shadow_tested), int(debug_in_shadow),
-				   distance_to_light, light_sample.light_area, sampled_lights[0].pdf, 1.0f / light_sample.light_area, light_sample.area_measure_pdf,
-				   debug_solid_angle_pdf, debug_bsdf_pdf, debug_unoccluded_probability, light_sample.emission.r, light_sample.emission.g,
-				   light_sample.emission.b, DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}
 	}
 

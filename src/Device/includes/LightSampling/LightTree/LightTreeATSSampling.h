@@ -14,36 +14,6 @@
 
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/RenderData.h"
-
-#ifndef LIGHT_TREE_DEBUG_PIXEL_HELPER
-#define LIGHT_TREE_DEBUG_PIXEL_HELPER
-#define LT_DEBUG_X 1201
-#define LT_DEBUG_Y 692 - 1 - 85
-
-HIPRT_DEVICE bool light_tree_debug_pixel()
-{
-	return false;
-	return hippt::is_pixel_index(LT_DEBUG_X, LT_DEBUG_Y);
-}
-#endif
-
-struct ATSImportanceDebug
-{
-	bool invalid;
-	bool behind_surface;
-	bool inside_aabb;
-	float max_corner_dot;
-	float distance;
-	float distance_squared_bound;
-	float half_diagonal;
-	float cos_theta_u;
-	float cos_theta_i_prime;
-	float orientation_cosine;
-	float cos_T;
-	float sin_T;
-	float cos_theta_prime;
-	float final_importance;
-};
 #include "HostDeviceCommon/Xorshift.h"
 
 HIPRT_DEVICE HIPRT_INLINE bool point_inside_AABB(float3_t aabb_min, float3_t aabb_max, float3_t point)
@@ -84,27 +54,10 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3_t aabb_m
 }
 
 template <bool UseOrientation>
-HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& node,
-												  float3_t shading_point,
-												  float3_t shading_normal,
-												  ATSImportanceDebug* debug = nullptr)
+HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& node, float3_t shading_point, float3_t shading_normal)
 {
-	if (debug != nullptr)
-		*debug = ATSImportanceDebug{};
-
 	if (node.is_invalid())
-	{
-		if (debug != nullptr)
-		{
-			debug->invalid			= true;
-			debug->final_importance = 0.0f;
-		}
-
 		return 0.0f;
-	}
-
-	if (debug != nullptr)
-		debug->invalid = false;
 
 	// If the whole node is behind the surface, quick exit (if even the corner that maximizes
 	// the dot product yields a dot product negative, then every corners are going to be behind
@@ -120,20 +73,9 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 		max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
 		max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
 
-		const float max_corner_dot = hippt::dot(max_corner - shading_point, shading_normal);
-		if (debug != nullptr)
-		{
-			debug->max_corner_dot = max_corner_dot;
-			debug->behind_surface = max_corner_dot <= 0.0f;
-		}
-
+		float max_corner_dot = hippt::dot(max_corner - shading_point, shading_normal);
 		if (max_corner_dot <= 0.0f)
-		{
-			if (debug != nullptr)
-				debug->final_importance = 0.0f;
-
 			return 0.0f;
-		}
 	}
 
 	float3_t node_center		  = (node.bounds_max + node.bounds_min) * 0.5f;
@@ -148,15 +90,8 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 	float sphere_radius = half_diag_length;
 	bool inside_aabb	= point_inside_AABB(node.bounds_min, node.bounds_max, shading_point);
-	if (debug != nullptr)
-	{
-		debug->distance				  = dist_to_center;
-		debug->distance_squared_bound = distance_to_center_2;
-		debug->half_diagonal		  = half_diag_length;
-		debug->inside_aabb			  = inside_aabb;
-	}
-	float sin_theta_u = 0.0f;
-	float cos_theta_u = 1.0f;
+	float sin_theta_u	= 0.0f;
+	float cos_theta_u	= 1.0f;
 	if (inside_aabb)
 	{
 		// If the shading point is inside the bounds, treat theta_u as PI
@@ -177,8 +112,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 			cos_theta_u = hippt::sqrt(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
 		}
 	}
-	if (debug != nullptr)
-		debug->cos_theta_u = cos_theta_u;
+
 	float cos_theta_i_prime;
 	if (inside_aabb)
 		// Inside:
@@ -199,24 +133,14 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 			cos_theta_i_prime = cos_theta_i * cos_theta_u + sin_theta_i * sin_theta_u;
 		}
 	}
-	if (debug != nullptr)
-		debug->cos_theta_i_prime = cos_theta_i_prime;
 
 	float cos_theta = hippt::clamp(hippt::dot(node.axis, -to_center_normalized), 0.0f, 1.0f);
 	float sin_theta = hippt::sqrt(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
-	if (debug != nullptr)
-		debug->orientation_cosine = cos_theta;
 
 	// For T = node.theta_o + theta_u
 	// Compute cos_T and sin_T
 	float cos_T = node.cos_theta_o * cos_theta_u - node.sin_theta_o * sin_theta_u;
 	float sin_T = node.sin_theta_o * cos_theta_u + node.cos_theta_o * sin_theta_u;
-	if (debug != nullptr)
-	{
-		debug->cos_T = cos_T;
-		debug->sin_T = sin_T;
-	}
-
 	float cos_theta_prime;
 	if (sin_T <= 0.0f)
 		// T >= pi (which is sin_T <= 0.0f)
@@ -243,11 +167,6 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 	const float final_importance = UseOrientation ? cos_theta_i_prime * node.total_power_luminance / distance_to_center_2 * cos_theta_prime
 												  : node.total_power_luminance / distance_to_center_2;
-	if (debug != nullptr)
-	{
-		debug->cos_theta_prime	= cos_theta_prime;
-		debug->final_importance = final_importance;
-	}
 
 	return final_importance;
 }
@@ -695,11 +614,6 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 																			 Xorshift32Generator& rng)
 {
 	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
-	const bool debug					= false; // light_tree_debug_pixel();
-
-	if (debug)
-		printf("[LT-BEGIN] algo=ATS P=(%.9g,%.9g,%.9g) Ns=(%.9g,%.9g,%.9g) Ng=(%.9g,%.9g,%.9g)\n", shading_point.x, shading_point.y, shading_point.z,
-			   shading_normal.x, shading_normal.y, shading_normal.z, geometric_normal.x, geometric_normal.y, geometric_normal.z);
 
 	unsigned int current_node_index = 0;
 	unsigned int depth				= 0;
@@ -712,52 +626,16 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 		const unsigned int right_index			   = left_index + 1;
 		const LightTreeATSNodeDevice& left_child   = nodes[left_index];
 		const LightTreeATSNodeDevice& right_child  = nodes[right_index];
-		ATSImportanceDebug left_debug{};
-		ATSImportanceDebug right_debug{};
 
-		float left_importance  = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal, debug ? &left_debug : nullptr);
-		float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal, debug ? &right_debug : nullptr);
-		if (debug)
-		{
-			printf("[ATS-NODE] depth=%u side=L node=%u power=%.9g count=%u bounds_min=(%.9g,%.9g,%.9g) bounds_max=(%.9g,%.9g,%.9g) axis=(%.9g,%.9g,%.9g) "
-				   "cos_o=%.9g sin_o=%.9g invalid=%d behind=%d inside=%d max_corner_dot=%.9g distance=%.9g distance_bound2=%.9g half_diag=%.9g cos_u=%.9g "
-				   "cos_i_prime=%.9g orientation_cos=%.9g cos_T=%.9g sin_T=%.9g cos_o_prime=%.9g importance=%.9g\n",
-				   depth, left_index, left_child.total_power_luminance, left_child.total_emitter_count, left_child.bounds_min.x, left_child.bounds_min.y,
-				   left_child.bounds_min.z, left_child.bounds_max.x, left_child.bounds_max.y, left_child.bounds_max.z, left_child.axis.x, left_child.axis.y,
-				   left_child.axis.z, left_child.cos_theta_o, left_child.sin_theta_o, int(left_debug.invalid), int(left_debug.behind_surface),
-				   int(left_debug.inside_aabb), left_debug.max_corner_dot, left_debug.distance, left_debug.distance_squared_bound, left_debug.half_diagonal,
-				   left_debug.cos_theta_u, left_debug.cos_theta_i_prime, left_debug.orientation_cosine, left_debug.cos_T, left_debug.sin_T,
-				   left_debug.cos_theta_prime, left_debug.final_importance);
-			printf("[ATS-NODE] depth=%u side=R node=%u power=%.9g count=%u bounds_min=(%.9g,%.9g,%.9g) bounds_max=(%.9g,%.9g,%.9g) axis=(%.9g,%.9g,%.9g) "
-				   "cos_o=%.9g sin_o=%.9g invalid=%d behind=%d inside=%d max_corner_dot=%.9g distance=%.9g distance_bound2=%.9g half_diag=%.9g cos_u=%.9g "
-				   "cos_i_prime=%.9g orientation_cos=%.9g cos_T=%.9g sin_T=%.9g cos_o_prime=%.9g importance=%.9g\n",
-				   depth, right_index, right_child.total_power_luminance, right_child.total_emitter_count, right_child.bounds_min.x, right_child.bounds_min.y,
-				   right_child.bounds_min.z, right_child.bounds_max.x, right_child.bounds_max.y, right_child.bounds_max.z, right_child.axis.x,
-				   right_child.axis.y, right_child.axis.z, right_child.cos_theta_o, right_child.sin_theta_o, int(right_debug.invalid),
-				   int(right_debug.behind_surface), int(right_debug.inside_aabb), right_debug.max_corner_dot, right_debug.distance,
-				   right_debug.distance_squared_bound, right_debug.half_diagonal, right_debug.cos_theta_u, right_debug.cos_theta_i_prime,
-				   right_debug.orientation_cosine, right_debug.cos_T, right_debug.sin_T, right_debug.cos_theta_prime, right_debug.final_importance);
-		}
+		float left_importance  = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+		float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 		if (left_importance == 0.0f && right_importance == 0.0f)
-		{
-			if (debug)
-				printf("[LT-ERROR] algo=ATS depth=%u node=%u reason=both_children_zero\n", depth, current_node_index);
-
 			return LightSampleArray<1>{ LightSampleInformation() };
-		}
 
 		float p_left				  = left_importance / (left_importance + right_importance);
 		const float cumulative_before = cumulative_probability;
-		const float u				  = rng();
-		const bool choose_left		  = u < p_left;
-		if (debug)
-			printf("[LT-STEP] algo=ATS depth=%u node=%u left=%u right=%u triangles=(%u,%u) emitters=(%u,%u) I=(%.9g,%.9g) pL=%.9g u=%.9g choice=%c "
-				   "cum_before=%.9g cum_after=%.9g\n",
-				   depth, current_node_index, left_index, right_index, left_child.triangle_count, right_child.triangle_count, left_child.total_emitter_count,
-				   right_child.total_emitter_count, left_importance, right_importance, p_left, u, choose_left ? 'L' : 'R', cumulative_before,
-				   cumulative_before * (choose_left ? p_left : 1.0f - p_left));
 
-		if (choose_left)
+		if (rng() < p_left)
 		{
 			current_node_index = left_index;
 
@@ -781,10 +659,6 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 	LightSampleInformation light_sample;
 	light_sample.emissive_triangle_global_index = emissive_triangle_index;
 	light_sample.pdf							= cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
-	if (debug)
-		printf("[LT-END] algo=ATS depth=%u leaf=%u triangle_count=%u local_slot=%d triangle_index=%d emissive_global=%d cumulative=%.9g final_pdf=%.9g\n",
-			   depth, current_node_index, current_node.triangle_count, index, triangle_index, emissive_triangle_index, cumulative_probability,
-			   light_sample.pdf);
 
 	return LightSampleArray<1>{ light_sample };
 }
@@ -799,10 +673,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 		return 0.0f;
 
 	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
-	const bool debug					= light_tree_debug_pixel();
-	constexpr int fixed_target_light	= 7612794;
-	if (debug)
-		global_emissive_triangle_index = fixed_target_light;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
 	unsigned int current_node_index		= 0;
@@ -830,19 +700,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 		float p_left					= left_importance / (left_importance + right_importance);
 		bool target_is_left				= !(bit_trail & (1 << current_depth));
 		float target_branch_probability = target_is_left ? p_left : 1.0f - p_left;
-		cumulative_probability *= target_branch_probability;
 
-		if (debug)
-			printf("[ATS PDF REPLAY %d] depth=%u node=%u target_side=%c left_importance=%.9g right_importance=%.9g target_branch_probability=%.9g "
-				   "cumulative_target_probability=%.9g left_bounds_min=(%.9g,%.9g,%.9g) left_bounds_max=(%.9g,%.9g,%.9g) "
-				   "right_bounds_min=(%.9g,%.9g,%.9g) right_bounds_max=(%.9g,%.9g,%.9g) left_axis=(%.9g,%.9g,%.9g) right_axis=(%.9g,%.9g,%.9g) "
-				   "left_cos_theta_o=%.9g left_sin_theta_o=%.9g right_cos_theta_o=%.9g right_sin_theta_o=%.9g\n",
-				   fixed_target_light, current_depth, current_node_index, target_is_left ? 'L' : 'R', left_importance, right_importance,
-				   target_branch_probability, cumulative_probability, left_child.bounds_min.x, left_child.bounds_min.y, left_child.bounds_min.z,
-				   left_child.bounds_max.x, left_child.bounds_max.y, left_child.bounds_max.z, right_child.bounds_min.x, right_child.bounds_min.y,
-				   right_child.bounds_min.z, right_child.bounds_max.x, right_child.bounds_max.y, right_child.bounds_max.z, left_child.axis.x, left_child.axis.y,
-				   left_child.axis.z, right_child.axis.x, right_child.axis.y, right_child.axis.z, left_child.cos_theta_o, left_child.sin_theta_o,
-				   right_child.cos_theta_o, right_child.sin_theta_o);
+		cumulative_probability *= target_branch_probability;
 
 		if (target_is_left)
 		{

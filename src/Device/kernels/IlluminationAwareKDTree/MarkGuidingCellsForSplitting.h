@@ -18,17 +18,17 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t guiding_list_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int guiding_list_index = blockIdx.x * blockDim.x + threadIdx.x;
 #else
-	const uint32_t guiding_list_index = x;
+	unsigned int guiding_list_index = x;
 #endif
 
-	const uint32_t active_guiding_count = *illumination_aware_kd_tree.active_guiding_node_count;
+	unsigned int active_guiding_count = *illumination_aware_kd_tree.active_guiding_node_count;
 	if (guiding_list_index >= active_guiding_count)
 		return;
 
-	const uint32_t guiding_node_index = illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
-	const uint32_t node_count		  = *illumination_aware_kd_tree.node_count;
+	unsigned int guiding_node_index = illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
+	unsigned int node_count			= *illumination_aware_kd_tree.node_count;
 	if (guiding_node_index >= node_count)
 	{
 		illumination_aware_kd_tree.needs_split[guiding_list_index] = 0;
@@ -36,7 +36,7 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 		return;
 	}
 
-	const IlluminationAwareKDTreeNode& guiding_node = illumination_aware_kd_tree.nodes[guiding_node_index];
+	IlluminationAwareKDTreeNode& guiding_node = illumination_aware_kd_tree.nodes[guiding_node_index];
 	if (!(guiding_node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren) ||
 		guiding_node.left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_node.left_child_index >= node_count ||
 		guiding_node.left_child_index + 1u >= node_count)
@@ -46,15 +46,15 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 		return;
 	}
 
-	uint32_t stack[128];
-	uint32_t stack_size = 0;
-	stack[stack_size++] = guiding_node.left_child_index;
-	stack[stack_size++] = guiding_node.left_child_index + 1u;
+	unsigned int stack[128];
+	unsigned int stack_size = 0;
+	stack[stack_size++]		= guiding_node.left_child_index;
+	stack[stack_size++]		= guiding_node.left_child_index + 1u;
 
 	bool needs_split = false;
 	while (stack_size > 0)
 	{
-		const uint32_t lookahead_node_index = stack[--stack_size];
+		unsigned int lookahead_node_index = stack[--stack_size];
 		if (lookahead_node_index >= node_count)
 			continue;
 

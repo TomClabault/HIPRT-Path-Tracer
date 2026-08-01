@@ -67,8 +67,6 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 			for (unsigned int bin = 0; bin < ReSTIR_PT_SPMISCDFLUTSize; bin++)
 			{
 				float bin_lower_bound = bin / static_cast<float>(ReSTIR_PT_SPMISCDFLUTSize);
-				if (cell_index == 874955 && bin == 240)
-					printf("\n");
 
 				while (current_cdf_index < non_zero_count - 1 && out_cdfs[cell_offset + current_cdf_index + 1] <= bin_lower_bound)
 					current_cdf_index++;

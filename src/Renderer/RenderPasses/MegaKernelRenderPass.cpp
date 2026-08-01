@@ -78,6 +78,7 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
 																			m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	return true;
 }

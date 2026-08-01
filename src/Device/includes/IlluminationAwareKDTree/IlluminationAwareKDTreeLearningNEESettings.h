@@ -11,7 +11,7 @@ struct IlluminationAwareKDTreeLearningNEESettings
 	// A small amount of the global prior remains in every cell.
 	//
 	// This prevents a slot from permanently reaching zero probability which would be biased
-	float minimum_global_prior_mix = 0.02f;
+	float minimum_global_prior_mix = 0.05f;
 
 	// Maximum amount of the global tree cut that a cell can use
 	float maximum_global_prior_mix = 0.50f;

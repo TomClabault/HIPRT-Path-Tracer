@@ -17,6 +17,9 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
+#define DEBUG_PIXEL_X_KD_TREE 719
+#define DEBUG_PIXEL_Y_KD_TREE 393
+
 /**
  * This file references the path tracer options that can be passed to HIPCC using the -D <macro>=<value> option.
  * These path tracer options allow "compile-time" branching to enable/disable a variety

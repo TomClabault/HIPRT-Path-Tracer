@@ -25,6 +25,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove ReSTIR DI impl
 // - Remove ReSTIR GI impl
 // - Remove NEE++ RR impl
+// - Remove LTC shading
+// - Remove RIS LTC estimator
 //
 // TODO Illumination aware KD tree
 //		- How to use the basic light tree as the very first SPP instead of the shit prior and then start learning distributions from that base light tree? We
@@ -37,6 +39,7 @@ extern ImGuiLogger g_imgui_logger;
 //		threshold basically by 2 thresholds
 //		- Use CDFDevice16 for learnt distributions to save memory and bandwidth
 //		- How to improve the base prior distributions for the global cut better than power-based?
+//			- First sample should use the base SG tree and start learning from that, much better quality than the power-based prior
 //		- How to rely more on the base light tree when per-cell distributions are bad / not learnt enough? How to know when a distribution isn't learnt enough?
 //		- How to subdivide based on the sampler's variance? We don't want to subdivide at all at the back of the couch in the white room for example, but we
 //		want to subdivide a lot where the sampler is having trouble

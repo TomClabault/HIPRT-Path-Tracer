@@ -23,7 +23,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 #endif
 {
 #ifndef __KERNELCC__
-	unsigned int tree_cut_size				= light_tree_sg.settings.tree_cut_size;
+	unsigned int tree_cut_size				= light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int guiding_distribution_index = illumination_aware_kd_tree.nodes[0].guiding_distribution_index;
 	if (guiding_distribution_index >= illumination_aware_kd_tree.node_capacity)
 		return;
@@ -78,7 +78,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 	if (blockIdx.x != 0)
 		return;
 
-	unsigned int tree_cut_size				= light_tree_sg.settings.tree_cut_size;
+	unsigned int tree_cut_size				= light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int invalid_node_index			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	unsigned int guiding_distribution_index = illumination_aware_kd_tree.nodes[0].guiding_distribution_index;
 	unsigned int tree_cut_offset			= guiding_distribution_index * tree_cut_size;
@@ -88,6 +88,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 	float power						 = 0.0f;
 	if (valid_slot)
 		power = hippt::max(light_tree_sg.nodes[tree_cut_node_index].get_total_power(), 0.0f);
+	// power = 1.0f / tree_cut_size;
 
 	unsigned int valid_node_count = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(valid_slot ? 1u : 0u);
 	float total_power			  = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(power);

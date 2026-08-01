@@ -207,12 +207,8 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 												 float3_t shading_normal,
 												 float specular,
 												 float alpha_x,
-												 float alpha_y,
-												 SGImportanceDebug* debug = nullptr)
+												 float alpha_y)
 {
-	if (debug != nullptr)
-		*debug = SGImportanceDebug{};
-
 	if (node.total_power <= 0.0f)
 		return 0.0f;
 
@@ -238,21 +234,6 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	for (unsigned int lobe_index = 0; lobe_index < node.spatial_lobe_count; lobe_index++)
 		final_importance += light_tree_sg_evaluate_spatial_lobe(node.spatial_lobes[lobe_index], node.vmf, spec_data, shading_point, view_direction,
 																shading_normal, specular, alpha_x, alpha_y);
-
-	if (debug != nullptr)
-	{
-		debug->final_importance = final_importance;
-
-		float3_t shading_to_node = node.gaussian_spatial_mean - shading_point;
-		float squared_distance	 = hippt::dot(shading_to_node, shading_to_node);
-		debug->squared_distance	 = squared_distance;
-		debug->emitter_facing	 = hippt::dot(node.vmf.axis, -shading_to_node / hippt::max(hippt::length(shading_to_node), hippt::FLOAT_MIN));
-		debug->max_corner_dot	 = hippt::dot(make_float3((shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x,
-														  (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y,
-														  (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z) -
-												  shading_point,
-											  shading_normal);
-	}
 
 	return final_importance;
 }
@@ -1234,11 +1215,6 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 																			Xorshift32Generator& rng)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
-	const bool debug				   = false; // light_tree_debug_pixel();
-
-	if (debug)
-		printf("[LT-BEGIN] algo=SG P=(%.9g,%.9g,%.9g) Ns=(%.9g,%.9g,%.9g) Ng=(%.9g,%.9g,%.9g)\n", shading_point.x, shading_point.y, shading_point.z,
-			   shading_normal.x, shading_normal.y, shading_normal.z, geometric_normal.x, geometric_normal.y, geometric_normal.z);
 
 	unsigned int current_node_index = 0;
 	unsigned int depth				= 0;
@@ -1277,60 +1253,18 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 		const unsigned int right_index			  = left_index + 1;
 		const LightTreeSGNodeDevice& left_child	  = nodes[left_index];
 		const LightTreeSGNodeDevice& right_child  = nodes[right_index];
-		SGImportanceDebug left_debug{};
-		SGImportanceDebug right_debug{};
 
-		float left_importance = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x,
-															  alpha_y, debug ? &left_debug : nullptr);
-		float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight,
-															   alpha_x, alpha_y, debug ? &right_debug : nullptr);
-		if (debug)
-		{
-			printf("[SG-NODE] depth=%u side=L node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
-				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
-				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g effective_spatial_variance=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g "
-				   "light_kappa=%.9g "
-				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
-				   depth, left_index, left_child.total_power, left_child.total_emitter_count, left_child.gaussian_spatial_mean.x,
-				   left_child.gaussian_spatial_mean.y, left_child.gaussian_spatial_mean.z, left_child.bounding_sphere_radius, left_child.vmf.axis.x,
-				   left_child.vmf.axis.y, left_child.vmf.axis.z, left_child.orientation_axis.x, left_child.orientation_axis.y, left_child.orientation_axis.z,
-				   left_child.vmf.sharpness, left_debug.squared_distance, left_debug.max_corner_dot, left_debug.emitter_facing,
-				   left_debug.effective_spatial_variance, left_debug.sharpness_clamp_variance, left_debug.final_variance, left_debug.emissive,
-				   left_debug.light_sharpness, left_debug.product_log_amplitude, left_debug.product_sharpness, left_debug.product_cosine, left_debug.amplitude,
-				   left_debug.diffuse_integral, left_debug.final_importance);
-			printf("[SG-NODE] depth=%u side=R node=%u power=%.9g count=%u center=(%.9g,%.9g,%.9g) radius=%.9g vmf_axis=(%.9g,%.9g,%.9g) "
-				   "orientation_axis=(%.9g,%.9g,%.9g) vmf_kappa=%.9g "
-				   "dist2=%.9g max_corner_dot=%.9g emitter_facing=%.9g effective_spatial_variance=%.9g clamp_var=%.9g final_var=%.9g emissive=%.9g "
-				   "light_kappa=%.9g "
-				   "product_log_amp=%.9g product_kappa=%.9g product_cos=%.9g amplitude=%.9g diffuse_integral=%.9g importance=%.9g\n",
-				   depth, right_index, right_child.total_power, right_child.total_emitter_count, right_child.gaussian_spatial_mean.x,
-				   right_child.gaussian_spatial_mean.y, right_child.gaussian_spatial_mean.z, right_child.bounding_sphere_radius, right_child.vmf.axis.x,
-				   right_child.vmf.axis.y, right_child.vmf.axis.z, right_child.orientation_axis.x, right_child.orientation_axis.y,
-				   right_child.orientation_axis.z, right_child.vmf.sharpness, right_debug.squared_distance, right_debug.max_corner_dot,
-				   right_debug.emitter_facing, right_debug.effective_spatial_variance, right_debug.sharpness_clamp_variance, right_debug.final_variance,
-				   right_debug.emissive, right_debug.light_sharpness, right_debug.product_log_amplitude, right_debug.product_sharpness,
-				   right_debug.product_cosine, right_debug.amplitude, right_debug.diffuse_integral, right_debug.final_importance);
-		}
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+
 		if (left_importance == 0.0f && right_importance == 0.0f)
-		{
-			if (debug)
-				printf("[LT-ERROR] algo=SG depth=%u node=%u reason=both_children_zero\n", depth, current_node_index);
-
 			return LightSampleArray<1>{ LightSampleInformation() };
-		}
 
-		float p_left			= left_importance / (left_importance + right_importance);
-		float cumulative_before = cumulative_probability;
-		float u					= rng();
-		bool choose_left		= u < p_left;
-		if (debug)
-			printf("[LT-STEP] algo=SG depth=%u node=%u left=%u right=%u triangles=(%u,%u) emitters=(%u,%u) I=(%.9g,%.9g) pL=%.9g u=%.9g choice=%c "
-				   "cum_before=%.9g cum_after=%.9g\n",
-				   depth, current_node_index, left_index, right_index, left_child.triangle_count, right_child.triangle_count, left_child.total_emitter_count,
-				   right_child.total_emitter_count, left_importance, right_importance, p_left, u, choose_left ? 'L' : 'R', cumulative_before,
-				   cumulative_before * (choose_left ? p_left : 1.0f - p_left));
+		float p_left = left_importance / (left_importance + right_importance);
 
-		if (choose_left)
+		if (rng() < p_left)
 		{
 			current_node_index = left_index;
 
@@ -1354,9 +1288,6 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	LightSampleInformation light_sample;
 	light_sample.emissive_triangle_global_index = emissive_triangle_index;
 	light_sample.pdf							= cumulative_probability * (1.0f / current_node.triangle_count); // PDF of sampling that triangle in that node
-	if (debug)
-		printf("[LT-END] algo=SG depth=%u leaf=%u triangle_count=%u local_slot=%d triangle_index=%d emissive_global=%d cumulative=%.9g final_pdf=%.9g\n", depth,
-			   current_node_index, current_node.triangle_count, index, triangle_index, emissive_triangle_index, cumulative_probability, light_sample.pdf);
 
 	return LightSampleArray<1>{ light_sample };
 }
@@ -1369,10 +1300,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 														  int global_emissive_triangle_index)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
-	const bool debug				   = light_tree_debug_pixel();
-	constexpr int fixed_target_light   = 7612794;
-	if (debug)
-		global_emissive_triangle_index = fixed_target_light;
 
 	LightTreeSGNodeDevice current_node = nodes[0];
 	unsigned int current_node_index	   = 0;
@@ -1421,10 +1348,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		SGImportanceDebug left_debug{};
 		SGImportanceDebug right_debug{};
 
-		float left_importance = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x,
-															  alpha_y, debug ? &left_debug : nullptr);
-		float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight,
-															   alpha_x, alpha_y, debug ? &right_debug : nullptr);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
@@ -1432,16 +1359,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		bool target_is_left				= !(bit_trail & (1 << current_depth));
 		float target_branch_probability = target_is_left ? p_left : 1.0f - p_left;
 		cumulative_probability *= target_branch_probability;
-
-		if (debug)
-			printf("[SG PDF REPLAY %d] depth=%u node=%u target_side=%c left_importance=%.9g right_importance=%.9g target_branch_probability=%.9g "
-				   "cumulative_target_probability=%.9g left_spatial_mean=(%.9g,%.9g,%.9g) right_spatial_mean=(%.9g,%.9g,%.9g) "
-				   "left_effective_spatial_variance=%.9g right_effective_spatial_variance=%.9g left_vmf_sharpness=%.9g right_vmf_sharpness=%.9g\n",
-				   fixed_target_light, current_depth, current_node_index, target_is_left ? 'L' : 'R', left_importance, right_importance,
-				   target_branch_probability, cumulative_probability, left_child.gaussian_spatial_mean.x, left_child.gaussian_spatial_mean.y,
-				   left_child.gaussian_spatial_mean.z, right_child.gaussian_spatial_mean.x, right_child.gaussian_spatial_mean.y,
-				   right_child.gaussian_spatial_mean.z, left_debug.effective_spatial_variance, right_debug.effective_spatial_variance, left_child.vmf.sharpness,
-				   right_child.vmf.sharpness);
 
 		if (target_is_left)
 		{

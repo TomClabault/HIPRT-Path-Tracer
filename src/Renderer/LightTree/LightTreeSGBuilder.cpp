@@ -59,6 +59,7 @@ void LightTreeSGBuilder::compute_tree_cut()
 		m_tree_cut_node_indices.push_back(right_child_index);
 	}
 
+	m_effective_tree_cut_size = static_cast<unsigned int>(m_tree_cut_node_indices.size());
 	m_tree_cut_node_indices.resize(static_cast<size_t>(m_tree_cut_size), 0xFFFFFFFF);
 }
 
@@ -183,9 +184,9 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			const float3_t triangle_variance_diag =
 				make_float3((e1.x * e1.x + e2.x * e2.x - e1.x * e2.x) / 18.0f, (e1.y * e1.y + e2.y * e2.y - e1.y * e2.y) / 18.0f,
 							(e1.z * e1.z + e2.z * e2.z - e1.z * e2.z) / 18.0f);
-			const double centroid_squared = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
-											static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
-											static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
+			const double centroid_squared			 = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
+													   static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
+													   static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
 			const double triangle_intrinsic_variance = triangle_variance_diag.x + triangle_variance_diag.y + triangle_variance_diag.z;
 			sum_second_moment += (centroid_squared + triangle_intrinsic_variance) * triangle.power;
 

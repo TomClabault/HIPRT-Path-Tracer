@@ -12,6 +12,8 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+
 struct IlluminationAwareKDTreeConditionalLightTreeSample
 {
 	unsigned int light_leaf_index;
@@ -31,6 +33,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeConditionalLightTreeSample sample_light_tree
 {
 	float conditional_probability = 1.0f;
 	unsigned int node_index		  = subtree_root;
+	unsigned int depth			  = 0;
 
 	while (nodes[node_index].triangle_count == 0)
 	{
@@ -44,10 +47,15 @@ HIPRT_DEVICE IlluminationAwareKDTreeConditionalLightTreeSample sample_light_tree
 
 		float importance_sum   = left_importance + right_importance;
 		float left_probability = 0.5f;
-		if (importance_sum > 0.0f)
-			left_probability = left_importance / importance_sum;
+		if (!(importance_sum > 0.0f))
+			return IlluminationAwareKDTreeConditionalLightTreeSample{ 0u, 0.0f };
 
-		if (random_number_generator() < left_probability)
+		left_probability = left_importance / importance_sum;
+
+		float random_value = random_number_generator();
+		bool choose_left   = random_value < left_probability;
+
+		if (choose_left)
 		{
 			conditional_probability *= left_probability;
 			node_index = left_child_index;
@@ -57,9 +65,11 @@ HIPRT_DEVICE IlluminationAwareKDTreeConditionalLightTreeSample sample_light_tree
 			conditional_probability *= 1.0f - left_probability;
 			node_index = right_child_index;
 		}
+
+		depth++;
 	}
 
-	return { node_index, conditional_probability };
+	return IlluminationAwareKDTreeConditionalLightTreeSample{ node_index, conditional_probability };
 }
 
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_learnt_distributions(const HIPRTRenderData& render_data,
@@ -97,7 +107,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 
 	unsigned int guiding_node_index = render_data.illumination_aware_kd_tree.find_guiding_cell(shading_point);
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return LightSampleArray<1>{ LightSampleInformation() };
+		return LightSampleArray<1>{ LightSampleInformation{ -1, IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY } };
 
 	const IlluminationAwareKDTreeNode& guiding_node = render_data.illumination_aware_kd_tree.nodes[guiding_node_index];
 	unsigned int guiding_distribution_index			= guiding_node.guiding_distribution_index;
@@ -115,9 +125,12 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 		sample_light_tree_subtree(render_data.light_tree_sg.nodes, sampled_cut_node.light_tree_node_index, shading_point, view_direction, shading_normal,
 								  spec_data, specular, alpha_x, alpha_y, random_number_generator);
 
+	if (!(sampled_subtree.conditional_leaf_probability > 0.0f))
+		return LightSampleArray<1>{ LightSampleInformation{ -1, 0.0f } };
+
 	const LightTreeSGNodeDevice& sampled_leaf = render_data.light_tree_sg.nodes[sampled_subtree.light_leaf_index];
 	if (sampled_leaf.triangle_count == 0)
-		return LightSampleArray<1>{ LightSampleInformation() };
+		return LightSampleArray<1>{ LightSampleInformation{ -1, 0.0f } };
 
 	int index					= sampled_leaf.left_child_index_or_first_triangle_index + random_number_generator.random_index(sampled_leaf.triangle_count);
 	int triangle_index			= render_data.light_tree_sg.indices_array[index];

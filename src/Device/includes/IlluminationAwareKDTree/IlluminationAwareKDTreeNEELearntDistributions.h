@@ -70,7 +70,7 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 																			  Xorshift32Generator& random_number_generator) const
 	{
 		IlluminationAwareKDTreeSampledCutNode result{};
-		unsigned int tree_cut_size = light_tree_sg.settings.tree_cut_size;
+		unsigned int tree_cut_size = light_tree_sg.settings.effective_tree_cut_size;
 		if (tree_cut_size == 0)
 			return result;
 

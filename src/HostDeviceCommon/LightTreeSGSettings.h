@@ -13,7 +13,8 @@ struct LightTreeSGSettings
 	float light_tree_sg_splitting_variance = 0.92f;
 	// These 2 below are both initialized from SGBuilder::to_device()
 	unsigned int spatial_lobe_count;
-	unsigned int tree_cut_size;
+	// Effective tree cut size means that this can be 2 if the tree cut size is 4 but only 2 lobes are actually in the SG light tree because the scene is small.
+	unsigned int effective_tree_cut_size;
 };
 
 #endif
