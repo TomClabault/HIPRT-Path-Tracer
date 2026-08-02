@@ -54,8 +54,7 @@ HIPRT_DEVICE __constant__ inline float COSINE_MAX_ANGLE_DIRECTION_LUT[256] = {
 
 struct IlluminationAwareKDTreeDevice
 {
-	static constexpr float DIRECTION_LUT_MAX_U				= 0.802656898f;
-	static constexpr double MINIMUM_CELL_SPLIT_SAMPLE_COUNT = 1000.0;
+	static constexpr float DIRECTION_LUT_MAX_U = 0.802656898f;
 	// phi^-1(1 - 1e-4) = 3.7190164854557084
 	static constexpr double Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190164854557084;
 
@@ -109,9 +108,9 @@ struct IlluminationAwareKDTreeDevice
 		return z_score > z_threshold;
 	}
 
-	HIPRT_DEVICE static bool should_split_samples(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float)
+	HIPRT_DEVICE bool should_split_samples(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float)
 	{
-		return guiding_signature_float.valid_observation_count >= MINIMUM_CELL_SPLIT_SAMPLE_COUNT;
+		return guiding_signature_float.valid_observation_count >= static_cast<double>(user_settings.minimum_sample_count_for_splitting);
 	}
 
 	HIPRT_DEVICE bool should_split_mean_radiance(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float,
@@ -120,7 +119,7 @@ struct IlluminationAwareKDTreeDevice
 		IlluminationAwareKDTreeIlluminationSignatureDouble guiding	 = convert_signature_to_double(guiding_signature_float);
 		IlluminationAwareKDTreeIlluminationSignatureDouble lookahead = convert_signature_to_double(lookahead_signature_float);
 
-		if (lookahead.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
+		if (lookahead.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
 		IlluminationAwareKDTreeIlluminationSignatureDouble difference_cell;
@@ -133,7 +132,7 @@ struct IlluminationAwareKDTreeDevice
 														  ? guiding.squared_scalar_radiance_sum - lookahead.squared_scalar_radiance_sum
 														  : 0.0;
 
-		if (difference_cell.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
+		if (difference_cell.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
 		double guiding_sample_count	  = guiding.valid_observation_count;
@@ -222,12 +221,12 @@ struct IlluminationAwareKDTreeDevice
 		return result;
 	}
 
-	HIPRT_DEVICE static bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
-														 const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
+	HIPRT_DEVICE bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
+												  const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
 	{
 		// Use the same minimum sample requirement as mean radiance.
-		if (guiding_signature.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT ||
-			lookahead_signature.valid_observation_count < MINIMUM_CELL_SPLIT_SAMPLE_COUNT)
+		if (guiding_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting) ||
+			lookahead_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
 		VMF guiding_model	= estimate_mean_direction_model(guiding_signature);

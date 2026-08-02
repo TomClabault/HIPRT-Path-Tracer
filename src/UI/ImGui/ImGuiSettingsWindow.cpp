@@ -3974,6 +3974,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
+			if (ImGui::SliderInt("Min. sample count for splitting", &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_splitting,
+								 250, 2000))
+				m_render_window->set_render_dirty(true);
+
 			if (ImGui::SliderInt("Min. sample count for lookahead creation",
 								 &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
 				m_render_window->set_render_dirty(true);

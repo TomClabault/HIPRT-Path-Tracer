@@ -88,7 +88,6 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 	float power						 = 0.0f;
 	if (valid_slot)
 		power = hippt::max(light_tree_sg.nodes[tree_cut_node_index].get_total_power(), 0.0f);
-	// power = 1.0f / tree_cut_size;
 
 	unsigned int valid_node_count = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(valid_slot ? 1u : 0u);
 	float total_power			  = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(power);

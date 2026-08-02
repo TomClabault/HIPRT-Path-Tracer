@@ -26,11 +26,20 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove ReSTIR GI impl
 // - Remove NEE++ RR impl
 // - Remove LTC shading
+// - Remove ReGIR
 // - Remove RIS LTC estimator
 //
 // TODO Illumination aware KD tree
-//		- How to use the basic light tree as the very first SPP instead of the shit prior and then start learning distributions from that base light tree? We
-//		would somehow to recover the corresponding tree cut node + probability so that we can create a NEESampleRecord from that
+//		- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't
+//learn fast enough
+//		- We have an issue with exploration: if we keep using learnt distributions to sample and update learnt distributions themselves, we have nothing for
+//		producing "exploration samples"
+//		- The issue is that if using the prior for the first SPP, the records for refining the KD tree are extra noisy and we barely get any splits because of
+//		that. For the first SPP we should really refine the tree and shade from the base tree and then the next SPPs can use learnt distributions
+//		- We have issues because even with cut size 1 we have dead weird cells
+//		- Integrate envmap into the distribution
+//		- Compare theoretical best vs. distribution to understand why distributions are not perfect
+//		- Split first SPP purely based on sample to quickly get a good refinment of the kd tree?
 //		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
 //		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes
 //		- Instead of having a normal-coherence-dependent prior distribution defensive usage, can we just have different distributions per normal binning in a
