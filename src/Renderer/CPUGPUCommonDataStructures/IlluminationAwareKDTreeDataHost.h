@@ -113,27 +113,6 @@ struct IlluminationAwareKDTreeDataHost
 		return true;
 	}
 
-	std::size_t get_byte_size() const
-	{
-		return GenericSoAHelpers::get_byte_size(m_nodes) + GenericSoAHelpers::get_byte_size(m_node_bounds) + GenericSoAHelpers::get_byte_size(m_node_count) +
-			   GenericSoAHelpers::get_byte_size(m_active_guiding_nodes) + GenericSoAHelpers::get_byte_size(m_active_guiding_node_count) +
-			   GenericSoAHelpers::get_byte_size(m_needs_split) + GenericSoAHelpers::get_byte_size(m_guiding_distribution_count) +
-			   GenericSoAHelpers::get_byte_size(m_current_frontier) + GenericSoAHelpers::get_byte_size(m_current_frontier_count) +
-			   GenericSoAHelpers::get_byte_size(m_next_frontier) + GenericSoAHelpers::get_byte_size(m_next_frontier_count) +
-			   GenericSoAHelpers::get_byte_size(m_training_samples) + GenericSoAHelpers::get_byte_size(m_training_sample_count) +
-			   GenericSoAHelpers::get_byte_size(m_nee_training_records) + GenericSoAHelpers::get_byte_size(m_nee_training_record_count) +
-			   GenericSoAHelpers::get_byte_size(m_batch_signatures) + GenericSoAHelpers::get_byte_size(m_history_signatures) +
-			   GenericSoAHelpers::get_byte_size(m_batch_spatial_moments) + GenericSoAHelpers::get_byte_size(m_history_spatial_moments) +
-			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_probabilities) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_cdfs) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cell_sample_count) + GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_x) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_y) + GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_sum_z) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cell_normal_count) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_estimated_second_moment) +
-			   GenericSoAHelpers::get_byte_size(m_history_per_cut_node_sample_count) +
-			   GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_second_moment_sum) + GenericSoAHelpers::get_byte_size(m_batch_per_cut_node_sample_count) +
-			   GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_pdfs) + GenericSoAHelpers::get_byte_size(m_tree_cut_sampling_prior_cdfs);
-	}
-
 	std::size_t maximum_size() const
 	{
 		return m_nodes.size();

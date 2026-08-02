@@ -30,8 +30,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove RIS LTC estimator
 //
 // TODO Illumination aware KD tree
+//		- How to reduce memory usage of the distributions?
+//		- CDF 16 for the distributions
 //		- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't
-//learn fast enough
+// learn fast enough
 //		- We have an issue with exploration: if we keep using learnt distributions to sample and update learnt distributions themselves, we have nothing for
 //		producing "exploration samples"
 //		- The issue is that if using the prior for the first SPP, the records for refining the KD tree are extra noisy and we barely get any splits because of

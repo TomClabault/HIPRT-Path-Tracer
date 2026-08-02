@@ -439,5 +439,51 @@ bool& IlluminationAwareKDTreeRenderPass::get_frozen_tree()
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_vram_usage_bytes() const
 {
-	return m_illumination_aware_kd_tree.get_byte_size();
+	return get_vram_usage_breakdown().get_total_bytes();
+}
+
+IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usage_breakdown() const
+{
+	IlluminationAwareKDTreeVRAMUsage vram_usage;
+
+	vram_usage.nodes	   = m_illumination_aware_kd_tree.m_nodes.get_byte_size();
+	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_node_bounds.get_byte_size();
+	vram_usage.node_count  = m_illumination_aware_kd_tree.m_node_count.get_byte_size();
+
+	vram_usage.active_guiding_nodes		  = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
+	vram_usage.active_guiding_node_count  = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
+	vram_usage.needs_split				  = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
+	vram_usage.guiding_distribution_count = m_illumination_aware_kd_tree.m_guiding_distribution_count.get_byte_size();
+
+	vram_usage.current_frontier		  = m_illumination_aware_kd_tree.m_current_frontier.get_byte_size();
+	vram_usage.current_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_byte_size();
+	vram_usage.next_frontier		  = m_illumination_aware_kd_tree.m_next_frontier.get_byte_size();
+	vram_usage.next_frontier_count	  = m_illumination_aware_kd_tree.m_next_frontier_count.get_byte_size();
+
+	vram_usage.training_samples			 = m_illumination_aware_kd_tree.m_training_samples.get_byte_size();
+	vram_usage.training_sample_count	 = m_illumination_aware_kd_tree.m_training_sample_count.get_byte_size();
+	vram_usage.nee_training_records		 = m_illumination_aware_kd_tree.m_nee_training_records.get_byte_size();
+	vram_usage.nee_training_record_count = m_illumination_aware_kd_tree.m_nee_training_record_count.get_byte_size();
+
+	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_batch_signatures.get_byte_size();
+	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_history_signatures.get_byte_size();
+	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_batch_spatial_moments.get_byte_size();
+	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_history_spatial_moments.get_byte_size();
+
+	vram_usage.tree_cut_sampling_probabilities				= m_illumination_aware_kd_tree.m_tree_cut_sampling_probabilities.get_byte_size();
+	vram_usage.tree_cut_sampling_cdfs						= m_illumination_aware_kd_tree.m_tree_cut_sampling_cdfs.get_byte_size();
+	vram_usage.history_per_cell_sample_count				= m_illumination_aware_kd_tree.m_history_per_cell_sample_count.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_x				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_x.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_y				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_y.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_z				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_z.get_byte_size();
+	vram_usage.history_per_cell_normal_count				= m_illumination_aware_kd_tree.m_history_per_cell_normal_count.get_byte_size();
+	vram_usage.history_per_cut_node_estimated_second_moment = m_illumination_aware_kd_tree.m_history_per_cut_node_estimated_second_moment.get_byte_size();
+	vram_usage.history_per_cut_node_sample_count			= m_illumination_aware_kd_tree.m_history_per_cut_node_sample_count.get_byte_size();
+	vram_usage.batch_per_cut_node_second_moment_sum			= m_illumination_aware_kd_tree.m_batch_per_cut_node_second_moment_sum.get_byte_size();
+	vram_usage.batch_per_cut_node_sample_count				= m_illumination_aware_kd_tree.m_batch_per_cut_node_sample_count.get_byte_size();
+
+	vram_usage.tree_cut_sampling_prior_pdfs = m_illumination_aware_kd_tree.m_tree_cut_sampling_prior_pdfs.get_byte_size();
+	vram_usage.tree_cut_sampling_prior_cdfs = m_illumination_aware_kd_tree.m_tree_cut_sampling_prior_cdfs.get_byte_size();
+
+	return vram_usage;
 }
