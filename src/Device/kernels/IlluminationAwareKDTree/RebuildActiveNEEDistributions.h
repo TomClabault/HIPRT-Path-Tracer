@@ -63,15 +63,17 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	for (unsigned int slot = 0; slot < tree_cut_size; slot++)
 	{
 		unsigned int distribution_slot = nee_learnt_distributions.get_tree_cut_offset(distribution_index, tree_cut_size) + slot;
-		float prior_probability		   = nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot];
-		float learned_probability	   = prior_probability;
+		float prior_probability =
+			static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) / IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE;
+		float learned_probability = prior_probability;
 		if (learned_weight_sum > 0.0f)
 			learned_probability = learned_weights[slot] / learned_weight_sum;
 
-		float final_probability														= (1.0f - prior_mix) * learned_probability + prior_mix * prior_probability;
-		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] = final_probability;
+		float final_probability = (1.0f - prior_mix) * learned_probability + prior_mix * prior_probability;
+		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] =
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
 		nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, running_cdf) * IlluminationAwareKDTreeNEELearntDistributions::CDF_U16_MAXIMUM_VALUE);
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, running_cdf) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
 		running_cdf += final_probability;
 	}
 #else
@@ -114,19 +116,21 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	float final_probability = 0.0f;
 	if (valid_distribution && valid_slot)
 	{
-		float prior_probability	  = nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot];
+		float prior_probability =
+			static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) / IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE;
 		float learned_probability = prior_probability;
 		if (learned_weight_sum > 0.0f)
 			learned_probability = learned_weight / learned_weight_sum;
 
 		final_probability = (1.0f - shared_prior_mix) * learned_probability + shared_prior_mix * prior_probability;
-		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] = final_probability;
+		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] =
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
 	}
 
 	float exclusive_cdf = block_prefix_scan_exclusive<1024>(final_probability);
 	if (valid_distribution && valid_slot)
 		nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, exclusive_cdf) * IlluminationAwareKDTreeNEELearntDistributions::CDF_U16_MAXIMUM_VALUE);
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, exclusive_cdf) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
 #endif
 }
 

@@ -37,9 +37,10 @@ struct IlluminationAwareKDTreeNEEDistributionTrainingRecord
 
 struct IlluminationAwareKDTreeNEELearntDistributions
 {
-	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE	  = -1.0f;
-	static constexpr unsigned short int TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE = 65535;
-	static constexpr float CDF_U16_MAXIMUM_VALUE								  = 65535.0f;
+	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE			  = -1.0f;
+	static constexpr unsigned short int TREE_CUT_SAMPLING_PROBABILITY_UNINITIALIZED_VALUE = 65535;
+	static constexpr unsigned short int TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE		  = 65535;
+	static constexpr float U16_MAXIMUM_VALUE											  = 65535.0f;
 	// When initializing a cell distribution with the prior distribution, how many samples that prio-distribution-initialization is going to be worth. This is
 	// basically as if the cell had learnt the prior distribution from this many samples.
 	static constexpr float ROOT_PRIOR_STRENGTH = 8.0f;
@@ -97,7 +98,7 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 		result.cut_slot				 = selected_slot;
 		result.light_tree_node_index = light_tree_sg.tree_cut_node_indices[selected_slot];
-		result.probability			 = tree_cut_sampling_probabilities[selected_offset];
+		result.probability			 = static_cast<float>(tree_cut_sampling_probabilities[selected_offset]) / U16_MAXIMUM_VALUE;
 
 		return result;
 	}
@@ -191,8 +192,8 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
 	// probabilities for sampling the nodes of the tree cut of the SG light tree.
-	float* tree_cut_sampling_probabilities	   = nullptr;
-	unsigned short int* tree_cut_sampling_cdfs = nullptr;
+	unsigned short int* tree_cut_sampling_probabilities = nullptr;
+	unsigned short int* tree_cut_sampling_cdfs			= nullptr;
 
 	// For each guiding cell (no cut node here), how many samples have been accumulated in that cell, accross all cut nodes
 	AtomicType<unsigned int>* history_per_cell_sample_count = nullptr;
@@ -210,7 +211,7 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 	AtomicType<unsigned int>* batch_per_cut_node_sample_count = nullptr;
 
 	// Global prior distribution for sampling the tree cut nodes.
-	float* tree_cut_sampling_prior_pdfs				 = nullptr;
+	unsigned short int* tree_cut_sampling_prior_pdfs = nullptr;
 	unsigned short int* tree_cut_sampling_prior_cdfs = nullptr;
 };
 

@@ -29,9 +29,20 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove ReGIR
 // - Remove RIS LTC estimator
 //
+// Summary of all the learnt NEE distributions issues so far:
+//	- We have dead cells even at light cut size 1
+//	- 1024 cut size is too big to learn, we need to subdivide the cut size adaptively based on the number of samples received by a given cut node
+//	- SG bootstrap to learn the SPP 1 distributions from is no good because SG bootstrap doesn't explore super well all the nodes of the cut so some
+//		probabilities are not learnt well enough
+//	- We still need normal aware distributions
+//	- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't learn
+//		fast enough
+//	- How to keep exploring when using learnt distributions to sample and update learnt distributions themselves? We have nothing for producing "exploration
+//		samples"
+//	- Why are distributions not converging perfectly (or very close to) even at high learning sample count? Where is the bottleneck?
+//
 // TODO Illumination aware KD tree
 //		- How to reduce memory usage of the distributions?
-//		- CDF 16 for the distributions
 //		- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't
 // learn fast enough
 //		- We have an issue with exploration: if we keep using learnt distributions to sample and update learnt distributions themselves, we have nothing for
@@ -42,10 +53,22 @@ extern ImGuiLogger g_imgui_logger;
 //		- Integrate envmap into the distribution
 //		- Compare theoretical best vs. distribution to understand why distributions are not perfect
 //		- Split first SPP purely based on sample to quickly get a good refinment of the kd tree?
+//		- How to efficiently train a 1024 nodes wide distribution per cell because that's a lot of cells to learn and we need tons of estimate to cover all of
+//		those
+//		- Can we maybe render 2SPP in one for the first SPP: shade from the base light tree but learn from a prior that explores better so that the learning
+//		distribution is good and the first SPP is good as well
+//			- Or maybe this is just conflicting with the idea of initializing the distributions from average point + average normal --> evaluate proba of
+//			reaching all cut nodes
+//		- Rename tree cut to light cut everywhere
+//		- After the first SPP, initialize the distributions of cell from the average probability of of bunch of points from the cell reaching all given cut
+//		nodes: this basically reproduces the behavior of the base tree itself
+//			- maybe we can even do that after cells are split and then still keep learning from actual runtime samples
 //		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
 //		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes
 //		- Instead of having a normal-coherence-dependent prior distribution defensive usage, can we just have different distributions per normal binning in a
 //		given guiding cell?
+//		- We could start with a 64 cut size and then subdivide the cut size adaptively when the cut node has received enough samples instead of starting right
+//		away with a 1204 cut size which is too hard to learn
 //		- How to subdivide more where illumination changes a lot but keep a low subdivision where illumination is very uniform? How to replace the global
 //		threshold basically by 2 thresholds
 //		- Use CDFDevice16 for learnt distributions to save memory and bandwidth

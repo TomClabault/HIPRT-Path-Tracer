@@ -34,14 +34,16 @@ IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(IlluminationAw
 
 	unsigned int tree_cut_offset   = illumination_aware_kd_tree.nee_learnt_distributions.get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
 	unsigned int distribution_slot = tree_cut_offset + slot;
-	float prior_probability		   = illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot];
+	float prior_probability		   = static_cast<float>(illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) /
+							  IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE;
 
 	illumination_aware_kd_tree.nee_learnt_distributions.history_per_cut_node_estimated_second_moment[distribution_slot] = prior_probability * prior_probability;
 	illumination_aware_kd_tree.nee_learnt_distributions.history_per_cut_node_sample_count[distribution_slot] =
 		IlluminationAwareKDTreeNEELearntDistributions::ROOT_PRIOR_STRENGTH;
 	illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_second_moment_sum[distribution_slot] = 0.0f;
 	illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_sample_count[distribution_slot]		= 0;
-	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot]		= prior_probability;
+	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] =
+		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot];
 	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot] =
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_cdfs[slot];
 
