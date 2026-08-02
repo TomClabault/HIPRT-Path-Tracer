@@ -51,9 +51,6 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 
 		nee_learnt_distributions.update_cell_cut_node_second_moment_estimate(estimate, effective_count, batch_sum, batch_count, distribution_slot);
 
-		hippt::atomic_exchange(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[distribution_slot], estimate);
-		hippt::atomic_exchange(&nee_learnt_distributions.history_per_cut_node_sample_count[distribution_slot], static_cast<unsigned int>(effective_count));
-
 		learned_weights[slot] = sqrt(hippt::max(estimate, 0.0f));
 		learned_weight_sum += learned_weights[slot];
 	}

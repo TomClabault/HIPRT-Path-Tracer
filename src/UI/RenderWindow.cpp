@@ -28,6 +28,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove LTC shading
 // - Remove ReGIR
 // - Remove RIS LTC estimator
+// - Rename tree cut to light cut everywhere
+// - Move the illumination aware estimator to a sampling technique in the UI, it's more explicit but just keep it as an estimator under the hood for easy code
+//		design
 //
 // Summary of all the learnt NEE distributions issues so far:
 //	- We have dead cells even at light cut size 1
@@ -40,8 +43,14 @@ extern ImGuiLogger g_imgui_logger;
 //	- How to keep exploring when using learnt distributions to sample and update learnt distributions themselves? We have nothing for producing "exploration
 //		samples"
 //	- Why are distributions not converging perfectly (or very close to) even at high learning sample count? Where is the bottleneck?
+//	- We need a small uniform floor for all nodes probabilities otherwise this could be biased low (and also a node that actually doesn't have 0 importance can
+//		never prove it that it doesn't have 0 importance because it's never sampled)
+//
+//		Or better than a uniform floor is using the probability floor computed from that idea of precomputing the importance of each node from each cell for a
+//		bunch of points / normals in that cell
 //
 // TODO Illumination aware KD tree
+//		- We should use learning to cluster paper to learn the light cut instead of the simple merge-collapse of Reinforcment lightcut learning
 //		- How to reduce memory usage of the distributions?
 //		- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't
 // learn fast enough
@@ -59,7 +68,6 @@ extern ImGuiLogger g_imgui_logger;
 //		distribution is good and the first SPP is good as well
 //			- Or maybe this is just conflicting with the idea of initializing the distributions from average point + average normal --> evaluate proba of
 //			reaching all cut nodes
-//		- Rename tree cut to light cut everywhere
 //		- After the first SPP, initialize the distributions of cell from the average probability of of bunch of points from the cell reaching all given cut
 //		nodes: this basically reproduces the behavior of the base tree itself
 //			- maybe we can even do that after cells are split and then still keep learning from actual runtime samples
