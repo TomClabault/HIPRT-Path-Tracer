@@ -37,6 +37,218 @@ const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HIS
 const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID				= "Mark Guiding Cells For Splitting";
 const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID						= "Promote Guiding Cells";
 
+namespace
+{
+	// BEGIN TEMPORARY SPP 0 NEE DISTRIBUTION DIAGNOSTICS
+	void log_spp_0_final_nee_distribution_statistics(const IlluminationAwareKDTreeDataHost<OrochiBuffer>& illumination_aware_kd_tree,
+													 unsigned int active_guiding_count,
+													 unsigned int tree_cut_size)
+	{
+		if (active_guiding_count == 0 || tree_cut_size == 0)
+			return;
+
+		std::vector<unsigned int> active_guiding_nodes = illumination_aware_kd_tree.m_active_guiding_nodes.download_data_partial(0, active_guiding_count);
+		std::vector<IlluminationAwareKDTreeNode> nodes = illumination_aware_kd_tree.m_nodes.download_data();
+
+		unsigned int maximum_guiding_distribution_index = 0;
+		for (unsigned int active_guiding_index = 0; active_guiding_index < active_guiding_count; active_guiding_index++)
+		{
+			unsigned int guiding_node_index = active_guiding_nodes[active_guiding_index];
+			if (guiding_node_index >= nodes.size())
+			{
+				Debug::debugbreak();
+				continue;
+			}
+
+			unsigned int guiding_distribution_index = nodes[guiding_node_index].guiding_distribution_index;
+			if (guiding_distribution_index != IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX)
+				maximum_guiding_distribution_index = std::max(maximum_guiding_distribution_index, guiding_distribution_index);
+		}
+
+		unsigned int distribution_buffer_element_count = (maximum_guiding_distribution_index + 1) * tree_cut_size;
+		std::vector<unsigned int> cell_sample_counts =
+			illumination_aware_kd_tree.m_history_per_cell_sample_count.download_data_partial(0, maximum_guiding_distribution_index + 1);
+		std::vector<unsigned int> batch_selected_slot_counts =
+			illumination_aware_kd_tree.m_batch_per_cut_node_sample_count.download_data_partial(0, distribution_buffer_element_count);
+		std::vector<unsigned short int> final_probabilities =
+			illumination_aware_kd_tree.m_tree_cut_sampling_probabilities.download_data_partial(0, distribution_buffer_element_count);
+
+		std::printf("\n[IlluminationAwareKDTree SPP 0 final NEE distribution diagnostics]\n");
+		for (unsigned int active_guiding_index = 0; active_guiding_index < active_guiding_count; active_guiding_index++)
+		{
+			unsigned int guiding_node_index = active_guiding_nodes[active_guiding_index];
+			if (guiding_node_index >= nodes.size())
+			{
+				Debug::debugbreak();
+				continue;
+			}
+
+			unsigned int guiding_distribution_index = nodes[guiding_node_index].guiding_distribution_index;
+			if (guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX)
+			{
+				Debug::debugbreak();
+				continue;
+			}
+
+			unsigned int distribution_offset				   = guiding_distribution_index * tree_cut_size;
+			unsigned int number_of_unique_selected_slots	   = 0;
+			unsigned int number_of_nonzero_final_probabilities = 0;
+			float maximum_probability						   = 0.0f;
+			float probability_squared_sum					   = 0.0f;
+			float entropy									   = 0.0f;
+			bool incoherent_value_detected					   = false;
+
+			float probability_sum = 0.0f;
+			for (unsigned int slot = 0; slot < tree_cut_size; slot++)
+			{
+				unsigned int distribution_slot = distribution_offset + slot;
+				if (batch_selected_slot_counts[distribution_slot] > 0)
+					number_of_unique_selected_slots++;
+
+				float probability = static_cast<float>(final_probabilities[distribution_slot]) / 65535.0f;
+				if (!std::isfinite(probability) || probability < 0.0f || probability > 1.0f)
+					incoherent_value_detected = true;
+
+				probability_sum += probability;
+				if (probability > 0.0f)
+				{
+					number_of_nonzero_final_probabilities++;
+					maximum_probability = std::max(maximum_probability, probability);
+					probability_squared_sum += probability * probability;
+					entropy -= probability * std::log(probability);
+				}
+			}
+
+			float effective_support = probability_squared_sum > 0.0f ? 1.0f / probability_squared_sum : 0.0f;
+			if (!std::isfinite(probability_sum) || probability_sum > 1.01f || !std::isfinite(entropy) || !std::isfinite(effective_support))
+				incoherent_value_detected = true;
+
+			std::printf(
+				"cell=%u node=%u cell_sample_count=%u number_of_unique_selected_slots=%u number_of_nonzero_final_probabilities=%u maximum_probability=%.9g "
+				"entropy=%.9g effective_support=%.9g\n",
+				active_guiding_index, guiding_node_index, cell_sample_counts[guiding_distribution_index], number_of_unique_selected_slots,
+				number_of_nonzero_final_probabilities, maximum_probability, entropy, effective_support);
+
+			if (incoherent_value_detected)
+				Debug::debugbreak();
+		}
+	}
+	// END TEMPORARY SPP 0 NEE DISTRIBUTION DIAGNOSTICS
+
+	// BEGIN TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
+	void log_spp_0_tree_cut_prior_statistics(const LightTreeSGDevice& light_tree_sg,
+											 const IlluminationAwareKDTreeDataHost<OrochiBuffer>& illumination_aware_kd_tree,
+											 const OrochiBuffer<unsigned int>& debug_tree_cut_node_index,
+											 unsigned int tree_cut_size)
+	{
+		if (tree_cut_size == 0)
+			return;
+
+		std::vector<unsigned int> tree_cut_node_indices			= OrochiBuffer<unsigned int>::download_data(light_tree_sg.tree_cut_node_indices, tree_cut_size);
+		std::vector<unsigned int> initial_tree_cut_node_indices = debug_tree_cut_node_index.download_data_partial(0, tree_cut_size);
+		std::vector<unsigned short int> prior_probabilities = illumination_aware_kd_tree.m_tree_cut_sampling_prior_pdfs.download_data_partial(0, tree_cut_size);
+		if (tree_cut_node_indices.size() != tree_cut_size || initial_tree_cut_node_indices.size() != tree_cut_size ||
+			prior_probabilities.size() != tree_cut_size)
+			Debug::debugbreak();
+
+		unsigned int maximum_tree_cut_node_index = 0;
+		bool has_valid_tree_cut_node			 = false;
+		for (unsigned int slot = 0; slot < tree_cut_size; slot++)
+		{
+			unsigned int node_index = tree_cut_node_indices[slot];
+			if (initial_tree_cut_node_indices[slot] == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX ||
+				node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+				Debug::debugbreak();
+
+			if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+				continue;
+
+			maximum_tree_cut_node_index = std::max(maximum_tree_cut_node_index, node_index);
+			has_valid_tree_cut_node		= true;
+		}
+
+		std::vector<LightTreeSGNodeDevice> light_tree_nodes;
+		if (has_valid_tree_cut_node)
+			light_tree_nodes = OrochiBuffer<LightTreeSGNodeDevice>::download_data(light_tree_sg.nodes, maximum_tree_cut_node_index + 1);
+
+		std::printf(
+			"\n[IlluminationAwareKDTree SPP 0 tree-cut prior diagnostics] tree_cut_node_indices_pointer=%p nodes_pointer=%p effective_tree_cut_size=%u\n",
+			static_cast<void*>(light_tree_sg.tree_cut_node_indices), static_cast<void*>(light_tree_sg.nodes), tree_cut_size);
+		for (unsigned int slot = 0; slot < tree_cut_size; slot++)
+		{
+			unsigned int node_index		   = tree_cut_node_indices[slot];
+			bool valid					   = node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < light_tree_nodes.size();
+			float total_power			   = valid ? light_tree_nodes[node_index].get_total_power() : 0.0f;
+			float prior_probability		   = static_cast<float>(prior_probabilities[slot]) / 65535.0f;
+			bool incoherent_value_detected = initial_tree_cut_node_indices[slot] != node_index || !std::isfinite(total_power) || total_power < 0.0f ||
+											 !std::isfinite(prior_probability) || prior_probability < 0.0f || prior_probability > 1.0f;
+
+			std::printf("slot=%u initial_node=%u current_node=%u valid=%s total_power=%.9g prior_probability=%.9g\n", slot, initial_tree_cut_node_indices[slot],
+						node_index, valid ? "true" : "false", total_power, prior_probability);
+
+			if (incoherent_value_detected)
+				Debug::debugbreak();
+		}
+	}
+	// END TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
+
+	// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+	void log_spp_0_global_prior_initialization_diagnostics(const OrochiBuffer<float>& debug_power,
+														   const OrochiBuffer<float>& debug_total_power,
+														   const OrochiBuffer<float>& debug_probability,
+														   const OrochiBuffer<unsigned short int>& debug_probability_u16,
+														   const OrochiBuffer<unsigned short int>& stored_prior_probabilities,
+														   unsigned int tree_cut_size)
+	{
+		std::vector<float> power							   = debug_power.download_data_partial(0, tree_cut_size);
+		std::vector<float> total_power						   = debug_total_power.download_data_partial(0, tree_cut_size);
+		std::vector<float> probability						   = debug_probability.download_data_partial(0, tree_cut_size);
+		std::vector<unsigned short int> probability_u16		   = debug_probability_u16.download_data_partial(0, tree_cut_size);
+		std::vector<unsigned short int> stored_probability_u16 = stored_prior_probabilities.download_data_partial(0, tree_cut_size);
+
+		float sum_debug_probability			 = 0.0f;
+		float sum_decoded_stored_probability = 0.0f;
+		std::printf("\n[IlluminationAwareKDTree SPP 0 global prior initialization diagnostics]\n");
+		for (unsigned int slot = 0; slot < tree_cut_size; slot++)
+		{
+			bool expected_is_defined	   = total_power[slot] > 0.0f;
+			bool incoherent_value_detected = !std::isfinite(power[slot]) || !std::isfinite(total_power[slot]) || power[slot] < 0.0f ||
+											 total_power[slot] < 0.0f || power[slot] > total_power[slot];
+
+			float expected								= expected_is_defined ? power[slot] / total_power[slot] : 0.0f;
+			unsigned short int expected_probability_u16 = static_cast<unsigned short int>(expected * 65535.0f);
+			bool probability_matches_expected			= expected_is_defined && std::fabs(probability[slot] - expected) <= 1.0e-6f;
+			bool probability_u16_matches_expected		= expected_is_defined && probability_u16[slot] == expected_probability_u16;
+			bool stored_probability_matches_debug		= stored_probability_u16[slot] == probability_u16[slot];
+			float decoded_stored_probability			= static_cast<float>(stored_probability_u16[slot]) / 65535.0f;
+			if (!expected_is_defined || !std::isfinite(expected) || expected < 0.0f || expected > 1.0f || !std::isfinite(probability[slot]) ||
+				probability[slot] < 0.0f || probability[slot] > 1.0f || !probability_matches_expected || !probability_u16_matches_expected ||
+				!stored_probability_matches_debug)
+				incoherent_value_detected = true;
+
+			sum_debug_probability += probability[slot];
+			sum_decoded_stored_probability += decoded_stored_probability;
+
+			std::printf("slot=%u power=%.9g total_power=%.9g debug_probability=%.9g expected=%.9g debug_probability_u16=%u expected_probability_u16=%u "
+						"stored_probability_u16=%u expected_is_defined=%s debug_probability_matches_expected=%s debug_probability_u16_matches_expected=%s "
+						"stored_probability_matches_debug=%s decoded_stored_probability=%.9g\n",
+						slot, power[slot], total_power[slot], probability[slot], expected, static_cast<unsigned int>(probability_u16[slot]),
+						static_cast<unsigned int>(expected_probability_u16), static_cast<unsigned int>(stored_probability_u16[slot]),
+						expected_is_defined ? "true" : "false", probability_matches_expected ? "true" : "false",
+						probability_u16_matches_expected ? "true" : "false", stored_probability_matches_debug ? "true" : "false", decoded_stored_probability);
+
+			if (incoherent_value_detected)
+				Debug::debugbreak();
+		}
+
+		std::printf("sum(debug_probability)=%.9g sum(decoded_stored_probabilities)=%.9g\n", sum_debug_probability, sum_decoded_stored_probability);
+		if (!std::isfinite(sum_debug_probability) || !std::isfinite(sum_decoded_stored_probability) || std::fabs(sum_debug_probability - 1.0f) > 1.0e-3f ||
+			std::fabs(sum_decoded_stored_probability - 1.0f) > 1.0e-2f)
+			Debug::debugbreak();
+	}
+	// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+} // namespace
+
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
 {
@@ -160,6 +372,14 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	{
 		m_buffers_need_reallocation = true;
 
+		// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+		m_debug_power.free();
+		m_debug_total_power.free();
+		m_debug_probability.free();
+		m_debug_probability_u16.free();
+		m_debug_tree_cut_node_index.free();
+		// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+
 		return m_illumination_aware_kd_tree.free();
 	}
 
@@ -169,6 +389,14 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		int sg_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity,
 											sg_tree_cut_size);
+
+		// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+		m_debug_power.resize(sg_tree_cut_size);
+		m_debug_total_power.resize(sg_tree_cut_size);
+		m_debug_probability.resize(sg_tree_cut_size);
+		m_debug_probability_u16.resize(sg_tree_cut_size);
+		m_debug_tree_cut_node_index.resize(sg_tree_cut_size);
+		// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		m_buffers_need_reallocation = false;
@@ -192,10 +420,28 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 			256, 1, all_distribution_slot_count, 1, reset_distribution_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-		void* global_prior_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
+		// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+		float* debug_power						  = m_debug_power.data();
+		float* debug_total_power				  = m_debug_total_power.data();
+		float* debug_probability				  = m_debug_probability.data();
+		unsigned short int* debug_probability_u16 = m_debug_probability_u16.data();
+		unsigned int* debug_tree_cut_node_index	  = m_debug_tree_cut_node_index.data();
+		void* global_prior_launch_args[]		  = { &illumination_aware_kd_tree, &light_tree_sg,	   &debug_power,
+													  &debug_total_power,		   &debug_probability, &debug_probability_u16,
+													  &debug_tree_cut_node_index };
+		// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeTreeCutInitializationBlockSize, 1, tree_cut_size, 1, global_prior_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+		log_spp_0_global_prior_initialization_diagnostics(m_debug_power, m_debug_total_power, m_debug_probability, m_debug_probability_u16,
+														  m_illumination_aware_kd_tree.m_tree_cut_sampling_prior_pdfs, tree_cut_size);
+		// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+
+		// BEGIN TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
+		log_spp_0_tree_cut_prior_statistics(light_tree_sg, m_illumination_aware_kd_tree, m_debug_tree_cut_node_index, tree_cut_size);
+		// END TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
 
 		void* root_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID]->launch_asynchronous(
@@ -294,6 +540,16 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	m_kernels[IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, active_guiding_count * 1024, 1, rebuild_nee_distributions_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	// BEGIN TEMPORARY SPP 0 NEE DISTRIBUTION DIAGNOSTICS
+	if (render_data.render_settings.sample_number == 0)
+		log_spp_0_final_nee_distribution_statistics(m_illumination_aware_kd_tree, active_guiding_count, tree_cut_size);
+	// END TEMPORARY SPP 0 NEE DISTRIBUTION DIAGNOSTICS
+
+	// BEGIN TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
+	if (render_data.render_settings.sample_number == 0)
+		log_spp_0_tree_cut_prior_statistics(light_tree_sg, m_illumination_aware_kd_tree, m_debug_tree_cut_node_index, tree_cut_size);
+	// END TEMPORARY SPP 0 TREE-CUT PRIOR DIAGNOSTICS
 }
 
 void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)

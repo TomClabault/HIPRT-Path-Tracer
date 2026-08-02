@@ -15,11 +15,21 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
 																				LightTreeSGDevice light_tree_sg,
+																				float* debug_power,
+																				float* debug_total_power,
+																				float* debug_probability,
+																				unsigned short int* debug_probability_u16,
+																				unsigned int* debug_tree_cut_node_index,
 																				[[maybe_unused]] int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-																		 LightTreeSGDevice light_tree_sg)
+																		 LightTreeSGDevice light_tree_sg,
+																		 float* debug_power,
+																		 float* debug_total_power,
+																		 float* debug_probability,
+																		 unsigned short int* debug_probability_u16,
+																		 unsigned int* debug_tree_cut_node_index)
 #endif
 {
 #ifndef __KERNELCC__
@@ -49,9 +59,10 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 	{
 		unsigned int node_index = light_tree_sg.tree_cut_node_indices[slot];
 		float probability		= 0.0f;
+		float power				= 0.0f;
 		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		{
-			float power				= hippt::max(light_tree_sg.nodes[node_index].get_total_power(), 0.0f);
+			power					= hippt::max(light_tree_sg.nodes[node_index].get_total_power(), 0.0f);
 			float power_probability = total_power > 0.0f ? power / total_power : uniform_probability;
 			probability				= power_probability;
 			valid_slot_count++;
@@ -63,6 +74,11 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, cdf) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
 		unsigned short int probability_u16 =
 			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+		debug_power[slot]				= power;
+		debug_total_power[slot]			= total_power;
+		debug_probability[slot]			= probability;
+		debug_probability_u16[slot]		= probability_u16;
+		debug_tree_cut_node_index[slot] = node_index;
 
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot]				= probability_u16;
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot]						= cdf_u16;
@@ -95,8 +111,9 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 
 	unsigned int valid_node_count = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(valid_slot ? 1u : 0u);
 	float total_power			  = block_reduce<IlluminationAwareKDTreeTreeCutInitializationBlockSize>(power);
-	float uniform_probability	  = valid_node_count > 0 ? 1.0f / static_cast<float>(valid_node_count) : 0.0f;
-	float probability			  = 0.0f;
+
+	float uniform_probability = valid_node_count > 0 ? 1.0f / static_cast<float>(valid_node_count) : 0.0f;
+	float probability		  = 0.0f;
 	if (valid_slot)
 	{
 		float power_probability = uniform_probability;
@@ -113,6 +130,11 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 
 		unsigned short int probability_u16 =
 			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+		debug_power[slot]				= power;
+		debug_total_power[slot]			= total_power;
+		debug_probability[slot]			= probability;
+		debug_probability_u16[slot]		= probability_u16;
+		debug_tree_cut_node_index[slot] = tree_cut_node_index;
 
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] = probability_u16;
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot]		   = static_cast<unsigned short int>(

@@ -125,6 +125,14 @@ private:
 	IlluminationAwareKDTreeUserSettings m_user_settings;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
 
+	// BEGIN TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+	OrochiBuffer<float> m_debug_power;
+	OrochiBuffer<float> m_debug_total_power;
+	OrochiBuffer<float> m_debug_probability;
+	OrochiBuffer<unsigned short int> m_debug_probability_u16;
+	OrochiBuffer<unsigned int> m_debug_tree_cut_node_index;
+	// END TEMPORARY SPP 0 GLOBAL PRIOR INITIALIZATION DIAGNOSTICS
+
 	// How many times to:
 	//	for (int split; split < m_split_iterations; split++)
 	//	{
