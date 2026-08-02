@@ -71,7 +71,7 @@ private:
 	unsigned int m_effective_tree_cut_size = 0;
 
 	int m_spatial_lobe_count = 8;
-	int m_tree_cut_size		 = 256;
+	int m_tree_cut_size		 = 1024;
 };
 
 template <template <typename> typename DataContainer>

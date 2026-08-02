@@ -14,7 +14,7 @@ struct IlluminationAwareKDTreeUserSettings
 	int minimum_sample_count_for_splitting			= 1000;
 	float mean_radiance_split_threshold				= 0.15f;
 
-	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY;
+	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 };
 
 #endif
