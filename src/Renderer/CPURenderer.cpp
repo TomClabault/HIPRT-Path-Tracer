@@ -794,14 +794,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		unsigned int tree_cut_size		= light_tree_sg.settings.effective_tree_cut_size;
 		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
 		{
-			std::vector<float> debug_power(tree_cut_size);
-			std::vector<float> debug_total_power(tree_cut_size);
-			std::vector<float> debug_probability(tree_cut_size);
-			std::vector<unsigned short int> debug_probability_u16(tree_cut_size);
-			std::vector<unsigned int> debug_tree_cut_node_index(tree_cut_size);
-			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(illumination_aware_kd_tree, light_tree_sg, debug_power.data(),
-																					 debug_total_power.data(), debug_probability.data(),
-																					 debug_probability_u16.data(), debug_tree_cut_node_index.data(), 0);
+			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(illumination_aware_kd_tree, light_tree_sg, 0);
 
 			for (unsigned int slot = 0; slot < tree_cut_size; slot++)
 				IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(illumination_aware_kd_tree, tree_cut_size, slot);
