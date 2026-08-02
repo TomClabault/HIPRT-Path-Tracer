@@ -95,7 +95,7 @@ struct IlluminationAwareKDTreeDataHost
 		m_history_spatial_moments = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 
 		m_tree_cut_sampling_probabilities = DataContainer<float>();
-		m_tree_cut_sampling_cdfs		  = DataContainer<float>();
+		m_tree_cut_sampling_cdfs		  = DataContainer<unsigned short int>();
 
 		m_history_per_cell_sample_count				   = DataContainer<unsigned int>();
 		m_history_per_cell_normal_sum_x				   = DataContainer<GenericAtomicType<float, DataContainer>>();
@@ -108,7 +108,7 @@ struct IlluminationAwareKDTreeDataHost
 		m_batch_per_cut_node_sample_count			   = DataContainer<unsigned int>();
 
 		m_tree_cut_sampling_prior_pdfs = DataContainer<float>();
-		m_tree_cut_sampling_prior_cdfs = DataContainer<float>();
+		m_tree_cut_sampling_prior_cdfs = DataContainer<unsigned short int>();
 
 		return true;
 	}
@@ -200,7 +200,7 @@ struct IlluminationAwareKDTreeDataHost
 
 	// Buffers below that point are for learning NEE distributions per each guiding cell
 	DataContainer<float> m_tree_cut_sampling_probabilities;
-	DataContainer<float> m_tree_cut_sampling_cdfs;
+	DataContainer<unsigned short int> m_tree_cut_sampling_cdfs;
 
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_history_per_cell_sample_count;
 	DataContainer<GenericAtomicType<float, DataContainer>> m_history_per_cell_normal_sum_x;
@@ -213,7 +213,7 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_batch_per_cut_node_sample_count;
 
 	DataContainer<float> m_tree_cut_sampling_prior_pdfs;
-	DataContainer<float> m_tree_cut_sampling_prior_cdfs;
+	DataContainer<unsigned short int> m_tree_cut_sampling_prior_cdfs;
 };
 
 #endif

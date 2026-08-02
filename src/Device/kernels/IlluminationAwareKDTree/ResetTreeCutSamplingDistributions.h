@@ -39,7 +39,7 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_probabilities[reset_index] =
 		IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
 	illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_cdfs[reset_index] =
-		IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+		IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE;
 	illumination_aware_kd_tree.nee_learnt_distributions.history_per_cut_node_estimated_second_moment[reset_index] = 0.0f;
 	illumination_aware_kd_tree.nee_learnt_distributions.history_per_cut_node_sample_count[reset_index]			  = 0;
 	illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_second_moment_sum[reset_index]		  = 0.0f;
@@ -50,7 +50,7 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_pdfs[reset_index] =
 			IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
 		illumination_aware_kd_tree.nee_learnt_distributions.tree_cut_sampling_prior_cdfs[reset_index] =
-			IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE;
+			IlluminationAwareKDTreeNEELearntDistributions::TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE;
 	}
 }
 
