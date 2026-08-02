@@ -12,7 +12,41 @@
 #include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
+#include <cstddef>
+
 class GPURenderer;
+
+struct ReGIRHitTypeVRAMUsage
+{
+	std::size_t base_reservoirs			 = 0;
+	std::size_t spatial_reuse_reservoirs = 0;
+	std::size_t correlation_reduction	 = 0;
+	std::size_t cell_world_data			 = 0;
+	std::size_t async_compute			 = 0;
+	std::size_t ris_pre_integration		 = 0;
+	std::size_t light_distributions		 = 0;
+
+	std::size_t get_reservoirs_bytes() const
+	{
+		return base_reservoirs + spatial_reuse_reservoirs + correlation_reduction + cell_world_data + async_compute + ris_pre_integration;
+	}
+
+	std::size_t get_total_bytes() const
+	{
+		return get_reservoirs_bytes() + light_distributions;
+	}
+};
+
+struct ReGIRVRAMUsage
+{
+	ReGIRHitTypeVRAMUsage primary_hits;
+	ReGIRHitTypeVRAMUsage secondary_hits;
+
+	std::size_t get_total_bytes() const
+	{
+		return primary_hits.get_total_bytes() + secondary_hits.get_total_bytes();
+	}
+};
 
 class ReGIRRenderPass : public RenderPass
 {
@@ -114,6 +148,7 @@ public:
 	/**
 	 * Returns the VRAM used by ReSTIR DI in MB
 	 */
+	ReGIRVRAMUsage get_vram_usage_breakdown() const;
 	float get_VRAM_usage_bytes() const;
 	size_t get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const;
 	size_t get_reservoirs_VRAM_usage_bytes(bool primary_hit) const;

@@ -24,6 +24,7 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 
 		   m_correlation_reduction_grid_primary_hits.get_byte_size() +
 
+		   m_non_canonical_pre_integration_factors_primary_hits.get_byte_size() + m_non_canonical_pre_integration_factors_secondary_hits.get_byte_size() +
 		   m_canonical_pre_integration_factors_primary_hits.get_byte_size() + m_canonical_pre_integration_factors_secondary_hits.get_byte_size() +
 
 		   m_cells_light_distributions_primary_hits.get_byte_size() + m_cells_light_distributions_secondary_hits.get_byte_size();
@@ -55,7 +56,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	bool grid_not_allocated = get_total_number_of_cells(primary_hit) == 0;
 	bool grid_res_changed	= m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size ||
-							  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
+												  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed =
 		regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
 

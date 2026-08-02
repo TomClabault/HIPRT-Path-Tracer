@@ -1357,27 +1357,48 @@ bool ReGIRRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compil
 
 float ReGIRRenderPass::get_VRAM_usage_bytes() const
 {
-	return m_hash_grid_storage.get_byte_size();
+	return static_cast<float>(get_vram_usage_breakdown().get_total_bytes());
+}
+
+ReGIRVRAMUsage ReGIRRenderPass::get_vram_usage_breakdown() const
+{
+	ReGIRVRAMUsage vram_usage;
+
+	vram_usage.primary_hits.base_reservoirs			 = m_hash_grid_storage.get_initial_grid_buffers(true).get_byte_size();
+	vram_usage.primary_hits.spatial_reuse_reservoirs = m_hash_grid_storage.get_spatial_grid_buffers(true).get_byte_size();
+	vram_usage.primary_hits.correlation_reduction	 = m_hash_grid_storage.get_correlation_reduction_buffer().get_byte_size();
+	vram_usage.primary_hits.cell_world_data			 = m_hash_grid_storage.get_hash_cell_data_soa(true).get_byte_size();
+	vram_usage.primary_hits.async_compute			 = m_hash_grid_storage.get_async_compute_staging_buffer(true).get_byte_size();
+	vram_usage.primary_hits.ris_pre_integration =
+		m_hash_grid_storage.get_non_canonical_factors(true).get_byte_size() + m_hash_grid_storage.get_canonical_factors(true).get_byte_size();
+	vram_usage.primary_hits.light_distributions = m_hash_grid_storage.get_cell_light_distributions(true).get_byte_size();
+
+	vram_usage.secondary_hits.base_reservoirs		   = m_hash_grid_storage.get_initial_grid_buffers(false).get_byte_size();
+	vram_usage.secondary_hits.spatial_reuse_reservoirs = m_hash_grid_storage.get_spatial_grid_buffers(false).get_byte_size();
+	vram_usage.secondary_hits.cell_world_data		   = m_hash_grid_storage.get_hash_cell_data_soa(false).get_byte_size();
+	vram_usage.secondary_hits.async_compute			   = m_hash_grid_storage.get_async_compute_staging_buffer(false).get_byte_size();
+	vram_usage.secondary_hits.ris_pre_integration =
+		m_hash_grid_storage.get_non_canonical_factors(false).get_byte_size() + m_hash_grid_storage.get_canonical_factors(false).get_byte_size();
+	vram_usage.secondary_hits.light_distributions = m_hash_grid_storage.get_cell_light_distributions(false).get_byte_size();
+
+	return vram_usage;
 }
 
 size_t ReGIRRenderPass::get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const
 {
-	return primary_hit ? m_hash_grid_storage.m_correlation_reduction_grid_primary_hits.get_byte_size() : 0;
+	return primary_hit ? get_vram_usage_breakdown().primary_hits.correlation_reduction : 0;
 }
 
 size_t ReGIRRenderPass::get_reservoirs_VRAM_usage_bytes(bool primary_hit) const
 {
-	size_t correlation_reduction_size = get_correlation_reduction_VRAM_usage_bytes(primary_hit);
-	return m_hash_grid_storage.get_initial_grid_buffers(primary_hit).get_byte_size() +
-		   m_hash_grid_storage.get_spatial_grid_buffers(primary_hit).get_byte_size() + m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).get_byte_size() +
-		   m_hash_grid_storage.get_async_compute_staging_buffer(primary_hit).get_byte_size() +
-		   m_hash_grid_storage.get_non_canonical_factors(primary_hit).get_byte_size() + m_hash_grid_storage.get_canonical_factors(primary_hit).get_byte_size() +
-		   correlation_reduction_size;
+	ReGIRVRAMUsage vram_usage = get_vram_usage_breakdown();
+	return primary_hit ? vram_usage.primary_hits.get_reservoirs_bytes() : vram_usage.secondary_hits.get_reservoirs_bytes();
 }
 
 size_t ReGIRRenderPass::get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const
 {
-	return m_hash_grid_storage.get_cell_light_distributions(primary_hit).get_byte_size();
+	ReGIRVRAMUsage vram_usage = get_vram_usage_breakdown();
+	return primary_hit ? vram_usage.primary_hits.light_distributions : vram_usage.secondary_hits.light_distributions;
 }
 
 float& ReGIRRenderPass::get_light_distribution_target_incoming_energy()
