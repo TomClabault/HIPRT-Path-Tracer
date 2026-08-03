@@ -357,6 +357,98 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_multi_sample(HIPRTRenderData& rend
 	return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																			 RayPayload& ray_payload,
+																			 const HitInfo closest_hit_info,
+																			 const float3_t& view_direction,
+																			 Xorshift32Generator& random_number_generator)
+{
+	if (!ray_payload.material.can_do_light_sampling())
+		return ColorRGB32F(0.0f);
+
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
+		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, random_number_generator);
+	if (!triangle_sample.valid())
+		return ColorRGB32F(0.0f);
+
+	LightSamplePointInformation light_sample =
+		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
+	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
+
+	if (!(light_sample.area_measure_pdf > 0.0f) || !isfinite(light_sample.area_measure_pdf))
+		return ColorRGB32F(0.0f);
+
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
+	spatial_training_sample.position = closest_hit_info.inter_point;
+	spatial_training_sample.valid	 = true;
+
+	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
+	learning_to_cluster_training_sample.position					= closest_hit_info.inter_point;
+	learning_to_cluster_training_sample.shading_context				= shading_context;
+	learning_to_cluster_training_sample.selected_cluster_node_index = triangle_sample.cluster_node_index;
+	learning_to_cluster_training_sample.cluster_probability			= triangle_sample.cluster_probability;
+	learning_to_cluster_training_sample.valid_for_light_clustering	= true;
+
+	ColorRGB32F light_source_radiance(0.0f);
+
+	float3_t shadow_direction = light_sample.point_on_light - closest_hit_info.inter_point;
+	float distance_to_light	  = hippt::length(shadow_direction);
+	shadow_direction /= distance_to_light;
+
+	spatial_training_sample.incoming_direction = shadow_direction;
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin	 = closest_hit_info.inter_point;
+	shadow_ray.direction = shadow_direction;
+
+	float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_direction);
+	if (dot_light_source > 0.0f)
+	{
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+		nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+
+		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
+														   random_number_generator);
+		if (!in_shadow)
+		{
+			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+			if (solid_angle_pdf > 0.0f && isfinite(solid_angle_pdf))
+			{
+				spatial_training_sample.radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
+
+				float bsdf_pdf							  = 0.0f;
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+				if (bsdf_pdf != 0.0f)
+				{
+					float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
+					ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
+					ColorRGB32F estimator = numerator / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+					light_source_radiance += estimator;
+					learning_to_cluster_training_sample.light_clustering_contribution = estimator.max_component();
+
+					// Just a CPU-only sanity check
+					sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
+				}
+			}
+		}
+	}
+
+	render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(spatial_training_sample);
+	render_data.illumination_aware_kd_tree.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+	return light_source_radiance;
+}
+
 template <bool deferred_BSDF_MIS = true>
 HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data,
 													RayPayload& ray_payload,
@@ -442,99 +534,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 	}
 
 	return total_outgoing_radiance / valid_light_sample_count;
-}
-
-HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
-																			 RayPayload& ray_payload,
-																			 const HitInfo closest_hit_info,
-																			 const float3_t& view_direction,
-																			 Xorshift32Generator& random_number_generator)
-{
-	if (!ray_payload.material.can_do_light_sampling())
-		return ColorRGB32F(0.0f);
-
-	ColorRGB32F light_source_radiance;
-
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
-
-	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
-	{
-		LightSamplePointInformation& light_sample = light_samples[i];
-
-		if (light_sample.area_measure_pdf <= 0.0f)
-			// Can happen for very small triangles or the light
-			// sampling technique couldn't sample a triangle
-			continue;
-
-		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
-		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light					 = hippt::length(shadow_ray_direction);
-		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-		hiprtRay shadow_ray;
-		shadow_ray.origin	 = shadow_ray_origin;
-		shadow_ray.direction = shadow_ray_direction_normalized;
-
-		// abs() here to allow backfacing light sources
-		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-
-		IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
-		training_sample.position		   = closest_hit_info.inter_point;
-		training_sample.incoming_direction = shadow_ray.direction;
-		training_sample.valid			   = true;
-
-		if (dot_light_source > 0.0f)
-		{
-			NEEPlusPlusContext nee_plus_plus_context;
-			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-															   nee_plus_plus_context, random_number_generator);
-
-			if (!in_shadow)
-			{
-				// Conversion to solid angle from surface area measure
-				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-				if (light_sample_solid_angle_pdf > 0.0f)
-				{
-					// The NEE sample is non-zero (if we omit BSDF evaluation), we can compute the radiance weight. Taking max_component() and not luminance as
-					// in the paper
-					training_sample.radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
-
-					float bsdf_pdf;
-
-					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
-					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-
-					if (bsdf_pdf != 0.0f)
-					{
-						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
-						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
-						light_source_radiance += estimator;
-
-						// Just a CPU-only sanity check
-						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
-					}
-				}
-			}
-		}
-
-		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
-	}
-
-	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 }
 
 template <bool deferred_BSDF_MIS = true>
