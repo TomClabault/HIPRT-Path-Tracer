@@ -295,7 +295,7 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS &&
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER &&
 		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 }
 
@@ -352,10 +352,10 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_node_bounds.get_byte_size();
 	vram_usage.node_count  = m_illumination_aware_kd_tree.m_node_count.get_byte_size();
 
-	vram_usage.active_guiding_nodes		  = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
-	vram_usage.active_guiding_node_count  = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
-	vram_usage.needs_split				  = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
-	vram_usage.guiding_distribution_count = m_illumination_aware_kd_tree.m_guiding_distribution_count.get_byte_size();
+	vram_usage.active_guiding_nodes		 = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
+	vram_usage.active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
+	vram_usage.needs_split				 = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
+	vram_usage.light_clustering_count	 = m_illumination_aware_kd_tree.m_light_clustering_count.get_byte_size();
 
 	vram_usage.current_frontier		  = m_illumination_aware_kd_tree.m_current_frontier.get_byte_size();
 	vram_usage.current_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_byte_size();

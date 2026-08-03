@@ -33,17 +33,18 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 	if (node_index == 0)
 	{
 		IlluminationAwareKDTreeNode root{};
-		root.flags = IlluminationAwareKDTreeNodeFlag_Guiding;
+		root.flags					= IlluminationAwareKDTreeNodeFlag_Guiding;
+		root.light_clustering_index = 0;
 
 		illumination_aware_kd_tree.nodes[0] = root;
 
 		illumination_aware_kd_tree.node_bounds[0].minimum = scene_bounds_minimum;
 		illumination_aware_kd_tree.node_bounds[0].maximum = scene_bounds_maximum;
 
-		*illumination_aware_kd_tree.node_count				   = 1;
-		*illumination_aware_kd_tree.guiding_distribution_count = 1;
-		*illumination_aware_kd_tree.active_guiding_node_count  = 1;
-		illumination_aware_kd_tree.active_guiding_nodes[0]	   = 0;
+		*illumination_aware_kd_tree.node_count				  = 1;
+		*illumination_aware_kd_tree.light_clustering_count	  = 1;
+		*illumination_aware_kd_tree.active_guiding_node_count = 1;
+		illumination_aware_kd_tree.active_guiding_nodes[0]	  = 0;
 
 		*illumination_aware_kd_tree.training_sample_count = 0;
 

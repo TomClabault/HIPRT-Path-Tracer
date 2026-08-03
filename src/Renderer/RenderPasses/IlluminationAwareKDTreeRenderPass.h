@@ -17,10 +17,10 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t node_bounds = 0;
 	std::size_t node_count	= 0;
 
-	std::size_t active_guiding_nodes	   = 0;
-	std::size_t active_guiding_node_count  = 0;
-	std::size_t needs_split				   = 0;
-	std::size_t guiding_distribution_count = 0;
+	std::size_t active_guiding_nodes	  = 0;
+	std::size_t active_guiding_node_count = 0;
+	std::size_t needs_split				  = 0;
+	std::size_t light_clustering_count	  = 0;
 
 	std::size_t current_frontier	   = 0;
 	std::size_t current_frontier_count = 0;
@@ -37,9 +37,9 @@ struct IlluminationAwareKDTreeVRAMUsage
 
 	std::size_t get_total_bytes() const
 	{
-		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + guiding_distribution_count +
-			   current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures +
-			   history_signatures + batch_spatial_moments + history_spatial_moments;
+		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count + current_frontier +
+			   current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures + history_signatures +
+			   batch_spatial_moments + history_spatial_moments;
 	}
 };
 

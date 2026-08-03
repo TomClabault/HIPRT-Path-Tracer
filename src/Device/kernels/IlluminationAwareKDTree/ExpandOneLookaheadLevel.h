@@ -82,7 +82,7 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 	// Initialize the new child nodes with default values.
 	IlluminationAwareKDTreeNode left_node{};
 	left_node.left_child_index			   = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	left_node.guiding_distribution_index   = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
+	left_node.light_clustering_index	   = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
 	left_node.creation_tag				   = creation_tag;
 	left_node.split_axis				   = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
 	left_node.flags						   = IlluminationAwareKDTreeNodeFlag_Lookahead;

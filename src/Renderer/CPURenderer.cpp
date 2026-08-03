@@ -225,7 +225,7 @@ void CPURenderer::setup_buffers()
 	m_g_buffer.resize(width * height);
 	m_g_buffer_prev_frame.resize(width * height);
 
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
 																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 #endif
@@ -536,7 +536,7 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.bvh		 = m_bvh.get();
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 #else
 	m_render_data.illumination_aware_kd_tree = {};
@@ -664,7 +664,7 @@ void CPURenderer::render()
 	ReSTIR_PG_reset_distributions();
 #endif
 
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG && DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG && DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
 	illumination_aware_kd_tree_reset();
 #endif
 
@@ -711,7 +711,7 @@ void CPURenderer::render()
 
 void CPURenderer::pre_sample_update(int frame_number)
 {
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 	unsigned int node_count									 = *illumination_aware_kd_tree.node_count;
 	unsigned int reset_thread_count							 = node_count;
@@ -758,7 +758,7 @@ void CPURenderer::reset()
 
 void CPURenderer::illumination_aware_kd_tree_reset()
 {
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
 	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
 	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
@@ -773,7 +773,7 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 
 void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 
 	unsigned int sample_count = illumination_aware_kd_tree.training_sample_count->load();

@@ -315,7 +315,7 @@ struct IlluminationAwareKDTreeDevice
 
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNING_TO_CLUSTER
 		return;
 #endif
 
@@ -489,10 +489,10 @@ struct IlluminationAwareKDTreeDevice
 	AtomicType<unsigned int>* node_count = nullptr;
 	unsigned int node_capacity			 = 0;
 
-	unsigned int* active_guiding_nodes					 = nullptr;
-	AtomicType<unsigned int>* active_guiding_node_count	 = nullptr;
-	uint8_t* needs_split								 = nullptr;
-	AtomicType<unsigned int>* guiding_distribution_count = nullptr;
+	unsigned int* active_guiding_nodes					= nullptr;
+	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
+	uint8_t* needs_split								= nullptr;
+	AtomicType<unsigned int>* light_clustering_count	= nullptr;
 
 	// Two ping ponging frontier buffers for when we create lookahead cells
 	//

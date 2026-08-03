@@ -1271,7 +1271,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 
 			bool light_sampling_base_strategy_disabled =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER;
 			ImGui::BeginDisabled(light_sampling_base_strategy_disabled);
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips(
 				"Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY),
@@ -1308,9 +1308,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"account. Not all BSDF lobe "
 				"configurations are supported.",
 
-				"Uses the illumination aware KD tree of Zheng et al. 2026 to spatially subdivide the scene based on illumination frequency. A tree cut of the "
-				"spherical gaussian tree is precomputed for the whole and probabilities of sampling the nodes of the tree cut are learnt at each cell of the "
-				"KD-tree based on observed NEE contributions collected at sampling time",
+				"Uses one adaptive SG light-tree cut per illumination-aware KD-tree cell. Cluster importance is learned from NEE contributions using stochastic "
+				"successive approximation, and high-variance light clusters are progressively refined.",
 
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be "
 				"changed in the ReSTIR DI settings.",
@@ -1328,7 +1327,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool ris_disabled							 = false;
 			const bool risltc_disabled						 = regir;
 			const bool ltc_shading_disabled					 = regir;
-			const bool sg_tree_learnt_distributions_disabled = regir;
+			const bool sg_tree_learning_to_cluster_disabled = regir;
 			const bool restir_di_disabled					 = false;
 
 			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
@@ -1338,7 +1337,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 											   ris_disabled,
 											   risltc_disabled,
 											   ltc_shading_disabled,
-											   sg_tree_learnt_distributions_disabled,
+												   sg_tree_learning_to_cluster_disabled,
 											   restir_di_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
@@ -1413,10 +1412,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				int nee_estimator				 = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 				int base_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
 
-				if (nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && base_light_sampling_strategy != LSS_BASE_LIGHT_TREE_SG)
+				if (nee_estimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && base_light_sampling_strategy != LSS_BASE_LIGHT_TREE_SG)
 				{
-					// If we're using the learnt SG distributions, we need to use the SG light tree as well because it's a part of it, automatically changing to
-					// that then
+					// If we're using learning-to-cluster SG sampling, we need to use the SG light tree as well because it's a part of it, automatically
+					// changing to that then
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 
 					m_renderer->recompute_emissives_sampling_data_structure();
@@ -3902,12 +3901,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
-		bool use_learnt_distributions =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
-		if (use_learnt_distributions)
+		bool use_light_clustering =
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER;
+		if (use_light_clustering)
 		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Illumination aware distributions");
+			ImGui::SeparatorText("Illumination-aware light clustering");
 
 			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
 															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
@@ -3926,9 +3925,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
-														vram_usage.guiding_distribution_count + vram_usage.current_frontier +
-														vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes		  = vram_usage.training_samples + vram_usage.training_sample_count;
+														vram_usage.light_clustering_count + vram_usage.current_frontier + vram_usage.current_frontier_count +
+														vram_usage.next_frontier + vram_usage.next_frontier_count;
+			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 
@@ -3955,7 +3954,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - History spatial moments: %.3fMB\n",
 					 node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
 					 guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
-					 vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
+					 vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f, vram_usage.light_clustering_count / 1000000.0f,
 					 (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
 					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
 					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,

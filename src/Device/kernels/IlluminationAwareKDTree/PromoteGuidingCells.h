@@ -44,26 +44,26 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	unsigned int left_child_index  = parent.left_child_index;
 	unsigned int right_child_index = left_child_index + 1;
 
-	unsigned int parent_distribution_index = parent.guiding_distribution_index;
+	unsigned int parent_light_clustering_index = parent.light_clustering_index;
 
 	IlluminationAwareKDTreeNode& left_child	 = illumination_aware_kd_tree.nodes[left_child_index];
 	IlluminationAwareKDTreeNode& right_child = illumination_aware_kd_tree.nodes[right_child_index];
 
-	__shared__ unsigned int right_distribution_index;
+	__shared__ unsigned int right_light_clustering_index;
 	__shared__ unsigned int active_guiding_output_index;
 	__shared__ bool allocation_valid;
 	// We launch one full 1024 threads block per each single cell. That's 1023 threads too many for 1 cell because we want a single atomic increment here so
 	// only thread 0 does it and shares the result with the other threads of the block. And also only thread 0 does the memory writes
 	if (threadIdx.x == 0)
 	{
-		// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution index
-		right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.guiding_distribution_count, 1u);
+		// Only allocating 1 new light clustering for the right child, the left child will keep the parent's light clustering index
+		right_light_clustering_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.light_clustering_count, 1u);
 
 		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
 		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.active_guiding_node_count, 1u);
 
 		allocation_valid =
-			right_distribution_index < illumination_aware_kd_tree.node_capacity && active_guiding_output_index < illumination_aware_kd_tree.node_capacity;
+			right_light_clustering_index < illumination_aware_kd_tree.node_capacity && active_guiding_output_index < illumination_aware_kd_tree.node_capacity;
 	}
 	__syncthreads();
 
@@ -72,10 +72,10 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 	if (threadIdx.x == 0)
 	{
-		// The left child keeps the parent's distribution index, the right child gets a new distribution index but we will copy the parent's distribution into
-		// the right child so that it starts with the same distribution as the left child (same as the parent)
-		left_child.guiding_distribution_index  = parent_distribution_index;
-		right_child.guiding_distribution_index = right_distribution_index;
+		// The left child keeps the parent's light clustering index, the right child gets a new light clustering index but we will copy the parent's light
+		// clustering into the right child so that it starts with the same light clustering as the left child (same as the parent)
+		left_child.light_clustering_index  = parent_light_clustering_index;
+		right_child.light_clustering_index = right_light_clustering_index;
 
 		left_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
 		left_child.flags &= ~IlluminationAwareKDTreeNodeFlag_Lookahead;
@@ -84,7 +84,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 		// The parent is no longer a guiding node
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
-		parent.guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
+		parent.light_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
 
 		illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index]			 = left_child_index;
 		illumination_aware_kd_tree.active_guiding_nodes[active_guiding_output_index] = right_child_index;

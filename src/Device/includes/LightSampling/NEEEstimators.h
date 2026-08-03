@@ -438,7 +438,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 	return total_outgoing_radiance / valid_light_sample_count;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HIPRTRenderData& render_data,
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
 																			  RayPayload& ray_payload,
 																			  const HitInfo closest_hit_info,
 																			  const float3_t& view_direction,
@@ -576,9 +576,9 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	direct_light_contribution = sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_LTC_SHADING
 	direct_light_contribution = sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
 	direct_light_contribution =
-		sample_one_light_no_MIS_SG_tree_learnt_distributions(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+		sample_one_light_no_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 
 #endif // #if ReGIR
