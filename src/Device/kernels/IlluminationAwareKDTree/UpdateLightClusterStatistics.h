@@ -37,9 +37,9 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 	unsigned int cluster_node_index						   = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
 	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
 
+	// Q0 is used as the cluster sampling distribution. Keep it tied to the current shading context instead of assigning power to clusters that cannot be
+	// sampled at this point.
 	float initial_importance_Q = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
-	if (!(initial_importance_Q > 0.0f))
-		initial_importance_Q = hippt::max(light_tree_sg.nodes[cluster_node_index].get_total_power(), 0.0f);
 
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 	statistics.estimated_importance_Q						  = initial_importance_Q;
@@ -63,7 +63,7 @@ HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTr
 	float batch_second_moment  = batch.squared_contribution_sum * inverse_sample_count;
 	unsigned int iteration	   = cluster_data.iteration + 1u;
 	float learning_rate		   = 1.0f / (kd_tree.learning_to_cluster.user_settings.learning_rate_beta *
-										 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
+									 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
 
 	persistent.estimated_importance_Q  = (1.0f - learning_rate) * persistent.estimated_importance_Q + learning_rate * batch_mean;
 	persistent.estimated_second_moment = (1.0f - learning_rate) * persistent.estimated_second_moment + learning_rate * batch_second_moment;
