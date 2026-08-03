@@ -28,6 +28,8 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 		return;
 
 	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = illumination_aware_kd_tree.training_samples[sample_index];
+	if (!sample.valid_for_spatial_training)
+		return;
 
 	unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(sample.position);
 	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
@@ -37,7 +39,7 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 		{
 			illumination_aware_kd_tree.atomic_add_illumination_signature(illumination_aware_kd_tree.batch_signatures, node_index, sample);
 
-			if (sample.radiance_weight > 0.0f)
+			if (sample.spatial_radiance_weight > 0.0f)
 				illumination_aware_kd_tree.atomic_add_spatial_moments(illumination_aware_kd_tree.batch_spatial_moments, node_index, sample.position);
 		}
 

@@ -322,7 +322,7 @@ struct IlluminationAwareKDTreeDevice
 #endif
 
 		// Invalid samples must not consume buffer space or affect b0.
-		if (!sample.valid)
+		if (!sample.valid_for_spatial_training)
 			return;
 
 		unsigned int sample_index = reserve_training_sample(training_sample_count, training_sample_capacity);
@@ -369,17 +369,17 @@ struct IlluminationAwareKDTreeDevice
 														unsigned int node_index,
 														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-		float radiance_weight = sample.radiance_weight;
+		float spatial_radiance_weight = sample.spatial_radiance_weight;
 
 		// b0 counts all valid samples, including samples with L == 0.
 		hippt::atomic_fetch_add_gpu(&signatures[node_index].valid_observation_count, 1u);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].scalar_radiance_sum, radiance_weight);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].squared_scalar_radiance_sum, radiance_weight * radiance_weight);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].scalar_radiance_sum, spatial_radiance_weight);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].squared_scalar_radiance_sum, spatial_radiance_weight * spatial_radiance_weight);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.x, radiance_weight * sample.incoming_direction.x);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.y, radiance_weight * sample.incoming_direction.y);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, radiance_weight * sample.incoming_direction.z);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.x, spatial_radiance_weight * sample.incoming_direction.x);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.y, spatial_radiance_weight * sample.incoming_direction.y);
+		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, spatial_radiance_weight * sample.incoming_direction.z);
 	}
 
 	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, unsigned int node_index, float3_t position)
@@ -397,6 +397,9 @@ struct IlluminationAwareKDTreeDevice
 
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
+		if (!sample.valid_for_spatial_training)
+			return;
+
 		// First find the active guiding cell used at this position.
 		unsigned int node_index = find_guiding_cell(sample.position);
 
@@ -412,7 +415,7 @@ struct IlluminationAwareKDTreeDevice
 			//
 			// Zero-radiance samples still contribute to the illumination
 			// signature above, but not to the spatial mean and variance.
-			if (sample.radiance_weight > 0.0f)
+			if (sample.spatial_radiance_weight > 0.0f)
 				atomic_add_spatial_moments(batch_spatial_moments, node_index, sample.position);
 
 			// Level six is the deepest lookahead level.

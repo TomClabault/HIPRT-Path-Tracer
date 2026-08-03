@@ -383,8 +383,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 		return ColorRGB32F(0.0f);
 
 	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
-	spatial_training_sample.position = closest_hit_info.inter_point;
-	spatial_training_sample.valid	 = true;
+	spatial_training_sample.position				   = closest_hit_info.inter_point;
+	spatial_training_sample.valid_for_spatial_training = true;
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
 	learning_to_cluster_training_sample.position					= closest_hit_info.inter_point;
@@ -419,7 +419,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
 			if (solid_angle_pdf > 0.0f && isfinite(solid_angle_pdf))
 			{
-				spatial_training_sample.radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
+				spatial_training_sample.spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
 
 				float bsdf_pdf							  = 0.0f;
 				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
