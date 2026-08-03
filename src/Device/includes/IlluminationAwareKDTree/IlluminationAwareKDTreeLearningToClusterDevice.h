@@ -53,7 +53,7 @@ struct IlluminationAwareKDTreeLightClusteringData
 	unsigned int refinement_sample_count = 0;
 
 	// Q has been initialized using Equation 5
-	unsigned int initialized = false;
+	unsigned int Q0_initialized = false;
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;

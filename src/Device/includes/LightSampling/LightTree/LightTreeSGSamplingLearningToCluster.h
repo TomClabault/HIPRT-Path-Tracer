@@ -83,7 +83,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		unsigned int cluster_node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
 		float weight					= 0.0f;
 
-		if (cluster_data.initialized)
+		if (cluster_data.Q0_initialized)
 			weight = kd_tree.learning_to_cluster.light_cluster_statistics[offset].estimated_importance_Q;
 		else
 			weight = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
