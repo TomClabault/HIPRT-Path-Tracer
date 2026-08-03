@@ -40,7 +40,6 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index, 1u);
 
 	unsigned int selected_slot = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	// TODO we should just store the cut not slot in sample in the future instead of looping like that
@@ -56,6 +55,8 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 
 	if (selected_slot == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
+
+	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index, 1u);
 
 	unsigned int selected_offset							  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
 	IlluminationAwareKDTreeLightClusterBatchStatistics& batch = kd_tree.learning_to_cluster.light_cluster_batch_statistics[selected_offset];
