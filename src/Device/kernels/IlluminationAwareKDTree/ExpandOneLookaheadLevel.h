@@ -44,8 +44,8 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 		illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation)
 		return;
 
-	uint8_t split_axis	 = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
-	float split_position = 0.0f;
+	unsigned char split_axis = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
+	float split_position	 = 0.0f;
 	illumination_aware_kd_tree.compute_split_axis_and_position(illumination_aware_kd_tree.history_spatial_moments[parent_index], split_axis, split_position);
 
 	IlluminationAwareKDTreeNodeBounds& parent_bounds = illumination_aware_kd_tree.node_bounds[parent_index];

@@ -57,7 +57,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
@@ -716,7 +716,7 @@ void CPURenderer::pre_sample_update(int frame_number)
 	unsigned int node_count									 = *illumination_aware_kd_tree.node_count;
 	unsigned int reset_thread_count							 = node_count;
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
-		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(illumination_aware_kd_tree, reset_index);
+		IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(illumination_aware_kd_tree, reset_index);
 #endif
 
 	// Resetting the status buffers

@@ -57,7 +57,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	if (threadIdx.x == 0)
 	{
 		// Only allocating 1 new light clustering for the right child, the left child will keep the parent's light clustering index
-		right_light_clustering_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.light_clustering_count, 1u);
+		right_light_clustering_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.light_clustering_count, 1u);
 
 		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
 		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.active_guiding_node_count, 1u);

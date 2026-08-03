@@ -3908,6 +3908,26 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Illumination-aware light clustering");
 
+			IlluminationAwareKDTreeLearningToClusterUserSettings& light_clustering_settings =
+				render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
+			int initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
+			if (ImGui::SliderInt("Initial light cut size", &initial_light_cut_size, 1, static_cast<int>(light_clustering_settings.maximum_light_cut_size)))
+			{
+				light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(initial_light_cut_size);
+				m_render_window->set_render_dirty(true);
+			}
+
+			int maximum_light_cut_size = static_cast<int>(light_clustering_settings.maximum_light_cut_size);
+			if (ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, static_cast<int>(light_clustering_settings.initial_light_cut_size),
+								 IlluminationAwareKDTreeMaximumLightCutSize))
+			{
+				light_clustering_settings.maximum_light_cut_size = static_cast<unsigned int>(maximum_light_cut_size);
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (ImGui::Checkbox("Enable light-cut refinement", &light_clustering_settings.enable_light_cut_refinement))
+				m_render_window->set_render_dirty(true);
+
 			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
 															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
 															  : IlluminationAwareKDTreeVRAMUsage();
@@ -3930,6 +3950,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
+			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.light_cluster_node_indices +
+														 vram_usage.light_cluster_statistics + vram_usage.light_cluster_batch_statistics +
+														 vram_usage.light_clustering_metadata + vram_usage.light_clustering_batch_sample_counts +
+														 vram_usage.representative_shading_contexts + vram_usage.representative_shading_context_states;
 
 			std::vector<char> illumination_aware_vram_tooltip_buffer(4096);
 			snprintf(illumination_aware_vram_tooltip_buffer.data(), illumination_aware_vram_tooltip_buffer.size(),
@@ -3942,7 +3966,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - Active guiding nodes: %.3fMB\n"
 					 "    - Active guiding node count: %.3fMB\n"
 					 "    - Needs-split flags: %.3fMB\n"
-					 "    - Guiding distribution count: %.3fMB\n"
+					 "    - Light clustering count: %.3fMB\n"
 					 "    - Current frontier and count: %.3fMB\n"
 					 "    - Next frontier and count: %.3fMB\n"
 					 "  - Training buffers: %.3fMB\n"
@@ -3951,7 +3975,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - Batch signatures: %.3fMB\n"
 					 "    - History signatures: %.3fMB\n"
 					 "    - Batch spatial moments: %.3fMB\n"
-					 "    - History spatial moments: %.3fMB\n",
+					 "    - History spatial moments: %.3fMB\n"
+					 "  - Light-clustering buffers: %.3fMB\n"
+					 "    - Initial light cut node indices: %.3fMB\n"
+					 "    - Light cluster node indices: %.3fMB\n"
+					 "    - Light cluster statistics: %.3fMB\n"
+					 "    - Light cluster batch statistics: %.3fMB\n"
+					 "    - Light clustering metadata: %.3fMB\n"
+					 "    - Light clustering batch sample counts: %.3fMB\n"
+					 "    - Representative shading contexts: %.3fMB\n"
+					 "    - Representative shading context states: %.3fMB\n",
 					 node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
 					 guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
 					 vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f, vram_usage.light_clustering_count / 1000000.0f,
@@ -3959,7 +3992,11 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
 					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
 					 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-					 vram_usage.history_spatial_moments / 1000000.0f);
+					 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
+					 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,
+					 vram_usage.light_cluster_statistics / 1000000.0f, vram_usage.light_cluster_batch_statistics / 1000000.0f,
+					 vram_usage.light_clustering_metadata / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
+					 vram_usage.representative_shading_contexts / 1000000.0f, vram_usage.representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -7,6 +7,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
@@ -245,8 +246,8 @@ struct IlluminationAwareKDTreeDevice
 
 		double table_position = u / DIRECTION_LUT_MAX_U * 255.0;
 
-		uint32_t lower_index = hippt::min(static_cast<uint32_t>(table_position), 254u);
-		float interpolation	 = static_cast<float>(table_position - static_cast<double>(lower_index));
+		unsigned int lower_index = hippt::min(static_cast<unsigned int>(table_position), 254u);
+		float interpolation		 = static_cast<float>(table_position - static_cast<double>(lower_index));
 
 		float threshold_cosine = hippt::lerp(COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index], COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index + 1], interpolation);
 		float measured_cosine  = hippt::dot(guiding_model.axis, lookahead_model.axis);
@@ -411,7 +412,7 @@ struct IlluminationAwareKDTreeDevice
 	}
 
 	HIPRT_DEVICE void compute_split_axis_and_position(const IlluminationAwareKDTreeSpatialSampleMoments& moments,
-													  uint8_t& out_split_axis,
+													  unsigned char& out_split_axis,
 													  float& out_split_position) const
 	{
 		float countf = static_cast<float>(moments.positive_radiance_sample_count);
@@ -482,6 +483,7 @@ struct IlluminationAwareKDTreeDevice
 	}
 
 	IlluminationAwareKDTreeUserSettings user_settings;
+	IlluminationAwareKDTreeLearningToClusterDevice learning_to_cluster;
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;
@@ -491,8 +493,7 @@ struct IlluminationAwareKDTreeDevice
 
 	unsigned int* active_guiding_nodes					= nullptr;
 	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
-	uint8_t* needs_split								= nullptr;
-	AtomicType<unsigned int>* light_clustering_count	= nullptr;
+	unsigned char* needs_split							= nullptr;
 
 	// Two ping ponging frontier buffers for when we create lookahead cells
 	//

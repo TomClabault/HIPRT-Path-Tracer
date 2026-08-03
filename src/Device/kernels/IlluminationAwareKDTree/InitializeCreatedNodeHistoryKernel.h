@@ -18,12 +18,12 @@ IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(IlluminationAwareKDTr
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t node_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int node_index = blockIdx.x * blockDim.x + threadIdx.x;
 #else
-	const uint32_t node_index = x;
+	unsigned int node_index = x;
 #endif
 
-	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
+	unsigned int node_count = *illumination_aware_kd_tree.node_count;
 	if (node_index >= node_count)
 		return;
 

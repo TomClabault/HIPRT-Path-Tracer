@@ -35,11 +35,22 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t batch_spatial_moments	= 0;
 	std::size_t history_spatial_moments = 0;
 
+	std::size_t initial_light_cut_node_indices		  = 0;
+	std::size_t light_cluster_node_indices			  = 0;
+	std::size_t light_cluster_statistics			  = 0;
+	std::size_t light_cluster_batch_statistics		  = 0;
+	std::size_t light_clustering_metadata			  = 0;
+	std::size_t light_clustering_batch_sample_counts  = 0;
+	std::size_t representative_shading_contexts		  = 0;
+	std::size_t representative_shading_context_states = 0;
+
 	std::size_t get_total_bytes() const
 	{
 		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count + current_frontier +
 			   current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures + history_signatures +
-			   batch_spatial_moments + history_spatial_moments;
+			   batch_spatial_moments + history_spatial_moments + initial_light_cut_node_indices + light_cluster_node_indices + light_cluster_statistics +
+			   light_cluster_batch_statistics + light_clustering_metadata + light_clustering_batch_sample_counts + representative_shading_contexts +
+			   representative_shading_context_states;
 	}
 };
 
@@ -50,7 +61,7 @@ public:
 	static const std::string RESET_TREE_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;
-	static const std::string RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID;
+	static const std::string RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID;
 	static const std::string EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID;
 	static const std::string REPLAY_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;

@@ -39,6 +39,17 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
+
+		size_t cluster_slot_capacity = static_cast<size_t>(new_node_capacity) * IlluminationAwareKDTreeMaximumLightCutSize;
+		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, cluster_slot_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, cluster_slot_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_batch_statistics, cluster_slot_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_metadata, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_batch_sample_counts, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, new_node_capacity);
+
+		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, IlluminationAwareKDTreeInitialLightCutSize);
 	}
 
 	void reset()
@@ -58,7 +69,7 @@ struct IlluminationAwareKDTreeDataHost
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
 
-		m_needs_split			 = DataContainer<uint8_t>();
+		m_needs_split			 = DataContainer<unsigned char>();
 		m_light_clustering_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_current_frontier		 = DataContainer<unsigned int>();
@@ -74,6 +85,15 @@ struct IlluminationAwareKDTreeDataHost
 		m_batch_spatial_moments	  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 		m_history_spatial_moments = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 
+		m_light_cluster_node_indices			= DataContainer<unsigned int>();
+		m_light_cluster_statistics				= DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
+		m_light_cluster_batch_statistics		= DataContainer<IlluminationAwareKDTreeLightClusterBatchStatistics>();
+		m_light_clustering_metadata				= DataContainer<IlluminationAwareKDTreeLightClusteringMetadata>();
+		m_light_clustering_batch_sample_counts	= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_representative_shading_contexts		= DataContainer<IlluminationAwareKDTreeSGShadingContext>();
+		m_representative_shading_context_states = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_initial_light_cut_node_indices		= DataContainer<unsigned int>();
+
 		return true;
 	}
 
@@ -86,7 +106,8 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		IlluminationAwareKDTreeDevice device;
 
-		device.user_settings = render_data.illumination_aware_kd_tree.user_settings;
+		device.user_settings					 = render_data.illumination_aware_kd_tree.user_settings;
+		device.learning_to_cluster.user_settings = render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
 
 		device.nodes		 = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
 		device.node_bounds	 = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
@@ -97,11 +118,22 @@ struct IlluminationAwareKDTreeDataHost
 		device.current_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
 		device.next_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-		device.active_guiding_node_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
-		device.node_count				 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
-		device.current_frontier_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
-		device.next_frontier_count		 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
-		device.light_clustering_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
+		device.active_guiding_node_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		device.node_count								  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		device.current_frontier_count					  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		device.next_frontier_count						  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		device.learning_to_cluster.light_clustering_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
+
+		device.learning_to_cluster.initial_light_cut_node_indices = GenericSoAHelpers::get_buffer_data_ptr(m_initial_light_cut_node_indices);
+
+		device.learning_to_cluster.light_cluster_node_indices			= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_node_indices);
+		device.learning_to_cluster.light_cluster_statistics				= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_statistics);
+		device.learning_to_cluster.light_cluster_batch_statistics		= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_batch_statistics);
+		device.learning_to_cluster.light_clustering_metadata			= GenericSoAHelpers::get_buffer_data_ptr(m_light_clustering_metadata);
+		device.learning_to_cluster.light_clustering_batch_sample_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_batch_sample_counts);
+		device.learning_to_cluster.representative_shading_contexts		= GenericSoAHelpers::get_buffer_data_ptr(m_representative_shading_contexts);
+		device.learning_to_cluster.representative_shading_context_states =
+			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_shading_context_states);
 
 		device.training_samples			= GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
 		device.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
@@ -122,7 +154,7 @@ struct IlluminationAwareKDTreeDataHost
 
 	DataContainer<unsigned int> m_active_guiding_nodes;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_active_guiding_node_count;
-	DataContainer<uint8_t> m_needs_split;
+	DataContainer<unsigned char> m_needs_split;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_light_clustering_count;
 
 	DataContainer<unsigned int> m_current_frontier;
@@ -137,6 +169,16 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_batch_spatial_moments;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_history_spatial_moments;
+
+	DataContainer<unsigned int> m_initial_light_cut_node_indices;
+
+	DataContainer<unsigned int> m_light_cluster_node_indices;
+	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_light_cluster_statistics;
+	DataContainer<IlluminationAwareKDTreeLightClusterBatchStatistics> m_light_cluster_batch_statistics;
+	DataContainer<IlluminationAwareKDTreeLightClusteringMetadata> m_light_clustering_metadata;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_light_clustering_batch_sample_counts;
+	DataContainer<IlluminationAwareKDTreeSGShadingContext> m_representative_shading_contexts;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_shading_context_states;
 };
 
 #endif

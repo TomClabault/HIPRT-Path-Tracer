@@ -22,8 +22,8 @@ const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_
 const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID								= "Reset Tree";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID =
-	"Reset Batch KD-Tree And NEE Distributions Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID =
+	"Reset Batch KD-Tree And Light Clustering Statistics";
 const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID		= "Expand One Lookahead Level";
 const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID			= "Replay Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID	= "Initialize Created Node History";
@@ -55,14 +55,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 		"IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID] = std::make_shared<GPUKernel>(
-		this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
-																																		   {});
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
+																																		  {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
@@ -129,7 +129,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, active_node_count, 1, launch_args, m_renderer->get_main_stream());
 
 	return render_data_invalidated;
@@ -369,6 +369,15 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_history_signatures.get_byte_size();
 	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_batch_spatial_moments.get_byte_size();
 	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_history_spatial_moments.get_byte_size();
+
+	vram_usage.initial_light_cut_node_indices		 = m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.get_byte_size();
+	vram_usage.light_cluster_node_indices			 = m_illumination_aware_kd_tree.m_light_cluster_node_indices.get_byte_size();
+	vram_usage.light_cluster_statistics				 = m_illumination_aware_kd_tree.m_light_cluster_statistics.get_byte_size();
+	vram_usage.light_cluster_batch_statistics		 = m_illumination_aware_kd_tree.m_light_cluster_batch_statistics.get_byte_size();
+	vram_usage.light_clustering_metadata			 = m_illumination_aware_kd_tree.m_light_clustering_metadata.get_byte_size();
+	vram_usage.light_clustering_batch_sample_counts	 = m_illumination_aware_kd_tree.m_light_clustering_batch_sample_counts.get_byte_size();
+	vram_usage.representative_shading_contexts		 = m_illumination_aware_kd_tree.m_representative_shading_contexts.get_byte_size();
+	vram_usage.representative_shading_context_states = m_illumination_aware_kd_tree.m_representative_shading_context_states.get_byte_size();
 
 	return vram_usage;
 }

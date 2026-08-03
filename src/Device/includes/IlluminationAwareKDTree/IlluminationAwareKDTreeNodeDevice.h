@@ -8,9 +8,7 @@
 
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
-#include <cstdint>
-
-enum IlluminationAwareKDTreeNodeFlags : uint8_t
+enum IlluminationAwareKDTreeNodeFlags : unsigned char
 {
 	IlluminationAwareKDTreeNodeFlag_None		= 0,
 	IlluminationAwareKDTreeNodeFlag_Guiding		= 1u << 0,
@@ -20,34 +18,33 @@ enum IlluminationAwareKDTreeNodeFlags : uint8_t
 
 struct IlluminationAwareKDTreeNode
 {
-	static constexpr uint32_t INVALID_NODE_INDEX			 = 0xFFFFFFFFu;
-	static constexpr uint32_t INVALID_LIGHT_CLUSTERING_INDEX = 0xFFFFFFFFu;
-	static constexpr uint32_t INVALID_CREATION_TAG			 = 0xFFFFFFFFu;
-	static constexpr uint8_t INVALID_SPLIT_AXIS				 = 255;
+	static constexpr unsigned int INVALID_NODE_INDEX			 = 0xFFFFFFFFu;
+	static constexpr unsigned int INVALID_LIGHT_CLUSTERING_INDEX = 0xFFFFFFFFu;
+	static constexpr unsigned int INVALID_CREATION_TAG			 = 0xFFFFFFFFu;
+	static constexpr unsigned char INVALID_SPLIT_AXIS			 = 255;
 
 	// Index of the left child.
 	//
 	// The right child is always left_child_index + 1.
 	// INVALID_NODE_INDEX means that this node currently has no children.
-	uint32_t left_child_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int left_child_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 	// Index of the per-cell adaptive light clustering.
 	//
 	// Only an active guiding cell owns a valid light clustering.
-	uint32_t light_clustering_index = INVALID_LIGHT_CLUSTERING_INDEX;
+	unsigned int light_clustering_index = INVALID_LIGHT_CLUSTERING_INDEX;
 
 	// Identifies the lookahead-allocation pass that created this node.
 	//
 	// It is used when replaying the current SPP's samples into only
 	// newly created nodes.
-	uint32_t creation_tag = IlluminationAwareKDTreeNode::INVALID_CREATION_TAG;
+	unsigned int creation_tag = IlluminationAwareKDTreeNode::INVALID_CREATION_TAG;
 
 	// The split plane belongs to this parent node, not to its children.
 	float split_position = 0.0f;
 
-	uint8_t split_axis = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
-	uint8_t flags	   = 0;
-	uint16_t padding   = 0;
+	unsigned char split_axis = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
+	unsigned char flags		 = 0;
 };
 
 struct IlluminationAwareKDTreeNodeBounds
