@@ -63,7 +63,7 @@ HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTr
 	float batch_second_moment  = batch.squared_contribution_sum * inverse_sample_count;
 	unsigned int iteration	   = cluster_data.iteration + 1u;
 	float learning_rate		   = 1.0f / (kd_tree.learning_to_cluster.user_settings.learning_rate_beta *
-									 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
+										 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
 
 	persistent.estimated_importance_Q  = (1.0f - learning_rate) * persistent.estimated_importance_Q + learning_rate * batch_mean;
 	persistent.estimated_second_moment = (1.0f - learning_rate) * persistent.estimated_second_moment + learning_rate * batch_second_moment;
