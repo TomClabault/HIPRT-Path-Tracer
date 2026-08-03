@@ -305,10 +305,14 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 	if (m_renderer->get_render_data().render_settings.sample_number == 0)
 	{
-		const std::vector<unsigned int>& tree_cut_node_indices = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_node_indices();
-		if (tree_cut_node_indices.size() >= IlluminationAwareKDTreeInitialLightCutSize)
+		const std::vector<unsigned int>& second_tree_cut_node_indices =
+			m_renderer->get_light_tree_sg_sampling_data_structure().get_second_tree_cut_node_indices();
+		const unsigned int effective_second_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_effective_second_tree_cut_size();
+		illumination_aware_kd_tree.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
+		if (second_tree_cut_node_indices.size() > 0 && effective_second_tree_cut_size > 0)
 		{
-			m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.upload_data(tree_cut_node_indices.data());
+			m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.upload_data_partial(0, second_tree_cut_node_indices.data(),
+																							  second_tree_cut_node_indices.size());
 
 			LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
 			void* initialize_root_light_clustering_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };

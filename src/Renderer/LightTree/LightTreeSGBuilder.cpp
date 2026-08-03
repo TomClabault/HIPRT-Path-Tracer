@@ -22,7 +22,10 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
 	if (m_nodes.empty())
 	{
-		m_tree_cut_node_indices.clear();
+		m_first_tree_cut_node_indices.clear();
+		m_second_tree_cut_node_indices.clear();
+		m_effective_first_tree_cut_size	 = 0;
+		m_effective_second_tree_cut_size = 0;
 
 		return;
 	}
@@ -38,13 +41,19 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 
 void LightTreeSGBuilder::compute_tree_cut()
 {
+	compute_tree_cut_for_size(m_first_tree_cut_size, m_first_tree_cut_node_indices, m_effective_first_tree_cut_size);
+	compute_tree_cut_for_size(m_second_tree_cut_size, m_second_tree_cut_node_indices, m_effective_second_tree_cut_size);
+}
+
+void LightTreeSGBuilder::compute_tree_cut_for_size(int tree_cut_size, std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size)
+{
 	const std::vector<LightTreeATSNode>& ats_nodes = m_light_tree_ats_builder.get_nodes();
-	m_tree_cut_node_indices						   = { 0 };
+	tree_cut_node_indices						   = { 0 };
 
 	size_t frontier_node_position = 0;
-	while (m_tree_cut_node_indices.size() < static_cast<size_t>(m_tree_cut_size) && frontier_node_position < m_tree_cut_node_indices.size())
+	while (tree_cut_node_indices.size() < static_cast<size_t>(tree_cut_size) && frontier_node_position < tree_cut_node_indices.size())
 	{
-		const LightTreeATSNode& ats_node = ats_nodes[m_tree_cut_node_indices[frontier_node_position]];
+		const LightTreeATSNode& ats_node = ats_nodes[tree_cut_node_indices[frontier_node_position]];
 		if (ats_node.triangle_count != 0)
 		{
 			frontier_node_position++;
@@ -54,13 +63,13 @@ void LightTreeSGBuilder::compute_tree_cut()
 
 		unsigned int left_child_index  = ats_node.left_child_index;
 		unsigned int right_child_index = left_child_index + 1;
-		m_tree_cut_node_indices.erase(m_tree_cut_node_indices.begin() + frontier_node_position);
-		m_tree_cut_node_indices.push_back(left_child_index);
-		m_tree_cut_node_indices.push_back(right_child_index);
+		tree_cut_node_indices.erase(tree_cut_node_indices.begin() + frontier_node_position);
+		tree_cut_node_indices.push_back(left_child_index);
+		tree_cut_node_indices.push_back(right_child_index);
 	}
 
-	m_effective_tree_cut_size = static_cast<unsigned int>(m_tree_cut_node_indices.size());
-	m_tree_cut_node_indices.resize(static_cast<size_t>(m_tree_cut_size), 0xFFFFFFFF);
+	effective_tree_cut_size = static_cast<unsigned int>(tree_cut_node_indices.size());
+	tree_cut_node_indices.resize(static_cast<size_t>(tree_cut_size), 0xFFFFFFFF);
 }
 
 void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data)
@@ -404,15 +413,35 @@ void LightTreeSGBuilder::set_spatial_lobe_count(int spatial_lobe_count)
 
 int LightTreeSGBuilder::get_tree_cut_size() const
 {
-	return m_tree_cut_size;
+	return m_first_tree_cut_size;
 }
 
 void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
 {
-	m_tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
+	m_first_tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
+}
+
+int LightTreeSGBuilder::get_second_tree_cut_size() const
+{
+	return m_second_tree_cut_size;
+}
+
+void LightTreeSGBuilder::set_second_tree_cut_size(int second_tree_cut_size)
+{
+	m_second_tree_cut_size = hippt::clamp(1, IlluminationAwareKDTreeMaximumLightCutSize, second_tree_cut_size);
+}
+
+unsigned int LightTreeSGBuilder::get_effective_second_tree_cut_size() const
+{
+	return m_effective_second_tree_cut_size;
 }
 
 const std::vector<unsigned int>& LightTreeSGBuilder::get_tree_cut_node_indices() const
 {
-	return m_tree_cut_node_indices;
+	return m_first_tree_cut_node_indices;
+}
+
+const std::vector<unsigned int>& LightTreeSGBuilder::get_second_tree_cut_node_indices() const
+{
+	return m_second_tree_cut_node_indices;
 }

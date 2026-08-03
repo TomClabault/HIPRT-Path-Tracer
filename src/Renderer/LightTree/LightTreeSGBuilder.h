@@ -7,6 +7,7 @@
 #define RENDERER_LIGHT_TREE_SG_BUILDER_H
 
 #include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeBuilderCommon.h"
@@ -48,7 +49,11 @@ public:
 
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
+	int get_second_tree_cut_size() const;
+	void set_second_tree_cut_size(int second_tree_cut_size);
+	unsigned int get_effective_second_tree_cut_size() const;
 	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
+	const std::vector<unsigned int>& get_second_tree_cut_node_indices() const;
 
 private:
 	/**
@@ -68,11 +73,16 @@ private:
 
 	std::vector<LightTreeSGNode> m_nodes;
 
-	std::vector<unsigned int> m_tree_cut_node_indices;
-	unsigned int m_effective_tree_cut_size = 0;
+	std::vector<unsigned int> m_first_tree_cut_node_indices;
+	std::vector<unsigned int> m_second_tree_cut_node_indices;
+	unsigned int m_effective_first_tree_cut_size  = 0;
+	unsigned int m_effective_second_tree_cut_size = 0;
 
-	int m_spatial_lobe_count = 8;
-	int m_tree_cut_size		 = 256;
+	int m_spatial_lobe_count   = 8;
+	int m_first_tree_cut_size  = 256;
+	int m_second_tree_cut_size = IlluminationAwareKDTreeInitialLightCutSize;
+
+	void compute_tree_cut_for_size(int tree_cut_size, std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size);
 };
 
 template <template <typename> typename DataContainer>
@@ -84,7 +94,8 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 	LightTreeSGBuilderDeviceData<DataContainer> device_data_out;
 	device_data_out.nodes_device.resize(m_nodes.size());
 	device_data_out.spatial_lobes_device.resize(m_nodes.size() * m_spatial_lobe_count);
-	device_data_out.tree_cut_node_indices_device = m_tree_cut_node_indices;
+	device_data_out.tree_cut_node_indices_device		= m_first_tree_cut_node_indices;
+	device_data_out.second_tree_cut_node_indices_device = m_second_tree_cut_node_indices;
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
@@ -150,8 +161,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{
-		device_data.m_device_spatial_lobes_buffer		  = device_data.spatial_lobes_device;
-		device_data.m_device_tree_cut_node_indices_buffer = device_data.tree_cut_node_indices_device;
+		device_data.m_device_spatial_lobes_buffer				 = device_data.spatial_lobes_device;
+		device_data.m_device_tree_cut_node_indices_buffer		 = device_data.tree_cut_node_indices_device;
+		device_data.m_device_second_tree_cut_node_indices_buffer = device_data.second_tree_cut_node_indices_device;
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes = device_data.m_device_spatial_lobes_buffer.data() + node_index * m_spatial_lobe_count;
 
@@ -161,8 +173,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 	else
 	{
-		device_data.m_device_spatial_lobes_buffer		  = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
-		device_data.m_device_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
+		device_data.m_device_spatial_lobes_buffer				 = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
+		device_data.m_device_tree_cut_node_indices_buffer		 = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
+		device_data.m_device_second_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.second_tree_cut_node_indices_device);
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes = device_data.m_device_spatial_lobes_buffer.data() + node_index * m_spatial_lobe_count;
 
@@ -172,7 +185,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 
 	render_data.light_tree_sg.settings.spatial_lobe_count	   = m_spatial_lobe_count;
-	render_data.light_tree_sg.settings.effective_tree_cut_size = m_effective_tree_cut_size;
+	render_data.light_tree_sg.settings.effective_tree_cut_size = m_effective_first_tree_cut_size;
 	render_data.light_tree_sg.nodes							   = device_data.m_device_nodes_buffer.data();
 	render_data.light_tree_sg.spatial_lobes					   = device_data.m_device_spatial_lobes_buffer.data();
 	render_data.light_tree_sg.tree_cut_node_indices			   = device_data.m_device_tree_cut_node_indices_buffer.data();

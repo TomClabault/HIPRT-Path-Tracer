@@ -51,7 +51,7 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, new_node_capacity);
 
-		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, IlluminationAwareKDTreeInitialLightCutSize);
+		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, IlluminationAwareKDTreeMaximumLightCutSize);
 	}
 
 	void reset()

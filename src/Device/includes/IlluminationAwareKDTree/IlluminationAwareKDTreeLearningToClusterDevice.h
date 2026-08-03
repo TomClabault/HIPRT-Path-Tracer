@@ -86,7 +86,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	AtomicType<unsigned int>* light_clustering_count = nullptr;
 
-	unsigned int* initial_light_cut_node_indices = nullptr;
+	unsigned int* initial_light_cut_node_indices  = nullptr;
+	unsigned int effective_initial_light_cut_size = 0;
 
 	unsigned int* light_cluster_node_indices										   = nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics			   = nullptr;

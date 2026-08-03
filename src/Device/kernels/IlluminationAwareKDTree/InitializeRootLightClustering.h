@@ -31,7 +31,7 @@ IlluminationAwareKDTree_InitializeRootLightClustering(IlluminationAwareKDTreeDev
 #endif
 		return;
 
-	unsigned int initial_cut_size = IlluminationAwareKDTreeInitialLightCutSize;
+	unsigned int initial_cut_size = kd_tree.learning_to_cluster.effective_initial_light_cut_size;
 	unsigned int clustering_index = 0;
 	unsigned int offset			  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 

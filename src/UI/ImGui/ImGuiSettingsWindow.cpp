@@ -3918,6 +3918,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			if (ImGui::SliderInt("Initial light cut size", &initial_light_cut_size, 1, static_cast<int>(light_clustering_settings.maximum_light_cut_size)))
 			{
 				light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(initial_light_cut_size);
+				illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+				m_renderer->recompute_emissives_sampling_data_structure();
 				m_render_window->set_render_dirty(true);
 			}
 
@@ -3998,13 +4001,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
 					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f,
 					 (vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count) / 1000000.0f,
-					 spatial_statistics_bytes / 1000000.0f,
-					 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-					 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
-					 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,
-					 vram_usage.light_cluster_statistics / 1000000.0f, vram_usage.light_cluster_batch_statistics / 1000000.0f,
-					 vram_usage.light_clustering_data / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
-					 vram_usage.representative_shading_contexts / 1000000.0f, vram_usage.representative_shading_context_states / 1000000.0f);
+						 spatial_statistics_bytes / 1000000.0f,
+						 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+						 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
+						 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,
+						 vram_usage.light_cluster_statistics / 1000000.0f, vram_usage.light_cluster_batch_statistics / 1000000.0f,
+						 vram_usage.light_clustering_data / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
+						 vram_usage.representative_shading_contexts / 1000000.0f, vram_usage.representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
