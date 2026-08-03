@@ -43,7 +43,7 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 		for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
 		{
 			unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(reset_index, slot);
-			illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[cluster_offset] = {};
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(cluster_offset);
 		}
 	}
 }

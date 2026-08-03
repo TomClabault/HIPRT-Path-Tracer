@@ -246,14 +246,14 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int new_cut_size = old_cut_size + accepted_split_count;
 	for (unsigned int slot = 0; slot < new_cut_size; slot++)
 	{
-		unsigned int offset												   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		kd_tree.learning_to_cluster.light_cluster_node_indices[offset]	   = new_node_indices[slot];
-		IlluminationAwareKDTreeLightClusterStatistics& statistics		   = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		statistics.estimated_importance_Q								   = new_statistics[slot].estimated_importance_Q;
-		statistics.estimated_second_moment								   = new_statistics[slot].estimated_second_moment;
-		statistics.variance												   = new_statistics[slot].variance;
-		statistics.visit_count											   = new_statistics[slot].visit_count;
-		kd_tree.learning_to_cluster.light_cluster_batch_statistics[offset] = {};
+		unsigned int offset											   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = new_node_indices[slot];
+		IlluminationAwareKDTreeLightClusterStatistics& statistics	   = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		statistics.estimated_importance_Q							   = new_statistics[slot].estimated_importance_Q;
+		statistics.estimated_second_moment							   = new_statistics[slot].estimated_second_moment;
+		statistics.variance											   = new_statistics[slot].variance;
+		statistics.visit_count										   = new_statistics[slot].visit_count;
+		kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(offset);
 	}
 
 	cluster_data.cut_size = new_cut_size;
@@ -370,14 +370,14 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int new_cut_size = old_cut_size + accepted_split_count;
 	if (slot < new_cut_size)
 	{
-		unsigned int offset												   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		kd_tree.learning_to_cluster.light_cluster_node_indices[offset]	   = new_node_indices[slot];
-		IlluminationAwareKDTreeLightClusterStatistics& statistics		   = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		statistics.estimated_importance_Q								   = new_statistics[slot].estimated_importance_Q;
-		statistics.estimated_second_moment								   = new_statistics[slot].estimated_second_moment;
-		statistics.variance												   = new_statistics[slot].variance;
-		statistics.visit_count											   = new_statistics[slot].visit_count;
-		kd_tree.learning_to_cluster.light_cluster_batch_statistics[offset] = {};
+		unsigned int offset											   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = new_node_indices[slot];
+		IlluminationAwareKDTreeLightClusterStatistics& statistics	   = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		statistics.estimated_importance_Q							   = new_statistics[slot].estimated_importance_Q;
+		statistics.estimated_second_moment							   = new_statistics[slot].estimated_second_moment;
+		statistics.variance											   = new_statistics[slot].variance;
+		statistics.visit_count										   = new_statistics[slot].visit_count;
+		kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(offset);
 	}
 
 	__syncthreads();

@@ -54,7 +54,7 @@ IlluminationAwareKDTree_InitializeRootLightClustering(IlluminationAwareKDTreeDev
 		kd_tree.learning_to_cluster.light_cluster_statistics[offset]   = {};
 	}
 
-	kd_tree.learning_to_cluster.light_cluster_batch_statistics[offset] = {};
+	kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(offset);
 
 	if (slot == 0)
 	{

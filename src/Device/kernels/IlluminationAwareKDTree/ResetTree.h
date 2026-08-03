@@ -70,9 +70,9 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 	for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
 	{
 		unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(node_index, slot);
-		illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[cluster_offset]	  = 0;
-		illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[cluster_offset]		  = {};
-		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[cluster_offset] = {};
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[cluster_offset] = 0;
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[cluster_offset]	  = {};
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(cluster_offset);
 	}
 }
 

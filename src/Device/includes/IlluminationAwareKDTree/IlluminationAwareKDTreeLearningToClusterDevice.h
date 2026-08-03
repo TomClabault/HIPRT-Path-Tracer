@@ -7,6 +7,8 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatistics.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
@@ -28,16 +30,6 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 };
 
 static_assert(sizeof(IlluminationAwareKDTreeLightClusterStatistics) == 16);
-
-struct IlluminationAwareKDTreeLightClusterBatchStatistics
-{
-	// Sum of Y_c and Y_c^2 observations for that cluster
-	float contribution_sum		   = 0.0f;
-	float squared_contribution_sum = 0.0f;
-
-	// Number of times that cluster was selected
-	unsigned int selected_count = 0;
-};
 
 struct IlluminationAwareKDTreeLightClusteringData
 {
@@ -89,9 +81,9 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	unsigned int* initial_light_cut_node_indices  = nullptr;
 	unsigned int effective_initial_light_cut_size = 0;
 
-	unsigned int* light_cluster_node_indices										   = nullptr;
-	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics			   = nullptr;
-	IlluminationAwareKDTreeLightClusterBatchStatistics* light_cluster_batch_statistics = nullptr;
+	unsigned int* light_cluster_node_indices								= nullptr;
+	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
+	IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice light_cluster_batch_statistics;
 
 	IlluminationAwareKDTreeLightClusteringData* light_clustering_data = nullptr;
 	AtomicType<unsigned int>* light_clustering_batch_sample_counts	  = nullptr;

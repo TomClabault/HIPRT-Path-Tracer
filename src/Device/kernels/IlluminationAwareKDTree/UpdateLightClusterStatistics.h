@@ -56,7 +56,7 @@ HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTr
 	IlluminationAwareKDTreeLightClusteringData& cluster_data  = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 	IlluminationAwareKDTreeLightClusterStatistics& persistent = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-	IlluminationAwareKDTreeLightClusterBatchStatistics& batch = kd_tree.learning_to_cluster.light_cluster_batch_statistics[offset];
+	IlluminationAwareKDTreeLightClusterBatchStatistics batch  = kd_tree.learning_to_cluster.light_cluster_batch_statistics.read(offset);
 
 	float inverse_sample_count = 1.0f / static_cast<float>(total_sample_count);
 	float batch_mean		   = batch.contribution_sum * inverse_sample_count;
@@ -70,7 +70,7 @@ HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTr
 	persistent.variance = hippt::max(persistent.estimated_second_moment - persistent.estimated_importance_Q * persistent.estimated_importance_Q, 0.0f);
 	persistent.visit_count += batch.selected_count;
 
-	batch = {};
+	kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(offset);
 }
 
 #ifndef __KERNELCC__

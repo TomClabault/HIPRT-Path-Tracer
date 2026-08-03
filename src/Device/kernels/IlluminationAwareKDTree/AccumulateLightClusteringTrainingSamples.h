@@ -58,13 +58,12 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index, 1u);
 
-	unsigned int selected_offset							  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
-	IlluminationAwareKDTreeLightClusterBatchStatistics& batch = kd_tree.learning_to_cluster.light_cluster_batch_statistics[selected_offset];
-	float contribution										  = sample.light_clustering_contribution;
+	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
+	float contribution			 = sample.light_clustering_contribution;
 
-	hippt::atomic_fetch_add_gpu(&batch.contribution_sum, contribution);
-	hippt::atomic_fetch_add_gpu(&batch.squared_contribution_sum, contribution * contribution);
-	hippt::atomic_fetch_add_gpu(&batch.selected_count, 1u);
+	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.contribution_sum[selected_offset], contribution);
+	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.squared_contribution_sum[selected_offset], contribution * contribution);
+	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.selected_count[selected_offset], 1u);
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
 	unsigned int previous_state =

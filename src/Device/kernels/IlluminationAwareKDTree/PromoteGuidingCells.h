@@ -113,8 +113,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
 
-		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[source_offset] = {};
-		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[right_offset]	 = {};
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(source_offset);
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(right_offset);
 	}
 
 	if (thread_slot == 0)
