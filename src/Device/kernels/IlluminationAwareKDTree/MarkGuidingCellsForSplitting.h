@@ -63,23 +63,30 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 		bool split_samples = false;
 		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::RECORD_SAMPLES_ONLY)
 		{
-			split_samples = illumination_aware_kd_tree.should_split_samples(illumination_aware_kd_tree.history_signatures[guiding_node_index]);
+			const IlluminationAwareKDTreeIlluminationSignature history_signature = illumination_aware_kd_tree.history_signatures.read(guiding_node_index);
+			split_samples														 = illumination_aware_kd_tree.should_split_samples(history_signature);
 		}
 
 		bool split_mean_radiance = false;
 		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
 			subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
 		{
-			split_mean_radiance = illumination_aware_kd_tree.should_split_mean_radiance(illumination_aware_kd_tree.history_signatures[guiding_node_index],
-																						illumination_aware_kd_tree.history_signatures[lookahead_node_index]);
+			const IlluminationAwareKDTreeIlluminationSignature guiding_history_signature =
+				illumination_aware_kd_tree.history_signatures.read(guiding_node_index);
+			const IlluminationAwareKDTreeIlluminationSignature lookahead_history_signature =
+				illumination_aware_kd_tree.history_signatures.read(lookahead_node_index);
+			split_mean_radiance = illumination_aware_kd_tree.should_split_mean_radiance(guiding_history_signature, lookahead_history_signature);
 		}
 
 		bool split_mean_direction = false;
 		if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_DIRECTION_ONLY ||
 			subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
 		{
-			split_mean_direction = illumination_aware_kd_tree.should_split_mean_direction(illumination_aware_kd_tree.history_signatures[guiding_node_index],
-																						  illumination_aware_kd_tree.history_signatures[lookahead_node_index]);
+			const IlluminationAwareKDTreeIlluminationSignature guiding_history_signature =
+				illumination_aware_kd_tree.history_signatures.read(guiding_node_index);
+			const IlluminationAwareKDTreeIlluminationSignature lookahead_history_signature =
+				illumination_aware_kd_tree.history_signatures.read(lookahead_node_index);
+			split_mean_direction = illumination_aware_kd_tree.should_split_mean_direction(guiding_history_signature, lookahead_history_signature);
 		}
 
 		if (split_samples || split_mean_radiance || split_mean_direction)

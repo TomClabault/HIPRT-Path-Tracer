@@ -31,8 +31,8 @@ IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(IlluminationAwareKDTr
 		return;
 
 	// For newly created nodes, we initialize the history with the current batch values (batch values initialized from the sample replay kernel)
-	illumination_aware_kd_tree.history_signatures[node_index]	   = illumination_aware_kd_tree.batch_signatures[node_index];
-	illumination_aware_kd_tree.history_spatial_moments[node_index] = illumination_aware_kd_tree.batch_spatial_moments[node_index];
+	illumination_aware_kd_tree.history_signatures.write(node_index, illumination_aware_kd_tree.batch_signatures.read(node_index));
+	illumination_aware_kd_tree.history_spatial_moments.write(node_index, illumination_aware_kd_tree.batch_spatial_moments.read(node_index));
 }
 
 #endif

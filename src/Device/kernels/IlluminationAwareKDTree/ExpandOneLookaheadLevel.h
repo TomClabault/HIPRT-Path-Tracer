@@ -40,13 +40,14 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 	}
 
 	// The paper waits until the parent has at least 1000 observations.
-	if (illumination_aware_kd_tree.history_signatures[parent_index].valid_observation_count <
+	if (illumination_aware_kd_tree.history_signatures.read(parent_index).valid_observation_count <
 		illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation)
 		return;
 
-	unsigned char split_axis = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
-	float split_position	 = 0.0f;
-	illumination_aware_kd_tree.compute_split_axis_and_position(illumination_aware_kd_tree.history_spatial_moments[parent_index], split_axis, split_position);
+	unsigned char split_axis												  = IlluminationAwareKDTreeNode::INVALID_SPLIT_AXIS;
+	float split_position													  = 0.0f;
+	const IlluminationAwareKDTreeSpatialSampleMoments history_spatial_moments = illumination_aware_kd_tree.history_spatial_moments.read(parent_index);
+	illumination_aware_kd_tree.compute_split_axis_and_position(history_spatial_moments, split_axis, split_position);
 
 	IlluminationAwareKDTreeNodeBounds& parent_bounds = illumination_aware_kd_tree.node_bounds[parent_index];
 	float minimum_split_extent = split_axis == 0 ? parent_bounds.minimum.x : (split_axis == 1 ? parent_bounds.minimum.y : parent_bounds.minimum.z);
@@ -93,14 +94,14 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 	illumination_aware_kd_tree.node_bounds[left_child]	= left_bounds;
 	illumination_aware_kd_tree.node_bounds[right_child] = right_bounds;
 
-	illumination_aware_kd_tree.batch_signatures[left_child]			= {};
-	illumination_aware_kd_tree.batch_signatures[right_child]		= {};
-	illumination_aware_kd_tree.history_signatures[left_child]		= {};
-	illumination_aware_kd_tree.history_signatures[right_child]		= {};
-	illumination_aware_kd_tree.batch_spatial_moments[left_child]	= {};
-	illumination_aware_kd_tree.batch_spatial_moments[right_child]	= {};
-	illumination_aware_kd_tree.history_spatial_moments[left_child]	= {};
-	illumination_aware_kd_tree.history_spatial_moments[right_child] = {};
+	illumination_aware_kd_tree.batch_signatures.reset(left_child);
+	illumination_aware_kd_tree.batch_signatures.reset(right_child);
+	illumination_aware_kd_tree.history_signatures.reset(left_child);
+	illumination_aware_kd_tree.history_signatures.reset(right_child);
+	illumination_aware_kd_tree.batch_spatial_moments.reset(left_child);
+	illumination_aware_kd_tree.batch_spatial_moments.reset(right_child);
+	illumination_aware_kd_tree.history_spatial_moments.reset(left_child);
+	illumination_aware_kd_tree.history_spatial_moments.reset(right_child);
 
 	parent.split_axis		= split_axis;
 	parent.split_position	= split_position;

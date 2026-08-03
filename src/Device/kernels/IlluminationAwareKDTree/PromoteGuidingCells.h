@@ -147,7 +147,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 			unsigned int node_index = stack[--stack_size];
 
 			// The new nodes start with the current batch signature as their history signature
-			illumination_aware_kd_tree.history_signatures[node_index] = illumination_aware_kd_tree.batch_signatures[node_index];
+			illumination_aware_kd_tree.history_signatures.write(node_index, illumination_aware_kd_tree.batch_signatures.read(node_index));
 
 			const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.nodes[node_index];
 			if (node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren)

@@ -10,6 +10,8 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeIlluminationSignatureSoADevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSpatialSampleMomentsSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
@@ -365,34 +367,34 @@ struct IlluminationAwareKDTreeDevice
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	}
 
-	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
+	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignatureSoADevice& signatures,
 														unsigned int node_index,
 														const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
 		float spatial_radiance_weight = sample.spatial_radiance_weight;
 
 		// b0 counts all valid samples, including samples with L == 0.
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].valid_observation_count, 1u);
+		hippt::atomic_fetch_add(&signatures.valid_observation_count[node_index], 1u);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].scalar_radiance_sum, spatial_radiance_weight);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].squared_scalar_radiance_sum, spatial_radiance_weight * spatial_radiance_weight);
+		hippt::atomic_fetch_add(&signatures.scalar_radiance_sum[node_index], spatial_radiance_weight);
+		hippt::atomic_fetch_add(&signatures.squared_scalar_radiance_sum[node_index], spatial_radiance_weight * spatial_radiance_weight);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.x, spatial_radiance_weight * sample.incoming_direction.x);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.y, spatial_radiance_weight * sample.incoming_direction.y);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, spatial_radiance_weight * sample.incoming_direction.z);
+		hippt::atomic_fetch_add(&signatures.weighted_direction_sum_x[node_index], spatial_radiance_weight * sample.incoming_direction.x);
+		hippt::atomic_fetch_add(&signatures.weighted_direction_sum_y[node_index], spatial_radiance_weight * sample.incoming_direction.y);
+		hippt::atomic_fetch_add(&signatures.weighted_direction_sum_z[node_index], spatial_radiance_weight * sample.incoming_direction.z);
 	}
 
-	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, unsigned int node_index, float3_t position)
+	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMomentsSoADevice& moments, unsigned int node_index, float3_t position)
 	{
-		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1u);
+		hippt::atomic_fetch_add(&moments.positive_radiance_sample_count[node_index], 1u);
 
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.x, position.x);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.y, position.y);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.z, position.z);
+		hippt::atomic_fetch_add(&moments.position_sum_x[node_index], position.x);
+		hippt::atomic_fetch_add(&moments.position_sum_y[node_index], position.y);
+		hippt::atomic_fetch_add(&moments.position_sum_z[node_index], position.z);
 
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.x, position.x * position.x);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.y, position.y * position.y);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.z, position.z * position.z);
+		hippt::atomic_fetch_add(&moments.position_squared_sum_x[node_index], position.x * position.x);
+		hippt::atomic_fetch_add(&moments.position_squared_sum_y[node_index], position.y * position.y);
+		hippt::atomic_fetch_add(&moments.position_squared_sum_z[node_index], position.z * position.z);
 	}
 
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
@@ -543,11 +545,11 @@ struct IlluminationAwareKDTreeDevice
 	AtomicType<unsigned int>* learning_to_cluster_training_sample_count							 = nullptr;
 	unsigned int learning_to_cluster_training_sample_capacity									 = 0;
 
-	IlluminationAwareKDTreeIlluminationSignature* batch_signatures	 = nullptr;
-	IlluminationAwareKDTreeIlluminationSignature* history_signatures = nullptr;
+	IlluminationAwareKDTreeIlluminationSignatureSoADevice batch_signatures;
+	IlluminationAwareKDTreeIlluminationSignatureSoADevice history_signatures;
 
-	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
-	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
+	IlluminationAwareKDTreeSpatialSampleMomentsSoADevice batch_spatial_moments;
+	IlluminationAwareKDTreeSpatialSampleMomentsSoADevice history_spatial_moments;
 };
 
 #endif

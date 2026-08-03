@@ -33,8 +33,8 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 
 	if (reset_index < node_count)
 	{
-		illumination_aware_kd_tree.batch_signatures[reset_index]	  = {};
-		illumination_aware_kd_tree.batch_spatial_moments[reset_index] = {};
+		illumination_aware_kd_tree.batch_signatures.reset(reset_index);
+		illumination_aware_kd_tree.batch_spatial_moments.reset(reset_index);
 	}
 
 	if (reset_index < light_clustering_count)

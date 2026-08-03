@@ -32,20 +32,22 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchStatisticsI
 	if (!node_allocated)
 		return;
 
-	IlluminationAwareKDTreeIlluminationSignature& history_signature		= illumination_aware_kd_tree.history_signatures[node_index];
-	const IlluminationAwareKDTreeIlluminationSignature& batch_signature = illumination_aware_kd_tree.batch_signatures[node_index];
+	IlluminationAwareKDTreeIlluminationSignature history_signature	   = illumination_aware_kd_tree.history_signatures.read(node_index);
+	const IlluminationAwareKDTreeIlluminationSignature batch_signature = illumination_aware_kd_tree.batch_signatures.read(node_index);
 
 	history_signature.valid_observation_count += batch_signature.valid_observation_count;
 	history_signature.scalar_radiance_sum += batch_signature.scalar_radiance_sum;
 	history_signature.squared_scalar_radiance_sum += batch_signature.squared_scalar_radiance_sum;
 	history_signature.weighted_direction_sum += batch_signature.weighted_direction_sum;
+	illumination_aware_kd_tree.history_signatures.write(node_index, history_signature);
 
-	IlluminationAwareKDTreeSpatialSampleMoments& history_spatial	 = illumination_aware_kd_tree.history_spatial_moments[node_index];
-	const IlluminationAwareKDTreeSpatialSampleMoments& batch_spatial = illumination_aware_kd_tree.batch_spatial_moments[node_index];
+	IlluminationAwareKDTreeSpatialSampleMoments history_spatial		= illumination_aware_kd_tree.history_spatial_moments.read(node_index);
+	const IlluminationAwareKDTreeSpatialSampleMoments batch_spatial = illumination_aware_kd_tree.batch_spatial_moments.read(node_index);
 
 	history_spatial.positive_radiance_sample_count += batch_spatial.positive_radiance_sample_count;
 	history_spatial.position_sum += batch_spatial.position_sum;
 	history_spatial.position_squared_sum += batch_spatial.position_squared_sum;
+	illumination_aware_kd_tree.history_spatial_moments.write(node_index, history_spatial);
 }
 
 #endif

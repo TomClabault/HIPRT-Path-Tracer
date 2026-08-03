@@ -53,16 +53,16 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/RefineLightClusterings.h"
-#include "Device/kernels/IlluminationAwareKDTree/UpdateLightClusterStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeRootLightClustering.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/InitializeRootLightClustering.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
+#include "Device/kernels/IlluminationAwareKDTree/RefineLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
+#include "Device/kernels/IlluminationAwareKDTree/UpdateLightClusterStatistics.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -81,7 +81,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner (image viewer).
 // If 1, it's bottom left corner (this renderer).

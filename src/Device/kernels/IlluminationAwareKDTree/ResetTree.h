@@ -53,11 +53,11 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 		*illumination_aware_kd_tree.next_frontier_count	   = 0;
 	}
 
-	illumination_aware_kd_tree.history_signatures[node_index]	   = {};
-	illumination_aware_kd_tree.history_spatial_moments[node_index] = {};
+	illumination_aware_kd_tree.history_signatures.reset(node_index);
+	illumination_aware_kd_tree.history_spatial_moments.reset(node_index);
 
-	illumination_aware_kd_tree.batch_signatures[node_index]		 = {};
-	illumination_aware_kd_tree.batch_spatial_moments[node_index] = {};
+	illumination_aware_kd_tree.batch_signatures.reset(node_index);
+	illumination_aware_kd_tree.batch_spatial_moments.reset(node_index);
 
 	illumination_aware_kd_tree.needs_split[node_index] = 0;
 
