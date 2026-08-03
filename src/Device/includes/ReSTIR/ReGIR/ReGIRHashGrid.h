@@ -59,7 +59,7 @@ struct ReGIRHashGrid
 #else
 		float cell_size_step = hippt::length(world_position - current_camera.position) *
 							   tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
-		float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));
+		float log_step		 = floorf(log2f(cell_size_step / grid_cell_min_size));
 
 		return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
 #endif
@@ -108,10 +108,10 @@ struct ReGIRHashGrid
 		unsigned int checksum =
 			h2_xxhash32(quantized_normal + h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
 		unsigned int cell_hash =
-			h1_pcg(quantized_normal + h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x))))) % total_number_of_cells;
+			pcg_hash(quantized_normal + pcg_hash(cell_size + pcg_hash(grid_coord_z + pcg_hash(grid_coord_y + pcg_hash(grid_coord_x))))) % total_number_of_cells;
 #else
 		unsigned int checksum  = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
-		unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % total_number_of_cells;
+		unsigned int cell_hash = pcg_hash(cell_size + pcg_hash(grid_coord_z + pcg_hash(grid_coord_y + pcg_hash(grid_coord_x)))) % total_number_of_cells;
 #endif
 
 		out_checksum = checksum;

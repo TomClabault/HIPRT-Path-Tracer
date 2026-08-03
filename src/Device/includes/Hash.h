@@ -8,6 +8,8 @@
 
 #include "Device/includes/FixIntellisense.h"
 
+#include "HostDeviceCommon/Maths/Math.h"
+
 HIPRT_HOST_DEVICE static unsigned int wang_hash(unsigned int seed)
 {
 	seed = (seed ^ 61) ^ (seed >> 16);
@@ -24,6 +26,11 @@ HIPRT_HOST_DEVICE static unsigned int pcg_hash(unsigned int seed)
 	unsigned int word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
 
 	return (word >> 22u) ^ word;
+}
+
+HIPRT_HOST_DEVICE static unsigned int pcg_hash(float seed)
+{
+	return pcg_hash(hippt::float_as_uint(seed));
 }
 
 #endif

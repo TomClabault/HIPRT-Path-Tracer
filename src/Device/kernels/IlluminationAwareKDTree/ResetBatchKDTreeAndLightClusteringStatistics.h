@@ -23,7 +23,8 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 	unsigned int reset_index = x;
 #endif
 
-	unsigned int node_count = *illumination_aware_kd_tree.node_count;
+	unsigned int node_count				= *illumination_aware_kd_tree.node_count;
+	unsigned int light_clustering_count = *illumination_aware_kd_tree.learning_to_cluster.light_clustering_count;
 	if (reset_index == 0)
 	{
 		*illumination_aware_kd_tree.training_sample_count					  = 0;
@@ -32,10 +33,13 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 
 	if (reset_index < node_count)
 	{
-		illumination_aware_kd_tree.batch_signatures[reset_index]										 = {};
-		illumination_aware_kd_tree.batch_spatial_moments[reset_index]									 = {};
-		illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[reset_index] = 0;
+		illumination_aware_kd_tree.batch_signatures[reset_index]	  = {};
+		illumination_aware_kd_tree.batch_spatial_moments[reset_index] = {};
+	}
 
+	if (reset_index < light_clustering_count)
+	{
+		illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[reset_index] = 0;
 		for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
 		{
 			unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(reset_index, slot);

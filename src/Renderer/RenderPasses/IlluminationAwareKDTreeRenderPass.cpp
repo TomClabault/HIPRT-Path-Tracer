@@ -164,9 +164,11 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+	unsigned int light_clustering_count						 = m_illumination_aware_kd_tree.m_light_clustering_count.download_data()[0];
+	unsigned int reset_count								 = std::max(active_node_count, light_clustering_count);
 	void* launch_args[]										 = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		1024, 1, active_node_count, 1, launch_args, m_renderer->get_main_stream());
+		1024, 1, reset_count, 1, launch_args, m_renderer->get_main_stream());
 
 	if (m_renderer->get_render_data().render_settings.sample_number == 0)
 	{
@@ -250,10 +252,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			promotion_launch_args, m_renderer->get_main_stream());
 	}
 
+	m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 		256, 1, illumination_aware_kd_tree.learning_to_cluster_training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
 
-	m_cached_current_guiding_node_count					= m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
 	LightTreeSGDevice light_tree_sg						= render_data.light_tree_sg;
 	void* update_light_cluster_statistics_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
 	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(

@@ -6,25 +6,10 @@
 #ifndef DEVICE_INCLUDES_HASH_GRID_HASH_H
 #define DEVICE_INCLUDES_HASH_GRID_HASH_H
 
+#include "Device/includes/Hash.h"
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
-
-/**
- * PCG for the first hash function
- */
-HIPRT_DEVICE static unsigned int h1_pcg(unsigned int seed)
-{
-	unsigned int state = seed * 747796405u + 2891336453u;
-	unsigned int word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-
-	return (word >> 22u) ^ word;
-}
-
-HIPRT_HOST_DEVICE static unsigned int h1_pcg(float seed)
-{
-	return h1_pcg(hippt::float_as_uint(seed));
-}
 
 /**
  * xxhash32 for the second hash function
@@ -153,7 +138,7 @@ HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position,
 
 	float cell_size_step = hippt::length(world_position - current_camera.position) *
 						   tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
-	float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));
+	float log_step		 = floorf(log2f(cell_size_step / grid_cell_min_size));
 
 	return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
 }
@@ -184,7 +169,7 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(float3_t world_posi
 	// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 	out_checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x + h2_xxhash32(normal_hashed)))));
 
-	unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x + h1_pcg(normal_hashed)))));
+	unsigned int cell_hash = pcg_hash(cell_size + pcg_hash(grid_coord_z + pcg_hash(grid_coord_y + pcg_hash(grid_coord_x + pcg_hash(normal_hashed)))));
 
 	return cell_hash;
 }
@@ -216,9 +201,9 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(float3_t world_posi
 	unsigned int hash_2 = h2_xxhash32(cell_size_2 + h2_xxhash32(grid_coord_z_2 + h2_xxhash32(grid_coord_y_2 + h2_xxhash32(grid_coord_x_2))));
 	out_checksum		= h2_xxhash32(hash_1 ^ hash_2);
 
-	unsigned int cell_hash_1 = h1_pcg(cell_size_1 + h1_pcg(grid_coord_z_1 + h1_pcg(grid_coord_y_1 + h1_pcg(grid_coord_x_1))));
-	unsigned int cell_hash_2 = h1_pcg(cell_size_2 + h1_pcg(grid_coord_z_2 + h1_pcg(grid_coord_y_2 + h1_pcg(grid_coord_x_2))));
-	unsigned int cell_hash	 = h1_pcg(cell_hash_1 ^ cell_hash_2);
+	unsigned int cell_hash_1 = pcg_hash(cell_size_1 + pcg_hash(grid_coord_z_1 + pcg_hash(grid_coord_y_1 + pcg_hash(grid_coord_x_1))));
+	unsigned int cell_hash_2 = pcg_hash(cell_size_2 + pcg_hash(grid_coord_z_2 + pcg_hash(grid_coord_y_2 + pcg_hash(grid_coord_x_2))));
+	unsigned int cell_hash	 = pcg_hash(cell_hash_1 ^ cell_hash_2);
 
 	return cell_hash;
 }
@@ -240,7 +225,7 @@ HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(int pixel_x,
 
 	if (out_checksum != nullptr)
 		*out_checksum = h2_xxhash32(grid_coord_x + h2_xxhash32(grid_coord_y + h2_xxhash32(hashed_normal)));
-	return h1_pcg(grid_coord_x + h1_pcg(grid_coord_y + h1_pcg(hashed_normal)));
+	return pcg_hash(grid_coord_x + pcg_hash(grid_coord_y + pcg_hash(hashed_normal)));
 }
 
 #endif

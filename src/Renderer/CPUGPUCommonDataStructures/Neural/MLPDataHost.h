@@ -78,9 +78,9 @@ struct MLPDataHost
 		m_mlp_data.template memset_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>(0.0f);
 
 		// Initializing weights using Xavier's uniform distribution
-		Xorshift32Generator rng(h1_pcg(static_cast<unsigned int>(MLPType::INPUT_SIZE) +
-									   h1_pcg(static_cast<unsigned int>(MLPType::OUTPUT_SIZE) +
-											  h1_pcg(static_cast<unsigned int>(MLPType::HIDDEN_LAYER_COUNT * MLPType::HIDDEN_LAYER_SIZE)))));
+		Xorshift32Generator rng(pcg_hash(static_cast<unsigned int>(MLPType::INPUT_SIZE) +
+										 pcg_hash(static_cast<unsigned int>(MLPType::OUTPUT_SIZE) +
+												  pcg_hash(static_cast<unsigned int>(MLPType::HIDDEN_LAYER_COUNT * MLPType::HIDDEN_LAYER_SIZE)))));
 
 		std::vector<float> weights = m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
 
