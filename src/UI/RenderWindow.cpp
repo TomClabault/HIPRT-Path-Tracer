@@ -33,6 +33,7 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // TODO Illumination aware KD tree
+//	- Use a CDF to sample the tree cut instead of WRS
 //	- We still need normal aware distributions
 //	- Slap resampling and splitting on top of learning to cluster somehow
 //	- How to reduce memory usage of the distributions?

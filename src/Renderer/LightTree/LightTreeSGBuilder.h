@@ -48,6 +48,7 @@ public:
 
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
+	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
 
 private:
 	/**

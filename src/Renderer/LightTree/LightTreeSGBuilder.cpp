@@ -184,9 +184,9 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			const float3_t triangle_variance_diag =
 				make_float3((e1.x * e1.x + e2.x * e2.x - e1.x * e2.x) / 18.0f, (e1.y * e1.y + e2.y * e2.y - e1.y * e2.y) / 18.0f,
 							(e1.z * e1.z + e2.z * e2.z - e1.z * e2.z) / 18.0f);
-			const double centroid_squared			 = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
-													   static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
-													   static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
+			const double centroid_squared = static_cast<double>(triangle.centroid.x) * triangle.centroid.x +
+											static_cast<double>(triangle.centroid.y) * triangle.centroid.y +
+											static_cast<double>(triangle.centroid.z) * triangle.centroid.z;
 			const double triangle_intrinsic_variance = triangle_variance_diag.x + triangle_variance_diag.y + triangle_variance_diag.z;
 			sum_second_moment += (centroid_squared + triangle_intrinsic_variance) * triangle.power;
 
@@ -385,7 +385,6 @@ void LightTreeSGBuilder::cleanup()
 {
 	m_light_tree_ats_builder.cleanup();
 	m_nodes.clear();
-	m_tree_cut_node_indices.clear();
 }
 
 LightTreeATSBuilderOptions& LightTreeSGBuilder::get_build_options()
@@ -411,4 +410,9 @@ int LightTreeSGBuilder::get_tree_cut_size() const
 void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
 {
 	m_tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
+}
+
+const std::vector<unsigned int>& LightTreeSGBuilder::get_tree_cut_node_indices() const
+{
+	return m_tree_cut_node_indices;
 }

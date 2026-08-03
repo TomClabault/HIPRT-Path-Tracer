@@ -38,6 +38,7 @@ public:
 	void set_spatial_lobe_count(int spatial_lobe_count);
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
+	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
 
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;

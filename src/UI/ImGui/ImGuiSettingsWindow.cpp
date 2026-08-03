@@ -3753,9 +3753,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::SeparatorText("Sampling");
 
 		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
+		bool use_light_clustering =
+			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER;
 		ImGui::BeginDisabled(do_splitting);
 
 		static bool use_tree_cut = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT);
+		ImGui::BeginDisabled(use_light_clustering);
 		if (ImGui::Checkbox("Use tree cut sampling", &use_tree_cut))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT,
@@ -3766,11 +3769,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		}
 		ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
 										"reservoir sampling. Changes require kernel recompilation.");
+		ImGui::EndDisabled();
 
 		static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 		ImGui::InputInt("Tree cut size", &current_tree_cut_size);
 		// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
-		current_tree_cut_size = hippt::clamp(1, 1024, current_tree_cut_size);
+		int maximum_tree_cut_size = use_light_clustering ? IlluminationAwareKDTreeMaximumLightCutSize : 1024;
+		current_tree_cut_size	  = hippt::clamp(1, maximum_tree_cut_size, current_tree_cut_size);
 
 		ImGuiRenderer::show_help_marker(
 			"Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require rebuilding the light-tree data.");
@@ -3901,8 +3906,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
-		bool use_light_clustering =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER;
 		if (use_light_clustering)
 		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
