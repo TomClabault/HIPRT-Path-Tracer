@@ -39,7 +39,7 @@ struct IlluminationAwareKDTreeLightClusterBatchStatistics
 	unsigned int selected_count = 0;
 };
 
-struct IlluminationAwareKDTreeLightClusteringMetadata
+struct IlluminationAwareKDTreeLightClusteringData
 {
 	// Current number of active SG nodes in the cut
 	unsigned int cut_size = 0;
@@ -75,7 +75,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 {
 	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;
 
-	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot)
+	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const
 	{
 		return light_clustering_index * IlluminationAwareKDTreeMaximumLightCutSize + slot;
 	}
@@ -88,8 +88,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics			   = nullptr;
 	IlluminationAwareKDTreeLightClusterBatchStatistics* light_cluster_batch_statistics = nullptr;
 
-	IlluminationAwareKDTreeLightClusteringMetadata* light_clustering_metadata = nullptr;
-	AtomicType<unsigned int>* light_clustering_batch_sample_counts			  = nullptr;
+	IlluminationAwareKDTreeLightClusteringData* light_clustering_data = nullptr;
+	AtomicType<unsigned int>* light_clustering_batch_sample_counts	  = nullptr;
 
 	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
 	AtomicType<unsigned int>* representative_shading_context_states			 = nullptr;

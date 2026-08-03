@@ -38,14 +38,20 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		return ColorRGB32F(0.0f);
 
 	ColorRGB32F light_source_radiance;
-
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
 
 	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
-		LightSamplePointInformation& light_sample = light_samples[i];
+		IlluminationAwareKDTreeLearningToClusterCutTriangleSample sampled_triangle =
+			sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, random_number_generator);
+		if (!sampled_triangle.valid())
+			continue;
+
+		LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(
+			render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material,
+			sampled_triangle.emissive_triangle_global_index, random_number_generator);
+		light_sample.area_measure_pdf *= sampled_triangle.triangle_probability();
 
 		if (light_sample.area_measure_pdf <= 0.0f)
 			// Can happen for very small triangles or the light
@@ -439,10 +445,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 }
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
-																			  RayPayload& ray_payload,
-																			  const HitInfo closest_hit_info,
-																			  const float3_t& view_direction,
-																			  Xorshift32Generator& random_number_generator)
+																			 RayPayload& ray_payload,
+																			 const HitInfo closest_hit_info,
+																			 const float3_t& view_direction,
+																			 Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);

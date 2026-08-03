@@ -1308,7 +1308,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"account. Not all BSDF lobe "
 				"configurations are supported.",
 
-				"Uses one adaptive SG light-tree cut per illumination-aware KD-tree cell. Cluster importance is learned from NEE contributions using stochastic "
+				"Uses one adaptive SG light-tree cut per illumination-aware KD-tree cell. Cluster importance is learned from NEE contributions using "
+				"stochastic "
 				"successive approximation, and high-variance light clusters are progressively refined.",
 
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be "
@@ -1324,11 +1325,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool regir		= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool mis_disabled = regir;
 
-			const bool ris_disabled							 = false;
-			const bool risltc_disabled						 = regir;
-			const bool ltc_shading_disabled					 = regir;
+			const bool ris_disabled							= false;
+			const bool risltc_disabled						= regir;
+			const bool ltc_shading_disabled					= regir;
 			const bool sg_tree_learning_to_cluster_disabled = regir;
-			const bool restir_di_disabled					 = false;
+			const bool restir_di_disabled					= false;
 
 			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
 											   uniform_one_light_disabled,
@@ -1337,7 +1338,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 											   ris_disabled,
 											   risltc_disabled,
 											   ltc_shading_disabled,
-												   sg_tree_learning_to_cluster_disabled,
+											   sg_tree_learning_to_cluster_disabled,
 											   restir_di_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
@@ -2415,7 +2416,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2596,7 +2597,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3955,7 +3956,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.light_cluster_node_indices +
 														 vram_usage.light_cluster_statistics + vram_usage.light_cluster_batch_statistics +
-														 vram_usage.light_clustering_metadata + vram_usage.light_clustering_batch_sample_counts +
+														 vram_usage.light_clustering_data + vram_usage.light_clustering_batch_sample_counts +
 														 vram_usage.representative_shading_contexts + vram_usage.representative_shading_context_states;
 
 			std::vector<char> illumination_aware_vram_tooltip_buffer(4096);
@@ -3984,7 +3985,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - Light cluster node indices: %.3fMB\n"
 					 "    - Light cluster statistics: %.3fMB\n"
 					 "    - Light cluster batch statistics: %.3fMB\n"
-					 "    - Light clustering metadata: %.3fMB\n"
+					 "    - Light clustering data: %.3fMB\n"
 					 "    - Light clustering batch sample counts: %.3fMB\n"
 					 "    - Representative shading contexts: %.3fMB\n"
 					 "    - Representative shading context states: %.3fMB\n",
@@ -3998,7 +3999,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
 					 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,
 					 vram_usage.light_cluster_statistics / 1000000.0f, vram_usage.light_cluster_batch_statistics / 1000000.0f,
-					 vram_usage.light_clustering_metadata / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
+					 vram_usage.light_clustering_data / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
 					 vram_usage.representative_shading_contexts / 1000000.0f, vram_usage.representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
@@ -5565,7 +5566,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

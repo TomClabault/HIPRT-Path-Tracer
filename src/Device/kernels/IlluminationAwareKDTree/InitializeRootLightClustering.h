@@ -33,40 +33,40 @@ IlluminationAwareKDTree_InitializeRootLightClustering(IlluminationAwareKDTreeDev
 
 	unsigned int initial_cut_size = IlluminationAwareKDTreeInitialLightCutSize;
 	unsigned int clustering_index = 0;
-	unsigned int offset			  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 
 	if (slot < initial_cut_size)
 	{
-		unsigned int sg_node_index									   = kd_tree.learning_to_cluster.initial_light_cut_node_indices[slot];
+		unsigned int sg_node_index = kd_tree.learning_to_cluster.initial_light_cut_node_indices[slot];
 		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = sg_node_index;
 
 		float fallback_Q = hippt::max(light_tree_sg.nodes[sg_node_index].get_total_power(), 0.0f);
 
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		statistics.estimated_importance_Q						  = fallback_Q;
-		statistics.estimated_second_moment						  = fallback_Q * fallback_Q;
-		statistics.variance										  = 0.0f;
-		statistics.visit_count									  = 0;
+		statistics.estimated_importance_Q = fallback_Q;
+		statistics.estimated_second_moment = fallback_Q * fallback_Q;
+		statistics.variance = 0.0f;
+		statistics.visit_count = 0;
 	}
 	else
 	{
 		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-		kd_tree.learning_to_cluster.light_cluster_statistics[offset]   = {};
+		kd_tree.learning_to_cluster.light_cluster_statistics[offset] = {};
 	}
 
 	kd_tree.learning_to_cluster.light_cluster_batch_statistics[offset] = {};
 
 	if (slot == 0)
 	{
-		IlluminationAwareKDTreeLightClusteringMetadata& metadata = kd_tree.learning_to_cluster.light_clustering_metadata[clustering_index];
-		metadata.cut_size										 = initial_cut_size;
-		metadata.iteration										 = 0;
-		metadata.last_refinement_iteration						 = 0;
-		metadata.refinement_sample_count						 = 0;
-		metadata.initialized									 = false;
-		metadata.refinement_stopped								 = false;
+		IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+		cluster_data.cut_size = initial_cut_size;
+		cluster_data.iteration = 0;
+		cluster_data.last_refinement_iteration = 0;
+		cluster_data.refinement_sample_count = 0;
+		cluster_data.initialized = false;
+		cluster_data.refinement_stopped = false;
 
-		*kd_tree.learning_to_cluster.light_clustering_batch_sample_counts  = 0;
+		*kd_tree.learning_to_cluster.light_clustering_batch_sample_counts = 0;
 		*kd_tree.learning_to_cluster.representative_shading_context_states = 0;
 	}
 }
