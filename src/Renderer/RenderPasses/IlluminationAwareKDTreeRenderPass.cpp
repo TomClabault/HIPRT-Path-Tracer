@@ -215,12 +215,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		// TODO same here download async
 		m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
 		void* promotion_launch_args[] = { &illumination_aware_kd_tree, &m_cached_current_guiding_node_count };
-		// We launch blocks of 1024 threads here, and as many blocks as needed to cover all the guiding nodes that need to be promoted. This is because each
-		// thread block will be in charge of one cell to copy NEE guiding distributions from the parent to the 2 new children
+		// We launch one light-clustering-sized block per guiding cell. Each thread copies one slot of the parent's light clustering into the right child.
 		//
 		// TODO we could be launching only number of blocks = nodes that have been marked for splitting instead of all the guiding nodes
 		m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
-			1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, m_cached_current_guiding_node_count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+			promotion_launch_args, m_renderer->get_main_stream());
 	}
 
 	m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];

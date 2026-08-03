@@ -21,8 +21,15 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 {
 #ifdef __KERNELCC__
 	unsigned int guiding_list_index = blockIdx.x; // *blockDim.x + threadIdx.x;
+	unsigned int thread_slot		= threadIdx.x;
 #else
 	unsigned int guiding_list_index = x;
+	unsigned int thread_slot		= 0;
+#endif
+	unsigned int slot_count = 1;
+
+#ifndef __KERNELCC__
+	slot_count = IlluminationAwareKDTreeMaximumLightCutSize;
 #endif
 
 	if (guiding_list_index >= original_guiding_node_count)
@@ -52,9 +59,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	__shared__ unsigned int right_light_clustering_index;
 	__shared__ unsigned int active_guiding_output_index;
 	__shared__ bool allocation_valid;
-	// We launch one full 1024 threads block per each single cell. That's 1023 threads too many for 1 cell because we want a single atomic increment here so
-	// only thread 0 does it and shares the result with the other threads of the block. And also only thread 0 does the memory writes
-	if (threadIdx.x == 0)
+	// Only one thread allocates the right light clustering and active guiding-list entry. The result is shared with the rest of the block.
+	if (thread_slot == 0)
 	{
 		// Only allocating 1 new light clustering for the right child, the left child will keep the parent's light clustering index
 		right_light_clustering_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.light_clustering_count, 1u);
@@ -70,7 +76,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	if (!allocation_valid)
 		return;
 
-	if (threadIdx.x == 0)
+	if (thread_slot == 0)
 	{
 		// The left child keeps the parent's light clustering index, the right child gets a new light clustering index but we will copy the parent's light
 		// clustering into the right child so that it starts with the same light clustering as the left child (same as the parent)
@@ -93,8 +99,40 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	// We want thread 0 writes to be visible
 	__syncthreads();
 
+	for (unsigned int slot_iteration = 0; slot_iteration < slot_count; slot_iteration++)
+	{
+		unsigned int slot = thread_slot + slot_iteration;
+		if (slot >= IlluminationAwareKDTreeMaximumLightCutSize)
+			continue;
+
+		unsigned int source_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(parent_light_clustering_index, slot);
+		unsigned int right_offset  = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(right_light_clustering_index, slot);
+
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[right_offset] =
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
+
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[source_offset] = {};
+		illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics[right_offset]	 = {};
+	}
+
+	if (thread_slot == 0)
+	{
+		illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_light_clustering_index] =
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_light_clustering_index];
+
+		*(illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + parent_light_clustering_index) = 0;
+		*(illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + right_light_clustering_index)  = 0;
+
+		*(illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states + parent_light_clustering_index) = 0;
+		*(illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states + right_light_clustering_index)	= 0;
+	}
+
+	__syncthreads();
+
 	// The promoted subtree starts a fresh illumination-signature-history
-	if (threadIdx.x == 0)
+	if (thread_slot == 0)
 	{
 		__shared__ unsigned int stack[128];
 
