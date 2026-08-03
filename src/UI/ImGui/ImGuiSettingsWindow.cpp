@@ -3928,73 +3928,39 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
 														vram_usage.guiding_distribution_count + vram_usage.current_frontier +
 														vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes =
-				vram_usage.training_samples + vram_usage.training_sample_count + vram_usage.nee_training_records + vram_usage.nee_training_record_count;
+			std::size_t training_buffer_bytes		  = vram_usage.training_samples + vram_usage.training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
-			std::size_t final_distribution_bytes = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
-			std::size_t per_cell_history_bytes	 = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-												 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-												 vram_usage.history_per_cell_normal_count;
-			std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
-			std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
-			std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
 
 			std::vector<char> illumination_aware_vram_tooltip_buffer(4096);
-			snprintf(
-				illumination_aware_vram_tooltip_buffer.data(), illumination_aware_vram_tooltip_buffer.size(),
-				"Breakdown:\n"
-				"  - KD-tree node structure: %.3fMB\n"
-				"    - Nodes: %.3fMB\n"
-				"    - Node bounds: %.3fMB\n"
-				"    - Node count: %.3fMB\n"
-				"  - Guiding-cell management: %.3fMB\n"
-				"    - Active guiding nodes: %.3fMB\n"
-				"    - Active guiding node count: %.3fMB\n"
-				"    - Needs-split flags: %.3fMB\n"
-				"    - Guiding distribution count: %.3fMB\n"
-				"    - Current frontier and count: %.3fMB\n"
-				"    - Next frontier and count: %.3fMB\n"
-				"  - Training buffers: %.3fMB\n"
-				"    - Direct-illumination training samples and count: %.3fMB\n"
-				"    - NEE distribution training records and count: %.3fMB\n"
-				"  - Spatial statistics: %.3fMB\n"
-				"    - Batch signatures: %.3fMB\n"
-				"    - History signatures: %.3fMB\n"
-				"    - Batch spatial moments: %.3fMB\n"
-				"    - History spatial moments: %.3fMB\n"
-				"  - Final NEE distributions: %.3fMB\n"
-				"    - Cut-slot probabilities: %.3fMB\n"
-				"    - Cut-slot CDFs: %.3fMB\n"
-				"  - Per-cell distribution history: %.3fMB\n"
-				"    - Cell sample count: %.3fMB\n"
-				"    - Cell normal sums (X/Y/Z): %.3fMB\n"
-				"    - Cell normal count: %.3fMB\n"
-				"  - Per-cut distribution history: %.3fMB\n"
-				"    - Conditional second moments: %.3fMB\n"
-				"    - Per-cut history sample counts: %.3fMB\n"
-				"  - Per-cut batch statistics: %.3fMB\n"
-				"    - Second-moment sums: %.3fMB\n"
-				"    - Batch sample counts: %.3fMB\n"
-				"  - Global prior distribution: %.3fMB\n"
-				"    - Prior PDFs: %.3fMB\n"
-				"    - Prior CDFs: %.3fMB",
-				node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
-				guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
-				vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
-				(vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
-				(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
-				(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f,
-				(vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
-				vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-				vram_usage.history_spatial_moments / 1000000.0f, final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
-				vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f, vram_usage.history_per_cell_sample_count / 1000000.0f,
-				(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) / 1000000.0f,
-				vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
-				vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
-				per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
-				vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
-				vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
+			snprintf(illumination_aware_vram_tooltip_buffer.data(), illumination_aware_vram_tooltip_buffer.size(),
+					 "Breakdown:\n"
+					 "  - KD-tree node structure: %.3fMB\n"
+					 "    - Nodes: %.3fMB\n"
+					 "    - Node bounds: %.3fMB\n"
+					 "    - Node count: %.3fMB\n"
+					 "  - Guiding-cell management: %.3fMB\n"
+					 "    - Active guiding nodes: %.3fMB\n"
+					 "    - Active guiding node count: %.3fMB\n"
+					 "    - Needs-split flags: %.3fMB\n"
+					 "    - Guiding distribution count: %.3fMB\n"
+					 "    - Current frontier and count: %.3fMB\n"
+					 "    - Next frontier and count: %.3fMB\n"
+					 "  - Training buffers: %.3fMB\n"
+					 "    - Direct-illumination training samples and count: %.3fMB\n"
+					 "  - Spatial statistics: %.3fMB\n"
+					 "    - Batch signatures: %.3fMB\n"
+					 "    - History signatures: %.3fMB\n"
+					 "    - Batch spatial moments: %.3fMB\n"
+					 "    - History spatial moments: %.3fMB\n",
+					 node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
+					 guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
+					 vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
+					 (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
+					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
+					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+					 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+					 vram_usage.history_spatial_moments / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4081,39 +4047,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 						m_render_window->set_render_dirty(true);
 				}
 			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Learnt NEE distributions");
-			IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
-				render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
-
-			if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
-			{
-				learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
-
-			if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
-			{
-				learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
-
-			if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
-			{
-				learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
-
-			if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
-			{
-				learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",

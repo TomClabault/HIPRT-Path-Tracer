@@ -6,17 +6,15 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNEELearntDistributions.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
+#include "Device/includes/PathGuiding/VMF.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include <cstdint>
-
-// Placeholder
-using NEEGuidingDistribution = LightTreeSGNodeDevice;
 
 // Indexed by sqrtf(1.0f / effectiveKappa) to get the cosine of the maximum angle allowed between two distributions VMF for the mean radiance weighted
 // directions split criterion.
@@ -514,8 +512,6 @@ struct IlluminationAwareKDTreeDevice
 
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
-
-	IlluminationAwareKDTreeNEELearntDistributions nee_learnt_distributions;
 };
 
 #endif

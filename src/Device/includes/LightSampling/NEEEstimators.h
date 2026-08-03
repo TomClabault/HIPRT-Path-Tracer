@@ -13,7 +13,6 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
-#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearntDistributions.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
@@ -445,36 +444,16 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 																			  const float3_t& view_direction,
 																			  Xorshift32Generator& random_number_generator)
 {
-
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 
 	ColorRGB32F light_source_radiance;
-	IlluminationAwareKDTreeSampledCutNode guided_sample;
 
-	LightSampleArray<1> sampled_lights = sample_one_emissive_triangle_light_tree_sg_learnt_distributions(
-		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload.material,
-		closest_hit_info.primitive_index, random_number_generator, guided_sample);
+	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
-	bool valid_learnt_distribution_sample = sampled_lights[0].pdf > 0.0f;
-	bool fallback_to_standard_sg_sampling = sampled_lights[0].pdf == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY;
-
-	if (fallback_to_standard_sg_sampling)
-	{
-		// No learnt light distribution is available at that point, falling back to usual SG tree sampling. A zero-PDF learnt sample is a failed subtree
-		// proposal and must not be replaced here because that would change the mixture PDF.
-		sampled_lights = sample_one_emissive_triangle_light_tree_sg(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																	closest_hit_info.geometric_normal, ray_payload.material, closest_hit_info.primitive_index,
-																	random_number_generator);
-	}
-
-	LightSamplePointArray<1> light_samples;
-	light_samples[0] = sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction,
-																			   closest_hit_info.shading_normal, ray_payload.material,
-																			   sampled_lights[0].emissive_triangle_global_index, random_number_generator);
-	light_samples[0].area_measure_pdf *= sampled_lights[0].pdf;
-
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
 
@@ -500,32 +479,18 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 		training_sample.incoming_direction = shadow_ray.direction;
 		training_sample.valid			   = true;
 
-		ColorRGB32F full_local_nee_estimate(0.0f);
-		float debug_solid_angle_pdf		   = 0.0f;
-		float debug_bsdf_pdf			   = 0.0f;
-		float debug_unoccluded_probability = 0.0f;
-		bool debug_shadow_tested		   = false;
-		bool debug_in_shadow			   = false;
-		int debug_rejection_reason		   = 1;
-
 		if (dot_light_source > 0.0f)
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
 			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-			bool in_shadow				 = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-																			 nee_plus_plus_context, random_number_generator);
-			debug_shadow_tested			 = true;
-			debug_in_shadow				 = in_shadow;
-			debug_unoccluded_probability = nee_plus_plus_context.unoccluded_probability;
-			debug_rejection_reason		 = 2;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+															   nee_plus_plus_context, random_number_generator);
 
 			if (!in_shadow)
 			{
 				// Conversion to solid angle from surface area measure
 				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-				debug_solid_angle_pdf			   = light_sample_solid_angle_pdf;
-				debug_rejection_reason			   = 3;
 				if (light_sample_solid_angle_pdf > 0.0f)
 				{
 					// The NEE sample is non-zero (if we omit BSDF evaluation), we can compute the radiance weight. Taking max_component() and not luminance as
@@ -545,18 +510,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 #endif
 					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-					debug_bsdf_pdf		   = bsdf_pdf;
-					debug_rejection_reason = 4;
 
 					if (bsdf_pdf != 0.0f)
 					{
-						float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-						ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
-						ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
-
-						full_local_nee_estimate = estimator;
+						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
+						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
+						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 						light_source_radiance += estimator;
-						debug_rejection_reason = 0;
 
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -565,15 +525,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 			}
 		}
 
-		if (valid_learnt_distribution_sample)
-		{
-			render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
-
-			IlluminationAwareKDTreeNEEDistributionTrainingRecord nee_training_record =
-				render_data.illumination_aware_kd_tree.nee_learnt_distributions.make_nee_distribution_training_record(
-					guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
-			render_data.illumination_aware_kd_tree.nee_learnt_distributions.append_nee_distribution_training_record(nee_training_record);
-		}
+		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();

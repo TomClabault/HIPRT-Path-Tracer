@@ -52,18 +52,13 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/AccumulateNEEDistributionTrainingRecords.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeGlobalTreeCutPriorSamplingDistribution.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeRootTreeCutSamplingDistribution.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
-#include "Device/kernels/IlluminationAwareKDTree/RebuildActiveNEEDistributions.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -232,8 +227,7 @@ void CPURenderer::setup_buffers()
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
-																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY,
-																		 m_light_tree_builder_sg.get_tree_cut_size());
+																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 #endif
 
 	setup_bsdfs_data();
@@ -719,12 +713,10 @@ void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	unsigned int tree_cut_size								 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int node_count									 = *illumination_aware_kd_tree.node_count;
-	unsigned int distribution_slot_count					 = node_count * tree_cut_size;
-	unsigned int reset_thread_count							 = std::max(node_count, distribution_slot_count);
+	unsigned int reset_thread_count							 = node_count;
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
-		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(illumination_aware_kd_tree, tree_cut_size, reset_index);
+		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(illumination_aware_kd_tree, reset_index);
 #endif
 
 	// Resetting the status buffers
@@ -776,11 +768,6 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 
 	for (unsigned int node_index = 0; node_index < m_render_data.illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
-
-	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int distribution_slot_count = m_render_data.illumination_aware_kd_tree.node_capacity * tree_cut_size;
-	for (unsigned int reset_index = 0; reset_index < distribution_slot_count; reset_index++)
-		IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.illumination_aware_kd_tree, tree_cut_size, reset_index);
 #endif
 }
 
@@ -788,21 +775,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	if (m_render_data.render_settings.sample_number == 0)
-	{
-		LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
-		unsigned int tree_cut_size		= light_tree_sg.settings.effective_tree_cut_size;
-		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
-		{
-			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(illumination_aware_kd_tree, light_tree_sg, 0);
-
-			for (unsigned int slot = 0; slot < tree_cut_size; slot++)
-				IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(illumination_aware_kd_tree, tree_cut_size, slot);
-		}
-	}
 
 	unsigned int sample_count = illumination_aware_kd_tree.training_sample_count->load();
-
 	for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateBatchTrainingSamples(illumination_aware_kd_tree, sample_index);
 
@@ -860,20 +834,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(illumination_aware_kd_tree, guiding_list_index);
 
 	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTree_PromoteGuidingCells(illumination_aware_kd_tree, m_light_tree_builder_sg.get_tree_cut_size(), active_guiding_node_count,
-													guiding_list_index);
-
-	unsigned int tree_cut_size			   = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int nee_training_record_count = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count->load();
-	if (nee_training_record_count > illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity)
-		nee_training_record_count = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity;
-
-	for (unsigned int record_index = 0; record_index < nee_training_record_count; record_index++)
-		IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(illumination_aware_kd_tree, tree_cut_size, record_index);
-
-	unsigned int updated_active_guiding_node_count = illumination_aware_kd_tree.active_guiding_node_count->load();
-	for (unsigned int guiding_list_index = 0; guiding_list_index < updated_active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTree_RebuildActiveNEEDistributions(illumination_aware_kd_tree, tree_cut_size, updated_active_guiding_node_count, guiding_list_index);
+		IlluminationAwareKDTree_PromoteGuidingCells(illumination_aware_kd_tree, active_guiding_node_count, guiding_list_index);
 #endif
 }
 

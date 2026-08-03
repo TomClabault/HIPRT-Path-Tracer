@@ -12,14 +12,11 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-												   unsigned int tree_cut_size,
 												   unsigned long long int original_guiding_node_count,
 												   int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-											unsigned int tree_cut_size,
-											unsigned long long int original_guiding_node_count)
+IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned long long int original_guiding_node_count)
 #endif
 {
 #ifdef __KERNELCC__
@@ -95,59 +92,6 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 	// We want thread 0 writes to be visible
 	__syncthreads();
-
-	// Now we can finally use all the threads of the thread block correctly to copy the parent's distribution into the left and right child distribution
-	IlluminationAwareKDTreeNEELearntDistributions& nee_learnt_distributions = illumination_aware_kd_tree.nee_learnt_distributions;
-
-	unsigned int parent_distribution_offset		 = nee_learnt_distributions.get_tree_cut_offset(parent_distribution_index, tree_cut_size);
-	unsigned int left_child_distribution_offset	 = parent_distribution_offset;
-	unsigned int right_child_distribution_offset = nee_learnt_distributions.get_tree_cut_offset(right_child.guiding_distribution_index, tree_cut_size);
-
-	if (threadIdx.x == 0)
-	{
-		// Fresh distributions have no history, so we reset the history sample counts
-		nee_learnt_distributions.history_per_cell_sample_count[left_child.guiding_distribution_index]  = 0;
-		nee_learnt_distributions.history_per_cell_sample_count[right_child.guiding_distribution_index] = 0;
-		nee_learnt_distributions.history_per_cell_normal_sum_x[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_x[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_y[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_y[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_z[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_z[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_count[left_child.guiding_distribution_index]  = 0;
-		nee_learnt_distributions.history_per_cell_normal_count[right_child.guiding_distribution_index] = 0;
-	}
-
-#ifndef __KERNELCC__
-	unsigned int threads_per_block = 1;
-#else
-	unsigned int threads_per_block = blockDim.x;
-#endif
-	for (int slot_index = threadIdx.x; slot_index < tree_cut_size; slot_index += threads_per_block)
-	{
-		nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] = 1;
-		nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index]	 = 1;
-		hippt::atomic_exchange(
-			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
-			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
-		hippt::atomic_exchange(
-			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index],
-			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
-
-		nee_learnt_distributions.tree_cut_sampling_probabilities[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_probabilities[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_cdfs[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_cdfs[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
-
-		nee_learnt_distributions.batch_per_cut_node_sample_count[right_child_distribution_offset + slot_index]		= 0;
-		nee_learnt_distributions.batch_per_cut_node_sample_count[left_child_distribution_offset + slot_index]		= 0;
-		nee_learnt_distributions.batch_per_cut_node_second_moment_sum[right_child_distribution_offset + slot_index] = 0;
-		nee_learnt_distributions.batch_per_cut_node_second_moment_sum[left_child_distribution_offset + slot_index]	= 0;
-	}
 
 	// The promoted subtree starts a fresh illumination-signature-history
 	if (threadIdx.x == 0)

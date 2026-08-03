@@ -11,12 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-																			 unsigned int tree_cut_size,
-																			 int x)
+inline IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int tree_cut_size)
+IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
@@ -25,25 +23,14 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(Illuminati
 	unsigned int reset_index = x;
 #endif
 
-	unsigned int node_count				 = *illumination_aware_kd_tree.node_count;
-	unsigned int distribution_slot_count = node_count * tree_cut_size;
-
+	unsigned int node_count = *illumination_aware_kd_tree.node_count;
 	if (reset_index == 0)
-	{
-		*illumination_aware_kd_tree.training_sample_count							   = 0;
-		*illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count = 0;
-	}
+		*illumination_aware_kd_tree.training_sample_count = 0;
 
 	if (reset_index < node_count)
 	{
 		illumination_aware_kd_tree.batch_signatures[reset_index]	  = {};
 		illumination_aware_kd_tree.batch_spatial_moments[reset_index] = {};
-	}
-
-	if (reset_index < distribution_slot_count)
-	{
-		illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_second_moment_sum[reset_index] = 0.0f;
-		illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_sample_count[reset_index]	  = 0;
 	}
 }
 
