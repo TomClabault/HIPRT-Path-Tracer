@@ -52,6 +52,7 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
@@ -835,6 +836,10 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
 		IlluminationAwareKDTree_PromoteGuidingCells(illumination_aware_kd_tree, active_guiding_node_count, guiding_list_index);
+
+	const unsigned int light_clustering_sample_count = illumination_aware_kd_tree.learning_to_cluster_training_sample_count->load();
+	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
+		IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(illumination_aware_kd_tree, sample_index);
 #endif
 }
 
