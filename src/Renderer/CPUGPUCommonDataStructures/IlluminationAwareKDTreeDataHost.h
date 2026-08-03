@@ -34,6 +34,8 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_training_samples, new_training_sample_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_training_sample_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_learning_to_cluster_training_samples, new_training_sample_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_learning_to_cluster_training_sample_count, 1);
 
 		GenericSoAHelpers::resize<DataContainer>(m_batch_signatures, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_signatures, new_node_capacity);
@@ -77,8 +79,10 @@ struct IlluminationAwareKDTreeDataHost
 		m_next_frontier			 = DataContainer<unsigned int>();
 		m_next_frontier_count	 = DataContainer<unsigned int>();
 
-		m_training_samples		= DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
-		m_training_sample_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_training_samples							= DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample>();
+		m_training_sample_count						= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_learning_to_cluster_training_samples		= DataContainer<IlluminationAwareKDTreeLearningToClusterTrainingSample>();
+		m_learning_to_cluster_training_sample_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_batch_signatures		  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
 		m_history_signatures	  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
@@ -140,6 +144,10 @@ struct IlluminationAwareKDTreeDataHost
 
 		device.training_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
 
+		device.learning_to_cluster_training_samples			= GenericSoAHelpers::get_buffer_data_ptr(m_learning_to_cluster_training_samples);
+		device.learning_to_cluster_training_sample_capacity = static_cast<unsigned int>(m_learning_to_cluster_training_samples.size());
+		device.learning_to_cluster_training_sample_count	= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_learning_to_cluster_training_sample_count);
+
 		device.batch_signatures		   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
 		device.history_signatures	   = GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
 		device.batch_spatial_moments   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
@@ -164,6 +172,8 @@ struct IlluminationAwareKDTreeDataHost
 
 	DataContainer<IlluminationAwareKDTreeDirectIlluminationTrainingSample> m_training_samples;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_sample_count;
+	DataContainer<IlluminationAwareKDTreeLearningToClusterTrainingSample> m_learning_to_cluster_training_samples;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_learning_to_cluster_training_sample_count;
 
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_batch_signatures;
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;

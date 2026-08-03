@@ -386,8 +386,10 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.next_frontier		  = m_illumination_aware_kd_tree.m_next_frontier.get_byte_size();
 	vram_usage.next_frontier_count	  = m_illumination_aware_kd_tree.m_next_frontier_count.get_byte_size();
 
-	vram_usage.training_samples		 = m_illumination_aware_kd_tree.m_training_samples.get_byte_size();
-	vram_usage.training_sample_count = m_illumination_aware_kd_tree.m_training_sample_count.get_byte_size();
+	vram_usage.training_samples							 = m_illumination_aware_kd_tree.m_training_samples.get_byte_size();
+	vram_usage.training_sample_count					 = m_illumination_aware_kd_tree.m_training_sample_count.get_byte_size();
+	vram_usage.learning_to_cluster_training_samples		 = m_illumination_aware_kd_tree.m_learning_to_cluster_training_samples.get_byte_size();
+	vram_usage.learning_to_cluster_training_sample_count = m_illumination_aware_kd_tree.m_learning_to_cluster_training_sample_count.get_byte_size();
 
 	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_batch_signatures.get_byte_size();
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_history_signatures.get_byte_size();
@@ -398,7 +400,7 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.light_cluster_node_indices			 = m_illumination_aware_kd_tree.m_light_cluster_node_indices.get_byte_size();
 	vram_usage.light_cluster_statistics				 = m_illumination_aware_kd_tree.m_light_cluster_statistics.get_byte_size();
 	vram_usage.light_cluster_batch_statistics		 = m_illumination_aware_kd_tree.m_light_cluster_batch_statistics.get_byte_size();
-	vram_usage.light_clustering_data			 = m_illumination_aware_kd_tree.m_light_clustering_data.get_byte_size();
+	vram_usage.light_clustering_data				 = m_illumination_aware_kd_tree.m_light_clustering_data.get_byte_size();
 	vram_usage.light_clustering_batch_sample_counts	 = m_illumination_aware_kd_tree.m_light_clustering_batch_sample_counts.get_byte_size();
 	vram_usage.representative_shading_contexts		 = m_illumination_aware_kd_tree.m_representative_shading_contexts.get_byte_size();
 	vram_usage.representative_shading_context_states = m_illumination_aware_kd_tree.m_representative_shading_context_states.get_byte_size();

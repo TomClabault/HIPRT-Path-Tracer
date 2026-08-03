@@ -3951,7 +3951,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
 														vram_usage.light_clustering_count + vram_usage.current_frontier + vram_usage.current_frontier_count +
 														vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
+			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count +
+				vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.light_cluster_node_indices +
@@ -3975,6 +3976,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - Next frontier and count: %.3fMB\n"
 					 "  - Training buffers: %.3fMB\n"
 					 "    - Direct-illumination training samples and count: %.3fMB\n"
+					 "    - Learning-to-Cluster training samples and count: %.3fMB\n"
 					 "  - Spatial statistics: %.3fMB\n"
 					 "    - Batch signatures: %.3fMB\n"
 					 "    - History signatures: %.3fMB\n"
@@ -3994,7 +3996,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f, vram_usage.light_clustering_count / 1000000.0f,
 					 (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
 					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
-					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f,
+					 (vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count) / 1000000.0f,
+					 spatial_statistics_bytes / 1000000.0f,
 					 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
 					 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
 					 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,

@@ -25,7 +25,10 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 
 	unsigned int node_count = *illumination_aware_kd_tree.node_count;
 	if (reset_index == 0)
-		*illumination_aware_kd_tree.training_sample_count = 0;
+	{
+		*illumination_aware_kd_tree.training_sample_count					  = 0;
+		*illumination_aware_kd_tree.learning_to_cluster_training_sample_count = 0;
+	}
 
 	if (reset_index < node_count)
 	{
