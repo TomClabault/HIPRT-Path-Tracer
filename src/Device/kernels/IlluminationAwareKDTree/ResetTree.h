@@ -61,10 +61,11 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 
 	illumination_aware_kd_tree.needs_split[node_index] = 0;
 
-	illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[node_index]				 = {};
-	illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[node_index]	 = 0;
-	illumination_aware_kd_tree.learning_to_cluster.representative_shading_contexts[node_index]		 = {};
-	illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[node_index] = 0;
+	illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[node_index]				= {};
+	illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[node_index] = 0;
+	illumination_aware_kd_tree.learning_to_cluster.representative_shading_contexts[node_index]		= {};
+	illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[node_index] =
+		IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
 	for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
 	{

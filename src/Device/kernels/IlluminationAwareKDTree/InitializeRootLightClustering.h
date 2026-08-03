@@ -66,8 +66,9 @@ IlluminationAwareKDTree_InitializeRootLightClustering(IlluminationAwareKDTreeDev
 		cluster_data.Q0_initialized								 = false;
 		cluster_data.refinement_stopped							 = false;
 
-		*kd_tree.learning_to_cluster.light_clustering_batch_sample_counts  = 0;
-		*kd_tree.learning_to_cluster.representative_shading_context_states = 0;
+		*kd_tree.learning_to_cluster.light_clustering_batch_sample_counts = 0;
+		*kd_tree.learning_to_cluster.representative_shading_context_states =
+			IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 	}
 }
 

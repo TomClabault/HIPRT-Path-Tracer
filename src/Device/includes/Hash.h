@@ -18,4 +18,12 @@ HIPRT_HOST_DEVICE static unsigned int wang_hash(unsigned int seed)
 	return seed;
 }
 
+HIPRT_HOST_DEVICE static unsigned int pcg_hash(unsigned int seed)
+{
+	unsigned int state = seed * 747796405u + 2891336453u;
+	unsigned int word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+
+	return (word >> 22u) ^ word;
+}
+
 #endif

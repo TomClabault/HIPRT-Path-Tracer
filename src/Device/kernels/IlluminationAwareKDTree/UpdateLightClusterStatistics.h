@@ -105,12 +105,13 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 	unsigned int context_state = *(kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index);
 
 #ifdef __KERNELCC__
-	if (!cluster_data.Q0_initialized && context_state == 2u)
+	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 		initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, slot);
 
 	__syncthreads();
 
-	if (slot == 0 && !cluster_data.Q0_initialized && context_state == 2u)
+	if (slot == 0 && !cluster_data.Q0_initialized &&
+		context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 		cluster_data.Q0_initialized = true;
 
 	__syncthreads();
@@ -122,7 +123,7 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 
 	if (slot == 0)
 #else
-	if (!cluster_data.Q0_initialized && context_state == 2u)
+	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 	{
 		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
 			initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, slot);

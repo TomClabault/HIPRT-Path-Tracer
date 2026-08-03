@@ -73,6 +73,10 @@ struct IlluminationAwareKDTreeSGShadingContext
 
 struct IlluminationAwareKDTreeLearningToClusterDevice
 {
+	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT = 0u;
+	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING	  = 1u;
+	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_READY	  = 2u;
+
 	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;
 
 	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const

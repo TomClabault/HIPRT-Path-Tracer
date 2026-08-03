@@ -53,6 +53,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/RefineLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/UpdateLightClusterStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
@@ -846,6 +847,9 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	LightTreeSGDevice light_tree_sg						 = m_render_data.light_tree_sg;
 	for (unsigned int guiding_list_index = 0; guiding_list_index < updated_active_guiding_node_count; guiding_list_index++)
 		IlluminationAwareKDTree_UpdateLightClusterStatistics(illumination_aware_kd_tree, light_tree_sg, guiding_list_index);
+
+	for (unsigned int guiding_list_index = 0; guiding_list_index < updated_active_guiding_node_count; guiding_list_index++)
+		IlluminationAwareKDTree_RefineLightClusterings(illumination_aware_kd_tree, light_tree_sg, guiding_list_index);
 #endif
 }
 

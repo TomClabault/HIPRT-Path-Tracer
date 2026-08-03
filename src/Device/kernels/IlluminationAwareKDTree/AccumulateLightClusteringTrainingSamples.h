@@ -66,13 +66,15 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	hippt::atomic_fetch_add_gpu(&batch.selected_count, 1u);
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
-	unsigned int previous_state				= hippt::atomic_compare_exchange(context_state, 0u, 1u);
-	if (previous_state == 0u)
+	unsigned int previous_state =
+		hippt::atomic_compare_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT,
+									   IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING);
+	if (previous_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT)
 	{
 		kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index] = sample.shading_context;
 
 		__threadfence();
-		hippt::atomic_exchange(context_state, 2u);
+		hippt::atomic_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY);
 	}
 }
 
