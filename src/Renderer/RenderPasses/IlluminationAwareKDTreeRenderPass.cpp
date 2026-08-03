@@ -12,10 +12,143 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+// Set to 0 to remove the post-SPP light-clustering diagnostics below.
+#define ILLUMINATION_AWARE_KD_TREE_DEBUG_LIGHT_CLUSTERING_LOGS 1
+
+#if ILLUMINATION_AWARE_KD_TREE_DEBUG_LIGHT_CLUSTERING_LOGS
+namespace
+{
+	unsigned int find_guiding_cell_for_light_clustering_debug(const std::vector<IlluminationAwareKDTreeNode>& nodes,
+															  unsigned int node_count,
+															  const float3_t& position)
+	{
+		unsigned int node_index = 0;
+		while (node_index < node_count)
+		{
+			const IlluminationAwareKDTreeNode& node = nodes[node_index];
+			if (node.flags & IlluminationAwareKDTreeNodeFlag_Guiding)
+				return node_index;
+
+			unsigned int left_child_index  = node.left_child_index;
+			unsigned int right_child_index = left_child_index + 1u;
+			if (left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index >= node_count || node.split_axis >= 3u)
+				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+			float position_component = node.split_axis == 0u ? position.x : node.split_axis == 1u ? position.y : position.z;
+			node_index				 = position_component < node.split_position ? left_child_index : right_child_index;
+		}
+
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	}
+
+	void log_light_clustering_debug_values(const IlluminationAwareKDTreeDataHost<OrochiBuffer>& kd_tree)
+	{
+		std::vector<IlluminationAwareKDTreeNode> nodes										 = kd_tree.m_nodes.download_data();
+		std::vector<unsigned int> active_guiding_nodes										 = kd_tree.m_active_guiding_nodes.download_data();
+		std::vector<IlluminationAwareKDTreeLightClusteringData> clustering_data				 = kd_tree.m_light_clustering_data.download_data();
+		std::vector<unsigned int> cluster_node_indices										 = kd_tree.m_light_cluster_node_indices.download_data();
+		std::vector<IlluminationAwareKDTreeLightClusterStatistics> cluster_statistics		 = kd_tree.m_light_cluster_statistics.download_data();
+		std::vector<IlluminationAwareKDTreeSGShadingContext> representative_contexts		 = kd_tree.m_representative_shading_contexts.download_data();
+		std::vector<IlluminationAwareKDTreeLearningToClusterTrainingSample> training_samples = kd_tree.m_learning_to_cluster_training_samples.download_data();
+
+		unsigned int node_count				   = kd_tree.m_node_count.download_data()[0];
+		unsigned int active_guiding_node_count = kd_tree.m_active_guiding_node_count.download_data()[0];
+		unsigned int training_sample_count	   = kd_tree.m_learning_to_cluster_training_sample_count.download_data()[0];
+		std::unordered_map<unsigned int, unsigned int> selected_node_lookup_failures;
+
+		for (unsigned int sample_index = 0; sample_index < training_sample_count; sample_index++)
+		{
+			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = training_samples[sample_index];
+			if (!sample.valid_for_light_clustering)
+				continue;
+
+			unsigned int guiding_node_index = find_guiding_cell_for_light_clustering_debug(nodes, node_count, sample.position);
+			if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+				continue;
+
+			unsigned int clustering_index = nodes[guiding_node_index].light_clustering_index;
+			if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX || clustering_index >= clustering_data.size())
+				continue;
+
+			const IlluminationAwareKDTreeLightClusteringData& cell_clustering_data = clustering_data[clustering_index];
+			bool selected_node_found											   = false;
+			for (unsigned int slot = 0; slot < cell_clustering_data.cut_size; slot++)
+			{
+				unsigned int offset = clustering_index * IlluminationAwareKDTreeMaximumLightCutSize + slot;
+				if (offset < cluster_node_indices.size() && cluster_node_indices[offset] == sample.selected_cluster_node_index)
+				{
+					selected_node_found = true;
+					break;
+				}
+			}
+
+			if (!selected_node_found)
+				selected_node_lookup_failures[clustering_index]++;
+		}
+
+		std::cout << "\nIllumination-aware KD-tree light-clustering diagnostics after SPP 0\n";
+		std::cout << std::fixed << std::setprecision(6);
+		for (unsigned int active_index = 0; active_index < active_guiding_node_count; active_index++)
+		{
+			unsigned int cell_node_index = active_guiding_nodes[active_index];
+			if (cell_node_index >= node_count)
+				continue;
+
+			const IlluminationAwareKDTreeNode& cell = nodes[cell_node_index];
+			unsigned int clustering_index			= cell.light_clustering_index;
+			if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX || clustering_index >= clustering_data.size())
+				continue;
+
+			const IlluminationAwareKDTreeLightClusteringData& cell_clustering_data = clustering_data[clustering_index];
+			float sum_Q															   = 0.0f;
+			float minimum_Q														   = std::numeric_limits<float>::infinity();
+			float maximum_Q														   = -std::numeric_limits<float>::infinity();
+			unsigned int zero_Q_count											   = 0;
+			unsigned int non_finite_Q_count										   = 0;
+			float total_variance												   = 0.0f;
+
+			for (unsigned int slot = 0; slot < cell_clustering_data.cut_size; slot++)
+			{
+				unsigned int offset = clustering_index * IlluminationAwareKDTreeMaximumLightCutSize + slot;
+				if (offset >= cluster_statistics.size())
+					continue;
+
+				float importance_Q = cluster_statistics[offset].estimated_importance_Q;
+				sum_Q += importance_Q;
+				minimum_Q = std::min(minimum_Q, importance_Q);
+				maximum_Q = std::max(maximum_Q, importance_Q);
+				if (importance_Q == 0.0f)
+					zero_Q_count++;
+				if (!std::isfinite(importance_Q))
+					non_finite_Q_count++;
+				total_variance += cluster_statistics[offset].variance;
+			}
+
+			if (cell_clustering_data.cut_size == 0u)
+			{
+				minimum_Q = 0.0f;
+				maximum_Q = 0.0f;
+			}
+
+			const IlluminationAwareKDTreeSGShadingContext& context = representative_contexts[clustering_index];
+			std::cout << "cell " << cell_node_index << " clustering " << clustering_index << " cut_size " << cell_clustering_data.cut_size << " Q0_initialized "
+					  << cell_clustering_data.Q0_initialized << " sum(Q) " << sum_Q << " min(Q) " << minimum_Q << " max(Q) " << maximum_Q << " Q==0 "
+					  << zero_Q_count << " non-finite Q " << non_finite_Q_count << " total variance " << total_variance << " context position ("
+					  << context.position.x << ", " << context.position.y << ", " << context.position.z << ") context normal (" << context.shading_normal.x
+					  << ", " << context.shading_normal.y << ", " << context.shading_normal.z << ") selected-node lookup failures "
+					  << selected_node_lookup_failures[clustering_index] << '\n';
+		}
+	}
+} // namespace
+#endif
 
 const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME = "Illumination-Aware KD-Tree Render Pass";
 
@@ -267,6 +400,14 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
 		IlluminationAwareKDTreeLightClusteringBlockSize, 1, m_cached_current_guiding_node_count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 		refine_light_clusterings_launch_args, m_renderer->get_main_stream());
+
+#if ILLUMINATION_AWARE_KD_TREE_DEBUG_LIGHT_CLUSTERING_LOGS
+	if (render_data.render_settings.sample_number == 0)
+	{
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+		log_light_clustering_debug_values(m_illumination_aware_kd_tree);
+	}
+#endif
 }
 
 void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
