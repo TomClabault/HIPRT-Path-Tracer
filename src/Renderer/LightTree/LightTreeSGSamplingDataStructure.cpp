@@ -4,6 +4,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/LightTree/LightTreeSGSamplingDataStructure.h"
 #include "Threads/ThreadManager.h"
@@ -85,8 +86,6 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 void LightTreeSGSamplingDataStructure::free()
 {
 	m_light_tree_sg_device_data.free();
-
-	m_renderer->get_render_data().light_tree_sg = {};
 }
 
 bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
