@@ -3685,33 +3685,34 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes() / 1000000.0f);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		ImGui::SeparatorText("Build");
-		switch (build_options.build_split_method)
+		if (ImGui::CollapsingHeader("Build"))
 		{
-		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
-		{
-			static int current_bin_count = build_options.bin_count;
-			ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
-
-			if (current_bin_count != build_options.bin_count)
+			switch (build_options.build_split_method)
 			{
-				ImGui::TreePush("Apply button light tree bin count");
+			case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
+			{
+				static int current_bin_count = build_options.bin_count;
+				ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
 
-				if (ImGui::Button("Apply"))
+				if (current_bin_count != build_options.bin_count)
 				{
-					current_bin_count		= hippt::clamp(2, 2000000000, current_bin_count);
-					build_options.bin_count = current_bin_count;
+					ImGui::TreePush("Apply button light tree bin count");
 
-					m_renderer->recompute_emissives_sampling_data_structure();
+					if (ImGui::Button("Apply"))
+					{
+						current_bin_count		= hippt::clamp(2, 2000000000, current_bin_count);
+						build_options.bin_count = current_bin_count;
 
-					m_render_window->set_render_dirty(true);
+						m_renderer->recompute_emissives_sampling_data_structure();
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
 				}
 
-				ImGui::TreePop();
+				break;
 			}
-
-			break;
-		}
 		}
 
 		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
@@ -3751,7 +3752,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Sampling");
+		}
+
+		if (ImGui::CollapsingHeader("Sampling"))
+		{
 
 		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
 		ImGui::BeginDisabled(do_splitting);
@@ -3900,6 +3904,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
 		bool use_learnt_distributions =
