@@ -2416,7 +2416,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2597,7 +2597,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3685,22 +3685,46 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes() / 1000000.0f);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		ImGui::SeparatorText("Build");
-		switch (build_options.build_split_method)
+		if (ImGui::CollapsingHeader("Build"))
 		{
-		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
-		{
-			static int current_bin_count = build_options.bin_count;
-			ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
-
-			if (current_bin_count != build_options.bin_count)
+			switch (build_options.build_split_method)
 			{
-				ImGui::TreePush("Apply button light tree bin count");
+			case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
+			{
+				static int current_bin_count = build_options.bin_count;
+				ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
+
+				if (current_bin_count != build_options.bin_count)
+				{
+					ImGui::TreePush("Apply button light tree bin count");
+
+					if (ImGui::Button("Apply"))
+					{
+						current_bin_count		= hippt::clamp(2, 2000000000, current_bin_count);
+						build_options.bin_count = current_bin_count;
+
+						m_renderer->recompute_emissives_sampling_data_structure();
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				break;
+			}
+			}
+
+			static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
+			ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
+			if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
+			{
+				ImGui::TreePush("Apply button triangles per leaf light tree");
 
 				if (ImGui::Button("Apply"))
 				{
-					current_bin_count		= hippt::clamp(2, 2000000000, current_bin_count);
-					build_options.bin_count = current_bin_count;
+					previous_triangles_per_leaf			 = hippt::clamp(1, 2000000000, previous_triangles_per_leaf);
+					build_options.max_triangles_per_leaf = previous_triangles_per_leaf;
 
 					m_renderer->recompute_emissives_sampling_data_structure();
 
@@ -3710,208 +3734,188 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
-			break;
-		}
-		}
-
-		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
-		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
-		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
-		{
-			ImGui::TreePush("Apply button triangles per leaf light tree");
-
-			if (ImGui::Button("Apply"))
+			static bool stop_splitting_if_cost_not_worth_it = build_options.stop_splitting_if_cost_not_worth_it;
+			ImGui::Checkbox("Stop splitting if cost not worth it", &stop_splitting_if_cost_not_worth_it);
+			if (stop_splitting_if_cost_not_worth_it != build_options.stop_splitting_if_cost_not_worth_it)
 			{
-				previous_triangles_per_leaf			 = hippt::clamp(1, 2000000000, previous_triangles_per_leaf);
-				build_options.max_triangles_per_leaf = previous_triangles_per_leaf;
+				ImGui::TreePush("Apply button stop splitting if cost not worth it");
 
-				m_renderer->recompute_emissives_sampling_data_structure();
+				if (ImGui::Button("Apply"))
+				{
+					build_options.stop_splitting_if_cost_not_worth_it = stop_splitting_if_cost_not_worth_it;
 
-				m_render_window->set_render_dirty(true);
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
 			}
 
-			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		static bool stop_splitting_if_cost_not_worth_it = build_options.stop_splitting_if_cost_not_worth_it;
-		ImGui::Checkbox("Stop splitting if cost not worth it", &stop_splitting_if_cost_not_worth_it);
-		if (stop_splitting_if_cost_not_worth_it != build_options.stop_splitting_if_cost_not_worth_it)
-		{
-			ImGui::TreePush("Apply button stop splitting if cost not worth it");
-
-			if (ImGui::Button("Apply"))
-			{
-				build_options.stop_splitting_if_cost_not_worth_it = stop_splitting_if_cost_not_worth_it;
-
-				m_renderer->recompute_emissives_sampling_data_structure();
-				m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::TreePop();
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Sampling");
-
-		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
 		bool use_light_clustering =
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNING_TO_CLUSTER;
-		ImGui::BeginDisabled(do_splitting);
-
-		static bool use_tree_cut = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT);
-		ImGui::BeginDisabled(use_light_clustering);
-		if (ImGui::Checkbox("Use tree cut sampling", &use_tree_cut))
+		if (ImGui::CollapsingHeader("Sampling"))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT,
-												   use_tree_cut ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
+			ImGui::BeginDisabled(do_splitting);
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
-										"reservoir sampling. Changes require kernel recompilation.");
-		ImGui::EndDisabled();
-
-		static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
-		ImGui::InputInt("Tree cut size", &current_tree_cut_size);
-		// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
-		int maximum_tree_cut_size = use_light_clustering ? IlluminationAwareKDTreeMaximumLightCutSize : 1024;
-		current_tree_cut_size	  = hippt::clamp(1, maximum_tree_cut_size, current_tree_cut_size);
-
-		ImGuiRenderer::show_help_marker(
-			"Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require rebuilding the light-tree data.");
-		if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())
-		{
-			ImGui::TreePush("Apply button tree cut size");
-
-			if (ImGui::Button("Apply"))
+			static bool use_tree_cut = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT);
+			ImGui::BeginDisabled(use_light_clustering);
+			if (ImGui::Checkbox("Use tree cut sampling", &use_tree_cut))
 			{
-				m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size(current_tree_cut_size);
-				illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT,
+													   use_tree_cut ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-				m_renderer->recompute_emissives_sampling_data_structure();
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+			ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
+											"reservoir sampling. Changes require kernel recompilation.");
+			ImGui::EndDisabled();
 
-			ImGui::TreePop();
-		}
-		ImGui::EndDisabled();
+			static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
+			ImGui::InputInt("Tree cut size", &current_tree_cut_size);
+			// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
+			int maximum_tree_cut_size = use_light_clustering ? IlluminationAwareKDTreeMaximumLightCutSize : 1024;
+			current_tree_cut_size	  = hippt::clamp(1, maximum_tree_cut_size, current_tree_cut_size);
 
-		static int current_spatial_lobe_count = m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count();
-		ImGui::SliderInt("Spatial lobes per node", &current_spatial_lobe_count, 1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES);
-		if (current_spatial_lobe_count != m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count())
-		{
-			ImGui::TreePush("Apply button spatial lobe count");
-
-			if (ImGui::Button("Apply"))
+			ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
+											"rebuilding the light-tree data.");
+			if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())
 			{
-				current_spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, current_spatial_lobe_count);
-				m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(current_spatial_lobe_count);
+				ImGui::TreePush("Apply button tree cut size");
 
-				m_renderer->recompute_emissives_sampling_data_structure();
-				m_render_window->set_render_dirty(true);
+				if (ImGui::Button("Apply"))
+				{
+					m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size(current_tree_cut_size);
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+			ImGui::EndDisabled();
+
+			static int current_spatial_lobe_count = m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count();
+			ImGui::SliderInt("Spatial lobes per node", &current_spatial_lobe_count, 1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES);
+			if (current_spatial_lobe_count != m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count())
+			{
+				ImGui::TreePush("Apply button spatial lobe count");
+
+				if (ImGui::Button("Apply"))
+				{
+					current_spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, current_spatial_lobe_count);
+					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(current_spatial_lobe_count);
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
 			}
 
-			ImGui::TreePop();
-		}
-
-		if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
-												   do_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-
-		if (do_splitting)
-		{
-			ImGui::TreePush("SG light tree adaptive splitting tree");
-
-			static bool use_new_splitting_model = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL);
-			if (ImGui::Checkbox("Use new splitting model", &use_new_splitting_model))
+			if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL,
-													   use_new_splitting_model ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
+													   do_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (!use_new_splitting_model)
+			if (do_splitting)
 			{
-				ImGui::TreePush("Split variance threshold SG tree");
+				ImGui::TreePush("SG light tree adaptive splitting tree");
 
-				if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_sg.settings.light_tree_sg_splitting_variance, 0.0f, 1.0f, "%.3f",
-									   ImGuiSliderFlags_AlwaysClamp))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker(
-					"User defined split threshold proposed in the paper of Conty & Kulla 2018."
-					" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
-
-				ImGui::TreePop();
-			}
-			else
-			{
-				ImGui::TreePush("SG tree new splitting model tree");
-
-				bool split_first_candidate =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE);
-				if (ImGui::Checkbox("Always split first candidate", &split_first_candidate))
+				static bool use_new_splitting_model = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL);
+				if (ImGui::Checkbox("Use new splitting model", &use_new_splitting_model))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
-														   split_first_candidate ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_NEW_SPLITTING_MODEL,
+														   use_new_splitting_model ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
 
-				ImGui::TreePop();
-			}
-
-			static int splitting_max_light_samples_count =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES);
-			ImGui::SliderInt("Max light samples", &splitting_max_light_samples_count, 1, 16);
-			ImGuiRenderer::show_help_marker("If splitting is enabled, how many light samples, at most, per shading point is allowed.\n"
-											"Higher values result in higher quality but at a higher performance cost.");
-
-			if (splitting_max_light_samples_count !=
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES))
-			{
-				ImGui::TreePush("Apply button tree splitting max light sample count");
-
-				if (ImGui::Button("Apply"))
+				if (!use_new_splitting_model)
 				{
-					splitting_max_light_samples_count = hippt::clamp(1, 2000000000, splitting_max_light_samples_count);
+					ImGui::TreePush("Split variance threshold SG tree");
 
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
-														   splitting_max_light_samples_count);
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
+					if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_sg.settings.light_tree_sg_splitting_variance, 0.0f, 1.0f, "%.3f",
+										   ImGuiSliderFlags_AlwaysClamp))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker(
+						"User defined split threshold proposed in the paper of Conty & Kulla 2018."
+						" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+
+					ImGui::TreePop();
+				}
+				else
+				{
+					ImGui::TreePush("SG tree new splitting model tree");
+
+					bool split_first_candidate =
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE);
+					if (ImGui::Checkbox("Always split first candidate", &split_first_candidate))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_NEW_SPLITTING_MODEL_ALWAYS_SPLIT_FIRST_CANDIDATE,
+															   split_first_candidate ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				static int splitting_max_light_samples_count =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES);
+				ImGui::SliderInt("Max light samples", &splitting_max_light_samples_count, 1, 16);
+				ImGuiRenderer::show_help_marker("If splitting is enabled, how many light samples, at most, per shading point is allowed.\n"
+												"Higher values result in higher quality but at a higher performance cost.");
+
+				if (splitting_max_light_samples_count !=
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES))
+				{
+					ImGui::TreePush("Apply button tree splitting max light sample count");
+
+					if (ImGui::Button("Apply"))
+					{
+						splitting_max_light_samples_count = hippt::clamp(1, 2000000000, splitting_max_light_samples_count);
+
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES,
+															   splitting_max_light_samples_count);
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
 				}
 
 				ImGui::TreePop();
 			}
 
-			ImGui::TreePop();
-		}
+			static bool importance_function_do_specular =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);
+			if (ImGui::Checkbox("Do specular", &importance_function_do_specular))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE,
+													   importance_function_do_specular ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-		static bool importance_function_do_specular =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);
-		if (ImGui::Checkbox("Do specular", &importance_function_do_specular))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE,
-												   importance_function_do_specular ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-
-		if (use_light_clustering)
-		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Illumination-aware light clustering");
+		}
 
+		ImGui::BeginDisabled(!use_light_clustering);
+		if (ImGui::CollapsingHeader("Illumination-aware light clustering"))
+		{
 			IlluminationAwareKDTreeLearningToClusterUserSettings& light_clustering_settings =
 				render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
 			int initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
@@ -3954,8 +3958,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
 														vram_usage.light_clustering_count + vram_usage.current_frontier + vram_usage.current_frontier_count +
 														vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count +
-				vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
+			std::size_t training_buffer_bytes		  = vram_usage.training_samples + vram_usage.training_sample_count +
+														vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.light_cluster_node_indices +
@@ -4001,13 +4005,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 (vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
 					 (vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f,
 					 (vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count) / 1000000.0f,
-						 spatial_statistics_bytes / 1000000.0f,
-						 vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-						 vram_usage.history_spatial_moments / 1000000.0f, light_clustering_buffers_bytes / 1000000.0f,
-						 vram_usage.initial_light_cut_node_indices / 1000000.0f, vram_usage.light_cluster_node_indices / 1000000.0f,
-						 vram_usage.light_cluster_statistics / 1000000.0f, vram_usage.light_cluster_batch_statistics / 1000000.0f,
-						 vram_usage.light_clustering_data / 1000000.0f, vram_usage.light_clustering_batch_sample_counts / 1000000.0f,
-						 vram_usage.representative_shading_contexts / 1000000.0f, vram_usage.representative_shading_context_states / 1000000.0f);
+					 spatial_statistics_bytes / 1000000.0f, vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f,
+					 vram_usage.batch_spatial_moments / 1000000.0f, vram_usage.history_spatial_moments / 1000000.0f,
+					 light_clustering_buffers_bytes / 1000000.0f, vram_usage.initial_light_cut_node_indices / 1000000.0f,
+					 vram_usage.light_cluster_node_indices / 1000000.0f, vram_usage.light_cluster_statistics / 1000000.0f,
+					 vram_usage.light_cluster_batch_statistics / 1000000.0f, vram_usage.light_clustering_data / 1000000.0f,
+					 vram_usage.light_clustering_batch_sample_counts / 1000000.0f, vram_usage.representative_shading_contexts / 1000000.0f,
+					 vram_usage.representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4108,7 +4112,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			if (illumination_aware_kd_tree_render_pass)
 				ImGui::Checkbox("Freeze tree", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
+		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -5573,7 +5580,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
