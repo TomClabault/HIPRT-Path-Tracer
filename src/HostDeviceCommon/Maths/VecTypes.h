@@ -322,6 +322,16 @@ math_vector<T, 3> operator+(const math_vector<T, 3>& vec, T b)
 	return math_vector<T, 3>{ vec.x + b, vec.y + b, vec.z + b };
 }
 
+inline math_vector<float, 3> operator+(const hiprtFloat3& a, const math_vector<float, 3>& b)
+{
+	return math_vector<float, 3>{ a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+inline math_vector<float, 3> operator+(const math_vector<float, 3>& a, const hiprtFloat3& b)
+{
+	return b + a;
+}
+
 template <typename T>
 hiprt::Vector<T, 3> operator+(const hiprt::Vector<T, 3>& a, const hiprt::Vector<T, 3>& b)
 {
@@ -344,6 +354,16 @@ template <typename T>
 math_vector<T, 3> operator-(const hiprt::Vector<T, 3>& vec, const math_vector<T, 3>& a)
 {
 	return math_vector<T, 3>{ vec.x - a.x, vec.y - a.y, vec.z - a.z };
+}
+
+inline math_vector<float, 3> operator-(const hiprtFloat3& a, const math_vector<float, 3>& b)
+{
+	return math_vector<float, 3>{ a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
+inline math_vector<float, 3> operator-(const hiprtFloat3& a, const hiprtFloat3& b)
+{
+	return math_vector<float, 3>{ a.x - b.x, a.y - b.y, a.z - b.z };
 }
 
 template <typename T>
@@ -374,6 +394,16 @@ template <typename T>
 math_vector<T, 3> operator*(T val, const math_vector<T, 3>& a)
 {
 	return a * val;
+}
+
+inline math_vector<float, 3> operator*(const hiprtFloat3& a, float b)
+{
+	return math_vector<float, 3>{ a.x * b, a.y * b, a.z * b };
+}
+
+inline math_vector<float, 3> operator*(float a, const hiprtFloat3& b)
+{
+	return b * a;
 }
 
 template <typename T>

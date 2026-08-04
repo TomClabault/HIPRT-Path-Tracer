@@ -3777,12 +3777,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 			static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 			ImGui::InputInt("Tree cut size", &current_tree_cut_size);
-			// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
-			int maximum_tree_cut_size = use_light_clustering ? IlluminationAwareKDTreeMaximumLightCutSize : 1024;
-			current_tree_cut_size	  = hippt::clamp(1, maximum_tree_cut_size, current_tree_cut_size);
-
 			ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
 											"rebuilding the light-tree data.");
+
 			if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())
 			{
 				ImGui::TreePush("Apply button tree cut size");
@@ -4116,6 +4113,28 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 		ImGui::EndDisabled();
+
+		if (ImGui::CollapsingHeader("Debug"))
+		{
+			if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::Checkbox("Random colors boxes", &render_data.light_tree_sg.settings.debug_draw_random_colors_boxes))
+				m_render_window->set_render_dirty(true);
+
+			int tree_cut_selection			= render_data.light_tree_sg.settings.debug_draw_second_tree_cut_boxes ? 1 : 0;
+			bool tree_cut_selection_changed = ImGui::RadioButton("First tree cut", &tree_cut_selection, 0);
+			ImGui::SameLine();
+			tree_cut_selection_changed |= ImGui::RadioButton("Second tree cut", &tree_cut_selection, 1);
+			if (tree_cut_selection_changed)
+			{
+				render_data.light_tree_sg.settings.debug_draw_first_tree_cut_boxes	= tree_cut_selection == 0;
+				render_data.light_tree_sg.settings.debug_draw_second_tree_cut_boxes = tree_cut_selection == 1;
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

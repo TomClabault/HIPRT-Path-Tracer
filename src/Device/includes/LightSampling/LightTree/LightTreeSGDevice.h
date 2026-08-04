@@ -71,9 +71,10 @@ struct LightTreeSGDevice
 {
 	LightTreeSGSettings settings;
 
-	LightTreeSGNodeDevice* nodes		= nullptr;
-	SpatialSGLobeDevice* spatial_lobes	= nullptr;
-	unsigned int* tree_cut_node_indices = nullptr;
+	LightTreeSGNodeDevice* nodes			   = nullptr;
+	SpatialSGLobeDevice* spatial_lobes		   = nullptr;
+	unsigned int* tree_cut_node_indices		   = nullptr;
+	unsigned int* second_tree_cut_node_indices = nullptr;
 
 	int* indices_array		 = nullptr;
 	unsigned int* bit_trails = nullptr;

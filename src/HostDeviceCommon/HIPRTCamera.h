@@ -28,7 +28,7 @@ struct HIPRTCamera
 	/**
 	 * Returns a camera ray for pixel (x, y) and the given render solution
 	 */
-	HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2_t res)
+	HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2_t res) const
 	{
 		float x_ndc_space = x / res.x * 2 - 1;
 		float y_ndc_space = y / res.y * 2 - 1;

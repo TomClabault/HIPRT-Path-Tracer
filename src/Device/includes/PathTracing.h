@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_H
 #define DEVICE_INCLUDES_PATH_TRACING_H
 
+#include "Device/includes/AABBRasterize.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
@@ -285,6 +286,45 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 			render_data.buffers.gmon_estimator.sets[offset] += ray_color;
 	}
 #endif
+}
+
+HIPRT_DEVICE bool path_tracing_pixel_is_on_tree_cut_bounding_box_edge(const HIPRTRenderData& render_data, int pixel_index, unsigned int& out_box_index)
+{
+	const LightTreeSGSettings& settings = render_data.light_tree_sg.settings;
+	unsigned int* tree_cut_node_indices = nullptr;
+	unsigned int tree_cut_size			= 0;
+
+	if (settings.debug_draw_first_tree_cut_boxes)
+	{
+		tree_cut_node_indices = render_data.light_tree_sg.tree_cut_node_indices;
+		tree_cut_size		  = settings.effective_tree_cut_size;
+	}
+	else if (settings.debug_draw_second_tree_cut_boxes)
+	{
+		tree_cut_node_indices = render_data.light_tree_sg.second_tree_cut_node_indices;
+		tree_cut_size		  = settings.effective_second_tree_cut_size;
+	}
+
+	if (tree_cut_node_indices == nullptr || render_data.light_tree_sg.nodes == nullptr || tree_cut_size == 0)
+		return false;
+
+	for (unsigned int tree_cut_node_index = 0; tree_cut_node_index < tree_cut_size; tree_cut_node_index++)
+	{
+		const unsigned int node_index = tree_cut_node_indices[tree_cut_node_index];
+		if (node_index == 0xFFFFFFFF)
+			continue;
+
+		const LightTreeSGNodeDevice& node = render_data.light_tree_sg.nodes[node_index];
+		if (aabb_rasterize_pixel_is_on_aabb_edge(render_data.current_camera, render_data.render_settings.render_resolution, pixel_index, node.bounds_min,
+												 node.bounds_max))
+		{
+			out_box_index = tree_cut_node_index;
+
+			return true;
+		}
+	}
+
+	return false;
 }
 
 HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
@@ -644,6 +684,17 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
 #endif // Switch on the debugging option
+
+	// Draw the SG tree cut bounding boxes last so they remain visible on top of any other debug view.
+	unsigned int box_index = -1;
+	if (render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes &&
+		path_tracing_pixel_is_on_tree_cut_bounding_box_edge(render_data, pixel_index, box_index))
+	{
+		if (render_data.light_tree_sg.settings.debug_draw_random_colors_boxes)
+			out_debug_color = ColorRGB32F::random_color(box_index) * (render_data.render_settings.sample_number + 1);
+		else
+			out_debug_color = ColorRGB32F(2.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
+	}
 }
 
 #endif
