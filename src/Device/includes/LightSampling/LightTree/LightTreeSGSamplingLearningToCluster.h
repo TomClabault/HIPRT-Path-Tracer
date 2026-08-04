@@ -86,15 +86,13 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 			float weight = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], specular_data, context.position, context.view_direction,
 														 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
 			weight		 = hippt::max(weight, 0.0f);
-			float updated_total_weight = total_weight + weight;
+			total_weight += weight;
 
-			if (weight > 0.0f && random_number_generator() * updated_total_weight < weight)
+			if (weight > 0.0f && random_number_generator() < weight / total_weight)
 			{
 				selected_slot	= slot;
 				selected_weight = weight;
 			}
-
-			total_weight = updated_total_weight;
 		}
 
 		if (total_weight <= 0.0f)
