@@ -17,7 +17,9 @@ HIPRTCamera Camera::to_hiprt(int render_width, int render_height)
 	hiprt_cam.inverse_view		 = *reinterpret_cast<float4x4*>(&view_matrix_inv);
 	hiprt_cam.inverse_projection = *reinterpret_cast<float4x4*>(&projection_matrix_inv);
 
-	glm::mat4x4 view_projection = view_matrix * projection_matrix;
+	// The shader uses row-major matrices and multiplies column vectors from the right. The projection matrix must therefore be transposed before
+	// composing it with the already-transposed view matrix.
+	glm::mat4x4 view_projection = view_matrix * glm::transpose(projection_matrix);
 	hiprt_cam.view_projection	= *reinterpret_cast<float4x4*>(&view_projection);
 
 	glm::vec4 position_glm = glm::vec4(0, 0, 0, 1) * view_matrix_inv;

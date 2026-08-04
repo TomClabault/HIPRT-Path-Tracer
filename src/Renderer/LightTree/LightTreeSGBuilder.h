@@ -140,7 +140,14 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 								   LightTreeSGBuilderDeviceData<DataContainer>& device_data)
 {
 	if (device_data.nodes_device.size() == 0)
+	{
+		render_data.light_tree_sg.settings.effective_tree_cut_size = 0;
+		render_data.light_tree_sg.nodes							   = nullptr;
+		render_data.light_tree_sg.spatial_lobes					   = nullptr;
+		render_data.light_tree_sg.tree_cut_node_indices			   = nullptr;
+
 		return;
+	}
 
 	std::vector<unsigned int> converted_bit_trails(total_scene_triangle_count, 0xFFFFFFFF);
 	for (int i = 0; i < m_light_tree_ats_builder.get_bit_trails().size(); i++)
