@@ -24,7 +24,8 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 #endif
 
 	unsigned int node_count				= *illumination_aware_kd_tree.node_count;
-	unsigned int light_clustering_count = *illumination_aware_kd_tree.learning_to_cluster.light_clustering_count;
+	unsigned int light_clustering_count = hippt::min(hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.light_clustering_count, 0u),
+													 illumination_aware_kd_tree.learning_to_cluster.light_clustering_capacity);
 	if (reset_index == 0)
 	{
 		*illumination_aware_kd_tree.training_sample_count					  = 0;

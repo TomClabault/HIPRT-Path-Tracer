@@ -35,7 +35,12 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	unsigned int clustering_index = kd_tree.nodes[guiding_node_index].light_clustering_index;
+	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(sample.shading_context.shading_normal);
+	unsigned int set_index	 = kd_tree.nodes[guiding_node_index].light_clustering_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+		return;
+
+	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 

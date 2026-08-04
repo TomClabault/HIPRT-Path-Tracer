@@ -17,7 +17,8 @@
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeDataHost
 {
-	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES = 100000;
+	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES			  = 100000;
+	static constexpr unsigned int MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS = MAXIMUM_NUMBER_OF_NODES * 2;
 
 	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity)
 	{
@@ -29,6 +30,7 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_needs_split, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_normal_clustering_set_count, 1);
 
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_current_frontier_count, 1);
@@ -45,14 +47,17 @@ struct IlluminationAwareKDTreeDataHost
 		m_batch_spatial_moments.resize(new_node_capacity);
 		m_history_spatial_moments.resize(new_node_capacity);
 
-		size_t cluster_slot_capacity = static_cast<size_t>(new_node_capacity) * IlluminationAwareKDTreeMaximumLightCutSize;
+		size_t cluster_slot_capacity = static_cast<size_t>(MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS) * IlluminationAwareKDTreeMaximumLightCutSize;
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, cluster_slot_capacity);
 		m_light_cluster_batch_statistics.resize(static_cast<unsigned int>(cluster_slot_capacity));
-		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_data, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_batch_sample_counts, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_data, MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS);
+		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_batch_sample_counts, MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS);
+
+		GenericSoAHelpers::resize<DataContainer>(m_normal_clustering_sets, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_normal_face_observation_counts, static_cast<size_t>(new_node_capacity) * SurfaceNormalFace_Count);
 
 		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, IlluminationAwareKDTreeMaximumLightCutSize);
 	}
@@ -74,8 +79,9 @@ struct IlluminationAwareKDTreeDataHost
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
 
-		m_needs_split			 = DataContainer<unsigned char>();
-		m_light_clustering_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_needs_split				  = DataContainer<unsigned char>();
+		m_light_clustering_count	  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_normal_clustering_set_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_current_frontier		 = DataContainer<unsigned int>();
 		m_current_frontier_count = DataContainer<unsigned int>();
@@ -99,6 +105,8 @@ struct IlluminationAwareKDTreeDataHost
 		m_light_clustering_batch_sample_counts	= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_shading_contexts		= DataContainer<IlluminationAwareKDTreeSGShadingContext>();
 		m_representative_shading_context_states = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_normal_clustering_sets				= DataContainer<IlluminationAwareKDTreeNormalClusteringSet>();
+		m_normal_face_observation_counts		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_initial_light_cut_node_indices		= DataContainer<unsigned int>();
 
 		return true;
@@ -115,6 +123,8 @@ struct IlluminationAwareKDTreeDataHost
 
 		device.user_settings					 = render_data.illumination_aware_kd_tree.user_settings;
 		device.learning_to_cluster.user_settings = render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
+		device.learning_to_cluster.effective_initial_light_cut_size =
+			render_data.illumination_aware_kd_tree.learning_to_cluster.effective_initial_light_cut_size;
 
 		device.nodes		 = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
 		device.node_bounds	 = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
@@ -125,11 +135,16 @@ struct IlluminationAwareKDTreeDataHost
 		device.current_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
 		device.next_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-		device.active_guiding_node_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
-		device.node_count								  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
-		device.current_frontier_count					  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
-		device.next_frontier_count						  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
-		device.learning_to_cluster.light_clustering_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
+		device.active_guiding_node_count						  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		device.node_count										  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		device.current_frontier_count							  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		device.next_frontier_count								  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		device.learning_to_cluster.light_clustering_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
+		device.learning_to_cluster.light_clustering_capacity	  = MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS;
+		device.learning_to_cluster.normal_clustering_sets		  = GenericSoAHelpers::get_buffer_data_ptr(m_normal_clustering_sets);
+		device.learning_to_cluster.normal_clustering_set_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_clustering_set_count);
+		device.learning_to_cluster.normal_clustering_set_capacity = static_cast<unsigned int>(m_normal_clustering_sets.size());
+		device.learning_to_cluster.normal_face_observation_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_face_observation_counts);
 
 		device.learning_to_cluster.initial_light_cut_node_indices = GenericSoAHelpers::get_buffer_data_ptr(m_initial_light_cut_node_indices);
 
@@ -167,6 +182,7 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_active_guiding_node_count;
 	DataContainer<unsigned char> m_needs_split;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_light_clustering_count;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_clustering_set_count;
 
 	DataContainer<unsigned int> m_current_frontier;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_current_frontier_count;
@@ -192,6 +208,8 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_light_clustering_batch_sample_counts;
 	DataContainer<IlluminationAwareKDTreeSGShadingContext> m_representative_shading_contexts;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_shading_context_states;
+	DataContainer<IlluminationAwareKDTreeNormalClusteringSet> m_normal_clustering_sets;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_face_observation_counts;
 };
 
 #endif

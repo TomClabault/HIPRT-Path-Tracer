@@ -24,6 +24,8 @@ const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_
 
 const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID									= "Reset Tree";
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID				= "Initialize Root Light Clustering";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID			= "Accumulate Normal Face Observations";
+const std::string IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID		= "Allocate Normal Face Light Clusterings";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID			= "Accumulate Batch Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID = "Accumulate Light Clustering Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID				= "Update Light Cluster Statistics";
@@ -53,6 +55,22 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_InitializeRootLightClustering");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AccumulateNormalFaceObservations");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AllocateNormalFaceLightClusterings");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
@@ -169,9 +187,9 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
 	unsigned int light_clustering_count						 = m_illumination_aware_kd_tree.m_light_clustering_count.download_data()[0];
 	unsigned int reset_count								 = std::max(active_node_count, light_clustering_count);
-	void* launch_args[]										 = { &illumination_aware_kd_tree };
+	void* illumination_aware_kd_tree_launch_args[]										 = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		1024, 1, reset_count, 1, launch_args, m_renderer->get_main_stream());
+		1024, 1, reset_count, 1, illumination_aware_kd_tree_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	if (m_renderer->get_render_data().render_settings.sample_number == 0)
@@ -179,11 +197,12 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		const std::vector<unsigned int>& second_tree_cut_node_indices =
 			m_renderer->get_light_tree_sg_sampling_data_structure().get_second_tree_cut_node_indices();
 		const unsigned int effective_second_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_effective_second_tree_cut_size();
-		illumination_aware_kd_tree.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
+		illumination_aware_kd_tree.learning_to_cluster.effective_initial_light_cut_size								  = effective_second_tree_cut_size;
+		m_renderer->get_render_data().illumination_aware_kd_tree.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
 		if (second_tree_cut_node_indices.size() > 0 && effective_second_tree_cut_size > 0)
 		{
 			m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.upload_data_partial(0, second_tree_cut_node_indices.data(),
-																							  second_tree_cut_node_indices.size());
+																							  effective_second_tree_cut_size);
 
 			LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
 			void* initialize_root_light_clustering_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
@@ -218,12 +237,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads and
 	// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
-	void* launch_args[] = { &illumination_aware_kd_tree };
+	void* illumination_aware_kd_tree_launch_args[] = { &illumination_aware_kd_tree };
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
+		256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, illumination_aware_kd_tree_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
+		256, 1, illumination_aware_kd_tree.node_capacity, 1, illumination_aware_kd_tree_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	int split_iterations = m_split_iterations_per_SPP;
@@ -267,20 +286,32 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
 
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
+		256, 1, illumination_aware_kd_tree.learning_to_cluster_training_sample_capacity, 1, illumination_aware_kd_tree_launch_args, m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
+		IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1, illumination_aware_kd_tree_launch_args,
+		m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.learning_to_cluster_training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
+		256, 1, illumination_aware_kd_tree.learning_to_cluster_training_sample_capacity, 1, illumination_aware_kd_tree_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	LightTreeSGDevice light_tree_sg						= render_data.light_tree_sg;
 	void* update_light_cluster_statistics_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
 	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
-		IlluminationAwareKDTreeLightClusteringBlockSize, 1, m_cached_current_guiding_node_count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 		update_light_cluster_statistics_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	void* refine_light_clusterings_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg };
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-		IlluminationAwareKDTreeLightClusteringBlockSize, 1, m_cached_current_guiding_node_count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 		refine_light_clusterings_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
@@ -381,10 +412,11 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	float3_t scene_bounds_minimum				 = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 	float3_t scene_bounds_maximum				 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
-	void* launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
+	void* illumination_aware_kd_tree_launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_nodes.size(), 1, launch_args,
-																							m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(
+		256, 1, std::max(m_illumination_aware_kd_tree.m_nodes.size(), m_illumination_aware_kd_tree.m_light_clustering_data.size()), 1, illumination_aware_kd_tree_launch_args,
+		m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
@@ -446,10 +478,11 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_node_bounds.get_byte_size();
 	vram_usage.node_count  = m_illumination_aware_kd_tree.m_node_count.get_byte_size();
 
-	vram_usage.active_guiding_nodes		 = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
-	vram_usage.active_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
-	vram_usage.needs_split				 = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
-	vram_usage.light_clustering_count	 = m_illumination_aware_kd_tree.m_light_clustering_count.get_byte_size();
+	vram_usage.active_guiding_nodes		   = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
+	vram_usage.active_guiding_node_count   = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
+	vram_usage.needs_split				   = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
+	vram_usage.light_clustering_count	   = m_illumination_aware_kd_tree.m_light_clustering_count.get_byte_size();
+	vram_usage.normal_clustering_set_count = m_illumination_aware_kd_tree.m_normal_clustering_set_count.get_byte_size();
 
 	vram_usage.current_frontier		  = m_illumination_aware_kd_tree.m_current_frontier.get_byte_size();
 	vram_usage.current_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_byte_size();
@@ -467,6 +500,8 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_history_spatial_moments.get_byte_size();
 
 	vram_usage.initial_light_cut_node_indices		 = m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.get_byte_size();
+	vram_usage.normal_clustering_sets				 = m_illumination_aware_kd_tree.m_normal_clustering_sets.get_byte_size();
+	vram_usage.normal_face_observation_counts		 = m_illumination_aware_kd_tree.m_normal_face_observation_counts.get_byte_size();
 	vram_usage.light_cluster_node_indices			 = m_illumination_aware_kd_tree.m_light_cluster_node_indices.get_byte_size();
 	vram_usage.light_cluster_statistics				 = m_illumination_aware_kd_tree.m_light_cluster_statistics.get_byte_size();
 	vram_usage.light_cluster_batch_statistics		 = m_illumination_aware_kd_tree.m_light_cluster_batch_statistics.get_byte_size();

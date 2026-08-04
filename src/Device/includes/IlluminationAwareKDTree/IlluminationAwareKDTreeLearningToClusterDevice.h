@@ -9,6 +9,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatistics.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
@@ -63,6 +64,11 @@ struct IlluminationAwareKDTreeSGShadingContext
 	float alpha_y;
 };
 
+struct IlluminationAwareKDTreeNormalClusteringSet
+{
+	unsigned int clustering_indices[SurfaceNormalFace_Count];
+};
+
 struct IlluminationAwareKDTreeLearningToClusterDevice
 {
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT = 0u;
@@ -76,7 +82,18 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 		return light_clustering_index * IlluminationAwareKDTreeMaximumLightCutSize + slot;
 	}
 
+	HIPRT_DEVICE unsigned int get_normal_face_observation_offset(unsigned int set_index, unsigned int normal_face) const
+	{
+		return set_index * SurfaceNormalFace_Count + normal_face;
+	}
+
 	AtomicType<unsigned int>* light_clustering_count = nullptr;
+	unsigned int light_clustering_capacity			 = 0;
+
+	IlluminationAwareKDTreeNormalClusteringSet* normal_clustering_sets = nullptr;
+	AtomicType<unsigned int>* normal_clustering_set_count			   = nullptr;
+	unsigned int normal_clustering_set_capacity						   = 0;
+	AtomicType<unsigned int>* normal_face_observation_counts		   = nullptr;
 
 	unsigned int* initial_light_cut_node_indices  = nullptr;
 	unsigned int effective_initial_light_cut_size = 0;

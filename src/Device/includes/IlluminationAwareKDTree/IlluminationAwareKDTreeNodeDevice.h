@@ -32,7 +32,7 @@ struct IlluminationAwareKDTreeNode
 	// Index of the per-cell adaptive light clustering.
 	//
 	// Only an active guiding cell owns a valid light clustering.
-	unsigned int light_clustering_index = INVALID_LIGHT_CLUSTERING_INDEX;
+	unsigned int light_clustering_normal_set_index = INVALID_LIGHT_CLUSTERING_INDEX;
 
 	// Identifies the lookahead-allocation pass that created this node.
 	//

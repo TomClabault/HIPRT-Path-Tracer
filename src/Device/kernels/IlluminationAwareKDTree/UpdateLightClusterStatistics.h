@@ -82,27 +82,34 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int guiding_list_index = blockIdx.x;
-	unsigned int slot				= threadIdx.x;
+	unsigned int active_pair_index = blockIdx.x;
+	unsigned int slot			   = threadIdx.x;
 #else
-	unsigned int guiding_list_index = static_cast<unsigned int>(x);
+	unsigned int active_pair_index = static_cast<unsigned int>(x);
+	unsigned int slot			   = 0;
 #endif
 
 	unsigned int active_guiding_count = *kd_tree.active_guiding_node_count;
-	if (guiding_list_index >= active_guiding_count)
+	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
 		return;
 
+	unsigned int guiding_list_index = active_pair_index / SurfaceNormalFace_Count;
+	unsigned int normal_face		= active_pair_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.active_guiding_nodes[guiding_list_index];
-	unsigned int clustering_index	= kd_tree.nodes[guiding_node_index].light_clustering_index;
+	unsigned int set_index			= kd_tree.nodes[guiding_node_index].light_clustering_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+		return;
+
+	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int total_sample_count							 = *(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index);
+	unsigned int total_sample_count							 = kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index];
 	if (total_sample_count == 0)
 		return;
 
-	unsigned int context_state = *(kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index);
+	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
 
 #ifdef __KERNELCC__
 	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
@@ -125,19 +132,19 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 #else
 	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 	{
-		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
-			initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, slot);
+		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
+			initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, cluster_slot);
 
 		cluster_data.Q0_initialized = true;
 	}
 
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
-		update_light_cluster_statistics_for_slot(kd_tree, clustering_index, slot, total_sample_count);
+	for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
+		update_light_cluster_statistics_for_slot(kd_tree, clustering_index, cluster_slot, total_sample_count);
 #endif
 	{
 		cluster_data.iteration++;
 		cluster_data.refinement_sample_count += total_sample_count;
-		*(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index) = 0;
+		kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index] = 0;
 	}
 }
 

@@ -17,10 +17,11 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t node_bounds = 0;
 	std::size_t node_count	= 0;
 
-	std::size_t active_guiding_nodes	  = 0;
-	std::size_t active_guiding_node_count = 0;
-	std::size_t needs_split				  = 0;
-	std::size_t light_clustering_count	  = 0;
+	std::size_t active_guiding_nodes		= 0;
+	std::size_t active_guiding_node_count	= 0;
+	std::size_t needs_split					= 0;
+	std::size_t light_clustering_count		= 0;
+	std::size_t normal_clustering_set_count = 0;
 
 	std::size_t current_frontier	   = 0;
 	std::size_t current_frontier_count = 0;
@@ -38,6 +39,8 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t history_spatial_moments = 0;
 
 	std::size_t initial_light_cut_node_indices		  = 0;
+	std::size_t normal_clustering_sets				  = 0;
+	std::size_t normal_face_observation_counts		  = 0;
 	std::size_t light_cluster_node_indices			  = 0;
 	std::size_t light_cluster_statistics			  = 0;
 	std::size_t light_cluster_batch_statistics		  = 0;
@@ -48,10 +51,11 @@ struct IlluminationAwareKDTreeVRAMUsage
 
 	std::size_t get_total_bytes() const
 	{
-		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count + current_frontier +
-			   current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count + learning_to_cluster_training_samples +
-			   learning_to_cluster_training_sample_count + batch_signatures + history_signatures + batch_spatial_moments + history_spatial_moments +
-			   initial_light_cut_node_indices + light_cluster_node_indices + light_cluster_statistics + light_cluster_batch_statistics + light_clustering_data +
+		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count +
+			   normal_clustering_set_count + current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples +
+			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_count + batch_signatures +
+			   history_signatures + batch_spatial_moments + history_spatial_moments + initial_light_cut_node_indices + normal_clustering_sets +
+			   normal_face_observation_counts + light_cluster_node_indices + light_cluster_statistics + light_cluster_batch_statistics + light_clustering_data +
 			   light_clustering_batch_sample_counts + representative_shading_contexts + representative_shading_context_states;
 	}
 };
@@ -62,6 +66,8 @@ public:
 	static const std::string ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME;
 	static const std::string RESET_TREE_KERNEL_ID;
 	static const std::string INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID;
+	static const std::string ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID;
+	static const std::string ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID;

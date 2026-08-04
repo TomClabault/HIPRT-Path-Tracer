@@ -58,9 +58,57 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return result;
 
-	unsigned int clustering_index = kd_tree.nodes[guiding_node_index].light_clustering_index;
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(context.shading_normal);
+	unsigned int set_index	 = kd_tree.nodes[guiding_node_index].light_clustering_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return result;
+
+	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
+	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	{
+		unsigned int initial_cut_size = kd_tree.learning_to_cluster.effective_initial_light_cut_size;
+		if (initial_cut_size == 0 || initial_cut_size > IlluminationAwareKDTreeMaximumLightCutSize)
+			return result;
+
+		float total_weight		   = 0.0f;
+		float selected_weight	   = 0.0f;
+		unsigned int selected_slot = initial_cut_size - 1;
+
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+		SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
+#else
+		SGSpecularImportanceData specular_data;
+#endif
+
+		for (unsigned int slot = 0; slot < initial_cut_size; slot++)
+		{
+			unsigned int node_index = kd_tree.learning_to_cluster.initial_light_cut_node_indices[slot];
+			float weight = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], specular_data, context.position, context.view_direction,
+														 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+			weight		 = hippt::max(weight, 0.0f);
+			float updated_total_weight = total_weight + weight;
+
+			if (weight > 0.0f && random_number_generator() * updated_total_weight < weight)
+			{
+				selected_slot	= slot;
+				selected_weight = weight;
+			}
+
+			total_weight = updated_total_weight;
+		}
+
+		if (total_weight <= 0.0f)
+		{
+			selected_slot	= random_number_generator.random_index(initial_cut_size);
+			selected_weight = 1.0f;
+			total_weight	= static_cast<float>(initial_cut_size);
+		}
+
+		result.cluster_node_index  = kd_tree.learning_to_cluster.initial_light_cut_node_indices[selected_slot];
+		result.cluster_probability = selected_weight / total_weight;
+
+		return result;
+	}
 
 	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	unsigned int cut_size										   = cluster_data.cut_size;
