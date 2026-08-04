@@ -34,9 +34,11 @@ extern ImGuiLogger g_imgui_logger;
 //
 // TODO Illumination aware KD tree
 //	- Use the variance aware optimal cluster probabilities of bayesian regression paper
-//	- For learning to cluster, how to accelerate learning?
-//	- For learning to cluster, can we somehow register the select node cluster in NEE samples but also the children it went through so we can split multiple
-// clusters per each SPP and get faster learning?
+//	- Online-normal aware distributions, not hardcoded 6 bins, but a dynamic number of bins based on the normal distribution of the samples received in the
+//	guiding cell
+//	- For learning to cluster, how to accelerate learning and splitting?
+//		- Can we somehow register the select node cluster in NEE samples but also the children it went through so we can split multiple clusters per each SPP
+//		and get faster learning?
 //	- Use a CDF to sample the tree cut instead of WRS
 //	- We still need normal aware distributions
 //	- Slap resampling and splitting on top of learning to cluster somehow

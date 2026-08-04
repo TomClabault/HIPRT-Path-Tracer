@@ -3915,14 +3915,24 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		{
 			IlluminationAwareKDTreeLearningToClusterUserSettings& light_clustering_settings =
 				render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
-			int initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
-			if (ImGui::SliderInt("Initial light cut size", &initial_light_cut_size, 1, static_cast<int>(light_clustering_settings.maximum_light_cut_size)))
+			static int current_initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
+			ImGui::InputInt("Initial light cut size", &current_initial_light_cut_size);
+			if (current_initial_light_cut_size != static_cast<int>(light_clustering_settings.initial_light_cut_size))
 			{
-				light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(initial_light_cut_size);
-				illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+				ImGui::TreePush("Apply button initial light cut size");
 
-				m_renderer->recompute_emissives_sampling_data_structure();
-				m_render_window->set_render_dirty(true);
+				if (ImGui::Button("Apply"))
+				{
+					current_initial_light_cut_size =
+						hippt::clamp(1, static_cast<int>(light_clustering_settings.maximum_light_cut_size), current_initial_light_cut_size);
+					light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(current_initial_light_cut_size);
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
 			}
 
 			int maximum_light_cut_size = static_cast<int>(light_clustering_settings.maximum_light_cut_size);
