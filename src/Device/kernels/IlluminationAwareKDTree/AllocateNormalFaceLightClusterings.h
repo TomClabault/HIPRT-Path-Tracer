@@ -10,7 +10,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeLightClustering.h"
 
-static constexpr unsigned int MinimumNormalFaceObservations = 8u;
+#define MinimumNormalFaceObservations 1
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)

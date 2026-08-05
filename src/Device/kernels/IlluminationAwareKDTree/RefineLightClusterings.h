@@ -10,17 +10,9 @@
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
-
-HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
-															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
-{
-	float growth	 = static_cast<float>(cluster_data.cut_size) / static_cast<float>(settings.initial_light_cut_size);
-	float multiplier = hippt::max(growth, 2.0f);
-
-	return static_cast<unsigned int>(ceil(multiplier * static_cast<float>(settings.initial_sampling_budget_n0)));
-}
 
 HIPRT_DEVICE float compute_cluster_split_probability(
 	float cluster_variance, float total_cut_variance, unsigned int visit_count, unsigned int cut_size, unsigned int initial_cut_size)

@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_UPDATE_LIGHT_CLUSTER_STATISTICS_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 
@@ -63,7 +64,7 @@ HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTr
 	float batch_second_moment  = batch.squared_contribution_sum * inverse_sample_count;
 	unsigned int iteration	   = cluster_data.iteration + 1u;
 	float learning_rate		   = 1.0f / (kd_tree.learning_to_cluster.user_settings.learning_rate_beta *
-									 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
+										 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
 
 	persistent.estimated_importance_Q  = (1.0f - learning_rate) * persistent.estimated_importance_Q + learning_rate * batch_mean;
 	persistent.estimated_second_moment = (1.0f - learning_rate) * persistent.estimated_second_moment + learning_rate * batch_second_moment;
@@ -104,9 +105,11 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int total_sample_count							 = kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index];
-	if (total_sample_count == 0)
+	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+	unsigned int total_sample_count										 = kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index];
+	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+	unsigned int iteration_budget										 = compute_refinement_sampling_budget(cluster_data, settings);
+	if (total_sample_count < iteration_budget)
 		return;
 
 	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
