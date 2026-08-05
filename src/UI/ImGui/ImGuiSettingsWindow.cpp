@@ -2416,7 +2416,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2597,7 +2597,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3913,39 +3913,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::BeginDisabled(!use_light_clustering);
 		if (ImGui::CollapsingHeader("Illumination-aware light clustering"))
 		{
-			IlluminationAwareKDTreeLearningToClusterUserSettings& light_clustering_settings =
-				render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
-			static int current_initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
-			ImGui::InputInt("Initial light cut size", &current_initial_light_cut_size);
-			if (current_initial_light_cut_size != static_cast<int>(light_clustering_settings.initial_light_cut_size))
-			{
-				ImGui::TreePush("Apply button initial light cut size");
-
-				if (ImGui::Button("Apply"))
-				{
-					current_initial_light_cut_size =
-						hippt::clamp(1, static_cast<int>(light_clustering_settings.maximum_light_cut_size), current_initial_light_cut_size);
-					light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(current_initial_light_cut_size);
-					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-
-					m_renderer->recompute_emissives_sampling_data_structure();
-					m_render_window->set_render_dirty(true);
-				}
-
-				ImGui::TreePop();
-			}
-
-			int maximum_light_cut_size = static_cast<int>(light_clustering_settings.maximum_light_cut_size);
-			if (ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, static_cast<int>(light_clustering_settings.initial_light_cut_size),
-								 IlluminationAwareKDTreeMaximumLightCutSize))
-			{
-				light_clustering_settings.maximum_light_cut_size = static_cast<unsigned int>(maximum_light_cut_size);
-				m_render_window->set_render_dirty(true);
-			}
-
-			if (ImGui::Checkbox("Enable light-cut refinement", &light_clustering_settings.enable_light_cut_refinement))
-				m_render_window->set_render_dirty(true);
-
 			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
 															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
 															  : IlluminationAwareKDTreeVRAMUsage();
@@ -3966,8 +3933,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 														vram_usage.light_clustering_count + vram_usage.normal_clustering_set_count +
 														vram_usage.current_frontier + vram_usage.current_frontier_count + vram_usage.next_frontier +
 														vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count +
-												vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
+			std::size_t training_buffer_bytes		  = vram_usage.training_samples + vram_usage.training_sample_count +
+														vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.normal_clustering_sets +
@@ -4050,6 +4017,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::SliderInt("Stop refining after SPP", &render_data.illumination_aware_kd_tree.user_settings.stop_refining_after_SPP, 1, 100))
+				m_render_window->set_render_dirty(true);
 
 			static int maximum_lookahead_depth =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
@@ -4113,6 +4082,42 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Learning to cluster");
+			IlluminationAwareKDTreeLearningToClusterUserSettings& light_clustering_settings =
+				render_data.illumination_aware_kd_tree.learning_to_cluster.user_settings;
+			static int current_initial_light_cut_size = static_cast<int>(light_clustering_settings.initial_light_cut_size);
+			ImGui::InputInt("Initial light cut size", &current_initial_light_cut_size);
+			if (current_initial_light_cut_size != static_cast<int>(light_clustering_settings.initial_light_cut_size))
+			{
+				ImGui::TreePush("Apply button initial light cut size");
+
+				if (ImGui::Button("Apply"))
+				{
+					current_initial_light_cut_size =
+						hippt::clamp(1, static_cast<int>(light_clustering_settings.maximum_light_cut_size), current_initial_light_cut_size);
+					light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(current_initial_light_cut_size);
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			int maximum_light_cut_size = static_cast<int>(light_clustering_settings.maximum_light_cut_size);
+			if (ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, static_cast<int>(light_clustering_settings.initial_light_cut_size),
+								 IlluminationAwareKDTreeMaximumLightCutSize))
+			{
+				light_clustering_settings.maximum_light_cut_size = static_cast<unsigned int>(maximum_light_cut_size);
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (ImGui::Checkbox("Enable light-cut refinement", &light_clustering_settings.enable_light_cut_refinement))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Debug");
 			const char* debug_view_items[] = { "- No debug",
 											   "- KD tree leaves solid",
 											   "- KD tree leaves outlines",
@@ -5619,7 +5624,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
