@@ -21,7 +21,6 @@ public:
 	static const std::string USE_SHARED_STACK_BVH_TRAVERSAL;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE;
-	static const std::string DISPLAY_ONLY_SAMPLE_N;
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;

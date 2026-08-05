@@ -128,8 +128,10 @@ struct HIPRTRenderSettings
 	//
 	// This is the sum of samples_per_frame for all frames that have been rendered.
 	unsigned int sample_number = 0;
-	// See the DisplayOnlySampleN kernel option
-	int output_debug_sample_N = 1;
+	// The inclusive range of samples that should be accumulated into the framebuffer. A range of (0, 0)
+	// is reserved to mean that all samples should be accumulated.
+	int sample_subset_min = 0;
+	int sample_subset_max = 0;
 
 	// How many samples to compute per pixel per frame
 	// Higher values reduce CPU overhead since the GPU spends

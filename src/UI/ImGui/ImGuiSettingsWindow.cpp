@@ -431,6 +431,40 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 		{
 			if (ImGui::InputInt("Max sample count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
+
+			int sample_subset_slider_maximum = m_application_settings->max_sample_count;
+			if (sample_subset_slider_maximum == 0)
+				sample_subset_slider_maximum = 1024;
+			sample_subset_slider_maximum = std::max({ sample_subset_slider_maximum, 1, render_settings.sample_subset_min, render_settings.sample_subset_max });
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			static bool last_sample_only = false;
+			ImGui::Checkbox("Render only last sample", &last_sample_only);
+
+			if (last_sample_only)
+			{
+				int min_before = render_settings.sample_subset_min;
+				int max_before = render_settings.sample_subset_max;
+
+				render_settings.sample_subset_min = std::max(0, m_application_settings->max_sample_count - 1);
+				render_settings.sample_subset_max = render_settings.sample_subset_min + 1;
+
+				if (min_before != render_settings.sample_subset_min || max_before != render_settings.sample_subset_max)
+					m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::BeginDisabled(last_sample_only);
+			bool sample_subset_changed =
+				ImGui::SliderInt("Sample subset min", &render_settings.sample_subset_min, 0, sample_subset_slider_maximum, "%d", ImGuiSliderFlags_AlwaysClamp);
+			if (render_settings.sample_subset_min > render_settings.sample_subset_max)
+				render_settings.sample_subset_max = render_settings.sample_subset_min;
+
+			sample_subset_changed |= ImGui::SliderInt("Sample subset max", &render_settings.sample_subset_max, render_settings.sample_subset_min,
+													  sample_subset_slider_maximum, "%d", ImGuiSliderFlags_AlwaysClamp);
+			if (sample_subset_changed)
+				m_render_window->set_render_dirty(true);
+			ImGui::EndDisabled();
+
 			if (m_renderer->gmon_used())
 			{
 				// Using GMoN
@@ -6705,19 +6739,6 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 
 void ImGuiSettingsWindow::draw_debug_panel()
 {
-	// Putting that here so we don't have to always open the debug panel for auto sample to work
-	static bool display_only_sample				  = DisplayOnlySampleN;
-	static bool auto_sample_only_display_sample_N = true;
-	if (auto_sample_only_display_sample_N && display_only_sample)
-	{
-		int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
-
-		if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
-			m_render_window->set_render_dirty(true);
-
-		m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
-	}
-
 	if (!ImGui::CollapsingHeader("Debug"))
 		return;
 
@@ -6766,25 +6787,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives))
 			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
-	}
-
-	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
-	{
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N,
-																   display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-		m_render_window->set_render_dirty(true);
-		m_renderer->recompile_kernels();
-	}
-	if (display_only_sample)
-	{
-		ImGui::SameLine();
-		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-		if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
-			m_render_window->set_render_dirty(true);
-
-		ImGui::SameLine();
-		ImGui::Checkbox("Auto", &auto_sample_only_display_sample_N);
 	}
 
 	ImGui::TreePop();

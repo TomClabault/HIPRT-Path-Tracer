@@ -234,6 +234,33 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
 #define DEFAULT_DEBUG_COLOR ColorRGB32F(-42.0f, -42.0f, -42.0f)
 
+HIPRT_DEVICE bool path_tracing_sample_is_in_subset(const HIPRTRenderSettings& render_settings)
+{
+	if (render_settings.sample_subset_min == 0 && render_settings.sample_subset_max == 0)
+		return true;
+
+	if (render_settings.sample_subset_min < 0 || render_settings.sample_subset_max < render_settings.sample_subset_min)
+		return false;
+
+	return render_settings.sample_number >= static_cast<unsigned int>(render_settings.sample_subset_min) &&
+		   render_settings.sample_number <= static_cast<unsigned int>(render_settings.sample_subset_max);
+}
+
+HIPRT_DEVICE unsigned int path_tracing_number_of_samples_in_subset(const HIPRTRenderSettings& render_settings)
+{
+	if (render_settings.sample_subset_min == 0 && render_settings.sample_subset_max == 0)
+		return render_settings.sample_number + 1;
+
+	if (render_settings.sample_subset_min < 0 || render_settings.sample_subset_max < render_settings.sample_subset_min ||
+		render_settings.sample_number < static_cast<unsigned int>(render_settings.sample_subset_min))
+		return 0;
+
+	unsigned int number_of_samples = render_settings.sample_number - static_cast<unsigned int>(render_settings.sample_subset_min) + 1;
+	unsigned int subset_size	   = static_cast<unsigned int>(render_settings.sample_subset_max - render_settings.sample_subset_min + 1);
+
+	return hippt::min(number_of_samples, subset_size);
+}
+
 HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data,
 												uint32_t pixel_index,
 												const ColorRGB32F& ray_color,
@@ -241,22 +268,39 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 {
 	render_data.buffers.last_frame_ray_colors[pixel_index] = ray_color;
 
-#if DisplayOnlySampleN == KERNEL_OPTION_TRUE
-	int debug_sample_index = render_data.render_settings.output_debug_sample_N;
+	const bool sample_is_in_subset						= path_tracing_sample_is_in_subset(render_data.render_settings);
+	const unsigned int number_of_samples_in_subset		= path_tracing_number_of_samples_in_subset(render_data.render_settings);
+	const unsigned int number_of_samples_before_current = sample_is_in_subset ? number_of_samples_in_subset - 1 : number_of_samples_in_subset;
 
-	if (render_data.render_settings.sample_number >= debug_sample_index || render_data.render_settings.sample_number == 0)
+	if (sample_is_in_subset)
 	{
-		if (debug_color == DEFAULT_DEBUG_COLOR)
+		if (debug_color != DEFAULT_DEBUG_COLOR)
+			render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+		else if (number_of_samples_before_current == 0)
 			render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (render_data.render_settings.sample_number + 1);
 		else
-			render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+		{
+			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
+			// samples from the previous framebuffer value before adding the current sample.
+			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
+													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
+
+			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
+		}
 	}
 	else
-		render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
+	{
+		if (number_of_samples_before_current == 0)
+			render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
+		else
+			// Keep the selected-sample average unchanged while the display divisor keeps increasing.
+			render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] /
+																	  static_cast<float>(render_data.render_settings.sample_number) *
+																	  (render_data.render_settings.sample_number + 1);
+	}
 
-#else // DisplayOnlySampleN
-
-	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+	if (sample_is_in_subset && render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
 		float squared_luminance_of_samples = ray_color.luminance() * ray_color.luminance();
 		// We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
@@ -264,15 +308,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
 	}
 
-	if (debug_color != DEFAULT_DEBUG_COLOR)
-		render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
-	else if (render_data.render_settings.sample_number == 0)
-		render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-	else
-		// If we are at a sample that is not 0, this means that we are accumulating
-		render_data.buffers.accumulated_ray_colors[pixel_index] += ray_color;
-
-	if (render_data.buffers.gmon_estimator.sets != nullptr)
+	if (sample_is_in_subset && render_data.buffers.gmon_estimator.sets != nullptr)
 	{
 		// GMoN is in use, accumulating in the GMoN sets
 
@@ -280,12 +316,11 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 								  render_data.buffers.gmon_estimator.next_set_to_accumulate +
 							  pixel_index;
 
-		if (render_data.render_settings.sample_number == 0)
+		if (number_of_samples_before_current == 0)
 			render_data.buffers.gmon_estimator.sets[offset] = ray_color;
 		else
 			render_data.buffers.gmon_estimator.sets[offset] += ray_color;
 	}
-#endif
 }
 
 HIPRT_DEVICE bool path_tracing_pixel_is_on_tree_cut_bounding_box_edge(const HIPRTRenderData& render_data, int pixel_index, unsigned int& out_box_index)
