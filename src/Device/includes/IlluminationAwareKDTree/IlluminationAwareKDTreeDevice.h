@@ -7,10 +7,10 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeIlluminationSignatureSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeIlluminationSignatureSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSpatialSampleMomentsSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
@@ -323,12 +323,14 @@ struct IlluminationAwareKDTreeDevice
 		return;
 #endif
 
-		// Invalid samples must not consume buffer space or affect b0.
-		if (!sample.valid_for_spatial_training)
+		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
+		// The counter may exceed capacity, but memory must never be written
+		// outside the allocated buffer.
+		if (sample_index >= training_sample_capacity)
 			return;
 
-		unsigned int sample_index = reserve_training_sample(training_sample_count, training_sample_capacity);
-		if (sample_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
+		if (sample_index >= training_sample_capacity)
 			return;
 
 		training_samples[sample_index] = sample;
@@ -340,31 +342,17 @@ struct IlluminationAwareKDTreeDevice
 		return;
 #endif
 
-		if (!sample.valid_for_light_clustering)
+		unsigned int sample_index = hippt::atomic_fetch_add(learning_to_cluster_training_sample_count, 0u);
+		// The counter may exceed capacity, but memory must never be written
+		// outside the allocated buffer.
+		if (sample_index >= learning_to_cluster_training_sample_capacity)
 			return;
 
-		unsigned int sample_index = reserve_training_sample(learning_to_cluster_training_sample_count, learning_to_cluster_training_sample_capacity);
-		if (sample_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		sample_index = hippt::atomic_fetch_add(learning_to_cluster_training_sample_count, 1u);
+		if (sample_index >= learning_to_cluster_training_sample_capacity)
 			return;
 
 		learning_to_cluster_training_samples[sample_index] = sample;
-	}
-
-	HIPRT_DEVICE unsigned int reserve_training_sample(AtomicType<unsigned int>* sample_count, unsigned int sample_capacity)
-	{
-		unsigned int current = hippt::atomic_fetch_add(sample_count, 0u);
-
-		while (current < sample_capacity)
-		{
-			unsigned int observed = hippt::atomic_compare_exchange(sample_count, current, current + 1u);
-
-			if (observed == current)
-				return current;
-
-			current = observed;
-		}
-
-		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	}
 
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignatureSoADevice& signatures,
