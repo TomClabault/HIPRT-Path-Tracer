@@ -52,7 +52,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_render_thread.init(render_window, this);
 	m_device_properties									= m_hiprt_orochi_ctx->device_properties;
 	m_application_settings								= application_settings;
-	m_render_data.render_settings.output_debug_sample_N = hippt::max(0, m_application_settings->max_sample_count - 1);
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = get_global_compiler_options();
 	// Adding hardware acceleration by default if supported

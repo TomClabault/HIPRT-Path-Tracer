@@ -84,9 +84,8 @@ int main(int argc, char* argv[])
 							cmd_arguments.bounces);
 
 	CPURenderer cpu_renderer(width, height);
-	cpu_renderer.get_render_settings().nb_bounces			 = cmd_arguments.bounces;
-	cpu_renderer.get_render_settings().samples_per_frame	 = cmd_arguments.render_samples;
-	cpu_renderer.get_render_settings().output_debug_sample_N = cmd_arguments.render_samples - 1;
+	cpu_renderer.get_render_settings().nb_bounces		 = cmd_arguments.bounces;
+	cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
 	cpu_renderer.set_envmap(envmap_image);
 	cpu_renderer.set_camera(parsed_scene.camera);
 

@@ -143,15 +143,6 @@
  */
 #define PathSamplingStrategy PATH_SAMPLING_BSDF
 
-/**
- * Debug option which, if enabled, only outputs the sample 'render_settings.output_debug_sample_N'
- * to the framebuffer.
- *
- * Useful for debugging features that may take effect after the first sample and we only want to see what
- * the second sample (or any other sample) looks like without being accumulated with the previous samples
- */
-#define DisplayOnlySampleN KERNEL_OPTION_TRUE
-
 #endif // #ifndef __KERNELCC__
 
 #endif
