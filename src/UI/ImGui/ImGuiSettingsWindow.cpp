@@ -4027,6 +4027,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::SliderInt("Stop refining after SPP", &render_data.illumination_aware_kd_tree.user_settings.stop_refining_after_SPP, 1, 100))
+				m_render_window->set_render_dirty(true);
 
 			static int maximum_lookahead_depth =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
