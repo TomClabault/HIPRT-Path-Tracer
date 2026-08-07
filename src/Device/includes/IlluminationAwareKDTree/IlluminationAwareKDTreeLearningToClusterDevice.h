@@ -7,8 +7,7 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatistics.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreePendingLightClusterRecord.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
@@ -19,18 +18,24 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 	// Q_x(c): estimated contribution of this light cluster, light clusters of the cut are sampled proportionally to this value
 	float estimated_importance_Q = 0.0f;
 
-	// Estimate of E[Y_c^2].
-	// Used to reconstruct Var[Y_c] = E[Y_c^2] - E[Y_c]^2
-	float estimated_second_moment = 0.0f;
+	// Running mean of the selected-sample observations used by refinement
+	float mean = 0.0f;
 
-	// Variance used by the light-clustering refinement probability, Equation 7
-	float variance = 0.0f;
+	// Running sum of squared deviations used by refinement
+	float M2 = 0.0f;
 
 	// n_c in Equations 7 and 8: how many times this cluster has actually been selected
 	unsigned int visit_count = 0;
+
+	HIPRT_DEVICE float get_refinement_variance() const
+	{
+		return M2 / static_cast<float>(visit_count + 1u);
+	}
 };
 
 static_assert(sizeof(IlluminationAwareKDTreeLightClusterStatistics) == 16);
+
+static constexpr unsigned int IlluminationAwareKDTreePendingLightClusterRecordStride = IlluminationAwareKDTreeMaximumLightCutSize;
 
 struct IlluminationAwareKDTreeLightClusteringData
 {
@@ -42,14 +47,14 @@ struct IlluminationAwareKDTreeLightClusteringData
 	// t' in the paper's refinement stopping rule
 	unsigned int last_refinement_iteration = 0;
 
-	// Samples accumulated since the previous light-cut refinement attempt
-	unsigned int refinement_sample_count = 0;
-
 	// Q has been initialized using Equation 5
 	unsigned int Q0_initialized = false;
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
+
+	// Incremented only when the light cut is modified
+	unsigned int cut_revision = 0;
 };
 
 struct IlluminationAwareKDTreeSGShadingContext
@@ -100,10 +105,11 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	unsigned int* light_cluster_node_indices								= nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
-	IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice light_cluster_batch_statistics;
 
-	IlluminationAwareKDTreeLightClusteringData* light_clustering_data = nullptr;
-	AtomicType<unsigned int>* light_clustering_batch_sample_counts	  = nullptr;
+	IlluminationAwareKDTreeLightClusteringData* light_clustering_data				= nullptr;
+	IlluminationAwareKDTreePendingLightClusterRecord* pending_light_cluster_records = nullptr;
+	AtomicType<unsigned int>* pending_light_cluster_record_counts					= nullptr;
+	unsigned int pending_record_stride												= 0;
 
 	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
 	AtomicType<unsigned int>* representative_shading_context_states			 = nullptr;

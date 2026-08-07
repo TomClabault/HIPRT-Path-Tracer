@@ -17,4 +17,45 @@ HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationA
 	return static_cast<unsigned int>(ceil(multiplier * static_cast<float>(settings.initial_sampling_budget_n0)));
 }
 
+HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
+{
+	unsigned int time_step = iteration + 1u;
+
+	return 1.0f / (settings.learning_rate_beta * hippt::intrin_pow(static_cast<float>(time_step), settings.learning_rate_omega));
+}
+
+HIPRT_DEVICE bool reserve_pending_light_cluster_record(AtomicType<unsigned int>* count, unsigned int budget, unsigned int& record_index)
+{
+	unsigned int observed_count = *count;
+
+	while (observed_count < budget)
+	{
+		unsigned int exchanged_count = hippt::atomic_compare_exchange(count, observed_count, observed_count + 1u);
+		if (exchanged_count == observed_count)
+		{
+			record_index = observed_count;
+
+			return true;
+		}
+
+		observed_count = exchanged_count;
+	}
+
+	return false;
+}
+
+HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)
+{
+	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+
+	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+	{
+		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		if (kd_tree.learning_to_cluster.light_cluster_node_indices[offset] == cluster_node_index)
+			return static_cast<int>(slot);
+	}
+
+	return -1;
+}
+
 #endif

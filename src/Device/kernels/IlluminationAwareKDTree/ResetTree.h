@@ -78,9 +78,9 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 
 	if (reset_index < illumination_aware_kd_tree.learning_to_cluster.light_clustering_capacity)
 	{
-		illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[reset_index]				 = {};
-		illumination_aware_kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[reset_index] = 0;
-		illumination_aware_kd_tree.learning_to_cluster.representative_shading_contexts[reset_index]		 = {};
+		illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[reset_index]				= {};
+		illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[reset_index] = 0;
+		illumination_aware_kd_tree.learning_to_cluster.representative_shading_contexts[reset_index]		= {};
 		illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[reset_index] =
 			IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
@@ -89,7 +89,6 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 			unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(reset_index, slot);
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[cluster_offset] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[cluster_offset]	  = {};
-			illumination_aware_kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(cluster_offset);
 		}
 	}
 }

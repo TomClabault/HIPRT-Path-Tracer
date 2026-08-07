@@ -387,11 +387,15 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	spatial_training_sample.valid_for_spatial_training = true;
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
-	learning_to_cluster_training_sample.position					= closest_hit_info.inter_point;
-	learning_to_cluster_training_sample.shading_context				= shading_context;
-	learning_to_cluster_training_sample.selected_cluster_node_index = triangle_sample.cluster_node_index;
-	learning_to_cluster_training_sample.cluster_probability			= triangle_sample.cluster_probability;
-	learning_to_cluster_training_sample.valid_for_light_clustering	= true;
+	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
+	learning_to_cluster_training_sample.shading_context				   = shading_context;
+	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
+	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
+	learning_to_cluster_training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
+	learning_to_cluster_training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
+	learning_to_cluster_training_sample.sampled_cut_revision		   = triangle_sample.cut_revision;
+	learning_to_cluster_training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
+	learning_to_cluster_training_sample.valid_for_light_clustering	   = true;
 
 	ColorRGB32F light_source_radiance(0.0f);
 
@@ -434,7 +438,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 					ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
 					ColorRGB32F estimator = numerator / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 					light_source_radiance += estimator;
-					learning_to_cluster_training_sample.light_clustering_contribution = estimator.max_component();
+
+					float full_estimator									 = estimator.luminance();
+					learning_to_cluster_training_sample.q_reward			 = full_estimator * triangle_sample.cluster_probability;
+					learning_to_cluster_training_sample.variance_observation = full_estimator * triangle_sample.cluster_probability;
 
 					// Just a CPU-only sanity check
 					sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);

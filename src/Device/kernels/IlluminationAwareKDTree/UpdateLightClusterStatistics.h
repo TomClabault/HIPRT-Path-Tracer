@@ -38,40 +38,22 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 	unsigned int cluster_node_index						   = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
 	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
 
-	// Q0 is used as the cluster sampling distribution. Keep it tied to the current shading context instead of assigning power to clusters that cannot be
-	// sampled at this point.
-	float initial_importance_Q = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
-
+	float initial_importance_Q								  = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 	statistics.estimated_importance_Q						  = initial_importance_Q;
-	statistics.estimated_second_moment						  = initial_importance_Q * initial_importance_Q;
-	statistics.variance										  = 0.0f;
-	statistics.visit_count									  = 0;
+	statistics.mean											  = 0.0f;
+	statistics.M2											  = 0.0f;
+	statistics.visit_count									  = 0u;
 }
 
-HIPRT_DEVICE void update_light_cluster_statistics_for_slot(IlluminationAwareKDTreeDevice kd_tree,
-														   unsigned int clustering_index,
-														   unsigned int slot,
-														   unsigned int total_sample_count)
+HIPRT_DEVICE void append_observation(IlluminationAwareKDTreeLightClusterStatistics& statistics, float observation)
 {
-	IlluminationAwareKDTreeLightClusteringData& cluster_data  = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-	IlluminationAwareKDTreeLightClusterStatistics& persistent = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-	IlluminationAwareKDTreeLightClusterBatchStatistics batch  = kd_tree.learning_to_cluster.light_cluster_batch_statistics.read(offset);
-
-	float inverse_sample_count = 1.0f / static_cast<float>(total_sample_count);
-	float batch_mean		   = batch.contribution_sum * inverse_sample_count;
-	float batch_second_moment  = batch.squared_contribution_sum * inverse_sample_count;
-	unsigned int iteration	   = cluster_data.iteration + 1u;
-	float learning_rate		   = 1.0f / (kd_tree.learning_to_cluster.user_settings.learning_rate_beta *
-										 hippt::intrin_pow(static_cast<float>(iteration), kd_tree.learning_to_cluster.user_settings.learning_rate_omega));
-
-	persistent.estimated_importance_Q  = (1.0f - learning_rate) * persistent.estimated_importance_Q + learning_rate * batch_mean;
-	persistent.estimated_second_moment = (1.0f - learning_rate) * persistent.estimated_second_moment + learning_rate * batch_second_moment;
-	persistent.variance = hippt::max(persistent.estimated_second_moment - persistent.estimated_importance_Q * persistent.estimated_importance_Q, 0.0f);
-	persistent.visit_count += batch.selected_count;
-
-	kd_tree.learning_to_cluster.light_cluster_batch_statistics.reset(offset);
+	unsigned int previous_count = statistics.visit_count;
+	float delta					= observation - statistics.mean;
+	statistics.mean += delta / static_cast<float>(previous_count + 1u);
+	float delta2 = observation - statistics.mean;
+	statistics.M2 += delta * delta2;
+	statistics.visit_count = previous_count + 1u;
 }
 
 #ifndef __KERNELCC__
@@ -90,6 +72,9 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 	unsigned int slot			   = 0;
 #endif
 
+	if (slot != 0u)
+		return;
+
 	unsigned int active_guiding_count = *kd_tree.active_guiding_node_count;
 	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
 		return;
@@ -106,33 +91,13 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int total_sample_count										 = kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index];
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+	unsigned int pending_count											 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
 	unsigned int iteration_budget										 = compute_refinement_sampling_budget(cluster_data, settings);
-	if (total_sample_count < iteration_budget)
+	if (pending_count < iteration_budget)
 		return;
 
 	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
-
-#ifdef __KERNELCC__
-	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
-		initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, slot);
-
-	__syncthreads();
-
-	if (slot == 0 && !cluster_data.Q0_initialized &&
-		context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
-		cluster_data.Q0_initialized = true;
-
-	__syncthreads();
-
-	if (slot < cluster_data.cut_size)
-		update_light_cluster_statistics_for_slot(kd_tree, clustering_index, slot, total_sample_count);
-
-	__syncthreads();
-
-	if (slot == 0)
-#else
 	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 	{
 		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
@@ -141,13 +106,16 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 		cluster_data.Q0_initialized = true;
 	}
 
-	for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
-		update_light_cluster_statistics_for_slot(kd_tree, clustering_index, cluster_slot, total_sample_count);
-#endif
+	unsigned int base_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
 	{
-		cluster_data.iteration++;
-		cluster_data.refinement_sample_count += total_sample_count;
-		kd_tree.learning_to_cluster.light_clustering_batch_sample_counts[clustering_index] = 0;
+		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+		int slot_index												   = find_light_cluster_slot(kd_tree, clustering_index, record.cluster_node_index);
+		if (slot_index < 0)
+			continue;
+
+		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, static_cast<unsigned int>(slot_index));
+		append_observation(kd_tree.learning_to_cluster.light_cluster_statistics[offset], record.variance_observation);
 	}
 }
 

@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #ifndef __KERNELCC__
@@ -61,14 +62,17 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	if (selected_slot == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_batch_sample_counts + clustering_index, 1u);
+	unsigned int iteration_budget	  = compute_refinement_sampling_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
+	unsigned int pending_record_index = 0;
+	if (!reserve_pending_light_cluster_record(kd_tree.learning_to_cluster.pending_light_cluster_record_counts + clustering_index, iteration_budget,
+											  pending_record_index))
+		return;
 
-	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
-	float contribution			 = sample.light_clustering_contribution;
-
-	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.contribution_sum[selected_offset], contribution);
-	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.squared_contribution_sum[selected_offset], contribution * contribution);
-	hippt::atomic_fetch_add(&kd_tree.learning_to_cluster.light_cluster_batch_statistics.selected_count[selected_offset], 1u);
+	unsigned int record_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride + pending_record_index;
+	IlluminationAwareKDTreePendingLightClusterRecord& pending_record = kd_tree.learning_to_cluster.pending_light_cluster_records[record_offset];
+	pending_record.cluster_node_index								 = sample.selected_cluster_node_index;
+	pending_record.q_reward											 = sample.q_reward;
+	pending_record.variance_observation								 = sample.variance_observation;
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
 	unsigned int previous_state =

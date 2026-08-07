@@ -153,6 +153,8 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	result.light_clustering_index = clustering_index;
 	result.cluster_slot			  = selected_slot;
 	result.cluster_node_index	  = kd_tree.learning_to_cluster.light_cluster_node_indices[selected_offset];
+	result.cut_revision			  = cluster_data.cut_revision;
+	result.cut_size_at_sampling	  = cut_size;
 	result.cluster_probability	  = selected_probability;
 
 	return result;

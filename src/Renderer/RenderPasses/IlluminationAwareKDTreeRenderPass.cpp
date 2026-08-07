@@ -30,6 +30,7 @@ const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_S
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID = "Accumulate Light Clustering Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID				= "Update Light Cluster Statistics";
 const std::string IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID						= "Refine Light Clusterings";
+const std::string IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID		= "Apply Pending Light Cluster Q Updates";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID		= "Accumulate Batch Statistics Into History";
 const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID =
 	"Reset Batch KD-Tree And Light Clustering Statistics";
@@ -103,6 +104,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_RefineLightClusterings");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ApplyPendingLightClusterQUpdates.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates");
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
@@ -320,6 +329,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 		refine_light_clusterings_launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
+		IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+		update_light_cluster_statistics_launch_args, m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
 
 void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -502,9 +517,9 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.normal_face_observation_counts		 = m_illumination_aware_kd_tree.m_normal_face_observation_counts.get_byte_size();
 	vram_usage.light_cluster_node_indices			 = m_illumination_aware_kd_tree.m_light_cluster_node_indices.get_byte_size();
 	vram_usage.light_cluster_statistics				 = m_illumination_aware_kd_tree.m_light_cluster_statistics.get_byte_size();
-	vram_usage.light_cluster_batch_statistics		 = m_illumination_aware_kd_tree.m_light_cluster_batch_statistics.get_byte_size();
+	vram_usage.pending_light_cluster_records		 = m_illumination_aware_kd_tree.m_pending_light_cluster_records.get_byte_size();
+	vram_usage.pending_light_cluster_record_counts	 = m_illumination_aware_kd_tree.m_pending_light_cluster_record_counts.get_byte_size();
 	vram_usage.light_clustering_data				 = m_illumination_aware_kd_tree.m_light_clustering_data.get_byte_size();
-	vram_usage.light_clustering_batch_sample_counts	 = m_illumination_aware_kd_tree.m_light_clustering_batch_sample_counts.get_byte_size();
 	vram_usage.representative_shading_contexts		 = m_illumination_aware_kd_tree.m_representative_shading_contexts.get_byte_size();
 	vram_usage.representative_shading_context_states = m_illumination_aware_kd_tree.m_representative_shading_context_states.get_byte_size();
 

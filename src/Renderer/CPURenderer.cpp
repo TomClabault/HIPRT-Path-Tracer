@@ -55,6 +55,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h"
+#include "Device/kernels/IlluminationAwareKDTree/ApplyPendingLightClusterQUpdates.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootLightClustering.h"
@@ -99,8 +100,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 386
-#define DEBUG_PIXEL_Y 465
+#define DEBUG_PIXEL_X 225
+#define DEBUG_PIXEL_Y 378
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -902,6 +903,9 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	for (unsigned int active_pair_index = 0; active_pair_index < updated_active_guiding_node_count * SurfaceNormalFace_Count; active_pair_index++)
 		IlluminationAwareKDTree_RefineLightClusterings(illumination_aware_kd_tree, light_tree_sg, active_pair_index);
+
+	for (unsigned int active_pair_index = 0; active_pair_index < updated_active_guiding_node_count * SurfaceNormalFace_Count; active_pair_index++)
+		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(illumination_aware_kd_tree, active_pair_index);
 #endif
 }
 

@@ -17,6 +17,9 @@ struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 	unsigned int cluster_slot			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	unsigned int cluster_node_index		= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
+	unsigned int cut_revision		  = 0;
+	unsigned int cut_size_at_sampling = 0;
+
 	// p(c | x)
 	float cluster_probability = 0.0f;
 

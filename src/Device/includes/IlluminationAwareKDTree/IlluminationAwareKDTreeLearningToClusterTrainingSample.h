@@ -17,8 +17,14 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 
 	unsigned int selected_cluster_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-	float cluster_probability			= 0.0f;
-	float light_clustering_contribution = 0.0f;
+	float cluster_probability  = 0.0f;
+	float q_reward			   = 0.0f;
+	float variance_observation = 0.0f;
+
+	unsigned int sampled_light_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
+	unsigned int selected_cluster_slot			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int sampled_cut_revision			= 0;
+	unsigned int sampled_cut_size				= 0;
 
 	unsigned int valid_for_light_clustering = false;
 };
