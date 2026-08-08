@@ -2458,7 +2458,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2639,7 +2639,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3955,6 +3955,29 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::SeparatorText("Neural many lights");
+
+				static int current_tree_cut_size_neural_many_lights =
+					m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights();
+				ImGui::InputInt("Tree cut size##neural_many_lights", &current_tree_cut_size_neural_many_lights);
+				// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
+				current_tree_cut_size_neural_many_lights = hippt::clamp(1, 1024, current_tree_cut_size_neural_many_lights);
+
+				ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier used by the neural many-lights estimator. Changes require "
+												"rebuilding the light-tree data.");
+				if (current_tree_cut_size_neural_many_lights != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights())
+				{
+					ImGui::TreePush("Apply button neural many lights tree cut size");
+
+					if (ImGui::Button("Apply##neural_many_lights_tree_cut_size"))
+					{
+						m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size_neural_many_lights(current_tree_cut_size_neural_many_lights);
+
+						m_renderer->recompute_emissives_sampling_data_structure();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
 			}
 		}
 
@@ -3990,8 +4013,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t final_distribution_bytes = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 			std::size_t per_cell_history_bytes	 = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-												   vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-												   vram_usage.history_per_cell_normal_count;
+												 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+												 vram_usage.history_per_cell_normal_count;
 			std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
 			std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
 			std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
@@ -5666,7 +5689,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

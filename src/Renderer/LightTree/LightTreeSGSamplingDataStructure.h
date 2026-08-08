@@ -38,6 +38,8 @@ public:
 	void set_spatial_lobe_count(int spatial_lobe_count);
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
+	int get_tree_cut_size_neural_many_lights() const;
+	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
 
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;

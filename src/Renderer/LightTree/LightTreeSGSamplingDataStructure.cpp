@@ -87,14 +87,16 @@ void LightTreeSGSamplingDataStructure::free()
 {
 	m_light_tree_sg_device_data.free();
 
-	HIPRTRenderData& render_data							   = m_renderer->get_render_data();
-	render_data.light_tree_sg.nodes							   = nullptr;
-	render_data.light_tree_sg.spatial_lobes					   = nullptr;
-	render_data.light_tree_sg.tree_cut_node_indices			   = nullptr;
-	render_data.light_tree_sg.indices_array					   = nullptr;
-	render_data.light_tree_sg.bit_trails					   = nullptr;
-	render_data.light_tree_sg.settings.spatial_lobe_count	   = 0;
-	render_data.light_tree_sg.settings.effective_tree_cut_size = 0;
+	HIPRTRenderData& render_data												  = m_renderer->get_render_data();
+	render_data.light_tree_sg.nodes												  = nullptr;
+	render_data.light_tree_sg.spatial_lobes										  = nullptr;
+	render_data.light_tree_sg.tree_cut_node_indices								  = nullptr;
+	render_data.light_tree_sg.tree_cut_node_indices_neural_many_lights			  = nullptr;
+	render_data.light_tree_sg.indices_array										  = nullptr;
+	render_data.light_tree_sg.bit_trails										  = nullptr;
+	render_data.light_tree_sg.settings.spatial_lobe_count						  = 0;
+	render_data.light_tree_sg.settings.effective_tree_cut_size					  = 0;
+	render_data.light_tree_sg.settings.effective_tree_cut_size_neural_many_lights = 0;
 }
 
 bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
@@ -137,4 +139,14 @@ int LightTreeSGSamplingDataStructure::get_tree_cut_size() const
 void LightTreeSGSamplingDataStructure::set_tree_cut_size(int tree_cut_size)
 {
 	m_light_tree_builder_sg.set_tree_cut_size(tree_cut_size);
+}
+
+int LightTreeSGSamplingDataStructure::get_tree_cut_size_neural_many_lights() const
+{
+	return m_light_tree_builder_sg.get_tree_cut_size_neural_many_lights();
+}
+
+void LightTreeSGSamplingDataStructure::set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights)
+{
+	m_light_tree_builder_sg.set_tree_cut_size_neural_many_lights(tree_cut_size_neural_many_lights);
 }

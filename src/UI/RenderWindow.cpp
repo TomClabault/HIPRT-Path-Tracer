@@ -32,6 +32,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Move the illumination aware estimator to a sampling technique in the UI, it's more explicit but just keep it as an estimator under the hood for easy code
 //		design
 //
+// Ideas for neural importance sampling many lights:
+//	- Can we cache the 64 cluster SG importance spatially to avoid recomputing them everytime at runtime, use the kd tree for that?
+//
 // Summary of all the learnt NEE distributions issues so far:
 //	- We have dead cells even at light cut size 1
 //	- 1024 cut size is too big to learn, we need to subdivide the cut size adaptively based on the number of samples received by a given cut node
