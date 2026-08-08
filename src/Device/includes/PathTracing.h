@@ -9,6 +9,7 @@
 #include "Device/includes/AABBRasterize.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
@@ -17,6 +18,23 @@
 
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
+
+HIPRT_DEVICE unsigned int illumination_aware_kd_tree_debug_cell_normal_face_key(const HIPRTRenderData& render_data, unsigned int pixel_index)
+{
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+	float3_t shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+
+	// The key identifies one of the six normal-face entries owned by a guiding cell.
+	return guiding_cell_index * static_cast<unsigned int>(SurfaceNormalFace_Count) + normal_face + 1u;
+}
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
 	HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
@@ -283,7 +301,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
 			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
-													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+																	 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
@@ -536,6 +554,58 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 		if (is_cell_outline && guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
+	}
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_NORMAL_SOLID
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		unsigned int cell_normal_face_key = illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, pixel_index);
+
+		if (cell_normal_face_key != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			out_debug_color = ColorRGB32F::random_color(cell_normal_face_key) * (render_data.render_settings.sample_number + 1);
+	}
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_NORMAL_OUTLINE
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		unsigned int cell_normal_face_key = illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, pixel_index);
+		unsigned int image_width		  = render_data.render_settings.render_resolution.x;
+		unsigned int image_height		  = render_data.render_settings.render_resolution.y;
+		unsigned int pixel_x			  = pixel_index % image_width;
+		unsigned int pixel_y			  = pixel_index / image_width;
+		bool is_cell_normal_face_outline  = false;
+
+		if (cell_normal_face_key != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		{
+			if (pixel_x > 0)
+			{
+				unsigned int neighbor_pixel_index = pixel_index - 1;
+				if (illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, neighbor_pixel_index) != cell_normal_face_key)
+					is_cell_normal_face_outline = true;
+			}
+
+			if (pixel_x + 1 < image_width)
+			{
+				unsigned int neighbor_pixel_index = pixel_index + 1;
+				if (illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, neighbor_pixel_index) != cell_normal_face_key)
+					is_cell_normal_face_outline = true;
+			}
+
+			if (pixel_y > 0)
+			{
+				unsigned int neighbor_pixel_index = pixel_index - image_width;
+				if (illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, neighbor_pixel_index) != cell_normal_face_key)
+					is_cell_normal_face_outline = true;
+			}
+
+			if (pixel_y + 1 < image_height)
+			{
+				unsigned int neighbor_pixel_index = pixel_index + image_width;
+				if (illumination_aware_kd_tree_debug_cell_normal_face_key(render_data, neighbor_pixel_index) != cell_normal_face_key)
+					is_cell_normal_face_outline = true;
+			}
+		}
+
+		if (is_cell_normal_face_outline)
+			out_debug_color = ColorRGB32F::random_color(cell_normal_face_key) * (render_data.render_settings.sample_number + 1);
 	}
 #elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
