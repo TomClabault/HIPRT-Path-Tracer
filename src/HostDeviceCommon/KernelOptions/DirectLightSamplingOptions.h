@@ -21,6 +21,7 @@
 #define LSS_LTC_SHADING					 6
 #define LSS_SG_TREE_LEARNT_DISTRIBUTIONS 7
 #define LSS_RESTIR_DI					 8
+#define LSS_NEURAL_MANY_LIGHTS			 9
 
 #define LSS_BASE_UNIFORM		0
 #define LSS_BASE_POWER			1
@@ -101,8 +102,7 @@
  *		Efficient as long as there are not too many lights in the scene and no glossy surfaces
  *
  *  - LSS_BSDF
- *		Samples lights only using a BSDF sample
- *		Efficient as long as light sources in the scene are large
+ *		Samples lights only using a BSDF sample Efficient as long as light sources in the scene are large
  *
  *	- LSS_MIS_LIGHT_BSDF
  *		Samples one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
@@ -126,16 +126,24 @@
  *	- LSS_RESTIR_DI
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
+ *
+ *	- LSS_NEURAL_MANY_LIGHTS
+ *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling
+ *		probabilities on clusters of a lightcut in the spherical gaussian light tree
  */
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#define DirectLightNEEEstimator LSS_NEURAL_MANY_LIGHTS
 #endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 #error "DirectLightNEEEstimator is set to LSS_SG_TREE_LEARNT_DISTRIBUTIONS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
+#endif
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#error "DirectLightNEEEstimator is set to LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
 #endif
 
 /**
