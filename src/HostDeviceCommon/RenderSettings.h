@@ -130,8 +130,8 @@ struct HIPRTRenderSettings
 	unsigned int sample_number = 0;
 	// The inclusive range of samples that should be accumulated into the framebuffer. A range of (0, 0)
 	// is reserved to mean that all samples should be accumulated.
-	int sample_subset_min = 0;
-	int sample_subset_max = 0;
+	int sample_subset_min = 7;
+	int sample_subset_max = 7;
 
 	// How many samples to compute per pixel per frame
 	// Higher values reduce CPU overhead since the GPU spends

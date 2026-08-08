@@ -101,8 +101,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 225
-#define DEBUG_PIXEL_Y 378
+#define DEBUG_PIXEL_X 712
+#define DEBUG_PIXEL_Y 662
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -126,7 +126,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 125
+#define DEBUG_NEIGHBORHOOD_SIZE 100
 
 #define DEBUG_CELL_LEARNING_LOG 1
 
@@ -389,11 +389,11 @@ namespace
 			const IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 			const LightTreeSGNodeDevice& light_node							= light_tree.nodes[node_index];
 			bool can_split													= light_node.triangle_count == 0 && statistics.visit_count > 1u;
-			float split_probability = can_split
-										  ? compute_cluster_split_probability(statistics.get_refinement_variance(), total_variance, statistics.visit_count,
-																			  cluster_data.cut_size, settings.initial_light_cut_size)
-										  : 0.0f;
-			float random_value		= compute_refinement_random_value(location.clustering_index, cluster_data.iteration, node_index);
+			float split_probability											= can_split
+																				  ? compute_cluster_split_probability(statistics.get_refinement_variance(), total_variance, statistics.visit_count,
+																													  cluster_data.cut_size, settings.initial_light_cut_size)
+																				  : 0.0f;
+			float random_value = compute_refinement_random_value(location.clustering_index, cluster_data.iteration, node_index);
 
 			log << "  cut_slot=" << slot << " light_node=" << node_index
 				<< " probability=" << (total_importance > 0.0f ? statistics.estimated_importance_Q / total_importance : 0.0f)
@@ -516,6 +516,7 @@ namespace
 		}
 		log << "Q_REPLAY_PROJECTION_END" << std::endl;
 	}
+
 } // namespace
 #endif
 
@@ -1160,6 +1161,7 @@ void CPURenderer::pre_sample_update(int frame_number)
 void CPURenderer::post_sample_update(int frame_number)
 {
 	m_render_data.render_settings.need_to_reset = false;
+
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render
 
@@ -1300,7 +1302,6 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_RefineLightClusterings(illumination_aware_kd_tree, light_tree_sg, active_pair_index);
 	for (unsigned int active_pair_index = 0; active_pair_index < updated_active_guiding_node_count * SurfaceNormalFace_Count; active_pair_index++)
 		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(illumination_aware_kd_tree, active_pair_index);
-
 #endif
 }
 
@@ -1347,7 +1348,7 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 #if DEBUG_RENDER_NEIGHBORHOOD
 	// Rendering the neighborhood
 
-#pragma omp parallel for schedule(dynamic)
+	// #pragma omp parallel for schedule(dynamic)
 	for (int render_y = std::max(0, center_y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, center_y + DEBUG_NEIGHBORHOOD_SIZE);
 		 render_y++)
 	{
