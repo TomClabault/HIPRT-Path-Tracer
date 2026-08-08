@@ -25,7 +25,8 @@ template <unsigned int InputSizeRaw_,
 		  unsigned int OutputSize_,
 		  unsigned int BlockSize_,
 		  bool UseBiases_							= true,
-		  MLPActivationFunction ActivationFunction_ = MLPActivationFunction::LEAKY_RELU>
+		  MLPActivationFunction ActivationFunction_ = MLPActivationFunction::LEAKY_RELU,
+		  bool UseOutputActivation_					= false>
 struct MLPFullyFusedDevice
 {
 	static constexpr unsigned int INPUT_SIZE			  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
@@ -44,6 +45,7 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
 	static constexpr bool USE_BIASES							= UseBiases_;
 	static constexpr MLPActivationFunction ACTIVATION_FUNCTION	= ActivationFunction_;
+	static constexpr bool USE_OUTPUT_ACTIVATION					= UseOutputActivation_;
 
 	struct OutputLayer
 	{
@@ -199,7 +201,7 @@ struct MLPFullyFusedDevice
 						}
 					}
 
-					// Add the bias and apply the activation function
+					// Add the bias and apply the activation function to hidden layers and optionally the output layer
 					for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
 					{
 						for (int ele = 0; ele < 8; ++ele)
@@ -211,7 +213,10 @@ struct MLPFullyFusedDevice
 							float val = activation_tiles[n_tile][ele * 2];
 							if constexpr (USE_BIASES)
 								val += neurons_biases[layer_neuron_offset + m];
-							val = activation_function(val);
+							if (layer_index < LAYER_COUNT - 1)
+								val = activation_function(val);
+							else if constexpr (USE_OUTPUT_ACTIVATION)
+								val = activation_function(val);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + m][n] = static_cast<fp16>(val);
 						}
@@ -261,7 +266,10 @@ struct MLPFullyFusedDevice
 
 						if constexpr (USE_BIASES)
 							activation += neurons_biases[layer_neuron_offset + neuron_index];
-						activation = activation_function(activation);
+						if (layer_index < LAYER_COUNT - 1)
+							activation = activation_function(activation);
+						else if constexpr (USE_OUTPUT_ACTIVATION)
+							activation = activation_function(activation);
 
 						activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][threadIdx.x] = static_cast<fp16>(activation);
 					}
@@ -351,7 +359,10 @@ struct MLPFullyFusedDevice
 							float val = activation_tiles[n_tile][ele * 2];
 							if constexpr (USE_BIASES)
 								val += neurons_biases[layer_neuron_offset + m];
-							val = activation_function(val);
+							if (layer_index < LAYER_COUNT - 1)
+								val = activation_function(val);
+							else if constexpr (USE_OUTPUT_ACTIVATION)
+								val = activation_function(val);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + m][n]							   = static_cast<fp16>(val);
 							train_activations_global[(sample_offset + n) * NEURON_COUNT + layer_neuron_offset + m] = static_cast<fp16>(val);
@@ -408,7 +419,10 @@ struct MLPFullyFusedDevice
 
 							if constexpr (USE_BIASES)
 								activation += neurons_biases[layer_neuron_offset + neuron_index];
-							activation = activation_function(activation);
+							if (layer_index < LAYER_COUNT - 1)
+								activation = activation_function(activation);
+							else if constexpr (USE_OUTPUT_ACTIVATION)
+								activation = activation_function(activation);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][sample_index] = static_cast<fp16>(activation);
 							train_activations_global[(sample_offset + sample_index) * NEURON_COUNT + layer_neuron_offset + neuron_index] =
@@ -457,8 +471,11 @@ struct MLPFullyFusedDevice
 				unsigned int activation_index = (sample_offset + sample_index) * NEURON_COUNT + output_layer_offset + output_neuron;
 				float output_activation		  = static_cast<float>(train_activations_global[activation_index]);
 				float cost_derivative		  = cost_function_derivative(output_activation, target_output[output_neuron]);
-				float activation_derivative	  = activation_function_derivative(output_activation);
-				error						  = static_cast<fp16>(cost_derivative * activation_derivative);
+
+				if constexpr (USE_OUTPUT_ACTIVATION)
+					error = static_cast<fp16>(cost_derivative * activation_function_derivative(output_activation));
+				else
+					error = static_cast<fp16>(cost_derivative);
 			}
 
 			errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
@@ -629,8 +646,10 @@ struct MLPFullyFusedDevice
 
 			// Gradient of bias
 			float d_cost_d_Oi = cost_function_derivative(output_activation, target_output[neuron_index_in_output_layer]);
-			float d_Oi_d_Zi	  = activation_function_derivative(output_activation);
-			float d_cost_d_Zi = d_cost_d_Oi * d_Oi_d_Zi;
+			float d_cost_d_Zi = d_cost_d_Oi;
+
+			if constexpr (USE_OUTPUT_ACTIVATION)
+				d_cost_d_Zi *= activation_function_derivative(output_activation);
 
 			neurons_errors[current_neuron_data_index] = d_cost_d_Zi;
 			if constexpr (USE_BIASES)

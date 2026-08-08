@@ -158,6 +158,5 @@ void MLPTrainingTestRenderPass::reset(bool reset_by_camera_movement)
 
 bool MLPTrainingTestRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return false;
 	return true;
 }
