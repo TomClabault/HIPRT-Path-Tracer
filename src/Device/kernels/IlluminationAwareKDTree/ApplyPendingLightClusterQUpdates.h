@@ -47,7 +47,7 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
 	unsigned int pending_count											 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
-	unsigned int iteration_budget										 = compute_refinement_sampling_budget(cluster_data, settings);
+	unsigned int iteration_budget = get_light_cluster_iteration_budget(cluster_data, settings);
 	if (pending_count < iteration_budget)
 		return;
 
@@ -67,6 +67,8 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 	}
 
 	cluster_data.iteration++;
+	cluster_data.pending_record_budget = 0u;
+	kd_tree.learning_to_cluster.reservoir_seen_counts[clustering_index] = 0u;
 	kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index] = 0u;
 }
 

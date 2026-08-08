@@ -45,6 +45,8 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t light_cluster_statistics			  = 0;
 	std::size_t pending_light_cluster_records		  = 0;
 	std::size_t pending_light_cluster_record_counts	  = 0;
+	std::size_t reservoir_seen_counts					  = 0;
+	std::size_t reservoir_proposals					  = 0;
 	std::size_t light_clustering_data				  = 0;
 	std::size_t representative_shading_contexts		  = 0;
 	std::size_t representative_shading_context_states = 0;
@@ -56,7 +58,8 @@ struct IlluminationAwareKDTreeVRAMUsage
 			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_count + batch_signatures +
 			   history_signatures + batch_spatial_moments + history_spatial_moments + initial_light_cut_node_indices + normal_clustering_sets +
 			   normal_face_observation_counts + light_cluster_node_indices + light_cluster_statistics + pending_light_cluster_records +
-			   pending_light_cluster_record_counts + light_clustering_data + representative_shading_contexts + representative_shading_context_states;
+			   pending_light_cluster_record_counts + reservoir_seen_counts + reservoir_proposals + light_clustering_data + representative_shading_contexts +
+			   representative_shading_context_states;
 	}
 };
 
@@ -70,6 +73,7 @@ public:
 	static const std::string ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID;
+	static const std::string COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID;
 	static const std::string UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID;
 	static const std::string REFINE_LIGHT_CLUSTERINGS_KERNEL_ID;
 	static const std::string APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID;

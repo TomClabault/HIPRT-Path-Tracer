@@ -62,17 +62,37 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	if (selected_slot == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	unsigned int iteration_budget	  = compute_refinement_sampling_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
-	unsigned int pending_record_index = 0;
-	if (!reserve_pending_light_cluster_record(kd_tree.learning_to_cluster.pending_light_cluster_record_counts + clustering_index, iteration_budget,
-											  pending_record_index))
+	unsigned int iteration_budget = get_light_cluster_iteration_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
+	if (iteration_budget == 0u)
 		return;
 
-	unsigned int record_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride + pending_record_index;
-	IlluminationAwareKDTreePendingLightClusterRecord& pending_record = kd_tree.learning_to_cluster.pending_light_cluster_records[record_offset];
-	pending_record.cluster_node_index								 = sample.selected_cluster_node_index;
-	pending_record.q_reward											 = sample.q_reward;
-	pending_record.variance_observation								 = sample.variance_observation;
+	unsigned int stream_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.reservoir_seen_counts + clustering_index, 1u);
+	unsigned int target_slot  = 0u;
+	bool proposes_replacement = false;
+
+	if (stream_index < iteration_budget)
+	{
+		target_slot			 = stream_index;
+		proposes_replacement = true;
+	}
+	else
+	{
+		unsigned int random_value = pcg_hash(sample_index ^ pcg_hash(clustering_index) ^ pcg_hash(cluster_data.iteration));
+		unsigned int random_slot  = uniform_random_index(random_value, stream_index + 1u);
+		if (random_slot < iteration_budget)
+		{
+			target_slot			 = random_slot;
+			proposes_replacement = true;
+		}
+	}
+
+	if (proposes_replacement)
+	{
+		unsigned int proposal_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride + target_slot;
+		unsigned long long int proposal =
+			((static_cast<unsigned long long int>(stream_index) + 1ull) << 32) | static_cast<unsigned long long int>(sample_index);
+		hippt::atomic_max(kd_tree.learning_to_cluster.reservoir_proposals + proposal_offset, proposal);
+	}
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
 	unsigned int previous_state =

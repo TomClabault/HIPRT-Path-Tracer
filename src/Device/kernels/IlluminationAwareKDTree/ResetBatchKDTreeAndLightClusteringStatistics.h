@@ -30,6 +30,12 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 		*illumination_aware_kd_tree.learning_to_cluster_training_sample_count = 0;
 	}
 
+	unsigned int reservoir_proposal_count =
+		illumination_aware_kd_tree.learning_to_cluster.light_clustering_capacity *
+		illumination_aware_kd_tree.learning_to_cluster.pending_record_stride;
+	if (reset_index < reservoir_proposal_count)
+		illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[reset_index] = 0ull;
+
 	if (reset_index < node_count)
 	{
 		illumination_aware_kd_tree.batch_signatures.reset(reset_index);

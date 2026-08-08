@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_COMMON_KERNELS_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
+#include "Device/includes/Hash.h"
 
 HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
 															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
@@ -17,6 +18,25 @@ HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationA
 	return static_cast<unsigned int>(ceil(multiplier * static_cast<float>(settings.initial_sampling_budget_n0)));
 }
 
+HIPRT_DEVICE unsigned int uniform_random_index(unsigned int random_value, unsigned int exclusive_upper_bound)
+{
+	if (exclusive_upper_bound <= 1u)
+		return 0u;
+
+	unsigned int rejection_threshold = -exclusive_upper_bound % exclusive_upper_bound;
+
+	while (true)
+	{
+		unsigned long long int product = static_cast<unsigned long long int>(random_value) * exclusive_upper_bound;
+		unsigned int low_bits		   = static_cast<unsigned int>(product);
+
+		if (low_bits >= rejection_threshold)
+			return static_cast<unsigned int>(product >> 32);
+
+		random_value = pcg_hash(random_value);
+	}
+}
+
 HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
 {
 	unsigned int time_step = iteration + 1u;
@@ -24,24 +44,14 @@ HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, c
 	return 1.0f / (settings.learning_rate_beta * hippt::intrin_pow(static_cast<float>(time_step), settings.learning_rate_omega));
 }
 
-HIPRT_DEVICE bool reserve_pending_light_cluster_record(AtomicType<unsigned int>* count, unsigned int budget, unsigned int& record_index)
+HIPRT_DEVICE unsigned int get_light_cluster_iteration_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
+															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
 {
-	unsigned int observed_count = *count;
+	if (cluster_data.pending_record_budget > 0u)
+		return hippt::min(cluster_data.pending_record_budget, static_cast<unsigned int>(IlluminationAwareKDTreePendingLightClusterRecordStride));
 
-	while (observed_count < budget)
-	{
-		unsigned int exchanged_count = hippt::atomic_compare_exchange(count, observed_count, observed_count + 1u);
-		if (exchanged_count == observed_count)
-		{
-			record_index = observed_count;
-
-			return true;
-		}
-
-		observed_count = exchanged_count;
-	}
-
-	return false;
+	return hippt::min(compute_refinement_sampling_budget(cluster_data, settings),
+					  static_cast<unsigned int>(IlluminationAwareKDTreePendingLightClusterRecordStride));
 }
 
 HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)

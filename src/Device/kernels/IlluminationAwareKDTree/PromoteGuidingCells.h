@@ -130,6 +130,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
+				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
 			}
 		}
 	}
@@ -168,6 +169,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index] =
 					illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index];
 				illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[right_clustering_index] = 0;
+				illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[right_clustering_index] = 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].pending_record_budget = 0;
 				illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[parent_clustering_index] =
 					IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 				illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[right_clustering_index] =
@@ -228,6 +231,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
+				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
 			}
 		}
 
@@ -257,6 +261,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_data_index] =
 				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index];
 			illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[right_clustering_data_index] = 0;
+			illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[right_clustering_data_index] = 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_data_index].pending_record_budget = 0;
 			illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[parent_clustering_index] =
 				IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 			illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[right_clustering_data_index] =

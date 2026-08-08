@@ -56,6 +56,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/ApplyPendingLightClusterQUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/CommitLightClusterReservoirProposals.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeRootLightClustering.h"
@@ -127,383 +128,395 @@
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 125
 
-#define DEBUG_CELL_LEARNING_LOG 0
+#define DEBUG_CELL_LEARNING_LOG 1
 
 #if DEBUG_CELL_LEARNING_LOG
 namespace
 {
-struct DebugCellLearningLocation
-{
-	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	unsigned int normal_face = SurfaceNormalFace_Count;
-	unsigned int normal_set_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
-	unsigned int clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
-
-	bool valid() const
+	struct DebugCellLearningLocation
 	{
-		return guiding_node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && clustering_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
-	}
-};
+		unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+		unsigned int normal_face		= SurfaceNormalFace_Count;
+		unsigned int normal_set_index	= IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
+		unsigned int clustering_index	= IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
 
-void write_debug_float3(std::ostream& log, const float3_t& value)
-{
-	log << "(" << value.x << "," << value.y << "," << value.z << ")";
-}
+		bool valid() const
+		{
+			return guiding_node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX &&
+				   clustering_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
+		}
+	};
 
-int find_debug_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)
-{
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+	void write_debug_float3(std::ostream& log, const float3_t& value)
 	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		if (kd_tree.learning_to_cluster.light_cluster_node_indices[offset] == cluster_node_index)
-			return static_cast<int>(slot);
+		log << "(" << value.x << "," << value.y << "," << value.z << ")";
 	}
 
-	return -1;
-}
+	int find_debug_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)
+	{
+		const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+		{
+			unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+			if (kd_tree.learning_to_cluster.light_cluster_node_indices[offset] == cluster_node_index)
+				return static_cast<int>(slot);
+		}
 
-DebugCellLearningLocation get_debug_cell_learning_location(const IlluminationAwareKDTreeDevice& kd_tree,
-	const HIPRTRenderData& render_data,
-	unsigned int pixel_index)
-{
-	DebugCellLearningLocation location;
-	unsigned int guiding_node_index = kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
-	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return -1;
+	}
+
+	DebugCellLearningLocation get_debug_cell_learning_location(const IlluminationAwareKDTreeDevice& kd_tree,
+															   const HIPRTRenderData& render_data,
+															   unsigned int pixel_index)
+	{
+		DebugCellLearningLocation location;
+		unsigned int guiding_node_index = kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			return location;
+
+		location.guiding_node_index = guiding_node_index;
+		location.normal_face		= illumination_aware_kd_tree_classify_surface_normal_face(render_data.g_buffer.shading_normals[pixel_index].unpack());
+		location.normal_set_index	= kd_tree.nodes[guiding_node_index].light_clustering_normal_set_index;
+		if (location.normal_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+			location.clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[location.normal_set_index].clustering_indices[location.normal_face];
+
 		return location;
+	}
 
-	location.guiding_node_index = guiding_node_index;
-	location.normal_face = illumination_aware_kd_tree_classify_surface_normal_face(render_data.g_buffer.shading_normals[pixel_index].unpack());
-	location.normal_set_index = kd_tree.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (location.normal_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-		location.clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[location.normal_set_index].clustering_indices[location.normal_face];
-
-	return location;
-}
-
-void write_debug_light_node_summary(std::ostream& log, const LightTreeSGNodeDevice& node, unsigned int node_index)
-{
-	log << "light_node=" << node_index << " emitter_count=" << node.total_emitter_count << " triangle_count=" << node.triangle_count
-		<< " total_power_stored=" << node.total_power << " total_power_integrated=" << node.get_total_power() << " energy_average=" << node.energy_average
-		<< " energy_variance=" << node.energy_variance << " vmf_sharpness=" << node.vmf.sharpness << " vmf_axis=";
-	write_debug_float3(log, node.vmf.axis);
-	log << " orientation_axis=";
-	write_debug_float3(log, node.orientation_axis);
-	log << " orientation_cos_theta=" << node.cos_theta_o << " orientation_sin_theta=" << node.sin_theta_o << " spatial_mean=";
-	write_debug_float3(log, node.gaussian_spatial_mean);
-	log << " bounds_min=";
-	write_debug_float3(log, node.bounds_min);
-	log << " bounds_max=";
-	write_debug_float3(log, node.bounds_max);
-	log << " left_child_or_first_triangle=" << node.left_child_index_or_first_triangle_index << std::endl;
-}
-
-void write_debug_light_tree_inventory(std::ostream& log,
-	const HIPRTRenderData& render_data,
-	const LightTreeSGBuilderDeviceData<std::vector>& light_tree_data,
-	const std::vector<Triangle>& triangles)
-{
-	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
-	log << "LIGHT_TREE_INVENTORY_BEGIN" << std::endl;
-	log << "settings.spatial_lobe_count=" << light_tree.settings.spatial_lobe_count << " settings.effective_tree_cut_size="
-		<< light_tree.settings.effective_tree_cut_size << " settings.effective_second_tree_cut_size=" << light_tree.settings.effective_second_tree_cut_size << std::endl;
-
-	log << "initial_cut=";
-	for (unsigned int index = 0; index < light_tree.settings.effective_second_tree_cut_size; index++)
-		log << " " << light_tree.second_tree_cut_node_indices[index];
-	log << std::endl;
-
-	log << "EMISSIVE_TRIANGLES_BEGIN count=" << render_data.buffers.emissive_triangles_count << std::endl;
-	for (int emissive_index = 0; emissive_index < render_data.buffers.emissive_triangles_count; emissive_index++)
+	void write_debug_light_node_summary(std::ostream& log, const LightTreeSGNodeDevice& node, unsigned int node_index)
 	{
-		int global_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[emissive_index];
-		if (global_triangle_index < 0 || static_cast<size_t>(global_triangle_index) >= triangles.size())
-			continue;
+		log << "light_node=" << node_index << " emitter_count=" << node.total_emitter_count << " triangle_count=" << node.triangle_count
+			<< " total_power_stored=" << node.total_power << " total_power_integrated=" << node.get_total_power() << " energy_average=" << node.energy_average
+			<< " energy_variance=" << node.energy_variance << " vmf_sharpness=" << node.vmf.sharpness << " vmf_axis=";
+		write_debug_float3(log, node.vmf.axis);
+		log << " orientation_axis=";
+		write_debug_float3(log, node.orientation_axis);
+		log << " orientation_cos_theta=" << node.cos_theta_o << " orientation_sin_theta=" << node.sin_theta_o << " spatial_mean=";
+		write_debug_float3(log, node.gaussian_spatial_mean);
+		log << " bounds_min=";
+		write_debug_float3(log, node.bounds_min);
+		log << " bounds_max=";
+		write_debug_float3(log, node.bounds_max);
+		log << " left_child_or_first_triangle=" << node.left_child_index_or_first_triangle_index << std::endl;
+	}
 
-		const Triangle& triangle = triangles[global_triangle_index];
-		float3_t normal = hippt::normalize(hippt::cross(triangle.m_b - triangle.m_a, triangle.m_c - triangle.m_a));
-		log << "emissive_index=" << emissive_index << " global_triangle=" << global_triangle_index << " area=" << triangle.area()
-			<< " average_luminance=" << render_data.buffers.triangles_average_emissive_luminance[global_triangle_index]
-			<< " power_luminance=" << render_data.buffers.triangles_average_emissive_power_luminance[global_triangle_index] << " vertex_a=";
-		write_debug_float3(log, triangle.m_a);
-		log << " vertex_b=";
-		write_debug_float3(log, triangle.m_b);
-		log << " vertex_c=";
-		write_debug_float3(log, triangle.m_c);
-		log << " centroid=";
-		write_debug_float3(log, (triangle.m_a + triangle.m_b + triangle.m_c) / 3.0f);
-		log << " normal=";
-		write_debug_float3(log, normal);
+	void write_debug_light_tree_inventory(std::ostream& log,
+										  const HIPRTRenderData& render_data,
+										  const LightTreeSGBuilderDeviceData<std::vector>& light_tree_data,
+										  const std::vector<Triangle>& triangles)
+	{
+		const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
+		log << "LIGHT_TREE_INVENTORY_BEGIN" << std::endl;
+		log << "settings.spatial_lobe_count=" << light_tree.settings.spatial_lobe_count
+			<< " settings.effective_tree_cut_size=" << light_tree.settings.effective_tree_cut_size
+			<< " settings.effective_second_tree_cut_size=" << light_tree.settings.effective_second_tree_cut_size << std::endl;
+
+		log << "initial_cut=";
+		for (unsigned int index = 0; index < light_tree.settings.effective_second_tree_cut_size; index++)
+			log << " " << light_tree.second_tree_cut_node_indices[index];
+		log << std::endl;
+
+		log << "EMISSIVE_TRIANGLES_BEGIN count=" << render_data.buffers.emissive_triangles_count << std::endl;
+		for (int emissive_index = 0; emissive_index < render_data.buffers.emissive_triangles_count; emissive_index++)
+		{
+			int global_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[emissive_index];
+			if (global_triangle_index < 0 || static_cast<size_t>(global_triangle_index) >= triangles.size())
+				continue;
+
+			const Triangle& triangle = triangles[global_triangle_index];
+			float3_t normal			 = hippt::normalize(hippt::cross(triangle.m_b - triangle.m_a, triangle.m_c - triangle.m_a));
+			log << "emissive_index=" << emissive_index << " global_triangle=" << global_triangle_index << " area=" << triangle.area()
+				<< " average_luminance=" << render_data.buffers.triangles_average_emissive_luminance[global_triangle_index]
+				<< " power_luminance=" << render_data.buffers.triangles_average_emissive_power_luminance[global_triangle_index] << " vertex_a=";
+			write_debug_float3(log, triangle.m_a);
+			log << " vertex_b=";
+			write_debug_float3(log, triangle.m_b);
+			log << " vertex_c=";
+			write_debug_float3(log, triangle.m_c);
+			log << " centroid=";
+			write_debug_float3(log, (triangle.m_a + triangle.m_b + triangle.m_c) / 3.0f);
+			log << " normal=";
+			write_debug_float3(log, normal);
+			log << std::endl;
+		}
+		log << "EMISSIVE_TRIANGLES_END" << std::endl;
+
+		log << "SG_NODES_BEGIN count=" << light_tree_data.nodes_device.size() << std::endl;
+		for (unsigned int node_index = 0; node_index < light_tree_data.nodes_device.size(); node_index++)
+		{
+			const LightTreeSGNodeDevice& node = light_tree_data.nodes_device[node_index];
+			write_debug_light_node_summary(log, node, node_index);
+			if (node.triangle_count == 0)
+				log << "  children left=" << node.left_child_index_or_first_triangle_index << " right=" << node.left_child_index_or_first_triangle_index + 1u
+					<< std::endl;
+
+			for (unsigned int lobe_index = 0; lobe_index < node.spatial_lobe_count; lobe_index++)
+			{
+				const SpatialSGLobeDevice& lobe = light_tree_data.spatial_lobes_device[node_index * node.spatial_lobe_count + lobe_index];
+				log << "  lobe=" << lobe_index << " power=" << lobe.power << " variance=" << lobe.variance << " support_radius=" << lobe.support_radius
+					<< " mean=";
+				write_debug_float3(log, lobe.mean);
+				log << std::endl;
+			}
+
+			if (node.triangle_count > 0)
+			{
+				for (unsigned int triangle_offset = 0; triangle_offset < node.triangle_count; triangle_offset++)
+				{
+					unsigned int indexed_triangle = node.left_child_index_or_first_triangle_index + triangle_offset;
+					int emissive_index			  = light_tree_data.m_device_indices_array_buffer[indexed_triangle];
+					int global_triangle_index	  = render_data.buffers.emissive_triangles_primitive_indices[emissive_index];
+					log << "  leaf_triangle_offset=" << triangle_offset << " emissive_index=" << emissive_index << " global_triangle=" << global_triangle_index
+						<< std::endl;
+				}
+			}
+		}
+		log << "SG_NODES_END" << std::endl;
+		log << "LIGHT_TREE_INVENTORY_END" << std::endl;
+	}
+
+	void write_debug_guiding_node_learning_state(std::ostream& log, const IlluminationAwareKDTreeDevice& kd_tree, const DebugCellLearningLocation& location)
+	{
+		if (location.guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			return;
+
+		const IlluminationAwareKDTreeNode& node								 = kd_tree.nodes[location.guiding_node_index];
+		const IlluminationAwareKDTreeNodeBounds& bounds						 = kd_tree.node_bounds[location.guiding_node_index];
+		const IlluminationAwareKDTreeIlluminationSignature batch_signature	 = kd_tree.batch_signatures.read(location.guiding_node_index);
+		const IlluminationAwareKDTreeIlluminationSignature history_signature = kd_tree.history_signatures.read(location.guiding_node_index);
+		const IlluminationAwareKDTreeSpatialSampleMoments batch_moments		 = kd_tree.batch_spatial_moments.read(location.guiding_node_index);
+		const IlluminationAwareKDTreeSpatialSampleMoments history_moments	 = kd_tree.history_spatial_moments.read(location.guiding_node_index);
+
+		log << "GUIDING_NODE_STATE node=" << location.guiding_node_index << " left_child=" << node.left_child_index
+			<< " flags=" << static_cast<unsigned int>(node.flags) << " split_axis=" << static_cast<unsigned int>(node.split_axis)
+			<< " split_position=" << node.split_position << " normal_set=" << location.normal_set_index << " normal_face=" << location.normal_face
+			<< " clustering=" << location.clustering_index << " bounds_min=";
+		write_debug_float3(log, bounds.minimum);
+		log << " bounds_max=";
+		write_debug_float3(log, bounds.maximum);
+		log << std::endl;
+
+		log << "  batch_signature valid=" << batch_signature.valid_observation_count << " scalar_sum=" << batch_signature.scalar_radiance_sum
+			<< " squared_sum=" << batch_signature.squared_scalar_radiance_sum << " direction_sum=";
+		write_debug_float3(log, batch_signature.weighted_direction_sum);
+		log << std::endl;
+		log << "  history_signature valid=" << history_signature.valid_observation_count << " scalar_sum=" << history_signature.scalar_radiance_sum
+			<< " squared_sum=" << history_signature.squared_scalar_radiance_sum << " direction_sum=";
+		write_debug_float3(log, history_signature.weighted_direction_sum);
+		log << std::endl;
+		log << "  batch_spatial_moments positive_count=" << batch_moments.positive_radiance_sample_count << " position_sum=";
+		write_debug_float3(log, batch_moments.position_sum);
+		log << " position_squared_sum=";
+		write_debug_float3(log, batch_moments.position_squared_sum);
+		log << std::endl;
+		log << "  history_spatial_moments positive_count=" << history_moments.positive_radiance_sample_count << " position_sum=";
+		write_debug_float3(log, history_moments.position_sum);
+		log << " position_squared_sum=";
+		write_debug_float3(log, history_moments.position_squared_sum);
 		log << std::endl;
 	}
-	log << "EMISSIVE_TRIANGLES_END" << std::endl;
 
-	log << "SG_NODES_BEGIN count=" << light_tree_data.nodes_device.size() << std::endl;
-	for (unsigned int node_index = 0; node_index < light_tree_data.nodes_device.size(); node_index++)
+	void write_debug_cluster_state(std::ostream& log,
+								   const IlluminationAwareKDTreeDevice& kd_tree,
+								   const LightTreeSGDevice& light_tree,
+								   const DebugCellLearningLocation& location,
+								   const char* phase)
 	{
-		const LightTreeSGNodeDevice& node = light_tree_data.nodes_device[node_index];
-		write_debug_light_node_summary(log, node, node_index);
-		if (node.triangle_count == 0)
-			log << "  children left=" << node.left_child_index_or_first_triangle_index << " right=" << node.left_child_index_or_first_triangle_index + 1u << std::endl;
-
-		for (unsigned int lobe_index = 0; lobe_index < node.spatial_lobe_count; lobe_index++)
+		if (!location.valid())
 		{
-			const SpatialSGLobeDevice& lobe = light_tree_data.spatial_lobes_device[node_index * node.spatial_lobe_count + lobe_index];
-			log << "  lobe=" << lobe_index << " power=" << lobe.power << " variance=" << lobe.variance << " support_radius=" << lobe.support_radius
-				<< " mean=";
-			write_debug_float3(log, lobe.mean);
+			log << "CLUSTER_STATE phase=" << phase << " invalid_location guiding_node=" << location.guiding_node_index
+				<< " normal_face=" << location.normal_face << " normal_set=" << location.normal_set_index << " clustering=" << location.clustering_index
+				<< std::endl;
+			return;
+		}
+
+		const IlluminationAwareKDTreeLightClusteringData& cluster_data		 = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
+		const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+		const unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
+		const unsigned int budget		 = compute_refinement_sampling_budget(cluster_data, settings);
+		const float learning_rate		 = compute_light_cluster_learning_rate(cluster_data.iteration, settings);
+		const unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[location.clustering_index];
+
+		log << "CLUSTER_STATE phase=" << phase << " guiding_node=" << location.guiding_node_index << " normal_face=" << location.normal_face
+			<< " normal_set=" << location.normal_set_index << " clustering=" << location.clustering_index << " cut_size=" << cluster_data.cut_size
+			<< " cut_revision=" << cluster_data.cut_revision << " iteration=" << cluster_data.iteration
+			<< " last_refinement_iteration=" << cluster_data.last_refinement_iteration << " Q0_initialized=" << cluster_data.Q0_initialized
+			<< " refinement_stopped=" << cluster_data.refinement_stopped << " pending_count=" << pending_count << " budget=" << budget
+			<< " learning_rate=" << learning_rate << " context_state=" << context_state << std::endl;
+		log << "  settings.initial_cut=" << settings.initial_light_cut_size << " settings.maximum_cut=" << settings.maximum_light_cut_size
+			<< " settings.initial_budget_n0=" << settings.initial_sampling_budget_n0 << " settings.learning_rate_beta=" << settings.learning_rate_beta
+			<< " settings.learning_rate_omega=" << settings.learning_rate_omega << " settings.refinement_gamma=" << settings.refinement_stopping_gamma
+			<< std::endl;
+
+		if (context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
+		{
+			const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[location.clustering_index];
+			log << "  representative_context position=";
+			write_debug_float3(log, context.position);
+			log << " shading_normal=";
+			write_debug_float3(log, context.shading_normal);
+			log << " view_direction=";
+			write_debug_float3(log, context.view_direction);
+			log << " sg_specular_weight=" << context.sg_specular_weight << " alpha_x=" << context.alpha_x << " alpha_y=" << context.alpha_y << std::endl;
+		}
+
+		if (location.normal_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+		{
+			log << "  normal_face_observation_counts";
+			for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
+			{
+				unsigned int observation_offset = kd_tree.learning_to_cluster.get_normal_face_observation_offset(location.normal_set_index, normal_face);
+				log << " face" << normal_face << "=" << kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset];
+			}
 			log << std::endl;
 		}
 
-		if (node.triangle_count > 0)
+		float total_variance   = 0.0f;
+		float total_importance = 0.0f;
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
 		{
-			for (unsigned int triangle_offset = 0; triangle_offset < node.triangle_count; triangle_offset++)
+			unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
+			const IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+			total_variance += statistics.get_refinement_variance();
+			total_importance += statistics.estimated_importance_Q;
+		}
+		log << "  cut_totals total_variance=" << total_variance << " total_Q=" << total_importance << std::endl;
+
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+		{
+			unsigned int offset		= kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
+			unsigned int node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
+			const IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+			const LightTreeSGNodeDevice& light_node							= light_tree.nodes[node_index];
+			bool can_split													= light_node.triangle_count == 0 && statistics.visit_count > 1u;
+			float split_probability = can_split
+										  ? compute_cluster_split_probability(statistics.get_refinement_variance(), total_variance, statistics.visit_count,
+																			  cluster_data.cut_size, settings.initial_light_cut_size)
+										  : 0.0f;
+			float random_value		= compute_refinement_random_value(location.clustering_index, cluster_data.iteration, node_index);
+
+			log << "  cut_slot=" << slot << " light_node=" << node_index
+				<< " probability=" << (total_importance > 0.0f ? statistics.estimated_importance_Q / total_importance : 0.0f)
+				<< " Q=" << statistics.estimated_importance_Q << " mean=" << statistics.mean << " M2=" << statistics.M2 << " visits=" << statistics.visit_count
+				<< " variance=" << statistics.get_refinement_variance() << " can_split=" << can_split << " split_probability=" << split_probability
+				<< " refinement_random=" << random_value << std::endl;
+			log << "    ";
+			write_debug_light_node_summary(log, light_node, node_index);
+
+			if (context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY && light_node.triangle_count == 0)
 			{
-				unsigned int indexed_triangle = node.left_child_index_or_first_triangle_index + triangle_offset;
-				int emissive_index = light_tree_data.m_device_indices_array_buffer[indexed_triangle];
-				int global_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[emissive_index];
-				log << "  leaf_triangle_offset=" << triangle_offset << " emissive_index=" << emissive_index << " global_triangle=" << global_triangle_index << std::endl;
+				const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[location.clustering_index];
+				unsigned int left_child_index						   = light_node.left_child_index_or_first_triangle_index;
+				unsigned int right_child_index						   = left_child_index + 1u;
+				float left_importance								   = light_clustering_node_importance_for_refinement(light_tree, left_child_index, context);
+				float right_importance = light_clustering_node_importance_for_refinement(light_tree, right_child_index, context);
+				log << "    child_importance left_node=" << left_child_index << " left=" << left_importance << " right_node=" << right_child_index
+					<< " right=" << right_importance << std::endl;
 			}
 		}
 	}
-	log << "SG_NODES_END" << std::endl;
-	log << "LIGHT_TREE_INVENTORY_END" << std::endl;
-}
 
-void write_debug_guiding_node_learning_state(std::ostream& log, const IlluminationAwareKDTreeDevice& kd_tree, const DebugCellLearningLocation& location)
-{
-	if (location.guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return;
-
-	const IlluminationAwareKDTreeNode& node = kd_tree.nodes[location.guiding_node_index];
-	const IlluminationAwareKDTreeNodeBounds& bounds = kd_tree.node_bounds[location.guiding_node_index];
-	const IlluminationAwareKDTreeIlluminationSignature batch_signature = kd_tree.batch_signatures.read(location.guiding_node_index);
-	const IlluminationAwareKDTreeIlluminationSignature history_signature = kd_tree.history_signatures.read(location.guiding_node_index);
-	const IlluminationAwareKDTreeSpatialSampleMoments batch_moments = kd_tree.batch_spatial_moments.read(location.guiding_node_index);
-	const IlluminationAwareKDTreeSpatialSampleMoments history_moments = kd_tree.history_spatial_moments.read(location.guiding_node_index);
-
-	log << "GUIDING_NODE_STATE node=" << location.guiding_node_index << " left_child=" << node.left_child_index << " flags=" << static_cast<unsigned int>(node.flags)
-		<< " split_axis=" << static_cast<unsigned int>(node.split_axis) << " split_position=" << node.split_position << " normal_set=" << location.normal_set_index
-		<< " normal_face=" << location.normal_face << " clustering=" << location.clustering_index << " bounds_min=";
-	write_debug_float3(log, bounds.minimum);
-	log << " bounds_max=";
-	write_debug_float3(log, bounds.maximum);
-	log << std::endl;
-
-	log << "  batch_signature valid=" << batch_signature.valid_observation_count << " scalar_sum=" << batch_signature.scalar_radiance_sum
-		<< " squared_sum=" << batch_signature.squared_scalar_radiance_sum << " direction_sum=";
-	write_debug_float3(log, batch_signature.weighted_direction_sum);
-	log << std::endl;
-	log << "  history_signature valid=" << history_signature.valid_observation_count << " scalar_sum=" << history_signature.scalar_radiance_sum
-		<< " squared_sum=" << history_signature.squared_scalar_radiance_sum << " direction_sum=";
-	write_debug_float3(log, history_signature.weighted_direction_sum);
-	log << std::endl;
-	log << "  batch_spatial_moments positive_count=" << batch_moments.positive_radiance_sample_count << " position_sum=";
-	write_debug_float3(log, batch_moments.position_sum);
-	log << " position_squared_sum=";
-	write_debug_float3(log, batch_moments.position_squared_sum);
-	log << std::endl;
-	log << "  history_spatial_moments positive_count=" << history_moments.positive_radiance_sample_count << " position_sum=";
-	write_debug_float3(log, history_moments.position_sum);
-	log << " position_squared_sum=";
-	write_debug_float3(log, history_moments.position_squared_sum);
-	log << std::endl;
-}
-
-void write_debug_cluster_state(std::ostream& log,
-	const IlluminationAwareKDTreeDevice& kd_tree,
-	const LightTreeSGDevice& light_tree,
-	const DebugCellLearningLocation& location,
-	const char* phase)
-{
-	if (!location.valid())
+	void write_debug_staging_samples(std::ostream& log,
+									 const IlluminationAwareKDTreeDevice& kd_tree,
+									 unsigned int sample_count,
+									 const DebugCellLearningLocation& location)
 	{
-		log << "CLUSTER_STATE phase=" << phase << " invalid_location guiding_node=" << location.guiding_node_index << " normal_face=" << location.normal_face
-			<< " normal_set=" << location.normal_set_index << " clustering=" << location.clustering_index << std::endl;
-		return;
-	}
+		if (location.guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			return;
 
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
-	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
-	const unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
-	const unsigned int budget = compute_refinement_sampling_budget(cluster_data, settings);
-	const float learning_rate = compute_light_cluster_learning_rate(cluster_data.iteration, settings);
-	const unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[location.clustering_index];
-
-	log << "CLUSTER_STATE phase=" << phase << " guiding_node=" << location.guiding_node_index << " normal_face=" << location.normal_face
-		<< " normal_set=" << location.normal_set_index << " clustering=" << location.clustering_index << " cut_size=" << cluster_data.cut_size
-		<< " cut_revision=" << cluster_data.cut_revision << " iteration=" << cluster_data.iteration << " last_refinement_iteration="
-		<< cluster_data.last_refinement_iteration << " Q0_initialized=" << cluster_data.Q0_initialized << " refinement_stopped=" << cluster_data.refinement_stopped
-		<< " pending_count=" << pending_count << " budget=" << budget << " learning_rate=" << learning_rate << " context_state=" << context_state << std::endl;
-	log << "  settings.initial_cut=" << settings.initial_light_cut_size << " settings.maximum_cut=" << settings.maximum_light_cut_size
-		<< " settings.initial_budget_n0=" << settings.initial_sampling_budget_n0 << " settings.learning_rate_beta=" << settings.learning_rate_beta
-		<< " settings.learning_rate_omega=" << settings.learning_rate_omega << " settings.refinement_gamma=" << settings.refinement_stopping_gamma << std::endl;
-
-	if (context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
-	{
-		const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[location.clustering_index];
-		log << "  representative_context position=";
-		write_debug_float3(log, context.position);
-		log << " shading_normal=";
-		write_debug_float3(log, context.shading_normal);
-		log << " view_direction=";
-		write_debug_float3(log, context.view_direction);
-		log << " sg_specular_weight=" << context.sg_specular_weight << " alpha_x=" << context.alpha_x << " alpha_y=" << context.alpha_y << std::endl;
-	}
-
-	if (location.normal_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-	{
-		log << "  normal_face_observation_counts";
-		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
+		unsigned int bounded_sample_count = std::min(sample_count, kd_tree.learning_to_cluster_training_sample_capacity);
+		unsigned int matched_count		  = 0;
+		unsigned int valid_count		  = 0;
+		log << "STAGING_SAMPLES_BEGIN target_node=" << location.guiding_node_index << " target_face=" << location.normal_face
+			<< " target_clustering=" << location.clustering_index << " total_buffered=" << sample_count << " bounded_count=" << bounded_sample_count
+			<< std::endl;
+		for (unsigned int sample_index = 0; sample_index < bounded_sample_count; sample_index++)
 		{
-			unsigned int observation_offset = kd_tree.learning_to_cluster.get_normal_face_observation_offset(location.normal_set_index, normal_face);
-			log << " face" << normal_face << "=" << kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset];
+			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster_training_samples[sample_index];
+			if (kd_tree.find_guiding_cell(sample.position) != location.guiding_node_index ||
+				illumination_aware_kd_tree_classify_surface_normal_face(sample.shading_context.shading_normal) != location.normal_face)
+				continue;
+
+			matched_count++;
+			valid_count += sample.valid_for_light_clustering ? 1u : 0u;
+			log << "staging_index=" << sample_index << " position=";
+			write_debug_float3(log, sample.position);
+			log << " shading_normal=";
+			write_debug_float3(log, sample.shading_context.shading_normal);
+			log << " view_direction=";
+			write_debug_float3(log, sample.shading_context.view_direction);
+			log << " selected_node=" << sample.selected_cluster_node_index << " cluster_probability=" << sample.cluster_probability
+				<< " q_reward=" << sample.q_reward << " variance_observation=" << sample.variance_observation
+				<< " sampled_clustering=" << sample.sampled_light_clustering_index << " selected_slot=" << sample.selected_cluster_slot
+				<< " sampled_cut_revision=" << sample.sampled_cut_revision << " sampled_cut_size=" << sample.sampled_cut_size
+				<< " valid_for_learning=" << sample.valid_for_light_clustering << std::endl;
 		}
-		log << std::endl;
+		log << "STAGING_SAMPLES_END matched_count=" << matched_count << " valid_count=" << valid_count << std::endl;
 	}
 
-	float total_variance = 0.0f;
-	float total_importance = 0.0f;
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+	void write_debug_pending_records(std::ostream& log,
+									 const IlluminationAwareKDTreeDevice& kd_tree,
+									 const DebugCellLearningLocation& location,
+									 const char* phase)
 	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
-		const IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		total_variance += statistics.get_refinement_variance();
-		total_importance += statistics.estimated_importance_Q;
-	}
-	log << "  cut_totals total_variance=" << total_variance << " total_Q=" << total_importance << std::endl;
+		if (location.clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+			return;
 
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
-	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
-		unsigned int node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
-		const IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		const LightTreeSGNodeDevice& light_node = light_tree.nodes[node_index];
-		bool can_split = light_node.triangle_count == 0 && statistics.visit_count > 1u;
-		float split_probability = can_split
-			? compute_cluster_split_probability(statistics.get_refinement_variance(), total_variance, statistics.visit_count, cluster_data.cut_size, settings.initial_light_cut_size)
-			: 0.0f;
-		float random_value = compute_refinement_random_value(location.clustering_index, cluster_data.iteration, node_index);
-
-		log << "  cut_slot=" << slot << " light_node=" << node_index << " probability="
-			<< (total_importance > 0.0f ? statistics.estimated_importance_Q / total_importance : 0.0f) << " Q=" << statistics.estimated_importance_Q
-			<< " mean=" << statistics.mean << " M2=" << statistics.M2 << " visits=" << statistics.visit_count
-			<< " variance=" << statistics.get_refinement_variance() << " can_split=" << can_split << " split_probability=" << split_probability
-			<< " refinement_random=" << random_value << std::endl;
-		log << "    ";
-		write_debug_light_node_summary(log, light_node, node_index);
-
-		if (context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY && light_node.triangle_count == 0)
+		const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
+		unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
+		unsigned int budget		   = compute_refinement_sampling_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
+		unsigned int base_offset   = location.clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+		log << "PENDING_RECORDS_BEGIN phase=" << phase << " clustering=" << location.clustering_index << " count=" << pending_count << " budget=" << budget
+			<< " stride=" << kd_tree.learning_to_cluster.pending_record_stride << std::endl;
+		for (unsigned int record_index = 0; record_index < pending_count; record_index++)
 		{
-			const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[location.clustering_index];
-			unsigned int left_child_index = light_node.left_child_index_or_first_triangle_index;
-			unsigned int right_child_index = left_child_index + 1u;
-			float left_importance = light_clustering_node_importance_for_refinement(light_tree, left_child_index, context);
-			float right_importance = light_clustering_node_importance_for_refinement(light_tree, right_child_index, context);
-			log << "    child_importance left_node=" << left_child_index << " left=" << left_importance << " right_node=" << right_child_index << " right="
-				<< right_importance << std::endl;
+			const IlluminationAwareKDTreePendingLightClusterRecord& record =
+				kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+			int slot = find_debug_light_cluster_slot(kd_tree, location.clustering_index, record.cluster_node_index);
+			log << "record_index=" << record_index << " node=" << record.cluster_node_index << " q_reward=" << record.q_reward
+				<< " variance_observation=" << record.variance_observation << " current_slot=" << slot << std::endl;
 		}
-	}
-}
-
-void write_debug_staging_samples(std::ostream& log,
-	const IlluminationAwareKDTreeDevice& kd_tree,
-	unsigned int sample_count,
-	const DebugCellLearningLocation& location)
-{
-	if (location.guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return;
-
-	unsigned int bounded_sample_count = std::min(sample_count, kd_tree.learning_to_cluster_training_sample_capacity);
-	unsigned int matched_count = 0;
-	unsigned int valid_count = 0;
-	log << "STAGING_SAMPLES_BEGIN target_node=" << location.guiding_node_index << " target_face=" << location.normal_face << " target_clustering="
-		<< location.clustering_index << " total_buffered=" << sample_count << " bounded_count=" << bounded_sample_count << std::endl;
-	for (unsigned int sample_index = 0; sample_index < bounded_sample_count; sample_index++)
-	{
-		const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster_training_samples[sample_index];
-		if (kd_tree.find_guiding_cell(sample.position) != location.guiding_node_index ||
-			illumination_aware_kd_tree_classify_surface_normal_face(sample.shading_context.shading_normal) != location.normal_face)
-			continue;
-
-		matched_count++;
-		valid_count += sample.valid_for_light_clustering ? 1u : 0u;
-		log << "staging_index=" << sample_index << " position=";
-		write_debug_float3(log, sample.position);
-		log << " shading_normal=";
-		write_debug_float3(log, sample.shading_context.shading_normal);
-		log << " view_direction=";
-		write_debug_float3(log, sample.shading_context.view_direction);
-		log << " selected_node=" << sample.selected_cluster_node_index << " cluster_probability=" << sample.cluster_probability
-			<< " q_reward=" << sample.q_reward << " variance_observation=" << sample.variance_observation
-			<< " sampled_clustering=" << sample.sampled_light_clustering_index << " selected_slot=" << sample.selected_cluster_slot
-			<< " sampled_cut_revision=" << sample.sampled_cut_revision << " sampled_cut_size=" << sample.sampled_cut_size
-			<< " valid_for_learning=" << sample.valid_for_light_clustering << std::endl;
-	}
-	log << "STAGING_SAMPLES_END matched_count=" << matched_count << " valid_count=" << valid_count << std::endl;
-}
-
-void write_debug_pending_records(std::ostream& log,
-	const IlluminationAwareKDTreeDevice& kd_tree,
-	const DebugCellLearningLocation& location,
-	const char* phase)
-{
-	if (location.clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-		return;
-
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
-	unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
-	unsigned int budget = compute_refinement_sampling_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
-	unsigned int base_offset = location.clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
-	log << "PENDING_RECORDS_BEGIN phase=" << phase << " clustering=" << location.clustering_index << " count=" << pending_count << " budget=" << budget
-		<< " stride=" << kd_tree.learning_to_cluster.pending_record_stride << std::endl;
-	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
-	{
-		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
-		int slot = find_debug_light_cluster_slot(kd_tree, location.clustering_index, record.cluster_node_index);
-		log << "record_index=" << record_index << " node=" << record.cluster_node_index << " q_reward=" << record.q_reward
-			<< " variance_observation=" << record.variance_observation << " current_slot=" << slot << std::endl;
-	}
-	log << "PENDING_RECORDS_END" << std::endl;
-}
-
-void write_debug_q_replay_projection(std::ostream& log, const IlluminationAwareKDTreeDevice& kd_tree, const DebugCellLearningLocation& location)
-{
-	if (location.clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-		return;
-
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
-	unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
-	float learning_rate = compute_light_cluster_learning_rate(cluster_data.iteration, kd_tree.learning_to_cluster.user_settings);
-	float expected_q[IlluminationAwareKDTreeMaximumLightCutSize] = {};
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
-	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
-		expected_q[slot] = kd_tree.learning_to_cluster.light_cluster_statistics[offset].estimated_importance_Q;
+		log << "PENDING_RECORDS_END" << std::endl;
 	}
 
-	unsigned int base_offset = location.clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
-	log << "Q_REPLAY_PROJECTION_BEGIN clustering=" << location.clustering_index << " iteration=" << cluster_data.iteration << " learning_rate=" << learning_rate
-		<< " record_count=" << pending_count << std::endl;
-	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+	void write_debug_q_replay_projection(std::ostream& log, const IlluminationAwareKDTreeDevice& kd_tree, const DebugCellLearningLocation& location)
 	{
-		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
-		int slot = find_debug_light_cluster_slot(kd_tree, location.clustering_index, record.cluster_node_index);
-		if (slot < 0)
+		if (location.clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+			return;
+
+		const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[location.clustering_index];
+		unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[location.clustering_index];
+		float learning_rate		   = compute_light_cluster_learning_rate(cluster_data.iteration, kd_tree.learning_to_cluster.user_settings);
+		float expected_q[IlluminationAwareKDTreeMaximumLightCutSize] = {};
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
 		{
-			log << "replay_record=" << record_index << " node=" << record.cluster_node_index << " skipped_parent_not_in_current_cut=1" << std::endl;
-			continue;
+			unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(location.clustering_index, slot);
+			expected_q[slot]	= kd_tree.learning_to_cluster.light_cluster_statistics[offset].estimated_importance_Q;
 		}
 
-		float before = expected_q[slot];
-		float after = (1.0f - learning_rate) * before + learning_rate * record.q_reward;
-		expected_q[slot] = after;
-		log << "replay_record=" << record_index << " node=" << record.cluster_node_index << " slot=" << slot << " q_before=" << before
-			<< " q_reward=" << record.q_reward << " q_expected_after=" << after << std::endl;
+		unsigned int base_offset = location.clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+		log << "Q_REPLAY_PROJECTION_BEGIN clustering=" << location.clustering_index << " iteration=" << cluster_data.iteration
+			<< " learning_rate=" << learning_rate << " record_count=" << pending_count << std::endl;
+		for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+		{
+			const IlluminationAwareKDTreePendingLightClusterRecord& record =
+				kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+			int slot = find_debug_light_cluster_slot(kd_tree, location.clustering_index, record.cluster_node_index);
+			if (slot < 0)
+			{
+				log << "replay_record=" << record_index << " node=" << record.cluster_node_index << " skipped_parent_not_in_current_cut=1" << std::endl;
+				continue;
+			}
+
+			float before	 = expected_q[slot];
+			float after		 = (1.0f - learning_rate) * before + learning_rate * record.q_reward;
+			expected_q[slot] = after;
+			log << "replay_record=" << record_index << " node=" << record.cluster_node_index << " slot=" << slot << " q_before=" << before
+				<< " q_reward=" << record.q_reward << " q_expected_after=" << after << std::endl;
+		}
+		log << "Q_REPLAY_PROJECTION_END" << std::endl;
 	}
-	log << "Q_REPLAY_PROJECTION_END" << std::endl;
-}
-}
+} // namespace
 #endif
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
@@ -1107,6 +1120,8 @@ void CPURenderer::pre_sample_update(int frame_number)
 	unsigned int node_count									 = *illumination_aware_kd_tree.node_count;
 	unsigned int light_clustering_count						 = *illumination_aware_kd_tree.learning_to_cluster.light_clustering_count;
 	unsigned int reset_thread_count							 = std::max(node_count, light_clustering_count);
+	unsigned int reservoir_proposal_count					 = light_clustering_count * illumination_aware_kd_tree.learning_to_cluster.pending_record_stride;
+	reset_thread_count										 = std::max(reset_thread_count, reservoir_proposal_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
 		IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(illumination_aware_kd_tree, reset_index);
 
@@ -1274,6 +1289,9 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(illumination_aware_kd_tree, sample_index);
+	unsigned int allocated_light_clustering_count = *illumination_aware_kd_tree.learning_to_cluster.light_clustering_count;
+	for (unsigned int clustering_index = 0; clustering_index < allocated_light_clustering_count; clustering_index++)
+		IlluminationAwareKDTree_CommitLightClusterReservoirProposals(illumination_aware_kd_tree, clustering_index);
 	const unsigned int updated_active_guiding_node_count = illumination_aware_kd_tree.active_guiding_node_count->load();
 	LightTreeSGDevice light_tree_sg						 = m_render_data.light_tree_sg;
 	for (unsigned int active_pair_index = 0; active_pair_index < updated_active_guiding_node_count * SurfaceNormalFace_Count; active_pair_index++)

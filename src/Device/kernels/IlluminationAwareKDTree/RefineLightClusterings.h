@@ -127,8 +127,8 @@ HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTre
 		return false;
 	}
 
-	unsigned int sampling_budget = compute_refinement_sampling_budget(cluster_data, settings);
-	unsigned int pending_count	 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
+	unsigned int sampling_budget = get_light_cluster_iteration_budget(cluster_data, settings);
+	unsigned int pending_count = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
 	if (pending_count < sampling_budget)
 		return false;
 

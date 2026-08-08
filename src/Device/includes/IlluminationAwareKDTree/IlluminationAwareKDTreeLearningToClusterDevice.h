@@ -55,6 +55,9 @@ struct IlluminationAwareKDTreeLightClusteringData
 
 	// Incremented only when the light cut is modified
 	unsigned int cut_revision = 0;
+
+	// Budget of the currently pending learning iteration
+	unsigned int pending_record_budget = 0;
 };
 
 struct IlluminationAwareKDTreeSGShadingContext
@@ -109,6 +112,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	IlluminationAwareKDTreeLightClusteringData* light_clustering_data				= nullptr;
 	IlluminationAwareKDTreePendingLightClusterRecord* pending_light_cluster_records = nullptr;
 	AtomicType<unsigned int>* pending_light_cluster_record_counts					= nullptr;
+	AtomicType<unsigned int>* reservoir_seen_counts									= nullptr;
+	AtomicType<unsigned long long int>* reservoir_proposals							= nullptr;
 	unsigned int pending_record_stride												= 0;
 
 	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
