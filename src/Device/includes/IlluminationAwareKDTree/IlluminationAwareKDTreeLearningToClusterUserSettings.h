@@ -15,8 +15,8 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	float learning_rate_beta  = 4.0f;
 	float learning_rate_omega = 6.0f / 7.0f;
 
-	unsigned int initial_sampling_budget_n0 = 4;
-	unsigned int refinement_stopping_gamma	= 128;
+	int initial_sampling_budget_n0		   = 16;
+	unsigned int refinement_stopping_gamma = 128;
 
 	bool enable_light_cut_refinement = true;
 };

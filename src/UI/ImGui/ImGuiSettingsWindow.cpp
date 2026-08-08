@@ -3967,16 +3967,15 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 														vram_usage.light_clustering_count + vram_usage.normal_clustering_set_count +
 														vram_usage.current_frontier + vram_usage.current_frontier_count + vram_usage.next_frontier +
 														vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count +
-												vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
+			std::size_t training_buffer_bytes		  = vram_usage.training_samples + vram_usage.training_sample_count +
+														vram_usage.learning_to_cluster_training_samples + vram_usage.learning_to_cluster_training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
-			std::size_t light_clustering_buffers_bytes = vram_usage.initial_light_cut_node_indices + vram_usage.normal_clustering_sets +
-														 vram_usage.normal_face_observation_counts + vram_usage.light_cluster_node_indices +
-																 vram_usage.light_cluster_statistics + vram_usage.pending_light_cluster_records +
-																 vram_usage.light_clustering_data + vram_usage.pending_light_cluster_record_counts + vram_usage.reservoir_seen_counts +
-																 vram_usage.reservoir_proposals +
-														 vram_usage.representative_shading_contexts + vram_usage.representative_shading_context_states;
+			std::size_t light_clustering_buffers_bytes =
+				vram_usage.initial_light_cut_node_indices + vram_usage.normal_clustering_sets + vram_usage.normal_face_observation_counts +
+				vram_usage.light_cluster_node_indices + vram_usage.light_cluster_statistics + vram_usage.pending_light_cluster_records +
+				vram_usage.light_clustering_data + vram_usage.pending_light_cluster_record_counts + vram_usage.reservoir_seen_counts +
+				vram_usage.reservoir_proposals + vram_usage.representative_shading_contexts + vram_usage.representative_shading_context_states;
 
 			std::vector<char> illumination_aware_vram_tooltip_buffer(4096);
 			snprintf(illumination_aware_vram_tooltip_buffer.data(), illumination_aware_vram_tooltip_buffer.size(),
@@ -4007,11 +4006,11 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 "    - Normal-face observation counts: %.3fMB\n"
 					 "    - Light cluster node indices: %.3fMB\n"
 					 "    - Light cluster statistics: %.3fMB\n"
-																 "    - Pending light cluster records: %.3fMB\n"
-																 "    - Reservoir seen counts: %.3fMB\n"
-																 "    - Reservoir proposals: %.3fMB\n"
-																 "    - Light clustering data: %.3fMB\n"
-																 "    - Pending record counts: %.3fMB\n"
+					 "    - Pending light cluster records: %.3fMB\n"
+					 "    - Reservoir seen counts: %.3fMB\n"
+					 "    - Reservoir proposals: %.3fMB\n"
+					 "    - Light clustering data: %.3fMB\n"
+					 "    - Pending record counts: %.3fMB\n"
 					 "    - Representative shading contexts: %.3fMB\n"
 					 "    - Representative shading context states: %.3fMB\n",
 					 node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
@@ -4026,9 +4025,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					 light_clustering_buffers_bytes / 1000000.0f, vram_usage.initial_light_cut_node_indices / 1000000.0f,
 					 vram_usage.normal_clustering_sets / 1000000.0f, vram_usage.normal_face_observation_counts / 1000000.0f,
 					 vram_usage.light_cluster_node_indices / 1000000.0f, vram_usage.light_cluster_statistics / 1000000.0f,
-																 vram_usage.pending_light_cluster_records / 1000000.0f, vram_usage.reservoir_seen_counts / 1000000.0f,
-																 vram_usage.reservoir_proposals / 1000000.0f, vram_usage.light_clustering_data / 1000000.0f,
-																 vram_usage.pending_light_cluster_record_counts / 1000000.0f, vram_usage.representative_shading_contexts / 1000000.0f,
+					 vram_usage.pending_light_cluster_records / 1000000.0f, vram_usage.reservoir_seen_counts / 1000000.0f,
+					 vram_usage.reservoir_proposals / 1000000.0f, vram_usage.light_clustering_data / 1000000.0f,
+					 vram_usage.pending_light_cluster_record_counts / 1000000.0f, vram_usage.representative_shading_contexts / 1000000.0f,
 					 vram_usage.representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
 
@@ -4134,6 +4133,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					current_initial_light_cut_size =
 						hippt::clamp(1, static_cast<int>(light_clustering_settings.maximum_light_cut_size), current_initial_light_cut_size);
 					light_clustering_settings.initial_light_cut_size = static_cast<unsigned int>(current_initial_light_cut_size);
+
 					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
 
 					m_renderer->recompute_emissives_sampling_data_structure();
@@ -4142,6 +4142,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 				ImGui::TreePop();
 			}
+
+			if (ImGui::SliderInt("Initial sampling budget", &light_clustering_settings.initial_sampling_budget_n0, 4, 32))
+				m_render_window->set_render_dirty(true);
 
 			int maximum_light_cut_size = static_cast<int>(light_clustering_settings.maximum_light_cut_size);
 			if (ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, static_cast<int>(light_clustering_settings.initial_light_cut_size),
