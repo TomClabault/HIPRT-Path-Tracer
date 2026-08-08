@@ -102,7 +102,17 @@ struct MLPDataHost
 				}
 			}
 		}
+
 		m_mlp_data.template upload_to_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>(weights);
+
+		std::vector<GenericFP16Type<DataContainer>> weights_fp16(weights.size());
+		for (size_t i = 0; i < weights.size(); i++)
+			if constexpr (std::is_same_v<GenericFP16Type<DataContainer>, float>)
+				weights_fp16[i] = weights[i];
+			else
+				weights_fp16[i] = hippt::fp32_to_fp16_bits(weights[i]);
+
+		m_mlp_data.template upload_to_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>(weights_fp16);
 
 		// Adam state initialized to 0
 		m_mlp_data.template memset_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>(0.0f);
