@@ -201,7 +201,7 @@ namespace hippt
 	}
 
 	template <typename T>
-	__device__ static T max(T a, T b)
+	__device__ static constexpr T max(T a, T b)
 	{
 		return a > b ? a : b;
 	}

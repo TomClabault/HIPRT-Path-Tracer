@@ -36,8 +36,8 @@ __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
 
 	float target_color[3] = { texture[pi + 0] / 255.0f, texture[pi + 1] / 255.0f, texture[pi + 2] / 255.0f };
 
-	__shared__ fp16 activations_buffer[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
-	__shared__ fp16 errors_buffer[TrainingTestMLP::HIDDEN_LAYER_SIZE * 2][TrainingTestMLP::BLOCK_SIZE];
+	__shared__ fp16 activations_buffer[TrainingTestMLP::ACTIVATION_WIDTH * 2][TrainingTestMLP::BLOCK_SIZE];
+	__shared__ fp16 errors_buffer[TrainingTestMLP::ACTIVATION_WIDTH * 2][TrainingTestMLP::BLOCK_SIZE];
 
 	TrainingTestMLP::InputLayer input = { { uv[0], uv[1] } };
 	mlp.encode_input(input.input, activations_buffer);

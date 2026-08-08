@@ -43,6 +43,7 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int HIDDEN_LAYER_SIZE				= HiddenLayerSize_;
 	static constexpr unsigned int OUTPUT_SIZE					= OutputSize_;
 	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
+	static constexpr unsigned int ACTIVATION_WIDTH				= hippt::max(INPUT_SIZE, hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA));
 	static constexpr bool USE_BIASES							= UseBiases_;
 	static constexpr MLPActivationFunction ACTIVATION_FUNCTION	= ActivationFunction_;
 	static constexpr bool USE_OUTPUT_ACTIVATION					= UseOutputActivation_;
@@ -80,7 +81,7 @@ struct MLPFullyFusedDevice
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[HiddenLayerSize_ * 2][BlockSize_]) const
+	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		unsigned int sample_in_chunk = threadIdx.x;
 		for (unsigned int input_raw_index = 0; input_raw_index < InputSizeRaw_; input_raw_index++)
@@ -115,12 +116,12 @@ struct MLPFullyFusedDevice
 		}
 	}
 
-	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_]) const
+	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		OutputLayer output;
 
 		constexpr unsigned int output_layer_index = LAYER_COUNT - 1;
-		unsigned int shared_mem_ping_pong_offset  = (output_layer_index & 1) * HiddenLayerSize_;
+		unsigned int shared_mem_ping_pong_offset  = (output_layer_index & 1) * ACTIVATION_WIDTH;
 
 		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < OutputSize_; neuron_index_in_output_layer++)
 			output.output[neuron_index_in_output_layer] =
@@ -129,7 +130,7 @@ struct MLPFullyFusedDevice
 		return output;
 	}
 
-	HIPRT_DEVICE void inference_wmma(InputLayer input, fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_]) const
+	HIPRT_DEVICE void inference_wmma(InputLayer input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
@@ -150,8 +151,8 @@ struct MLPFullyFusedDevice
 			unsigned int layer_neuron_offset	 = get_neuron_data_index(layer_index, 0);
 			unsigned int layer_connection_offset = get_connection_data_index(layer_index, 0, 0);
 
-			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
-			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * ACTIVATION_WIDTH;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * ACTIVATION_WIDTH;
 
 			// Each warp computes TILES_PER_WARP tiles of 16 neurons. With block size 64
 			// (2 warps), each warp handles 2 tiles to cover 64 hidden neurons for example.
@@ -228,7 +229,7 @@ struct MLPFullyFusedDevice
 #endif
 	}
 
-	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_]) const
+	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		encode_input(input.input, activations_buffer);
 		__syncthreads();
@@ -242,8 +243,8 @@ struct MLPFullyFusedDevice
 			unsigned int neurons_previous_layer			 = get_layer_neuron_count(layer_index - 1);
 			unsigned int layer_neuron_offset			 = get_neuron_data_index(layer_index, 0);
 			unsigned int layer_connection_offset		 = get_connection_data_index(layer_index, 0, 0);
-			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
-			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * ACTIVATION_WIDTH;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * ACTIVATION_WIDTH;
 
 			constexpr unsigned int tiles_per_warp  = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
 			unsigned int current_neuron_tile_count = PAD_SIZE_WMMA(neurons_current_layer) / 16;
@@ -280,7 +281,7 @@ struct MLPFullyFusedDevice
 		}
 	}
 
-	HIPRT_DEVICE void forward_train_wmma(fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_],
+	HIPRT_DEVICE void forward_train_wmma(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										 fp16* train_activations_global,
 										 unsigned int sample_offset) const
 	{
@@ -299,8 +300,8 @@ struct MLPFullyFusedDevice
 			unsigned int layer_neuron_offset	 = get_neuron_data_index(layer_index, 0);
 			unsigned int layer_connection_offset = get_connection_data_index(layer_index, 0, 0);
 
-			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
-			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * ACTIVATION_WIDTH;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * ACTIVATION_WIDTH;
 
 			constexpr unsigned int TILES_PER_WARP = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
 			static_assert(BlockSize_ % 32 == 0, "BlockSize_ must be a multiple of 32 for MLP");
@@ -375,7 +376,7 @@ struct MLPFullyFusedDevice
 #endif
 	}
 
-	HIPRT_DEVICE void forward_train(fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_], fp16* train_activations_global, unsigned int sample_offset) const
+	HIPRT_DEVICE void forward_train(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE], fp16* train_activations_global, unsigned int sample_offset) const
 	{
 		static_assert(BlockSize_ % 32 == 0, "BlockSize must be a multiple of 32 for MLP");
 
@@ -388,8 +389,8 @@ struct MLPFullyFusedDevice
 			unsigned int neurons_previous_layer			 = get_layer_neuron_count(layer_index - 1);
 			unsigned int layer_neuron_offset			 = get_neuron_data_index(layer_index, 0);
 			unsigned int layer_connection_offset		 = get_connection_data_index(layer_index, 0, 0);
-			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * HiddenLayerSize_;
-			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * HiddenLayerSize_;
+			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * ACTIVATION_WIDTH;
+			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * ACTIVATION_WIDTH;
 
 			constexpr unsigned int tiles_per_warp  = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
 			unsigned int current_neuron_tile_count = PAD_SIZE_WMMA(neurons_current_layer) / 16;
@@ -438,15 +439,15 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
-										   fp16 activations_buffer[HiddenLayerSize_ * 2][BlockSize_],
-										   fp16 errors_buffer[HiddenLayerSize_ * 2][BlockSize_],
+										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										   float* target_output) const
 	{
 		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(BlockSize_ % 32 == 0, "BlockSize must be a multiple of 32 for WMMA");
-		static_assert(OUTPUT_SIZE_PADDED_WMMA <= HiddenLayerSize_, "WMMA scratch buffers must fit the padded output layer");
+		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ACTIVATION_WIDTH, "WMMA scratch buffers must fit the padded output layer");
 
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 		unsigned int lane_id	  = threadIdx.x & 31;
@@ -455,7 +456,7 @@ struct MLPFullyFusedDevice
 		unsigned int lane_high	  = lane_id / 16;
 		unsigned int warp_count	  = BlockSize_ / 32;
 
-		constexpr unsigned int errors_ping_pong_size = HiddenLayerSize_;
+		constexpr unsigned int errors_ping_pong_size = ACTIVATION_WIDTH;
 		unsigned int output_layer_index				 = LAYER_COUNT - 1;
 		unsigned int output_layer_offset			 = get_neuron_data_index(output_layer_index, 0);
 		unsigned int output_errors_offset			 = (output_layer_index & 1) * errors_ping_pong_size;
