@@ -12,13 +12,20 @@
 
 #define PAD_SIZE_WMMA(size) ((size + 15) / 16 * 16)
 
+enum class MLPActivationFunction
+{
+	LEAKY_RELU,
+	RELU
+};
+
 template <unsigned int InputSizeRaw_,
 		  unsigned int FreqEncodingFreqs_,
 		  unsigned int HiddenLayerCount_,
 		  unsigned int HiddenLayerSize_,
 		  unsigned int OutputSize_,
 		  unsigned int BlockSize_,
-		  bool UseBiases_ = true>
+		  bool UseBiases_							= true,
+		  MLPActivationFunction ActivationFunction_ = MLPActivationFunction::LEAKY_RELU>
 struct MLPFullyFusedDevice
 {
 	static constexpr unsigned int INPUT_SIZE			  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
@@ -36,6 +43,7 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int OUTPUT_SIZE					= OutputSize_;
 	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
 	static constexpr bool USE_BIASES							= UseBiases_;
+	static constexpr MLPActivationFunction ACTIVATION_FUNCTION	= ActivationFunction_;
 
 	struct OutputLayer
 	{
@@ -695,14 +703,30 @@ struct MLPFullyFusedDevice
 		return x > 0.0f ? 1.0f : 0.01f;
 	}
 
+	HIPRT_DEVICE constexpr float ReLU(float x) const
+	{
+		return x > 0.0f ? x : 0.0f;
+	}
+
+	HIPRT_DEVICE constexpr float ReLU_derivative(float x) const
+	{
+		return x > 0.0f ? 1.0f : 0.0f;
+	}
+
 	HIPRT_DEVICE constexpr float activation_function(float x) const
 	{
-		return leaky_ReLU(x);
+		if constexpr (ACTIVATION_FUNCTION == MLPActivationFunction::RELU)
+			return ReLU(x);
+		else
+			return leaky_ReLU(x);
 	}
 
 	HIPRT_DEVICE constexpr float activation_function_derivative(float x) const
 	{
-		return leaky_ReLU_derivative(x);
+		if constexpr (ACTIVATION_FUNCTION == MLPActivationFunction::RELU)
+			return ReLU_derivative(x);
+		else
+			return leaky_ReLU_derivative(x);
 	}
 
 	HIPRT_DEVICE float cost_function(float* output, ColorRGB32F target_output) const

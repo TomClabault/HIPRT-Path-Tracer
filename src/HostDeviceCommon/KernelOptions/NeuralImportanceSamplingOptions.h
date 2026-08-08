@@ -29,6 +29,7 @@ using NeuralImportanceSamplingMLP = MLPFullyFusedDevice<NIS_INPUT_SIZE_RAW,
 														NIS_HIDDEN_LAYER_SIZE,
 														NIS_MAX_CLUSTER_COUNT,
 														NIS_THREAD_BLOCK_SIZE,
-														NIS_USE_BIASES>;
+														NIS_USE_BIASES,
+														MLPActivationFunction::RELU>;
 
 #endif
