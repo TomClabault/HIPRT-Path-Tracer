@@ -1039,7 +1039,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree
 	unsigned int selected_node_index = invalid_node_index;
 	float selected_node_importance	 = 0.0f;
 	float total_importance			 = 0.0f;
-	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.effective_tree_cut_size; tree_cut_position++)
 	{
 		unsigned int node_index = render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position];
 		if (node_index == invalid_node_index)
@@ -1130,7 +1130,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 	unsigned int current_depth				= 0;
 	while (true)
 	{
-		for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+		for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.effective_tree_cut_size; tree_cut_position++)
 		{
 			if (render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position] == current_node_index)
 			{
@@ -1153,7 +1153,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 
 	float total_importance		 = 0.0f;
 	float target_node_importance = 0.0f;
-	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.tree_cut_size; tree_cut_position++)
+	for (unsigned int tree_cut_position = 0; tree_cut_position < render_data.light_tree_sg.settings.effective_tree_cut_size; tree_cut_position++)
 	{
 		unsigned int node_index = render_data.light_tree_sg.tree_cut_node_indices[tree_cut_position];
 		if (node_index == invalid_node_index)
