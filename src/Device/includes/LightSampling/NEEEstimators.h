@@ -38,20 +38,14 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 		return ColorRGB32F(0.0f);
 
 	ColorRGB32F light_source_radiance;
-	IlluminationAwareKDTreeSGShadingContext shading_context =
-		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
+	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
-		IlluminationAwareKDTreeLearningToClusterCutTriangleSample sampled_triangle =
-			sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, random_number_generator);
-		if (!sampled_triangle.valid())
-			continue;
-
-		LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(
-			render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material,
-			sampled_triangle.emissive_triangle_global_index, random_number_generator);
-		light_sample.area_measure_pdf *= sampled_triangle.triangle_probability();
+		LightSamplePointInformation& light_sample = light_samples[i];
 
 		if (light_sample.area_measure_pdf <= 0.0f)
 			// Can happen for very small triangles or the light
@@ -80,25 +74,25 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 
 			if (!in_shadow)
 			{
-				// Conversion to solid angle from surface area measure
-				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-				if (light_sample_solid_angle_pdf > 0.0f)
-				{
-					float bsdf_pdf;
+				float bsdf_pdf;
 
-					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 #endif
-					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
-					if (bsdf_pdf != 0.0f)
+				if (bsdf_pdf != 0.0f)
+				{
+					// Conversion to solid angle from surface area measure
+					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+					if (light_sample_solid_angle_pdf > 0.0f)
 					{
 						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
 						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
