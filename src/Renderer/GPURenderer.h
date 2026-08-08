@@ -27,6 +27,7 @@
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/MLPTrainingTestRenderPass.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
+#include "Renderer/RenderPasses/NISMLRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
