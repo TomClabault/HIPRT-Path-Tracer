@@ -26,7 +26,7 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(Illuminati
 #endif
 
 	unsigned int node_count				 = *illumination_aware_kd_tree.node_count;
-	unsigned int distribution_slot_count = node_count * tree_cut_size;
+	unsigned int distribution_slot_count = node_count * static_cast<unsigned int>(SurfaceNormalFace_Count) * tree_cut_size;
 
 	if (reset_index == 0)
 	{

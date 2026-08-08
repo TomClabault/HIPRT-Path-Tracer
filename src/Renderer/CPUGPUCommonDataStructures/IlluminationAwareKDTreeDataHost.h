@@ -42,18 +42,20 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
 
-		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_cdfs, new_node_capacity * new_tree_cut_size);
+		unsigned int normal_face_distribution_count = new_node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);
+		unsigned int distribution_slot_count		= normal_face_distribution_count * new_tree_cut_size;
+		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, distribution_slot_count);
+		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_cdfs, distribution_slot_count);
 
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_sample_count, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_x, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_y, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_z, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_count, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_estimated_second_moment, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_second_moment_sum, new_node_capacity * new_tree_cut_size);
-		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_sample_count, new_node_capacity * new_tree_cut_size);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_sample_count, normal_face_distribution_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_x, normal_face_distribution_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_y, normal_face_distribution_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_sum_z, normal_face_distribution_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cell_normal_count, normal_face_distribution_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_estimated_second_moment, distribution_slot_count);
+		GenericSoAHelpers::resize<DataContainer>(m_history_per_cut_node_sample_count, distribution_slot_count);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_second_moment_sum, distribution_slot_count);
+		GenericSoAHelpers::resize<DataContainer>(m_batch_per_cut_node_sample_count, distribution_slot_count);
 
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_pdfs, new_tree_cut_size);
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_prior_cdfs, new_tree_cut_size);

@@ -23,11 +23,12 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 	unsigned int reset_index = x;
 #endif
 
-	unsigned int distribution_slot_count = illumination_aware_kd_tree.node_capacity * tree_cut_size;
+	unsigned int normal_face_distribution_count = illumination_aware_kd_tree.node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);
+	unsigned int distribution_slot_count		= normal_face_distribution_count * tree_cut_size;
 	if (reset_index >= distribution_slot_count)
 		return;
 
-	if (reset_index < illumination_aware_kd_tree.node_capacity)
+	if (reset_index < normal_face_distribution_count)
 	{
 		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_sample_count[reset_index] = 0;
 		illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_x[reset_index] = 0.0f;

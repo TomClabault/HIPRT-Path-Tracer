@@ -28,6 +28,8 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 
 #ifndef __KERNELCC__
 	unsigned int guiding_list_index = x;
+	unsigned int normal_face		= guiding_list_index % SurfaceNormalFace_Count;
+	guiding_list_index /= SurfaceNormalFace_Count;
 	if (guiding_list_index >= active_guiding_count)
 		return;
 
@@ -35,9 +37,12 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	if (guiding_node_index >= illumination_aware_kd_tree.node_capacity)
 		return;
 
-	unsigned int distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
-	if (distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX || distribution_index >= illumination_aware_kd_tree.node_capacity)
+	unsigned int guiding_distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+	if (guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX ||
+		guiding_distribution_index >= illumination_aware_kd_tree.node_capacity)
 		return;
+
+	unsigned int distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);
 
 	float learned_weights[1024] = {};
 	float learned_weight_sum	= 0.0f;
@@ -74,18 +79,24 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 		running_cdf += final_probability;
 	}
 #else
-	unsigned int guiding_list_index = blockIdx.x;
-	unsigned int slot				= threadIdx.x;
-	if (guiding_list_index >= active_guiding_count)
+	unsigned int guiding_list_face_index = blockIdx.x;
+	if (guiding_list_face_index >= active_guiding_count)
 		return;
 
-	unsigned int guiding_node_index = illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
-	unsigned int distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
-	if (guiding_node_index < illumination_aware_kd_tree.node_capacity)
-		distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+	unsigned int guiding_list_index = guiding_list_face_index / SurfaceNormalFace_Count;
+	unsigned int normal_face		= guiding_list_face_index % SurfaceNormalFace_Count;
+	unsigned int slot				= threadIdx.x;
 
-	bool valid_distribution =
-		distribution_index != IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX && distribution_index < illumination_aware_kd_tree.node_capacity;
+	unsigned int guiding_node_index			= illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
+	unsigned int guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
+	if (guiding_node_index < illumination_aware_kd_tree.node_capacity)
+		guiding_distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+
+	bool valid_distribution = guiding_distribution_index != IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX &&
+							  guiding_distribution_index < illumination_aware_kd_tree.node_capacity;
+	unsigned int distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
+	if (valid_distribution)
+		distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);
 	bool valid_slot				   = slot < tree_cut_size;
 	unsigned int distribution_slot = 0;
 	if (valid_distribution && valid_slot)

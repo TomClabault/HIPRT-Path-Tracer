@@ -113,7 +113,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	unsigned int guiding_distribution_index			= guiding_node.guiding_distribution_index;
 
 	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learnt_distributions.sample_global_cut_node(
-		render_data.light_tree_sg, guiding_distribution_index, random_number_generator);
+		render_data.light_tree_sg, guiding_distribution_index, shading_normal, random_number_generator);
 
 	if (sampled_cut_node.probability == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)
 		// Returning a sample with invalid probability so we can detect that in the NEE estimator and fallback to normal light sampling

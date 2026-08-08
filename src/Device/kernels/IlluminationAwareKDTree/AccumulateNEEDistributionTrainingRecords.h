@@ -43,6 +43,9 @@ IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(IlluminationAwa
 	if (distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX)
 		return;
 
+	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(record.shading_normal);
+	distribution_index		 = illumination_aware_kd_tree.nee_learnt_distributions.get_normal_face_distribution_index(distribution_index, normal_face);
+
 	if (record.selected_cut_slot >= tree_cut_size)
 		return;
 

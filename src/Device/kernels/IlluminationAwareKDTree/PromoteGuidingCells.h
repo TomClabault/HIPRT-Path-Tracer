@@ -99,23 +99,27 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	// Now we can finally use all the threads of the thread block correctly to copy the parent's distribution into the left and right child distribution
 	IlluminationAwareKDTreeNEELearntDistributions& nee_learnt_distributions = illumination_aware_kd_tree.nee_learnt_distributions;
 
-	unsigned int parent_distribution_offset		 = nee_learnt_distributions.get_tree_cut_offset(parent_distribution_index, tree_cut_size);
-	unsigned int left_child_distribution_offset	 = parent_distribution_offset;
-	unsigned int right_child_distribution_offset = nee_learnt_distributions.get_tree_cut_offset(right_child.guiding_distribution_index, tree_cut_size);
-
 	if (threadIdx.x == 0)
 	{
-		// Fresh distributions have no history, so we reset the history sample counts
-		nee_learnt_distributions.history_per_cell_sample_count[left_child.guiding_distribution_index]  = 0;
-		nee_learnt_distributions.history_per_cell_sample_count[right_child.guiding_distribution_index] = 0;
-		nee_learnt_distributions.history_per_cell_normal_sum_x[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_x[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_y[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_y[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_z[left_child.guiding_distribution_index]  = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_sum_z[right_child.guiding_distribution_index] = 0.0f;
-		nee_learnt_distributions.history_per_cell_normal_count[left_child.guiding_distribution_index]  = 0;
-		nee_learnt_distributions.history_per_cell_normal_count[right_child.guiding_distribution_index] = 0;
+		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
+		{
+			unsigned int left_distribution_index =
+				nee_learnt_distributions.get_normal_face_distribution_index(left_child.guiding_distribution_index, normal_face);
+			unsigned int right_distribution_index =
+				nee_learnt_distributions.get_normal_face_distribution_index(right_child.guiding_distribution_index, normal_face);
+
+			// Fresh distributions have no history, so we reset the history sample counts
+			nee_learnt_distributions.history_per_cell_sample_count[left_distribution_index]	 = 0;
+			nee_learnt_distributions.history_per_cell_sample_count[right_distribution_index] = 0;
+			nee_learnt_distributions.history_per_cell_normal_sum_x[left_distribution_index]	 = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_sum_x[right_distribution_index] = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_sum_y[left_distribution_index]	 = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_sum_y[right_distribution_index] = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_sum_z[left_distribution_index]	 = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_sum_z[right_distribution_index] = 0.0f;
+			nee_learnt_distributions.history_per_cell_normal_count[left_distribution_index]	 = 0;
+			nee_learnt_distributions.history_per_cell_normal_count[right_distribution_index] = 0;
+		}
 	}
 
 #ifndef __KERNELCC__
@@ -123,30 +127,41 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 #else
 	unsigned int threads_per_block = blockDim.x;
 #endif
-	for (int slot_index = threadIdx.x; slot_index < tree_cut_size; slot_index += threads_per_block)
+	for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 	{
-		nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] = 1;
-		nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index]	 = 1;
-		hippt::atomic_exchange(
-			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
-			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
-		hippt::atomic_exchange(
-			&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index],
-			hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
+		unsigned int face_parent_distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(parent_distribution_index, normal_face);
+		unsigned int left_distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(left_child.guiding_distribution_index, normal_face);
+		unsigned int right_distribution_index =
+			nee_learnt_distributions.get_normal_face_distribution_index(right_child.guiding_distribution_index, normal_face);
+		unsigned int parent_distribution_offset		 = nee_learnt_distributions.get_tree_cut_offset(face_parent_distribution_index, tree_cut_size);
+		unsigned int left_child_distribution_offset	 = nee_learnt_distributions.get_tree_cut_offset(left_distribution_index, tree_cut_size);
+		unsigned int right_child_distribution_offset = nee_learnt_distributions.get_tree_cut_offset(right_distribution_index, tree_cut_size);
 
-		nee_learnt_distributions.tree_cut_sampling_probabilities[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_probabilities[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_cdfs[right_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
-		nee_learnt_distributions.tree_cut_sampling_cdfs[left_child_distribution_offset + slot_index] =
-			nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
+		for (int slot_index = threadIdx.x; slot_index < tree_cut_size; slot_index += threads_per_block)
+		{
+			nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] = 1;
+			nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index]	 = 1;
+			hippt::atomic_exchange(
+				&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
+				hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
+			hippt::atomic_exchange(
+				&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index],
+				hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
 
-		nee_learnt_distributions.batch_per_cut_node_sample_count[right_child_distribution_offset + slot_index]		= 0;
-		nee_learnt_distributions.batch_per_cut_node_sample_count[left_child_distribution_offset + slot_index]		= 0;
-		nee_learnt_distributions.batch_per_cut_node_second_moment_sum[right_child_distribution_offset + slot_index] = 0;
-		nee_learnt_distributions.batch_per_cut_node_second_moment_sum[left_child_distribution_offset + slot_index]	= 0;
+			nee_learnt_distributions.tree_cut_sampling_probabilities[right_child_distribution_offset + slot_index] =
+				nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
+			nee_learnt_distributions.tree_cut_sampling_probabilities[left_child_distribution_offset + slot_index] =
+				nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
+			nee_learnt_distributions.tree_cut_sampling_cdfs[right_child_distribution_offset + slot_index] =
+				nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
+			nee_learnt_distributions.tree_cut_sampling_cdfs[left_child_distribution_offset + slot_index] =
+				nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
+
+			nee_learnt_distributions.batch_per_cut_node_sample_count[right_child_distribution_offset + slot_index]		= 0;
+			nee_learnt_distributions.batch_per_cut_node_sample_count[left_child_distribution_offset + slot_index]		= 0;
+			nee_learnt_distributions.batch_per_cut_node_second_moment_sum[right_child_distribution_offset + slot_index] = 0;
+			nee_learnt_distributions.batch_per_cut_node_second_moment_sum[left_child_distribution_offset + slot_index]	= 0;
+		}
 	}
 
 	// The promoted subtree starts a fresh illumination-signature-history

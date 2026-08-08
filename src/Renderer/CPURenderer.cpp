@@ -777,8 +777,9 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	for (unsigned int node_index = 0; node_index < m_render_data.illumination_aware_kd_tree.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.illumination_aware_kd_tree, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
-	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int distribution_slot_count = m_render_data.illumination_aware_kd_tree.node_capacity * tree_cut_size;
+	unsigned int tree_cut_size = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
+	unsigned int distribution_slot_count =
+		m_render_data.illumination_aware_kd_tree.node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count) * tree_cut_size;
 	for (unsigned int reset_index = 0; reset_index < distribution_slot_count; reset_index++)
 		IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.illumination_aware_kd_tree, tree_cut_size, reset_index);
 #endif
@@ -872,8 +873,10 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(illumination_aware_kd_tree, tree_cut_size, record_index);
 
 	unsigned int updated_active_guiding_node_count = illumination_aware_kd_tree.active_guiding_node_count->load();
-	for (unsigned int guiding_list_index = 0; guiding_list_index < updated_active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTree_RebuildActiveNEEDistributions(illumination_aware_kd_tree, tree_cut_size, updated_active_guiding_node_count, guiding_list_index);
+	for (unsigned int guiding_list_face_index = 0;
+		 guiding_list_face_index < updated_active_guiding_node_count * static_cast<unsigned int>(SurfaceNormalFace_Count); guiding_list_face_index++)
+		IlluminationAwareKDTree_RebuildActiveNEEDistributions(illumination_aware_kd_tree, tree_cut_size, updated_active_guiding_node_count,
+															  guiding_list_face_index);
 #endif
 }
 

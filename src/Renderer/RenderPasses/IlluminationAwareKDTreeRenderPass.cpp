@@ -184,6 +184,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int distribution_slot_count					 = active_node_count * tree_cut_size;
 	// Total number of nodes * tree cut node, to reset everything, not just active nodes as 'distribution_slot_count' represents
 	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_nodes.size() * tree_cut_size;
+	distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
+	all_distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 
 	if (m_renderer->get_render_data().render_settings.sample_number == 0)
 	{
@@ -296,8 +298,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-	unsigned int active_guiding_count			  = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
-	m_cached_current_guiding_node_count			  = active_guiding_count;
+	unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+	m_cached_current_guiding_node_count = active_guiding_count;
+	active_guiding_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 	void* rebuild_nee_distributions_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size, &active_guiding_count };
 	m_kernels[IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, active_guiding_count * 1024, 1, rebuild_nee_distributions_launch_args, m_renderer->get_main_stream());

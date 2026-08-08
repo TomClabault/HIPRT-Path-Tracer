@@ -10,6 +10,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningNEESettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSampledCutNode.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
@@ -50,6 +51,11 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 		return guiding_distribution_index * tree_cut_size;
 	}
 
+	HIPRT_DEVICE unsigned int get_normal_face_distribution_index(unsigned int guiding_distribution_index, unsigned int normal_face) const
+	{
+		return guiding_distribution_index * static_cast<unsigned int>(SurfaceNormalFace_Count) + normal_face;
+	}
+
 	HIPRT_DEVICE void append_nee_distribution_training_record(const IlluminationAwareKDTreeNEEDistributionTrainingRecord& record)
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
@@ -70,6 +76,7 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 	HIPRT_DEVICE IlluminationAwareKDTreeSampledCutNode sample_global_cut_node(const LightTreeSGDevice& light_tree_sg,
 																			  unsigned int guiding_distribution_index,
+																			  const float3_t& shading_normal,
 																			  Xorshift32Generator& random_number_generator) const
 	{
 		IlluminationAwareKDTreeSampledCutNode result{};
@@ -77,7 +84,9 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 		if (tree_cut_size == 0)
 			return result;
 
-		unsigned int tree_cut_offset = get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
+		unsigned int normal_face		= illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+		unsigned int distribution_index = get_normal_face_distribution_index(guiding_distribution_index, normal_face);
+		unsigned int tree_cut_offset	= get_tree_cut_offset(distribution_index, tree_cut_size);
 		CDFDeviceU16 tree_cut_cdf;
 		tree_cut_cdf.cdf_u16 = tree_cut_sampling_cdfs + tree_cut_offset;
 		tree_cut_cdf.size	 = tree_cut_size;
