@@ -86,6 +86,15 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 void LightTreeSGSamplingDataStructure::free()
 {
 	m_light_tree_sg_device_data.free();
+
+	HIPRTRenderData& render_data							   = m_renderer->get_render_data();
+	render_data.light_tree_sg.nodes							   = nullptr;
+	render_data.light_tree_sg.spatial_lobes					   = nullptr;
+	render_data.light_tree_sg.tree_cut_node_indices			   = nullptr;
+	render_data.light_tree_sg.indices_array					   = nullptr;
+	render_data.light_tree_sg.bit_trails					   = nullptr;
+	render_data.light_tree_sg.settings.spatial_lobe_count	   = 0;
+	render_data.light_tree_sg.settings.effective_tree_cut_size = 0;
 }
 
 bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
