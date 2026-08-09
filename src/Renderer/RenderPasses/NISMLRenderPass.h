@@ -12,6 +12,31 @@
 
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
 
+#include <cstddef>
+
+struct NISMLVRAMUsage
+{
+	std::size_t neurons_biases			= 0;
+	std::size_t gradient_biases			= 0;
+	std::size_t connection_weights		= 0;
+	std::size_t connection_weights_fp16 = 0;
+	std::size_t gradient_weights		= 0;
+	std::size_t training_sample_count	= 0;
+	std::size_t adam_weights_means		= 0;
+	std::size_t adam_weights_variances	= 0;
+	std::size_t adam_biases_means		= 0;
+	std::size_t adam_biases_variances	= 0;
+	std::size_t train_activations		= 0;
+	std::size_t training_records		= 0;
+	std::size_t training_record_count	= 0;
+
+	std::size_t get_total_bytes() const
+	{
+		return neurons_biases + gradient_biases + connection_weights + connection_weights_fp16 + gradient_weights + training_sample_count + adam_weights_means +
+			   adam_weights_variances + adam_biases_means + adam_biases_variances + train_activations + training_records + training_record_count;
+	}
+};
+
 class NISMLRenderPass : public RenderPass
 {
 public:
@@ -37,10 +62,21 @@ public:
 
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
+	float& get_training_record_percentage();
+	int& get_training_spp();
+	float& get_adam_learning_rate();
+
+	NISMLVRAMUsage get_vram_usage_breakdown() const;
+	std::size_t get_vram_usage_bytes() const;
+
 private:
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
-	unsigned int m_adam_step = 0;
+
+	unsigned int m_adam_step		   = 0;
+	float m_training_record_percentage = 15.0f;
+	int m_training_spp				   = 0;
+	float m_adam_learning_rate		   = 0.001f;
 };
 
 #endif

@@ -23,6 +23,8 @@ struct NISMLDevice
 		if (training_records == nullptr || training_record_count == nullptr || training_record_capacity == 0 || record.cluster_index >= NIS_MAX_CLUSTER_COUNT ||
 			!(record.cluster_probability > 0.0f) || !(record.conditional_light_probability > 0.0f) || !(record.point_on_light_pdf > 0.0f))
 			return;
+		if (!learning_enabled || training_record_probability <= 0.0f || random_number_generator() >= training_record_probability)
+			return;
 
 		unsigned int ticket = hippt::atomic_fetch_add(training_record_count, 1u);
 		if (ticket < training_record_capacity)
@@ -55,6 +57,9 @@ struct NISMLDevice
 	NISTrainingSample* training_records				= nullptr;
 	AtomicType<unsigned int>* training_record_count = nullptr;
 	unsigned int training_record_capacity			= 0;
+
+	bool learning_enabled			  = false;
+	float training_record_probability = 0.0f;
 };
 
 #endif

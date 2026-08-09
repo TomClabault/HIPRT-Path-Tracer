@@ -10,16 +10,18 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
-#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
+#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #include <math.h>
 
 struct NISLightSample
 {
-	int emissive_triangle_global_index	= -1;
-	unsigned int cluster_index			= 0;
+	int emissive_triangle_global_index = -1;
+
+	unsigned int cluster_index = 0;
+
 	float cluster_probability			= 0.0f;
 	float conditional_light_probability = 0.0f;
 	float emissive_triangle_pdf			= 0.0f;
@@ -255,10 +257,12 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 																			Xorshift32Generator& random_number_generator)
 {
 	NISLightSample sampled_light;
-	NISMLDevice neural_light_sampling	= render_data.nis_ml;
+	NISMLDevice neural_light_sampling = render_data.nis_ml;
+
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
-	unsigned int invalid_node_index		= 0xFFFFFFFF;
-	unsigned int cluster_count			= neural_light_sampling.cluster_count;
+
+	unsigned int invalid_node_index = 0xFFFFFFFF;
+	unsigned int cluster_count		= neural_light_sampling.cluster_count;
 
 	if (cluster_count == 0 || cluster_count > NIS_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
 		return sampled_light;
@@ -329,8 +333,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 {
 	NISMLDevice neural_light_sampling	= render_data.nis_ml;
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
-	unsigned int invalid_node_index		= 0xFFFFFFFF;
-	unsigned int invalid_cluster_slot	= 0xFF;
+
+	unsigned int invalid_node_index	  = 0xFFFFFFFF;
+	unsigned int invalid_cluster_slot = 0xFF;
 
 	if (global_emissive_triangle_index < 0 || neural_light_sampling.cluster_count == 0 || neural_light_sampling.cluster_count > NIS_MAX_CLUSTER_COUNT ||
 		light_tree.nodes == nullptr || light_tree.bit_trails == nullptr || neural_light_sampling.cluster_node_indices == nullptr ||
@@ -384,8 +389,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 	if (bit_trail == invalid_node_index)
 		return 0.0f;
 
-	unsigned int current_node_index		   = target_cluster_node_index;
-	unsigned int current_depth			   = neural_light_sampling.cluster_node_depths[target_cluster_index];
+	unsigned int current_node_index = target_cluster_node_index;
+	unsigned int current_depth		= neural_light_sampling.cluster_node_depths[target_cluster_index];
+
 	float conditional_triangle_probability = 1.0f;
 	while (light_tree.nodes[current_node_index].triangle_count == 0)
 	{
@@ -422,6 +428,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 		return 0.0f;
 
 	float final_pdf = cluster_probability * conditional_triangle_probability / triangle_count;
+
 	return final_pdf > 0.0f ? final_pdf : 0.0f;
 }
 

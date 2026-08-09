@@ -2458,7 +2458,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2639,7 +2639,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3719,6 +3719,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
+	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -3947,14 +3949,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 			bool use_neural_many_lights =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
 			if (use_neural_many_lights)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::SeparatorText("Neural many lights");
+				ImGui::SeparatorText("Neural importance sampling of many lights");
 
 				static int current_tree_cut_size_neural_many_lights =
 					m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights();
@@ -3977,6 +3977,54 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					}
 
 					ImGui::TreePop();
+				}
+
+				if (nisml_render_pass)
+				{
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Neural many-lights training");
+
+					NISMLVRAMUsage vram_usage = nisml_render_pass->get_vram_usage_breakdown();
+					ImGui::Text("NISML VRAM usage: %.3fMB", vram_usage.get_total_bytes() / 1000000.0f);
+					ImGui::Text("VRAM Usage breakdown: ");
+
+					std::vector<char> vram_tooltip_buffer(4096);
+					snprintf(vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
+							 "  Neuron biases: %.3fMB\n"
+							 "  Gradient biases: %.3fMB\n"
+							 "  FP32 connection weights: %.3fMB\n"
+							 "  FP16 connection weights: %.3fMB\n"
+							 "  Gradient weights: %.3fMB\n"
+							 "  Adam weight means: %.3fMB\n"
+							 "  Adam weight variances: %.3fMB\n"
+							 "  Adam bias means: %.3fMB\n"
+							 "  Adam bias variances: %.3fMB\n"
+							 "  Training activations: %.3fMB\n"
+							 "  NEE training records: %.3fMB\n"
+							 "  Training sample counter: %.3fMB\n"
+							 "  Record counter: %.3fMB",
+							 vram_usage.neurons_biases / 1000000.0f, vram_usage.gradient_biases / 1000000.0f, vram_usage.connection_weights / 1000000.0f,
+							 vram_usage.connection_weights_fp16 / 1000000.0f, vram_usage.gradient_weights / 1000000.0f,
+							 vram_usage.adam_weights_means / 1000000.0f, vram_usage.adam_weights_variances / 1000000.0f,
+							 vram_usage.adam_biases_means / 1000000.0f, vram_usage.adam_biases_variances / 1000000.0f,
+							 vram_usage.train_activations / 1000000.0f, vram_usage.training_records / 1000000.0f, vram_usage.training_sample_count / 1000000.0f,
+							 vram_usage.training_record_count / 1000000.0f);
+					ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
+
+					if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f,
+										   "%.1f%%"))
+					{
+						nisml_render_pass->get_training_record_percentage() = std::clamp(nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Percentage of valid NEE samples generated during each SPP that are retained for MLP training.");
+
+					if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
+
+					if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
+						m_render_window->set_render_dirty(true);
 				}
 			}
 		}
@@ -4013,8 +4061,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t final_distribution_bytes = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 			std::size_t per_cell_history_bytes	 = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-												 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-												 vram_usage.history_per_cell_normal_count;
+												   vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+												   vram_usage.history_per_cell_normal_count;
 			std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
 			std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
 			std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
@@ -5689,7 +5737,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

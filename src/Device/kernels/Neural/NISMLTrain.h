@@ -13,14 +13,17 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations)
 {
-	unsigned int record_index  = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int record_count  = hippt::min(hippt::atomic_load(render_data.nis_ml.training_record_count), render_data.nis_ml.training_record_capacity);
+	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nis_ml.training_record_count), render_data.nis_ml.training_record_capacity);
+
 	bool valid_record		   = record_index < record_count;
 	bool valid_training_sample = false;
+
 	float neurons_activations[NeuralImportanceSamplingMLP::NEURON_COUNT];
 
 	NeuralImportanceSamplingMLP::InputLayer input = {};
 	NISTrainingSample record;
+
 	if (valid_record)
 	{
 		record = render_data.nis_ml.training_records[record_index];

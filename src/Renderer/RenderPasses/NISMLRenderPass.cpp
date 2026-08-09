@@ -8,6 +8,8 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
+#include <algorithm>
+
 const std::string NISMLRenderPass::NISML_RENDER_PASS_NAME = "Neural Importance Sampling Many Lights";
 const std::string NISMLRenderPass::NISML_TRAIN			  = "NIS Many Lights Train";
 const std::string NISMLRenderPass::NISML_OPTIMIZE		  = "NIS Many Lights Optimize";
@@ -71,12 +73,18 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 {
 	if (!is_render_pass_used(compiler_options))
 		return false;
+	if (!render_data.nis_ml.learning_enabled || m_training_record_percentage <= 0.0f)
+		return true;
 
 	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device();
+
+	mlp_device.adam_learning_rate = m_adam_learning_rate;
+
 	fp16* train_activations	  = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
 	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations };
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->launch_asynchronous(
 		NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE, 1, train_launch_args, m_renderer->get_main_stream());
+
 	unsigned int training_sample_count = m_mlp.m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0];
 	if (training_sample_count > 0)
 	{
@@ -97,6 +105,7 @@ void NISMLRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 void NISMLRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (!is_render_pass_used(*m_compiler_options))
 	{
 		render_data.nis_ml.cluster_node_indices			= nullptr;
@@ -107,6 +116,8 @@ void NISMLRenderPass::update_render_data()
 		render_data.nis_ml.training_records				= nullptr;
 		render_data.nis_ml.training_record_count		= nullptr;
 		render_data.nis_ml.training_record_capacity		= 0;
+		render_data.nis_ml.learning_enabled				= false;
+		render_data.nis_ml.training_record_probability	= 0.0f;
 
 		return;
 	}
@@ -114,10 +125,13 @@ void NISMLRenderPass::update_render_data()
 	render_data.nis_ml.mlp							= m_mlp.to_device();
 	render_data.nis_ml.cluster_log_baseline_weights = nullptr;
 	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nis_ml);
+
 	NISMLDevice training_data					= m_nis_ml_data.to_device();
 	render_data.nis_ml.training_records			= training_data.training_records;
 	render_data.nis_ml.training_record_count	= training_data.training_record_count;
 	render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
+	render_data.nis_ml.learning_enabled			= m_training_spp <= 0 || render_data.render_settings.sample_number < static_cast<unsigned int>(m_training_spp);
+	render_data.nis_ml.training_record_probability = std::clamp(m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 }
 
 void NISMLRenderPass::reset(bool reset_by_camera_movement)
@@ -128,4 +142,47 @@ void NISMLRenderPass::reset(bool reset_by_camera_movement)
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
+}
+
+float& NISMLRenderPass::get_training_record_percentage()
+{
+	return m_training_record_percentage;
+}
+
+int& NISMLRenderPass::get_training_spp()
+{
+	return m_training_spp;
+}
+
+float& NISMLRenderPass::get_adam_learning_rate()
+{
+	return m_adam_learning_rate;
+}
+
+NISMLVRAMUsage NISMLRenderPass::get_vram_usage_breakdown() const
+{
+	NISMLVRAMUsage vram_usage;
+	vram_usage.neurons_biases	  = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>());
+	vram_usage.gradient_biases	  = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>());
+	vram_usage.connection_weights = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>());
+	vram_usage.connection_weights_fp16 =
+		GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>());
+	vram_usage.gradient_weights = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>());
+	vram_usage.training_sample_count =
+		GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>());
+	vram_usage.adam_weights_means = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>());
+	vram_usage.adam_weights_variances =
+		GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>());
+	vram_usage.adam_biases_means	 = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>());
+	vram_usage.adam_biases_variances = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>());
+	vram_usage.train_activations	 = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
+	vram_usage.training_records		 = GenericSoAHelpers::get_byte_size(m_nis_ml_data.m_training_records);
+	vram_usage.training_record_count = GenericSoAHelpers::get_byte_size(m_nis_ml_data.m_training_record_count);
+
+	return vram_usage;
+}
+
+std::size_t NISMLRenderPass::get_vram_usage_bytes() const
+{
+	return get_vram_usage_breakdown().get_total_bytes();
 }

@@ -78,6 +78,7 @@ private:
 
 	std::vector<unsigned int> m_tree_cut_node_indices;
 	unsigned int m_effective_tree_cut_size = 0;
+
 	LightTreeSGBuilderNISML m_nisml;
 	LightTreeSGBuilderOptions m_build_options;
 };
