@@ -6,10 +6,43 @@
 #ifndef DEVICE_INCLUDES_NEURAL_NIS_ML_DEVICE_H
 #define DEVICE_INCLUDES_NEURAL_NIS_ML_DEVICE_H
 
+#include "Device/includes/Neural/NISML.h"
+#include "HostDeviceCommon/AtomicType.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 struct NISMLDevice
 {
+	HIPRT_DEVICE void append_training_record(const NISTrainingSample& record, Xorshift32Generator& random_number_generator)
+	{
+#if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
+		return;
+#endif
+
+		if (training_records == nullptr || training_record_count == nullptr || training_record_capacity == 0 || record.cluster_index >= NIS_MAX_CLUSTER_COUNT ||
+			!(record.cluster_probability > 0.0f) || !(record.conditional_light_probability > 0.0f) || !(record.point_on_light_pdf > 0.0f))
+			return;
+
+		unsigned int ticket = hippt::atomic_fetch_add(training_record_count, 1u);
+		if (ticket < training_record_capacity)
+		{
+			// The buffer isn't full yet, just append
+			training_records[ticket] = record;
+
+			return;
+		}
+
+		// The buffer is full, replace randomly
+		float replacement_probability = static_cast<float>(training_record_capacity) / static_cast<float>(ticket + 1u);
+		if (random_number_generator() >= replacement_probability)
+			return;
+
+		unsigned int replacement_index = random_number_generator.random_index(training_record_capacity);
+
+		training_records[replacement_index] = record;
+	}
+
 	NeuralImportanceSamplingMLP mlp;
 
 	unsigned int* cluster_node_indices	= nullptr;
@@ -18,6 +51,10 @@ struct NISMLDevice
 	unsigned char* triangle_to_cluster = nullptr;
 	unsigned char* cluster_node_depths = nullptr;
 	unsigned int cluster_count		   = 0;
+
+	NISTrainingSample* training_records				= nullptr;
+	AtomicType<unsigned int>* training_record_count = nullptr;
+	unsigned int training_record_capacity			= 0;
 };
 
 #endif

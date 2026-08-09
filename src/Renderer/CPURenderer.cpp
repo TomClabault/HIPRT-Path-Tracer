@@ -431,6 +431,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 		m_light_tree_builder_sg.cleanup();
 	}
 #endif
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_nis_ml_data.resize();
+#endif
 }
 
 void CPURenderer::update_render_data()
@@ -543,6 +547,13 @@ void CPURenderer::update_render_data()
 
 	m_render_data.cpu_only.bvh		 = m_bvh.get();
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	NISMLDevice training_data					  = m_nis_ml_data.to_device();
+	m_render_data.nis_ml.training_records		  = training_data.training_records;
+	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
+	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
+#endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_render_data.illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
@@ -719,6 +730,14 @@ void CPURenderer::render()
 
 void CPURenderer::pre_sample_update(int frame_number)
 {
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_nis_ml_data.reset();
+	NISMLDevice training_data					  = m_nis_ml_data.to_device();
+	m_render_data.nis_ml.training_records		  = training_data.training_records;
+	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
+	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
+#endif
+
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 	unsigned int tree_cut_size								 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;

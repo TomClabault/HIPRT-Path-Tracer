@@ -27,9 +27,11 @@ bool NISMLRenderPass::pre_sample_update(float delta_time)
 	{
 		m_mlp.resize();
 		m_mlp.initialize(false);
+		m_nis_ml_data.resize();
 		render_data_needs_update = true;
 	}
 
+	m_nis_ml_data.reset();
 	update_render_data();
 
 	return render_data_needs_update;
@@ -52,6 +54,9 @@ void NISMLRenderPass::update_render_data()
 		render_data.nis_ml.cluster_node_depths			= nullptr;
 		render_data.nis_ml.cluster_log_baseline_weights = nullptr;
 		render_data.nis_ml.cluster_count				= 0;
+		render_data.nis_ml.training_records				= nullptr;
+		render_data.nis_ml.training_record_count		= nullptr;
+		render_data.nis_ml.training_record_capacity		= 0;
 
 		return;
 	}
@@ -59,9 +64,16 @@ void NISMLRenderPass::update_render_data()
 	render_data.nis_ml.mlp							= m_mlp.to_device();
 	render_data.nis_ml.cluster_log_baseline_weights = nullptr;
 	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nis_ml);
+	NISMLDevice training_data					= m_nis_ml_data.to_device();
+	render_data.nis_ml.training_records			= training_data.training_records;
+	render_data.nis_ml.training_record_count	= training_data.training_record_count;
+	render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
 }
 
-void NISMLRenderPass::reset(bool reset_by_camera_movement) {}
+void NISMLRenderPass::reset(bool reset_by_camera_movement)
+{
+	m_nis_ml_data.reset();
+}
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {

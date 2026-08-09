@@ -10,6 +10,8 @@
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
+#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
+
 class NISMLRenderPass : public RenderPass
 {
 public:
@@ -30,6 +32,7 @@ public:
 
 private:
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
+	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
 };
 
 #endif

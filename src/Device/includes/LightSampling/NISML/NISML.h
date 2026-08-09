@@ -17,9 +17,11 @@
 
 struct NISLightSample
 {
-	int emissive_triangle_global_index = -1;
-	unsigned int cluster_index		   = 0;
-	float emissive_triangle_pdf		   = 0.0f;
+	int emissive_triangle_global_index	= -1;
+	unsigned int cluster_index			= 0;
+	float cluster_probability			= 0.0f;
+	float conditional_light_probability = 0.0f;
+	float emissive_triangle_pdf			= 0.0f;
 };
 
 HIPRT_DEVICE LightSampleInformation sample_light_inside_nis_cluster(const HIPRTRenderData& render_data,
@@ -297,6 +299,8 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 
 	sampled_light.emissive_triangle_global_index = conditional_sample.emissive_triangle_global_index;
 	sampled_light.cluster_index					 = selected_cluster_position;
+	sampled_light.cluster_probability			 = cluster_probability;
+	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
 	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
 	if (!(sampled_light.emissive_triangle_pdf > 0.0f) || !hippt::is_finite(sampled_light.emissive_triangle_pdf))
 		return NISLightSample();

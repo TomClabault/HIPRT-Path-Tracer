@@ -14,8 +14,8 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearntDistributions.h"
-#include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
+#include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
@@ -409,11 +409,31 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 	NISLightSample nis_sample = sample_one_emissive_triangle_neural_many_lights(render_data, closest_hit_info.inter_point, view_direction,
 																				closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
+	bool collect_training_record = nis_sample.emissive_triangle_global_index >= 0 && nis_sample.cluster_index < NIS_MAX_CLUSTER_COUNT &&
+								   nis_sample.cluster_probability > 0.0f && nis_sample.conditional_light_probability > 0.0f &&
+								   nis_sample.emissive_triangle_pdf > 0.0f;
+
+	NISTrainingSample training_record;
+	if (collect_training_record)
+	{
+		training_record.position					  = closest_hit_info.inter_point;
+		training_record.outgoing_direction			  = view_direction;
+		training_record.normal						  = closest_hit_info.shading_normal;
+		training_record.cluster_index				  = static_cast<unsigned char>(nis_sample.cluster_index);
+		training_record.cluster_probability			  = nis_sample.cluster_probability;
+		training_record.conditional_light_probability = nis_sample.conditional_light_probability;
+	}
+
 	LightSamplePointArray<1> light_samples;
 	light_samples[0] =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																ray_payload.material, nis_sample.emissive_triangle_global_index, random_number_generator);
+	if (collect_training_record)
+		training_record.point_on_light_pdf = light_samples[0].area_measure_pdf;
+
 	light_samples[0].area_measure_pdf *= nis_sample.emissive_triangle_pdf;
+	ColorRGB32F numerator(0.0f);
+	float visibility = 0.0f;
 
 	for (int i = 0; i < 1; i++)
 	{
@@ -446,6 +466,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 			if (!in_shadow)
 			{
+				visibility = 1.0f;
+
 				// Conversion to solid angle from surface area measure
 				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
 				if (light_sample_solid_angle_pdf > 0.0f)
@@ -466,9 +488,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 					if (bsdf_pdf != 0.0f)
 					{
-						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
-						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
+
+						numerator = light_sample.emission * cosine_term * bsdf_color * visibility;
+
+						ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+
 						light_source_radiance += estimator;
 
 						// Just a CPU-only sanity check
@@ -477,6 +502,14 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 				}
 			}
 		}
+	}
+
+	if (collect_training_record)
+	{
+		training_record.contribution_luminance = numerator.luminance();
+
+		Xorshift32Generator random_number_generator_copy = random_number_generator;
+		render_data.nis_ml.append_training_record(training_record, random_number_generator_copy);
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
