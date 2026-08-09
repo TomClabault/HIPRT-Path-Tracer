@@ -67,9 +67,11 @@ struct MLPDataHost
 	}
 
 	/**
-	 * Initializes all weights using Xavier's uniform distribution and all biases to 0
+	 * Initializes all weights using Xavier's uniform distribution and all biases to 0. When requested,
+	 * the last layer weights are initialized in a small
+	 * range around 0 for near-zero untrained output.
 	 */
-	void initialize()
+	void initialize(bool initialize_last_layer_to_zero)
 	{
 		if (maximum_size() == 0)
 			return;
@@ -84,12 +86,16 @@ struct MLPDataHost
 
 		std::vector<float> weights = m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
 
+		constexpr float last_layer_initialization_epsilon = 1.0e-3f;
+
 		for (unsigned int layer_index = 1; layer_index < MLPType::LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_count_previous_layer = MLPType::get_layer_neuron_count(layer_index - 1);
 			unsigned int neurons_count_current_layer  = MLPType::get_layer_neuron_count(layer_index);
 
 			float random_range = hippt::sqrt(6.0f / (neurons_count_previous_layer + neurons_count_current_layer));
+			if (initialize_last_layer_to_zero && layer_index == MLPType::LAYER_COUNT - 1)
+				random_range = last_layer_initialization_epsilon;
 
 			for (unsigned int neuron_index_current_layer = 0; neuron_index_current_layer < neurons_count_current_layer; neuron_index_current_layer++)
 			{
