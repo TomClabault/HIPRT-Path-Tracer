@@ -11,6 +11,7 @@
 
 #include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
+#include "Device/includes/Neural/NISMLDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -72,6 +73,9 @@ struct HIPRTRenderData
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree;
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
+	NISMLDevice nis_ml;
+	float3_t scene_min = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t scene_max = make_float3(0.0f, 0.0f, 0.0f);
 
 	// Data for SSBN permutations
 	SSBNPermutationSettings ssbn_settings;

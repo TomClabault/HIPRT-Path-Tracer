@@ -34,6 +34,19 @@ extern ImGuiLogger g_imgui_logger;
 //
 // Ideas for neural importance sampling many lights:
 //	- Can we cache the 64 cluster SG importance spatially to avoid recomputing them everytime at runtime, use the kd tree for that?
+//		- Is it valid though that the baseline changes as the networks learns since with the kd tree we're going to subdivide more and more = cached sg
+//		importances are going to evolve
+//	- Use ATS for the base 64 clusters importance and learn residual on that?
+//	- Splitting in the subtree + RIS
+//		Or maybe juste do splitting in the subtree if visibility variance is high
+//		The better theoretical question is when is splitting needed? This is probably not necessarily when vis variance is high
+//	- Wider subtree + sample one root cluster brute force WRS
+//		Or if caching spatially works well, do caching of the wider subtree as well to avoid
+//	- Double mlp in the subtree as well ? i.e. multiple level MLP. One MLP inference for probabilities on the root node wide clusters and another MLP inference
+//	for the subtree wide root clusters.
+//		Or maybe a single MLP that does all that
+//	- How to to NISML but on 1024 root node clusters?
+
 //
 // Summary of all the learnt NEE distributions issues so far:
 //	- We have dead cells even at light cut size 1
@@ -97,6 +110,7 @@ extern ImGuiLogger g_imgui_logger;
 //		- Can we not use doubles in should split mean radiance and still get away with it?
 //
 // TODO SG Light tree
+//	- Maybe still do the hard coded distributions, may still be good
 //	- How to use more SG spatial lobes per precomputed nodes of the tree cut (which is basically free quality) but no more of these lobes when traversing the
 // subtrees to not tank perf
 //	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for

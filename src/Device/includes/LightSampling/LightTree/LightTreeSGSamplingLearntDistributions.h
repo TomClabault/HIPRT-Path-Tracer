@@ -9,68 +9,11 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
-
-struct IlluminationAwareKDTreeConditionalLightTreeSample
-{
-	unsigned int light_leaf_index;
-	float conditional_leaf_probability;
-};
-
-HIPRT_DEVICE IlluminationAwareKDTreeConditionalLightTreeSample sample_light_tree_subtree(const LightTreeSGNodeDevice* nodes,
-																						 unsigned int subtree_root,
-																						 float3_t shading_point,
-																						 float3_t view_direction,
-																						 float3_t shading_normal,
-																						 const SGSpecularImportanceData& spec_data,
-																						 float specular,
-																						 float alpha_x,
-																						 float alpha_y,
-																						 Xorshift32Generator& random_number_generator)
-{
-	float conditional_probability = 1.0f;
-	unsigned int node_index		  = subtree_root;
-	unsigned int depth			  = 0;
-
-	while (nodes[node_index].triangle_count == 0)
-	{
-		unsigned int left_child_index  = nodes[node_index].left_child_index_or_first_triangle_index;
-		unsigned int right_child_index = left_child_index + 1;
-
-		float left_importance =
-			light_tree_sg_node_importance(nodes[left_child_index], spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-		float right_importance =
-			light_tree_sg_node_importance(nodes[right_child_index], spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-
-		float importance_sum   = left_importance + right_importance;
-		float left_probability = 0.5f;
-		if (!(importance_sum > 0.0f))
-			return IlluminationAwareKDTreeConditionalLightTreeSample{ 0u, 0.0f };
-
-		left_probability = left_importance / importance_sum;
-
-		float random_value = random_number_generator();
-		bool choose_left   = random_value < left_probability;
-
-		if (choose_left)
-		{
-			conditional_probability *= left_probability;
-			node_index = left_child_index;
-		}
-		else
-		{
-			conditional_probability *= 1.0f - left_probability;
-			node_index = right_child_index;
-		}
-
-		depth++;
-	}
-
-	return IlluminationAwareKDTreeConditionalLightTreeSample{ node_index, conditional_probability };
-}
 
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_learnt_distributions(const HIPRTRenderData& render_data,
 																								 float3_t shading_point,

@@ -4,6 +4,7 @@
  */
 
 #include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
+#include "Device/includes/Neural/NISML.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/Sampling.h" // For reflect_ray()
 
@@ -166,7 +167,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z);
-		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+		float det	  = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
 					2.0f * light_lobe_variance *
 						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
 					light_lobe_variance * light_lobe_variance * det_JJ4;
@@ -238,6 +239,8 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	return final_importance;
 }
 
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
+
 #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& node, float3_t shading_point)
@@ -255,8 +258,8 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance			 = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) +
-								hippt::square(node.get_energy_average()) * variance_geometric) *
-							   hippt::square(node.total_emitter_count);
+						hippt::square(node.get_energy_average()) * variance_geometric) *
+					 hippt::square(node.total_emitter_count);
 
 	return variance;
 }
@@ -1022,6 +1025,64 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 #if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
 
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+
+HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree_cut_neural_many_lights(const HIPRTRenderData& render_data,
+																										float3_t shading_point,
+																										float3_t view_direction,
+																										float3_t shading_normal,
+																										const SGSpecularImportanceData& spec_data,
+																										float sg_specular_weight,
+																										float alpha_x,
+																										float alpha_y,
+																										Xorshift32Generator& rng)
+{
+	const LightTreeSGDevice& light_tree	  = render_data.light_tree_sg;
+	const unsigned int invalid_node_index = 0xFFFFFFFF;
+	const unsigned int cluster_count	  = light_tree.settings.effective_tree_cut_size_neural_many_lights;
+
+	if (cluster_count == 0 || cluster_count > NIS_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr ||
+		light_tree.tree_cut_node_indices_neural_many_lights == nullptr)
+		return LightSampleArray<1>{ LightSampleInformation() };
+
+	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
+	for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
+	{
+		unsigned int node_index = light_tree.tree_cut_node_indices_neural_many_lights[cluster_position];
+		if (node_index == invalid_node_index)
+		{
+			cluster_log_baseline_weights[cluster_position] = -INFINITY;
+
+			continue;
+		}
+
+		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
+														 sg_specular_weight, alpha_x, alpha_y);
+		cluster_log_baseline_weights[cluster_position] = importance > 0.0f && hippt::is_finite(importance) ? logf(importance) : -INFINITY;
+	}
+
+	float cluster_probability			   = 0.0f;
+	unsigned int selected_cluster_position = infer_and_sample_nis_cluster(render_data.nis_ml.mlp, cluster_log_baseline_weights, cluster_count, rng,
+																		  shading_point, view_direction, shading_normal, render_data, cluster_probability);
+	if (selected_cluster_position >= cluster_count || !(cluster_probability > 0.0f))
+		return LightSampleArray<1>{ LightSampleInformation() };
+
+	unsigned int selected_cluster_node_index = light_tree.tree_cut_node_indices_neural_many_lights[selected_cluster_position];
+	if (selected_cluster_node_index == invalid_node_index)
+		return LightSampleArray<1>{ LightSampleInformation() };
+
+	LightSampleInformation light_sample = sample_light_inside_nis_cluster(render_data, selected_cluster_node_index, shading_point, view_direction,
+																		  shading_normal, spec_data, sg_specular_weight, alpha_x, alpha_y, rng);
+	if (!(light_sample.pdf > 0.0f))
+		return LightSampleArray<1>{ LightSampleInformation() };
+
+	light_sample.pdf *= cluster_probability;
+
+	return LightSampleArray<1>{ light_sample };
+}
+
+#endif
+
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRenderData& render_data,
 																					 float3_t shading_point,
 																					 float3_t view_direction,
@@ -1032,6 +1093,10 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree
 																					 float alpha_y,
 																					 Xorshift32Generator& rng)
 {
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	return sample_one_emissive_triangle_light_tree_sg_tree_cut_neural_many_lights(render_data, shading_point, view_direction, shading_normal, spec_data,
+																				  sg_specular_weight, alpha_x, alpha_y, rng);
+#else
 	const LightTreeSGNodeDevice* nodes	  = render_data.light_tree_sg.nodes;
 	const unsigned int invalid_node_index = 0xFFFFFFFF;
 
@@ -1105,7 +1170,121 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree
 	light_sample.pdf							= cumulative_probability / current_node.triangle_count;
 
 	return LightSampleArray<1>{ light_sample };
+#endif
 }
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut_neural_many_lights(const HIPRTRenderData& render_data,
+																					  float3_t shading_point,
+																					  float3_t view_direction,
+																					  float3_t shading_normal,
+																					  const SGSpecularImportanceData& spec_data,
+																					  float sg_specular_weight,
+																					  float alpha_x,
+																					  float alpha_y,
+																					  int global_emissive_triangle_index)
+{
+	if (global_emissive_triangle_index == -1)
+		return 0.0f;
+
+	const LightTreeSGDevice& light_tree	  = render_data.light_tree_sg;
+	const unsigned int invalid_node_index = 0xFFFFFFFF;
+	const unsigned int cluster_count	  = light_tree.settings.effective_tree_cut_size_neural_many_lights;
+	if (cluster_count == 0 || cluster_count > NIS_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr ||
+		light_tree.tree_cut_node_indices_neural_many_lights == nullptr)
+		return 0.0f;
+
+	const unsigned int bit_trail		 = light_tree.bit_trails[global_emissive_triangle_index];
+	unsigned int target_cluster_position = cluster_count;
+	unsigned int target_cluster_depth	 = 0;
+	unsigned int current_node_index		 = 0;
+	unsigned int current_depth			 = 0;
+	while (true)
+	{
+		for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
+		{
+			if (light_tree.tree_cut_node_indices_neural_many_lights[cluster_position] == current_node_index)
+			{
+				target_cluster_position = cluster_position;
+				target_cluster_depth	= current_depth;
+				break;
+			}
+		}
+
+		if (light_tree.nodes[current_node_index].triangle_count != 0)
+			break;
+
+		unsigned int left_child_index = light_tree.nodes[current_node_index].left_child_index_or_first_triangle_index;
+		current_node_index			  = (bit_trail & (1u << current_depth)) == 0 ? left_child_index : left_child_index + 1;
+		current_depth++;
+	}
+
+	if (target_cluster_position >= cluster_count)
+		return 0.0f;
+
+	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
+	for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
+	{
+		unsigned int node_index = light_tree.tree_cut_node_indices_neural_many_lights[cluster_position];
+		if (node_index == invalid_node_index)
+		{
+			cluster_log_baseline_weights[cluster_position] = -INFINITY;
+
+			continue;
+		}
+
+		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
+														 sg_specular_weight, alpha_x, alpha_y);
+		cluster_log_baseline_weights[cluster_position] = importance > 0.0f && hippt::is_finite(importance) ? logf(importance) : -INFINITY;
+	}
+
+	float cluster_probability = infer_nis_cluster_probability(render_data.nis_ml.mlp, cluster_log_baseline_weights, cluster_count, target_cluster_position,
+															  shading_point, view_direction, shading_normal, render_data);
+	if (!(cluster_probability > 0.0f))
+		return 0.0f;
+
+	current_node_index			  = light_tree.tree_cut_node_indices_neural_many_lights[target_cluster_position];
+	current_depth				  = target_cluster_depth;
+	float conditional_probability = 1.0f;
+	while (light_tree.nodes[current_node_index].triangle_count == 0)
+	{
+		unsigned int left_child_index			 = light_tree.nodes[current_node_index].left_child_index_or_first_triangle_index;
+		unsigned int right_child_index			 = left_child_index + 1;
+		const LightTreeSGNodeDevice& left_child	 = light_tree.nodes[left_child_index];
+		const LightTreeSGNodeDevice& right_child = light_tree.nodes[right_child_index];
+
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float importance_sum = left_importance + right_importance;
+		if (!(importance_sum > 0.0f))
+			return 0.0f;
+
+		float left_probability = left_importance / importance_sum;
+		if ((bit_trail & (1u << current_depth)) == 0)
+		{
+			conditional_probability *= left_probability;
+			current_node_index = left_child_index;
+		}
+		else
+		{
+			conditional_probability *= 1.0f - left_probability;
+			current_node_index = right_child_index;
+		}
+
+		current_depth++;
+	}
+
+	const LightTreeSGNodeDevice& sampled_leaf = light_tree.nodes[current_node_index];
+	if (sampled_leaf.triangle_count == 0)
+		return 0.0f;
+
+	return cluster_probability * conditional_probability / sampled_leaf.triangle_count;
+}
+
+#endif
 
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRenderData& render_data,
 																   float3_t shading_point,
@@ -1117,6 +1296,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 																   float alpha_y,
 																   int global_emissive_triangle_index)
 {
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	return pdf_of_emissive_triangle_light_tree_sg_tree_cut_neural_many_lights(render_data, shading_point, view_direction, shading_normal, spec_data,
+																			  sg_specular_weight, alpha_x, alpha_y, global_emissive_triangle_index);
+#else
 	if (global_emissive_triangle_index == -1)
 		return 0.0f;
 
@@ -1201,6 +1384,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 	}
 
 	return cumulative_probability / nodes[current_node_index].triangle_count;
+
+#endif
 }
 
 #endif

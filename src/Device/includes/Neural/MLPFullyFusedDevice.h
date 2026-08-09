@@ -166,7 +166,9 @@ struct MLPFullyFusedDevice
 				current[neuron] = value;
 			}
 
-			std::swap(previous, current);
+			float* activation_swap = previous;
+			previous			   = current;
+			current				   = activation_swap;
 		}
 
 		for (uint32_t c = 0; c < OUTPUT_SIZE; ++c)
