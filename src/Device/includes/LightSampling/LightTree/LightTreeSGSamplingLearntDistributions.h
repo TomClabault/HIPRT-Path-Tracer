@@ -64,7 +64,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 
 	out_sampled_cut_node = sampled_cut_node;
 
-	IlluminationAwareKDTreeConditionalLightTreeSample sampled_subtree =
+	LightSubtreeSample sampled_subtree =
 		sample_light_tree_subtree(render_data.light_tree_sg.nodes, sampled_cut_node.light_tree_node_index, shading_point, view_direction, shading_normal,
 								  spec_data, specular, alpha_x, alpha_y, random_number_generator);
 

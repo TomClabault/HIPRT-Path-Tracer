@@ -14,6 +14,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearntDistributions.h"
+#include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
@@ -406,11 +407,15 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 	ColorRGB32F light_source_radiance;
 
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-								  closest_hit_info.primitive_index, ray_payload, random_number_generator);
+	NISLightSample nis_sample = sample_one_emissive_triangle_neural_many_lights(render_data, closest_hit_info.inter_point, view_direction,
+																				closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
+	LightSamplePointArray<1> light_samples;
+	light_samples[0] =
+		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																ray_payload.material, nis_sample.emissive_triangle_global_index, random_number_generator);
+	light_samples[0].area_measure_pdf *= nis_sample.emissive_triangle_pdf;
 
-	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
+	for (int i = 0; i < 1; i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
 
@@ -684,8 +689,6 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 
 #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_BSDF
 	// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
 	// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
@@ -711,6 +714,8 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 #elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
 	direct_light_contribution =
 		sample_one_light_no_MIS_SG_tree_learnt_distributions(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 
 #endif // #if ReGIR

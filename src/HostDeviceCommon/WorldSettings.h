@@ -20,6 +20,11 @@ enum AmbientLightType
 
 struct WorldSettings
 {
+	float3_t scene_min = make_float3(0.0f, 0.0f, 0.0f);
+	float padding_;
+	float3_t scene_max = make_float3(0.0f, 0.0f, 0.0f);
+	float padding__;
+
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
 	ColorRGB32F uniform_light_color		= ColorRGB32F(0.0f);
 

@@ -50,8 +50,8 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_light_tree_sg_sampling_data_structure	 = LightTreeSGSamplingDataStructure(this);
 
 	m_render_thread.init(render_window, this);
-	m_device_properties									= m_hiprt_orochi_ctx->device_properties;
-	m_application_settings								= application_settings;
+	m_device_properties										= m_hiprt_orochi_ctx->device_properties;
+	m_application_settings									= application_settings;
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = get_global_compiler_options();
 	// Adding hardware acceleration by default if supported
@@ -791,6 +791,8 @@ void GPURenderer::update_render_data()
 	{
 		m_render_data.buffers.set_updated_random_seed_pointer(m_updated_random_seeds.get_device_pointer());
 		m_render_data.buffers.set_input_random_seed_pointer(m_input_seeds.get_device_pointer());
+		m_render_data.world_settings.scene_min = m_parsed_scene_metadata.scene_bounding_box.mini;
+		m_render_data.world_settings.scene_max = m_parsed_scene_metadata.scene_bounding_box.maxi;
 
 		m_render_data.GPU_BVH		= m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;

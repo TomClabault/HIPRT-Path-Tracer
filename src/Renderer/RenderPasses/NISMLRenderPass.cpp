@@ -22,15 +22,17 @@ bool NISMLRenderPass::pre_sample_update(float delta_time)
 	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
+	bool render_data_needs_update = false;
 	if (m_mlp.maximum_size() == 0)
 	{
 		m_mlp.resize();
 		m_mlp.initialize(false);
+		render_data_needs_update = true;
 	}
 
 	update_render_data();
 
-	return false;
+	return render_data_needs_update;
 }
 
 bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -47,8 +49,6 @@ void NISMLRenderPass::update_render_data()
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 	render_data.nis_ml.mlp		 = m_mlp.to_device();
-	render_data.scene_min		 = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-	render_data.scene_max		 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
 }
 
 void NISMLRenderPass::reset(bool reset_by_camera_movement) {}
