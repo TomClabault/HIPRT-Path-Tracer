@@ -7,6 +7,7 @@
 #define KERNELS_NIS_ML_TRAIN_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 
@@ -47,6 +48,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 #endif
 
 	float output_gradient[NIS_MAX_CLUSTER_COUNT] = {};
+	float weight								 = 0.0f;
 	if (valid_record)
 	{
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
@@ -65,7 +67,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 		bool valid_softmax		   = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, probabilities);
 		unsigned int cluster_index = static_cast<unsigned int>(record.cluster_index);
 		float selected_probability = cluster_index < NIS_MAX_CLUSTER_COUNT ? probabilities[cluster_index] : 0.0f;
-		float weight			   = selected_probability > 0.0f ? record.contribution_luminance / selected_probability : 0.0f;
+		weight					   = selected_probability > 0.0f ? record.contribution_luminance / selected_probability : 0.0f;
 		bool valid_weight		   = valid_softmax && cluster_index < render_data.nis_ml.cluster_count && selected_probability > 0.0f;
 
 		if (valid_weight)
@@ -77,7 +79,13 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	}
 
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
-	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, static_cast<const float*>(output_gradient),
+	constexpr float TARGET_MAX_ERROR = 1024.0f;
+	float error_scale				 = 1.0f;
+	float maximum_weight			 = block_reduce<NeuralImportanceSamplingMLP::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
+	if (maximum_weight > TARGET_MAX_ERROR)
+		error_scale = TARGET_MAX_ERROR / maximum_weight;
+
+	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, output_gradient, error_scale,
 							 valid_training_sample);
 #else
 	if (valid_training_sample)

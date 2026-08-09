@@ -495,7 +495,8 @@ struct MLPFullyFusedDevice
 																fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 																fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 																const float* output_gradient,
-																bool count_training_sample) const
+																bool count_training_sample,
+																float error_scale) const
 	{
 		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
@@ -509,6 +510,8 @@ struct MLPFullyFusedDevice
 		unsigned int lane_id_wmma = lane_id & 15;
 		unsigned int lane_high	  = lane_id / 16;
 		unsigned int warp_count	  = BlockSize_ / 32;
+		// NISML scales errors before storing them in FP16; restore the scale when accumulating FP32 parameter gradients.
+		float inverse_error_scale = 1.0f / error_scale;
 
 		constexpr unsigned int errors_ping_pong_size = ACTIVATION_WIDTH;
 		unsigned int output_layer_index				 = LAYER_COUNT - 1;
@@ -523,7 +526,7 @@ struct MLPFullyFusedDevice
 
 			if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
 			{
-				error = static_cast<fp16>(output_gradient[output_neuron]);
+				error = static_cast<fp16>(output_gradient[output_neuron] * error_scale);
 			}
 
 			errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
@@ -593,7 +596,7 @@ struct MLPFullyFusedDevice
 						if (current_neuron < current_neurons && previous_neuron < previous_neurons)
 						{
 							unsigned int connection_index = connection_offset + current_neuron * previous_neurons + previous_neuron;
-							hippt::atomic_fetch_add(&gradient_weights[connection_index], static_cast<float>(gradient_tile[element * 2]));
+							hippt::atomic_fetch_add(&gradient_weights[connection_index], static_cast<float>(gradient_tile[element * 2]) * inverse_error_scale);
 						}
 					}
 				}
@@ -607,7 +610,7 @@ struct MLPFullyFusedDevice
 					for (unsigned int sample_index = 0; sample_index < BlockSize_; sample_index++)
 						error_sum += static_cast<float>(errors_buffer[current_errors_offset + neuron_index][sample_index]);
 
-					hippt::atomic_fetch_add(&gradient_biases[current_layer_offset + neuron_index], error_sum);
+					hippt::atomic_fetch_add(&gradient_biases[current_layer_offset + neuron_index], error_sum * inverse_error_scale);
 				}
 			}
 			__syncthreads();
@@ -687,7 +690,7 @@ struct MLPFullyFusedDevice
 										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										   const float* output_gradient) const
 	{
-		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient, true);
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient, true, 1.0f);
 	}
 
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
@@ -698,7 +701,19 @@ struct MLPFullyFusedDevice
 										   bool count_training_sample) const
 	{
 		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient,
-												  count_training_sample);
+												  count_training_sample, 1.0f);
+	}
+
+	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
+										   unsigned int sample_offset,
+										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   const float* output_gradient,
+										   float error_scale,
+										   bool count_training_sample) const
+	{
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient,
+												  count_training_sample, error_scale);
 	}
 
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
@@ -723,7 +738,7 @@ struct MLPFullyFusedDevice
 		}
 
 		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer,
-												  static_cast<const float*>(output_gradient), true);
+												  static_cast<const float*>(output_gradient), true, 1.0f);
 	}
 
 	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations, const float* output_gradient) const
