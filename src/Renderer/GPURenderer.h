@@ -102,6 +102,7 @@ public:
 
 	LightTreeATSBuilderOptions& get_light_tree_ats_build_options();
 	LightTreeATSSamplingDataStructure& get_light_tree_ats_sampling_data_structure();
+	LightTreeSGBuilder& light_tree_sg_builder();
 
 	LightTreeATSBuilderOptions& get_light_tree_sg_build_options();
 	LightTreeSGSamplingDataStructure& get_light_tree_sg_sampling_data_structure();

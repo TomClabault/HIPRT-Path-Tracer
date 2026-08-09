@@ -50,8 +50,8 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_light_tree_sg_sampling_data_structure	 = LightTreeSGSamplingDataStructure(this);
 
 	m_render_thread.init(render_window, this);
-	m_device_properties										= m_hiprt_orochi_ctx->device_properties;
-	m_application_settings									= application_settings;
+	m_device_properties	   = m_hiprt_orochi_ctx->device_properties;
+	m_application_settings = application_settings;
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = get_global_compiler_options();
 	// Adding hardware acceleration by default if supported
@@ -222,6 +222,11 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()
 {
 	return m_light_tree_ats_sampling_data_structure.get_builder_options();
+}
+
+LightTreeSGBuilder& GPURenderer::light_tree_sg_builder()
+{
+	return m_light_tree_sg_sampling_data_structure.get_builder();
 }
 
 LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()

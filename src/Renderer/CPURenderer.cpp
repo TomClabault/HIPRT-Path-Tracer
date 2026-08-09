@@ -427,6 +427,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
 		m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
 										  m_light_tree_sg_device_data);
+		m_light_tree_builder_sg.get_nisml_data().to_device<std::vector>(m_render_data.nis_ml);
 		m_light_tree_builder_sg.cleanup();
 	}
 #endif

@@ -44,11 +44,21 @@ void NISMLRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 
 void NISMLRenderPass::update_render_data()
 {
-	if (!is_render_pass_used(*m_compiler_options))
-		return;
-
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
-	render_data.nis_ml.mlp		 = m_mlp.to_device();
+	if (!is_render_pass_used(*m_compiler_options))
+	{
+		render_data.nis_ml.cluster_node_indices			= nullptr;
+		render_data.nis_ml.triangle_to_cluster			= nullptr;
+		render_data.nis_ml.cluster_node_depths			= nullptr;
+		render_data.nis_ml.cluster_log_baseline_weights = nullptr;
+		render_data.nis_ml.cluster_count				= 0;
+
+		return;
+	}
+
+	render_data.nis_ml.mlp							= m_mlp.to_device();
+	render_data.nis_ml.cluster_log_baseline_weights = nullptr;
+	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nis_ml);
 }
 
 void NISMLRenderPass::reset(bool reset_by_camera_movement) {}

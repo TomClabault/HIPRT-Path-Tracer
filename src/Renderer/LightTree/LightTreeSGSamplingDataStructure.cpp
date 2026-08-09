@@ -18,9 +18,7 @@ void LightTreeSGSamplingDataStructure::compute_from_scene(const Scene& scene, st
 		return;
 	}
 
-	compute(compiler_options,
-
-			scene.emissive_triangles_primitive_indices, scene.triangles_average_emissive_power_luminance, scene.vertices_positions,
+	compute(compiler_options, scene.emissive_triangles_primitive_indices, scene.triangles_average_emissive_power_luminance, scene.vertices_positions,
 			scene.triangles_vertex_indices);
 }
 
@@ -31,28 +29,27 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 											   const std::vector<int>& triangles_vertex_indices)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(
-		ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG,
-		[this, compiler_options,
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG,
+								[this, compiler_options, &emissive_triangles_primitive_indices, &triangles_average_emissive_power_luminance,
+								 &triangles_vertex_indices, &vertices_positions]()
+								{
+									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
 
-		 &emissive_triangles_primitive_indices, &triangles_average_emissive_power_luminance, &triangles_vertex_indices, &vertices_positions]()
-		{
-			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
+									if (!is_needed(emissive_triangles_primitive_indices.size(), compiler_options))
+									{
+										free();
 
-			if (!is_needed(emissive_triangles_primitive_indices.size(), compiler_options))
-			{
-				free();
+										return;
+									}
 
-				return;
-			}
-
-			m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangles_vertex_indices,
-													 vertices_positions, static_cast<unsigned int>(triangles_vertex_indices.size() / 3));
-			m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
-			m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3,
-											  m_light_tree_sg_device_data);
-			m_light_tree_builder_sg.cleanup();
-		});
+									m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance,
+																			 triangles_vertex_indices, vertices_positions,
+																			 static_cast<unsigned int>(triangles_vertex_indices.size() / 3));
+									m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
+									m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices,
+																	  triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
+									m_light_tree_builder_sg.cleanup();
+								});
 }
 
 void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
@@ -86,15 +83,12 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 void LightTreeSGSamplingDataStructure::free()
 {
 	m_light_tree_sg_device_data.free();
+	m_light_tree_builder_sg.get_nisml_data().free();
 
 	HIPRTRenderData& render_data							   = m_renderer->get_render_data();
 	render_data.light_tree_sg.nodes							   = nullptr;
 	render_data.light_tree_sg.spatial_lobes					   = nullptr;
 	render_data.light_tree_sg.tree_cut_node_indices			   = nullptr;
-	render_data.nis_ml.cluster_node_indices					   = nullptr;
-	render_data.nis_ml.triangle_to_cluster					   = nullptr;
-	render_data.nis_ml.cluster_node_depths					   = nullptr;
-	render_data.nis_ml.cluster_count						   = 0;
 	render_data.light_tree_sg.indices_array					   = nullptr;
 	render_data.light_tree_sg.bit_trails					   = nullptr;
 	render_data.light_tree_sg.settings.spatial_lobe_count	   = 0;
@@ -115,7 +109,12 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, st
 
 size_t LightTreeSGSamplingDataStructure::get_VRAM_usage_bytes() const
 {
-	return m_light_tree_sg_device_data.get_VRAM_usage_bytes();
+	return m_light_tree_sg_device_data.get_VRAM_usage_bytes() + m_light_tree_builder_sg.get_nisml_data().get_VRAM_usage_bytes();
+}
+
+LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
+{
+	return m_light_tree_builder_sg;
 }
 
 LightTreeATSBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
