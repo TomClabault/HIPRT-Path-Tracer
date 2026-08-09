@@ -21,6 +21,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
@@ -290,6 +291,7 @@ private:
 	} m_illumination_aware_kd_tree_state;
 
 	BSDFDataHost m_bsdf_data_cpu_data;
+	MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLDataHost<std::vector> m_nis_ml_data;
 
 	std::vector<Triangle> m_triangle_buffer;

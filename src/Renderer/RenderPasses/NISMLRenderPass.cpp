@@ -150,6 +150,7 @@ void NISMLRenderPass::update_render_data()
 void NISMLRenderPass::reset(bool reset_by_camera_movement)
 {
 	m_nis_ml_data.reset();
+	m_mlp.initialize(true);
 }
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

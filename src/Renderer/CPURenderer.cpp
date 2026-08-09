@@ -97,8 +97,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 706
-#define DEBUG_PIXEL_Y 562
+#define DEBUG_PIXEL_X 109
+#define DEBUG_PIXEL_Y 183
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -122,7 +122,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 250
+#define DEBUG_NEIGHBORHOOD_SIZE 150
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -229,6 +229,11 @@ void CPURenderer::setup_buffers()
 
 	m_g_buffer.resize(width * height);
 	m_g_buffer_prev_frame.resize(width * height);
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_mlp.resize();
+	m_mlp.initialize(false);
+#endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
@@ -369,7 +374,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.buffers.vertex_normals	   = parsed_scene.vertex_normals.data();
 	m_render_data.buffers.texcoords			   = parsed_scene.texcoords.data();
 
-	ThreadManager::join_threads(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS);
+	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
 	m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
@@ -549,6 +554,7 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_render_data.nis_ml.mlp					  = m_mlp.to_device();
 	NISMLDevice training_data					  = m_nis_ml_data.to_device();
 	m_render_data.nis_ml.training_records		  = training_data.training_records;
 	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
@@ -783,6 +789,11 @@ void CPURenderer::reset()
 {
 	m_render_data.render_settings.need_to_reset = true;
 	m_render_data.render_settings.sample_number = 0;
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_nis_ml_data.reset();
+	m_mlp.initialize(true);
+#endif
 }
 
 void CPURenderer::illumination_aware_kd_tree_reset()
