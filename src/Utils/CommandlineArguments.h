@@ -24,6 +24,8 @@ struct CommandlineArguments
 
 	int render_samples = 64;
 	int bounces		   = 8;
+
+	bool only_compile_shaders = false;
 };
 
 #endif

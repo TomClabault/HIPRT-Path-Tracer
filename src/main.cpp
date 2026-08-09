@@ -64,6 +64,12 @@ int main(int argc, char* argv[])
 
 	// Joining everyone before starting the render except the precompilation threads
 	ThreadManager::join_all_threads();
+	if (cmd_arguments.only_compile_shaders)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "All shaders compiled, exiting...");
+
+		return 0;
+	}
 
 	parsed_scene.print_statistics(std::cout);
 
