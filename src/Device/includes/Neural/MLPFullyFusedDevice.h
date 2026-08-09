@@ -130,6 +130,49 @@ struct MLPFullyFusedDevice
 		return output;
 	}
 
+	HIPRT_DEVICE void inference_single_thread(const InputLayer& input, float* output) const
+	{
+		float activations_a[ACTIVATION_WIDTH];
+		float activations_b[ACTIVATION_WIDTH];
+
+		encode_input_ref(const_cast<float*>(input.input), activations_a);
+
+		float* previous = activations_a;
+		float* current	= activations_b;
+
+		for (uint32_t layer = 1; layer < LAYER_COUNT; ++layer)
+		{
+			const uint32_t previous_count = get_layer_neuron_count(layer - 1);
+
+			const uint32_t current_count = get_layer_neuron_count(layer);
+
+			for (uint32_t neuron = 0; neuron < current_count; ++neuron)
+			{
+				float value = 0.0f;
+
+				if constexpr (USE_BIASES)
+					value += neurons_biases[get_neuron_data_index(layer, neuron)];
+
+				for (uint32_t previous_neuron = 0; previous_neuron < previous_count; ++previous_neuron)
+				{
+					const uint32_t connection = get_connection_data_index(layer, previous_neuron, neuron);
+
+					value += connection_weights[connection] * previous[previous_neuron];
+				}
+
+				if (layer != LAYER_COUNT - 1)
+					value = activation_function(value);
+
+				current[neuron] = value;
+			}
+
+			std::swap(previous, current);
+		}
+
+		for (uint32_t c = 0; c < OUTPUT_SIZE; ++c)
+			output[c] = previous[c];
+	}
+
 	HIPRT_DEVICE void inference_wmma(InputLayer input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
@@ -137,6 +180,7 @@ struct MLPFullyFusedDevice
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
 		encode_input(input.input, activations_buffer);
+
 		__syncthreads();
 
 		// WMMA compatible architectures #if guard
