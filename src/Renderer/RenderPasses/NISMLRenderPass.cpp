@@ -54,17 +54,30 @@ bool NISMLRenderPass::pre_sample_update(float delta_time)
 	if (!is_render_pass_used(*m_compiler_options))
 		return false;
 
+	bool render_data_needs_update = pre_render_update();
+
+	m_nis_ml_data.reset();
+	update_render_data();
+
+	return render_data_needs_update;
+}
+
+bool NISMLRenderPass::pre_render_update()
+{
 	bool render_data_needs_update = false;
 	if (m_mlp.maximum_size() == 0)
 	{
 		m_mlp.resize(NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE);
 		m_mlp.initialize(false);
-		m_nis_ml_data.resize();
 		render_data_needs_update = true;
 	}
 
-	m_nis_ml_data.reset();
-	update_render_data();
+	unsigned int training_record_buffer_capacity = static_cast<unsigned int>(std::max(m_training_record_buffer_capacity, 1));
+	if (m_nis_ml_data.get_training_record_capacity() != training_record_buffer_capacity)
+	{
+		m_nis_ml_data.resize(training_record_buffer_capacity);
+		render_data_needs_update = true;
+	}
 
 	return render_data_needs_update;
 }
@@ -152,6 +165,11 @@ float& NISMLRenderPass::get_training_record_percentage()
 int& NISMLRenderPass::get_training_spp()
 {
 	return m_training_spp;
+}
+
+int& NISMLRenderPass::get_training_record_buffer_capacity()
+{
+	return m_training_record_buffer_capacity;
 }
 
 float& NISMLRenderPass::get_adam_learning_rate()

@@ -64,19 +64,23 @@ public:
 
 	float& get_training_record_percentage();
 	int& get_training_spp();
+	int& get_training_record_buffer_capacity();
 	float& get_adam_learning_rate();
 
 	NISMLVRAMUsage get_vram_usage_breakdown() const;
 	std::size_t get_vram_usage_bytes() const;
 
 private:
+	bool pre_render_update();
+
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
 
-	unsigned int m_adam_step		   = 0;
-	float m_training_record_percentage = 15.0f;
-	int m_training_spp				   = 0;
-	float m_adam_learning_rate		   = 0.001f;
+	unsigned int m_adam_step			  = 0;
+	float m_training_record_percentage	  = 15.0f;
+	int m_training_spp					  = 0;
+	int m_training_record_buffer_capacity = NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE;
+	float m_adam_learning_rate			  = 0.001f;
 };
 
 #endif

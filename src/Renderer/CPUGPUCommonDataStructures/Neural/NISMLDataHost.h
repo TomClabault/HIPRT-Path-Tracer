@@ -20,7 +20,7 @@
 template <template <typename> typename DataContainer>
 struct NISMLDataHost
 {
-	static constexpr unsigned int NIS_TRAINING_BATCH_SIZE = 2048;
+	static constexpr unsigned int NIS_TRAINING_BATCH_SIZE = 1000000;
 
 	void resize(unsigned int new_training_record_capacity = NIS_TRAINING_BATCH_SIZE)
 	{

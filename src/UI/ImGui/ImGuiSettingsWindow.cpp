@@ -4011,6 +4011,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 							 vram_usage.training_record_count / 1000000.0f);
 					ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f,
 										   "%.1f%%"))
 					{
@@ -4022,6 +4023,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
 						m_render_window->set_render_dirty(true);
 					ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
+
+					if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
+					{
+						nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
 
 					if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
 						m_render_window->set_render_dirty(true);
@@ -4263,6 +4271,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::Checkbox("Freeze tree", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::CollapsingHeader("Debug"))
 		{
 			if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
