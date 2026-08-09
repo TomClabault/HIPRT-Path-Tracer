@@ -515,20 +515,10 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
-																		 material_specular_weight * material.roughness) /
-																			specular_lobes_sum);
-	float sg_anisotropy =
-		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
-		specular_lobes_sum;
-
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float sg_specular_weight;
+	float alpha_x;
+	float alpha_y;
+	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
@@ -885,20 +875,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 	LightTreeSGNodeDevice current_node = nodes[0];
 
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
-																		 material_specular_weight * material.roughness) /
-																			specular_lobes_sum);
-	float sg_anisotropy =
-		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
-		specular_lobes_sum;
-
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float sg_specular_weight;
+	float alpha_x;
+	float alpha_y;
+	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
@@ -1221,20 +1201,10 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	unsigned int current_node_index = 0;
 	unsigned int depth				= 0;
 
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
-																		 material_specular_weight * material.roughness) /
-																			specular_lobes_sum);
-	float sg_anisotropy =
-		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
-		specular_lobes_sum;
-
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float sg_specular_weight;
+	float alpha_x;
+	float alpha_y;
+	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
@@ -1306,20 +1276,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	LightTreeSGNodeDevice current_node = nodes[0];
 	unsigned int current_node_index	   = 0;
 
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
-																		 material_specular_weight * material.roughness) /
-																			specular_lobes_sum);
-	float sg_anisotropy =
-		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
-		specular_lobes_sum;
-
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float sg_specular_weight;
+	float alpha_x;
+	float alpha_y;
+	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
