@@ -8,11 +8,41 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
-const std::string NISMLRenderPass::NISML_RENDER_PASS_NAME = "Neural Importance Sampling MLP";
+const std::string NISMLRenderPass::NISML_RENDER_PASS_NAME = "Neural Importance Sampling Many Lights";
+const std::string NISMLRenderPass::NISML_TRAIN			  = "NIS Many Lights Train";
+const std::string NISMLRenderPass::NISML_OPTIMIZE		  = "NIS Many Lights Optimize";
 
 NISMLRenderPass::NISMLRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(NISMLRenderPass::NISML_RENDER_PASS_NAME, renderer, options)
 {
+	m_kernels[NISMLRenderPass::NISML_TRAIN] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_TRAIN);
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLTrain.h");
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_function_name("NISMLTrain");
+
+	m_kernels[NISMLRenderPass::NISML_OPTIMIZE] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_OPTIMIZE);
+	m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLOptimize.h");
+	m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->set_kernel_function_name("NISMLOptimize");
+}
+
+bool NISMLRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+												   const std::vector<hiprtFuncNameSet>& func_name_sets,
+												   bool silent,
+												   bool use_cache)
+{
+	if (!is_render_pass_used(*m_compiler_options))
+		return false;
+
+	bool updated = false;
+	for (auto& name_to_kernel : m_kernels)
+	{
+		if (name_to_kernel.second->has_been_compiled())
+			continue;
+
+		name_to_kernel.second->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+		updated = true;
+	}
+
+	return updated;
 }
 
 void NISMLRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
@@ -25,7 +55,7 @@ bool NISMLRenderPass::pre_sample_update(float delta_time)
 	bool render_data_needs_update = false;
 	if (m_mlp.maximum_size() == 0)
 	{
-		m_mlp.resize();
+		m_mlp.resize(NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE);
 		m_mlp.initialize(false);
 		m_nis_ml_data.resize();
 		render_data_needs_update = true;
@@ -39,7 +69,27 @@ bool NISMLRenderPass::pre_sample_update(float delta_time)
 
 bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	return false;
+	if (!is_render_pass_used(compiler_options))
+		return false;
+
+	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device();
+	fp16* train_activations	  = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
+	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations };
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->launch_asynchronous(
+		NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE, 1, train_launch_args, m_renderer->get_main_stream());
+	unsigned int training_sample_count = m_mlp.m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0];
+	if (training_sample_count > 0)
+	{
+		unsigned int adam_step		 = m_adam_step;
+		void* optimize_launch_args[] = { &mlp_device, &adam_step };
+		m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->launch_asynchronous(1024, 1, NeuralImportanceSamplingMLP::CONNECTIONS_COUNT, 1, optimize_launch_args,
+																		m_renderer->get_main_stream());
+		m_adam_step++;
+	}
+
+	m_mlp.m_mlp_data.template memset_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(0);
+
+	return true;
 }
 
 void NISMLRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}

@@ -53,6 +53,7 @@ private:
 
 	OrochiBuffer<unsigned char> m_texture_data;
 	OrochiBuffer<unsigned char> m_out_predicted_texture;
+	unsigned int m_training_step = 0;
 };
 
 #endif

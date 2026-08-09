@@ -105,7 +105,6 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 		return false;
 
 	TrainingTestMLP mlp_device = m_mlp.to_device();
-	mlp_device.training_step   = render_data.render_settings.sample_number;
 
 	unsigned int batch_size		= 2048;
 	unsigned char* texture_data = m_texture_data.get_device_pointer();
@@ -121,10 +120,12 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	oroStreamSynchronize(m_renderer->get_main_stream());
 
 	// Optimize
-	void* optimize_launch_args[] = { &mlp_device };
+	unsigned int training_step	 = m_training_step;
+	void* optimize_launch_args[] = { &mlp_device, &training_step };
 	m_kernels[MLPTrainingTestRenderPass::MLP_OPTIMIZE]->launch_asynchronous(1024, 1, TrainingTestMLP::CONNECTIONS_COUNT, 1, optimize_launch_args,
 																			m_renderer->get_main_stream());
 	oroStreamSynchronize(m_renderer->get_main_stream());
+	m_training_step++;
 
 	// Predict
 	unsigned char* predicted_texture_data = m_out_predicted_texture.get_device_pointer();
@@ -154,6 +155,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 void MLPTrainingTestRenderPass::reset(bool reset_by_camera_movement)
 {
 	m_mlp.initialize(false);
+	m_training_step = 0;
 }
 
 bool MLPTrainingTestRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

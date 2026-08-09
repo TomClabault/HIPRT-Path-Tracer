@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_NIS_ML_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -23,6 +24,109 @@ struct NISLightSample
 	float conditional_light_probability = 0.0f;
 	float emissive_triangle_pdf			= 0.0f;
 };
+
+HIPRT_DEVICE void build_nis_input(const float3_t& scene_min,
+								  const float3_t& scene_max,
+								  const float3_t& shading_point,
+								  const float3_t& view_direction,
+								  const float3_t& shading_normal,
+								  NeuralImportanceSamplingMLP::InputLayer& input)
+{
+	float3_t normalized_shading_point =
+		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
+					(shading_point.z - scene_min.z) / (scene_max.z - scene_min.z));
+
+	input.input[0] = normalized_shading_point.x;
+	input.input[1] = normalized_shading_point.y;
+	input.input[2] = normalized_shading_point.z;
+	input.input[3] = view_direction.x;
+	input.input[4] = view_direction.y;
+	input.input[5] = view_direction.z;
+	input.input[6] = shading_normal.x;
+	input.input[7] = shading_normal.y;
+	input.input[8] = shading_normal.z;
+}
+
+HIPRT_DEVICE void build_nis_log_baseline_weights(const HIPRTRenderData& render_data,
+												 const NISMLDevice& neural_light_sampling,
+												 float3_t shading_point,
+												 float3_t view_direction,
+												 float3_t shading_normal,
+												 float sg_specular_weight,
+												 float alpha_x,
+
+												 float alpha_y,
+												 float* log_baseline_weights)
+{
+	const unsigned int invalid_node_index = 0xFFFFFFFF;
+	unsigned int cluster_count			  = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NIS_MAX_CLUSTER_COUNT));
+
+	for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+		log_baseline_weights[cluster_index] = -INFINITY;
+
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
+#else
+	SGSpecularImportanceData spec_data;
+#endif
+
+	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
+	{
+		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_index];
+		if (node_index == invalid_node_index)
+			continue;
+
+		float importance = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
+														 sg_specular_weight, alpha_x, alpha_y);
+		if (importance > 0.0f)
+			log_baseline_weights[cluster_index] = logf(importance);
+	}
+}
+
+HIPRT_DEVICE bool evaluate_nis_softmax(const float* log_baseline_weights, const float* residuals, unsigned int cluster_count, float* probabilities)
+{
+	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NIS_MAX_CLUSTER_COUNT));
+	for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+		probabilities[cluster_index] = 0.0f;
+
+	float maximum_combined_logit = -INFINITY;
+	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
+	{
+		if (log_baseline_weights[cluster_index] == -INFINITY)
+			continue;
+
+		float combined_logit = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		if (combined_logit > maximum_combined_logit)
+			maximum_combined_logit = combined_logit;
+	}
+
+	if (maximum_combined_logit == -INFINITY)
+		return false;
+
+	float exponential_denominator = 0.0f;
+	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
+	{
+		if (log_baseline_weights[cluster_index] == -INFINITY)
+			continue;
+
+		float combined_logit = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		exponential_denominator += expf(combined_logit - maximum_combined_logit);
+	}
+
+	if (!(exponential_denominator > 0.0f))
+		return false;
+
+	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
+	{
+		if (log_baseline_weights[cluster_index] == -INFINITY)
+			continue;
+
+		float combined_logit		 = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		probabilities[cluster_index] = expf(combined_logit - maximum_combined_logit) / exponential_denominator;
+	}
+
+	return true;
+}
 
 HIPRT_DEVICE LightSampleInformation sample_light_inside_nis_cluster(const HIPRTRenderData& render_data,
 																	unsigned int cluster_node_index,
@@ -63,117 +167,51 @@ HIPRT_DEVICE unsigned int sample_nis_cluster(const NISMLDevice& neural_light_sam
 {
 	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
 	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
+	float probabilities[NIS_MAX_CLUSTER_COUNT];
 
-	if (cluster_count == 0u)
-	{
-		out_cluster_probability = 0.0f;
-
-		return 0u;
-	}
-
-	double maximum_combined_logit		  = -INFINITY;
-	unsigned int last_valid_cluster_index = cluster_count;
-	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
-	{
-		if (cluster_log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
-
-		double combined_logit = static_cast<double>(cluster_log_baseline_weights[cluster_index]) + static_cast<double>(residuals[cluster_index]);
-		if (combined_logit > maximum_combined_logit)
-			maximum_combined_logit = combined_logit;
-
-		last_valid_cluster_index = cluster_index;
-	}
-	if (last_valid_cluster_index == cluster_count)
+	if (!evaluate_nis_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
 	{
 		out_cluster_probability = 0.0f;
 
 		return cluster_count;
 	}
 
-	float exponential_denominator = 0.0f;
+	float random_value			 = rng();
+	float cumulative_probability = 0.0f;
 	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
 	{
-		if (cluster_log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
-
-		double combined_logit = static_cast<double>(cluster_log_baseline_weights[cluster_index]) + static_cast<double>(residuals[cluster_index]);
-		exponential_denominator += expf(static_cast<float>(combined_logit - maximum_combined_logit));
-	}
-	if (!(exponential_denominator > 0.0f))
-	{
-		out_cluster_probability = 0.0f;
-
-		return cluster_count;
-	}
-
-	double final_combined_logit =
-		static_cast<double>(cluster_log_baseline_weights[last_valid_cluster_index]) + static_cast<double>(residuals[last_valid_cluster_index]);
-	float final_probability = expf(static_cast<float>(final_combined_logit - maximum_combined_logit)) / exponential_denominator;
-	float random_value		= rng() * exponential_denominator;
-	float cumulative_weight = 0.0f;
-
-	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
-	{
-		if (cluster_log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
-
-		double combined_logit = static_cast<double>(cluster_log_baseline_weights[cluster_index]) + static_cast<double>(residuals[cluster_index]);
-		float cluster_weight  = expf(static_cast<float>(combined_logit - maximum_combined_logit));
-		cumulative_weight += cluster_weight;
-
-		if (random_value < cumulative_weight)
+		cumulative_probability += probabilities[cluster_index];
+		if (random_value < cumulative_probability && probabilities[cluster_index] > 0.0f)
 		{
-			out_cluster_probability = cluster_weight / exponential_denominator;
+			out_cluster_probability = probabilities[cluster_index];
 
 			return cluster_index;
 		}
 	}
 
-	out_cluster_probability = final_probability;
+	for (unsigned int cluster_index = cluster_count; cluster_index > 0u; cluster_index--)
+		if (probabilities[cluster_index - 1u] > 0.0f)
+		{
+			out_cluster_probability = probabilities[cluster_index - 1u];
 
-	return last_valid_cluster_index;
+			return cluster_index - 1u;
+		}
+
+	out_cluster_probability = 0.0f;
+
+	return cluster_count;
 }
 
 HIPRT_DEVICE float evaluate_nis_cluster_probability(const NISMLDevice& neural_light_sampling, const float* residuals, unsigned int target_cluster_index)
 {
 	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
 	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
+	float probabilities[NIS_MAX_CLUSTER_COUNT];
 
-	if (target_cluster_index >= cluster_count || cluster_log_baseline_weights[target_cluster_index] == -INFINITY)
+	if (target_cluster_index >= cluster_count || !evaluate_nis_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
 		return 0.0f;
 
-	double maximum_combined_logit = -INFINITY;
-	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
-	{
-		if (cluster_log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
-
-		double combined_logit = static_cast<double>(cluster_log_baseline_weights[cluster_index]) + static_cast<double>(residuals[cluster_index]);
-		if (combined_logit > maximum_combined_logit)
-			maximum_combined_logit = combined_logit;
-	}
-
-	if (maximum_combined_logit == -INFINITY)
-		return 0.0f;
-
-	float exponential_denominator = 0.0f;
-	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
-	{
-		if (cluster_log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
-
-		double combined_logit = static_cast<double>(cluster_log_baseline_weights[cluster_index]) + static_cast<double>(residuals[cluster_index]);
-		exponential_denominator += expf(static_cast<float>(combined_logit - maximum_combined_logit));
-	}
-
-	if (!(exponential_denominator > 0.0f))
-		return 0.0f;
-
-	double target_combined_logit =
-		static_cast<double>(cluster_log_baseline_weights[target_cluster_index]) + static_cast<double>(residuals[target_cluster_index]);
-
-	return expf(static_cast<float>(target_combined_logit - maximum_combined_logit)) / exponential_denominator;
+	return probabilities[target_cluster_index];
 }
 
 HIPRT_DEVICE unsigned int infer_and_sample_nis_cluster(const NISMLDevice& neural_light_sampling,
@@ -184,22 +222,8 @@ HIPRT_DEVICE unsigned int infer_and_sample_nis_cluster(const NISMLDevice& neural
 													   const HIPRTRenderData& render_data,
 													   float& out_cluster_probability)
 {
-	const float3_t& scene_min = render_data.world_settings.scene_min;
-	const float3_t& scene_max = render_data.world_settings.scene_max;
-	float3_t normalized_shading_point =
-		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
-					(shading_point.z - scene_min.z) / (scene_max.z - scene_min.z));
-
 	NeuralImportanceSamplingMLP::InputLayer input;
-	input.input[0] = normalized_shading_point.x;
-	input.input[1] = normalized_shading_point.y;
-	input.input[2] = normalized_shading_point.z;
-	input.input[3] = view_direction.x;
-	input.input[4] = view_direction.y;
-	input.input[5] = view_direction.z;
-	input.input[6] = shading_normal.x;
-	input.input[7] = shading_normal.y;
-	input.input[8] = shading_normal.z;
+	build_nis_input(render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction, shading_normal, input);
 
 	float residuals[NIS_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
@@ -214,22 +238,8 @@ HIPRT_DEVICE float infer_nis_cluster_probability(const NISMLDevice& neural_light
 												 const float3_t& shading_normal,
 												 const HIPRTRenderData& render_data)
 {
-	const float3_t& scene_min = render_data.world_settings.scene_min;
-	const float3_t& scene_max = render_data.world_settings.scene_max;
-	float3_t normalized_shading_point =
-		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
-					(shading_point.z - scene_min.z) / (scene_max.z - scene_min.z));
-
 	NeuralImportanceSamplingMLP::InputLayer input;
-	input.input[0] = normalized_shading_point.x;
-	input.input[1] = normalized_shading_point.y;
-	input.input[2] = normalized_shading_point.z;
-	input.input[3] = view_direction.x;
-	input.input[4] = view_direction.y;
-	input.input[5] = view_direction.z;
-	input.input[6] = shading_normal.x;
-	input.input[7] = shading_normal.y;
-	input.input[8] = shading_normal.z;
+	build_nis_input(render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction, shading_normal, input);
 
 	float residuals[NIS_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
@@ -265,6 +275,8 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 #endif
 
 	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
+	build_nis_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+								   cluster_log_baseline_weights);
 	for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
@@ -277,7 +289,7 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 
 		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
 														 sg_specular_weight, alpha_x, alpha_y);
-		cluster_log_baseline_weights[cluster_position] = importance > 0.0f && hippt::is_finite(importance) ? logf(importance) : -INFINITY;
+		cluster_log_baseline_weights[cluster_position] = importance > 0.0f ? logf(importance) : -INFINITY;
 	}
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
@@ -302,7 +314,7 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 	sampled_light.cluster_probability			 = cluster_probability;
 	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
 	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
-	if (!(sampled_light.emissive_triangle_pdf > 0.0f) || !hippt::is_finite(sampled_light.emissive_triangle_pdf))
+	if (!(sampled_light.emissive_triangle_pdf > 0.0f))
 		return NISLightSample();
 
 	return sampled_light;
@@ -345,6 +357,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 #endif
 
 	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
+	build_nis_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+								   cluster_log_baseline_weights);
 	for (unsigned int cluster_position = 0; cluster_position < neural_light_sampling.cluster_count; cluster_position++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
@@ -357,13 +371,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 
 		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
 														 sg_specular_weight, alpha_x, alpha_y);
-		cluster_log_baseline_weights[cluster_position] = importance > 0.0f && hippt::is_finite(importance) ? logf(importance) : -INFINITY;
+		cluster_log_baseline_weights[cluster_position] = importance > 0.0f ? logf(importance) : -INFINITY;
 	}
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 	float cluster_probability =
 		infer_nis_cluster_probability(neural_light_sampling, target_cluster_index, shading_point, view_direction, shading_normal, render_data);
-	if (!(cluster_probability > 0.0f) || !hippt::is_finite(cluster_probability))
+	if (!(cluster_probability > 0.0f))
 		return 0.0f;
 
 	unsigned int bit_trail = light_tree.bit_trails[global_emissive_triangle_index];
@@ -408,7 +422,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 		return 0.0f;
 
 	float final_pdf = cluster_probability * conditional_triangle_probability / triangle_count;
-	return final_pdf > 0.0f && hippt::is_finite(final_pdf) ? final_pdf : 0.0f;
+	return final_pdf > 0.0f ? final_pdf : 0.0f;
 }
 
 #endif

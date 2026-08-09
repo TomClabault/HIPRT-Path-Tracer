@@ -29,7 +29,8 @@ template <unsigned int InputSizeRaw_,
 		  bool UseOutputActivation_					= false>
 struct MLPFullyFusedDevice
 {
-	static constexpr unsigned int INPUT_SIZE			  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
+	static constexpr unsigned int INPUT_SIZE_RAW_ENCODED  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
+	static constexpr unsigned int INPUT_SIZE			  = PAD_SIZE_WMMA(INPUT_SIZE_RAW_ENCODED);
 	static constexpr unsigned int OUTPUT_SIZE_PADDED_WMMA = (OutputSize_ + 15) / 16 * 16;
 	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
 	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
@@ -98,6 +99,9 @@ struct MLPFullyFusedDevice
 			}
 		}
 
+		for (unsigned int input_index = INPUT_SIZE_RAW_ENCODED; input_index < INPUT_SIZE; input_index++)
+			out_activations[input_index][sample_in_chunk] = static_cast<fp16>(0.0f);
+
 		__syncthreads();
 	}
 
@@ -114,6 +118,9 @@ struct MLPFullyFusedDevice
 				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1] = hippt::intrin_cosf(frequency * input_value * hippt::M_Pi);
 			}
 		}
+
+		for (unsigned int input_index = INPUT_SIZE_RAW_ENCODED; input_index < INPUT_SIZE; input_index++)
+			out_activations[input_index] = 0.0f;
 	}
 
 	HIPRT_DEVICE OutputLayer get_output_layer(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
@@ -483,11 +490,12 @@ struct MLPFullyFusedDevice
 		}
 	}
 
-	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
-										   unsigned int sample_offset,
-										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   float* target_output) const
+	HIPRT_DEVICE void backpropagation_wmma_from_output_gradient(fp16* train_activations_global,
+																unsigned int sample_offset,
+																fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+																fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+																const float* output_gradient,
+																bool count_training_sample) const
 	{
 		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
@@ -515,14 +523,7 @@ struct MLPFullyFusedDevice
 
 			if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
 			{
-				unsigned int activation_index = (sample_offset + sample_index) * NEURON_COUNT + output_layer_offset + output_neuron;
-				float output_activation		  = static_cast<float>(train_activations_global[activation_index]);
-				float cost_derivative		  = cost_function_derivative(output_activation, target_output[output_neuron]);
-
-				if constexpr (USE_OUTPUT_ACTIVATION)
-					error = static_cast<fp16>(cost_derivative * activation_function_derivative(output_activation));
-				else
-					error = static_cast<fp16>(cost_derivative);
+				error = static_cast<fp16>(output_gradient[output_neuron]);
 			}
 
 			errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
@@ -675,8 +676,115 @@ struct MLPFullyFusedDevice
 			__syncthreads();
 		}
 
-		hippt::atomic_fetch_add(last_training_sample_count, 1u);
+		if (count_training_sample)
+			hippt::atomic_fetch_add(last_training_sample_count, 1u);
 #endif
+	}
+
+	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
+										   unsigned int sample_offset,
+										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   const float* output_gradient) const
+	{
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient, true);
+	}
+
+	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
+										   unsigned int sample_offset,
+										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   const float* output_gradient,
+										   bool count_training_sample) const
+	{
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient,
+												  count_training_sample);
+	}
+
+	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
+										   unsigned int sample_offset,
+										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   float* target_output) const
+	{
+		float output_gradient[OutputSize_];
+		unsigned int sample_index = threadIdx.x;
+
+		for (unsigned int output_neuron = 0; output_neuron < OutputSize_; output_neuron++)
+		{
+			unsigned int activation_index = (sample_offset + sample_index) * NEURON_COUNT + get_neuron_data_index(LAYER_COUNT - 1, output_neuron);
+			float output_activation		  = static_cast<float>(train_activations_global[activation_index]);
+			float cost_derivative		  = cost_function_derivative(output_activation, target_output[output_neuron]);
+
+			if constexpr (USE_OUTPUT_ACTIVATION)
+				output_gradient[output_neuron] = cost_derivative * activation_function_derivative(output_activation);
+			else
+				output_gradient[output_neuron] = cost_derivative;
+		}
+
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer,
+												  static_cast<const float*>(output_gradient), true);
+	}
+
+	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations, const float* output_gradient) const
+	{
+		float neurons_errors[NEURON_COUNT];
+
+		unsigned int output_layer_index = LAYER_COUNT - 1;
+		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < get_layer_neuron_count(output_layer_index);
+			 neuron_index_in_output_layer++)
+		{
+			unsigned int current_neuron_data_index = get_neuron_data_index(output_layer_index, neuron_index_in_output_layer);
+			float output_error					   = output_gradient[neuron_index_in_output_layer];
+
+			neurons_errors[current_neuron_data_index] = output_error;
+			if constexpr (USE_BIASES)
+				hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], output_error);
+
+			for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(output_layer_index - 1); previous_neuron_index++)
+			{
+				unsigned int previous_neuron_data_index = get_neuron_data_index(output_layer_index - 1, previous_neuron_index);
+				unsigned int connection_data_index		= get_connection_data_index(output_layer_index, previous_neuron_index, neuron_index_in_output_layer);
+
+				float previous_activation = neurons_activations[previous_neuron_data_index];
+				hippt::atomic_fetch_add(&gradient_weights[connection_data_index], output_error * previous_activation);
+			}
+		}
+
+		for (unsigned int layer_index = LAYER_COUNT - 2; layer_index > 0; layer_index--)
+		{
+			for (unsigned int neuron_index = 0; neuron_index < get_layer_neuron_count(layer_index); neuron_index++)
+			{
+				unsigned int current_neuron_data_index = get_neuron_data_index(layer_index, neuron_index);
+				float d_cost_d_z					   = 0.0f;
+
+				for (unsigned int next_neuron_index = 0; next_neuron_index < get_layer_neuron_count(layer_index + 1); next_neuron_index++)
+				{
+					unsigned int next_neuron_data_index = get_neuron_data_index(layer_index + 1, next_neuron_index);
+					unsigned int connection_data_index	= get_connection_data_index(layer_index + 1, neuron_index, next_neuron_index);
+
+					d_cost_d_z += neurons_errors[next_neuron_data_index] * connection_weights[connection_data_index];
+				}
+
+				float current_activation = neurons_activations[current_neuron_data_index];
+				d_cost_d_z *= activation_function_derivative(current_activation);
+
+				neurons_errors[current_neuron_data_index] = d_cost_d_z;
+				if constexpr (USE_BIASES)
+					hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_z);
+
+				for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(layer_index - 1); previous_neuron_index++)
+				{
+					unsigned int previous_neuron_data_index = get_neuron_data_index(layer_index - 1, previous_neuron_index);
+					unsigned int connection_data_index		= get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
+
+					float previous_activation = neurons_activations[previous_neuron_data_index];
+					hippt::atomic_fetch_add(&gradient_weights[connection_data_index], d_cost_d_z * previous_activation);
+				}
+			}
+		}
+
+		hippt::atomic_fetch_add(last_training_sample_count, 1u);
 	}
 
 	HIPRT_DEVICE void backpropagation(float* neurons_activations, float* target_output) const
@@ -826,8 +934,6 @@ struct MLPFullyFusedDevice
 	float* adam_weights_variances = nullptr;
 	float* adam_biases_means	  = nullptr;
 	float* adam_biases_variances  = nullptr;
-
-	unsigned int training_step = 0;
 
 	// Adam optimizer parameters
 	float adam_learning_rate = 0.001f;

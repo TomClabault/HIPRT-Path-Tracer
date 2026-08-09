@@ -11,13 +11,13 @@
 #define NIS_MAX_CLUSTER_COUNT 64
 
 /**
- * Raw input order for the neural importance sampling MLP:
+ * Raw input order for Neural Importance Sampling Many Lights:
  * [position.xyz, wo.xyz, normal.xyz]
  *
  * Position is normalized to the scene bounds before being passed to the MLP.
  */
 #define NIS_INPUT_SIZE_RAW					   9
-#define NIS_FREQUENCY_ENCODING_NUM_FREQUENCIES 8
+#define NIS_FREQUENCY_ENCODING_NUM_FREQUENCIES 4
 #define NIS_HIDDEN_LAYER_COUNT				   3
 #define NIS_HIDDEN_LAYER_SIZE				   64
 #define NIS_THREAD_BLOCK_SIZE				   64

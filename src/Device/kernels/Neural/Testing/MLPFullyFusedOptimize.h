@@ -10,27 +10,26 @@
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<
-	MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-	MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
-	MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
-	MLP_TRAINING_TEST_OUTPUT_SIZE,
-	MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
-	MLP_TRAINING_TEST_USE_BIASES>;
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
+											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
+											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
+											MLP_TRAINING_TEST_OUTPUT_SIZE,
+											MLP_TRAINING_TEST_THREAD_BLOCK_SIZE,
+											MLP_TRAINING_TEST_USE_BIASES>;
 
 #define ADAM_BETA1	 0.9f
 #define ADAM_BETA2	 0.999f
 #define ADAM_EPSILON 1e-8f
 
-GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(TrainingTestMLP mlp)
+GLOBAL_KERNEL_SIGNATURE(void) MLPFullyFusedOptimize(TrainingTestMLP mlp, unsigned int training_step)
 {
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	unsigned int last_training_sample_count = hippt::atomic_load(mlp.last_training_sample_count);
 
 	// Bias correction terms
-	float t	  = static_cast<float>(mlp.training_step + 1);
+	float t	  = static_cast<float>(training_step + 1);
 	float b1t = powf(ADAM_BETA1, t);
 	float b2t = powf(ADAM_BETA2, t);
 	float b1c = 1.0f - b1t;

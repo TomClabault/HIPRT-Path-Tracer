@@ -18,6 +18,9 @@ struct NISTrainingSample
 	float conditional_light_probability = 0.0f;
 	float point_on_light_pdf			= 0.0f;
 	float contribution_luminance		= 0.0f;
+	float sg_specular_weight			= 0.0f;
+	float alpha_x						= 0.0f;
+	float alpha_y						= 0.0f;
 };
 
 #endif

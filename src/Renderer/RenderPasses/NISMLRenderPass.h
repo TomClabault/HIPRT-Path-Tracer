@@ -16,8 +16,15 @@ class NISMLRenderPass : public RenderPass
 {
 public:
 	static const std::string NISML_RENDER_PASS_NAME;
+	static const std::string NISML_TRAIN;
+	static const std::string NISML_OPTIMIZE;
 
 	NISMLRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
+
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											  const std::vector<hiprtFuncNameSet>& func_name_sets,
+											  bool silent,
+											  bool use_cache) override;
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
@@ -33,6 +40,7 @@ public:
 private:
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
+	unsigned int m_adam_step = 0;
 };
 
 #endif
