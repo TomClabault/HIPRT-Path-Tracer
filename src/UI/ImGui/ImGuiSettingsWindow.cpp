@@ -3716,7 +3716,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 {
 	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
 	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
-	LightTreeATSBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
+	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 

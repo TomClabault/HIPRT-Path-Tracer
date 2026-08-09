@@ -14,6 +14,7 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 										  const std::vector<float3_t>& vertices_positions,
 										  unsigned int total_scene_triangle_count)
 {
+	update_ats_builder_options();
 	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangle_indices,
 											  vertices_positions);
 
@@ -31,9 +32,9 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	}
 
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
-	compute_tree_cut(m_tree_cut_node_indices, m_effective_tree_cut_size, m_tree_cut_size);
+	compute_tree_cut(m_tree_cut_node_indices, m_effective_tree_cut_size, m_build_options.tree_cut_size);
 	compute_tree_cut(m_nisml.tree_cut_node_indices_neural_many_lights, m_nisml.effective_tree_cut_size_neural_many_lights,
-					 m_nisml.tree_cut_size_neural_many_lights);
+					 m_build_options.tree_cut_size_neural_many_lights);
 	m_nisml.build_lookup(m_light_tree_ats_builder.get_nodes(), m_light_tree_ats_builder.get_bit_trails(), m_light_tree_ats_builder.get_triangle_indices(),
 						 emissive_triangles_primitive_indices, total_scene_triangle_count);
 
@@ -122,10 +123,10 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				lobes[lobe_count++] = right_node.spatial_lobes[lobe_index];
 		}
 
-		LightTreeSGLobeReduction reduction = light_tree_sg_reduce_lobes(lobes, lobe_count, m_spatial_lobe_count);
+		LightTreeSGLobeReduction reduction = light_tree_sg_reduce_lobes(lobes, lobe_count, m_build_options.spatial_lobe_count);
 		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 			sg_node.spatial_lobes[lobe_index] = reduction.lobes[lobe_index];
-		sg_node.spatial_mean = light_tree_sg_lobes_mean(sg_node.spatial_lobes, m_spatial_lobe_count);
+		sg_node.spatial_mean = light_tree_sg_lobes_mean(sg_node.spatial_lobes, m_build_options.spatial_lobe_count);
 
 		sg_node.total_emitter_count = left_node.total_emitter_count + right_node.total_emitter_count;
 		if (sg_node.total_emitter_count > 0)
@@ -406,37 +407,47 @@ const LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data() const
 	return m_nisml;
 }
 
-LightTreeATSBuilderOptions& LightTreeSGBuilder::get_build_options()
+void LightTreeSGBuilder::update_ats_builder_options()
 {
-	return m_light_tree_ats_builder.get_build_options();
+	LightTreeATSBuilderOptions& ats_builder_options			= m_light_tree_ats_builder.get_build_options();
+	ats_builder_options.build_split_method					= m_build_options.build_split_method;
+	ats_builder_options.bin_count							= m_build_options.bin_count;
+	ats_builder_options.cost_function						= m_build_options.cost_function;
+	ats_builder_options.stop_splitting_if_cost_not_worth_it = m_build_options.stop_splitting_if_cost_not_worth_it;
+	ats_builder_options.max_triangles_per_leaf				= m_build_options.max_triangles_per_leaf;
+}
+
+LightTreeSGBuilderOptions& LightTreeSGBuilder::get_build_options()
+{
+	return m_build_options;
 }
 
 int LightTreeSGBuilder::get_spatial_lobe_count() const
 {
-	return m_spatial_lobe_count;
+	return m_build_options.spatial_lobe_count;
 }
 
 void LightTreeSGBuilder::set_spatial_lobe_count(int spatial_lobe_count)
 {
-	m_spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, spatial_lobe_count);
+	m_build_options.spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, spatial_lobe_count);
 }
 
 int LightTreeSGBuilder::get_tree_cut_size() const
 {
-	return m_tree_cut_size;
+	return m_build_options.tree_cut_size;
 }
 
 void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
 {
-	m_tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
+	m_build_options.tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
 }
 
 int LightTreeSGBuilder::get_tree_cut_size_neural_many_lights() const
 {
-	return m_nisml.tree_cut_size_neural_many_lights;
+	return m_build_options.tree_cut_size_neural_many_lights;
 }
 
 void LightTreeSGBuilder::set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights)
 {
-	m_nisml.tree_cut_size_neural_many_lights = hippt::clamp(1, 2000000000, tree_cut_size_neural_many_lights);
+	m_build_options.tree_cut_size_neural_many_lights = hippt::clamp(1, 2000000000, tree_cut_size_neural_many_lights);
 }

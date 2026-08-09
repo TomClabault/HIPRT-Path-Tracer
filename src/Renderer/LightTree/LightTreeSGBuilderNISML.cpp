@@ -63,9 +63,10 @@ void LightTreeSGBuilderNISML::build_lookup(const std::vector<LightTreeATSNode>& 
 
 void LightTreeSGBuilderNISML::free()
 {
-	m_device_cluster_node_indices_buffer.free();
-	m_device_triangle_to_cluster_buffer.free();
-	m_device_cluster_node_depths_buffer.free();
+	m_device_cluster_node_indices_buffer.free_no_error();
+	m_device_triangle_to_cluster_buffer.free_no_error();
+	m_device_cluster_node_depths_buffer.free_no_error();
+
 	tree_cut_node_indices_neural_many_lights.clear();
 	effective_tree_cut_size_neural_many_lights = 0;
 	triangle_to_neural_cluster.clear();

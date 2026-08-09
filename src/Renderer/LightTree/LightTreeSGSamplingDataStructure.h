@@ -33,7 +33,7 @@ public:
 
 	size_t get_VRAM_usage_bytes() const;
 
-	LightTreeATSBuilderOptions& get_builder_options();
+	LightTreeSGBuilderOptions& get_builder_options();
 	LightTreeSGBuilder& get_builder();
 	int get_spatial_lobe_count() const;
 	void set_spatial_lobe_count(int spatial_lobe_count);

@@ -117,7 +117,7 @@ LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
 	return m_light_tree_builder_sg;
 }
 
-LightTreeATSBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
+LightTreeSGBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
 {
 	return m_light_tree_builder_sg.get_build_options();
 }

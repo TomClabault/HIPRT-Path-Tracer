@@ -60,7 +60,6 @@ struct LightTreeSGBuilderNISML
 	unsigned int effective_tree_cut_size_neural_many_lights = 0;
 	std::vector<unsigned char> triangle_to_neural_cluster;
 	std::vector<unsigned char> neural_cluster_node_depths;
-	int tree_cut_size_neural_many_lights = 64;
 
 private:
 	OrochiBuffer<unsigned int> m_device_cluster_node_indices_buffer;

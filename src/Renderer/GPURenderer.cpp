@@ -234,7 +234,7 @@ LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data
 	return m_light_tree_ats_sampling_data_structure;
 }
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
+LightTreeSGBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
 {
 	return m_light_tree_sg_sampling_data_structure.get_builder_options();
 }
