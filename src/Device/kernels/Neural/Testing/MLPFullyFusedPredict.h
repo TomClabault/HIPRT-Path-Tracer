@@ -7,11 +7,11 @@
 #define KERNELS_MLP_FULLY_FUSED_PREDICT_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_ENCODED,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
 											MLP_TRAINING_TEST_OUTPUT_SIZE,
@@ -31,7 +31,9 @@ __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
 	if (x >= width || y >= height)
 		active_thread = false;
 
-	TrainingTestMLP::InputLayer input = { { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) } };
+	float uv[2]						  = { static_cast<float>(x) / static_cast<float>(width - 1), static_cast<float>(y) / static_cast<float>(height - 1) };
+	TrainingTestMLP::InputLayer input = {};
+	encode_frequency_input<MLP_TRAINING_TEST_INPUT_SIZE_RAW, MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES>(uv, input.input);
 
 	__shared__ fp16 activations[TrainingTestMLP::ACTIVATION_WIDTH * 2][TrainingTestMLP::BLOCK_SIZE];
 

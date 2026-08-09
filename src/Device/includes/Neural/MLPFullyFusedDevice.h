@@ -18,8 +18,7 @@ enum class MLPActivationFunction
 	RELU
 };
 
-template <unsigned int InputSizeRaw_,
-		  unsigned int FreqEncodingFreqs_,
+template <unsigned int InputSizeEncoded_,
 		  unsigned int HiddenLayerCount_,
 		  unsigned int HiddenLayerSize_,
 		  unsigned int OutputSize_,
@@ -29,25 +28,24 @@ template <unsigned int InputSizeRaw_,
 		  bool UseOutputActivation_					= false>
 struct MLPFullyFusedDevice
 {
-	static constexpr unsigned int INPUT_SIZE_RAW_ENCODED  = InputSizeRaw_ * 2 * FreqEncodingFreqs_;
-	static constexpr unsigned int INPUT_SIZE			  = PAD_SIZE_WMMA(INPUT_SIZE_RAW_ENCODED);
+	static constexpr unsigned int INPUT_SIZE_ENCODED	  = InputSizeEncoded_;
+	static constexpr unsigned int INPUT_SIZE_PADDED_WMMA  = PAD_SIZE_WMMA(INPUT_SIZE_ENCODED);
 	static constexpr unsigned int OUTPUT_SIZE_PADDED_WMMA = (OutputSize_ + 15) / 16 * 16;
 	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
-	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
-	static constexpr unsigned int CONNECTIONS_COUNT =
-		(INPUT_SIZE * HiddenLayerSize_) + ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) + (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
+	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE_PADDED_WMMA + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
+	static constexpr unsigned int CONNECTIONS_COUNT		  = (INPUT_SIZE_PADDED_WMMA * HiddenLayerSize_) +
+													  ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
+													  (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
 	static constexpr unsigned int SAMPLES_PER_BLOCK = BlockSize_;
 
-	static constexpr unsigned int INPUT_SIZE_RAW				= InputSizeRaw_;
-	static constexpr unsigned int FREQ_ENCODING_NUM_FREQUENCIES = FreqEncodingFreqs_;
-	static constexpr unsigned int HIDDEN_LAYER_COUNT			= HiddenLayerCount_;
-	static constexpr unsigned int HIDDEN_LAYER_SIZE				= HiddenLayerSize_;
-	static constexpr unsigned int OUTPUT_SIZE					= OutputSize_;
-	static constexpr unsigned int BLOCK_SIZE					= BlockSize_;
-	static constexpr unsigned int ACTIVATION_WIDTH				= hippt::max(INPUT_SIZE, hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA));
-	static constexpr bool USE_BIASES							= UseBiases_;
-	static constexpr MLPActivationFunction ACTIVATION_FUNCTION	= ActivationFunction_;
-	static constexpr bool USE_OUTPUT_ACTIVATION					= UseOutputActivation_;
+	static constexpr unsigned int HIDDEN_LAYER_COUNT		   = HiddenLayerCount_;
+	static constexpr unsigned int HIDDEN_LAYER_SIZE			   = HiddenLayerSize_;
+	static constexpr unsigned int OUTPUT_SIZE				   = OutputSize_;
+	static constexpr unsigned int BLOCK_SIZE				   = BlockSize_;
+	static constexpr unsigned int ACTIVATION_WIDTH			   = hippt::max(INPUT_SIZE_PADDED_WMMA, hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA));
+	static constexpr bool USE_BIASES						   = UseBiases_;
+	static constexpr MLPActivationFunction ACTIVATION_FUNCTION = ActivationFunction_;
+	static constexpr bool USE_OUTPUT_ACTIVATION				   = UseOutputActivation_;
 
 	struct OutputLayer
 	{
@@ -56,12 +54,12 @@ struct MLPFullyFusedDevice
 
 	struct InputLayer
 	{
-		float input[InputSizeRaw_];
+		float input[InputSizeEncoded_];
 	};
 
 	HIPRT_DEVICE static constexpr unsigned int get_layer_neuron_count(unsigned int layer)
 	{
-		return layer == 0 ? INPUT_SIZE : (layer == LAYER_COUNT - 1 ? OUTPUT_SIZE : HIDDEN_LAYER_SIZE);
+		return layer == 0 ? INPUT_SIZE_PADDED_WMMA : (layer == LAYER_COUNT - 1 ? OUTPUT_SIZE : HIDDEN_LAYER_SIZE);
 	}
 
 	HIPRT_DEVICE static constexpr unsigned int get_neuron_data_index(unsigned int layer, unsigned int neuron)
@@ -82,44 +80,25 @@ struct MLPFullyFusedDevice
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void encode_input(float* input, fp16 out_activations[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
+	HIPRT_DEVICE void load_input(const float* input, fp16 out_activations[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		unsigned int sample_in_chunk = threadIdx.x;
-		for (unsigned int input_raw_index = 0; input_raw_index < InputSizeRaw_; input_raw_index++)
-		{
-			float input_value = input[input_raw_index];
 
-			for (unsigned int frequency_index = 0; frequency_index < FreqEncodingFreqs_; frequency_index++)
-			{
-				float frequency = static_cast<float>(1 << frequency_index);
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0][sample_in_chunk] =
-					static_cast<fp16>(hippt::intrin_sinf(frequency * input_value * hippt::M_Pi));
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1][sample_in_chunk] =
-					static_cast<fp16>(hippt::intrin_cosf(frequency * input_value * hippt::M_Pi));
-			}
-		}
+		for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
+			out_activations[input_index][sample_in_chunk] = static_cast<fp16>(input[input_index]);
 
-		for (unsigned int input_index = INPUT_SIZE_RAW_ENCODED; input_index < INPUT_SIZE; input_index++)
+		for (unsigned int input_index = INPUT_SIZE_ENCODED; input_index < INPUT_SIZE_PADDED_WMMA; input_index++)
 			out_activations[input_index][sample_in_chunk] = static_cast<fp16>(0.0f);
 
 		__syncthreads();
 	}
 
-	HIPRT_DEVICE void encode_input_ref(float* input, float* out_activations) const
+	HIPRT_DEVICE void load_input_ref(const float* input, float* out_activations) const
 	{
-		for (unsigned int input_raw_index = 0; input_raw_index < InputSizeRaw_; input_raw_index++)
-		{
-			float input_value = input[input_raw_index];
+		for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
+			out_activations[input_index] = input[input_index];
 
-			for (unsigned int frequency_index = 0; frequency_index < FreqEncodingFreqs_; frequency_index++)
-			{
-				float frequency																		= static_cast<float>(1 << frequency_index);
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 0] = hippt::intrin_sinf(frequency * input_value * hippt::M_Pi);
-				out_activations[input_raw_index * FreqEncodingFreqs_ * 2 + frequency_index * 2 + 1] = hippt::intrin_cosf(frequency * input_value * hippt::M_Pi);
-			}
-		}
-
-		for (unsigned int input_index = INPUT_SIZE_RAW_ENCODED; input_index < INPUT_SIZE; input_index++)
+		for (unsigned int input_index = INPUT_SIZE_ENCODED; input_index < INPUT_SIZE_PADDED_WMMA; input_index++)
 			out_activations[input_index] = 0.0f;
 	}
 
@@ -142,7 +121,7 @@ struct MLPFullyFusedDevice
 		float activations_a[ACTIVATION_WIDTH];
 		float activations_b[ACTIVATION_WIDTH];
 
-		encode_input_ref(const_cast<float*>(input.input), activations_a);
+		load_input_ref(input.input, activations_a);
 
 		float* previous = activations_a;
 		float* current	= activations_b;
@@ -184,11 +163,11 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE void inference_wmma(InputLayer input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
-		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
-		encode_input(input.input, activations_buffer);
+		load_input(input.input, activations_buffer);
 
 		__syncthreads();
 
@@ -284,7 +263,7 @@ struct MLPFullyFusedDevice
 
 	HIPRT_DEVICE void inference(InputLayer input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
-		encode_input(input.input, activations_buffer);
+		load_input(input.input, activations_buffer);
 		__syncthreads();
 
 		unsigned int lane_id = threadIdx.x & 31;
@@ -338,7 +317,7 @@ struct MLPFullyFusedDevice
 										 fp16* train_activations_global,
 										 unsigned int sample_offset) const
 	{
-		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
@@ -498,7 +477,7 @@ struct MLPFullyFusedDevice
 																bool count_training_sample,
 																float error_scale) const
 	{
-		static_assert(INPUT_SIZE % 16 == 0, "INPUT_SIZE must be a multiple of 16 for WMMA");
+		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(BlockSize_ % 32 == 0, "BlockSize must be a multiple of 32 for WMMA");

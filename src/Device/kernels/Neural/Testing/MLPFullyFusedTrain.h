@@ -8,12 +8,12 @@
 
 #include "Device/includes/FixIntellisense.h"
 
+#include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_ENCODED,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
 											MLP_TRAINING_TEST_OUTPUT_SIZE,
@@ -39,12 +39,13 @@ __launch_bounds__(TrainingTestMLP::BLOCK_SIZE)
 	__shared__ fp16 activations_buffer[TrainingTestMLP::ACTIVATION_WIDTH * 2][TrainingTestMLP::BLOCK_SIZE];
 	__shared__ fp16 errors_buffer[TrainingTestMLP::ACTIVATION_WIDTH * 2][TrainingTestMLP::BLOCK_SIZE];
 
-	TrainingTestMLP::InputLayer input = { { uv[0], uv[1] } };
-	mlp.encode_input(input.input, activations_buffer);
+	TrainingTestMLP::InputLayer input = {};
+	encode_frequency_input<MLP_TRAINING_TEST_INPUT_SIZE_RAW, MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES>(uv, input.input);
+	mlp.load_input(input.input, activations_buffer);
 
 	// Save layer 0 (frequency-encoded input) activations for the backward pass
 	fp16* sample_activations = train_activations + sample_index * TrainingTestMLP::NEURON_COUNT;
-	for (unsigned int n = 0; n < TrainingTestMLP::INPUT_SIZE; n++)
+	for (unsigned int n = 0; n < TrainingTestMLP::INPUT_SIZE_PADDED_WMMA; n++)
 		sample_activations[TrainingTestMLP::get_neuron_data_index(0, n)] = activations_buffer[n][threadIdx.x];
 
 	// Forward pass, saves layers 1..LAYER_COUNT-1 activations to global memory

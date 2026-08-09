@@ -10,8 +10,7 @@
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 #include "HostDeviceCommon/KernelOptions/MLPTrainingTestOptions.h"
 
-using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_RAW,
-											MLP_TRAINING_TEST_FREQUENCY_ENCODING_NUM_FREQUENCIES,
+using TrainingTestMLP = MLPFullyFusedDevice<MLP_TRAINING_TEST_INPUT_SIZE_ENCODED,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_COUNT,
 											MLP_TRAINING_TEST_HIDDEN_LAYER_SIZE,
 											MLP_TRAINING_TEST_OUTPUT_SIZE,
