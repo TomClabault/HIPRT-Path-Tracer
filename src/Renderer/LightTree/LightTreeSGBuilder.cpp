@@ -11,7 +11,8 @@
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 										  const std::vector<float>& triangles_average_emissive_power_luminance,
 										  const std::vector<int>& triangle_indices,
-										  const std::vector<float3_t>& vertices_positions)
+										  const std::vector<float3_t>& vertices_positions,
+										  unsigned int total_scene_triangle_count)
 {
 	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangle_indices,
 											  vertices_positions);
@@ -26,6 +27,8 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 		m_effective_tree_cut_size = 0;
 		m_tree_cut_node_indices_neural_many_lights.clear();
 		m_effective_tree_cut_size_neural_many_lights = 0;
+		m_triangle_to_neural_cluster.clear();
+		m_neural_cluster_node_depths.clear();
 
 		return;
 	}
@@ -33,11 +36,67 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 	compute_tree_cut(m_tree_cut_node_indices, m_effective_tree_cut_size, m_tree_cut_size);
 	compute_tree_cut(m_tree_cut_node_indices_neural_many_lights, m_effective_tree_cut_size_neural_many_lights, m_tree_cut_size_neural_many_lights);
+	build_neural_many_lights_lookup(emissive_triangles_primitive_indices, total_scene_triangle_count);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "SG Light tree construction time: %ldms",
 							std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+}
+
+void LightTreeSGBuilder::build_neural_many_lights_lookup(const std::vector<int>& emissive_triangles_primitive_indices, unsigned int total_scene_triangle_count)
+{
+	const std::vector<LightTreeATSNode>& ats_nodes = m_light_tree_ats_builder.get_nodes();
+	const std::vector<unsigned int>& bit_trails	   = m_light_tree_ats_builder.get_bit_trails();
+	const std::vector<int>& triangle_indices	   = m_light_tree_ats_builder.get_triangle_indices();
+	unsigned int invalid_cluster_slot			   = 0xFF;
+	unsigned int invalid_node_index				   = 0xFFFFFFFF;
+
+	m_triangle_to_neural_cluster.assign(total_scene_triangle_count, static_cast<unsigned char>(invalid_cluster_slot));
+	m_neural_cluster_node_depths.assign(m_effective_tree_cut_size_neural_many_lights, 0);
+
+	std::vector<unsigned int> node_to_cluster_slot(ats_nodes.size(), invalid_cluster_slot);
+	for (unsigned int cluster_slot = 0; cluster_slot < m_effective_tree_cut_size_neural_many_lights; cluster_slot++)
+	{
+		unsigned int node_index = m_tree_cut_node_indices_neural_many_lights[cluster_slot];
+		if (node_index != invalid_node_index && node_index < ats_nodes.size())
+			node_to_cluster_slot[node_index] = cluster_slot;
+	}
+
+	for (unsigned int linear_triangle_index = 0; linear_triangle_index < bit_trails.size(); linear_triangle_index++)
+	{
+		if (linear_triangle_index >= triangle_indices.size())
+			continue;
+
+		int emissive_triangle_index = triangle_indices[linear_triangle_index];
+		if (emissive_triangle_index < 0 || static_cast<unsigned int>(emissive_triangle_index) >= emissive_triangles_primitive_indices.size())
+			continue;
+
+		int global_triangle_index = emissive_triangles_primitive_indices[emissive_triangle_index];
+		if (global_triangle_index < 0 || static_cast<unsigned int>(global_triangle_index) >= total_scene_triangle_count)
+			continue;
+
+		unsigned int node_index = 0;
+		unsigned int depth		= 0;
+		while (node_index < ats_nodes.size())
+		{
+			unsigned int cluster_slot = node_to_cluster_slot[node_index];
+			if (cluster_slot != invalid_cluster_slot)
+			{
+				m_triangle_to_neural_cluster[global_triangle_index] = static_cast<unsigned char>(cluster_slot);
+				m_neural_cluster_node_depths[cluster_slot]			= static_cast<unsigned char>(depth);
+
+				break;
+			}
+
+			if (ats_nodes[node_index].triangle_count != 0 || depth >= sizeof(unsigned int) * 8)
+				break;
+
+			unsigned int left_child_index = ats_nodes[node_index].left_child_index;
+			node_index					  = (bit_trails[linear_triangle_index] & (1u << depth)) == 0 ? left_child_index : left_child_index + 1;
+			depth++;
+		}
+	}
 }
 
 void LightTreeSGBuilder::compute_tree_cut(std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size, int tree_cut_size)
@@ -393,6 +452,8 @@ void LightTreeSGBuilder::cleanup()
 	m_effective_tree_cut_size = 0;
 	m_tree_cut_node_indices_neural_many_lights.clear();
 	m_effective_tree_cut_size_neural_many_lights = 0;
+	m_triangle_to_neural_cluster.clear();
+	m_neural_cluster_node_depths.clear();
 }
 
 LightTreeATSBuilderOptions& LightTreeSGBuilder::get_build_options()

@@ -11,6 +11,13 @@
 struct NISMLDevice
 {
 	NeuralImportanceSamplingMLP mlp;
+
+	unsigned int* cluster_node_indices	= nullptr;
+	float* cluster_log_baseline_weights = nullptr;
+
+	unsigned char* triangle_to_cluster = nullptr;
+	unsigned char* cluster_node_depths = nullptr;
+	unsigned int cluster_count		   = 0;
 };
 
 #endif

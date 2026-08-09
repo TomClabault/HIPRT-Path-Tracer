@@ -422,7 +422,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	if (parsed_scene.emissive_triangles_primitive_indices.size() > 0)
 	{
 		m_light_tree_builder_sg.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_average_emissive_power_luminance,
-												 parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions);
+												 parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions,
+												 static_cast<unsigned int>(parsed_scene.triangles_vertex_indices.size() / 3));
 		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
 		m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
 										  m_light_tree_sg_device_data);
