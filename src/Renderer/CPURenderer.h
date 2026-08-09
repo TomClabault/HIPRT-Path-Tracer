@@ -290,9 +290,16 @@ private:
 		uint32_t next_creation_tag				= 0;
 	} m_illumination_aware_kd_tree_state;
 
+	struct NISMLState
+	{
+		MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
+		NISMLDataHost<std::vector> m_nis_ml_data;
+
+		float m_adam_learning_rate = 0.03f;
+		uint32_t m_adam_step	   = 0;
+	} m_nisml_state;
+
 	BSDFDataHost m_bsdf_data_cpu_data;
-	MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
-	NISMLDataHost<std::vector> m_nis_ml_data;
 
 	std::vector<Triangle> m_triangle_buffer;
 	std::vector<Triangle> m_emissive_triangles_buffer;

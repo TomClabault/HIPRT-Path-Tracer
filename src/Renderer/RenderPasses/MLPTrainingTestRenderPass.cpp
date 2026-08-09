@@ -104,7 +104,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	TrainingTestMLP mlp_device = m_mlp.to_device();
+	TrainingTestMLP mlp_device = m_mlp.to_device(0.0001f);
 
 	unsigned int batch_size		= 2048;
 	unsigned char* texture_data = m_texture_data.get_device_pointer();

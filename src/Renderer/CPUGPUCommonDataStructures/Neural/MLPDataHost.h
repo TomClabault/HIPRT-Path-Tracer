@@ -156,7 +156,7 @@ struct MLPDataHost
 		return m_mlp_data.maximum_size();
 	}
 
-	MLPType to_device()
+	MLPType to_device(float adam_learning_rate)
 	{
 		MLPType mlp_device;
 
@@ -180,6 +180,8 @@ struct MLPDataHost
 
 		mlp_device.adam_weights_means	  = m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>();
 		mlp_device.adam_weights_variances = m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>();
+
+		mlp_device.adam_learning_rate = adam_learning_rate;
 
 		return mlp_device;
 	}

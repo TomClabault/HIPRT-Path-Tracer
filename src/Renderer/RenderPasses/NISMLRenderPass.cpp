@@ -89,9 +89,7 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!render_data.nis_ml.learning_enabled || m_training_record_percentage <= 0.0f)
 		return true;
 
-	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device();
-
-	mlp_device.adam_learning_rate = m_adam_learning_rate;
+	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device(m_adam_learning_rate);
 
 	fp16* train_activations	  = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
 	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations };
@@ -135,7 +133,7 @@ void NISMLRenderPass::update_render_data()
 		return;
 	}
 
-	render_data.nis_ml.mlp							= m_mlp.to_device();
+	render_data.nis_ml.mlp							= m_mlp.to_device(m_adam_learning_rate);
 	render_data.nis_ml.cluster_log_baseline_weights = nullptr;
 	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nis_ml);
 
@@ -150,7 +148,10 @@ void NISMLRenderPass::update_render_data()
 void NISMLRenderPass::reset(bool reset_by_camera_movement)
 {
 	m_nis_ml_data.reset();
+
 	m_mlp.initialize(true);
+
+	m_adam_step = 0;
 }
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

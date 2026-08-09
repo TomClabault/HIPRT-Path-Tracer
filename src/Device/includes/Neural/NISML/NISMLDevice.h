@@ -20,9 +20,6 @@ struct NISMLDevice
 		return;
 #endif
 
-		if (training_records == nullptr || training_record_count == nullptr || training_record_capacity == 0 || record.cluster_index >= NIS_MAX_CLUSTER_COUNT ||
-			!(record.cluster_probability > 0.0f) || !(record.conditional_light_probability > 0.0f) || !(record.point_on_light_pdf > 0.0f))
-			return;
 		if (!learning_enabled || training_record_probability <= 0.0f || random_number_generator() >= training_record_probability)
 			return;
 

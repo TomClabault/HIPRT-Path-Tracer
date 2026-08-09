@@ -231,8 +231,8 @@ void CPURenderer::setup_buffers()
 	m_g_buffer_prev_frame.resize(width * height);
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_mlp.resize();
-	m_mlp.initialize(false);
+	m_nisml_state.m_mlp.resize();
+	m_nisml_state.m_mlp.initialize(false);
 #endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
@@ -438,7 +438,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nis_ml_data.resize();
+	m_nisml_state.m_nis_ml_data.resize();
 #endif
 }
 
@@ -554,8 +554,8 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_render_data.nis_ml.mlp					  = m_mlp.to_device();
-	NISMLDevice training_data					  = m_nis_ml_data.to_device();
+	m_render_data.nis_ml.mlp					  = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
+	NISMLDevice training_data					  = m_nisml_state.m_nis_ml_data.to_device();
 	m_render_data.nis_ml.training_records		  = training_data.training_records;
 	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
 	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
@@ -737,8 +737,9 @@ void CPURenderer::render()
 void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nis_ml_data.reset();
-	NISMLDevice training_data					  = m_nis_ml_data.to_device();
+	m_nisml_state.m_nis_ml_data.reset();
+
+	NISMLDevice training_data					  = m_nisml_state.m_nis_ml_data.to_device();
 	m_render_data.nis_ml.training_records		  = training_data.training_records;
 	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
 	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
@@ -791,8 +792,8 @@ void CPURenderer::reset()
 	m_render_data.render_settings.sample_number = 0;
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nis_ml_data.reset();
-	m_mlp.initialize(true);
+	m_nisml_state.m_nis_ml_data.reset();
+	m_nisml_state.m_mlp.initialize(true);
 #endif
 }
 

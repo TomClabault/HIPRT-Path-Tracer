@@ -1011,6 +1011,7 @@ void GPURenderer::rebuild_whole_scene_bvh(hiprtBuildFlags build_flags, bool do_c
 void GPURenderer::set_scene(const Scene& scene)
 {
 	synchronize_all_kernels();
+	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 
 	set_hiprt_scene_from_scene(scene);
 	// TODO multithread this call here
