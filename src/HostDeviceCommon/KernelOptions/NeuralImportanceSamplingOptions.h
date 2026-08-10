@@ -30,10 +30,70 @@
 #define NISML_POSITION_LEARNABLE_DENSE_GRID_BASE_RESOLUTION 8
 #define NISML_POSITION_LEARNABLE_DENSE_GRID_PER_LEVEL_SCALE 1.405f
 
-#define NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT 4133144
+template <unsigned int ElementCount>
+struct NISMLPositionLearnableDenseGridConstexprValues
+{
+	unsigned int values[ElementCount] = {};
 
-static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_RESOLUTIONS[NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT] = { 8, 12, 16, 23, 32, 44, 62, 87 };
-static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_OFFSETS[NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT] = { 0, 2048, 8960, 25344, 74012, 205084, 545820, 1499132 };
+	constexpr unsigned int operator[](unsigned int index) const
+	{
+		return values[index];
+	}
+};
+
+constexpr unsigned int nisml_position_learnable_dense_grid_level_resolution(unsigned int level)
+{
+	float resolution = static_cast<float>(NISML_POSITION_LEARNABLE_DENSE_GRID_BASE_RESOLUTION);
+	for (unsigned int level_index = 0; level_index < level; level_index++)
+		resolution *= NISML_POSITION_LEARNABLE_DENSE_GRID_PER_LEVEL_SCALE;
+
+	unsigned int floored_resolution = static_cast<unsigned int>(resolution);
+	return resolution > static_cast<float>(floored_resolution) ? floored_resolution + 1u : floored_resolution;
+}
+
+constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT>
+nisml_position_learnable_dense_grid_level_resolutions()
+{
+	NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> resolutions;
+	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
+		resolutions.values[level] = nisml_position_learnable_dense_grid_level_resolution(level);
+
+	return resolutions;
+}
+
+static constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT>
+	NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_RESOLUTIONS = nisml_position_learnable_dense_grid_level_resolutions();
+
+constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> nisml_position_learnable_dense_grid_level_offsets()
+{
+	NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> offsets;
+	unsigned int offset = 0;
+	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
+	{
+		offsets.values[level]	= offset;
+		unsigned int resolution = NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_RESOLUTIONS[level];
+		offset += resolution * resolution * resolution * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT;
+	}
+
+	return offsets;
+}
+
+static constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT>
+	NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_OFFSETS = nisml_position_learnable_dense_grid_level_offsets();
+
+constexpr unsigned int nisml_position_learnable_dense_grid_total_parameter_count()
+{
+	unsigned int total_parameter_count = 0;
+	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
+	{
+		unsigned int resolution = NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_RESOLUTIONS[level];
+		total_parameter_count += resolution * resolution * resolution * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT;
+	}
+
+	return total_parameter_count;
+}
+
+static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT = nisml_position_learnable_dense_grid_total_parameter_count();
 
 // Learnable dense grid encoding for the normalized position (x, y, z)
 #define NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE (NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT)
