@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_NEURAL_NIS_ML_DEVICE_H
 
 #include "Device/includes/Neural/NISML.h"
+#include "Device/includes/Neural/NISML/NISMLPositionGrid.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
@@ -43,6 +44,7 @@ struct NISMLDevice
 	}
 
 	NeuralImportanceSamplingMLP mlp;
+	NISPositionGridDevice position_grid;
 
 	unsigned int* cluster_node_indices	= nullptr;
 	float* cluster_log_baseline_weights = nullptr;

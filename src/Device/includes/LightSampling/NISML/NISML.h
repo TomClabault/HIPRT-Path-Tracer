@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
+#include "Device/includes/Neural/NISML/NISMLPositionGrid.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -27,7 +28,8 @@ struct NISLightSample
 	float emissive_triangle_pdf			= 0.0f;
 };
 
-HIPRT_DEVICE void build_nis_input(const float3_t& scene_min,
+HIPRT_DEVICE void build_nis_input(const NISPositionGridDevice& position_grid,
+								  const float3_t& scene_min,
 								  const float3_t& scene_max,
 								  const float3_t& shading_point,
 								  const float3_t& view_direction,
@@ -38,13 +40,11 @@ HIPRT_DEVICE void build_nis_input(const float3_t& scene_min,
 		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
 					(shading_point.z - scene_min.z) / (scene_max.z - scene_min.z));
 
-	input.input[0] = normalized_shading_point.x;
-	input.input[1] = normalized_shading_point.y;
-	input.input[2] = normalized_shading_point.z;
+	encode_nis_position_grid(position_grid, normalized_shading_point, input.input);
 
-	encode_spherical_harmonics_degree_4(view_direction, input.input + NIS_POSITION_ENCODED_SIZE);
+	encode_spherical_harmonics_degree_4(view_direction, input.input + NIS_POSITION_GRID_ENCODED_SIZE);
 
-	constexpr int NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NIS_POSITION_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE;
+	constexpr unsigned int NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NIS_POSITION_GRID_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE;
 	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(0.5f * (shading_normal.x + 1.0f),
 																			   input.input + NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE);
 	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(
@@ -229,7 +229,8 @@ HIPRT_DEVICE unsigned int infer_and_sample_nis_cluster(const NISMLDevice& neural
 													   float& out_cluster_probability)
 {
 	NeuralImportanceSamplingMLP::InputLayer input;
-	build_nis_input(render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction, shading_normal, input);
+	build_nis_input(render_data.nis_ml.position_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction,
+					shading_normal, input);
 
 	float residuals[NIS_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
@@ -245,7 +246,8 @@ HIPRT_DEVICE float infer_nis_cluster_probability(const NISMLDevice& neural_light
 												 const HIPRTRenderData& render_data)
 {
 	NeuralImportanceSamplingMLP::InputLayer input;
-	build_nis_input(render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction, shading_normal, input);
+	build_nis_input(render_data.nis_ml.position_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point, view_direction,
+					shading_normal, input);
 
 	float residuals[NIS_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);

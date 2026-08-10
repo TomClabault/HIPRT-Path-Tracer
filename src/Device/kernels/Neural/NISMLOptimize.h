@@ -9,10 +9,6 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 
-#define NIS_ADAM_BETA1	 0.9f
-#define NIS_ADAM_BETA2	 0.999f
-#define NIS_ADAM_EPSILON 1e-8f
-
 GLOBAL_KERNEL_SIGNATURE(void)
 NISMLOptimize(NeuralImportanceSamplingMLP mlp, unsigned int adam_step)
 {

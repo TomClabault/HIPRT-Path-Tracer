@@ -16,27 +16,41 @@
 
 /**
  * Input order for Neural Importance Sampling Many Lights:
- * [position.xyz, outgoing_direction spherical harmonics degree 4, normal_x_one_blob,
+ * [position_grid_features, outgoing_direction spherical harmonics degree 4, normal_x_one_blob,
  * normal_y_one_blob, normal_z_one_blob]
- * 
- * where each normal component is mapped from [-1, 1] to [0, 1] before one-blob encoding.
  *
- * Position is
- * normalized to the scene bounds before being passed to the MLP.
+ * where each normal component is mapped from [-1, 1] to [0, 1] before one-blob encoding.
+ * The position grid features are ordered level-major, with all four features of one level contiguous.
+ *
+ * Position is normalized to the scene bounds before being passed to the grid encoder.
  */
 
-// 3 for the normalized position (x, y, z)
-#define NIS_POSITION_ENCODED_SIZE 3
+#define NIS_POSITION_GRID_LEVEL_COUNT	  8
+#define NIS_POSITION_GRID_FEATURE_COUNT	  4
+#define NIS_POSITION_GRID_BASE_RESOLUTION 8
+#define NIS_POSITION_GRID_PER_LEVEL_SCALE 1.405f
+
+#define NIS_POSITION_GRID_TOTAL_PARAMETER_COUNT 4133144
+
+static constexpr unsigned int NIS_POSITION_GRID_LEVEL_RESOLUTIONS[NIS_POSITION_GRID_LEVEL_COUNT] = { 8, 12, 16, 23, 32, 44, 62, 87 };
+static constexpr unsigned int NIS_POSITION_GRID_LEVEL_OFFSETS[NIS_POSITION_GRID_LEVEL_COUNT]	 = { 0, 2048, 8960, 25344, 74012, 205084, 545820, 1499132 };
+
+// Learnable dense grid encoding for the normalized position (x, y, z)
+#define NIS_POSITION_GRID_ENCODED_SIZE (NIS_POSITION_GRID_LEVEL_COUNT * NIS_POSITION_GRID_FEATURE_COUNT)
 // 16 for spherical harmonics degree 4 encoding of the view direction (tiny cuda nn convention: degree 4 = 16 features)
 #define NIS_VIEW_DIRECTION_ENCODED_SIZE 16
 // 3 * NIS_NORMAL_ONE_BLOB_BIN_COUNT for the one-blob encoding of the normal (x, y, z)
 #define NIS_SURFACE_NORMAL_ENCODED_SIZE (3 * NIS_NORMAL_ONE_BLOB_BIN_COUNT)
 
-#define NIS_INPUT_SIZE_ENCODED (NIS_POSITION_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE + NIS_SURFACE_NORMAL_ENCODED_SIZE)
+#define NIS_INPUT_SIZE_ENCODED (NIS_POSITION_GRID_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE + NIS_SURFACE_NORMAL_ENCODED_SIZE)
 #define NIS_HIDDEN_LAYER_COUNT 3
 #define NIS_HIDDEN_LAYER_SIZE  64
 #define NIS_THREAD_BLOCK_SIZE  64
 #define NIS_USE_BIASES		   1
+
+#define NIS_ADAM_BETA1	 0.9f
+#define NIS_ADAM_BETA2	 0.999f
+#define NIS_ADAM_EPSILON 1e-8f
 
 using NeuralImportanceSamplingMLP = MLPFullyFusedDevice<NIS_INPUT_SIZE_ENCODED,
 														NIS_HIDDEN_LAYER_COUNT,

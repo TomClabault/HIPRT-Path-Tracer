@@ -28,8 +28,8 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	if (valid_record)
 	{
 		record = render_data.nis_ml.training_records[record_index];
-		build_nis_input(render_data.world_settings.scene_min, render_data.world_settings.scene_max, record.position, record.outgoing_direction, record.normal,
-						input);
+		build_nis_input(render_data.nis_ml.position_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, record.position,
+						record.outgoing_direction, record.normal, input);
 	}
 
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
@@ -47,8 +47,9 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
 #endif
 
-	float output_gradient[NIS_MAX_CLUSTER_COUNT] = {};
-	float weight								 = 0.0f;
+	float output_gradient[NIS_MAX_CLUSTER_COUNT]  = {};
+	float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
+	float weight								  = 0.0f;
 	if (valid_record)
 	{
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
@@ -64,12 +65,14 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 									   record.alpha_x, record.alpha_y, log_baseline_weights);
 
 		float probabilities[NIS_MAX_CLUSTER_COUNT];
-		bool valid_softmax		   = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, probabilities);
+		bool valid_softmax = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, probabilities);
+
 		unsigned int cluster_index = static_cast<unsigned int>(record.cluster_index);
+
 		float selected_probability = cluster_index < NIS_MAX_CLUSTER_COUNT ? probabilities[cluster_index] : 0.0f;
 		weight					   = selected_probability > 0.0f ? record.contribution_luminance / selected_probability : 0.0f;
-		bool valid_weight		   = valid_softmax && cluster_index < render_data.nis_ml.cluster_count && selected_probability > 0.0f;
 
+		bool valid_weight = valid_softmax && cluster_index < render_data.nis_ml.cluster_count && selected_probability > 0.0f;
 		if (valid_weight)
 		{
 			valid_training_sample = true;
@@ -85,12 +88,21 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
 
-	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, output_gradient, error_scale,
-							 valid_training_sample);
+	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, output_gradient, error_scale, valid_training_sample,
+							 input_gradients);
 #else
 	if (valid_training_sample)
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient);
+		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
 #endif
+
+	if (valid_training_sample)
+	{
+		float3_t normalized_position = make_float3(
+			(record.position.x - render_data.world_settings.scene_min.x) / (render_data.world_settings.scene_max.x - render_data.world_settings.scene_min.x),
+			(record.position.y - render_data.world_settings.scene_min.y) / (render_data.world_settings.scene_max.y - render_data.world_settings.scene_min.y),
+			(record.position.z - render_data.world_settings.scene_min.z) / (render_data.world_settings.scene_max.z - render_data.world_settings.scene_min.z));
+		accumulate_nis_position_grid_input_gradients(render_data.nis_ml.position_grid, normalized_position, input_gradients);
+	}
 }
 
 #endif

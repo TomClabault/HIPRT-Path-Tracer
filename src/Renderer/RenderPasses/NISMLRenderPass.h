@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionGridDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
@@ -16,24 +17,32 @@
 
 struct NISMLVRAMUsage
 {
-	std::size_t neurons_biases			= 0;
-	std::size_t gradient_biases			= 0;
-	std::size_t connection_weights		= 0;
-	std::size_t connection_weights_fp16 = 0;
-	std::size_t gradient_weights		= 0;
-	std::size_t training_sample_count	= 0;
-	std::size_t adam_weights_means		= 0;
-	std::size_t adam_weights_variances	= 0;
-	std::size_t adam_biases_means		= 0;
-	std::size_t adam_biases_variances	= 0;
-	std::size_t train_activations		= 0;
-	std::size_t training_records		= 0;
-	std::size_t training_record_count	= 0;
+	std::size_t neurons_biases				= 0;
+	std::size_t gradient_biases				= 0;
+	std::size_t connection_weights			= 0;
+	std::size_t connection_weights_fp16		= 0;
+	std::size_t gradient_weights			= 0;
+	std::size_t training_sample_count		= 0;
+	std::size_t adam_weights_means			= 0;
+	std::size_t adam_weights_variances		= 0;
+	std::size_t adam_biases_means			= 0;
+	std::size_t adam_biases_variances		= 0;
+	std::size_t train_activations			= 0;
+	std::size_t training_records			= 0;
+	std::size_t training_record_count		= 0;
+	std::size_t grid_features				= 0;
+	std::size_t grid_features_fp16			= 0;
+	std::size_t grid_gradient_features		= 0;
+	std::size_t grid_adam_feature_means		= 0;
+	std::size_t grid_adam_feature_variances = 0;
 
 	std::size_t get_total_bytes() const
 	{
-		return neurons_biases + gradient_biases + connection_weights + connection_weights_fp16 + gradient_weights + training_sample_count + adam_weights_means +
-			   adam_weights_variances + adam_biases_means + adam_biases_variances + train_activations + training_records + training_record_count;
+		std::size_t mlp_and_records_bytes = neurons_biases + gradient_biases + connection_weights + connection_weights_fp16 + gradient_weights +
+											training_sample_count + adam_weights_means + adam_weights_variances + adam_biases_means + adam_biases_variances +
+											train_activations + training_records + training_record_count;
+
+		return mlp_and_records_bytes + grid_features + grid_features_fp16 + grid_gradient_features + grid_adam_feature_means + grid_adam_feature_variances;
 	}
 };
 
@@ -43,6 +52,7 @@ public:
 	static const std::string NISML_RENDER_PASS_NAME;
 	static const std::string NISML_TRAIN;
 	static const std::string NISML_OPTIMIZE;
+	static const std::string NISML_GRID_OPTIMIZE;
 
 	NISMLRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
@@ -74,6 +84,7 @@ private:
 	bool pre_render_update();
 
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
+	NISPositionGridDataHost<OrochiBuffer> m_position_grid;
 	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
 
 	unsigned int m_adam_step			  = 0;
