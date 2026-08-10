@@ -75,8 +75,8 @@ bool NISMLRenderPass::pre_render_update()
 		m_mlp.resize(NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE);
 		m_mlp.initialize(true);
 
-		m_position_grid.resize();
-		m_position_grid.initialize();
+		m_position_learnable_dense_grid.resize();
+		m_position_learnable_dense_grid.initialize();
 
 		render_data_needs_update = true;
 	}
@@ -113,10 +113,10 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->launch_asynchronous(1024, 1, NeuralImportanceSamplingMLP::CONNECTIONS_COUNT, 1, optimize_launch_args,
 																		m_renderer->get_main_stream());
 
-		NISPositionGridDevice position_grid_device = m_position_grid.to_device(m_adam_learning_rate);
-		void* grid_optimize_launch_args[]		   = { &position_grid_device, &training_sample_count, &adam_step };
-		m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE]->launch_asynchronous(1024, 1, NIS_POSITION_GRID_TOTAL_PARAMETER_COUNT, 1, grid_optimize_launch_args,
-																			 m_renderer->get_main_stream());
+		NISMLPositionLearnableDenseGridDevice position_learnable_dense_grid_device = m_position_learnable_dense_grid.to_device(m_adam_learning_rate);
+		void* grid_optimize_launch_args[] = { &position_learnable_dense_grid_device, &training_sample_count, &adam_step };
+		m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE]->launch_asynchronous(1024, 1, NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT, 1,
+																			 grid_optimize_launch_args, m_renderer->get_main_stream());
 		m_adam_step++;
 	}
 
@@ -133,24 +133,24 @@ void NISMLRenderPass::update_render_data()
 
 	if (!is_render_pass_used(*m_compiler_options))
 	{
-		render_data.nis_ml.cluster_node_indices			= nullptr;
-		render_data.nis_ml.triangle_to_cluster			= nullptr;
-		render_data.nis_ml.cluster_node_depths			= nullptr;
-		render_data.nis_ml.cluster_log_baseline_weights = nullptr;
-		render_data.nis_ml.cluster_count				= 0;
-		render_data.nis_ml.training_records				= nullptr;
-		render_data.nis_ml.training_record_count		= nullptr;
-		render_data.nis_ml.training_record_capacity		= 0;
-		render_data.nis_ml.position_grid				= {};
-		render_data.nis_ml.learning_enabled				= false;
-		render_data.nis_ml.training_record_probability	= 0.0f;
+		render_data.nis_ml.cluster_node_indices			 = nullptr;
+		render_data.nis_ml.triangle_to_cluster			 = nullptr;
+		render_data.nis_ml.cluster_node_depths			 = nullptr;
+		render_data.nis_ml.cluster_log_baseline_weights	 = nullptr;
+		render_data.nis_ml.cluster_count				 = 0;
+		render_data.nis_ml.training_records				 = nullptr;
+		render_data.nis_ml.training_record_count		 = nullptr;
+		render_data.nis_ml.training_record_capacity		 = 0;
+		render_data.nis_ml.position_learnable_dense_grid = {};
+		render_data.nis_ml.learning_enabled				 = false;
+		render_data.nis_ml.training_record_probability	 = 0.0f;
 
 		return;
 	}
 
-	render_data.nis_ml.mlp							= m_mlp.to_device(m_adam_learning_rate);
-	render_data.nis_ml.position_grid				= m_position_grid.to_device(m_adam_learning_rate);
-	render_data.nis_ml.cluster_log_baseline_weights = nullptr;
+	render_data.nis_ml.mlp							 = m_mlp.to_device(m_adam_learning_rate);
+	render_data.nis_ml.position_learnable_dense_grid = m_position_learnable_dense_grid.to_device(m_adam_learning_rate);
+	render_data.nis_ml.cluster_log_baseline_weights	 = nullptr;
 	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nis_ml);
 
 	NISMLDevice training_data					= m_nis_ml_data.to_device();
@@ -166,7 +166,7 @@ void NISMLRenderPass::reset(bool reset_by_camera_movement)
 	m_nis_ml_data.reset();
 
 	m_mlp.initialize(true);
-	m_position_grid.initialize();
+	m_position_learnable_dense_grid.initialize();
 
 	m_adam_step = 0;
 }
@@ -215,16 +215,21 @@ NISMLVRAMUsage NISMLRenderPass::get_vram_usage_breakdown() const
 	vram_usage.train_activations	 = GenericSoAHelpers::get_byte_size(m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
 	vram_usage.training_records		 = GenericSoAHelpers::get_byte_size(m_nis_ml_data.m_training_records);
 	vram_usage.training_record_count = GenericSoAHelpers::get_byte_size(m_nis_ml_data.m_training_record_count);
-	vram_usage.grid_features =
-		GenericSoAHelpers::get_byte_size(m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_FEATURES>());
-	vram_usage.grid_features_fp16 =
-		GenericSoAHelpers::get_byte_size(m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_FEATURES_FP16>());
+	vram_usage.grid_features		 = GenericSoAHelpers::get_byte_size(
+		m_position_learnable_dense_grid.m_grid_data
+			.template get_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURES>());
+	vram_usage.grid_features_fp16 = GenericSoAHelpers::get_byte_size(
+		m_position_learnable_dense_grid.m_grid_data
+			.template get_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURES_FP16>());
 	vram_usage.grid_gradient_features = GenericSoAHelpers::get_byte_size(
-		m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_GRADIENT_FEATURES>());
+		m_position_learnable_dense_grid.m_grid_data
+			.template get_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_GRADIENT_FEATURES>());
 	vram_usage.grid_adam_feature_means = GenericSoAHelpers::get_byte_size(
-		m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_ADAM_FEATURE_MEANS>());
+		m_position_learnable_dense_grid.m_grid_data
+			.template get_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_ADAM_FEATURE_MEANS>());
 	vram_usage.grid_adam_feature_variances = GenericSoAHelpers::get_byte_size(
-		m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_ADAM_FEATURE_VARIANCES>());
+		m_position_learnable_dense_grid.m_grid_data
+			.template get_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_ADAM_FEATURE_VARIANCES>());
 
 	return vram_usage;
 }

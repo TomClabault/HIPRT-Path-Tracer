@@ -23,7 +23,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionGridDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionLearnableDenseGridDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
@@ -139,8 +139,6 @@ public:
 	void tonemap(float gamma, float exposure);
 
 private:
-	void train_nisml_records();
-
 	int2_t m_resolution;
 
 	Image32Bit m_framebuffer;
@@ -296,7 +294,7 @@ private:
 	struct NISMLState
 	{
 		MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
-		NISPositionGridDataHost<std::vector> m_position_grid;
+		NISMLPositionLearnableDenseGridDataHost<std::vector> m_position_learnable_dense_grid;
 		NISMLDataHost<std::vector> m_nis_ml_data;
 
 		float m_training_record_percentage = 15.0f;

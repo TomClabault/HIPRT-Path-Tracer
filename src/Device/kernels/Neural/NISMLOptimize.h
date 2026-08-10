@@ -12,7 +12,7 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 NISMLOptimize(NeuralImportanceSamplingMLP mlp, unsigned int adam_step)
 {
-	unsigned int thread_index		   = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int training_sample_count = hippt::atomic_load(mlp.last_training_sample_count);
 	if (training_sample_count == 0u)
 		return;

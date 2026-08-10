@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionGridDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionLearnableDenseGridDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
@@ -84,7 +84,7 @@ private:
 	bool pre_render_update();
 
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
-	NISPositionGridDataHost<OrochiBuffer> m_position_grid;
+	NISMLPositionLearnableDenseGridDataHost<OrochiBuffer> m_position_learnable_dense_grid;
 	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
 
 	unsigned int m_adam_step			  = 0;

@@ -235,8 +235,8 @@ void CPURenderer::setup_buffers()
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_nisml_state.m_mlp.resize();
 	m_nisml_state.m_mlp.initialize(true);
-	m_nisml_state.m_position_grid.resize();
-	m_nisml_state.m_position_grid.initialize();
+	m_nisml_state.m_position_learnable_dense_grid.resize();
+	m_nisml_state.m_position_learnable_dense_grid.initialize();
 #endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
@@ -558,12 +558,12 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_render_data.nis_ml.mlp					  = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
-	m_render_data.nis_ml.position_grid			  = m_nisml_state.m_position_grid.to_device(m_nisml_state.m_adam_learning_rate);
-	NISMLDevice training_data					  = m_nisml_state.m_nis_ml_data.to_device();
-	m_render_data.nis_ml.training_records		  = training_data.training_records;
-	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
-	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
+	m_render_data.nis_ml.mlp						   = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
+	m_render_data.nis_ml.position_learnable_dense_grid = m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
+	NISMLDevice training_data						   = m_nisml_state.m_nis_ml_data.to_device();
+	m_render_data.nis_ml.training_records			   = training_data.training_records;
+	m_render_data.nis_ml.training_record_count		   = training_data.training_record_count;
+	m_render_data.nis_ml.training_record_capacity	   = training_data.training_record_capacity;
 	m_render_data.nis_ml.learning_enabled =
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
 	m_render_data.nis_ml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
@@ -778,8 +778,6 @@ void CPURenderer::pre_sample_update(int frame_number)
 
 void CPURenderer::post_sample_update(int frame_number)
 {
-	train_nisml_records();
-
 	m_render_data.render_settings.need_to_reset = false;
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render
@@ -791,144 +789,6 @@ void CPURenderer::post_sample_update(int frame_number)
 
 	if (m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number++;
-}
-
-void CPURenderer::train_nisml_records()
-{
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	if (!m_render_data.nis_ml.learning_enabled || m_nisml_state.m_training_record_percentage <= 0.0f)
-		return;
-
-	unsigned int record_count = m_nisml_state.m_nis_ml_data.get_effective_training_record_count();
-	if (record_count == 0u)
-		return;
-
-	NeuralImportanceSamplingMLP mlp		= m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
-	NISPositionGridDevice position_grid = m_nisml_state.m_position_grid.to_device(m_nisml_state.m_adam_learning_rate);
-
-	for (unsigned int record_index = 0; record_index < record_count; record_index++)
-	{
-		NISTrainingSample record					  = m_nisml_state.m_nis_ml_data.m_training_records[record_index];
-		NeuralImportanceSamplingMLP::InputLayer input = {};
-		build_nis_input(position_grid, m_render_data.world_settings.scene_min, m_render_data.world_settings.scene_max, record.position,
-						record.outgoing_direction, record.normal, input);
-
-		float neurons_activations[NeuralImportanceSamplingMLP::NEURON_COUNT] = {};
-		mlp.forward_single_thread(input, neurons_activations);
-
-		float residuals[NIS_MAX_CLUSTER_COUNT] = {};
-		unsigned int output_layer_offset	   = NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, 0);
-		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
-			residuals[cluster_index] = neurons_activations[output_layer_offset + cluster_index];
-
-		float log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
-		build_nis_log_baseline_weights(m_render_data, m_render_data.nis_ml, record.position, record.outgoing_direction, record.normal,
-									   record.sg_specular_weight, record.alpha_x, record.alpha_y, log_baseline_weights);
-
-		float probabilities[NIS_MAX_CLUSTER_COUNT];
-		bool valid_softmax		   = evaluate_nis_softmax(log_baseline_weights, residuals, m_render_data.nis_ml.cluster_count, probabilities);
-		unsigned int cluster_index = static_cast<unsigned int>(record.cluster_index);
-		float weight =
-			record.cluster_probability > 0.0f
-				? record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability * record.point_on_light_pdf_solid_angle)
-				: 0.0f;
-
-		bool valid_weight = valid_softmax && cluster_index < m_render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
-							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
-		if (!valid_weight)
-			continue;
-
-		float output_gradient[NIS_MAX_CLUSTER_COUNT] = {};
-		for (unsigned int output_index = 0; output_index < m_render_data.nis_ml.cluster_count; output_index++)
-			output_gradient[output_index] = weight * (probabilities[output_index] - (output_index == cluster_index ? 1.0f : 0.0f));
-
-		float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
-
-		float3_t normalized_position = make_float3((record.position.x - m_render_data.world_settings.scene_min.x) /
-													   (m_render_data.world_settings.scene_max.x - m_render_data.world_settings.scene_min.x),
-												   (record.position.y - m_render_data.world_settings.scene_min.y) /
-													   (m_render_data.world_settings.scene_max.y - m_render_data.world_settings.scene_min.y),
-												   (record.position.z - m_render_data.world_settings.scene_min.z) /
-													   (m_render_data.world_settings.scene_max.z - m_render_data.world_settings.scene_min.z));
-		accumulate_nis_position_grid_input_gradients(position_grid, normalized_position, input_gradients);
-	}
-
-	unsigned int training_sample_count = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0].load();
-	if (training_sample_count == 0u)
-		return;
-
-	float time_step		   = static_cast<float>(m_nisml_state.m_adam_step + 1u);
-	float beta1_correction = 1.0f - std::pow(NIS_ADAM_BETA1, time_step);
-	float beta2_correction = 1.0f - std::pow(NIS_ADAM_BETA2, time_step);
-
-	std::vector<float>& weights						 = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS>();
-	std::vector<float>& weights_fp16				 = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_CONNECTION_WEIGHTS_FP16>();
-	std::vector<AtomicType<float>>& weight_gradients = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_GRADIENT_WEIGHTS>();
-	std::vector<float>& weight_means				 = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_MEANS>();
-	std::vector<float>& weight_variances			 = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_WEIGHTS_VARIANCES>();
-
-	for (unsigned int connection_index = 0; connection_index < NeuralImportanceSamplingMLP::CONNECTIONS_COUNT; connection_index++)
-	{
-		float gradient = weight_gradients[connection_index].load() / static_cast<float>(training_sample_count);
-		weight_gradients[connection_index].store(0.0f);
-		float mean						   = NIS_ADAM_BETA1 * weight_means[connection_index] + (1.0f - NIS_ADAM_BETA1) * gradient;
-		float variance					   = NIS_ADAM_BETA2 * weight_variances[connection_index] + (1.0f - NIS_ADAM_BETA2) * gradient * gradient;
-		weight_means[connection_index]	   = mean;
-		weight_variances[connection_index] = variance;
-
-		float corrected_mean	 = mean / beta1_correction;
-		float corrected_variance = variance / beta2_correction;
-		weights[connection_index] -= m_nisml_state.m_adam_learning_rate * corrected_mean / (std::sqrt(corrected_variance) + NIS_ADAM_EPSILON);
-		weights_fp16[connection_index] = weights[connection_index];
-	}
-
-	std::vector<float>& biases					   = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_NEURONS_BIASES>();
-	std::vector<AtomicType<float>>& bias_gradients = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_GRADIENT_BIASES>();
-	std::vector<float>& bias_means				   = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_MEANS>();
-	std::vector<float>& bias_variances			   = m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_ADAM_BIASES_VARIANCES>();
-	for (unsigned int bias_index = 0; bias_index < NeuralImportanceSamplingMLP::NEURON_COUNT; bias_index++)
-	{
-		float gradient = bias_gradients[bias_index].load() / static_cast<float>(training_sample_count);
-		bias_gradients[bias_index].store(0.0f);
-		float mean				   = NIS_ADAM_BETA1 * bias_means[bias_index] + (1.0f - NIS_ADAM_BETA1) * gradient;
-		float variance			   = NIS_ADAM_BETA2 * bias_variances[bias_index] + (1.0f - NIS_ADAM_BETA2) * gradient * gradient;
-		bias_means[bias_index]	   = mean;
-		bias_variances[bias_index] = variance;
-
-		float corrected_mean	 = mean / beta1_correction;
-		float corrected_variance = variance / beta2_correction;
-		biases[bias_index] -= m_nisml_state.m_adam_learning_rate * corrected_mean / (std::sqrt(corrected_variance) + NIS_ADAM_EPSILON);
-	}
-
-	std::vector<float>& grid_features =
-		m_nisml_state.m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_FEATURES>();
-	std::vector<float>& grid_features_fp16 =
-		m_nisml_state.m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_FEATURES_FP16>();
-	std::vector<AtomicType<float>>& grid_gradients =
-		m_nisml_state.m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_GRADIENT_FEATURES>();
-	std::vector<float>& grid_means =
-		m_nisml_state.m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_ADAM_FEATURE_MEANS>();
-	std::vector<float>& grid_variances =
-		m_nisml_state.m_position_grid.m_grid_data.template get_buffer<NISPositionGridDataHostBuffers::NIS_POSITION_GRID_ADAM_FEATURE_VARIANCES>();
-	for (unsigned int feature_index = 0; feature_index < NIS_POSITION_GRID_TOTAL_PARAMETER_COUNT; feature_index++)
-	{
-		float gradient = grid_gradients[feature_index].load() / static_cast<float>(training_sample_count);
-		grid_gradients[feature_index].store(0.0f);
-		float mean					  = NIS_ADAM_BETA1 * grid_means[feature_index] + (1.0f - NIS_ADAM_BETA1) * gradient;
-		float variance				  = NIS_ADAM_BETA2 * grid_variances[feature_index] + (1.0f - NIS_ADAM_BETA2) * gradient * gradient;
-		grid_means[feature_index]	  = mean;
-		grid_variances[feature_index] = variance;
-
-		float corrected_mean	 = mean / beta1_correction;
-		float corrected_variance = variance / beta2_correction;
-		grid_features[feature_index] -= m_nisml_state.m_adam_learning_rate * corrected_mean / (std::sqrt(corrected_variance) + NIS_ADAM_EPSILON);
-		grid_features_fp16[feature_index] = grid_features[feature_index];
-	}
-
-	m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0].store(0u);
-	m_nisml_state.m_adam_step++;
-#endif
 }
 
 void CPURenderer::update_cameras(int sample)
@@ -945,7 +805,7 @@ void CPURenderer::reset()
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_nisml_state.m_nis_ml_data.reset();
 	m_nisml_state.m_mlp.initialize(true);
-	m_nisml_state.m_position_grid.initialize();
+	m_nisml_state.m_position_learnable_dense_grid.initialize();
 	m_nisml_state.m_adam_step = 0;
 #endif
 }

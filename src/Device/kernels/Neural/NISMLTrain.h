@@ -28,8 +28,8 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	if (valid_record)
 	{
 		record = render_data.nis_ml.training_records[record_index];
-		build_nis_input(render_data.nis_ml.position_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, record.position,
-						record.outgoing_direction, record.normal, input);
+		build_nis_input(render_data.nis_ml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+						record.position, record.outgoing_direction, record.normal, input);
 	}
 
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
@@ -43,9 +43,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 	mlp.forward_train_wmma(activations_buffer, train_activations, blockIdx.x * blockDim.x);
-#else
 	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
-#endif
 
 	float output_gradient[NIS_MAX_CLUSTER_COUNT]  = {};
 	float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
@@ -102,7 +100,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 			(record.position.x - render_data.world_settings.scene_min.x) / (render_data.world_settings.scene_max.x - render_data.world_settings.scene_min.x),
 			(record.position.y - render_data.world_settings.scene_min.y) / (render_data.world_settings.scene_max.y - render_data.world_settings.scene_min.y),
 			(record.position.z - render_data.world_settings.scene_min.z) / (render_data.world_settings.scene_max.z - render_data.world_settings.scene_min.z));
-		accumulate_nis_position_grid_input_gradients(render_data.nis_ml.position_grid, normalized_position, input_gradients);
+		accumulate_nisml_position_grid_input_gradients(render_data.nis_ml.position_learnable_dense_grid, normalized_position, input_gradients);
 	}
 }
 
