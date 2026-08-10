@@ -33,15 +33,17 @@ struct LightTreeSGBuilderNISML
 		{
 			if (tree_cut_node_indices_neural_many_lights.empty())
 				m_device_cluster_node_indices_buffer.free();
-			else if (m_device_cluster_node_indices_buffer.get_byte_size() != tree_cut_node_indices_neural_many_lights.size() * sizeof(unsigned int))
+			else
 				m_device_cluster_node_indices_buffer = OrochiBuffer<unsigned int>(tree_cut_node_indices_neural_many_lights);
+
 			if (triangle_to_neural_cluster.empty())
 				m_device_triangle_to_cluster_buffer.free();
-			else if (m_device_triangle_to_cluster_buffer.get_byte_size() != triangle_to_neural_cluster.size() * sizeof(unsigned char))
+			else
 				m_device_triangle_to_cluster_buffer = OrochiBuffer<unsigned char>(triangle_to_neural_cluster);
+
 			if (neural_cluster_node_depths.empty())
 				m_device_cluster_node_depths_buffer.free();
-			else if (m_device_cluster_node_depths_buffer.get_byte_size() != neural_cluster_node_depths.size() * sizeof(unsigned char))
+			else
 				m_device_cluster_node_depths_buffer = OrochiBuffer<unsigned char>(neural_cluster_node_depths);
 
 			nisml_device.cluster_node_indices = m_device_cluster_node_indices_buffer.data();
