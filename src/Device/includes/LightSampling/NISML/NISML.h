@@ -41,12 +41,16 @@ HIPRT_DEVICE void build_nis_input(const float3_t& scene_min,
 	input.input[0] = normalized_shading_point.x;
 	input.input[1] = normalized_shading_point.y;
 	input.input[2] = normalized_shading_point.z;
-	input.input[3] = view_direction.x;
-	input.input[4] = view_direction.y;
-	input.input[5] = view_direction.z;
-	input.input[6] = shading_normal.x;
-	input.input[7] = shading_normal.y;
-	input.input[8] = shading_normal.z;
+
+	encode_spherical_harmonics_degree_4(view_direction, input.input + NIS_POSITION_ENCODED_SIZE);
+
+	constexpr int NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NIS_POSITION_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE;
+	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(0.5f * (shading_normal.x + 1.0f),
+																			   input.input + NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE);
+	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.y + 1.0f), input.input + NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE + NIS_NORMAL_ONE_BLOB_BIN_COUNT);
+	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.z + 1.0f), input.input + NIS_POSITION_AND_VIEW_DIR_ENCODED_SIZE + 2 * NIS_NORMAL_ONE_BLOB_BIN_COUNT);
 }
 
 HIPRT_DEVICE void build_nis_log_baseline_weights(const HIPRTRenderData& render_data,

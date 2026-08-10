@@ -34,15 +34,16 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
 	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE_PADDED_WMMA + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
 	static constexpr unsigned int CONNECTIONS_COUNT		  = (INPUT_SIZE_PADDED_WMMA * HiddenLayerSize_) +
-													  ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
-													  (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
-	static constexpr unsigned int SAMPLES_PER_BLOCK = BlockSize_;
+															((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
+															(OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
+	static constexpr unsigned int SAMPLES_PER_BLOCK		  = BlockSize_;
 
 	static constexpr unsigned int HIDDEN_LAYER_COUNT		   = HiddenLayerCount_;
 	static constexpr unsigned int HIDDEN_LAYER_SIZE			   = HiddenLayerSize_;
 	static constexpr unsigned int OUTPUT_SIZE				   = OutputSize_;
 	static constexpr unsigned int BLOCK_SIZE				   = BlockSize_;
 	static constexpr unsigned int ACTIVATION_WIDTH			   = hippt::max(INPUT_SIZE_PADDED_WMMA, hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA));
+	static constexpr unsigned int ERROR_WIDTH				   = hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA);
 	static constexpr bool USE_BIASES						   = UseBiases_;
 	static constexpr MLPActivationFunction ACTIVATION_FUNCTION = ActivationFunction_;
 	static constexpr bool USE_OUTPUT_ACTIVATION				   = UseOutputActivation_;
@@ -472,7 +473,7 @@ struct MLPFullyFusedDevice
 	HIPRT_DEVICE void backpropagation_wmma_from_output_gradient(fp16* train_activations_global,
 																unsigned int sample_offset,
 																fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-																fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+																fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 																const float* output_gradient,
 																bool count_training_sample,
 																float error_scale) const
@@ -481,7 +482,8 @@ struct MLPFullyFusedDevice
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(BlockSize_ % 32 == 0, "BlockSize must be a multiple of 32 for WMMA");
-		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ACTIVATION_WIDTH, "WMMA scratch buffers must fit the padded output layer");
+		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ERROR_WIDTH, "Error buffer must fit the padded output layer");
+		static_assert(HIDDEN_LAYER_SIZE <= ERROR_WIDTH, "Error buffer must fit hidden layers");
 
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 		unsigned int lane_id	  = threadIdx.x & 31;
@@ -492,7 +494,7 @@ struct MLPFullyFusedDevice
 		// NISML scales errors before storing them in FP16; restore the scale when accumulating FP32 parameter gradients.
 		float inverse_error_scale = 1.0f / error_scale;
 
-		constexpr unsigned int errors_ping_pong_size = ACTIVATION_WIDTH;
+		constexpr unsigned int errors_ping_pong_size = ERROR_WIDTH;
 		unsigned int output_layer_index				 = LAYER_COUNT - 1;
 		unsigned int output_layer_offset			 = get_neuron_data_index(output_layer_index, 0);
 		unsigned int output_errors_offset			 = (output_layer_index & 1) * errors_ping_pong_size;
@@ -640,19 +642,19 @@ struct MLPFullyFusedDevice
 						}
 					}
 				}
-			}
 
-			__syncthreads();
+				__syncthreads();
 
-			for (unsigned int linear_index = threadIdx.x; linear_index < previous_neurons * BlockSize_; linear_index += BlockSize_)
-			{
-				unsigned int previous_neuron = linear_index / BlockSize_;
-				unsigned int sample_index	 = linear_index % BlockSize_;
-				float propagated_error		 = static_cast<float>(errors_buffer[previous_errors_offset + previous_neuron][sample_index]);
-				float previous_activation	 = static_cast<float>(activations_buffer[previous_neuron][sample_index]);
+				for (unsigned int linear_index = threadIdx.x; linear_index < previous_neurons * BlockSize_; linear_index += BlockSize_)
+				{
+					unsigned int previous_neuron = linear_index / BlockSize_;
+					unsigned int sample_index	 = linear_index % BlockSize_;
+					float propagated_error		 = static_cast<float>(errors_buffer[previous_errors_offset + previous_neuron][sample_index]);
+					float previous_activation	 = static_cast<float>(activations_buffer[previous_neuron][sample_index]);
 
-				propagated_error *= activation_function_derivative(previous_activation);
-				errors_buffer[previous_errors_offset + previous_neuron][sample_index] = static_cast<fp16>(propagated_error);
+					propagated_error *= activation_function_derivative(previous_activation);
+					errors_buffer[previous_errors_offset + previous_neuron][sample_index] = static_cast<fp16>(propagated_error);
+				}
 			}
 
 			__syncthreads();
@@ -666,7 +668,7 @@ struct MLPFullyFusedDevice
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 										   const float* output_gradient) const
 	{
 		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient, true, 1.0f);
@@ -675,7 +677,7 @@ struct MLPFullyFusedDevice
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 										   const float* output_gradient,
 										   bool count_training_sample) const
 	{
@@ -686,7 +688,7 @@ struct MLPFullyFusedDevice
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 										   const float* output_gradient,
 										   float error_scale,
 										   bool count_training_sample) const
@@ -698,7 +700,7 @@ struct MLPFullyFusedDevice
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
-										   fp16 errors_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
+										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 										   float* target_output) const
 	{
 		float output_gradient[OutputSize_];

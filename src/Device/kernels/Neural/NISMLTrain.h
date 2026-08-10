@@ -6,8 +6,8 @@
 #ifndef KERNELS_NIS_ML_TRAIN_H
 #define KERNELS_NIS_ML_TRAIN_H
 
-#include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
+#include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 
@@ -33,7 +33,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	}
 
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
-	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 
 	mlp.load_input(input.input, activations_buffer);
 
