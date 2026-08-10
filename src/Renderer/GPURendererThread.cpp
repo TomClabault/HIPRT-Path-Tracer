@@ -85,8 +85,6 @@ void GPURendererThread::setup_render_graphs()
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
 	megakernel_render_pass->add_dependency(regir_render_pass);
 
-	std::shared_ptr<MLPTrainingTestRenderPass> mlp_training_test = render_graph_full.create_render_pass<MLPTrainingTestRenderPass>();
-
 	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = render_graph_full.create_render_pass<ReSTIRGIRenderPass>();
 	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
 	restir_gi_render_pass->add_dependency(restir_di_render_pass);
@@ -137,7 +135,6 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(restir_pg_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
-	render_graph_full.add_render_pass(mlp_training_test);
 	render_graph_full.add_render_pass(nis_ml_render_pass);
 
 	render_graph_full.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);

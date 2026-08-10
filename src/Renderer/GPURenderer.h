@@ -25,7 +25,6 @@
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
-#include "Renderer/RenderPasses/MLPTrainingTestRenderPass.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
 #include "Renderer/RenderPasses/NISMLRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
