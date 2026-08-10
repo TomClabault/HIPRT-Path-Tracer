@@ -9,10 +9,16 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
 
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned int training_sample_count, unsigned int adam_step)
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
-NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned int training_sample_count, unsigned int adam_step)
+inline NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned int training_sample_count, unsigned int adam_step, unsigned int feature_index)
+#endif
 {
+#ifdef __KERNELCC__
 	unsigned int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
+#endif
 	if (training_sample_count == 0u || feature_index >= NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT)
 		return;
 

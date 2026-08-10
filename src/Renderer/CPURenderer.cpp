@@ -6,6 +6,9 @@
 #include "Device/includes/BSDFs/LTCsData/GGXConductorLTCFitData.h"
 
 #include "Device/kernels/CameraRays.h"
+#include "Device/kernels/Neural/NISMLGridOptimize.h"
+#include "Device/kernels/Neural/NISMLTrain.h"
+#include "Device/kernels/Neural/NISMLOptimize.h"
 #include "Device/kernels/Megakernel.h"
 
 #include "Device/kernels/NEE++/GridPrepopulate.h"
@@ -778,6 +781,37 @@ void CPURenderer::pre_sample_update(int frame_number)
 
 void CPURenderer::post_sample_update(int frame_number)
 {
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	if (m_render_data.nis_ml.learning_enabled && m_nisml_state.m_training_record_percentage > 0.0f)
+	{
+		unsigned int record_count = m_nisml_state.m_nis_ml_data.get_effective_training_record_count();
+		if (record_count > 0u)
+		{
+			NeuralImportanceSamplingMLP mlp = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
+			NISMLPositionLearnableDenseGridDevice position_learnable_dense_grid =
+				m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
+
+			for (unsigned int record_index = 0; record_index < record_count; record_index++)
+				NISMLTrain(mlp, m_render_data, nullptr, record_index);
+
+			unsigned int training_sample_count =
+				m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0].load();
+			if (training_sample_count > 0u)
+			{
+				for (unsigned int connection_index = 0; connection_index < NeuralImportanceSamplingMLP::CONNECTIONS_COUNT; connection_index++)
+					NISMLOptimize(mlp, m_nisml_state.m_adam_step, connection_index);
+
+				for (unsigned int feature_index = 0; feature_index < NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT; feature_index++)
+					NISMLGridOptimize(position_learnable_dense_grid, training_sample_count, m_nisml_state.m_adam_step, feature_index);
+
+				m_nisml_state.m_adam_step++;
+			}
+
+			m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0].store(0u);
+		}
+	}
+#endif
+
 	m_render_data.render_settings.need_to_reset = false;
 	// We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
 	// and then we can re-use the old buffers of to be filled by the current frame render

@@ -11,10 +11,17 @@
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
 
+#ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations)
+#else
+GLOBAL_KERNEL_SIGNATURE(void)
+inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int record_index)
+#endif
 {
+#ifdef __KERNELCC__
 	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
+#endif
 	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nis_ml.training_record_count), render_data.nis_ml.training_record_capacity);
 
 	bool valid_record		   = record_index < record_count;
@@ -32,6 +39,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 						record.position, record.outgoing_direction, record.normal, input);
 	}
 
+#ifdef __KERNELCC__
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 
@@ -43,7 +51,15 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 	mlp.forward_train_wmma(activations_buffer, train_activations, blockIdx.x * blockDim.x);
+#else
 	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
+#endif
+#else
+	if (!valid_record)
+		return;
+
+	mlp.forward_single_thread(input, neurons_activations);
+#endif
 
 	float output_gradient[NIS_MAX_CLUSTER_COUNT]  = {};
 	float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
@@ -51,8 +67,10 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 
 	if (valid_record)
 	{
+#ifdef __KERNELCC__
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
 			neurons_activations[neuron_index] = static_cast<float>(sample_activations[neuron_index]);
+#endif
 
 		float residuals[NIS_MAX_CLUSTER_COUNT];
 		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
@@ -80,6 +98,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 		}
 	}
 
+#ifdef __KERNELCC__
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
 	constexpr float TARGET_MAX_ERROR = 1024.0f;
 	float error_scale				 = 1.0f;
@@ -89,6 +108,10 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 
 	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, output_gradient, error_scale, valid_training_sample,
 							 input_gradients);
+#else
+	if (valid_training_sample)
+		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
+#endif
 #else
 	if (valid_training_sample)
 		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
