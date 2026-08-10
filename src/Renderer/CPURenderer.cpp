@@ -234,7 +234,7 @@ void CPURenderer::setup_buffers()
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_nisml_state.m_mlp.resize();
-	m_nisml_state.m_mlp.initialize(false);
+	m_nisml_state.m_mlp.initialize(true);
 	m_nisml_state.m_position_grid.resize();
 	m_nisml_state.m_position_grid.initialize();
 #endif

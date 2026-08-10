@@ -73,9 +73,11 @@ bool NISMLRenderPass::pre_render_update()
 	if (m_mlp.maximum_size() == 0)
 	{
 		m_mlp.resize(NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE);
-		m_mlp.initialize(false);
+		m_mlp.initialize(true);
+
 		m_position_grid.resize();
 		m_position_grid.initialize();
+
 		render_data_needs_update = true;
 	}
 

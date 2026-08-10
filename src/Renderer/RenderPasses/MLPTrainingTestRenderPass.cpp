@@ -74,7 +74,7 @@ bool MLPTrainingTestRenderPass::pre_sample_update(float delta_time)
 	{
 		unsigned int batch_size = 2048;
 		m_mlp.resize(batch_size);
-		m_mlp.initialize(false);
+		m_mlp.initialize(true);
 
 		Image32Bit image_exr = Image32Bit::read_image_exr("../data/Skyspheres/envmap.exr", true);
 
@@ -154,7 +154,7 @@ bool MLPTrainingTestRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 void MLPTrainingTestRenderPass::reset(bool reset_by_camera_movement)
 {
-	m_mlp.initialize(false);
+	m_mlp.initialize(true);
 	m_training_step = 0;
 }
 

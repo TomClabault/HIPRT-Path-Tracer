@@ -40,8 +40,9 @@ struct NISPositionGridDataHost
 		if (maximum_size() == 0)
 			return;
 
+		Xorshift32Generator random_number_generator(0xdeadbeef);
+
 		std::vector<float> features(NIS_POSITION_GRID_TOTAL_PARAMETER_COUNT);
-		Xorshift32Generator random_number_generator(0x4E495347u);
 		for (float& feature : features)
 			feature = random_number_generator() * 2.0e-4f - 1.0e-4f;
 
