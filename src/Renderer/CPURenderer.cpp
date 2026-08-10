@@ -72,8 +72,8 @@
 #include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
 
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <numeric>
@@ -828,9 +828,13 @@ void CPURenderer::train_nisml_records()
 		float probabilities[NIS_MAX_CLUSTER_COUNT];
 		bool valid_softmax		   = evaluate_nis_softmax(log_baseline_weights, residuals, m_render_data.nis_ml.cluster_count, probabilities);
 		unsigned int cluster_index = static_cast<unsigned int>(record.cluster_index);
-		float selected_probability = cluster_index < NIS_MAX_CLUSTER_COUNT ? probabilities[cluster_index] : 0.0f;
-		float weight			   = selected_probability > 0.0f ? record.contribution_luminance / selected_probability : 0.0f;
-		bool valid_weight		   = valid_softmax && cluster_index < m_render_data.nis_ml.cluster_count && selected_probability > 0.0f;
+		float weight =
+			record.cluster_probability > 0.0f
+				? record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability * record.point_on_light_pdf_solid_angle)
+				: 0.0f;
+
+		bool valid_weight = valid_softmax && cluster_index < m_render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
+							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 		if (!valid_weight)
 			continue;
 

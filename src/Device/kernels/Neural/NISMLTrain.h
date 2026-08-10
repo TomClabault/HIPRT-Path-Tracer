@@ -50,6 +50,7 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 	float output_gradient[NIS_MAX_CLUSTER_COUNT]  = {};
 	float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
 	float weight								  = 0.0f;
+
 	if (valid_record)
 	{
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
@@ -67,17 +68,17 @@ __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImpo
 		float probabilities[NIS_MAX_CLUSTER_COUNT];
 		bool valid_softmax = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, probabilities);
 
-		unsigned int cluster_index = static_cast<unsigned int>(record.cluster_index);
-
-		float selected_probability = cluster_index < NIS_MAX_CLUSTER_COUNT ? probabilities[cluster_index] : 0.0f;
-		weight					   = selected_probability > 0.0f ? record.contribution_luminance / selected_probability : 0.0f;
-
-		bool valid_weight = valid_softmax && cluster_index < render_data.nis_ml.cluster_count && selected_probability > 0.0f;
+		bool valid_weight = valid_softmax && record.cluster_index < render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
+							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 		if (valid_weight)
 		{
+			weight = record.cluster_probability > 0.0f ? record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability *
+																						  record.point_on_light_pdf_solid_angle)
+													   : 0.0f;
+
 			valid_training_sample = true;
 			for (unsigned int output_index = 0; output_index < render_data.nis_ml.cluster_count; output_index++)
-				output_gradient[output_index] = weight * (probabilities[output_index] - (output_index == cluster_index ? 1.0f : 0.0f));
+				output_gradient[output_index] = weight * (probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
 		}
 	}
 

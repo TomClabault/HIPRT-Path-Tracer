@@ -407,8 +407,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 	ColorRGB32F light_source_radiance;
 
-	NISLightSample nis_sample	 = sample_one_emissive_triangle_neural_many_lights(render_data, closest_hit_info.inter_point, view_direction,
-																				   closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
+	NISLightSample nis_sample = sample_one_emissive_triangle_neural_many_lights(render_data, closest_hit_info.inter_point, view_direction,
+																				closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
 	bool collect_training_record = nis_sample.emissive_triangle_global_index >= 0 && nis_sample.cluster_index < NIS_MAX_CLUSTER_COUNT &&
 								   nis_sample.cluster_probability > 0.0f && nis_sample.conditional_light_probability > 0.0f &&
 								   nis_sample.emissive_triangle_pdf > 0.0f;
@@ -429,13 +429,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	light_samples[0] =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																ray_payload.material, nis_sample.emissive_triangle_global_index, random_number_generator);
-	if (collect_training_record)
-		training_record.point_on_light_pdf = light_samples[0].area_measure_pdf;
+
+	float point_on_light_area_pdf = light_samples[0].area_measure_pdf;
 
 	light_samples[0].area_measure_pdf *= nis_sample.emissive_triangle_pdf;
+
 	ColorRGB32F numerator(0.0f);
 	float visibility = 0.0f;
-
 	for (int i = 0; i < 1; i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
@@ -471,6 +471,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 				// Conversion to solid angle from surface area measure
 				float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+				if (collect_training_record)
+					training_record.point_on_light_pdf_solid_angle = area_to_solid_angle_pdf(point_on_light_area_pdf, distance_to_light, dot_light_source);
+
 				if (light_sample_solid_angle_pdf > 0.0f)
 				{
 					float bsdf_pdf;
