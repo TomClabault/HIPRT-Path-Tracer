@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_OPTIONS_H
-#define HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_OPTIONS_H
+#ifndef HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H
+#define HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H
 
 #include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
@@ -51,8 +51,7 @@ constexpr unsigned int nisml_position_learnable_dense_grid_level_resolution(unsi
 	return resolution > static_cast<float>(floored_resolution) ? floored_resolution + 1u : floored_resolution;
 }
 
-constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT>
-nisml_position_learnable_dense_grid_level_resolutions()
+constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> nisml_position_learnable_dense_grid_level_resolutions()
 {
 	NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> resolutions;
 	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)

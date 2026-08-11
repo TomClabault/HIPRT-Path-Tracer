@@ -10,7 +10,7 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"

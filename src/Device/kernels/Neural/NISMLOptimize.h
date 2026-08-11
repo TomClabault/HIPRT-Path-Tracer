@@ -7,7 +7,7 @@
 #define KERNELS_NIS_ML_OPTIMIZE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) NISMLOptimize(NeuralImportanceSamplingMLP mlp, unsigned int adam_step)

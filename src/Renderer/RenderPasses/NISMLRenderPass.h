@@ -6,7 +6,7 @@
 #ifndef RENDERER_NIS_ML_RENDER_PASS_H
 #define RENDERER_NIS_ML_RENDER_PASS_H
 
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionLearnableDenseGridDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"

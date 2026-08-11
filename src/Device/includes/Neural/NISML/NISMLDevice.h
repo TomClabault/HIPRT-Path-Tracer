@@ -10,7 +10,7 @@
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 struct NISMLDevice

@@ -9,7 +9,7 @@
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)

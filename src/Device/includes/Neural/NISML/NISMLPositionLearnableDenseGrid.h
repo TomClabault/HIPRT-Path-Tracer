@@ -8,7 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/AtomicType.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 struct NISMLPositionLearnableDenseGridInterpolation
