@@ -71,7 +71,8 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	mlp.forward_single_thread(input, neurons_activations);
 #endif
 
-	float output_gradient[NIS_MAX_CLUSTER_COUNT]							= {};
+	// Stores either the output gradients or the probabilities of the clusters, this avoids using two separate arrays when only one can do the job
+	float output_gradient_or_probabilities[NIS_MAX_CLUSTER_COUNT]			= {};
 	float input_gradients[NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE] = {};
 	float weight															= 0.0f;
 
@@ -103,11 +104,9 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 		build_nis_log_baseline_weights(render_data, render_data.nis_ml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
 									   record.alpha_x, record.alpha_y, log_baseline_weights);
 
-		float probabilities[NIS_MAX_CLUSTER_COUNT];
-		bool valid_softmax = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, probabilities);
-
-		bool valid_weight = valid_softmax && record.cluster_index < render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
-							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
+		bool valid_softmax = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, output_gradient_or_probabilities);
+		bool valid_weight  = valid_softmax && record.cluster_index < render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
+							 record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 		if (valid_weight)
 		{
 			weight = record.cluster_probability > 0.0f ? record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability *
@@ -116,27 +115,36 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 
 			valid_training_sample = true;
 			for (unsigned int output_index = 0; output_index < render_data.nis_ml.cluster_count; output_index++)
-				output_gradient[output_index] = weight * (probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
+				output_gradient_or_probabilities[output_index] =
+					weight * (output_gradient_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
+		}
+		else
+		{
+			for (unsigned int output_index = 0; output_index < NIS_MAX_CLUSTER_COUNT; output_index++)
+				output_gradient_or_probabilities[output_index] = 0.0f;
 		}
 	}
 
 #ifdef __KERNELCC__
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+	// Scaling everything by a constant factor to avoid overflow in the FP16 representation of the errors. The maximum error is clamped to 1024.0f so that we
+	// have some headroom when during backpropagation (the errors in the hidden layer may grow)
 	constexpr float TARGET_MAX_ERROR = 1024.0f;
-	float error_scale				 = 1.0f;
-	float maximum_weight			 = block_reduce<NeuralImportanceSamplingMLP::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
+
+	float error_scale	 = 1.0f;
+	float maximum_weight = block_reduce<NeuralImportanceSamplingMLP::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
 
 	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, input_gradients,
-							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, output_gradient, error_scale, valid_training_sample);
+							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, output_gradient_or_probabilities, error_scale, valid_training_sample);
 #else
 	if (valid_training_sample)
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
+		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient_or_probabilities, input_gradients);
 #endif
 #else
 	if (valid_training_sample)
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
+		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient_or_probabilities, input_gradients);
 #endif
 
 	if (valid_training_sample)
