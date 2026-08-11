@@ -33,9 +33,9 @@ struct MLPFullyFusedDevice
 	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
 	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE_PADDED_WMMA + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
 	static constexpr unsigned int CONNECTIONS_COUNT		  = (INPUT_SIZE_PADDED_WMMA * HiddenLayerSize_) +
-													  ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
-													  (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
-	static constexpr unsigned int SAMPLES_PER_BLOCK = BlockSize_;
+															((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
+															(OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
+	static constexpr unsigned int SAMPLES_PER_BLOCK		  = BlockSize_;
 
 	static constexpr unsigned int HIDDEN_LAYER_COUNT		   = HiddenLayerCount_;
 	static constexpr unsigned int HIDDEN_LAYER_SIZE			   = HiddenLayerSize_;
@@ -337,10 +337,11 @@ struct MLPFullyFusedDevice
 																unsigned int sample_offset,
 																fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 																fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
+																float* input_gradients,
+																unsigned int input_gradient_count,
 																const float* output_gradient,
 																bool count_training_sample,
-																float error_scale,
-																float* input_gradients) const
+																float error_scale) const
 	{
 		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
@@ -528,7 +529,7 @@ struct MLPFullyFusedDevice
 		{
 			unsigned int first_layer_connection_offset = get_connection_data_index(1, 0, 0);
 			unsigned int first_hidden_error_offset	   = ERROR_WIDTH;
-			for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
+			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
 			{
 				float input_gradient = 0.0f;
 				for (unsigned int hidden_index = 0; hidden_index < HIDDEN_LAYER_SIZE; hidden_index++)
@@ -551,13 +552,14 @@ struct MLPFullyFusedDevice
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
+										   float* input_gradients,
+										   unsigned int input_gradient_count,
 										   const float* output_gradient,
 										   float error_scale,
-										   bool count_training_sample,
-										   float* input_gradients) const
+										   bool count_training_sample) const
 	{
-		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, output_gradient,
-												  count_training_sample, error_scale, input_gradients);
+		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, input_gradients,
+												  input_gradient_count, output_gradient, count_training_sample, error_scale);
 	}
 
 	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations, const float* output_gradient, float* input_gradients = nullptr) const

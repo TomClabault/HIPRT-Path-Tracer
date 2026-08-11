@@ -71,9 +71,9 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	mlp.forward_single_thread(input, neurons_activations);
 #endif
 
-	float output_gradient[NIS_MAX_CLUSTER_COUNT]  = {};
-	float input_gradients[NIS_INPUT_SIZE_ENCODED] = {};
-	float weight								  = 0.0f;
+	float output_gradient[NIS_MAX_CLUSTER_COUNT]							= {};
+	float input_gradients[NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE] = {};
+	float weight															= 0.0f;
 
 	if (valid_record)
 	{
@@ -128,8 +128,8 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
 
-	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, output_gradient, error_scale, valid_training_sample,
-							 input_gradients);
+	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, input_gradients,
+							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, output_gradient, error_scale, valid_training_sample);
 #else
 	if (valid_training_sample)
 		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient, input_gradients);
