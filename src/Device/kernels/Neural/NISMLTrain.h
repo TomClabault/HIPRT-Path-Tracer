@@ -34,10 +34,13 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	bool valid_record		   = record_index < record_count;
 	bool valid_training_sample = false;
 
-	float neurons_activations[NeuralImportanceSamplingMLP::NEURON_COUNT];
-
 	NeuralImportanceSamplingMLP::InputLayer input = {};
 	NISTrainingSample record;
+
+#if !defined(__KERNELCC__) || !(__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
+	// That local array is only used in the CPU version of the kernel and in the GPU version for non-WMMA
+	float neurons_activations[NeuralImportanceSamplingMLP::NEURON_COUNT];
+#endif
 
 	if (valid_record)
 	{
@@ -74,15 +77,27 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 
 	if (valid_record)
 	{
-#ifdef __KERNELCC__
+		float residuals[NIS_MAX_CLUSTER_COUNT];
+
+#ifdef __KERNELCC__															// GPU
+#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__ // WMMA
+		// In the WMMA version, we don't have a local array for the neuron activations, so we need to read them from the global memory
+		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+			residuals[cluster_index] = static_cast<float>(
+				sample_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)]);
+#else  // Non-WMMA
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
 			neurons_activations[neuron_index] = static_cast<float>(sample_activations[neuron_index]);
-#endif
 
-		float residuals[NIS_MAX_CLUSTER_COUNT];
 		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
 			residuals[cluster_index] =
 				neurons_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)];
+#endif // !Non-WMMA
+#else  // Non GPU
+		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+			residuals[cluster_index] =
+				neurons_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)];
+#endif // !GPU
 
 		float log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
 		build_nis_log_baseline_weights(render_data, render_data.nis_ml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
