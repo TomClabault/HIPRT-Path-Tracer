@@ -562,7 +562,10 @@ struct MLPFullyFusedDevice
 												  input_gradient_count, output_gradient, count_training_sample, error_scale);
 	}
 
-	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations, const float* output_gradient, float* input_gradients = nullptr) const
+	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations,
+														   const float* output_gradient,
+														   float* input_gradients			 = nullptr,
+														   unsigned int input_gradient_count = 0) const
 	{
 		float neurons_errors[NEURON_COUNT];
 
@@ -624,7 +627,7 @@ struct MLPFullyFusedDevice
 		{
 			unsigned int first_hidden_layer_offset	   = get_neuron_data_index(1, 0);
 			unsigned int first_layer_connection_offset = get_connection_data_index(1, 0, 0);
-			for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
+			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
 			{
 				float input_gradient = 0.0f;
 				for (unsigned int hidden_index = 0; hidden_index < HIDDEN_LAYER_SIZE; hidden_index++)

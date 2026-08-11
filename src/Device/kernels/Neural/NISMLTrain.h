@@ -138,13 +138,11 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 
 	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, input_gradients,
 							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, output_gradient_or_probabilities, error_scale, valid_training_sample);
-#else
-	if (valid_training_sample)
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient_or_probabilities, input_gradients);
 #endif
 #else
 	if (valid_training_sample)
-		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient_or_probabilities, input_gradients);
+		mlp.backpropagation_from_output_gradient(neurons_activations, output_gradient_or_probabilities, input_gradients,
+												 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE);
 #endif
 
 	if (valid_training_sample)
