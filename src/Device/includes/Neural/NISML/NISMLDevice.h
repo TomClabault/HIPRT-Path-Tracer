@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_NIS_ML_DEVICE_H
-#define DEVICE_INCLUDES_NEURAL_NIS_ML_DEVICE_H
+#ifndef DEVICE_INCLUDES_NEURAL_NISML_DEVICE_H
+#define DEVICE_INCLUDES_NEURAL_NISML_DEVICE_H
 
 #include "Device/includes/Neural/NISML.h"
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
@@ -15,7 +15,7 @@
 
 struct NISMLDevice
 {
-	HIPRT_DEVICE void append_training_record(const NISTrainingSample& record, Xorshift32Generator& random_number_generator)
+	HIPRT_DEVICE void append_training_record(const NISMLTrainingSample& record, Xorshift32Generator& random_number_generator)
 	{
 #if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
 		return;
@@ -53,7 +53,7 @@ struct NISMLDevice
 	unsigned char* cluster_node_depths = nullptr;
 	unsigned int cluster_count		   = 0;
 
-	NISTrainingSample* training_records				= nullptr;
+	NISMLTrainingSample* training_records			= nullptr;
 	AtomicType<unsigned int>* training_record_count = nullptr;
 	unsigned int training_record_capacity			= 0;
 

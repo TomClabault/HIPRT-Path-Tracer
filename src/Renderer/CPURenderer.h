@@ -295,7 +295,7 @@ private:
 	{
 		MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
 		NISMLPositionLearnableDenseGridDataHost<std::vector> m_position_learnable_dense_grid;
-		NISMLDataHost<std::vector> m_nis_ml_data;
+		NISMLDataHost<std::vector> m_nisml_data;
 
 		float m_training_record_percentage = 15.0f;
 		int m_training_spp				   = 0;

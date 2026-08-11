@@ -439,13 +439,13 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
 		m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
 										  m_light_tree_sg_device_data);
-		m_light_tree_builder_sg.get_nisml_data().to_device<std::vector>(m_render_data.nis_ml);
+		m_light_tree_builder_sg.get_nisml_data().to_device<std::vector>(m_render_data.nisml);
 		m_light_tree_builder_sg.cleanup();
 	}
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nisml_state.m_nis_ml_data.resize();
+	m_nisml_state.m_nisml_data.resize();
 #endif
 }
 
@@ -561,15 +561,15 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_render_data.nis_ml.mlp						   = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
-	m_render_data.nis_ml.position_learnable_dense_grid = m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
-	NISMLDevice training_data						   = m_nisml_state.m_nis_ml_data.to_device();
-	m_render_data.nis_ml.training_records			   = training_data.training_records;
-	m_render_data.nis_ml.training_record_count		   = training_data.training_record_count;
-	m_render_data.nis_ml.training_record_capacity	   = training_data.training_record_capacity;
-	m_render_data.nis_ml.learning_enabled =
+	m_render_data.nisml.mlp						   = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
+	m_render_data.nisml.position_learnable_dense_grid = m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
+	NISMLDevice training_data						   = m_nisml_state.m_nisml_data.to_device();
+	m_render_data.nisml.training_records			   = training_data.training_records;
+	m_render_data.nisml.training_record_count		   = training_data.training_record_count;
+	m_render_data.nisml.training_record_capacity	   = training_data.training_record_capacity;
+	m_render_data.nisml.learning_enabled =
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
-	m_render_data.nis_ml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
+	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 #endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
@@ -748,15 +748,15 @@ void CPURenderer::render()
 void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nisml_state.m_nis_ml_data.reset();
-	m_render_data.nis_ml.learning_enabled =
+	m_nisml_state.m_nisml_data.reset();
+	m_render_data.nisml.learning_enabled =
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
-	m_render_data.nis_ml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
+	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 
-	NISMLDevice training_data					  = m_nisml_state.m_nis_ml_data.to_device();
-	m_render_data.nis_ml.training_records		  = training_data.training_records;
-	m_render_data.nis_ml.training_record_count	  = training_data.training_record_count;
-	m_render_data.nis_ml.training_record_capacity = training_data.training_record_capacity;
+	NISMLDevice training_data					  = m_nisml_state.m_nisml_data.to_device();
+	m_render_data.nisml.training_records		  = training_data.training_records;
+	m_render_data.nisml.training_record_count	  = training_data.training_record_count;
+	m_render_data.nisml.training_record_capacity = training_data.training_record_capacity;
 #endif
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
@@ -782,9 +782,9 @@ void CPURenderer::pre_sample_update(int frame_number)
 void CPURenderer::post_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	if (m_render_data.nis_ml.learning_enabled && m_nisml_state.m_training_record_percentage > 0.0f)
+	if (m_render_data.nisml.learning_enabled && m_nisml_state.m_training_record_percentage > 0.0f)
 	{
-		unsigned int record_count = m_nisml_state.m_nis_ml_data.get_effective_training_record_count();
+		unsigned int record_count = m_nisml_state.m_nisml_data.get_effective_training_record_count();
 		if (record_count > 0u)
 		{
 			NeuralImportanceSamplingMLP mlp = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
@@ -837,7 +837,7 @@ void CPURenderer::reset()
 	m_render_data.render_settings.sample_number = 0;
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nisml_state.m_nis_ml_data.reset();
+	m_nisml_state.m_nisml_data.reset();
 	m_nisml_state.m_mlp.initialize(true);
 	m_nisml_state.m_position_learnable_dense_grid.initialize();
 	m_nisml_state.m_adam_step = 0;

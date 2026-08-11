@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_NIS_ML_TRAIN_H
-#define KERNELS_NIS_ML_TRAIN_H
+#ifndef KERNELS_NISML_TRAIN_H
+#define KERNELS_NISML_TRAIN_H
 
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/FixIntellisense.h"
@@ -22,7 +22,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 #ifdef __KERNELCC__
 	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nis_ml.training_record_count), render_data.nis_ml.training_record_capacity);
+	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nisml.training_record_count), render_data.nisml.training_record_capacity);
 
 #ifdef __KERNELCC__
 	if (blockIdx.x * blockDim.x >= record_count)
@@ -35,7 +35,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	bool valid_training_sample = false;
 
 	NeuralImportanceSamplingMLP::InputLayer input = {};
-	NISTrainingSample record;
+	NISMLTrainingSample record;
 
 #if !defined(__KERNELCC__) || !(__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
 	// That local array is only used in the CPU version of the kernel and in the GPU version for non-WMMA
@@ -44,9 +44,9 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 
 	if (valid_record)
 	{
-		record = render_data.nis_ml.training_records[record_index];
-		build_nis_input(render_data.nis_ml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
-						record.position, record.outgoing_direction, record.normal, input);
+		record = render_data.nisml.training_records[record_index];
+		build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+						  record.position, record.outgoing_direction, record.normal, input);
 	}
 
 #ifdef __KERNELCC__
@@ -72,41 +72,41 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 #endif
 
 	// Stores either the output gradients or the probabilities of the clusters, this avoids using two separate arrays when only one can do the job
-	float output_gradient_or_probabilities[NIS_MAX_CLUSTER_COUNT]			= {};
+	float output_gradient_or_probabilities[NISML_MAX_CLUSTER_COUNT]			= {};
 	float input_gradients[NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE] = {};
 	float weight															= 0.0f;
 
 	if (valid_record)
 	{
-		float residuals[NIS_MAX_CLUSTER_COUNT];
+		float residuals[NISML_MAX_CLUSTER_COUNT];
 
 #ifdef __KERNELCC__															// GPU
 #if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__ // WMMA
 		// In the WMMA version, we don't have a local array for the neuron activations, so we need to read them from the global memory
-		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+		for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 			residuals[cluster_index] = static_cast<float>(
 				sample_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)]);
 #else  // Non-WMMA
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
 			neurons_activations[neuron_index] = static_cast<float>(sample_activations[neuron_index]);
 
-		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+		for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 			residuals[cluster_index] =
 				neurons_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)];
 #endif // !Non-WMMA
 #else  // Non GPU
-		for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+		for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 			residuals[cluster_index] =
 				neurons_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)];
 #endif // !GPU
 
-		float log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
-		build_nis_log_baseline_weights(render_data, render_data.nis_ml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
-									   record.alpha_x, record.alpha_y, log_baseline_weights);
+		float log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
+										 record.alpha_x, record.alpha_y, log_baseline_weights);
 
-		bool valid_softmax = evaluate_nis_softmax(log_baseline_weights, residuals, render_data.nis_ml.cluster_count, output_gradient_or_probabilities);
-		bool valid_weight  = valid_softmax && record.cluster_index < render_data.nis_ml.cluster_count && record.cluster_probability > 0.0f &&
-							 record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
+		bool valid_softmax = evaluate_nisml_softmax(log_baseline_weights, residuals, render_data.nisml.cluster_count, output_gradient_or_probabilities);
+		bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
+							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 		if (valid_weight)
 		{
 			weight = record.cluster_probability > 0.0f ? record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability *
@@ -114,13 +114,13 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 													   : 0.0f;
 
 			valid_training_sample = true;
-			for (unsigned int output_index = 0; output_index < render_data.nis_ml.cluster_count; output_index++)
+			for (unsigned int output_index = 0; output_index < render_data.nisml.cluster_count; output_index++)
 				output_gradient_or_probabilities[output_index] =
 					weight * (output_gradient_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
 		}
 		else
 		{
-			for (unsigned int output_index = 0; output_index < NIS_MAX_CLUSTER_COUNT; output_index++)
+			for (unsigned int output_index = 0; output_index < NISML_MAX_CLUSTER_COUNT; output_index++)
 				output_gradient_or_probabilities[output_index] = 0.0f;
 		}
 	}
@@ -151,7 +151,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 			(record.position.x - render_data.world_settings.scene_min.x) / (render_data.world_settings.scene_max.x - render_data.world_settings.scene_min.x),
 			(record.position.y - render_data.world_settings.scene_min.y) / (render_data.world_settings.scene_max.y - render_data.world_settings.scene_min.y),
 			(record.position.z - render_data.world_settings.scene_min.z) / (render_data.world_settings.scene_max.z - render_data.world_settings.scene_min.z));
-		accumulate_nisml_position_grid_input_gradients(render_data.nis_ml.position_learnable_dense_grid, normalized_position, input_gradients);
+		accumulate_nisml_position_grid_input_gradients(render_data.nisml.position_learnable_dense_grid, normalized_position, input_gradients);
 	}
 }
 

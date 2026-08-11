@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_NIS_ML_POSITION_LEARNABLE_DENSE_GRID_H
-#define DEVICE_INCLUDES_NEURAL_NIS_ML_POSITION_LEARNABLE_DENSE_GRID_H
+#ifndef DEVICE_INCLUDES_NEURAL_NISML_POSITION_LEARNABLE_DENSE_GRID_H
+#define DEVICE_INCLUDES_NEURAL_NISML_POSITION_LEARNABLE_DENSE_GRID_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/AtomicType.h"

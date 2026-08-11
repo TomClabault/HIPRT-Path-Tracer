@@ -73,7 +73,7 @@ struct HIPRTRenderData
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree;
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
-	NISMLDevice nis_ml;
+	NISMLDevice nisml;
 
 	// Data for SSBN permutations
 	SSBNPermutationSettings ssbn_settings;

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_NIS_ML_H
-#define DEVICE_INCLUDES_LIGHT_SAMPLING_NIS_ML_H
+#ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_NISML_H
+#define DEVICE_INCLUDES_LIGHT_SAMPLING_NISML_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
@@ -17,7 +17,7 @@
 
 #include <math.h>
 
-struct NISLightSample
+struct NISMLLightSample
 {
 	int emissive_triangle_global_index = -1;
 
@@ -28,13 +28,13 @@ struct NISLightSample
 	float emissive_triangle_pdf			= 0.0f;
 };
 
-HIPRT_DEVICE void build_nis_input(const NISMLPositionLearnableDenseGridDevice& position_learnable_dense_grid,
-								  const float3_t& scene_min,
-								  const float3_t& scene_max,
-								  const float3_t& shading_point,
-								  const float3_t& view_direction,
-								  const float3_t& shading_normal,
-								  NeuralImportanceSamplingMLP::InputLayer& input)
+HIPRT_DEVICE void build_nisml_input(const NISMLPositionLearnableDenseGridDevice& position_learnable_dense_grid,
+									const float3_t& scene_min,
+									const float3_t& scene_max,
+									const float3_t& shading_point,
+									const float3_t& view_direction,
+									const float3_t& shading_normal,
+									NeuralImportanceSamplingMLP::InputLayer& input)
 {
 	float3_t normalized_shading_point =
 		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
@@ -44,30 +44,30 @@ HIPRT_DEVICE void build_nis_input(const NISMLPositionLearnableDenseGridDevice& p
 
 	encode_spherical_harmonics_degree_4(view_direction, input.input + NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE);
 
-	constexpr unsigned int NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE;
-	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(0.5f * (shading_normal.x + 1.0f),
-																			   input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE);
-	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(
-		0.5f * (shading_normal.y + 1.0f), input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + NIS_NORMAL_ONE_BLOB_BIN_COUNT);
-	encode_one_blob<NIS_NORMAL_ONE_BLOB_BIN_COUNT, NIS_NORMAL_ONE_BLOB_KERNEL>(
-		0.5f * (shading_normal.z + 1.0f), input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + 2 * NIS_NORMAL_ONE_BLOB_BIN_COUNT);
+	constexpr unsigned int NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE + NISML_VIEW_DIRECTION_ENCODED_SIZE;
+	encode_one_blob<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(0.5f * (shading_normal.x + 1.0f),
+																				   input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE);
+	encode_one_blob<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.y + 1.0f), input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + NISML_NORMAL_ONE_BLOB_BIN_COUNT);
+	encode_one_blob<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.z + 1.0f), input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + 2 * NISML_NORMAL_ONE_BLOB_BIN_COUNT);
 }
 
-HIPRT_DEVICE void build_nis_log_baseline_weights(const HIPRTRenderData& render_data,
-												 const NISMLDevice& neural_light_sampling,
-												 float3_t shading_point,
-												 float3_t view_direction,
-												 float3_t shading_normal,
-												 float sg_specular_weight,
-												 float alpha_x,
+HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render_data,
+												   const NISMLDevice& neural_light_sampling,
+												   float3_t shading_point,
+												   float3_t view_direction,
+												   float3_t shading_normal,
+												   float sg_specular_weight,
+												   float alpha_x,
 
-												 float alpha_y,
-												 float* log_baseline_weights)
+												   float alpha_y,
+												   float* log_baseline_weights)
 {
 	const unsigned int invalid_node_index = 0xFFFFFFFF;
-	unsigned int cluster_count			  = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NIS_MAX_CLUSTER_COUNT));
+	unsigned int cluster_count			  = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
-	for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		log_baseline_weights[cluster_index] = -INFINITY;
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
@@ -89,10 +89,10 @@ HIPRT_DEVICE void build_nis_log_baseline_weights(const HIPRTRenderData& render_d
 	}
 }
 
-HIPRT_DEVICE bool evaluate_nis_softmax(const float* log_baseline_weights, const float* residuals, unsigned int cluster_count, float* probabilities)
+HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, const float* residuals, unsigned int cluster_count, float* probabilities)
 {
-	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NIS_MAX_CLUSTER_COUNT));
-	for (unsigned int cluster_index = 0; cluster_index < NIS_MAX_CLUSTER_COUNT; cluster_index++)
+	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
+	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		probabilities[cluster_index] = 0.0f;
 
 	float maximum_combined_logit = -INFINITY;
@@ -166,16 +166,16 @@ HIPRT_DEVICE LightSampleInformation sample_light_inside_nis_cluster(const HIPRTR
 	return light_sample;
 }
 
-HIPRT_DEVICE unsigned int sample_nis_cluster(const NISMLDevice& neural_light_sampling,
-											 const float* residuals,
-											 Xorshift32Generator& rng,
-											 float& out_cluster_probability)
+HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_sampling,
+											   const float* residuals,
+											   Xorshift32Generator& rng,
+											   float& out_cluster_probability)
 {
 	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
 	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
-	float probabilities[NIS_MAX_CLUSTER_COUNT];
+	float probabilities[NISML_MAX_CLUSTER_COUNT];
 
-	if (!evaluate_nis_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
+	if (!evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
 	{
 		out_cluster_probability = 0.0f;
 
@@ -208,69 +208,69 @@ HIPRT_DEVICE unsigned int sample_nis_cluster(const NISMLDevice& neural_light_sam
 	return cluster_count;
 }
 
-HIPRT_DEVICE float evaluate_nis_cluster_probability(const NISMLDevice& neural_light_sampling, const float* residuals, unsigned int target_cluster_index)
+HIPRT_DEVICE float evaluate_nisml_cluster_probability(const NISMLDevice& neural_light_sampling, const float* residuals, unsigned int target_cluster_index)
 {
 	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
 	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
-	float probabilities[NIS_MAX_CLUSTER_COUNT];
+	float probabilities[NISML_MAX_CLUSTER_COUNT];
 
-	if (target_cluster_index >= cluster_count || !evaluate_nis_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
+	if (target_cluster_index >= cluster_count || !evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
 		return 0.0f;
 
 	return probabilities[target_cluster_index];
 }
 
-HIPRT_DEVICE unsigned int infer_and_sample_nis_cluster(const NISMLDevice& neural_light_sampling,
-													   Xorshift32Generator& rng,
-													   const float3_t& shading_point,
-													   const float3_t& view_direction,
-													   const float3_t& shading_normal,
-													   const HIPRTRenderData& render_data,
-													   float& out_cluster_probability)
+HIPRT_DEVICE unsigned int infer_and_sample_nisml_cluster(const NISMLDevice& neural_light_sampling,
+														 Xorshift32Generator& rng,
+														 const float3_t& shading_point,
+														 const float3_t& view_direction,
+														 const float3_t& shading_normal,
+														 const HIPRTRenderData& render_data,
+														 float& out_cluster_probability)
 {
 	NeuralImportanceSamplingMLP::InputLayer input;
-	build_nis_input(render_data.nis_ml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point,
-					view_direction, shading_normal, input);
+	build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+					  shading_point, view_direction, shading_normal, input);
 
-	float residuals[NIS_MAX_CLUSTER_COUNT];
+	float residuals[NISML_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
 
-	return sample_nis_cluster(neural_light_sampling, residuals, rng, out_cluster_probability);
+	return sample_nisml_cluster(neural_light_sampling, residuals, rng, out_cluster_probability);
 }
 
-HIPRT_DEVICE float infer_nis_cluster_probability(const NISMLDevice& neural_light_sampling,
-												 unsigned int target_cluster_index,
-												 const float3_t& shading_point,
-												 const float3_t& view_direction,
-												 const float3_t& shading_normal,
-												 const HIPRTRenderData& render_data)
+HIPRT_DEVICE float infer_nisml_cluster_probability(const NISMLDevice& neural_light_sampling,
+												   unsigned int target_cluster_index,
+												   const float3_t& shading_point,
+												   const float3_t& view_direction,
+												   const float3_t& shading_normal,
+												   const HIPRTRenderData& render_data)
 {
 	NeuralImportanceSamplingMLP::InputLayer input;
-	build_nis_input(render_data.nis_ml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max, shading_point,
-					view_direction, shading_normal, input);
+	build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+					  shading_point, view_direction, shading_normal, input);
 
-	float residuals[NIS_MAX_CLUSTER_COUNT];
+	float residuals[NISML_MAX_CLUSTER_COUNT];
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
 
-	return evaluate_nis_cluster_probability(neural_light_sampling, residuals, target_cluster_index);
+	return evaluate_nisml_cluster_probability(neural_light_sampling, residuals, target_cluster_index);
 }
 
-HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(const HIPRTRenderData& render_data,
-																			const float3_t& shading_point,
-																			const float3_t& view_direction,
-																			const float3_t& shading_normal,
-																			const DeviceUnpackedEffectiveMaterial& material,
-																			Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(const HIPRTRenderData& render_data,
+																			  const float3_t& shading_point,
+																			  const float3_t& view_direction,
+																			  const float3_t& shading_normal,
+																			  const DeviceUnpackedEffectiveMaterial& material,
+																			  Xorshift32Generator& random_number_generator)
 {
-	NISLightSample sampled_light;
-	NISMLDevice neural_light_sampling = render_data.nis_ml;
+	NISMLLightSample sampled_light;
+	NISMLDevice neural_light_sampling = render_data.nisml;
 
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
 
 	unsigned int invalid_node_index = 0xFFFFFFFF;
 	unsigned int cluster_count		= neural_light_sampling.cluster_count;
 
-	if (cluster_count == 0 || cluster_count > NIS_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
+	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
 		return sampled_light;
 
 	float sg_specular_weight;
@@ -284,9 +284,9 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 	SGSpecularImportanceData spec_data;
 #endif
 
-	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
-	build_nis_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
-								   cluster_log_baseline_weights);
+	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+									 cluster_log_baseline_weights);
 	for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
@@ -304,8 +304,8 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 	float cluster_probability						   = 0.0f;
-	unsigned int selected_cluster_position = infer_and_sample_nis_cluster(neural_light_sampling, random_number_generator, shading_point, view_direction,
-																		  shading_normal, render_data, cluster_probability);
+	unsigned int selected_cluster_position = infer_and_sample_nisml_cluster(neural_light_sampling, random_number_generator, shading_point, view_direction,
+																			shading_normal, render_data, cluster_probability);
 	if (selected_cluster_position >= cluster_count || !(cluster_probability > 0.0f))
 		return sampled_light;
 
@@ -325,7 +325,7 @@ HIPRT_DEVICE NISLightSample sample_one_emissive_triangle_neural_many_lights(cons
 	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
 	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
 	if (!(sampled_light.emissive_triangle_pdf > 0.0f))
-		return NISLightSample();
+		return NISMLLightSample();
 
 	return sampled_light;
 }
@@ -337,13 +337,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 												const DeviceUnpackedEffectiveMaterial& material,
 												int global_emissive_triangle_index)
 {
-	NISMLDevice neural_light_sampling	= render_data.nis_ml;
+	NISMLDevice neural_light_sampling	= render_data.nisml;
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
 
 	unsigned int invalid_node_index	  = 0xFFFFFFFF;
 	unsigned int invalid_cluster_slot = 0xFF;
 
-	if (global_emissive_triangle_index < 0 || neural_light_sampling.cluster_count == 0 || neural_light_sampling.cluster_count > NIS_MAX_CLUSTER_COUNT ||
+	if (global_emissive_triangle_index < 0 || neural_light_sampling.cluster_count == 0 || neural_light_sampling.cluster_count > NISML_MAX_CLUSTER_COUNT ||
 		light_tree.nodes == nullptr || light_tree.bit_trails == nullptr || neural_light_sampling.cluster_node_indices == nullptr ||
 		neural_light_sampling.triangle_to_cluster == nullptr || neural_light_sampling.cluster_node_depths == nullptr)
 		return 0.0f;
@@ -367,9 +367,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 	SGSpecularImportanceData spec_data;
 #endif
 
-	float cluster_log_baseline_weights[NIS_MAX_CLUSTER_COUNT];
-	build_nis_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
-								   cluster_log_baseline_weights);
+	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+									 cluster_log_baseline_weights);
 	for (unsigned int cluster_position = 0; cluster_position < neural_light_sampling.cluster_count; cluster_position++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
@@ -387,7 +387,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 	float cluster_probability =
-		infer_nis_cluster_probability(neural_light_sampling, target_cluster_index, shading_point, view_direction, shading_normal, render_data);
+		infer_nisml_cluster_probability(neural_light_sampling, target_cluster_index, shading_point, view_direction, shading_normal, render_data);
 	if (!(cluster_probability > 0.0f))
 		return 0.0f;
 

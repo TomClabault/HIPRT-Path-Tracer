@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_NIS_ML_RENDER_PASS_H
-#define RENDERER_NIS_ML_RENDER_PASS_H
+#ifndef RENDERER_NISML_RENDER_PASS_H
+#define RENDERER_NISML_RENDER_PASS_H
 
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
@@ -85,12 +85,12 @@ private:
 
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLPositionLearnableDenseGridDataHost<OrochiBuffer> m_position_learnable_dense_grid;
-	NISMLDataHost<OrochiBuffer> m_nis_ml_data;
+	NISMLDataHost<OrochiBuffer> m_nisml_data;
 
 	unsigned int m_adam_step			  = 0;
 	float m_training_record_percentage	  = 15.0f;
 	int m_training_spp					  = 0;
-	int m_training_record_buffer_capacity = NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE;
+	int m_training_record_buffer_capacity = NISMLDataHost<OrochiBuffer>::NISML_TRAINING_BATCH_SIZE;
 	float m_adam_learning_rate			  = 0.03f;
 };
 

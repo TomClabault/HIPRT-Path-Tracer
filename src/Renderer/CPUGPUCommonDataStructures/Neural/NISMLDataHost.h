@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NIS_ML_DATA_HOST_H
-#define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NIS_ML_DATA_HOST_H
+#ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NISML_DATA_HOST_H
+#define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NISML_DATA_HOST_H
 
 #include "Device/includes/Neural/NISML.h"
 #include "Device/includes/Neural/NISML/NISMLDevice.h"
@@ -20,9 +20,9 @@
 template <template <typename> typename DataContainer>
 struct NISMLDataHost
 {
-	static constexpr unsigned int NIS_TRAINING_BATCH_SIZE = 1000000;
+	static constexpr unsigned int NISML_TRAINING_BATCH_SIZE = 1000000;
 
-	void resize(unsigned int new_training_record_capacity = NIS_TRAINING_BATCH_SIZE)
+	void resize(unsigned int new_training_record_capacity = NISML_TRAINING_BATCH_SIZE)
 	{
 		GenericSoAHelpers::resize<DataContainer>(m_training_records, new_training_record_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_training_record_count, 1);
@@ -44,7 +44,7 @@ struct NISMLDataHost
 		if (maximum_size() == 0)
 			return false;
 
-		m_training_records		= DataContainer<NISTrainingSample>();
+		m_training_records		= DataContainer<NISMLTrainingSample>();
 		m_training_record_count = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		return true;
@@ -89,7 +89,7 @@ struct NISMLDataHost
 		return device;
 	}
 
-	DataContainer<NISTrainingSample> m_training_records;
+	DataContainer<NISMLTrainingSample> m_training_records;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_record_count;
 };
 

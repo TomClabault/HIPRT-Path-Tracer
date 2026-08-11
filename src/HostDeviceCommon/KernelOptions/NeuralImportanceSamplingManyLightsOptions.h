@@ -9,10 +9,10 @@
 #include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
 
-#define NIS_MAX_CLUSTER_COUNT 64
+#define NISML_MAX_CLUSTER_COUNT 64
 
-#define NIS_NORMAL_ONE_BLOB_BIN_COUNT 32
-#define NIS_NORMAL_ONE_BLOB_KERNEL	  OneBlobKernel::QUARTIC
+#define NISML_NORMAL_ONE_BLOB_BIN_COUNT 32
+#define NISML_NORMAL_ONE_BLOB_KERNEL	OneBlobKernel::QUARTIC
 
 /**
  * Input order for Neural Importance Sampling Many Lights:
@@ -97,26 +97,26 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
 // Learnable dense grid encoding for the normalized position (x, y, z)
 #define NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE (NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT)
 // 16 for spherical harmonics degree 4 encoding of the view direction (tiny cuda nn convention: degree 4 = 16 features)
-#define NIS_VIEW_DIRECTION_ENCODED_SIZE 16
-// 3 * NIS_NORMAL_ONE_BLOB_BIN_COUNT for the one-blob encoding of the normal (x, y, z)
-#define NIS_SURFACE_NORMAL_ENCODED_SIZE (3 * NIS_NORMAL_ONE_BLOB_BIN_COUNT)
+#define NISML_VIEW_DIRECTION_ENCODED_SIZE 16
+// 3 * NISML_NORMAL_ONE_BLOB_BIN_COUNT for the one-blob encoding of the normal (x, y, z)
+#define NISML_SURFACE_NORMAL_ENCODED_SIZE (3 * NISML_NORMAL_ONE_BLOB_BIN_COUNT)
 
-#define NIS_INPUT_SIZE_ENCODED (NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE + NIS_VIEW_DIRECTION_ENCODED_SIZE + NIS_SURFACE_NORMAL_ENCODED_SIZE)
-#define NIS_HIDDEN_LAYER_COUNT 3
-#define NIS_HIDDEN_LAYER_SIZE  64
-#define NIS_THREAD_BLOCK_SIZE  64
-#define NIS_USE_BIASES		   1
+#define NISML_INPUT_SIZE_ENCODED (NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE + NISML_VIEW_DIRECTION_ENCODED_SIZE + NISML_SURFACE_NORMAL_ENCODED_SIZE)
+#define NISML_HIDDEN_LAYER_COUNT 3
+#define NISML_HIDDEN_LAYER_SIZE	 64
+#define NISML_THREAD_BLOCK_SIZE	 64
+#define NISML_USE_BIASES		 1
 
-#define NIS_ADAM_BETA1	 0.9f
-#define NIS_ADAM_BETA2	 0.999f
-#define NIS_ADAM_EPSILON 1e-8f
+#define NISML_ADAM_BETA1   0.9f
+#define NISML_ADAM_BETA2   0.999f
+#define NISML_ADAM_EPSILON 1e-8f
 
-using NeuralImportanceSamplingMLP = MLPFullyFusedDevice<NIS_INPUT_SIZE_ENCODED,
-														NIS_HIDDEN_LAYER_COUNT,
-														NIS_HIDDEN_LAYER_SIZE,
-														NIS_MAX_CLUSTER_COUNT,
-														NIS_THREAD_BLOCK_SIZE,
-														NIS_USE_BIASES,
+using NeuralImportanceSamplingMLP = MLPFullyFusedDevice<NISML_INPUT_SIZE_ENCODED,
+														NISML_HIDDEN_LAYER_COUNT,
+														NISML_HIDDEN_LAYER_SIZE,
+														NISML_MAX_CLUSTER_COUNT,
+														NISML_THREAD_BLOCK_SIZE,
+														NISML_USE_BIASES,
 														MLPActivationFunction::RELU,
 														false>;
 

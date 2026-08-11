@@ -3,12 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_NIS_ML_H
-#define DEVICE_INCLUDES_NEURAL_NIS_ML_H
+#ifndef DEVICE_INCLUDES_NEURAL_NISML_H
+#define DEVICE_INCLUDES_NEURAL_NISML_H
 
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
-struct NISTrainingSample
+struct NISMLTrainingSample
 {
 	float3_t position;
 	float3_t outgoing_direction;
