@@ -91,7 +91,7 @@ private:
 	float m_training_record_percentage	  = 15.0f;
 	int m_training_spp					  = 0;
 	int m_training_record_buffer_capacity = NISMLDataHost<OrochiBuffer>::NIS_TRAINING_BATCH_SIZE;
-	float m_adam_learning_rate			  = 0.003f;
+	float m_adam_learning_rate			  = 0.03f;
 };
 
 #endif

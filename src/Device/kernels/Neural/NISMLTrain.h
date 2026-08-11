@@ -24,6 +24,13 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 #endif
 	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nis_ml.training_record_count), render_data.nis_ml.training_record_capacity);
 
+#ifdef __KERNELCC__
+	if (blockIdx.x * blockDim.x >= record_count)
+		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
+		// block reach the __synchthreads() call
+		return;
+#endif
+
 	bool valid_record		   = record_index < record_count;
 	bool valid_training_sample = false;
 
