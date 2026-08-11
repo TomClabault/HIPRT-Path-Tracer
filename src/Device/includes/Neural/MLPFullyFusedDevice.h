@@ -9,6 +9,14 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
+#define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
+
+#ifdef __KERNELCC__
+#define NISML_GPU 1
+#else
+#define NISML_GPU 0
+#endif
+
 #define PAD_SIZE_WMMA(size) ((size + 15) / 16 * 16)
 
 enum class MLPActivationFunction
@@ -185,7 +193,7 @@ struct MLPFullyFusedDevice
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
-#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+#if NISML_GPU && NISML_HAS_WMMA
 		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
@@ -350,7 +358,7 @@ struct MLPFullyFusedDevice
 		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ERROR_WIDTH, "Error buffer must fit the padded output layer");
 		static_assert(HIDDEN_LAYER_SIZE <= ERROR_WIDTH, "Error buffer must fit hidden layers");
 
-#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+#if NISML_GPU && NISML_HAS_WMMA
 		unsigned int lane_id	  = threadIdx.x & 31;
 		unsigned int warp_id	  = threadIdx.x / 32;
 		unsigned int lane_id_wmma = lane_id & 15;

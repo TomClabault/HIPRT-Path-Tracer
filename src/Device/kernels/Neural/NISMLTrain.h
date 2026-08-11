@@ -11,7 +11,7 @@
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 
-#ifdef __KERNELCC__
+#if NISML_GPU
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations)
 #else
@@ -19,12 +19,12 @@ GLOBAL_KERNEL_SIGNATURE(void)
 inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int record_index)
 #endif
 {
-#ifdef __KERNELCC__
+#if NISML_GPU
 	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nisml.training_record_count), render_data.nisml.training_record_capacity);
 
-#ifdef __KERNELCC__
+#if NISML_GPU
 	if (blockIdx.x * blockDim.x >= record_count)
 		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
 		// block reach the __synchthreads() call
@@ -37,7 +37,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	NeuralImportanceSamplingMLP::InputLayer input = {};
 	NISMLTrainingSample record;
 
-#if !defined(__KERNELCC__) || !(__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
+#if !NISML_GPU || !NISML_HAS_WMMA
 	// That local array is only used in the CPU version of the kernel and in the GPU version for non-WMMA
 	float neurons_activations[NeuralImportanceSamplingMLP::NEURON_COUNT];
 #endif
@@ -49,7 +49,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 						  record.position, record.outgoing_direction, record.normal, input);
 	}
 
-#ifdef __KERNELCC__
+#if NISML_GPU
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 
@@ -59,7 +59,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::INPUT_SIZE_PADDED_WMMA; neuron_index++)
 		sample_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(0, neuron_index)] = activations_buffer[neuron_index][threadIdx.x];
 
-#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+#if NISML_HAS_WMMA
 	mlp.forward_train_wmma(activations_buffer, train_activations, blockIdx.x * blockDim.x);
 #else
 	mlp.forward_train(activations_buffer, train_activations, blockIdx.x * blockDim.x);
@@ -78,15 +78,13 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 
 	if (valid_record)
 	{
+#if !NISML_GPU || !NISML_HAS_WMMA
+		// Not needed in the WMMA path, we can just read the residuals from sample_activations buffer
 		float residuals[NISML_MAX_CLUSTER_COUNT];
+#endif
 
-#ifdef __KERNELCC__															// GPU
-#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__ // WMMA
-		// In the WMMA version, we don't have a local array for the neuron activations, so we need to read them from the global memory
-		for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-			residuals[cluster_index] = static_cast<float>(
-				sample_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)]);
-#else  // Non-WMMA
+#if NISML_GPU		// GPU
+#if !NISML_HAS_WMMA // Non-WMMA
 		for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::NEURON_COUNT; neuron_index++)
 			neurons_activations[neuron_index] = static_cast<float>(sample_activations[neuron_index]);
 
@@ -104,8 +102,16 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
 										 record.alpha_x, record.alpha_y, log_baseline_weights);
 
+#if NISML_HAS_WMMA
+		// On WMMA we can just read the residuals from the sample_activations buffer, no need to copy them to a separate array
+		bool valid_softmax = evaluate_nisml_softmax(
+			log_baseline_weights, sample_activations + NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, 0),
+			render_data.nisml.cluster_count, output_gradient_or_probabilities);
+#else
 		bool valid_softmax = evaluate_nisml_softmax(log_baseline_weights, residuals, render_data.nisml.cluster_count, output_gradient_or_probabilities);
-		bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
+#endif
+
+		bool valid_weight = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
 							record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 		if (valid_weight)
 		{
@@ -125,8 +131,8 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 		}
 	}
 
-#ifdef __KERNELCC__
-#if __gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__
+#if NISML_GPU
+#if NISML_HAS_WMMA
 	// Scaling everything by a constant factor to avoid overflow in the FP16 representation of the errors. The maximum error is clamped to 1024.0f so that we
 	// have some headroom when during backpropagation (the errors in the hidden layer may grow)
 	constexpr float TARGET_MAX_ERROR = 1024.0f;

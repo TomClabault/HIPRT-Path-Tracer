@@ -89,7 +89,8 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 	}
 }
 
-HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, const float* residuals, unsigned int cluster_count, float* probabilities)
+template <typename residual_type>
+HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, const residual_type* residuals, unsigned int cluster_count, float* probabilities)
 {
 	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
@@ -101,7 +102,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, cons
 		if (log_baseline_weights[cluster_index] == -INFINITY)
 			continue;
 
-		float combined_logit = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		float combined_logit = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
 		if (combined_logit > maximum_combined_logit)
 			maximum_combined_logit = combined_logit;
 	}
@@ -115,7 +116,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, cons
 		if (log_baseline_weights[cluster_index] == -INFINITY)
 			continue;
 
-		float combined_logit = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		float combined_logit = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
 		exponential_denominator += expf(combined_logit - maximum_combined_logit);
 	}
 
@@ -127,7 +128,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, cons
 		if (log_baseline_weights[cluster_index] == -INFINITY)
 			continue;
 
-		float combined_logit		 = log_baseline_weights[cluster_index] + residuals[cluster_index];
+		float combined_logit		 = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
 		probabilities[cluster_index] = expf(combined_logit - maximum_combined_logit) / exponential_denominator;
 	}
 
