@@ -98,17 +98,18 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 				neurons_activations[NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, cluster_index)];
 #endif // !GPU
 
-		float log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+		float* cluster_log_baseline_weights_or_probabilities = output_gradient_or_probabilities;
 		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
-										 record.alpha_x, record.alpha_y, log_baseline_weights);
+										 record.alpha_x, record.alpha_y, cluster_log_baseline_weights_or_probabilities);
 
 #if NISML_HAS_WMMA
 		// On WMMA we can just read the residuals from the sample_activations buffer, no need to copy them to a separate array
-		bool valid_softmax = evaluate_nisml_softmax(
-			log_baseline_weights, sample_activations + NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, 0),
-			render_data.nisml.cluster_count, output_gradient_or_probabilities);
+		bool valid_softmax =
+			evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities,
+								   sample_activations + NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, 0),
+								   render_data.nisml.cluster_count);
 #else
-		bool valid_softmax = evaluate_nisml_softmax(log_baseline_weights, residuals, render_data.nisml.cluster_count, output_gradient_or_probabilities);
+		bool valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
 #endif
 
 		bool valid_weight = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
@@ -122,7 +123,7 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 			valid_training_sample = true;
 			for (unsigned int output_index = 0; output_index < render_data.nisml.cluster_count; output_index++)
 				output_gradient_or_probabilities[output_index] =
-					weight * (output_gradient_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
+					weight * (cluster_log_baseline_weights_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
 		}
 		else
 		{

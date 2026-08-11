@@ -90,19 +90,17 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 }
 
 template <typename residual_type>
-HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, const residual_type* residuals, unsigned int cluster_count, float* probabilities)
+HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_probabilities, const residual_type* residuals, unsigned int cluster_count)
 {
 	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
-	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-		probabilities[cluster_index] = 0.0f;
 
 	float maximum_combined_logit = -INFINITY;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (log_baseline_weights[cluster_index] == -INFINITY)
+		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
 			continue;
 
-		float combined_logit = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
+		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
 		if (combined_logit > maximum_combined_logit)
 			maximum_combined_logit = combined_logit;
 	}
@@ -113,10 +111,10 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, cons
 	float exponential_denominator = 0.0f;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (log_baseline_weights[cluster_index] == -INFINITY)
+		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
 			continue;
 
-		float combined_logit = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
+		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
 		exponential_denominator += expf(combined_logit - maximum_combined_logit);
 	}
 
@@ -125,11 +123,15 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(const float* log_baseline_weights, cons
 
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (log_baseline_weights[cluster_index] == -INFINITY)
-			continue;
+		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
+		{
+			in_out_log_baseline_weights_probabilities[cluster_index] = 0.0f;
 
-		float combined_logit		 = log_baseline_weights[cluster_index] + static_cast<float>(residuals[cluster_index]);
-		probabilities[cluster_index] = expf(combined_logit - maximum_combined_logit) / exponential_denominator;
+			continue;
+		}
+
+		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
+		in_out_log_baseline_weights_probabilities[cluster_index] = expf(combined_logit - maximum_combined_logit) / exponential_denominator;
 	}
 
 	return true;
@@ -172,11 +174,10 @@ HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_s
 											   Xorshift32Generator& rng,
 											   float& out_cluster_probability)
 {
-	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
-	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
-	float probabilities[NISML_MAX_CLUSTER_COUNT];
+	unsigned int cluster_count							 = neural_light_sampling.cluster_count;
+	float* cluster_log_baseline_weights_or_probabilities = neural_light_sampling.cluster_log_baseline_weights;
 
-	if (!evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
+	if (!evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, cluster_count))
 	{
 		out_cluster_probability = 0.0f;
 
@@ -187,22 +188,24 @@ HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_s
 	float cumulative_probability = 0.0f;
 	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
 	{
-		cumulative_probability += probabilities[cluster_index];
-		if (random_value < cumulative_probability && probabilities[cluster_index] > 0.0f)
+		cumulative_probability += cluster_log_baseline_weights_or_probabilities[cluster_index];
+		if (random_value < cumulative_probability && cluster_log_baseline_weights_or_probabilities[cluster_index] > 0.0f)
 		{
-			out_cluster_probability = probabilities[cluster_index];
+			out_cluster_probability = cluster_log_baseline_weights_or_probabilities[cluster_index];
 
 			return cluster_index;
 		}
 	}
 
 	for (unsigned int cluster_index = cluster_count; cluster_index > 0u; cluster_index--)
-		if (probabilities[cluster_index - 1u] > 0.0f)
+	{
+		if (cluster_log_baseline_weights_or_probabilities[cluster_index - 1u] > 0.0f)
 		{
-			out_cluster_probability = probabilities[cluster_index - 1u];
+			out_cluster_probability = cluster_log_baseline_weights_or_probabilities[cluster_index - 1u];
 
 			return cluster_index - 1u;
 		}
+	}
 
 	out_cluster_probability = 0.0f;
 
@@ -211,14 +214,13 @@ HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_s
 
 HIPRT_DEVICE float evaluate_nisml_cluster_probability(const NISMLDevice& neural_light_sampling, const float* residuals, unsigned int target_cluster_index)
 {
-	unsigned int cluster_count				  = neural_light_sampling.cluster_count;
-	const float* cluster_log_baseline_weights = neural_light_sampling.cluster_log_baseline_weights;
-	float probabilities[NISML_MAX_CLUSTER_COUNT];
+	unsigned int cluster_count							 = neural_light_sampling.cluster_count;
+	float* cluster_log_baseline_weights_or_probabilities = neural_light_sampling.cluster_log_baseline_weights;
 
-	if (target_cluster_index >= cluster_count || !evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count, probabilities))
+	if (target_cluster_index >= cluster_count || !evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, cluster_count))
 		return 0.0f;
 
-	return probabilities[target_cluster_index];
+	return cluster_log_baseline_weights_or_probabilities[target_cluster_index];
 }
 
 HIPRT_DEVICE unsigned int infer_and_sample_nisml_cluster(const NISMLDevice& neural_light_sampling,
@@ -303,6 +305,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 		cluster_log_baseline_weights[cluster_position] = importance > 0.0f ? logf(importance) : -INFINITY;
 	}
 
+	// TODO stop these shenanigans and just pass cluster_log_baseline_weights down
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 	float cluster_probability						   = 0.0f;
 	unsigned int selected_cluster_position = infer_and_sample_nisml_cluster(neural_light_sampling, random_number_generator, shading_point, view_direction,
