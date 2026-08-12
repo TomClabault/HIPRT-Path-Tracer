@@ -83,9 +83,13 @@ public:
 private:
 	bool pre_render_update();
 
+	void print_train_profile(unsigned int training_record_count);
+
 	MLPDataHost<OrochiBuffer, NeuralImportanceSamplingMLP> m_mlp;
 	NISMLPositionLearnableDenseGridDataHost<OrochiBuffer> m_position_learnable_dense_grid;
 	NISMLDataHost<OrochiBuffer> m_nisml_data;
+
+	OrochiBuffer<NISMLTrainProfileRecord> m_train_profile_records;
 
 	unsigned int m_adam_step			  = 0;
 	float m_training_record_percentage	  = 15.0f;
