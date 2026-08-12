@@ -100,10 +100,13 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device(m_adam_learning_rate);
 
+	unsigned int training_record_count = m_nisml_data.get_effective_training_record_count();
+	if (training_record_count == 0)
+		return true;
+
 	fp16* train_activations	  = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
-	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations };
-	m_kernels[NISMLRenderPass::NISML_TRAIN]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1,
-																 NISMLDataHost<OrochiBuffer>::NISML_TRAINING_BATCH_SIZE, 1, train_launch_args,
+	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations, &training_record_count };
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, training_record_count, 1, train_launch_args,
 																 m_renderer->get_main_stream());
 
 	unsigned int training_sample_count = m_mlp.m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0];
@@ -134,31 +137,31 @@ void NISMLRenderPass::update_render_data()
 
 	if (!is_render_pass_used(*m_compiler_options))
 	{
-		render_data.nisml.cluster_node_indices			 = nullptr;
-		render_data.nisml.triangle_to_cluster			 = nullptr;
-		render_data.nisml.cluster_node_depths			 = nullptr;
-		render_data.nisml.cluster_log_baseline_weights	 = nullptr;
-		render_data.nisml.cluster_count				 = 0;
-		render_data.nisml.training_records				 = nullptr;
-		render_data.nisml.training_record_count		 = nullptr;
-		render_data.nisml.training_record_capacity		 = 0;
+		render_data.nisml.cluster_node_indices			= nullptr;
+		render_data.nisml.triangle_to_cluster			= nullptr;
+		render_data.nisml.cluster_node_depths			= nullptr;
+		render_data.nisml.cluster_log_baseline_weights	= nullptr;
+		render_data.nisml.cluster_count					= 0;
+		render_data.nisml.training_records				= nullptr;
+		render_data.nisml.training_record_count			= nullptr;
+		render_data.nisml.training_record_capacity		= 0;
 		render_data.nisml.position_learnable_dense_grid = {};
-		render_data.nisml.learning_enabled				 = false;
-		render_data.nisml.training_record_probability	 = 0.0f;
+		render_data.nisml.learning_enabled				= false;
+		render_data.nisml.training_record_probability	= 0.0f;
 
 		return;
 	}
 
-	render_data.nisml.mlp							 = m_mlp.to_device(m_adam_learning_rate);
+	render_data.nisml.mlp							= m_mlp.to_device(m_adam_learning_rate);
 	render_data.nisml.position_learnable_dense_grid = m_position_learnable_dense_grid.to_device(m_adam_learning_rate);
-	render_data.nisml.cluster_log_baseline_weights	 = nullptr;
+	render_data.nisml.cluster_log_baseline_weights	= nullptr;
 	m_renderer->light_tree_sg_builder().get_nisml_data().to_device<OrochiBuffer>(render_data.nisml);
 
-	NISMLDevice training_data					= m_nisml_data.to_device();
-	render_data.nisml.training_records			= training_data.training_records;
-	render_data.nisml.training_record_count	= training_data.training_record_count;
+	NISMLDevice training_data				   = m_nisml_data.to_device();
+	render_data.nisml.training_records		   = training_data.training_records;
+	render_data.nisml.training_record_count	   = training_data.training_record_count;
 	render_data.nisml.training_record_capacity = training_data.training_record_capacity;
-	render_data.nisml.learning_enabled			= m_training_spp <= 0 || render_data.render_settings.sample_number < static_cast<unsigned int>(m_training_spp);
+	render_data.nisml.learning_enabled		   = m_training_spp <= 0 || render_data.render_settings.sample_number < static_cast<unsigned int>(m_training_spp);
 	render_data.nisml.training_record_probability = std::clamp(m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 }
 

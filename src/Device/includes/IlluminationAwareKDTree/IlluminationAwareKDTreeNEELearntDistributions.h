@@ -196,8 +196,10 @@ struct IlluminationAwareKDTreeNEELearntDistributions
 
 	// NEE samples gathered during path tracing used for training distributions
 	IlluminationAwareKDTreeNEEDistributionTrainingRecord* nee_training_records = nullptr;
-	AtomicType<unsigned int>* nee_training_record_count						   = nullptr;
-	unsigned int nee_training_record_capacity								   = 0;
+	// The number of training records that have been accumulated in the buffer. This **can** be over nee_training_record_capacity because the buffer is filled
+	// and the counter incremented in a lock-free manner so readers should be careful
+	AtomicType<unsigned int>* nee_training_record_count = nullptr;
+	unsigned int nee_training_record_capacity			= 0;
 
 	// SG Light tree tree cut size * node capacity in size. Should be indexed by a guiding distribution index. Gives access to a tree cut size long array of
 	// probabilities for sampling the nodes of the tree cut of the SG light tree.

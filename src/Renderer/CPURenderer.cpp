@@ -6,10 +6,10 @@
 #include "Device/includes/BSDFs/LTCsData/GGXConductorLTCFitData.h"
 
 #include "Device/kernels/CameraRays.h"
-#include "Device/kernels/Neural/NISMLGridOptimize.h"
-#include "Device/kernels/Neural/NISMLTrain.h"
-#include "Device/kernels/Neural/NISMLOptimize.h"
 #include "Device/kernels/Megakernel.h"
+#include "Device/kernels/Neural/NISMLGridOptimize.h"
+#include "Device/kernels/Neural/NISMLOptimize.h"
+#include "Device/kernels/Neural/NISMLTrain.h"
 
 #include "Device/kernels/NEE++/GridPrepopulate.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
@@ -561,12 +561,12 @@ void CPURenderer::update_render_data()
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_render_data.nisml.mlp						   = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
+	m_render_data.nisml.mlp							  = m_nisml_state.m_mlp.to_device(m_nisml_state.m_adam_learning_rate);
 	m_render_data.nisml.position_learnable_dense_grid = m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
-	NISMLDevice training_data						   = m_nisml_state.m_nisml_data.to_device();
-	m_render_data.nisml.training_records			   = training_data.training_records;
-	m_render_data.nisml.training_record_count		   = training_data.training_record_count;
-	m_render_data.nisml.training_record_capacity	   = training_data.training_record_capacity;
+	NISMLDevice training_data						  = m_nisml_state.m_nisml_data.to_device();
+	m_render_data.nisml.training_records			  = training_data.training_records;
+	m_render_data.nisml.training_record_count		  = training_data.training_record_count;
+	m_render_data.nisml.training_record_capacity	  = training_data.training_record_capacity;
 	m_render_data.nisml.learning_enabled =
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
 	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
@@ -753,9 +753,9 @@ void CPURenderer::pre_sample_update(int frame_number)
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
 	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 
-	NISMLDevice training_data					  = m_nisml_state.m_nisml_data.to_device();
-	m_render_data.nisml.training_records		  = training_data.training_records;
-	m_render_data.nisml.training_record_count	  = training_data.training_record_count;
+	NISMLDevice training_data					 = m_nisml_state.m_nisml_data.to_device();
+	m_render_data.nisml.training_records		 = training_data.training_records;
+	m_render_data.nisml.training_record_count	 = training_data.training_record_count;
 	m_render_data.nisml.training_record_capacity = training_data.training_record_capacity;
 #endif
 
@@ -792,7 +792,7 @@ void CPURenderer::post_sample_update(int frame_number)
 				m_nisml_state.m_position_learnable_dense_grid.to_device(m_nisml_state.m_adam_learning_rate);
 
 			for (unsigned int record_index = 0; record_index < record_count; record_index++)
-				NISMLTrain(mlp, m_render_data, nullptr, record_index);
+				NISMLTrain(mlp, m_render_data, nullptr, record_count, record_index);
 
 			unsigned int training_sample_count =
 				m_nisml_state.m_mlp.m_mlp_data.template get_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0].load();

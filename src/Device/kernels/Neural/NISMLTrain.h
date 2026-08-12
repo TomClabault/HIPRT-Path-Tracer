@@ -13,16 +13,18 @@
 
 #if NISML_GPU
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations)
+__launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE)
+	NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int training_record_count)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int record_index)
+inline NISMLTrain(
+	NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int training_record_count, unsigned int record_index)
 #endif
 {
 #if NISML_GPU
 	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-	unsigned int record_count = hippt::min(hippt::atomic_load(render_data.nisml.training_record_count), render_data.nisml.training_record_capacity);
+	unsigned int record_count = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 
 #if NISML_GPU
 	if (blockIdx.x * blockDim.x >= record_count)
