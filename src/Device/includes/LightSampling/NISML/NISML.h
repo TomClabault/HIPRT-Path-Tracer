@@ -53,6 +53,43 @@ HIPRT_DEVICE void build_nisml_input(const NISMLPositionLearnableDenseGridDevice&
 		0.5f * (shading_normal.z + 1.0f), input.input + NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + 2 * NISML_NORMAL_ONE_BLOB_BIN_COUNT);
 }
 
+HIPRT_DEVICE void load_nisml_input_wmma(const NISMLPositionLearnableDenseGridDevice& position_learnable_dense_grid,
+										const float3_t& scene_min,
+										const float3_t& scene_max,
+										const float3_t& shading_point,
+										const float3_t& view_direction,
+										const float3_t& shading_normal,
+										fp16* activations_buffer,
+										unsigned int thread_index)
+{
+	constexpr unsigned int ACTIVATION_STRIDE = NeuralImportanceSamplingMLP::BLOCK_SIZE;
+
+	float3_t normalized_shading_point =
+		make_float3((shading_point.x - scene_min.x) / (scene_max.x - scene_min.x), (shading_point.y - scene_min.y) / (scene_max.y - scene_min.y),
+					(shading_point.z - scene_min.z) / (scene_max.z - scene_min.z));
+
+	encode_nisml_position_grid_wmma(position_learnable_dense_grid, normalized_shading_point, activations_buffer, ACTIVATION_STRIDE, thread_index);
+
+	encode_spherical_harmonics_degree_4_wmma(view_direction, activations_buffer, NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, ACTIVATION_STRIDE,
+											 thread_index);
+
+	constexpr unsigned int NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE = NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE + NISML_VIEW_DIRECTION_ENCODED_SIZE;
+
+	encode_one_blob_wmma<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.x + 1.0f), activations_buffer, NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE, ACTIVATION_STRIDE, thread_index);
+
+	encode_one_blob_wmma<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.y + 1.0f), activations_buffer, NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + NISML_NORMAL_ONE_BLOB_BIN_COUNT, ACTIVATION_STRIDE,
+		thread_index);
+
+	encode_one_blob_wmma<NISML_NORMAL_ONE_BLOB_BIN_COUNT, NISML_NORMAL_ONE_BLOB_KERNEL>(
+		0.5f * (shading_normal.z + 1.0f), activations_buffer, NISML_POSITION_AND_VIEW_DIR_ENCODED_SIZE + 2 * NISML_NORMAL_ONE_BLOB_BIN_COUNT, ACTIVATION_STRIDE,
+		thread_index);
+
+	for (unsigned int input_index = NISML_INPUT_SIZE_ENCODED; input_index < NeuralImportanceSamplingMLP::INPUT_SIZE_PADDED_WMMA; input_index++)
+		activations_buffer[input_index * ACTIVATION_STRIDE + thread_index] = static_cast<fp16>(0.0f);
+}
+
 HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render_data,
 												   const NISMLDevice& neural_light_sampling,
 												   float3_t shading_point,

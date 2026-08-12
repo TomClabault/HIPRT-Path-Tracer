@@ -83,15 +83,25 @@ struct MLPFullyFusedDevice
 		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
 	}
 
-	HIPRT_DEVICE void load_input(const float* input, fp16 out_activations[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
+	HIPRT_DEVICE void load_input(const float* input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
 		unsigned int sample_in_chunk = threadIdx.x;
 
 		for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
-			out_activations[input_index][sample_in_chunk] = static_cast<fp16>(input[input_index]);
+			activations_buffer[input_index][sample_in_chunk] = static_cast<fp16>(input[input_index]);
 
 		for (unsigned int input_index = INPUT_SIZE_ENCODED; input_index < INPUT_SIZE_PADDED_WMMA; input_index++)
-			out_activations[input_index][sample_in_chunk] = static_cast<fp16>(0.0f);
+			activations_buffer[input_index][sample_in_chunk] = static_cast<fp16>(0.0f);
+
+		__syncthreads();
+	}
+
+	HIPRT_DEVICE void zero_padded_input(const float* input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
+	{
+		unsigned int sample_in_chunk = threadIdx.x;
+
+		for (unsigned int input_index = INPUT_SIZE_ENCODED; input_index < INPUT_SIZE_PADDED_WMMA; input_index++)
+			activations_buffer[input_index][sample_in_chunk] = static_cast<fp16>(0.0f);
 
 		__syncthreads();
 	}

@@ -100,6 +100,29 @@ HIPRT_DEVICE inline void encode_nisml_position_grid(const NISMLPositionLearnable
 	}
 }
 
+HIPRT_DEVICE inline void encode_nisml_position_grid_wmma(const NISMLPositionLearnableDenseGridDevice& grid,
+														 float3_t normalized_position,
+														 fp16* encoded_position,
+														 unsigned int output_stride,
+														 unsigned int thread_index)
+{
+	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
+	{
+		NISMLPositionLearnableDenseGridInterpolation interpolation;
+		compute_nisml_position_learnable_dense_grid_interpolation(grid, level, normalized_position, interpolation);
+
+		for (unsigned int feature = 0; feature < NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT; feature++)
+		{
+			float feature_value = 0.0f;
+			for (unsigned int corner = 0; corner < 8; corner++)
+				feature_value += interpolation.corner_weights[corner] * static_cast<float>(grid.features_fp16[interpolation.corner_indices[corner] + feature]);
+
+			unsigned int input_index									 = level * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT + feature;
+			encoded_position[input_index * output_stride + thread_index] = static_cast<fp16>(feature_value);
+		}
+	}
+}
+
 HIPRT_DEVICE inline void accumulate_nisml_position_grid_input_gradients(const NISMLPositionLearnableDenseGridDevice& grid,
 																		float3_t normalized_position,
 																		const float* position_feature_gradients)

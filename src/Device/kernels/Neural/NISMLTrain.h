@@ -34,7 +34,14 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	bool valid_record		   = record_index < record_count;
 	bool valid_training_sample = false;
 
+#if !NISML_GPU || !NISML_HAS_WMMA
 	NeuralImportanceSamplingMLP::InputLayer input = {};
+#endif
+
+#if NISML_GPU
+	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+#endif
+
 	NISMLTrainingSample record;
 
 #if !NISML_GPU || !NISML_HAS_WMMA
@@ -45,15 +52,27 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	if (valid_record)
 	{
 		record = render_data.nisml.training_records[record_index];
+#if !NISML_GPU || !NISML_HAS_WMMA
 		build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
 						  record.position, record.outgoing_direction, record.normal, input);
+#endif
 	}
 
 #if NISML_GPU
-	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 
+#if NISML_HAS_WMMA
+	if (valid_record)
+		load_nisml_input_wmma(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+							  record.position, record.outgoing_direction, record.normal, &activations_buffer[0][0], threadIdx.x);
+	else
+		for (unsigned int input_index = 0; input_index < NeuralImportanceSamplingMLP::INPUT_SIZE_PADDED_WMMA; input_index++)
+			activations_buffer[input_index][threadIdx.x] = static_cast<fp16>(0.0f);
+
+	__syncthreads();
+#else
 	mlp.load_input(input.input, activations_buffer);
+#endif
 
 	fp16* sample_activations = train_activations + record_index * NeuralImportanceSamplingMLP::NEURON_COUNT;
 	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLP::INPUT_SIZE_PADDED_WMMA; neuron_index++)
