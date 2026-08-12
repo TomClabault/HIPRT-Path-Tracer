@@ -39,7 +39,14 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 #endif
 
 #if NISML_GPU
+#if NISML_HAS_WMMA
+	// The second activation ping-pong region is unused after forward_train_wmma() and is reused for backpropagation errors.
+	__shared__ fp16
+		training_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH + NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+	fp16(*activations_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = training_buffer;
+#else
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+#endif
 #endif
 
 	NISMLTrainingSample record;
@@ -59,9 +66,9 @@ inline NISMLTrain(NeuralImportanceSamplingMLP mlp, HIPRTRenderData render_data, 
 	}
 
 #if NISML_GPU
-	__shared__ fp16 errors_buffer[NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
-
 #if NISML_HAS_WMMA
+	fp16(*errors_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = &training_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH];
+
 	if (valid_record)
 		load_nisml_input_wmma(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
 							  record.position, record.outgoing_direction, record.normal, &activations_buffer[0][0], threadIdx.x);
