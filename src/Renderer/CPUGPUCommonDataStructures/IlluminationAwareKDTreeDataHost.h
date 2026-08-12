@@ -42,6 +42,13 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
 
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_sample_counts, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_write_locks, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_ready, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache_ready, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_pending_cell_count, 1);
+
 		unsigned int normal_face_distribution_count = new_node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);
 		unsigned int distribution_slot_count		= normal_face_distribution_count * new_tree_cut_size;
 		GenericSoAHelpers::resize<DataContainer>(m_tree_cut_sampling_probabilities, distribution_slot_count);
@@ -95,6 +102,13 @@ struct IlluminationAwareKDTreeDataHost
 		m_history_signatures	  = DataContainer<IlluminationAwareKDTreeIlluminationSignature>();
 		m_batch_spatial_moments	  = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
 		m_history_spatial_moments = DataContainer<IlluminationAwareKDTreeSpatialSampleMoments>();
+
+		m_nisml_cache						 = DataContainer<IlluminationAwareKDTreeNISMLCache>();
+		m_nisml_representative_sample_counts = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nisml_representative_write_locks	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nisml_representative_ready		 = DataContainer<unsigned char>();
+		m_nisml_cache_ready					 = DataContainer<unsigned char>();
+		m_nisml_pending_cell_count			 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_tree_cut_sampling_probabilities = DataContainer<unsigned short int>();
 		m_tree_cut_sampling_cdfs		  = DataContainer<unsigned short int>();
@@ -155,6 +169,13 @@ struct IlluminationAwareKDTreeDataHost
 		device.batch_spatial_moments   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
 		device.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
 
+		device.nisml_cache						  = GenericSoAHelpers::get_buffer_data_ptr(m_nisml_cache);
+		device.nisml_representative_sample_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_nisml_representative_sample_counts);
+		device.nisml_representative_write_locks	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_nisml_representative_write_locks);
+		device.nisml_representative_ready		  = GenericSoAHelpers::get_buffer_data_ptr(m_nisml_representative_ready);
+		device.nisml_cache_ready				  = GenericSoAHelpers::get_buffer_data_ptr(m_nisml_cache_ready);
+		device.nisml_pending_cell_count			  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_nisml_pending_cell_count);
+
 		device.nee_learnt_distributions.tree_cut_sampling_probabilities = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_probabilities);
 		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_cdfs);
 
@@ -199,6 +220,13 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<IlluminationAwareKDTreeIlluminationSignature> m_history_signatures;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_batch_spatial_moments;
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_history_spatial_moments;
+
+	DataContainer<IlluminationAwareKDTreeNISMLCache> m_nisml_cache;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_nisml_representative_sample_counts;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_nisml_representative_write_locks;
+	DataContainer<unsigned char> m_nisml_representative_ready;
+	DataContainer<unsigned char> m_nisml_cache_ready;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_nisml_pending_cell_count;
 
 	// Buffers below that point are for learning NEE distributions per each guiding cell
 	DataContainer<unsigned short int> m_tree_cut_sampling_probabilities;

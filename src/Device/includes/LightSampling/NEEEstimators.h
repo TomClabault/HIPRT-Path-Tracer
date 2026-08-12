@@ -405,6 +405,15 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 
+	float representative_sg_specular_weight;
+	float representative_alpha_x;
+	float representative_alpha_y;
+	get_sg_specular_importance_parameters(ray_payload.material, representative_sg_specular_weight, representative_alpha_x, representative_alpha_y);
+	Xorshift32Generator representative_random_number_generator = random_number_generator;
+	render_data.illumination_aware_kd_tree.append_nisml_representative(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																	   representative_sg_specular_weight, representative_alpha_x, representative_alpha_y,
+																	   representative_random_number_generator);
+
 	ColorRGB32F light_source_radiance;
 
 	NISMLLightSample nisml_sample = sample_one_emissive_triangle_neural_many_lights(
@@ -434,6 +443,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 	light_samples[0].area_measure_pdf *= nisml_sample.emissive_triangle_pdf;
 
+	bool valid_nisml_training_sample = nisml_sample.emissive_triangle_pdf > 0.0f;
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample training_sample;
+	training_sample.position		   = closest_hit_info.inter_point;
+	training_sample.incoming_direction = float3_t(0.0f, 0.0f, 0.0f);
+	training_sample.valid			   = valid_nisml_training_sample;
+
 	ColorRGB32F numerator(0.0f);
 	float visibility = 0.0f;
 	for (int i = 0; i < 1; i++)
@@ -449,6 +464,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
 		float distance_to_light					 = hippt::length(shadow_ray_direction);
 		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+		training_sample.incoming_direction		 = shadow_ray_direction_normalized;
 
 		hiprtRay shadow_ray;
 		shadow_ray.origin	 = shadow_ray_origin;
@@ -476,6 +492,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 
 				if (light_sample_solid_angle_pdf > 0.0f)
 				{
+					training_sample.radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
 					float bsdf_pdf;
 
 					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
@@ -507,6 +524,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 			}
 		}
 	}
+
+	if (valid_nisml_training_sample)
+		render_data.illumination_aware_kd_tree.append_direct_illumination_training_sample(training_sample);
 
 	if (collect_training_record)
 	{

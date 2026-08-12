@@ -47,6 +47,8 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 
 		*illumination_aware_kd_tree.training_sample_count							   = 0;
 		*illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count = 0;
+		if (illumination_aware_kd_tree.nisml_pending_cell_count != nullptr)
+			*illumination_aware_kd_tree.nisml_pending_cell_count = 1;
 
 		*illumination_aware_kd_tree.current_frontier_count = 0;
 		*illumination_aware_kd_tree.next_frontier_count	   = 0;
@@ -57,6 +59,7 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 
 	illumination_aware_kd_tree.batch_signatures[node_index]		 = {};
 	illumination_aware_kd_tree.batch_spatial_moments[node_index] = {};
+	illumination_aware_kd_tree.initialize_nisml_cache_for_guiding_cell(node_index);
 
 	illumination_aware_kd_tree.needs_split[node_index] = 0;
 }

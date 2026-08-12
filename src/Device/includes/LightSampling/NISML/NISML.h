@@ -107,6 +107,21 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		log_baseline_weights[cluster_index] = -INFINITY;
 
+	const IlluminationAwareKDTreeDevice& illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
+	if (illumination_aware_kd_tree.nodes != nullptr && illumination_aware_kd_tree.nisml_cache != nullptr &&
+		illumination_aware_kd_tree.nisml_cache_ready != nullptr)
+	{
+		unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(shading_point);
+		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < illumination_aware_kd_tree.node_capacity &&
+			illumination_aware_kd_tree.nisml_cache_ready[node_index] != 0)
+		{
+			for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
+				log_baseline_weights[cluster_index] = illumination_aware_kd_tree.nisml_cache[node_index].log_importances[cluster_index];
+
+			return;
+		}
+	}
+
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
@@ -327,20 +342,6 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
 									 cluster_log_baseline_weights);
-	for (unsigned int cluster_position = 0; cluster_position < cluster_count; cluster_position++)
-	{
-		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
-		if (node_index == invalid_node_index)
-		{
-			cluster_log_baseline_weights[cluster_position] = -INFINITY;
-
-			continue;
-		}
-
-		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
-														 sg_specular_weight, alpha_x, alpha_y);
-		cluster_log_baseline_weights[cluster_position] = importance > 0.0f ? logf(importance) : -INFINITY;
-	}
 
 	// TODO stop these shenanigans and just pass cluster_log_baseline_weights down
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
@@ -411,20 +412,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
 									 cluster_log_baseline_weights);
-	for (unsigned int cluster_position = 0; cluster_position < neural_light_sampling.cluster_count; cluster_position++)
-	{
-		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_position];
-		if (node_index == invalid_node_index)
-		{
-			cluster_log_baseline_weights[cluster_position] = -INFINITY;
-
-			continue;
-		}
-
-		float importance = light_tree_sg_node_importance(light_tree.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
-														 sg_specular_weight, alpha_x, alpha_y);
-		cluster_log_baseline_weights[cluster_position] = importance > 0.0f ? logf(importance) : -INFINITY;
-	}
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 	float cluster_probability =

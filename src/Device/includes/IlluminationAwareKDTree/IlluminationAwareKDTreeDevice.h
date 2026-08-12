@@ -7,11 +7,13 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNEELearntDistributions.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNISMLCache.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 #include <cstdint>
 
@@ -315,9 +317,58 @@ struct IlluminationAwareKDTreeDevice
 		}
 	}
 
+	HIPRT_DEVICE void append_nisml_representative(float3_t position,
+												  float3_t view_direction,
+												  float3_t normal,
+												  float sg_specular_weight,
+												  float alpha_x,
+												  float alpha_y,
+												  Xorshift32Generator& random_number_generator)
+	{
+		if (nisml_cache == nullptr || nisml_representative_sample_counts == nullptr || nisml_representative_write_locks == nullptr ||
+			nisml_representative_ready == nullptr || nisml_cache_ready == nullptr || nisml_pending_cell_count == nullptr || *nisml_pending_cell_count == 0u)
+			return;
+
+		unsigned int node_index = find_guiding_cell(position);
+		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || node_index >= node_capacity || nisml_cache_ready[node_index] != 0)
+			return;
+
+		unsigned int sample_index	= hippt::atomic_fetch_add(&nisml_representative_sample_counts[node_index], 1u);
+		bool replace_representative = sample_index == 0u || random_number_generator() < 1.0f / static_cast<float>(sample_index + 1u);
+		if (!replace_representative)
+			return;
+
+		if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[node_index], 0u, 1u) != 0u)
+			return;
+
+		IlluminationAwareKDTreeNISMLCache& cache = nisml_cache[node_index];
+		cache.representative_position			 = position;
+		cache.representative_view_direction		 = view_direction;
+		cache.representative_normal				 = normal;
+		cache.representative_sg_specular_weight	 = sg_specular_weight;
+		cache.representative_alpha_x			 = alpha_x;
+		cache.representative_alpha_y			 = alpha_y;
+		nisml_representative_ready[node_index]	 = 1;
+
+		hippt::atomic_exchange(&nisml_representative_write_locks[node_index], 0u);
+	}
+
+	HIPRT_DEVICE void initialize_nisml_cache_for_guiding_cell(unsigned int node_index)
+	{
+		if (nisml_cache == nullptr || node_index >= node_capacity)
+			return;
+
+		nisml_cache[node_index]						   = {};
+		nisml_representative_sample_counts[node_index] = 0;
+		nisml_representative_write_locks[node_index]   = 0;
+		nisml_representative_ready[node_index]		   = 0;
+		nisml_cache_ready[node_index]				   = 0;
+	}
+
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG ||                                                                                                   \
+	(DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS)
 		return;
 #endif
 
@@ -514,6 +565,13 @@ struct IlluminationAwareKDTreeDevice
 
 	IlluminationAwareKDTreeSpatialSampleMoments* batch_spatial_moments	 = nullptr;
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
+
+	IlluminationAwareKDTreeNISMLCache* nisml_cache				 = nullptr;
+	AtomicType<unsigned int>* nisml_representative_sample_counts = nullptr;
+	AtomicType<unsigned int>* nisml_representative_write_locks	 = nullptr;
+	unsigned char* nisml_representative_ready					 = nullptr;
+	unsigned char* nisml_cache_ready							 = nullptr;
+	AtomicType<unsigned int>* nisml_pending_cell_count			 = nullptr;
 
 	IlluminationAwareKDTreeNEELearntDistributions nee_learnt_distributions;
 };

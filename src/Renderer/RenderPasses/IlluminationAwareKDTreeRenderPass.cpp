@@ -7,6 +7,8 @@
 #include "Renderer/RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 
 #include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 
 #include <algorithm>
 #include <cmath>
@@ -36,6 +38,7 @@ const std::string IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBU
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID				= "Initialize Created Node History";
 const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID				= "Mark Guiding Cells For Splitting";
 const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID						= "Promote Guiding Cells";
+const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID							= "Build NISML Caches";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
@@ -150,6 +153,13 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 																										"/IlluminationAwareKDTree/PromoteGuidingCells.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																									 "/IlluminationAwareKDTree/BuildNISMLCaches.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_BuildNISMLCaches");
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
@@ -177,6 +187,9 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		reset(false);
 	}
 
+	if (is_nisml_mode(*m_compiler_options))
+		build_nisml_caches(m_renderer->get_render_data());
+
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size								 = light_tree_sg.settings.effective_tree_cut_size;
@@ -187,7 +200,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 	all_distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 
-	if (m_renderer->get_render_data().render_settings.sample_number == 0)
+	if (!is_nisml_mode(*m_compiler_options) && m_renderer->get_render_data().render_settings.sample_number == 0)
 	{
 		void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
 		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
@@ -205,13 +218,38 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	}
 
-	unsigned int reset_thread_count = std::max(active_node_count, distribution_slot_count);
+	unsigned int reset_thread_count = is_nisml_mode(*m_compiler_options) ? active_node_count : std::max(active_node_count, distribution_slot_count);
 	void* launch_args[]				= { &illumination_aware_kd_tree, &tree_cut_size };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	return render_data_invalidated;
+}
+
+bool IlluminationAwareKDTreeRenderPass::is_nisml_mode(const GPUKernelCompilerOptions& compiler_options) const
+{
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS &&
+		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
+}
+
+void IlluminationAwareKDTreeRenderPass::build_nisml_caches(HIPRTRenderData& render_data)
+{
+	if (render_data.nisml.cluster_node_indices == nullptr || render_data.nisml.cluster_count == 0 || render_data.nisml.cluster_count > NISML_MAX_CLUSTER_COUNT)
+		return;
+
+	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(render_data);
+	unsigned int node_count									 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+	unsigned int pending_cell_count							 = m_illumination_aware_kd_tree.m_nisml_pending_cell_count.download_data()[0];
+	if (node_count == 0 || pending_cell_count == 0)
+		return;
+
+	HIPRTRenderData cache_render_data			 = render_data;
+	cache_render_data.illumination_aware_kd_tree = illumination_aware_kd_tree;
+	void* launch_args[]							 = { &illumination_aware_kd_tree, &cache_render_data };
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, node_count, 1, launch_args,
+																									m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
 
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -287,24 +325,26 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 				1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
 			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		}
-
 	}
 
-	unsigned int tree_cut_size = light_tree_sg.settings.effective_tree_cut_size;
+	if (!is_nisml_mode(compiler_options))
+	{
+		unsigned int tree_cut_size = light_tree_sg.settings.effective_tree_cut_size;
 
-	void* nee_training_records_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
-	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NEE_DISTRIBUTION_TRAINING_RECORDS_KERNEL_ID]->launch_asynchronous(
-		256, 1, illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity, 1, nee_training_records_launch_args,
-		m_renderer->get_main_stream());
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+		void* nee_training_records_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
+		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NEE_DISTRIBUTION_TRAINING_RECORDS_KERNEL_ID]->launch_asynchronous(
+			256, 1, illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity, 1, nee_training_records_launch_args,
+			m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-	unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
-	m_cached_current_guiding_node_count = active_guiding_count;
-	active_guiding_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
-	void* rebuild_nee_distributions_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size, &active_guiding_count };
-	m_kernels[IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
-		1024, 1, active_guiding_count * 1024, 1, rebuild_nee_distributions_launch_args, m_renderer->get_main_stream());
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+		unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+		m_cached_current_guiding_node_count = active_guiding_count;
+		active_guiding_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
+		void* rebuild_nee_distributions_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size, &active_guiding_count };
+		m_kernels[IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
+			1024, 1, active_guiding_count * 1024, 1, rebuild_nee_distributions_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+	}
 }
 
 void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -404,7 +444,8 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS &&
+	return (compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS ||
+			compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS) &&
 		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 }
 
@@ -480,6 +521,13 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_history_signatures.get_byte_size();
 	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_batch_spatial_moments.get_byte_size();
 	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_history_spatial_moments.get_byte_size();
+
+	vram_usage.nisml_cache						  = m_illumination_aware_kd_tree.m_nisml_cache.get_byte_size();
+	vram_usage.nisml_representative_sample_counts = m_illumination_aware_kd_tree.m_nisml_representative_sample_counts.get_byte_size();
+	vram_usage.nisml_representative_write_locks	  = m_illumination_aware_kd_tree.m_nisml_representative_write_locks.get_byte_size();
+	vram_usage.nisml_representative_ready		  = m_illumination_aware_kd_tree.m_nisml_representative_ready.get_byte_size();
+	vram_usage.nisml_cache_ready				  = m_illumination_aware_kd_tree.m_nisml_cache_ready.get_byte_size();
+	vram_usage.nisml_pending_cell_count			  = m_illumination_aware_kd_tree.m_nisml_pending_cell_count.get_byte_size();
 
 	vram_usage.tree_cut_sampling_probabilities				= m_illumination_aware_kd_tree.m_tree_cut_sampling_probabilities.get_byte_size();
 	vram_usage.tree_cut_sampling_cdfs						= m_illumination_aware_kd_tree.m_tree_cut_sampling_cdfs.get_byte_size();

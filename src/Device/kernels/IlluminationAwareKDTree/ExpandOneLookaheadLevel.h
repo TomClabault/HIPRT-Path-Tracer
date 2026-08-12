@@ -101,6 +101,8 @@ IlluminationAwareKDTree_ExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice il
 	illumination_aware_kd_tree.batch_spatial_moments[right_child]	= {};
 	illumination_aware_kd_tree.history_spatial_moments[left_child]	= {};
 	illumination_aware_kd_tree.history_spatial_moments[right_child] = {};
+	illumination_aware_kd_tree.initialize_nisml_cache_for_guiding_cell(left_child);
+	illumination_aware_kd_tree.initialize_nisml_cache_for_guiding_cell(right_child);
 
 	parent.split_axis		= split_axis;
 	parent.split_position	= split_position;
