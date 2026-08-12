@@ -152,7 +152,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 			continue;
 
 		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
-		exponential_denominator += expf(combined_logit - maximum_combined_logit);
+		exponential_denominator += hippt::intrin_expf(combined_logit - maximum_combined_logit);
 	}
 
 	if (!(exponential_denominator > 0.0f))
@@ -168,7 +168,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 		}
 
 		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
-		in_out_log_baseline_weights_probabilities[cluster_index] = expf(combined_logit - maximum_combined_logit) / exponential_denominator;
+		in_out_log_baseline_weights_probabilities[cluster_index] = hippt::intrin_expf(combined_logit - maximum_combined_logit) / exponential_denominator;
 	}
 
 	return true;
