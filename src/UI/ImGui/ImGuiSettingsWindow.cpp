@@ -1321,7 +1321,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									   "- LTC Shading",
 									   "- Illumination aware KD Tree + SG Tree guiding",
 									   "- ReSTIR DI (Primary hit only)",
-									   "- Neural many lights" };
+									   "- Neural importance sampling of many lights" };
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 
@@ -2458,7 +2458,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2639,7 +2639,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3720,7 +3720,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -4044,279 +4044,281 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		bool using_nisml					= direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
 		if (using_illumination_aware_kd_tree)
 		{
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Illumination-aware KD-tree");
-
-			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
-															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
-															  : IlluminationAwareKDTreeVRAMUsage();
-			std::size_t vram_usage_bytes				= vram_usage.get_total_bytes();
-			std::size_t node_capacity = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
-			std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
-			std::size_t guiding_node_count =
-				illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
-
-			ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
-			ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
-						node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
-			ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
-			ImGui::Text("VRAM Usage breakdown:");
-
-			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
-			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
-														vram_usage.guiding_distribution_count + vram_usage.current_frontier +
-														vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t direct_illumination_training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
-			std::size_t spatial_statistics_bytes =
-				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
-			std::size_t nisml_cache_bytes = vram_usage.nisml_cache + vram_usage.nisml_representative_sample_counts +
-											vram_usage.nisml_representative_write_locks + vram_usage.nisml_representative_ready + vram_usage.nisml_cache_ready +
-											vram_usage.nisml_pending_cell_count;
-
-			std::string illumination_aware_vram_tooltip =
-				std::format("Breakdown:\n"
-							"  - KD-tree node structure: {:.3f}MB\n"
-							"    - Nodes: {:.3f}MB\n"
-							"    - Node bounds: {:.3f}MB\n"
-							"    - Node count: {:.3f}MB\n"
-							"  - Guiding-cell management: {:.3f}MB\n"
-							"    - Active guiding nodes: {:.3f}MB\n"
-							"    - Active guiding node count: {:.3f}MB\n"
-							"    - Needs-split flags: {:.3f}MB\n"
-							"    - Guiding distribution count: {:.3f}MB\n"
-							"    - Current frontier and count: {:.3f}MB\n"
-							"    - Next frontier and count: {:.3f}MB\n"
-							"  - Direct-illumination training buffers: {:.3f}MB\n"
-							"    - Training samples and count: {:.3f}MB\n"
-							"  - Spatial statistics: {:.3f}MB\n"
-							"    - Batch signatures: {:.3f}MB\n"
-							"    - History signatures: {:.3f}MB\n"
-							"    - Batch spatial moments: {:.3f}MB\n"
-							"    - History spatial moments: {:.3f}MB\n",
-							node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f,
-							vram_usage.node_count / 1000000.0f, guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
-							vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f,
-							vram_usage.guiding_distribution_count / 1000000.0f, (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
-							(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
-							(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
-							vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-							vram_usage.history_spatial_moments / 1000000.0f);
-
-			if (using_learnt_nee_distributions)
+			if (ImGui::CollapsingHeader("Illumination-aware KD-tree"))
 			{
-				std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
-				std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
-				std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-													 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-													 vram_usage.history_per_cell_normal_count;
-				std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
-				std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
-				std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
+				IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
+																  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
+																  : IlluminationAwareKDTreeVRAMUsage();
+				std::size_t vram_usage_bytes				= vram_usage.get_total_bytes();
+				std::size_t node_capacity =
+					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
+				std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
+				std::size_t guiding_node_count =
+					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
 
-				illumination_aware_vram_tooltip += std::format(
-					"  - NEE distribution training buffers: {:.3f}MB\n"
-					"    - Training records and count: {:.3f}MB\n"
-					"  - Final NEE distributions: {:.3f}MB\n"
-					"    - Cut-slot probabilities: {:.3f}MB\n"
-					"    - Cut-slot CDFs: {:.3f}MB\n"
-					"  - Per-cell distribution history: {:.3f}MB\n"
-					"    - Cell sample count: {:.3f}MB\n"
-					"    - Cell normal sums (X/Y/Z): {:.3f}MB\n"
-					"    - Cell normal count: {:.3f}MB\n"
-					"  - Per-cut distribution history: {:.3f}MB\n"
-					"    - Conditional second moments: {:.3f}MB\n"
-					"    - Per-cut history sample counts: {:.3f}MB\n"
-					"  - Per-cut batch statistics: {:.3f}MB\n"
-					"    - Second-moment sums: {:.3f}MB\n"
-					"    - Batch sample counts: {:.3f}MB\n"
-					"  - Global prior distribution: {:.3f}MB\n"
-					"    - Prior PDFs: {:.3f}MB\n"
-					"    - Prior CDFs: {:.3f}MB\n",
-					nee_training_buffer_bytes / 1000000.0f, (vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f,
-					final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
-					vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f, vram_usage.history_per_cell_sample_count / 1000000.0f,
-					(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) /
-						1000000.0f,
-					vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
-					vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
-					per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
-					vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
-					vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
-			}
+				ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
+				ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
+							node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
+				ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
+				ImGui::Text("VRAM Usage breakdown:");
 
-			if (using_nisml)
-			{
-				illumination_aware_vram_tooltip +=
-					std::format("  - NISML cache buffers: {:.3f}MB\n"
-								"    - Cache entries: {:.3f}MB\n"
-								"    - Representative sample counts: {:.3f}MB\n"
-								"    - Representative write locks: {:.3f}MB\n"
-								"    - Representative ready flags: {:.3f}MB\n"
-								"    - Cache ready flags: {:.3f}MB\n"
-								"    - Pending cell count: {:.3f}MB",
-								nisml_cache_bytes / 1000000.0f, vram_usage.nisml_cache / 1000000.0f, vram_usage.nisml_representative_sample_counts / 1000000.0f,
-								vram_usage.nisml_representative_write_locks / 1000000.0f, vram_usage.nisml_representative_ready / 1000000.0f,
-								vram_usage.nisml_cache_ready / 1000000.0f, vram_usage.nisml_pending_cell_count / 1000000.0f);
-			}
+				std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
+				std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
+															vram_usage.guiding_distribution_count + vram_usage.current_frontier +
+															vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
+				std::size_t direct_illumination_training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
+				std::size_t spatial_statistics_bytes =
+					vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
+				std::size_t nisml_cache_bytes = vram_usage.nisml_cache + vram_usage.nisml_representative_sample_counts +
+												vram_usage.nisml_representative_write_locks + vram_usage.nisml_representative_ready +
+												vram_usage.nisml_cache_ready + vram_usage.nisml_pending_cell_count;
 
-			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
+				std::string illumination_aware_vram_tooltip = std::format(
+					"Breakdown:\n"
+					"  - KD-tree node structure: {:.3f}MB\n"
+					"    - Nodes: {:.3f}MB\n"
+					"    - Node bounds: {:.3f}MB\n"
+					"    - Node count: {:.3f}MB\n"
+					"  - Guiding-cell management: {:.3f}MB\n"
+					"    - Active guiding nodes: {:.3f}MB\n"
+					"    - Active guiding node count: {:.3f}MB\n"
+					"    - Needs-split flags: {:.3f}MB\n"
+					"    - Guiding distribution count: {:.3f}MB\n"
+					"    - Current frontier and count: {:.3f}MB\n"
+					"    - Next frontier and count: {:.3f}MB\n"
+					"  - Direct-illumination training buffers: {:.3f}MB\n"
+					"    - Training samples and count: {:.3f}MB\n"
+					"  - Spatial statistics: {:.3f}MB\n"
+					"    - Batch signatures: {:.3f}MB\n"
+					"    - History signatures: {:.3f}MB\n"
+					"    - Batch spatial moments: {:.3f}MB\n"
+					"    - History spatial moments: {:.3f}MB\n",
+					node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
+					guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
+					vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
+					(vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
+					(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
+					(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+					vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+					vram_usage.history_spatial_moments / 1000000.0f);
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (illumination_aware_kd_tree_render_pass)
-			{
-				static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
-				ImGui::InputInt("Training sample buffer capacity", &training_sample_buffer_capacity);
-
-				if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
+				if (using_learnt_nee_distributions)
 				{
-					ImGui::TreePush("Apply button illumination-aware KD-tree training sample buffer capacity");
+					std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
+					std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
+					std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
+															vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+															vram_usage.history_per_cell_normal_count;
+					std::size_t per_cut_history_bytes = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
+					std::size_t per_cut_batch_bytes	  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
+					std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
 
-					if (ImGui::Button("Apply"))
+					illumination_aware_vram_tooltip += std::format(
+						"  - NEE distribution training buffers: {:.3f}MB\n"
+						"    - Training records and count: {:.3f}MB\n"
+						"  - Final NEE distributions: {:.3f}MB\n"
+						"    - Cut-slot probabilities: {:.3f}MB\n"
+						"    - Cut-slot CDFs: {:.3f}MB\n"
+						"  - Per-cell distribution history: {:.3f}MB\n"
+						"    - Cell sample count: {:.3f}MB\n"
+						"    - Cell normal sums (X/Y/Z): {:.3f}MB\n"
+						"    - Cell normal count: {:.3f}MB\n"
+						"  - Per-cut distribution history: {:.3f}MB\n"
+						"    - Conditional second moments: {:.3f}MB\n"
+						"    - Per-cut history sample counts: {:.3f}MB\n"
+						"  - Per-cut batch statistics: {:.3f}MB\n"
+						"    - Second-moment sums: {:.3f}MB\n"
+						"    - Batch sample counts: {:.3f}MB\n"
+						"  - Global prior distribution: {:.3f}MB\n"
+						"    - Prior PDFs: {:.3f}MB\n"
+						"    - Prior CDFs: {:.3f}MB\n",
+						nee_training_buffer_bytes / 1000000.0f, (vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f,
+						final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
+						vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f,
+						vram_usage.history_per_cell_sample_count / 1000000.0f,
+						(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) /
+							1000000.0f,
+						vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
+						vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
+						per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
+						vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
+						vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
+				}
+
+				if (using_nisml)
+				{
+					illumination_aware_vram_tooltip += std::format(
+						"  - NISML cache buffers: {:.3f}MB\n"
+						"    - Cache entries: {:.3f}MB\n"
+						"    - Representative sample counts: {:.3f}MB\n"
+						"    - Representative write locks: {:.3f}MB\n"
+						"    - Representative ready flags: {:.3f}MB\n"
+						"    - Cache ready flags: {:.3f}MB\n"
+						"    - Pending cell count: {:.3f}MB",
+						nisml_cache_bytes / 1000000.0f, vram_usage.nisml_cache / 1000000.0f, vram_usage.nisml_representative_sample_counts / 1000000.0f,
+						vram_usage.nisml_representative_write_locks / 1000000.0f, vram_usage.nisml_representative_ready / 1000000.0f,
+						vram_usage.nisml_cache_ready / 1000000.0f, vram_usage.nisml_pending_cell_count / 1000000.0f);
+				}
+
+				ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				if (illumination_aware_kd_tree_render_pass)
+				{
+					static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
+					ImGui::InputInt("Training sample buffer capacity", &training_sample_buffer_capacity);
+
+					if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
 					{
-						illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity() = training_sample_buffer_capacity;
-						illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+						ImGui::TreePush("Apply button illumination-aware KD-tree training sample buffer capacity");
 
+						if (ImGui::Button("Apply"))
+						{
+							illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity() = training_sample_buffer_capacity;
+							illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+							m_render_window->set_render_dirty(true);
+						}
+
+						ImGui::TreePop();
+					}
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				if (ImGui::SliderInt("Stop refining after SPP", &render_data.illumination_aware_kd_tree.user_settings.stop_refining_after_SPP, 1, 100))
+					m_render_window->set_render_dirty(true);
+
+				static int maximum_lookahead_depth =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
+				ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 10);
+				if (maximum_lookahead_depth !=
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT))
+				{
+					ImGui::TreePush("Illumination-aware KD-tree maximum lookahead depth apply button");
+
+					if (ImGui::Button("Apply##Illumination-aware KD-tree maximum lookahead depth"))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
+															   maximum_lookahead_depth);
+
+						m_renderer->recompile_kernels();
 						m_render_window->set_render_dirty(true);
 					}
 
 					ImGui::TreePop();
 				}
-			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Stop refining after SPP", &render_data.illumination_aware_kd_tree.user_settings.stop_refining_after_SPP, 1, 100))
-				m_render_window->set_render_dirty(true);
+				if (ImGui::SliderInt("Min. sample count for splitting",
+									 &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_splitting, 250, 2000))
+					m_render_window->set_render_dirty(true);
 
-			static int maximum_lookahead_depth =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
-			ImGui::SliderInt("Maximum lookahead depth", &maximum_lookahead_depth, 0, 10);
-			if (maximum_lookahead_depth !=
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT))
-			{
-				ImGui::TreePush("Illumination-aware KD-tree maximum lookahead depth apply button");
+				if (ImGui::SliderInt("Min. sample count for lookahead creation",
+									 &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
+					m_render_window->set_render_dirty(true);
 
-				if (ImGui::Button("Apply##Illumination-aware KD-tree maximum lookahead depth"))
+				if (illumination_aware_kd_tree_render_pass)
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
-														   maximum_lookahead_depth);
+					ImGui::BeginDisabled(illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP());
+					if (ImGui::SliderInt("Split iterations", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
+						m_render_window->set_render_dirty(true);
+					ImGui::EndDisabled();
+					ImGui::SameLine();
+					if (ImGui::Checkbox("Auto", &illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP()))
+						m_render_window->set_render_dirty(true);
 
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::Text("Splitting mode");
+
+					IlluminationAwareKDTreeSubdivisionMode& subdivision_mode = render_data.illumination_aware_kd_tree.user_settings.subdivision_mode;
+
+					bool splitting_mode_changed = false;
+					splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&subdivision_mode), 0);
+					splitting_mode_changed |= ImGui::RadioButton("Mean radiance only", ((int*)&subdivision_mode), 1);
+					splitting_mode_changed |= ImGui::RadioButton("Mean direction only", ((int*)&subdivision_mode), 2);
+					splitting_mode_changed |= ImGui::RadioButton("Full model", ((int*)&subdivision_mode), 3);
+					if (splitting_mode_changed)
+						m_render_window->set_render_dirty(true);
+
+					if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
+						subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
+					{
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						if (ImGui::SliderFloat("Mean radiance threshold", &render_data.illumination_aware_kd_tree.user_settings.mean_radiance_split_threshold,
+											   0.01f, 1.0f, "%.3f"))
+							m_render_window->set_render_dirty(true);
+					}
+				}
+
+				if (using_learnt_nee_distributions)
+				{
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Learnt NEE distributions");
+					IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
+						render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
+
+					if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+					{
+						learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
+
+					if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+					{
+						learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
+
+					if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
+					{
+						learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
+
+					if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
+					{
+						learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				const char* debug_view_items[] = { "- No debug",
+												   "- KD tree leaves solid",
+												   "- KD tree leaves outlines",
+												   "- KD tree leaves outlines and lookaheads",
+												   "- KD tree leaves by normal solid",
+												   "- KD tree leaves by normal outlines" };
+				if (ImGui::Combo("Debug view",
+								 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
+								 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+				{
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
 
-				ImGui::TreePop();
-			}
-
-			if (ImGui::SliderInt("Min. sample count for splitting", &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_splitting,
-								 250, 2000))
-				m_render_window->set_render_dirty(true);
-
-			if (ImGui::SliderInt("Min. sample count for lookahead creation",
-								 &render_data.illumination_aware_kd_tree.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
-				m_render_window->set_render_dirty(true);
-
-			if (illumination_aware_kd_tree_render_pass)
-			{
-				ImGui::BeginDisabled(illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP());
-				if (ImGui::SliderInt("Split iterations", &illumination_aware_kd_tree_render_pass->get_split_iterations_per_SPP(), 1, 8))
-					m_render_window->set_render_dirty(true);
-				ImGui::EndDisabled();
-				ImGui::SameLine();
-				if (ImGui::Checkbox("Auto", &illumination_aware_kd_tree_render_pass->get_auto_split_iterations_per_SPP()))
-					m_render_window->set_render_dirty(true);
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::Text("Splitting mode");
-
-				IlluminationAwareKDTreeSubdivisionMode& subdivision_mode = render_data.illumination_aware_kd_tree.user_settings.subdivision_mode;
-
-				bool splitting_mode_changed = false;
-				splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&subdivision_mode), 0);
-				splitting_mode_changed |= ImGui::RadioButton("Mean radiance only", ((int*)&subdivision_mode), 1);
-				splitting_mode_changed |= ImGui::RadioButton("Mean direction only", ((int*)&subdivision_mode), 2);
-				splitting_mode_changed |= ImGui::RadioButton("Full model", ((int*)&subdivision_mode), 3);
-				if (splitting_mode_changed)
-					m_render_window->set_render_dirty(true);
-
-				if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
-					subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
-				{
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					if (ImGui::SliderFloat("Mean radiance threshold", &render_data.illumination_aware_kd_tree.user_settings.mean_radiance_split_threshold,
-										   0.01f, 1.0f, "%.3f"))
-						m_render_window->set_render_dirty(true);
-				}
-			}
-
-			if (using_learnt_nee_distributions)
-			{
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::SeparatorText("Learnt NEE distributions");
-				IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
-					render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
-
-				if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
-				{
-					learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
-
-				if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
-				{
-					learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
-
-				if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
-				{
-					learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
-
-				if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
-				{
-					learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
+				if (illumination_aware_kd_tree_render_pass)
+					ImGui::Checkbox("Freeze tree", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			const char* debug_view_items[] = { "- No debug",
-											   "- KD tree leaves solid",
-											   "- KD tree leaves outlines",
-											   "- KD tree leaves outlines and lookaheads",
-											   "- KD tree leaves by normal solid",
-											   "- KD tree leaves by normal outlines" };
-			if (ImGui::Combo("Debug view",
-							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
-							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+			if (ImGui::CollapsingHeader("SG tree debug"))
 			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
+					m_render_window->set_render_dirty(true);
+
+				if (ImGui::Checkbox("Random colors boxes", &render_data.light_tree_sg.settings.debug_draw_random_colors_boxes))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
-			if (illumination_aware_kd_tree_render_pass)
-				ImGui::Checkbox("Freeze tree", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::CollapsingHeader("Debug"))
-		{
-			if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
-				m_render_window->set_render_dirty(true);
-
-			if (ImGui::Checkbox("Random colors boxes", &render_data.light_tree_sg.settings.debug_draw_random_colors_boxes))
-				m_render_window->set_render_dirty(true);
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
 		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
 	}
 }
 
@@ -5778,7 +5780,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
