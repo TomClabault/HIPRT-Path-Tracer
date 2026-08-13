@@ -142,7 +142,32 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 void RenderGraph::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	for (auto& name_to_render_pass : m_render_passes)
-		name_to_render_pass.second->post_sample_update_async(render_data, compiler_options);
+		m_render_pass_post_sample_updated_this_frame[name_to_render_pass.second.get()] = false;
+
+	for (auto& name_to_render_pass : m_render_passes)
+		post_sample_update_render_pass_with_dependencies(name_to_render_pass.second, render_data, compiler_options);
+}
+
+void RenderGraph::post_sample_update_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
+																   HIPRTRenderData& render_data,
+																   GPUKernelCompilerOptions& compiler_options)
+{
+	if (render_pass == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"A null render pass appears as a dependency of another render pass during post-sample update!");
+
+		return;
+	}
+
+	if (m_render_pass_post_sample_updated_this_frame[render_pass.get()])
+		return;
+
+	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
+		post_sample_update_render_pass_with_dependencies(dependency, render_data, compiler_options);
+
+	render_pass->post_sample_update_async(render_data, compiler_options);
+	m_render_pass_post_sample_updated_this_frame[render_pass.get()] = true;
 }
 
 void RenderGraph::update_render_data()
