@@ -497,7 +497,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 #endif // ReGIR debug mode
 
-#elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG && DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
+#elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG &&                                                                    \
+	(DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS)
 #if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{

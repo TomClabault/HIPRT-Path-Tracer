@@ -2458,7 +2458,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2639,7 +2639,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3720,7 +3720,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -4037,12 +4037,14 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 		}
 
-		bool use_learnt_distributions =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
-		if (use_learnt_distributions)
+		int direct_light_nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+		bool using_illumination_aware_kd_tree =
+			direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
+		bool using_learnt_nee_distributions = direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
+		if (using_illumination_aware_kd_tree)
 		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Illumination aware distributions");
+			ImGui::SeparatorText("Illumination-aware KD-tree");
 
 			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
 															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
@@ -4069,8 +4071,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 			std::size_t final_distribution_bytes = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 			std::size_t per_cell_history_bytes	 = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-												   vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-												   vram_usage.history_per_cell_normal_count;
+												 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+												 vram_usage.history_per_cell_normal_count;
 			std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
 			std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
 			std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
@@ -4219,38 +4221,41 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				}
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Learnt NEE distributions");
-			IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
-				render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
-
-			if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+			if (using_learnt_nee_distributions)
 			{
-				learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::SeparatorText("Learnt NEE distributions");
+				IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
+					render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
 
-			if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
-			{
-				learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
+				if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+				{
+					learning_nee_settings.minimum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.minimum_global_prior_mix);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Minimum fraction of the global prior retained by a learnt cell distribution.");
 
-			if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
-			{
-				learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
+				if (ImGui::SliderFloat("Maximum global prior mix", &learning_nee_settings.maximum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
+				{
+					learning_nee_settings.maximum_global_prior_mix = hippt::clamp(0.0f, 1.0f, learning_nee_settings.maximum_global_prior_mix);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Global-prior fraction used by an untrained or incoherent cell distribution.");
 
-			if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
-			{
-				learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
-				m_render_window->set_render_dirty(true);
+				if (ImGui::InputFloat("Local evidence scale", &learning_nee_settings.local_evidence_scale))
+				{
+					learning_nee_settings.local_evidence_scale = hippt::max(0.0f, learning_nee_settings.local_evidence_scale);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Number of local observations required for a cell to become confident in its learnt distribution.");
+
+				if (ImGui::InputFloat("Maximum effective count", &learning_nee_settings.maximum_effective_count))
+				{
+					learning_nee_settings.maximum_effective_count = hippt::max(0.0f, learning_nee_settings.maximum_effective_count);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
 			}
-			ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* debug_view_items[] = { "- No debug",
@@ -5746,7 +5751,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
