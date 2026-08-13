@@ -128,7 +128,7 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
-	bool is_nisml_mode(const GPUKernelCompilerOptions& compiler_options) const;
+	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
 	void build_nisml_caches(HIPRTRenderData& render_data);
 
 	bool m_frozen_tree				 = false;

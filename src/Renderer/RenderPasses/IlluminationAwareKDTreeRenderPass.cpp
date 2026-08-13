@@ -6,9 +6,9 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 
-#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
+#include "HostDeviceCommon/RenderData.h"
 
 #include <algorithm>
 #include <cmath>
@@ -187,9 +187,6 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		reset(false);
 	}
 
-	if (is_nisml_mode(*m_compiler_options))
-		build_nisml_caches(m_renderer->get_render_data());
-
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size								 = light_tree_sg.settings.effective_tree_cut_size;
@@ -200,7 +197,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 	all_distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 
-	if (!is_nisml_mode(*m_compiler_options) && m_renderer->get_render_data().render_settings.sample_number == 0)
+	if (!is_using_nisml(*m_compiler_options) && m_renderer->get_render_data().render_settings.sample_number == 0)
 	{
 		void* reset_distribution_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
 		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
@@ -218,7 +215,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	}
 
-	unsigned int reset_thread_count = is_nisml_mode(*m_compiler_options) ? active_node_count : std::max(active_node_count, distribution_slot_count);
+	unsigned int reset_thread_count = is_using_nisml(*m_compiler_options) ? active_node_count : std::max(active_node_count, distribution_slot_count);
 	void* launch_args[]				= { &illumination_aware_kd_tree, &tree_cut_size };
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_NEE_DISTRIBUTIONS_STATISTICS_KERNEL_ID]->launch_asynchronous(
 		1024, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
@@ -227,7 +224,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	return render_data_invalidated;
 }
 
-bool IlluminationAwareKDTreeRenderPass::is_nisml_mode(const GPUKernelCompilerOptions& compiler_options) const
+bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const
 {
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS &&
 		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
@@ -328,7 +325,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		}
 	}
 
-	if (!is_nisml_mode(compiler_options))
+	if (!is_using_nisml(compiler_options))
 	{
 		unsigned int tree_cut_size = light_tree_sg.settings.effective_tree_cut_size;
 
