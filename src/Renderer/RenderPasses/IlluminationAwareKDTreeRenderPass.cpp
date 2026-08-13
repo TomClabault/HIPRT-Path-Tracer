@@ -187,6 +187,9 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		reset(false);
 	}
 
+	if (is_using_nisml(*m_compiler_options))
+		build_nisml(m_renderer->get_render_data());
+
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size								 = light_tree_sg.settings.effective_tree_cut_size;
@@ -230,7 +233,7 @@ bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOp
 		   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 }
 
-void IlluminationAwareKDTreeRenderPass::build_nisml_caches(HIPRTRenderData& render_data)
+void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data)
 {
 	if (render_data.nisml.cluster_node_indices == nullptr || render_data.nisml.cluster_count == 0 || render_data.nisml.cluster_count > NISML_MAX_CLUSTER_COUNT)
 		return;
@@ -271,17 +274,17 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 
 	// Using -1 because this counter is 0-based but the SPPs displayed at the top of the UI are 1-based. This is just to match the user's HUD
-	if (render_data.render_settings.sample_number <= illumination_aware_kd_tree.user_settings.stop_refining_after_SPP - 1)
+	if (render_data.render_settings.sample_number <= illumination_aware_kd_tree.core.user_settings.stop_refining_after_SPP - 1)
 	{
 		// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads
 		// and
 		// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
 		void* launch_args[] = { &illumination_aware_kd_tree };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
+			256, 1, illumination_aware_kd_tree.core.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, launch_args, m_renderer->get_main_stream());
+			256, 1, illumination_aware_kd_tree.core.node_capacity, 1, launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		int split_iterations = m_split_iterations_per_SPP;
@@ -301,7 +304,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 			void* mark_guiding_cell_launch_args[] = { &illumination_aware_kd_tree };
 			m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
-				256, 1, illumination_aware_kd_tree.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
+				256, 1, illumination_aware_kd_tree.core.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
 			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 			// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
@@ -331,7 +334,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		void* nee_training_records_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NEE_DISTRIBUTION_TRAINING_RECORDS_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity, 1, nee_training_records_launch_args,
+			256, 1, illumination_aware_kd_tree.nee_distributions.nee_training_record_capacity, 1, nee_training_records_launch_args,
 			m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
@@ -349,9 +352,9 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 {
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 
-	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
+	unsigned int* current_frontier					 = illumination_aware_kd_tree.core.active_guiding_nodes;
 	unsigned int* next_frontier						 = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
-	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
+	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.core.active_guiding_node_count;
 	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
 
 	bool next_frontier_uses_first_buffer = true;
@@ -359,10 +362,10 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 	int max_lookahead_levels = compiler_options.get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT);
 	for (unsigned int level = 0; level < max_lookahead_levels; level++)
 	{
-		illumination_aware_kd_tree.current_frontier		  = current_frontier;
-		illumination_aware_kd_tree.current_frontier_count = current_frontier_count;
-		illumination_aware_kd_tree.next_frontier		  = next_frontier;
-		illumination_aware_kd_tree.next_frontier_count	  = next_frontier_count;
+		illumination_aware_kd_tree.core.current_frontier	   = current_frontier;
+		illumination_aware_kd_tree.core.current_frontier_count = current_frontier_count;
+		illumination_aware_kd_tree.core.next_frontier		   = next_frontier;
+		illumination_aware_kd_tree.core.next_frontier_count	   = next_frontier_count;
 		if (next_frontier_uses_first_buffer)
 			m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.memset_whole_buffer(0u);
 		else
@@ -371,13 +374,13 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &illumination_aware_kd_tree, &creation_tag };
 		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+			256, 1, illumination_aware_kd_tree.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+			256, 1, illumination_aware_kd_tree.core.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
-			256, 1, illumination_aware_kd_tree.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+			256, 1, illumination_aware_kd_tree.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		current_frontier	   = next_frontier;

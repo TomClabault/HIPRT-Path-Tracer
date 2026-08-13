@@ -22,7 +22,7 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchStatisticsI
 	const uint32_t node_index = x;
 #endif
 
-	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
+	const uint32_t node_count = *illumination_aware_kd_tree.core.node_count;
 
 	// Only currently allocated physical nodes are valid.
 	if (node_index >= node_count)
@@ -32,16 +32,16 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchStatisticsI
 	if (!node_allocated)
 		return;
 
-	IlluminationAwareKDTreeIlluminationSignature& history_signature		= illumination_aware_kd_tree.history_signatures[node_index];
-	const IlluminationAwareKDTreeIlluminationSignature& batch_signature = illumination_aware_kd_tree.batch_signatures[node_index];
+	IlluminationAwareKDTreeIlluminationSignature& history_signature		= illumination_aware_kd_tree.core.history_signatures[node_index];
+	const IlluminationAwareKDTreeIlluminationSignature& batch_signature = illumination_aware_kd_tree.core.batch_signatures[node_index];
 
 	history_signature.valid_observation_count += batch_signature.valid_observation_count;
 	history_signature.scalar_radiance_sum += batch_signature.scalar_radiance_sum;
 	history_signature.squared_scalar_radiance_sum += batch_signature.squared_scalar_radiance_sum;
 	history_signature.weighted_direction_sum += batch_signature.weighted_direction_sum;
 
-	IlluminationAwareKDTreeSpatialSampleMoments& history_spatial	 = illumination_aware_kd_tree.history_spatial_moments[node_index];
-	const IlluminationAwareKDTreeSpatialSampleMoments& batch_spatial = illumination_aware_kd_tree.batch_spatial_moments[node_index];
+	IlluminationAwareKDTreeSpatialSampleMoments& history_spatial	 = illumination_aware_kd_tree.core.history_spatial_moments[node_index];
+	const IlluminationAwareKDTreeSpatialSampleMoments& batch_spatial = illumination_aware_kd_tree.core.batch_spatial_moments[node_index];
 
 	history_spatial.positive_radiance_sample_count += batch_spatial.positive_radiance_sample_count;
 	history_spatial.position_sum += batch_spatial.position_sum;

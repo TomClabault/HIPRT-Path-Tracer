@@ -22,11 +22,11 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSam
 	unsigned int sample_index = x;
 #endif
 
-	unsigned int sample_count = *illumination_aware_kd_tree.training_sample_count;
+	unsigned int sample_count = *illumination_aware_kd_tree.core.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 
-	illumination_aware_kd_tree.accumulate_sample_into_existing_tree(illumination_aware_kd_tree.training_samples[sample_index]);
+	illumination_aware_kd_tree.core.accumulate_sample_into_existing_tree(illumination_aware_kd_tree.core.training_samples[sample_index]);
 }
 
 #endif

@@ -129,7 +129,7 @@ public:
 
 private:
 	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
-	void build_nisml_caches(HIPRTRenderData& render_data);
+	void build_nisml(HIPRTRenderData& render_data);
 
 	bool m_frozen_tree				 = false;
 	bool m_buffers_need_reallocation = true;

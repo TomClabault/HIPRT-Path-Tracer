@@ -23,22 +23,22 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 	unsigned int sample_index = x;
 #endif
 
-	unsigned int sample_count = *illumination_aware_kd_tree.training_sample_count;
+	unsigned int sample_count = *illumination_aware_kd_tree.core.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 
-	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = illumination_aware_kd_tree.training_samples[sample_index];
+	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = illumination_aware_kd_tree.core.training_samples[sample_index];
 
-	unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(sample.position);
+	unsigned int node_index = illumination_aware_kd_tree.core.find_guiding_cell(sample.position);
 	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
 	{
-		const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.nodes[node_index];
+		const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.core.nodes[node_index];
 		if (node.creation_tag == creation_tag)
 		{
-			illumination_aware_kd_tree.atomic_add_illumination_signature(illumination_aware_kd_tree.batch_signatures, node_index, sample);
+			illumination_aware_kd_tree.core.atomic_add_illumination_signature(illumination_aware_kd_tree.core.batch_signatures, node_index, sample);
 
 			if (sample.radiance_weight > 0.0f)
-				illumination_aware_kd_tree.atomic_add_spatial_moments(illumination_aware_kd_tree.batch_spatial_moments, node_index, sample.position);
+				illumination_aware_kd_tree.core.atomic_add_spatial_moments(illumination_aware_kd_tree.core.batch_spatial_moments, node_index, sample.position);
 		}
 
 		if (level == IlluminationAwareKDTreeMaximumLookaheadLevelCount || !(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))

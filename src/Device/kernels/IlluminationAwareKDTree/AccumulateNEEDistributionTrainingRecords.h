@@ -25,43 +25,43 @@ IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(IlluminationAwa
 	unsigned int record_index = x;
 #endif
 
-	unsigned int record_count = *illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count;
+	unsigned int record_count = *illumination_aware_kd_tree.nee_distributions.nee_training_record_count;
 
-	if (record_count > illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity)
-		record_count = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_capacity;
+	if (record_count > illumination_aware_kd_tree.nee_distributions.nee_training_record_capacity)
+		record_count = illumination_aware_kd_tree.nee_distributions.nee_training_record_capacity;
 
 	if (record_index >= record_count)
 		return;
 
-	const IlluminationAwareKDTreeNEEDistributionTrainingRecord& record = illumination_aware_kd_tree.nee_learnt_distributions.nee_training_records[record_index];
+	const IlluminationAwareKDTreeNEEDistributionTrainingRecord& record = illumination_aware_kd_tree.nee_distributions.nee_training_records[record_index];
 
-	unsigned int guiding_node_index = illumination_aware_kd_tree.find_guiding_cell(record.shading_position);
+	unsigned int guiding_node_index = illumination_aware_kd_tree.core.find_guiding_cell(record.shading_position);
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	unsigned int distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+	unsigned int distribution_index = illumination_aware_kd_tree.core.nodes[guiding_node_index].guiding_distribution_index;
 	if (distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX)
 		return;
 
 	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(record.shading_normal);
-	distribution_index		 = illumination_aware_kd_tree.nee_learnt_distributions.get_normal_face_distribution_index(distribution_index, normal_face);
+	distribution_index		 = illumination_aware_kd_tree.nee_distributions.get_normal_face_distribution_index(distribution_index, normal_face);
 
 	if (record.selected_cut_slot >= tree_cut_size)
 		return;
 
 	unsigned int distribution_slot =
-		illumination_aware_kd_tree.nee_learnt_distributions.get_tree_cut_offset(distribution_index, tree_cut_size) + record.selected_cut_slot;
+		illumination_aware_kd_tree.nee_distributions.get_tree_cut_offset(distribution_index, tree_cut_size) + record.selected_cut_slot;
 
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_second_moment_sum[distribution_slot],
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_second_moment_sum[distribution_slot],
 							record.conditional_second_moment_contribution);
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.batch_per_cut_node_sample_count[distribution_slot], 1u);
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_sample_count[distribution_index], 1u);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_sample_count[distribution_slot], 1u);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.history_per_cell_sample_count[distribution_index], 1u);
 
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_x[distribution_index], record.shading_normal.x);
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_y[distribution_index], record.shading_normal.y);
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_sum_z[distribution_index], record.shading_normal.z);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_x[distribution_index], record.shading_normal.x);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_y[distribution_index], record.shading_normal.y);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_z[distribution_index], record.shading_normal.z);
 
-	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_learnt_distributions.history_per_cell_normal_count[distribution_index], 1u);
+	hippt::atomic_fetch_add(&illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_count[distribution_index], 1u);
 }
 
 #endif

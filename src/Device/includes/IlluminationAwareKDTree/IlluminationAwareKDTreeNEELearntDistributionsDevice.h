@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NEE_LEARN_DISTRIBUTIONS_H
-#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NEE_LEARN_DISTRIBUTIONS_H
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NEE_LEARNT_DISTRIBUTIONS_DEVICE_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NEE_LEARNT_DISTRIBUTIONS_DEVICE_H
 
 #include "Device/includes/CDF.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
@@ -36,7 +36,7 @@ struct IlluminationAwareKDTreeNEEDistributionTrainingRecord
 	float conditional_second_moment_contribution;
 };
 
-struct IlluminationAwareKDTreeNEELearntDistributions
+struct IlluminationAwareKDTreeNEELearntDistributionsDevice
 {
 	static constexpr float TREE_CUT_SAMPLING_DISTRIBUTION_UNINITIALIZED_VALUE			  = -1.0f;
 	static constexpr unsigned short int TREE_CUT_SAMPLING_PROBABILITY_UNINITIALIZED_VALUE = 65535;

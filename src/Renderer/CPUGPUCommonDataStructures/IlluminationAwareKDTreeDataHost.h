@@ -50,8 +50,8 @@ struct IlluminationAwareKDTreeDataHost
 		m_nisml_data.to_device(device);
 		m_nee_learnt_distributions_data.to_device(device);
 
-		device.user_settings								  = render_data.illumination_aware_kd_tree.user_settings;
-		device.nee_learnt_distributions.learning_nee_settings = render_data.illumination_aware_kd_tree.nee_learnt_distributions.learning_nee_settings;
+		device.core.user_settings					   = render_data.illumination_aware_kd_tree.core.user_settings;
+		device.nee_distributions.learning_nee_settings = render_data.illumination_aware_kd_tree.nee_distributions.learning_nee_settings;
 
 		return device;
 	}

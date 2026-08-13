@@ -25,7 +25,7 @@ HIPRT_DEVICE unsigned int illumination_aware_kd_tree_debug_cell_normal_face_key(
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-	unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
+	unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.core.find_guiding_cell(primary_hit);
 	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
@@ -300,8 +300,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		{
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
-			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
-																	 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_sum = render_data.buffers.accumulated_ray_colors[pixel_index] /
+												 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
@@ -504,7 +504,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	{
 		// We have a first hit
 		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-		unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.find_guiding_cell(primary_hit);
+		unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.core.find_guiding_cell(primary_hit);
 
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
@@ -514,7 +514,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
 		const unsigned int guiding_cell_index =
-			render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+			render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
 		const unsigned int image_width	= render_data.render_settings.render_resolution.x;
 		const unsigned int image_height = render_data.render_settings.render_resolution.y;
 		const unsigned int pixel_x		= pixel_index % image_width;
@@ -525,7 +525,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			const unsigned int neighbor_pixel_index = pixel_index - 1;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 		}
 
@@ -533,7 +534,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			const unsigned int neighbor_pixel_index = pixel_index + 1;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 		}
 
@@ -541,7 +543,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			const unsigned int neighbor_pixel_index = pixel_index - image_width;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 		}
 
@@ -549,7 +552,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			const unsigned int neighbor_pixel_index = pixel_index + image_width;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 		}
 
@@ -612,12 +616,13 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
-		unsigned int guiding_cell_index	  = render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
-		unsigned int lookahead_cell_index = render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
-		unsigned int image_width		  = render_data.render_settings.render_resolution.x;
-		unsigned int image_height		  = render_data.render_settings.render_resolution.y;
-		unsigned int pixel_x			  = pixel_index % image_width;
-		unsigned int pixel_y			  = pixel_index / image_width;
+		unsigned int guiding_cell_index = render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		unsigned int lookahead_cell_index =
+			render_data.illumination_aware_kd_tree.core.find_lookahead_cell(render_data.g_buffer.primary_hit_position[pixel_index]);
+		unsigned int image_width  = render_data.render_settings.render_resolution.x;
+		unsigned int image_height = render_data.render_settings.render_resolution.y;
+		unsigned int pixel_x	  = pixel_index % image_width;
+		unsigned int pixel_y	  = pixel_index / image_width;
 
 		bool is_cell_outline		   = false;
 		bool is_lookahead_cell_outline = false;
@@ -625,10 +630,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			unsigned int neighbor_pixel_index = pixel_index - 1;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					 render_data.illumination_aware_kd_tree.core.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
 						 lookahead_cell_index)
 				is_lookahead_cell_outline = true;
 		}
@@ -637,10 +643,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			unsigned int neighbor_pixel_index = pixel_index + 1;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					 render_data.illumination_aware_kd_tree.core.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
 						 lookahead_cell_index)
 				is_lookahead_cell_outline = true;
 		}
@@ -649,10 +656,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			unsigned int neighbor_pixel_index = pixel_index - image_width;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					 render_data.illumination_aware_kd_tree.core.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
 						 lookahead_cell_index)
 				is_lookahead_cell_outline = true;
 		}
@@ -661,10 +669,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		{
 			unsigned int neighbor_pixel_index = pixel_index + image_width;
 			if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-				render_data.illumination_aware_kd_tree.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) != guiding_cell_index)
+				render_data.illumination_aware_kd_tree.core.find_guiding_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					guiding_cell_index)
 				is_cell_outline = true;
 			else if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] != -1 &&
-					 render_data.illumination_aware_kd_tree.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
+					 render_data.illumination_aware_kd_tree.core.find_lookahead_cell(render_data.g_buffer.primary_hit_position[neighbor_pixel_index]) !=
 						 lookahead_cell_index)
 				is_lookahead_cell_outline = true;
 		}

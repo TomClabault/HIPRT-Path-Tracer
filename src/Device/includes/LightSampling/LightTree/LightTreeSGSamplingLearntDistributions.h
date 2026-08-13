@@ -38,14 +38,14 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_lear
 	SGSpecularImportanceData spec_data;
 #endif
 
-	unsigned int guiding_node_index = render_data.illumination_aware_kd_tree.find_guiding_cell(shading_point);
+	unsigned int guiding_node_index = render_data.illumination_aware_kd_tree.core.find_guiding_cell(shading_point);
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return LightSampleArray<1>{ LightSampleInformation{ -1, IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY } };
 
-	const IlluminationAwareKDTreeNode& guiding_node = render_data.illumination_aware_kd_tree.nodes[guiding_node_index];
+	const IlluminationAwareKDTreeNode& guiding_node = render_data.illumination_aware_kd_tree.core.nodes[guiding_node_index];
 	unsigned int guiding_distribution_index			= guiding_node.guiding_distribution_index;
 
-	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_learnt_distributions.sample_global_cut_node(
+	IlluminationAwareKDTreeSampledCutNode sampled_cut_node = render_data.illumination_aware_kd_tree.nee_distributions.sample_global_cut_node(
 		render_data.light_tree_sg, guiding_distribution_index, shading_normal, random_number_generator);
 
 	if (sampled_cut_node.probability == IlluminationAwareKDTreeSampledCutNode::INVALID_PROBABILITY)

@@ -47,12 +47,12 @@ struct IlluminationAwareKDTreeNISMLDataHost
 
 	void to_device(IlluminationAwareKDTreeDevice& device)
 	{
-		device.nisml_cache						  = GenericSoAHelpers::get_buffer_data_ptr(m_cache);
-		device.nisml_representative_sample_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_sample_counts);
-		device.nisml_representative_write_locks	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_write_locks);
-		device.nisml_representative_ready		  = GenericSoAHelpers::get_buffer_data_ptr(m_representative_ready);
-		device.nisml_cache_ready				  = GenericSoAHelpers::get_buffer_data_ptr(m_cache_ready);
-		device.nisml_pending_cell_count			  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_pending_cell_count);
+		device.nisml.nisml_cache						= GenericSoAHelpers::get_buffer_data_ptr(m_cache);
+		device.nisml.nisml_representative_sample_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_sample_counts);
+		device.nisml.nisml_representative_write_locks	= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_write_locks);
+		device.nisml.nisml_representative_ready			= GenericSoAHelpers::get_buffer_data_ptr(m_representative_ready);
+		device.nisml.nisml_cache_ready					= GenericSoAHelpers::get_buffer_data_ptr(m_cache_ready);
+		device.nisml.nisml_pending_cell_count			= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_pending_cell_count);
 	}
 
 	DataContainer<IlluminationAwareKDTreeNISMLCache> m_cache;

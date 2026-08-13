@@ -24,7 +24,7 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 													  unsigned int active_guiding_count)
 #endif
 {
-	IlluminationAwareKDTreeNEELearntDistributions& nee_learnt_distributions = illumination_aware_kd_tree.nee_learnt_distributions;
+	IlluminationAwareKDTreeNEELearntDistributionsDevice& nee_learnt_distributions = illumination_aware_kd_tree.nee_distributions;
 
 #ifndef __KERNELCC__
 	unsigned int guiding_list_index = x;
@@ -33,13 +33,13 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	if (guiding_list_index >= active_guiding_count)
 		return;
 
-	unsigned int guiding_node_index = illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
-	if (guiding_node_index >= illumination_aware_kd_tree.node_capacity)
+	unsigned int guiding_node_index = illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index];
+	if (guiding_node_index >= illumination_aware_kd_tree.core.node_capacity)
 		return;
 
-	unsigned int guiding_distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+	unsigned int guiding_distribution_index = illumination_aware_kd_tree.core.nodes[guiding_node_index].guiding_distribution_index;
 	if (guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX ||
-		guiding_distribution_index >= illumination_aware_kd_tree.node_capacity)
+		guiding_distribution_index >= illumination_aware_kd_tree.core.node_capacity)
 		return;
 
 	unsigned int distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);
@@ -65,17 +65,17 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	for (unsigned int slot = 0; slot < tree_cut_size; slot++)
 	{
 		unsigned int distribution_slot = nee_learnt_distributions.get_tree_cut_offset(distribution_index, tree_cut_size) + slot;
-		float prior_probability =
-			static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) / IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE;
+		float prior_probability		   = static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) /
+								  IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE;
 		float learned_probability = prior_probability;
 		if (learned_weight_sum > 0.0f)
 			learned_probability = learned_weights[slot] / learned_weight_sum;
 
-		float final_probability = (1.0f - prior_mix) * learned_probability + prior_mix * prior_probability;
-		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+		float final_probability														= (1.0f - prior_mix) * learned_probability + prior_mix * prior_probability;
+		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] = static_cast<unsigned short int>(
+			hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 		nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, running_cdf) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, running_cdf) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 		running_cdf += final_probability;
 	}
 #else
@@ -87,13 +87,13 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	unsigned int normal_face		= guiding_list_face_index % SurfaceNormalFace_Count;
 	unsigned int slot				= threadIdx.x;
 
-	unsigned int guiding_node_index			= illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
+	unsigned int guiding_node_index			= illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index];
 	unsigned int guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
-	if (guiding_node_index < illumination_aware_kd_tree.node_capacity)
-		guiding_distribution_index = illumination_aware_kd_tree.nodes[guiding_node_index].guiding_distribution_index;
+	if (guiding_node_index < illumination_aware_kd_tree.core.node_capacity)
+		guiding_distribution_index = illumination_aware_kd_tree.core.nodes[guiding_node_index].guiding_distribution_index;
 
 	bool valid_distribution = guiding_distribution_index != IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX &&
-							  guiding_distribution_index < illumination_aware_kd_tree.node_capacity;
+							  guiding_distribution_index < illumination_aware_kd_tree.core.node_capacity;
 	unsigned int distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
 	if (valid_distribution)
 		distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);
@@ -124,21 +124,21 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	float final_probability = 0.0f;
 	if (valid_distribution && valid_slot)
 	{
-		float prior_probability =
-			static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) / IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE;
+		float prior_probability = static_cast<float>(nee_learnt_distributions.tree_cut_sampling_prior_pdfs[slot]) /
+								  IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE;
 		float learned_probability = prior_probability;
 		if (learned_weight_sum > 0.0f)
 			learned_probability = learned_weight / learned_weight_sum;
 
 		final_probability = (1.0f - shared_prior_mix) * learned_probability + shared_prior_mix * prior_probability;
-		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+		nee_learnt_distributions.tree_cut_sampling_probabilities[distribution_slot] = static_cast<unsigned short int>(
+			hippt::clamp(0.0f, 1.0f, final_probability) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 	}
 
 	float exclusive_cdf = block_prefix_scan_exclusive<1024>(final_probability);
 	if (valid_distribution && valid_slot)
 		nee_learnt_distributions.tree_cut_sampling_cdfs[distribution_slot] =
-			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, exclusive_cdf) * IlluminationAwareKDTreeNEELearntDistributions::U16_MAXIMUM_VALUE);
+			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, exclusive_cdf) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 #endif
 }
 

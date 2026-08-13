@@ -23,16 +23,16 @@ IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(IlluminationAwareKDTr
 	const uint32_t node_index = x;
 #endif
 
-	const uint32_t node_count = *illumination_aware_kd_tree.node_count;
+	const uint32_t node_count = *illumination_aware_kd_tree.core.node_count;
 	if (node_index >= node_count)
 		return;
 
-	if (illumination_aware_kd_tree.nodes[node_index].creation_tag != creation_tag)
+	if (illumination_aware_kd_tree.core.nodes[node_index].creation_tag != creation_tag)
 		return;
 
 	// For newly created nodes, we initialize the history with the current batch values (batch values initialized from the sample replay kernel)
-	illumination_aware_kd_tree.history_signatures[node_index]	   = illumination_aware_kd_tree.batch_signatures[node_index];
-	illumination_aware_kd_tree.history_spatial_moments[node_index] = illumination_aware_kd_tree.batch_spatial_moments[node_index];
+	illumination_aware_kd_tree.core.history_signatures[node_index]		= illumination_aware_kd_tree.core.batch_signatures[node_index];
+	illumination_aware_kd_tree.core.history_spatial_moments[node_index] = illumination_aware_kd_tree.core.batch_spatial_moments[node_index];
 }
 
 #endif

@@ -71,27 +71,26 @@ struct IlluminationAwareKDTreeNEELearntDistributionsDataHost
 
 	void to_device(IlluminationAwareKDTreeDevice& device)
 	{
-		device.nee_learnt_distributions.nee_training_records		 = GenericSoAHelpers::get_buffer_data_ptr(m_training_records);
-		device.nee_learnt_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_training_records.size());
-		device.nee_learnt_distributions.nee_training_record_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_record_count);
+		device.nee_distributions.nee_training_records		  = GenericSoAHelpers::get_buffer_data_ptr(m_training_records);
+		device.nee_distributions.nee_training_record_capacity = static_cast<unsigned int>(m_training_records.size());
+		device.nee_distributions.nee_training_record_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_record_count);
 
-		device.nee_learnt_distributions.tree_cut_sampling_probabilities = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_probabilities);
-		device.nee_learnt_distributions.tree_cut_sampling_cdfs			= GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_cdfs);
+		device.nee_distributions.tree_cut_sampling_probabilities = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_probabilities);
+		device.nee_distributions.tree_cut_sampling_cdfs			 = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_cdfs);
 
-		device.nee_learnt_distributions.history_per_cell_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_sample_count);
-		device.nee_learnt_distributions.history_per_cell_normal_sum_x = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_x);
-		device.nee_learnt_distributions.history_per_cell_normal_sum_y = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_y);
-		device.nee_learnt_distributions.history_per_cell_normal_sum_z = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_z);
-		device.nee_learnt_distributions.history_per_cell_normal_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_count);
-		device.nee_learnt_distributions.history_per_cut_node_estimated_second_moment =
+		device.nee_distributions.history_per_cell_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_sample_count);
+		device.nee_distributions.history_per_cell_normal_sum_x = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_x);
+		device.nee_distributions.history_per_cell_normal_sum_y = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_y);
+		device.nee_distributions.history_per_cell_normal_sum_z = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_sum_z);
+		device.nee_distributions.history_per_cell_normal_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cell_normal_count);
+		device.nee_distributions.history_per_cut_node_estimated_second_moment =
 			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_estimated_second_moment);
-		device.nee_learnt_distributions.history_per_cut_node_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_sample_count);
-		device.nee_learnt_distributions.batch_per_cut_node_second_moment_sum =
-			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_second_moment_sum);
-		device.nee_learnt_distributions.batch_per_cut_node_sample_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_sample_count);
+		device.nee_distributions.history_per_cut_node_sample_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_history_per_cut_node_sample_count);
+		device.nee_distributions.batch_per_cut_node_second_moment_sum = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_second_moment_sum);
+		device.nee_distributions.batch_per_cut_node_sample_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_batch_per_cut_node_sample_count);
 
-		device.nee_learnt_distributions.tree_cut_sampling_prior_pdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_pdfs);
-		device.nee_learnt_distributions.tree_cut_sampling_prior_cdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_cdfs);
+		device.nee_distributions.tree_cut_sampling_prior_pdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_pdfs);
+		device.nee_distributions.tree_cut_sampling_prior_cdfs = GenericSoAHelpers::get_buffer_data_ptr(m_tree_cut_sampling_prior_cdfs);
 	}
 
 	DataContainer<IlluminationAwareKDTreeNEEDistributionTrainingRecord> m_training_records;

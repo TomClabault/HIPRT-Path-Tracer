@@ -80,29 +80,29 @@ struct IlluminationAwareKDTreeCoreDataHost
 	{
 		IlluminationAwareKDTreeDevice device;
 
-		device.nodes		 = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
-		device.node_bounds	 = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
-		device.node_capacity = static_cast<unsigned int>(maximum_size());
+		device.core.nodes		  = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
+		device.core.node_bounds	  = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
+		device.core.node_capacity = static_cast<unsigned int>(maximum_size());
 
-		device.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
-		device.needs_split			= GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
-		device.current_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
-		device.next_frontier		= GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
+		device.core.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
+		device.core.needs_split			 = GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
+		device.core.current_frontier	 = GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
+		device.core.next_frontier		 = GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-		device.active_guiding_node_count  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
-		device.node_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
-		device.current_frontier_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
-		device.next_frontier_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
-		device.guiding_distribution_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_guiding_distribution_count);
+		device.core.active_guiding_node_count  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		device.core.node_count				   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		device.core.current_frontier_count	   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		device.core.next_frontier_count		   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		device.core.guiding_distribution_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_guiding_distribution_count);
 
-		device.training_samples			= GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
-		device.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
-		device.training_sample_count	= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
+		device.core.training_samples		 = GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
+		device.core.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
+		device.core.training_sample_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
 
-		device.batch_signatures		   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
-		device.history_signatures	   = GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
-		device.batch_spatial_moments   = GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
-		device.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
+		device.core.batch_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
+		device.core.history_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
+		device.core.batch_spatial_moments	= GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
+		device.core.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
 
 		return device;
 	}

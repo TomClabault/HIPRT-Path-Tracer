@@ -31,15 +31,15 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	if (guiding_list_index >= original_guiding_node_count)
 		return;
 
-	if (illumination_aware_kd_tree.needs_split[guiding_list_index] == 0)
+	if (illumination_aware_kd_tree.core.needs_split[guiding_list_index] == 0)
 		return;
 
-	unsigned int parent_index = illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index];
-	unsigned int node_count	  = *illumination_aware_kd_tree.node_count;
+	unsigned int parent_index = illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index];
+	unsigned int node_count	  = *illumination_aware_kd_tree.core.node_count;
 	if (parent_index >= node_count)
 		return;
 
-	IlluminationAwareKDTreeNode& parent = illumination_aware_kd_tree.nodes[parent_index];
+	IlluminationAwareKDTreeNode& parent = illumination_aware_kd_tree.core.nodes[parent_index];
 	if (!(parent.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 		// We can only split parent who have children
 		return;
@@ -49,8 +49,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 	unsigned int parent_distribution_index = parent.guiding_distribution_index;
 
-	IlluminationAwareKDTreeNode& left_child	 = illumination_aware_kd_tree.nodes[left_child_index];
-	IlluminationAwareKDTreeNode& right_child = illumination_aware_kd_tree.nodes[right_child_index];
+	IlluminationAwareKDTreeNode& left_child	 = illumination_aware_kd_tree.core.nodes[left_child_index];
+	IlluminationAwareKDTreeNode& right_child = illumination_aware_kd_tree.core.nodes[right_child_index];
 
 	__shared__ unsigned int right_distribution_index;
 	__shared__ unsigned int active_guiding_output_index;
@@ -60,13 +60,13 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 	if (threadIdx.x == 0)
 	{
 		// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution index
-		right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.guiding_distribution_count, 1u);
+		right_distribution_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.core.guiding_distribution_count, 1u);
 
 		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
-		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.active_guiding_node_count, 1u);
+		active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.core.active_guiding_node_count, 1u);
 
-		allocation_valid =
-			right_distribution_index < illumination_aware_kd_tree.node_capacity && active_guiding_output_index < illumination_aware_kd_tree.node_capacity;
+		allocation_valid = right_distribution_index < illumination_aware_kd_tree.core.node_capacity &&
+						   active_guiding_output_index < illumination_aware_kd_tree.core.node_capacity;
 	}
 	__syncthreads();
 
@@ -85,24 +85,24 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		right_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
 		right_child.flags &= ~IlluminationAwareKDTreeNodeFlag_Lookahead;
 
-		illumination_aware_kd_tree.initialize_nisml_cache_for_guiding_cell(left_child_index);
-		illumination_aware_kd_tree.initialize_nisml_cache_for_guiding_cell(right_child_index);
-		if (illumination_aware_kd_tree.nisml_pending_cell_count != nullptr)
-			hippt::atomic_fetch_add(illumination_aware_kd_tree.nisml_pending_cell_count, 2u * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT);
+		illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(left_child_index, illumination_aware_kd_tree.core.node_capacity);
+		illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(right_child_index, illumination_aware_kd_tree.core.node_capacity);
+		if (illumination_aware_kd_tree.nisml.nisml_pending_cell_count != nullptr)
+			hippt::atomic_fetch_add(illumination_aware_kd_tree.nisml.nisml_pending_cell_count, 2u * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT);
 
 		// The parent is no longer a guiding node
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
 		parent.guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
 
-		illumination_aware_kd_tree.active_guiding_nodes[guiding_list_index]			 = left_child_index;
-		illumination_aware_kd_tree.active_guiding_nodes[active_guiding_output_index] = right_child_index;
+		illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index]		  = left_child_index;
+		illumination_aware_kd_tree.core.active_guiding_nodes[active_guiding_output_index] = right_child_index;
 	}
 
 	// We want thread 0 writes to be visible
 	__syncthreads();
 
 	// Now we can finally use all the threads of the thread block correctly to copy the parent's distribution into the left and right child distribution
-	IlluminationAwareKDTreeNEELearntDistributions& nee_learnt_distributions = illumination_aware_kd_tree.nee_learnt_distributions;
+	IlluminationAwareKDTreeNEELearntDistributionsDevice& nee_learnt_distributions = illumination_aware_kd_tree.nee_distributions;
 
 	if (threadIdx.x == 0)
 	{
@@ -183,9 +183,9 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 			unsigned int node_index = stack[--stack_size];
 
 			// The new nodes start with the current batch signature as their history signature
-			illumination_aware_kd_tree.history_signatures[node_index] = illumination_aware_kd_tree.batch_signatures[node_index];
+			illumination_aware_kd_tree.core.history_signatures[node_index] = illumination_aware_kd_tree.core.batch_signatures[node_index];
 
-			const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.nodes[node_index];
+			const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.core.nodes[node_index];
 			if (node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren)
 			{
 				unsigned int child_index = node.left_child_index;
