@@ -78,33 +78,33 @@ struct IlluminationAwareKDTreeCoreDataHost
 
 	IlluminationAwareKDTreeDevice to_device()
 	{
-		IlluminationAwareKDTreeDevice device;
+		IlluminationAwareKDTreeDevice kd_tree_device;
 
-		device.core.nodes		  = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
-		device.core.node_bounds	  = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
-		device.core.node_capacity = static_cast<unsigned int>(maximum_size());
+		kd_tree_device.core.nodes		  = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
+		kd_tree_device.core.node_bounds	  = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
+		kd_tree_device.core.node_capacity = static_cast<unsigned int>(maximum_size());
 
-		device.core.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
-		device.core.needs_split			 = GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
-		device.core.current_frontier	 = GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
-		device.core.next_frontier		 = GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
+		kd_tree_device.core.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
+		kd_tree_device.core.needs_split			 = GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
+		kd_tree_device.core.current_frontier	 = GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
+		kd_tree_device.core.next_frontier		 = GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-		device.core.active_guiding_node_count  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
-		device.core.node_count				   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
-		device.core.current_frontier_count	   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
-		device.core.next_frontier_count		   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
-		device.core.guiding_distribution_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_guiding_distribution_count);
+		kd_tree_device.core.active_guiding_node_count  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		kd_tree_device.core.node_count				   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		kd_tree_device.core.current_frontier_count	   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		kd_tree_device.core.next_frontier_count		   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		kd_tree_device.core.guiding_distribution_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_guiding_distribution_count);
 
-		device.core.training_samples		 = GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
-		device.core.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
-		device.core.training_sample_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
+		kd_tree_device.core.training_samples		 = GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
+		kd_tree_device.core.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
+		kd_tree_device.core.training_sample_count	 = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_training_sample_count);
 
-		device.core.batch_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
-		device.core.history_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
-		device.core.batch_spatial_moments	= GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
-		device.core.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
+		kd_tree_device.core.batch_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_batch_signatures);
+		kd_tree_device.core.history_signatures		= GenericSoAHelpers::get_buffer_data_ptr(m_history_signatures);
+		kd_tree_device.core.batch_spatial_moments	= GenericSoAHelpers::get_buffer_data_ptr(m_batch_spatial_moments);
+		kd_tree_device.core.history_spatial_moments = GenericSoAHelpers::get_buffer_data_ptr(m_history_spatial_moments);
 
-		return device;
+		return kd_tree_device;
 	}
 
 	DataContainer<IlluminationAwareKDTreeNode> m_nodes;

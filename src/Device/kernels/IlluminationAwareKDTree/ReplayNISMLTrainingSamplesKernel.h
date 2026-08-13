@@ -31,21 +31,21 @@ IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(HIPRTRenderData render_
 	if (training_record_index >= training_record_count)
 		return;
 
-	const NISMLTrainingSample& training_record				  = render_data.nisml.training_records[training_record_index];
-	IlluminationAwareKDTreeDevice& illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
-	unsigned int node_index									  = illumination_aware_kd_tree.core.find_guiding_cell(training_record.position);
-	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || illumination_aware_kd_tree.nisml.nisml_representative_ready == nullptr)
+	const NISMLTrainingSample& training_record	  = render_data.nisml.training_records[training_record_index];
+	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(training_record.position);
+	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || kd_tree_device.nisml.nisml_representative_ready == nullptr)
 		return;
 
 	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(training_record.normal);
-	unsigned int cache_index = illumination_aware_kd_tree.nisml.get_nisml_cache_index(node_index, normal_face);
-	if (illumination_aware_kd_tree.nisml.nisml_representative_ready[cache_index] != 0)
+	unsigned int cache_index = kd_tree_device.nisml.get_nisml_cache_index(node_index, normal_face);
+	if (kd_tree_device.nisml.nisml_representative_ready[cache_index] != 0)
 		return;
 
 	Xorshift32Generator random_number_generator(training_record_index + 1u);
-	illumination_aware_kd_tree.nisml.append_nisml_representative(node_index, illumination_aware_kd_tree.core.node_capacity, training_record.position,
-																 training_record.outgoing_direction, training_record.normal, training_record.sg_specular_weight,
-																 training_record.alpha_x, training_record.alpha_y, random_number_generator);
+	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, training_record.position,
+													 training_record.outgoing_direction, training_record.normal, training_record.sg_specular_weight,
+													 training_record.alpha_x, training_record.alpha_y, random_number_generator);
 }
 
 #endif

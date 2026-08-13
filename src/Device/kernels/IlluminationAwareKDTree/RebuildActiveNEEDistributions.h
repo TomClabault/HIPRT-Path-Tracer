@@ -13,18 +13,18 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+inline IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDevice kd_tree_device,
 															 unsigned int tree_cut_size,
 															 unsigned int active_guiding_count,
 															 int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDevice kd_tree_device,
 													  unsigned int tree_cut_size,
 													  unsigned int active_guiding_count)
 #endif
 {
-	IlluminationAwareKDTreeNEELearntDistributionsDevice& nee_learnt_distributions = illumination_aware_kd_tree.nee_distributions;
+	IlluminationAwareKDTreeNEELearntDistributionsDevice& nee_learnt_distributions = kd_tree_device.nee_distributions;
 
 #ifndef __KERNELCC__
 	unsigned int guiding_list_index = x;
@@ -33,13 +33,13 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	if (guiding_list_index >= active_guiding_count)
 		return;
 
-	unsigned int guiding_node_index = illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index];
-	if (guiding_node_index >= illumination_aware_kd_tree.core.node_capacity)
+	unsigned int guiding_node_index = kd_tree_device.core.active_guiding_nodes[guiding_list_index];
+	if (guiding_node_index >= kd_tree_device.core.node_capacity)
 		return;
 
-	unsigned int guiding_distribution_index = illumination_aware_kd_tree.core.nodes[guiding_node_index].guiding_distribution_index;
+	unsigned int guiding_distribution_index = kd_tree_device.core.nodes[guiding_node_index].guiding_distribution_index;
 	if (guiding_distribution_index == IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX ||
-		guiding_distribution_index >= illumination_aware_kd_tree.core.node_capacity)
+		guiding_distribution_index >= kd_tree_device.core.node_capacity)
 		return;
 
 	unsigned int distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);
@@ -87,13 +87,13 @@ IlluminationAwareKDTree_RebuildActiveNEEDistributions(IlluminationAwareKDTreeDev
 	unsigned int normal_face		= guiding_list_face_index % SurfaceNormalFace_Count;
 	unsigned int slot				= threadIdx.x;
 
-	unsigned int guiding_node_index			= illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index];
+	unsigned int guiding_node_index			= kd_tree_device.core.active_guiding_nodes[guiding_list_index];
 	unsigned int guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
-	if (guiding_node_index < illumination_aware_kd_tree.core.node_capacity)
-		guiding_distribution_index = illumination_aware_kd_tree.core.nodes[guiding_node_index].guiding_distribution_index;
+	if (guiding_node_index < kd_tree_device.core.node_capacity)
+		guiding_distribution_index = kd_tree_device.core.nodes[guiding_node_index].guiding_distribution_index;
 
 	bool valid_distribution = guiding_distribution_index != IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX &&
-							  guiding_distribution_index < illumination_aware_kd_tree.core.node_capacity;
+							  guiding_distribution_index < kd_tree_device.core.node_capacity;
 	unsigned int distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
 	if (valid_distribution)
 		distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(guiding_distribution_index, normal_face);

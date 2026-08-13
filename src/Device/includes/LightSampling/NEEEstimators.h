@@ -410,11 +410,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	float representative_alpha_y;
 	get_sg_specular_importance_parameters(ray_payload.material, representative_sg_specular_weight, representative_alpha_x, representative_alpha_y);
 	Xorshift32Generator representative_random_number_generator = random_number_generator;
-	IlluminationAwareKDTreeDevice& illumination_aware_kd_tree  = render_data.illumination_aware_kd_tree;
-	unsigned int node_index									   = illumination_aware_kd_tree.core.find_guiding_cell(closest_hit_info.inter_point);
-	illumination_aware_kd_tree.nisml.append_nisml_representative(node_index, illumination_aware_kd_tree.core.node_capacity, closest_hit_info.inter_point,
-																 view_direction, closest_hit_info.shading_normal, representative_sg_specular_weight,
-																 representative_alpha_x, representative_alpha_y, representative_random_number_generator);
+	IlluminationAwareKDTreeDevice& kd_tree_device			   = render_data.kd_tree_device;
+	unsigned int node_index									   = kd_tree_device.core.find_guiding_cell(closest_hit_info.inter_point);
+	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, closest_hit_info.inter_point, view_direction,
+													 closest_hit_info.shading_normal, representative_sg_specular_weight, representative_alpha_x,
+													 representative_alpha_y, representative_random_number_generator);
 
 	ColorRGB32F light_source_radiance;
 
@@ -528,7 +528,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	}
 
 	if (valid_nisml_training_sample)
-		render_data.illumination_aware_kd_tree.core.append_direct_illumination_training_sample(training_sample);
+		render_data.kd_tree_device.core.append_direct_illumination_training_sample(training_sample);
 
 	if (collect_training_record)
 	{
@@ -713,12 +713,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 
 		if (valid_learnt_distribution_sample)
 		{
-			render_data.illumination_aware_kd_tree.core.append_direct_illumination_training_sample(training_sample);
+			render_data.kd_tree_device.core.append_direct_illumination_training_sample(training_sample);
 
 			IlluminationAwareKDTreeNEEDistributionTrainingRecord nee_training_record =
-				render_data.illumination_aware_kd_tree.nee_distributions.make_nee_distribution_training_record(
-					guided_sample, closest_hit_info.inter_point, closest_hit_info.shading_normal, full_local_nee_estimate);
-			render_data.illumination_aware_kd_tree.nee_distributions.append_nee_distribution_training_record(nee_training_record);
+				render_data.kd_tree_device.nee_distributions.make_nee_distribution_training_record(guided_sample, closest_hit_info.inter_point,
+																								   closest_hit_info.shading_normal, full_local_nee_estimate);
+			render_data.kd_tree_device.nee_distributions.append_nee_distribution_training_record(nee_training_record);
 		}
 	}
 

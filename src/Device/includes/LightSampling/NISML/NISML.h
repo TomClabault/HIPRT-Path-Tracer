@@ -107,19 +107,18 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		log_baseline_weights[cluster_index] = -INFINITY;
 
-	const IlluminationAwareKDTreeDevice& illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
-	if (illumination_aware_kd_tree.core.nodes != nullptr && illumination_aware_kd_tree.nisml.nisml_cache != nullptr &&
-		illumination_aware_kd_tree.nisml.nisml_cache_ready != nullptr)
+	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr)
 	{
-		unsigned int node_index = illumination_aware_kd_tree.core.find_guiding_cell(shading_point);
-		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < illumination_aware_kd_tree.core.node_capacity)
+		unsigned int node_index = kd_tree_device.core.find_guiding_cell(shading_point);
+		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < kd_tree_device.core.node_capacity)
 		{
 			unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
-			unsigned int cache_index = illumination_aware_kd_tree.nisml.get_nisml_cache_index(node_index, normal_face);
-			if (illumination_aware_kd_tree.nisml.nisml_cache_ready[cache_index] != 0)
+			unsigned int cache_index = kd_tree_device.nisml.get_nisml_cache_index(node_index, normal_face);
+			if (kd_tree_device.nisml.nisml_cache_ready[cache_index] != 0)
 			{
 				for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-					log_baseline_weights[cluster_index] = illumination_aware_kd_tree.nisml.nisml_cache[cache_index].log_importances[cluster_index];
+					log_baseline_weights[cluster_index] = kd_tree_device.nisml.nisml_cache[cache_index].log_importances[cluster_index];
 
 				return;
 			}

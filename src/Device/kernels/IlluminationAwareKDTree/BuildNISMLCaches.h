@@ -13,10 +13,10 @@ static_assert(ILLUMINATION_AWARE_KD_TREE_NISML_CLUSTER_COUNT == NISML_MAX_CLUSTE
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, HIPRTRenderData render_data, int x)
+inline IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_device, HIPRTRenderData render_data, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, HIPRTRenderData render_data)
+IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_device, HIPRTRenderData render_data)
 #endif
 {
 #ifdef __KERNELCC__
@@ -25,19 +25,18 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice illuminat
 	unsigned int cache_index = x;
 #endif
 
-	unsigned int node_count		   = *illumination_aware_kd_tree.core.node_count;
+	unsigned int node_count		   = *kd_tree_device.core.node_count;
 	unsigned int cache_entry_count = node_count * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
-	if (cache_index >= cache_entry_count || illumination_aware_kd_tree.nisml.nisml_cache == nullptr ||
-		illumination_aware_kd_tree.nisml.nisml_representative_ready == nullptr || illumination_aware_kd_tree.nisml.nisml_cache_ready == nullptr ||
-		illumination_aware_kd_tree.nisml.nisml_pending_cell_count == nullptr)
+	if (cache_index >= cache_entry_count || kd_tree_device.nisml.nisml_cache == nullptr || kd_tree_device.nisml.nisml_representative_ready == nullptr ||
+		kd_tree_device.nisml.nisml_cache_ready == nullptr || kd_tree_device.nisml.nisml_pending_cell_count == nullptr)
 		return;
 
-	if (illumination_aware_kd_tree.nisml.nisml_cache_ready[cache_index] != 0 || illumination_aware_kd_tree.nisml.nisml_representative_ready[cache_index] == 0)
+	if (kd_tree_device.nisml.nisml_cache_ready[cache_index] != 0 || kd_tree_device.nisml.nisml_representative_ready[cache_index] == 0)
 		return;
 
-	IlluminationAwareKDTreeNISMLCache& cache								= illumination_aware_kd_tree.nisml.nisml_cache[cache_index];
-	HIPRTRenderData baseline_render_data									= render_data;
-	baseline_render_data.illumination_aware_kd_tree.nisml.nisml_cache_ready = nullptr;
+	IlluminationAwareKDTreeNISMLCache& cache					= kd_tree_device.nisml.nisml_cache[cache_index];
+	HIPRTRenderData baseline_render_data						= render_data;
+	baseline_render_data.kd_tree_device.nisml.nisml_cache_ready = nullptr;
 	float log_importances[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(baseline_render_data, baseline_render_data.nisml, cache.representative_position, cache.representative_view_direction,
 									 cache.representative_normal, cache.representative_sg_specular_weight, cache.representative_alpha_x,
@@ -47,8 +46,8 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice illuminat
 		cache.log_importances[cluster_index] = log_importances[cluster_index];
 
 	// The cache is published only after all logits have been written. The host synchronizes this kernel before the next frame is uploaded.
-	illumination_aware_kd_tree.nisml.nisml_cache_ready[cache_index] = 1;
-	hippt::atomic_fetch_add(illumination_aware_kd_tree.nisml.nisml_pending_cell_count, static_cast<unsigned int>(-1));
+	kd_tree_device.nisml.nisml_cache_ready[cache_index] = 1;
+	hippt::atomic_fetch_add(kd_tree_device.nisml.nisml_pending_cell_count, static_cast<unsigned int>(-1));
 }
 
 #endif

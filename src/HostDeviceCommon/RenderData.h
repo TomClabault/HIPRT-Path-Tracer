@@ -70,7 +70,7 @@ struct HIPRTRenderData
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;
-	IlluminationAwareKDTreeDevice illumination_aware_kd_tree;
+	IlluminationAwareKDTreeDevice kd_tree_device;
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
 	NISMLDevice nisml;

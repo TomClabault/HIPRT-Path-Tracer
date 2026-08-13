@@ -11,10 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int tree_cut_size, int x)
+inline IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int tree_cut_size, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned int tree_cut_size)
+IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int tree_cut_size)
 #endif
 {
 #ifdef __KERNELCC__
@@ -23,34 +23,34 @@ IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(IlluminationAwareKDTre
 	unsigned int reset_index = x;
 #endif
 
-	unsigned int normal_face_distribution_count = illumination_aware_kd_tree.core.node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);
+	unsigned int normal_face_distribution_count = kd_tree_device.core.node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);
 	unsigned int distribution_slot_count		= normal_face_distribution_count * tree_cut_size;
 	if (reset_index >= distribution_slot_count)
 		return;
 
 	if (reset_index < normal_face_distribution_count)
 	{
-		illumination_aware_kd_tree.nee_distributions.history_per_cell_sample_count[reset_index] = 0;
-		illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_x[reset_index] = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_y[reset_index] = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_sum_z[reset_index] = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.history_per_cell_normal_count[reset_index] = 0;
+		kd_tree_device.nee_distributions.history_per_cell_sample_count[reset_index] = 0;
+		kd_tree_device.nee_distributions.history_per_cell_normal_sum_x[reset_index] = 0.0f;
+		kd_tree_device.nee_distributions.history_per_cell_normal_sum_y[reset_index] = 0.0f;
+		kd_tree_device.nee_distributions.history_per_cell_normal_sum_z[reset_index] = 0.0f;
+		kd_tree_device.nee_distributions.history_per_cell_normal_count[reset_index] = 0;
 	}
 
-	illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_probabilities[reset_index] =
+	kd_tree_device.nee_distributions.tree_cut_sampling_probabilities[reset_index] =
 		IlluminationAwareKDTreeNEELearntDistributionsDevice::TREE_CUT_SAMPLING_PROBABILITY_UNINITIALIZED_VALUE;
-	illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_cdfs[reset_index] =
+	kd_tree_device.nee_distributions.tree_cut_sampling_cdfs[reset_index] =
 		IlluminationAwareKDTreeNEELearntDistributionsDevice::TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE;
-	illumination_aware_kd_tree.nee_distributions.history_per_cut_node_estimated_second_moment[reset_index] = 0.0f;
-	illumination_aware_kd_tree.nee_distributions.history_per_cut_node_sample_count[reset_index]			   = 0;
-	illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_second_moment_sum[reset_index]		   = 0.0f;
-	illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_sample_count[reset_index]			   = 0;
+	kd_tree_device.nee_distributions.history_per_cut_node_estimated_second_moment[reset_index] = 0.0f;
+	kd_tree_device.nee_distributions.history_per_cut_node_sample_count[reset_index]			   = 0;
+	kd_tree_device.nee_distributions.batch_per_cut_node_second_moment_sum[reset_index]		   = 0.0f;
+	kd_tree_device.nee_distributions.batch_per_cut_node_sample_count[reset_index]			   = 0;
 
 	if (reset_index < tree_cut_size)
 	{
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_pdfs[reset_index] =
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_pdfs[reset_index] =
 			IlluminationAwareKDTreeNEELearntDistributionsDevice::TREE_CUT_SAMPLING_PROBABILITY_UNINITIALIZED_VALUE;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_cdfs[reset_index] =
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_cdfs[reset_index] =
 			IlluminationAwareKDTreeNEELearntDistributionsDevice::TREE_CUT_SAMPLING_CDF_UNINITIALIZED_VALUE;
 	}
 }

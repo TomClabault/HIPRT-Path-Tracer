@@ -11,9 +11,9 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
+inline IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
+GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device)
 #endif
 {
 #ifdef __KERNELCC__
@@ -22,11 +22,11 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSam
 	unsigned int sample_index = x;
 #endif
 
-	unsigned int sample_count = *illumination_aware_kd_tree.core.training_sample_count;
+	unsigned int sample_count = *kd_tree_device.core.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 
-	illumination_aware_kd_tree.core.accumulate_sample_into_existing_tree(illumination_aware_kd_tree.core.training_samples[sample_index]);
+	kd_tree_device.core.accumulate_sample_into_existing_tree(kd_tree_device.core.training_samples[sample_index]);
 }
 
 #endif

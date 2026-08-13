@@ -13,22 +13,21 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+inline IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice kd_tree_device,
 																				LightTreeSGDevice light_tree_sg,
 																				[[maybe_unused]] int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-																		 LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(IlluminationAwareKDTreeDevice kd_tree_device, LightTreeSGDevice light_tree_sg)
 #endif
 {
 #ifndef __KERNELCC__
 	unsigned int tree_cut_size				= light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int guiding_distribution_index = illumination_aware_kd_tree.core.nodes[0].guiding_distribution_index;
-	if (guiding_distribution_index >= illumination_aware_kd_tree.core.node_capacity)
+	unsigned int guiding_distribution_index = kd_tree_device.core.nodes[0].guiding_distribution_index;
+	if (guiding_distribution_index >= kd_tree_device.core.node_capacity)
 		return;
 
-	unsigned int tree_cut_offset = illumination_aware_kd_tree.nee_distributions.get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
+	unsigned int tree_cut_offset = kd_tree_device.nee_distributions.get_tree_cut_offset(guiding_distribution_index, tree_cut_size);
 
 	unsigned int valid_node_count = 0;
 	float total_power			  = 0.0f;
@@ -64,19 +63,19 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 		unsigned short int probability_u16 =
 			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, probability) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_probabilities[distribution_slot]				 = probability_u16;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_cdfs[distribution_slot]						 = cdf_u16;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_pdfs[slot]								 = probability_u16;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_cdfs[slot]								 = cdf_u16;
-		illumination_aware_kd_tree.nee_distributions.history_per_cut_node_estimated_second_moment[distribution_slot] = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.history_per_cut_node_sample_count[distribution_slot]			 = 0;
-		illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_second_moment_sum[distribution_slot]		 = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_sample_count[distribution_slot]				 = 0;
+		kd_tree_device.nee_distributions.tree_cut_sampling_probabilities[distribution_slot]				 = probability_u16;
+		kd_tree_device.nee_distributions.tree_cut_sampling_cdfs[distribution_slot]						 = cdf_u16;
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_pdfs[slot]								 = probability_u16;
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_cdfs[slot]								 = cdf_u16;
+		kd_tree_device.nee_distributions.history_per_cut_node_estimated_second_moment[distribution_slot] = 0.0f;
+		kd_tree_device.nee_distributions.history_per_cut_node_sample_count[distribution_slot]			 = 0;
+		kd_tree_device.nee_distributions.batch_per_cut_node_second_moment_sum[distribution_slot]		 = 0.0f;
+		kd_tree_device.nee_distributions.batch_per_cut_node_sample_count[distribution_slot]				 = 0;
 
 		running_cdf += probability;
 	}
 
-	illumination_aware_kd_tree.nee_distributions.history_per_cell_sample_count[guiding_distribution_index] = 0;
+	kd_tree_device.nee_distributions.history_per_cell_sample_count[guiding_distribution_index] = 0;
 #else
 	unsigned int slot = threadIdx.x;
 	if (blockIdx.x != 0)
@@ -84,7 +83,7 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 
 	unsigned int tree_cut_size				= light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int invalid_node_index			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	unsigned int guiding_distribution_index = illumination_aware_kd_tree.core.nodes[0].guiding_distribution_index;
+	unsigned int guiding_distribution_index = kd_tree_device.core.nodes[0].guiding_distribution_index;
 	unsigned int tree_cut_offset			= guiding_distribution_index * tree_cut_size;
 
 	unsigned int tree_cut_node_index = slot < tree_cut_size ? light_tree_sg.tree_cut_node_indices[slot] : invalid_node_index;
@@ -114,19 +113,19 @@ IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(Illumin
 		unsigned short int probability_u16 =
 			static_cast<unsigned short int>(hippt::clamp(0.0f, 1.0f, probability) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
 
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_probabilities[distribution_slot] = probability_u16;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_cdfs[distribution_slot]			= static_cast<unsigned short int>(
+		kd_tree_device.nee_distributions.tree_cut_sampling_probabilities[distribution_slot] = probability_u16;
+		kd_tree_device.nee_distributions.tree_cut_sampling_cdfs[distribution_slot]			= static_cast<unsigned short int>(
 			 hippt::clamp(0.0f, 1.0f, valid_slot ? exclusive_cdf : 0.0f) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_pdfs[slot] = probability_u16;
-		illumination_aware_kd_tree.nee_distributions.tree_cut_sampling_prior_cdfs[slot] = static_cast<unsigned short int>(
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_pdfs[slot] = probability_u16;
+		kd_tree_device.nee_distributions.tree_cut_sampling_prior_cdfs[slot] = static_cast<unsigned short int>(
 			hippt::clamp(0.0f, 1.0f, valid_slot ? exclusive_cdf : 0.0f) * IlluminationAwareKDTreeNEELearntDistributionsDevice::U16_MAXIMUM_VALUE);
-		illumination_aware_kd_tree.nee_distributions.history_per_cut_node_estimated_second_moment[distribution_slot] = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.history_per_cut_node_sample_count[distribution_slot]			 = 0;
-		illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_second_moment_sum[distribution_slot]		 = 0.0f;
-		illumination_aware_kd_tree.nee_distributions.batch_per_cut_node_sample_count[distribution_slot]				 = 0;
+		kd_tree_device.nee_distributions.history_per_cut_node_estimated_second_moment[distribution_slot] = 0.0f;
+		kd_tree_device.nee_distributions.history_per_cut_node_sample_count[distribution_slot]			 = 0;
+		kd_tree_device.nee_distributions.batch_per_cut_node_second_moment_sum[distribution_slot]		 = 0.0f;
+		kd_tree_device.nee_distributions.batch_per_cut_node_sample_count[distribution_slot]				 = 0;
 	}
 
-	illumination_aware_kd_tree.nee_distributions.history_per_cell_sample_count[guiding_distribution_index] = 0;
+	kd_tree_device.nee_distributions.history_per_cell_sample_count[guiding_distribution_index] = 0;
 #endif
 }
 

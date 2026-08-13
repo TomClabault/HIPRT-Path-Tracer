@@ -45,15 +45,15 @@ struct IlluminationAwareKDTreeDataHost
 
 	IlluminationAwareKDTreeDevice to_device(HIPRTRenderData& render_data)
 	{
-		IlluminationAwareKDTreeDevice device = m_kd_tree_data.to_device();
+		IlluminationAwareKDTreeDevice kd_tree_device = m_kd_tree_data.to_device();
 
-		m_nisml_data.to_device(device);
-		m_nee_learnt_distributions_data.to_device(device);
+		m_nisml_data.to_device(kd_tree_device);
+		m_nee_learnt_distributions_data.to_device(kd_tree_device);
 
-		device.core.user_settings					   = render_data.illumination_aware_kd_tree.core.user_settings;
-		device.nee_distributions.learning_nee_settings = render_data.illumination_aware_kd_tree.nee_distributions.learning_nee_settings;
+		kd_tree_device.core.user_settings					   = render_data.kd_tree_device.core.user_settings;
+		kd_tree_device.nee_distributions.learning_nee_settings = render_data.kd_tree_device.nee_distributions.learning_nee_settings;
 
-		return device;
+		return kd_tree_device;
 	}
 
 	IlluminationAwareKDTreeCoreDataHost<DataContainer> m_kd_tree_data;

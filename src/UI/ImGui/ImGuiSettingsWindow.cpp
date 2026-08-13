@@ -2467,7 +2467,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2648,7 +2648,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3729,7 +3729,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -4118,8 +4118,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
 					std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 					std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-															vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-															vram_usage.history_per_cell_normal_count;
+														 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+														 vram_usage.history_per_cell_normal_count;
 					std::size_t per_cut_history_bytes = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
 					std::size_t per_cut_batch_bytes	  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
 					std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
@@ -4196,7 +4196,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("Stop refining after SPP", &render_data.illumination_aware_kd_tree.core.user_settings.stop_refining_after_SPP, 1, 100))
+				if (ImGui::SliderInt("Stop refining after SPP", &render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP, 1, 100))
 					m_render_window->set_render_dirty(true);
 
 				static int maximum_lookahead_depth =
@@ -4219,12 +4219,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					ImGui::TreePop();
 				}
 
-				if (ImGui::SliderInt("Min. sample count for splitting",
-									 &render_data.illumination_aware_kd_tree.core.user_settings.minimum_sample_count_for_splitting, 250, 2000))
+				if (ImGui::SliderInt("Min. sample count for splitting", &render_data.kd_tree_device.core.user_settings.minimum_sample_count_for_splitting, 250,
+									 2000))
 					m_render_window->set_render_dirty(true);
 
 				if (ImGui::SliderInt("Min. sample count for lookahead creation",
-									 &render_data.illumination_aware_kd_tree.core.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
+									 &render_data.kd_tree_device.core.user_settings.minimum_sample_count_for_lookahead_creation, 250, 2000))
 					m_render_window->set_render_dirty(true);
 
 				if (illumination_aware_kd_tree_render_pass)
@@ -4240,7 +4240,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::Text("Splitting mode");
 
-					IlluminationAwareKDTreeSubdivisionMode& subdivision_mode = render_data.illumination_aware_kd_tree.core.user_settings.subdivision_mode;
+					IlluminationAwareKDTreeSubdivisionMode& subdivision_mode = render_data.kd_tree_device.core.user_settings.subdivision_mode;
 
 					bool splitting_mode_changed = false;
 					splitting_mode_changed |= ImGui::RadioButton("Sample count only", ((int*)&subdivision_mode), 0);
@@ -4254,8 +4254,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 						subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
 					{
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						if (ImGui::SliderFloat("Mean radiance threshold",
-											   &render_data.illumination_aware_kd_tree.core.user_settings.mean_radiance_split_threshold, 0.01f, 1.0f, "%.3f"))
+						if (ImGui::SliderFloat("Mean radiance threshold", &render_data.kd_tree_device.core.user_settings.mean_radiance_split_threshold, 0.01f,
+											   1.0f, "%.3f"))
 							m_render_window->set_render_dirty(true);
 					}
 				}
@@ -4264,8 +4264,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				{
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Learnt NEE distributions");
-					IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings =
-						render_data.illumination_aware_kd_tree.nee_distributions.learning_nee_settings;
+					IlluminationAwareKDTreeLearningNEESettings& learning_nee_settings = render_data.kd_tree_device.nee_distributions.learning_nee_settings;
 
 					if (ImGui::SliderFloat("Minimum global prior mix", &learning_nee_settings.minimum_global_prior_mix, 0.0f, 1.0f, "%.3f"))
 					{
@@ -5791,7 +5790,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
