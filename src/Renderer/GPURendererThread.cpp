@@ -118,6 +118,7 @@ void GPURendererThread::setup_render_graphs()
 	nisml_render_pass->add_dependency(megakernel_render_pass);
 	nisml_render_pass->add_dependency(restir_gi_render_pass);
 	nisml_render_pass->add_dependency(restir_pt_render_pass);
+	nisml_render_pass->add_dependency(illumination_aware_kd_tree_render_pass);
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
 	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);

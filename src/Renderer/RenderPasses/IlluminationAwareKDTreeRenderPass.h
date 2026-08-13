@@ -90,6 +90,7 @@ public:
 	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;
 	static const std::string MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID;
 	static const std::string PROMOTE_GUIDING_CELLS_KERNEL_ID;
+	static const std::string REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string BUILD_NISML_CACHES_KERNEL_ID;
 
 	static constexpr int INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY = 2000000;

@@ -38,6 +38,7 @@ const std::string IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBU
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID				= "Initialize Created Node History";
 const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID				= "Mark Guiding Cells For Splitting";
 const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID						= "Promote Guiding Cells";
+const std::string IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID				= "Replay NISML Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID							= "Build NISML Caches";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
@@ -154,6 +155,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
@@ -186,9 +195,6 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 		reset(false);
 	}
-
-	if (is_using_nisml(*m_compiler_options))
-		build_nisml(m_renderer->get_render_data());
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
@@ -266,15 +272,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 {
 	if (!is_render_pass_used(compiler_options))
 		return;
-	else if (m_frozen_tree)
-		// Not doing any work if the tree is frozen
-		return;
 
 	LightTreeSGDevice light_tree_sg							 = render_data.light_tree_sg;
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 
 	// Using -1 because this counter is 0-based but the SPPs displayed at the top of the UI are 1-based. This is just to match the user's HUD
-	if (render_data.render_settings.sample_number <= illumination_aware_kd_tree.core.user_settings.stop_refining_after_SPP - 1)
+	if (!m_frozen_tree && render_data.render_settings.sample_number <= illumination_aware_kd_tree.core.user_settings.stop_refining_after_SPP - 1)
 	{
 		// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads
 		// and
@@ -328,7 +331,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		}
 	}
 
-	if (!is_using_nisml(compiler_options))
+	if (!m_frozen_tree && !is_using_nisml(compiler_options))
 	{
 		unsigned int tree_cut_size = light_tree_sg.settings.effective_tree_cut_size;
 
@@ -345,6 +348,20 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID]->launch_asynchronous(
 			1024, 1, active_guiding_count * 1024, 1, rebuild_nee_distributions_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+	}
+
+	if (is_using_nisml(compiler_options))
+	{
+		unsigned int training_record_capacity = render_data.nisml.training_record_capacity;
+		if (training_record_capacity > 0)
+		{
+			void* replay_nisml_training_samples_launch_args[] = { &render_data };
+			m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
+				256, 1, training_record_capacity, 1, replay_nisml_training_samples_launch_args, m_renderer->get_main_stream());
+			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+		}
+
+		build_nisml(render_data);
 	}
 }
 
