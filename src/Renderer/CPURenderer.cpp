@@ -911,9 +911,10 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
 	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
-	unsigned int* next_frontier						 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
-	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
-	bool next_frontier_uses_first_buffer			 = true;
+	unsigned int* next_frontier						 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
+	AtomicType<unsigned int>* next_frontier_count =
+		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
+	bool next_frontier_uses_first_buffer = true;
 
 	for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadLevelCount; depth++)
 	{
@@ -940,13 +941,13 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		current_frontier_count						 = next_frontier_count;
 		if (next_frontier_uses_first_buffer)
 		{
-			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_next_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_next_frontier_count.data();
+			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.data();
 		}
 		else
 		{
-			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_current_frontier_count.data();
+			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
 		}
 		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
 

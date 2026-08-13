@@ -190,10 +190,10 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg							 = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size								 = light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+	unsigned int active_node_count							 = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
 	unsigned int distribution_slot_count					 = active_node_count * tree_cut_size;
 	// Total number of nodes * tree cut node, to reset everything, not just active nodes as 'distribution_slot_count' represents
-	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_nodes.size() * tree_cut_size;
+	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size() * tree_cut_size;
 	distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 	all_distribution_slot_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 
@@ -236,8 +236,8 @@ void IlluminationAwareKDTreeRenderPass::build_nisml_caches(HIPRTRenderData& rend
 		return;
 
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree.to_device(render_data);
-	unsigned int node_count									 = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
-	unsigned int pending_cell_count							 = m_illumination_aware_kd_tree.m_nisml_pending_cell_count.download_data()[0];
+	unsigned int node_count									 = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
+	unsigned int pending_cell_count							 = m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.download_data()[0];
 	if (node_count == 0 || pending_cell_count == 0)
 		return;
 
@@ -307,12 +307,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 			// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
 			// Number of guiding nodes before the splitting
-			m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+			m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data()[0];
 			if (m_cached_current_guiding_node_count == 0)
 				// Should never happen we should at least have the root node
 				Debug::debugbreak();
 			// TODO same here download async
-			m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_node_count.download_data()[0];
+			m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
 			void* promotion_launch_args[] = { &illumination_aware_kd_tree, &light_tree_sg.settings.effective_tree_cut_size,
 											  &m_cached_current_guiding_node_count };
 			// We launch blocks of 1024 threads here, and as many blocks as needed to cover all the guiding nodes that need to be promoted. This is because each
@@ -335,7 +335,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-		unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_active_guiding_node_count.download_data()[0];
+		unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data()[0];
 		m_cached_current_guiding_node_count = active_guiding_count;
 		active_guiding_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 		void* rebuild_nee_distributions_launch_args[] = { &illumination_aware_kd_tree, &tree_cut_size, &active_guiding_count };
@@ -350,9 +350,9 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = render_data.illumination_aware_kd_tree;
 
 	unsigned int* current_frontier					 = illumination_aware_kd_tree.active_guiding_nodes;
-	unsigned int* next_frontier						 = m_illumination_aware_kd_tree.m_current_frontier.data();
+	unsigned int* next_frontier						 = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
 	AtomicType<unsigned int>* current_frontier_count = illumination_aware_kd_tree.active_guiding_node_count;
-	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
+	AtomicType<unsigned int>* next_frontier_count	 = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
 
 	bool next_frontier_uses_first_buffer = true;
 
@@ -364,9 +364,9 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		illumination_aware_kd_tree.next_frontier		  = next_frontier;
 		illumination_aware_kd_tree.next_frontier_count	  = next_frontier_count;
 		if (next_frontier_uses_first_buffer)
-			m_illumination_aware_kd_tree.m_current_frontier_count.memset_whole_buffer(0u);
+			m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.memset_whole_buffer(0u);
 		else
-			m_illumination_aware_kd_tree.m_next_frontier_count.memset_whole_buffer(0u);
+			m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.memset_whole_buffer(0u);
 
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &illumination_aware_kd_tree, &creation_tag };
@@ -385,13 +385,13 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 
 		if (next_frontier_uses_first_buffer)
 		{
-			next_frontier		= m_illumination_aware_kd_tree.m_next_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree.m_next_frontier_count.get_atomic_device_pointer();
+			next_frontier		= m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.get_atomic_device_pointer();
 		}
 		else
 		{
-			next_frontier		= m_illumination_aware_kd_tree.m_current_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_atomic_device_pointer();
+			next_frontier		= m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
+			next_frontier_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
 		}
 
 		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
@@ -435,8 +435,8 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	float3_t scene_bounds_maximum				 = m_renderer->get_scene_metadata().scene_bounding_box.maxi;
 	void* launch_args[]							 = { &kd_tree_device, &scene_bounds_minimum, &scene_bounds_maximum };
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_nodes.size(), 1, launch_args,
-																							m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size(),
+																							1, launch_args, m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
 
@@ -464,7 +464,7 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
 {
-	return m_illumination_aware_kd_tree.m_nodes.size();
+	return m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size();
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_count() const
@@ -496,51 +496,54 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 {
 	IlluminationAwareKDTreeVRAMUsage vram_usage;
 
-	vram_usage.nodes	   = m_illumination_aware_kd_tree.m_nodes.get_byte_size();
-	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_node_bounds.get_byte_size();
-	vram_usage.node_count  = m_illumination_aware_kd_tree.m_node_count.get_byte_size();
+	vram_usage.nodes	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.get_byte_size();
+	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_bounds.get_byte_size();
+	vram_usage.node_count  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.get_byte_size();
 
-	vram_usage.active_guiding_nodes		  = m_illumination_aware_kd_tree.m_active_guiding_nodes.get_byte_size();
-	vram_usage.active_guiding_node_count  = m_illumination_aware_kd_tree.m_active_guiding_node_count.get_byte_size();
-	vram_usage.needs_split				  = m_illumination_aware_kd_tree.m_needs_split.get_byte_size();
-	vram_usage.guiding_distribution_count = m_illumination_aware_kd_tree.m_guiding_distribution_count.get_byte_size();
+	vram_usage.active_guiding_nodes		  = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_nodes.get_byte_size();
+	vram_usage.active_guiding_node_count  = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.get_byte_size();
+	vram_usage.needs_split				  = m_illumination_aware_kd_tree.m_kd_tree_data.m_needs_split.get_byte_size();
+	vram_usage.guiding_distribution_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_guiding_distribution_count.get_byte_size();
 
-	vram_usage.current_frontier		  = m_illumination_aware_kd_tree.m_current_frontier.get_byte_size();
-	vram_usage.current_frontier_count = m_illumination_aware_kd_tree.m_current_frontier_count.get_byte_size();
-	vram_usage.next_frontier		  = m_illumination_aware_kd_tree.m_next_frontier.get_byte_size();
-	vram_usage.next_frontier_count	  = m_illumination_aware_kd_tree.m_next_frontier_count.get_byte_size();
+	vram_usage.current_frontier		  = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.get_byte_size();
+	vram_usage.current_frontier_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_byte_size();
+	vram_usage.next_frontier		  = m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.get_byte_size();
+	vram_usage.next_frontier_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.get_byte_size();
 
-	vram_usage.training_samples			 = m_illumination_aware_kd_tree.m_training_samples.get_byte_size();
-	vram_usage.training_sample_count	 = m_illumination_aware_kd_tree.m_training_sample_count.get_byte_size();
-	vram_usage.nee_training_records		 = m_illumination_aware_kd_tree.m_nee_training_records.get_byte_size();
-	vram_usage.nee_training_record_count = m_illumination_aware_kd_tree.m_nee_training_record_count.get_byte_size();
+	vram_usage.training_samples			 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_samples.get_byte_size();
+	vram_usage.training_sample_count	 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_sample_count.get_byte_size();
+	vram_usage.nee_training_records		 = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_training_records.get_byte_size();
+	vram_usage.nee_training_record_count = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_training_record_count.get_byte_size();
 
-	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_batch_signatures.get_byte_size();
-	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_history_signatures.get_byte_size();
-	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_batch_spatial_moments.get_byte_size();
-	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_history_spatial_moments.get_byte_size();
+	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
+	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();
+	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_spatial_moments.get_byte_size();
+	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_spatial_moments.get_byte_size();
 
-	vram_usage.nisml_cache						  = m_illumination_aware_kd_tree.m_nisml_cache.get_byte_size();
-	vram_usage.nisml_representative_sample_counts = m_illumination_aware_kd_tree.m_nisml_representative_sample_counts.get_byte_size();
-	vram_usage.nisml_representative_write_locks	  = m_illumination_aware_kd_tree.m_nisml_representative_write_locks.get_byte_size();
-	vram_usage.nisml_representative_ready		  = m_illumination_aware_kd_tree.m_nisml_representative_ready.get_byte_size();
-	vram_usage.nisml_cache_ready				  = m_illumination_aware_kd_tree.m_nisml_cache_ready.get_byte_size();
-	vram_usage.nisml_pending_cell_count			  = m_illumination_aware_kd_tree.m_nisml_pending_cell_count.get_byte_size();
+	vram_usage.nisml_cache						  = m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
+	vram_usage.nisml_representative_sample_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
+	vram_usage.nisml_representative_write_locks	  = m_illumination_aware_kd_tree.m_nisml_data.m_representative_write_locks.get_byte_size();
+	vram_usage.nisml_representative_ready		  = m_illumination_aware_kd_tree.m_nisml_data.m_representative_ready.get_byte_size();
+	vram_usage.nisml_cache_ready				  = m_illumination_aware_kd_tree.m_nisml_data.m_cache_ready.get_byte_size();
+	vram_usage.nisml_pending_cell_count			  = m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.get_byte_size();
 
-	vram_usage.tree_cut_sampling_probabilities				= m_illumination_aware_kd_tree.m_tree_cut_sampling_probabilities.get_byte_size();
-	vram_usage.tree_cut_sampling_cdfs						= m_illumination_aware_kd_tree.m_tree_cut_sampling_cdfs.get_byte_size();
-	vram_usage.history_per_cell_sample_count				= m_illumination_aware_kd_tree.m_history_per_cell_sample_count.get_byte_size();
-	vram_usage.history_per_cell_normal_sum_x				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_x.get_byte_size();
-	vram_usage.history_per_cell_normal_sum_y				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_y.get_byte_size();
-	vram_usage.history_per_cell_normal_sum_z				= m_illumination_aware_kd_tree.m_history_per_cell_normal_sum_z.get_byte_size();
-	vram_usage.history_per_cell_normal_count				= m_illumination_aware_kd_tree.m_history_per_cell_normal_count.get_byte_size();
-	vram_usage.history_per_cut_node_estimated_second_moment = m_illumination_aware_kd_tree.m_history_per_cut_node_estimated_second_moment.get_byte_size();
-	vram_usage.history_per_cut_node_sample_count			= m_illumination_aware_kd_tree.m_history_per_cut_node_sample_count.get_byte_size();
-	vram_usage.batch_per_cut_node_second_moment_sum			= m_illumination_aware_kd_tree.m_batch_per_cut_node_second_moment_sum.get_byte_size();
-	vram_usage.batch_per_cut_node_sample_count				= m_illumination_aware_kd_tree.m_batch_per_cut_node_sample_count.get_byte_size();
+	vram_usage.tree_cut_sampling_probabilities = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_probabilities.get_byte_size();
+	vram_usage.tree_cut_sampling_cdfs		   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_cdfs.get_byte_size();
+	vram_usage.history_per_cell_sample_count   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cell_sample_count.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_x   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cell_normal_sum_x.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_y   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cell_normal_sum_y.get_byte_size();
+	vram_usage.history_per_cell_normal_sum_z   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cell_normal_sum_z.get_byte_size();
+	vram_usage.history_per_cell_normal_count   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cell_normal_count.get_byte_size();
+	vram_usage.history_per_cut_node_estimated_second_moment =
+		m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cut_node_estimated_second_moment.get_byte_size();
+	vram_usage.history_per_cut_node_sample_count =
+		m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_history_per_cut_node_sample_count.get_byte_size();
+	vram_usage.batch_per_cut_node_second_moment_sum =
+		m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_batch_per_cut_node_second_moment_sum.get_byte_size();
+	vram_usage.batch_per_cut_node_sample_count = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_batch_per_cut_node_sample_count.get_byte_size();
 
-	vram_usage.tree_cut_sampling_prior_pdfs = m_illumination_aware_kd_tree.m_tree_cut_sampling_prior_pdfs.get_byte_size();
-	vram_usage.tree_cut_sampling_prior_cdfs = m_illumination_aware_kd_tree.m_tree_cut_sampling_prior_cdfs.get_byte_size();
+	vram_usage.tree_cut_sampling_prior_pdfs = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_prior_pdfs.get_byte_size();
+	vram_usage.tree_cut_sampling_prior_cdfs = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_prior_cdfs.get_byte_size();
 
 	return vram_usage;
 }
