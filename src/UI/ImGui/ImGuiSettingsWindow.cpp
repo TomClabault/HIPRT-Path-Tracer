@@ -439,7 +439,7 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static bool last_sample_only = false;
-			ImGui::Checkbox("Render only last sample", &last_sample_only);
+			bool checkbox_changed		 = ImGui::Checkbox("Render only last sample", &last_sample_only);
 
 			if (last_sample_only)
 			{
@@ -451,6 +451,15 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 
 				if (min_before != render_settings.sample_subset_min || max_before != render_settings.sample_subset_max)
 					m_render_window->set_render_dirty(true);
+			}
+			else
+			{
+				if (checkbox_changed)
+				{
+					// Back to all samples
+					render_settings.sample_subset_min = 0;
+					render_settings.sample_subset_max = 0;
+				}
 			}
 
 			ImGui::BeginDisabled(last_sample_only);
