@@ -4041,6 +4041,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		bool using_illumination_aware_kd_tree =
 			direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
 		bool using_learnt_nee_distributions = direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
+		bool using_nisml					= direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
 		if (using_illumination_aware_kd_tree)
 		{
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4065,74 +4066,100 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
 														vram_usage.guiding_distribution_count + vram_usage.current_frontier +
 														vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
-			std::size_t training_buffer_bytes =
-				vram_usage.training_samples + vram_usage.training_sample_count + vram_usage.nee_training_records + vram_usage.nee_training_record_count;
+			std::size_t direct_illumination_training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
-			std::size_t final_distribution_bytes = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
-			std::size_t per_cell_history_bytes	 = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-												 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-												 vram_usage.history_per_cell_normal_count;
-			std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
-			std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
-			std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
+			std::size_t nisml_cache_bytes = vram_usage.nisml_cache + vram_usage.nisml_representative_sample_counts +
+											vram_usage.nisml_representative_write_locks + vram_usage.nisml_representative_ready + vram_usage.nisml_cache_ready +
+											vram_usage.nisml_pending_cell_count;
 
-			std::vector<char> illumination_aware_vram_tooltip_buffer(4096);
-			snprintf(
-				illumination_aware_vram_tooltip_buffer.data(), illumination_aware_vram_tooltip_buffer.size(),
-				"Breakdown:\n"
-				"  - KD-tree node structure: %.3fMB\n"
-				"    - Nodes: %.3fMB\n"
-				"    - Node bounds: %.3fMB\n"
-				"    - Node count: %.3fMB\n"
-				"  - Guiding-cell management: %.3fMB\n"
-				"    - Active guiding nodes: %.3fMB\n"
-				"    - Active guiding node count: %.3fMB\n"
-				"    - Needs-split flags: %.3fMB\n"
-				"    - Guiding distribution count: %.3fMB\n"
-				"    - Current frontier and count: %.3fMB\n"
-				"    - Next frontier and count: %.3fMB\n"
-				"  - Training buffers: %.3fMB\n"
-				"    - Direct-illumination training samples and count: %.3fMB\n"
-				"    - NEE distribution training records and count: %.3fMB\n"
-				"  - Spatial statistics: %.3fMB\n"
-				"    - Batch signatures: %.3fMB\n"
-				"    - History signatures: %.3fMB\n"
-				"    - Batch spatial moments: %.3fMB\n"
-				"    - History spatial moments: %.3fMB\n"
-				"  - Final NEE distributions: %.3fMB\n"
-				"    - Cut-slot probabilities: %.3fMB\n"
-				"    - Cut-slot CDFs: %.3fMB\n"
-				"  - Per-cell distribution history: %.3fMB\n"
-				"    - Cell sample count: %.3fMB\n"
-				"    - Cell normal sums (X/Y/Z): %.3fMB\n"
-				"    - Cell normal count: %.3fMB\n"
-				"  - Per-cut distribution history: %.3fMB\n"
-				"    - Conditional second moments: %.3fMB\n"
-				"    - Per-cut history sample counts: %.3fMB\n"
-				"  - Per-cut batch statistics: %.3fMB\n"
-				"    - Second-moment sums: %.3fMB\n"
-				"    - Batch sample counts: %.3fMB\n"
-				"  - Global prior distribution: %.3fMB\n"
-				"    - Prior PDFs: %.3fMB\n"
-				"    - Prior CDFs: %.3fMB",
-				node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
-				guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
-				vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
-				(vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
-				(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, training_buffer_bytes / 1000000.0f,
-				(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f,
-				(vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
-				vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-				vram_usage.history_spatial_moments / 1000000.0f, final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
-				vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f, vram_usage.history_per_cell_sample_count / 1000000.0f,
-				(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) / 1000000.0f,
-				vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
-				vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
-				per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
-				vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
-				vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
-			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip_buffer.data());
+			std::string illumination_aware_vram_tooltip =
+				std::format("Breakdown:\n"
+							"  - KD-tree node structure: {:.3f}MB\n"
+							"    - Nodes: {:.3f}MB\n"
+							"    - Node bounds: {:.3f}MB\n"
+							"    - Node count: {:.3f}MB\n"
+							"  - Guiding-cell management: {:.3f}MB\n"
+							"    - Active guiding nodes: {:.3f}MB\n"
+							"    - Active guiding node count: {:.3f}MB\n"
+							"    - Needs-split flags: {:.3f}MB\n"
+							"    - Guiding distribution count: {:.3f}MB\n"
+							"    - Current frontier and count: {:.3f}MB\n"
+							"    - Next frontier and count: {:.3f}MB\n"
+							"  - Direct-illumination training buffers: {:.3f}MB\n"
+							"    - Training samples and count: {:.3f}MB\n"
+							"  - Spatial statistics: {:.3f}MB\n"
+							"    - Batch signatures: {:.3f}MB\n"
+							"    - History signatures: {:.3f}MB\n"
+							"    - Batch spatial moments: {:.3f}MB\n"
+							"    - History spatial moments: {:.3f}MB\n",
+							node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f,
+							vram_usage.node_count / 1000000.0f, guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
+							vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f,
+							vram_usage.guiding_distribution_count / 1000000.0f, (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
+							(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
+							(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+							vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+							vram_usage.history_spatial_moments / 1000000.0f);
+
+			if (using_learnt_nee_distributions)
+			{
+				std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
+				std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
+				std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
+													 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+													 vram_usage.history_per_cell_normal_count;
+				std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
+				std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
+				std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
+
+				illumination_aware_vram_tooltip += std::format(
+					"  - NEE distribution training buffers: {:.3f}MB\n"
+					"    - Training records and count: {:.3f}MB\n"
+					"  - Final NEE distributions: {:.3f}MB\n"
+					"    - Cut-slot probabilities: {:.3f}MB\n"
+					"    - Cut-slot CDFs: {:.3f}MB\n"
+					"  - Per-cell distribution history: {:.3f}MB\n"
+					"    - Cell sample count: {:.3f}MB\n"
+					"    - Cell normal sums (X/Y/Z): {:.3f}MB\n"
+					"    - Cell normal count: {:.3f}MB\n"
+					"  - Per-cut distribution history: {:.3f}MB\n"
+					"    - Conditional second moments: {:.3f}MB\n"
+					"    - Per-cut history sample counts: {:.3f}MB\n"
+					"  - Per-cut batch statistics: {:.3f}MB\n"
+					"    - Second-moment sums: {:.3f}MB\n"
+					"    - Batch sample counts: {:.3f}MB\n"
+					"  - Global prior distribution: {:.3f}MB\n"
+					"    - Prior PDFs: {:.3f}MB\n"
+					"    - Prior CDFs: {:.3f}MB\n",
+					nee_training_buffer_bytes / 1000000.0f, (vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f,
+					final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
+					vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f, vram_usage.history_per_cell_sample_count / 1000000.0f,
+					(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) /
+						1000000.0f,
+					vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
+					vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
+					per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
+					vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
+					vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
+			}
+
+			if (using_nisml)
+			{
+				illumination_aware_vram_tooltip +=
+					std::format("  - NISML cache buffers: {:.3f}MB\n"
+								"    - Cache entries: {:.3f}MB\n"
+								"    - Representative sample counts: {:.3f}MB\n"
+								"    - Representative write locks: {:.3f}MB\n"
+								"    - Representative ready flags: {:.3f}MB\n"
+								"    - Cache ready flags: {:.3f}MB\n"
+								"    - Pending cell count: {:.3f}MB",
+								nisml_cache_bytes / 1000000.0f, vram_usage.nisml_cache / 1000000.0f, vram_usage.nisml_representative_sample_counts / 1000000.0f,
+								vram_usage.nisml_representative_write_locks / 1000000.0f, vram_usage.nisml_representative_ready / 1000000.0f,
+								vram_usage.nisml_cache_ready / 1000000.0f, vram_usage.nisml_pending_cell_count / 1000000.0f);
+			}
+
+			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (illumination_aware_kd_tree_render_pass)
