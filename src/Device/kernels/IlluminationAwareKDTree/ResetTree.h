@@ -48,7 +48,7 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 		*illumination_aware_kd_tree.training_sample_count							   = 0;
 		*illumination_aware_kd_tree.nee_learnt_distributions.nee_training_record_count = 0;
 		if (illumination_aware_kd_tree.nisml_pending_cell_count != nullptr)
-			*illumination_aware_kd_tree.nisml_pending_cell_count = 1;
+			*illumination_aware_kd_tree.nisml_pending_cell_count = ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
 
 		*illumination_aware_kd_tree.current_frontier_count = 0;
 		*illumination_aware_kd_tree.next_frontier_count	   = 0;

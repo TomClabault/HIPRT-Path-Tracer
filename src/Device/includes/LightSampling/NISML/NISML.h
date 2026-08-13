@@ -112,13 +112,17 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 		illumination_aware_kd_tree.nisml_cache_ready != nullptr)
 	{
 		unsigned int node_index = illumination_aware_kd_tree.find_guiding_cell(shading_point);
-		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < illumination_aware_kd_tree.node_capacity &&
-			illumination_aware_kd_tree.nisml_cache_ready[node_index] != 0)
+		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < illumination_aware_kd_tree.node_capacity)
 		{
-			for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-				log_baseline_weights[cluster_index] = illumination_aware_kd_tree.nisml_cache[node_index].log_importances[cluster_index];
+			unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+			unsigned int cache_index = illumination_aware_kd_tree.get_nisml_cache_index(node_index, normal_face);
+			if (illumination_aware_kd_tree.nisml_cache_ready[cache_index] != 0)
+			{
+				for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
+					log_baseline_weights[cluster_index] = illumination_aware_kd_tree.nisml_cache[cache_index].log_importances[cluster_index];
 
-			return;
+				return;
+			}
 		}
 	}
 

@@ -42,11 +42,12 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_batch_spatial_moments, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_history_spatial_moments, new_node_capacity);
 
-		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_sample_counts, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_write_locks, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_ready, new_node_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache_ready, new_node_capacity);
+		unsigned int nisml_cache_entry_count = new_node_capacity * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache, nisml_cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_sample_counts, nisml_cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_write_locks, nisml_cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_representative_ready, nisml_cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_nisml_cache_ready, nisml_cache_entry_count);
 		GenericSoAHelpers::resize<DataContainer>(m_nisml_pending_cell_count, 1);
 
 		unsigned int normal_face_distribution_count = new_node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count);

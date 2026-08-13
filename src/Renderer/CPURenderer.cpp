@@ -768,9 +768,10 @@ void CPURenderer::pre_sample_update(int frame_number)
 	IlluminationAwareKDTreeDevice illumination_aware_kd_tree = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	unsigned int node_count_for_cache = *illumination_aware_kd_tree.node_count;
+	unsigned int cache_entry_count	  = node_count_for_cache * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
 	if (illumination_aware_kd_tree.nisml_pending_cell_count->load() > 0u)
-		for (unsigned int node_index = 0; node_index < node_count_for_cache; node_index++)
-			IlluminationAwareKDTree_BuildNISMLCaches(illumination_aware_kd_tree, m_render_data, node_index);
+		for (unsigned int cache_index = 0; cache_index < cache_entry_count; cache_index++)
+			IlluminationAwareKDTree_BuildNISMLCaches(illumination_aware_kd_tree, m_render_data, cache_index);
 #endif
 	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int node_count				 = *illumination_aware_kd_tree.node_count;

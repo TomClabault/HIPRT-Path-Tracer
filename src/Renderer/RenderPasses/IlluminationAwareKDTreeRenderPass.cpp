@@ -247,7 +247,8 @@ void IlluminationAwareKDTreeRenderPass::build_nisml_caches(HIPRTRenderData& rend
 	HIPRTRenderData cache_render_data			 = render_data;
 	cache_render_data.illumination_aware_kd_tree = illumination_aware_kd_tree;
 	void* launch_args[]							 = { &illumination_aware_kd_tree, &cache_render_data };
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, node_count, 1, launch_args,
+	unsigned int cache_entry_count				 = node_count * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, cache_entry_count, 1, launch_args,
 																									m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }

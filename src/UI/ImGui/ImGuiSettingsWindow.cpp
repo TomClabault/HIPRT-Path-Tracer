@@ -3954,7 +3954,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			if (use_neural_many_lights)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::SeparatorText("Neural importance sampling of many lights");
+				ImGui::SeparatorText("Neural many lights");
 
 				static int current_tree_cut_size_neural_many_lights =
 					m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights();
@@ -4012,6 +4012,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
+					{
+						nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
+
 					if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f,
 										   "%.1f%%"))
 					{
@@ -4023,13 +4030,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
 						m_render_window->set_render_dirty(true);
 					ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
-
-					if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
-					{
-						nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
 
 					if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
 						m_render_window->set_render_dirty(true);

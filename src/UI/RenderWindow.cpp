@@ -46,6 +46,7 @@ extern ImGuiLogger g_imgui_logger;
 //	for the subtree wide root clusters.
 //		Or maybe a single MLP that does all that
 //	- How to to NISML but on 1024 root node clusters?
+//  - Why is it that 50% of training samples budget doesn't learn much faster than 15%? What is the theory behind that?
 
 //
 // Summary of all the learnt NEE distributions issues so far:
