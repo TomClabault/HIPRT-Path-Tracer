@@ -81,6 +81,9 @@ inline NISMLTrain(
 #if NISML_GPU
 #if NISML_HAS_WMMA
 	fp16(*errors_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = &training_buffer[ERROR_BUFFER_OFFSET];
+	float* output_probabilities_buffer							  = reinterpret_cast<float*>(&training_buffer[0][0]);
+	// The float probability matrix occupies the first 128 fp16 rows, so place output errors in the non-overlapping second error bank.
+	unsigned int output_errors_offset = NeuralImportanceSamplingMLP::ERROR_WIDTH;
 
 	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
@@ -116,14 +119,16 @@ inline NISMLTrain(
 	mlp.forward_single_thread(input, neurons_activations);
 #endif
 
+#if !NISML_GPU || !NISML_HAS_WMMA
 	// Stores either the output gradients or the probabilities of the clusters, this avoids using two separate arrays when only one can do the job
 	float output_gradient_or_probabilities[NISML_MAX_CLUSTER_COUNT] = {};
+	float* cluster_log_baseline_weights_or_probabilities			= output_gradient_or_probabilities;
+#endif
 #if !NISML_GPU || !NISML_HAS_WMMA
 	// Not needed in the WMMA path, we can just read the residuals from sample_activations buffer
 	float residuals[NISML_MAX_CLUSTER_COUNT] = {};
 #endif
 	float input_gradients[NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE] = {};
-	float* cluster_log_baseline_weights_or_probabilities					= output_gradient_or_probabilities;
 	bool valid_softmax														= false;
 	bool valid_weight														= false;
 	float weight															= 0.0f;
@@ -156,8 +161,13 @@ inline NISMLTrain(
 
 	if (valid_record)
 	{
+#if NISML_GPU && NISML_HAS_WMMA
+		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
+										 record.alpha_x, record.alpha_y, output_probabilities_buffer, NeuralImportanceSamplingMLP::BLOCK_SIZE, threadIdx.x);
+#else
 		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
 										 record.alpha_x, record.alpha_y, cluster_log_baseline_weights_or_probabilities);
+#endif
 	}
 
 #if NISML_GPU && NISML_HAS_WMMA
@@ -167,7 +177,13 @@ inline NISMLTrain(
 
 	if (valid_record)
 	{
-#if NISML_HAS_WMMA
+#if NISML_GPU && NISML_HAS_WMMA
+		// On WMMA we can just read the residuals from the sample_activations buffer, no need to copy them to a separate array
+		valid_softmax =
+			evaluate_nisml_softmax(output_probabilities_buffer,
+								   sample_activations + NeuralImportanceSamplingMLP::get_neuron_data_index(NeuralImportanceSamplingMLP::LAYER_COUNT - 1, 0),
+								   render_data.nisml.cluster_count, NeuralImportanceSamplingMLP::BLOCK_SIZE, threadIdx.x);
+#elif NISML_HAS_WMMA
 		// On WMMA we can just read the residuals from the sample_activations buffer, no need to copy them to a separate array
 		valid_softmax =
 			evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities,
@@ -205,21 +221,20 @@ inline NISMLTrain(
 		if (valid_weight)
 		{
 			valid_training_sample = true;
+#if !NISML_GPU || !NISML_HAS_WMMA
 			for (unsigned int output_index = 0; output_index < render_data.nisml.cluster_count; output_index++)
 				output_gradient_or_probabilities[output_index] =
 					weight * (cluster_log_baseline_weights_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));
+#endif
 		}
 		else
 		{
+#if !NISML_GPU || !NISML_HAS_WMMA
 			for (unsigned int output_index = 0; output_index < NISML_MAX_CLUSTER_COUNT; output_index++)
 				output_gradient_or_probabilities[output_index] = 0.0f;
+#endif
 		}
 	}
-
-#if NISML_GPU && NISML_HAS_WMMA
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_GRADIENT, profile_start);
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-#endif
 
 #if NISML_GPU
 #if NISML_HAS_WMMA
@@ -227,14 +242,34 @@ inline NISMLTrain(
 	// have some headroom when during backpropagation (the errors in the hidden layer may grow)
 	constexpr float TARGET_MAX_ERROR = 1024.0f;
 
+	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	float error_scale	 = 1.0f;
 	float maximum_weight = block_reduce<NeuralImportanceSamplingMLP::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
 	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_ERROR_SCALE, profile_start);
 
+	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
+	for (unsigned int output_index = 0; output_index < NeuralImportanceSamplingMLP::OUTPUT_SIZE_PADDED_WMMA; output_index++)
+	{
+		float output_gradient = 0.0f;
+		if (valid_training_sample && output_index < render_data.nisml.cluster_count)
+			output_gradient = weight * (output_probabilities_buffer[output_index * NeuralImportanceSamplingMLP::BLOCK_SIZE + threadIdx.x] -
+										(output_index == record.cluster_index ? 1.0f : 0.0f));
+
+		errors_buffer[output_errors_offset + output_index][threadIdx.x] = static_cast<fp16>(output_gradient * error_scale);
+	}
+	__syncthreads();
+
+	// The probability scratch overlaps the default error bank, so copy the finished output errors after the scratch is no longer needed.
+	for (unsigned int output_index = 0; output_index < NeuralImportanceSamplingMLP::OUTPUT_SIZE_PADDED_WMMA; output_index++)
+		errors_buffer[output_index][threadIdx.x] = errors_buffer[output_errors_offset + output_index][threadIdx.x];
+	__syncthreads();
+
+	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_GRADIENT, profile_start);
+
 	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, input_gradients,
-							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, output_gradient_or_probabilities, error_scale, valid_training_sample
+							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, nullptr, error_scale, valid_training_sample, true
 #if NISML_HAS_WMMA
 							 ,
 							 profile_record

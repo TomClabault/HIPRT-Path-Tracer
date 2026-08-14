@@ -99,13 +99,15 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 												   float alpha_x,
 
 												   float alpha_y,
-												   float* log_baseline_weights)
+												   float* log_baseline_weights,
+												   unsigned int output_stride = 1,
+												   unsigned int output_index  = 0)
 {
 	const unsigned int invalid_node_index = 0xFFFFFFFF;
 	unsigned int cluster_count			  = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-		log_baseline_weights[cluster_index] = -INFINITY;
+		log_baseline_weights[cluster_index * output_stride + output_index] = -INFINITY;
 
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr)
@@ -118,7 +120,8 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 			if (kd_tree_device.nisml.nisml_cache_ready[cache_index] != 0)
 			{
 				for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-					log_baseline_weights[cluster_index] = kd_tree_device.nisml.nisml_cache[cache_index].log_importances[cluster_index];
+					log_baseline_weights[cluster_index * output_stride + output_index] =
+						kd_tree_device.nisml.nisml_cache[cache_index].log_importances[cluster_index];
 
 				return;
 			}
@@ -140,22 +143,27 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 		float importance = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
 														 sg_specular_weight, alpha_x, alpha_y);
 		if (importance > 0.0f)
-			log_baseline_weights[cluster_index] = logf(importance);
+			log_baseline_weights[cluster_index * output_stride + output_index] = logf(importance);
 	}
 }
 
 template <typename residual_type>
-HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_probabilities, const residual_type* residuals, unsigned int cluster_count)
+HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_probabilities,
+										 const residual_type* residuals,
+										 unsigned int cluster_count,
+										 unsigned int output_stride = 1,
+										 unsigned int output_index	= 0)
 {
 	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
 	float maximum_combined_logit = -INFINITY;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
+		unsigned int output_value_index = cluster_index * output_stride + output_index;
+		if (in_out_log_baseline_weights_probabilities[output_value_index] == -INFINITY)
 			continue;
 
-		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
+		float combined_logit = in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index]);
 		if (combined_logit > maximum_combined_logit)
 			maximum_combined_logit = combined_logit;
 	}
@@ -166,10 +174,11 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 	float exponential_denominator = 0.0f;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
+		unsigned int output_value_index = cluster_index * output_stride + output_index;
+		if (in_out_log_baseline_weights_probabilities[output_value_index] == -INFINITY)
 			continue;
 
-		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
+		float combined_logit = in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index]);
 		exponential_denominator += hippt::intrin_expf(combined_logit - maximum_combined_logit);
 	}
 
@@ -178,15 +187,16 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
-		if (in_out_log_baseline_weights_probabilities[cluster_index] == -INFINITY)
+		unsigned int output_value_index = cluster_index * output_stride + output_index;
+		if (in_out_log_baseline_weights_probabilities[output_value_index] == -INFINITY)
 		{
-			in_out_log_baseline_weights_probabilities[cluster_index] = 0.0f;
+			in_out_log_baseline_weights_probabilities[output_value_index] = 0.0f;
 
 			continue;
 		}
 
-		float combined_logit = in_out_log_baseline_weights_probabilities[cluster_index] + static_cast<float>(residuals[cluster_index]);
-		in_out_log_baseline_weights_probabilities[cluster_index] = hippt::intrin_expf(combined_logit - maximum_combined_logit) / exponential_denominator;
+		float combined_logit = in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index]);
+		in_out_log_baseline_weights_probabilities[output_value_index] = hippt::intrin_expf(combined_logit - maximum_combined_logit) / exponential_denominator;
 	}
 
 	return true;

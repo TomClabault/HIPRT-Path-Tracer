@@ -361,7 +361,8 @@ struct MLPFullyFusedDevice
 																unsigned int input_gradient_count,
 																const float* output_gradient,
 																bool count_training_sample,
-																float error_scale
+																float error_scale,
+																bool output_errors_initialized
 #if NISML_HAS_WMMA
 																,
 																NISMLTrainProfileRecord* profile_record
@@ -391,18 +392,21 @@ struct MLPFullyFusedDevice
 		unsigned int output_errors_offset			 = (output_layer_index & 1) * errors_ping_pong_size;
 
 		NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-		for (unsigned int neuron_index = threadIdx.x; neuron_index < OUTPUT_SIZE_PADDED_WMMA * BlockSize_; neuron_index += BlockSize_)
+		if (!output_errors_initialized)
 		{
-			unsigned int output_neuron = neuron_index / BlockSize_;
-			unsigned int sample_index  = neuron_index % BlockSize_;
-			fp16 error				   = static_cast<fp16>(0.0f);
-
-			if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
+			for (unsigned int neuron_index = threadIdx.x; neuron_index < OUTPUT_SIZE_PADDED_WMMA * BlockSize_; neuron_index += BlockSize_)
 			{
-				error = static_cast<fp16>(output_gradient[output_neuron] * error_scale);
-			}
+				unsigned int output_neuron = neuron_index / BlockSize_;
+				unsigned int sample_index  = neuron_index % BlockSize_;
+				fp16 error				   = static_cast<fp16>(0.0f);
 
-			errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
+				if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
+				{
+					error = static_cast<fp16>(output_gradient[output_neuron] * error_scale);
+				}
+
+				errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
+			}
 		}
 		__syncthreads();
 		NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_ERROR_INITIALIZATION, profile_start);
@@ -594,7 +598,8 @@ struct MLPFullyFusedDevice
 										   unsigned int input_gradient_count,
 										   const float* output_gradient,
 										   float error_scale,
-										   bool count_training_sample
+										   bool count_training_sample,
+										   bool output_errors_initialized
 #if NISML_HAS_WMMA
 										   ,
 										   NISMLTrainProfileRecord* profile_record
@@ -602,7 +607,7 @@ struct MLPFullyFusedDevice
 	) const
 	{
 		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, input_gradients,
-												  input_gradient_count, output_gradient, count_training_sample, error_scale
+												  input_gradient_count, output_gradient, count_training_sample, error_scale, output_errors_initialized
 #if NISML_HAS_WMMA
 												  ,
 												  profile_record
