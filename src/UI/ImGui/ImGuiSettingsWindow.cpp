@@ -5,6 +5,8 @@
 
 #include "Compiler/GPUKernelCompiler.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "HostDeviceCommon/RenderSettings.h"
@@ -3961,7 +3963,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 
 			bool use_neural_many_lights =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
+				ILLUMINATION_AWARE_KD_TREE_IS_NISML(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+													global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 			if (use_neural_many_lights)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4050,11 +4053,12 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			}
 		}
 
-		int direct_light_nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-		bool using_illumination_aware_kd_tree =
-			direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
-		bool using_learnt_nee_distributions = direct_light_nee_estimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS;
-		bool using_nisml					= direct_light_nee_estimator == LSS_NEURAL_MANY_LIGHTS;
+		int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+		int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+		bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
+		bool using_learnt_nee_distributions =
+			ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(direct_light_nee_estimator, direct_light_sampling_strategy);
+		bool using_nisml					  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
 		if (using_illumination_aware_kd_tree)
 		{
 			if (ImGui::CollapsingHeader("Illumination-aware KD-tree"))
@@ -4120,8 +4124,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
 					std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 					std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-															vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-															vram_usage.history_per_cell_normal_count;
+																vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+																vram_usage.history_per_cell_normal_count;
 					std::size_t per_cut_history_bytes = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
 					std::size_t per_cut_batch_bytes	  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
 					std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;

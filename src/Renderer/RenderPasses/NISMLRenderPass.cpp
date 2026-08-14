@@ -7,6 +7,7 @@
 #include "Renderer/RenderPasses/NISMLRenderPass.h"
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include <algorithm>
 #include <cstring>
@@ -322,7 +323,8 @@ void NISMLRenderPass::reset(bool reset_by_camera_movement)
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
+	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 float& NISMLRenderPass::get_training_record_percentage()
