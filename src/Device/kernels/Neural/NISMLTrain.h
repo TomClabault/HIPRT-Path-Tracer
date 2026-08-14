@@ -43,8 +43,10 @@ inline NISMLTrain(
 #if NISML_GPU
 #if NISML_HAS_WMMA
 	// The second activation ping-pong region is unused after forward_train_wmma() and is reused for backpropagation errors.
-	__shared__ fp16
-		training_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH + NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+	// The error buffer is shifted into the activation region that is no longer live during backpropagation.
+	constexpr unsigned int ERROR_BUFFER_OFFSET =
+		hippt::max(NeuralImportanceSamplingMLP::ERROR_WIDTH, NeuralImportanceSamplingMLP::ACTIVATION_WIDTH - NeuralImportanceSamplingMLP::ERROR_WIDTH);
+	__shared__ fp16 training_buffer[ERROR_BUFFER_OFFSET + NeuralImportanceSamplingMLP::ERROR_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
 	fp16(*activations_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = training_buffer;
 #else
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
@@ -78,7 +80,7 @@ inline NISMLTrain(
 
 #if NISML_GPU
 #if NISML_HAS_WMMA
-	fp16(*errors_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = &training_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH];
+	fp16(*errors_buffer)[NeuralImportanceSamplingMLP::BLOCK_SIZE] = &training_buffer[ERROR_BUFFER_OFFSET];
 
 	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
