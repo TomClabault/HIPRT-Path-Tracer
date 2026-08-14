@@ -8,6 +8,7 @@
 
 #include "Renderer/RenderPasses/RenderPass.h"
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -63,21 +64,12 @@ public:
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();
 
 private:
-	// Launches all the dependencies (recursively) of the given render pass and
-	// then launches the given render pass.
-	void launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
-											  HIPRTRenderData& render_data,
-											  GPUKernelCompilerOptions& compiler_options);
-	// Calls post_sample_update_async() on all dependencies (recursively) before calling it on the given render pass.
-	void post_sample_update_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
-														  HIPRTRenderData& render_data,
-														  GPUKernelCompilerOptions& compiler_options);
-
-	// Whether or not launch() has been called on a given render pass this frame.
-	// This is used to know whether a render pass has already been launched this frame
-	std::unordered_map<RenderPass*, bool> m_render_pass_launched_this_frame_yet;
-	// Whether or not post_sample_update_async() has been called on a given render pass during the current update
-	std::unordered_map<RenderPass*, bool> m_render_pass_post_sample_updated_this_frame;
+	// Visits all render passes after recursively visiting their dependencies.
+	// Each render pass is visited at most once during a traversal.
+	void traverse_render_passes_in_dependency_order(const std::function<void(RenderPass*)>& callback);
+	void traverse_render_pass_in_dependency_order(std::shared_ptr<RenderPass> render_pass,
+												  std::unordered_map<RenderPass*, bool>& visited_render_passes,
+												  const std::function<void(RenderPass*)>& callback);
 	// Whether or not launch(), called on a given render pass, returned true this frame
 	//
 	// Because calling launch() on a render pass may not *actually* launch the render pass on the GPU

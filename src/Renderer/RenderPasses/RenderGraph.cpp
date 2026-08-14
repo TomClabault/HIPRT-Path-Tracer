@@ -90,18 +90,22 @@ bool RenderGraph::pre_sample_update(float delta_time)
 
 bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	// Resetting the state of whether or not the render passes have been launched this frame or not
+	// Resetting the state of whether or not the render passes have been effectively launched this frame or not
 	for (auto& name_to_render_pass : m_render_passes)
-	{
-		m_render_pass_launched_this_frame_yet[name_to_render_pass.second.get()] = false;
-
 		if (m_new_frame)
 			m_render_pass_effectively_launched_this_frame[name_to_render_pass.second.get()] = false;
-	}
 
 	// Launching all the render passes
-	for (auto& name_to_render_pass : m_render_passes)
-		launch_render_pass_with_dependencies(name_to_render_pass.second, render_data, compiler_options);
+	traverse_render_passes_in_dependency_order(
+		[this, &render_data, &compiler_options](RenderPass* render_pass)
+		{
+			bool effectively_launched = render_pass->launch_async(render_data, compiler_options);
+
+			if (effectively_launched)
+				// Only setting the effectively launched to true if the render pass was launched
+				// Otherwise, this leaves it at its current value
+				m_render_pass_effectively_launched_this_frame[render_pass] = true;
+		});
 
 	// This is not a fresh frame anymore
 	m_new_frame = false;
@@ -109,65 +113,39 @@ bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOp
 	return true;
 }
 
-void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
-													   HIPRTRenderData& render_data,
-													   GPUKernelCompilerOptions& compiler_options)
+void RenderGraph::traverse_render_pass_in_dependency_order(std::shared_ptr<RenderPass> render_pass,
+														   std::unordered_map<RenderPass*, bool>& visited_render_passes,
+														   const std::function<void(RenderPass*)>& callback)
 {
 	if (render_pass == nullptr)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"The render pass \"%s\" wasn't added to the RenderGraph but appears as a dependency of another render pass!",
-								render_pass->get_name().c_str());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "A null render pass appears as a dependency of another render pass!");
 
 		return;
 	}
 
-	if (m_render_pass_launched_this_frame_yet[render_pass.get()] == true)
-		// This pas has already been launched
+	if (visited_render_passes[render_pass.get()])
 		return;
 
-	// Launching all the dependencies first
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
-		launch_render_pass_with_dependencies(dependency, render_data, compiler_options);
-	// Now launching the render pass itself since all dependencies have been launched
-	bool effectively_launched								 = render_pass->launch_async(render_data, compiler_options);
-	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
-
-	if (effectively_launched)
-		// Only setting the effectively launched to true if the render pass was launched
-		// Otherwise, this leaves it at its current value
-		m_render_pass_effectively_launched_this_frame[render_pass.get()] = true;
+		traverse_render_pass_in_dependency_order(dependency, visited_render_passes, callback);
+	// Visiting the render pass itself since all dependencies have been visited
+	callback(render_pass.get());
+	visited_render_passes[render_pass.get()] = true;
 }
 
 void RenderGraph::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	for (auto& name_to_render_pass : m_render_passes)
-		m_render_pass_post_sample_updated_this_frame[name_to_render_pass.second.get()] = false;
-
-	for (auto& name_to_render_pass : m_render_passes)
-		post_sample_update_render_pass_with_dependencies(name_to_render_pass.second, render_data, compiler_options);
+	traverse_render_passes_in_dependency_order([&render_data, &compiler_options](RenderPass* render_pass)
+											   { render_pass->post_sample_update_async(render_data, compiler_options); });
 }
 
-void RenderGraph::post_sample_update_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
-																   HIPRTRenderData& render_data,
-																   GPUKernelCompilerOptions& compiler_options)
+void RenderGraph::traverse_render_passes_in_dependency_order(const std::function<void(RenderPass*)>& callback)
 {
-	if (render_pass == nullptr)
-	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"A null render pass appears as a dependency of another render pass during post-sample update!");
+	std::unordered_map<RenderPass*, bool> visited_render_passes;
 
-		return;
-	}
-
-	if (m_render_pass_post_sample_updated_this_frame[render_pass.get()])
-		return;
-
-	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
-		post_sample_update_render_pass_with_dependencies(dependency, render_data, compiler_options);
-
-	render_pass->post_sample_update_async(render_data, compiler_options);
-	m_render_pass_post_sample_updated_this_frame[render_pass.get()] = true;
+	for (auto& name_to_render_pass : m_render_passes)
+		traverse_render_pass_in_dependency_order(name_to_render_pass.second, visited_render_passes, callback);
 }
 
 void RenderGraph::update_render_data()
