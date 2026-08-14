@@ -12,7 +12,8 @@
 #define NISML_TRAIN_PROFILING_DISABLED
 
 #include "Device/includes/Neural/InputEncodings.h"
-#include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDeviceCPU.h"
+#include "Device/includes/Neural/MLPFullyFusedDeviceGPU.h"
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
@@ -116,13 +117,28 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
 #define NISML_ADAM_BETA2   0.999f
 #define NISML_ADAM_EPSILON 1e-8f
 
-using NeuralImportanceSamplingMLP = MLPFullyFusedDevice<NISML_INPUT_SIZE_ENCODED,
-														NISML_HIDDEN_LAYER_COUNT,
-														NISML_HIDDEN_LAYER_SIZE,
-														NISML_MAX_CLUSTER_COUNT,
-														NISML_THREAD_BLOCK_SIZE,
-														NISML_USE_BIASES,
-														MLPActivationFunction::RELU,
-														false>;
+using NeuralImportanceSamplingMLPCPU = MLPFullyFusedDeviceCPU<NISML_INPUT_SIZE_ENCODED,
+															  NISML_HIDDEN_LAYER_COUNT,
+															  NISML_HIDDEN_LAYER_SIZE,
+															  NISML_MAX_CLUSTER_COUNT,
+															  NISML_THREAD_BLOCK_SIZE,
+															  NISML_USE_BIASES,
+															  MLPActivationFunction::RELU,
+															  false>;
+
+using NeuralImportanceSamplingMLPGPU = MLPFullyFusedDeviceGPU<NISML_INPUT_SIZE_ENCODED,
+															  NISML_HIDDEN_LAYER_COUNT,
+															  NISML_HIDDEN_LAYER_SIZE,
+															  NISML_MAX_CLUSTER_COUNT,
+															  NISML_THREAD_BLOCK_SIZE,
+															  NISML_USE_BIASES,
+															  MLPActivationFunction::RELU,
+															  false>;
+
+#ifdef __KERNELCC__
+using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPGPU;
+#else
+using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPCPU;
+#endif
 
 #endif

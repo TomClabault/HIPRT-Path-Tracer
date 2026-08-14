@@ -3,29 +3,15 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_H
-#define DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_H
+#ifndef DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_GPU_H
+#define DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_GPU_H
 
-#include "Device/includes/FixIntellisense.h"
-#include "HostDeviceCommon/Maths/Math.h"
-
-#define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
-
-#ifdef __KERNELCC__
-#define NISML_GPU 1
-#else
-#define NISML_GPU 0
-#endif
-
+#include "Device/includes/Neural/MLPFullyFusedDeviceCommon.h"
 #include "HostDeviceCommon/Neural/NISMLTrainProfiling.h"
 
-#define PAD_SIZE_WMMA(size) ((size + 15) / 16 * 16)
-
-enum class MLPActivationFunction
-{
-	LEAKY_RELU,
-	RELU
-};
+#ifndef NISML_HAS_WMMA
+#define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
+#endif
 
 template <unsigned int InputSizeEncoded_,
 		  unsigned int HiddenLayerCount_,
@@ -35,55 +21,49 @@ template <unsigned int InputSizeEncoded_,
 		  bool UseBiases_							= true,
 		  MLPActivationFunction ActivationFunction_ = MLPActivationFunction::LEAKY_RELU,
 		  bool UseOutputActivation_					= false>
-struct MLPFullyFusedDevice
+struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncoded_,
+																 HiddenLayerCount_,
+																 HiddenLayerSize_,
+																 OutputSize_,
+																 BlockSize_,
+																 UseBiases_,
+																 ActivationFunction_,
+																 UseOutputActivation_>
 {
-	static constexpr unsigned int INPUT_SIZE_ENCODED	  = InputSizeEncoded_;
-	static constexpr unsigned int INPUT_SIZE_PADDED_WMMA  = PAD_SIZE_WMMA(INPUT_SIZE_ENCODED);
-	static constexpr unsigned int OUTPUT_SIZE_PADDED_WMMA = (OutputSize_ + 15) / 16 * 16;
-	static constexpr unsigned int LAYER_COUNT			  = HiddenLayerCount_ + 2;
-	static constexpr unsigned int NEURON_COUNT			  = INPUT_SIZE_PADDED_WMMA + OUTPUT_SIZE_PADDED_WMMA + (HiddenLayerCount_ * HiddenLayerSize_);
-	static constexpr unsigned int CONNECTIONS_COUNT		  = (INPUT_SIZE_PADDED_WMMA * HiddenLayerSize_) +
-													  ((HiddenLayerCount_ - 1) * HiddenLayerSize_ * HiddenLayerSize_) +
-													  (OUTPUT_SIZE_PADDED_WMMA * HiddenLayerSize_);
-	static constexpr unsigned int SAMPLES_PER_BLOCK = BlockSize_;
+	using Common = MLPFullyFusedDeviceCommon<InputSizeEncoded_,
+											 HiddenLayerCount_,
+											 HiddenLayerSize_,
+											 OutputSize_,
+											 BlockSize_,
+											 UseBiases_,
+											 ActivationFunction_,
+											 UseOutputActivation_>;
 
-	static constexpr unsigned int HIDDEN_LAYER_COUNT		   = HiddenLayerCount_;
-	static constexpr unsigned int HIDDEN_LAYER_SIZE			   = HiddenLayerSize_;
-	static constexpr unsigned int OUTPUT_SIZE				   = OutputSize_;
-	static constexpr unsigned int BLOCK_SIZE				   = BlockSize_;
-	static constexpr unsigned int ACTIVATION_WIDTH			   = hippt::max(INPUT_SIZE_PADDED_WMMA, hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA));
-	static constexpr unsigned int ERROR_WIDTH				   = hippt::max(HIDDEN_LAYER_SIZE, OUTPUT_SIZE_PADDED_WMMA);
-	static constexpr bool USE_BIASES						   = UseBiases_;
-	static constexpr MLPActivationFunction ACTIVATION_FUNCTION = ActivationFunction_;
-	static constexpr bool USE_OUTPUT_ACTIVATION				   = UseOutputActivation_;
-
-	struct InputLayer
-	{
-		float input[InputSizeEncoded_];
-	};
-
-	HIPRT_DEVICE static constexpr unsigned int get_layer_neuron_count(unsigned int layer)
-	{
-		return layer == 0 ? INPUT_SIZE_PADDED_WMMA : (layer == LAYER_COUNT - 1 ? OUTPUT_SIZE : HIDDEN_LAYER_SIZE);
-	}
-
-	HIPRT_DEVICE static constexpr unsigned int get_neuron_data_index(unsigned int layer, unsigned int neuron)
-	{
-		unsigned int offset = 0;
-		for (unsigned int l = 0; l < layer; l++)
-			offset += get_layer_neuron_count(l);
-
-		return offset + neuron;
-	}
-
-	HIPRT_DEVICE static constexpr unsigned int get_connection_data_index(unsigned int layer, unsigned int neuron_from, unsigned int neuron_to)
-	{
-		unsigned int offset = 0;
-		for (unsigned int l = 1; l < layer; l++)
-			offset += get_layer_neuron_count(l) * get_layer_neuron_count(l - 1);
-
-		return offset + (neuron_to * get_layer_neuron_count(layer - 1)) + neuron_from;
-	}
+	using Common::ACTIVATION_FUNCTION;
+	using Common::ACTIVATION_WIDTH;
+	using Common::BLOCK_SIZE;
+	using Common::connection_weights;
+	using Common::connection_weights_fp16;
+	using Common::CONNECTIONS_COUNT;
+	using Common::ERROR_WIDTH;
+	using Common::get_connection_data_index;
+	using Common::get_layer_neuron_count;
+	using Common::get_neuron_data_index;
+	using Common::gradient_biases;
+	using Common::gradient_weights;
+	using Common::HIDDEN_LAYER_COUNT;
+	using Common::HIDDEN_LAYER_SIZE;
+	using Common::INPUT_SIZE_ENCODED;
+	using Common::INPUT_SIZE_PADDED_WMMA;
+	using InputLayer = typename Common::InputLayer;
+	using Common::last_training_sample_count;
+	using Common::LAYER_COUNT;
+	using Common::NEURON_COUNT;
+	using Common::neurons_biases;
+	using Common::OUTPUT_SIZE;
+	using Common::OUTPUT_SIZE_PADDED_WMMA;
+	using Common::USE_BIASES;
+	using Common::USE_OUTPUT_ACTIVATION;
 
 	HIPRT_DEVICE void load_input(const float* input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
@@ -108,95 +88,6 @@ struct MLPFullyFusedDevice
 		__syncthreads();
 	}
 
-	HIPRT_DEVICE void load_input_ref(const float* input, float* out_activations) const
-	{
-		for (unsigned int input_index = 0; input_index < INPUT_SIZE_ENCODED; input_index++)
-			out_activations[input_index] = input[input_index];
-
-		for (unsigned int input_index = INPUT_SIZE_ENCODED; input_index < INPUT_SIZE_PADDED_WMMA; input_index++)
-			out_activations[input_index] = 0.0f;
-	}
-
-	HIPRT_DEVICE void forward_single_thread(const InputLayer& input, float* neurons_activations) const
-	{
-		load_input_ref(input.input, neurons_activations);
-
-		for (unsigned int layer = 1; layer < LAYER_COUNT; ++layer)
-		{
-			unsigned int previous_count	 = get_layer_neuron_count(layer - 1);
-			unsigned int current_count	 = get_layer_neuron_count(layer);
-			unsigned int previous_offset = get_neuron_data_index(layer - 1, 0);
-			unsigned int current_offset	 = get_neuron_data_index(layer, 0);
-
-			for (unsigned int neuron = 0; neuron < current_count; ++neuron)
-			{
-				float value = 0.0f;
-
-				if constexpr (USE_BIASES)
-					value += neurons_biases[current_offset + neuron];
-
-				for (unsigned int previous_neuron = 0; previous_neuron < previous_count; ++previous_neuron)
-				{
-					unsigned int connection = get_connection_data_index(layer, previous_neuron, neuron);
-
-					value += connection_weights[connection] * neurons_activations[previous_offset + previous_neuron];
-				}
-
-				if (layer != LAYER_COUNT - 1)
-					value = activation_function(value);
-				else if constexpr (USE_OUTPUT_ACTIVATION)
-					value = activation_function(value);
-
-				neurons_activations[current_offset + neuron] = value;
-			}
-		}
-	}
-
-	HIPRT_DEVICE void inference_single_thread(const InputLayer& input, float* output) const
-	{
-		float activations_a[ACTIVATION_WIDTH];
-		float activations_b[ACTIVATION_WIDTH];
-
-		load_input_ref(input.input, activations_a);
-
-		float* previous = activations_a;
-		float* current	= activations_b;
-
-		for (uint32_t layer = 1; layer < LAYER_COUNT; ++layer)
-		{
-			const uint32_t previous_count = get_layer_neuron_count(layer - 1);
-
-			const uint32_t current_count = get_layer_neuron_count(layer);
-
-			for (uint32_t neuron = 0; neuron < current_count; ++neuron)
-			{
-				float value = 0.0f;
-
-				if constexpr (USE_BIASES)
-					value += neurons_biases[get_neuron_data_index(layer, neuron)];
-
-				for (uint32_t previous_neuron = 0; previous_neuron < previous_count; ++previous_neuron)
-				{
-					const uint32_t connection = get_connection_data_index(layer, previous_neuron, neuron);
-
-					value += connection_weights[connection] * previous[previous_neuron];
-				}
-
-				if (layer != LAYER_COUNT - 1)
-					value = activation_function(value);
-
-				current[neuron] = value;
-			}
-
-			float* activation_swap = previous;
-			previous			   = current;
-			current				   = activation_swap;
-		}
-
-		for (uint32_t c = 0; c < OUTPUT_SIZE; ++c)
-			output[c] = previous[c];
-	}
-
 	HIPRT_DEVICE void forward_train_wmma(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										 fp16* train_activations_global,
 										 unsigned int sample_offset) const
@@ -205,7 +96,7 @@ struct MLPFullyFusedDevice
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
-#if NISML_GPU && NISML_HAS_WMMA
+#if NISML_HAS_WMMA
 		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
@@ -246,43 +137,43 @@ struct MLPFullyFusedDevice
 						fp16x16 neuron_weights_fragment;
 
 						unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
-						for (unsigned int w = 0; w < 16; w++)
-							neuron_weights_fragment[w] =
+						for (unsigned int weight_index = 0; weight_index < 16; weight_index++)
+							neuron_weights_fragment[weight_index] =
 								connection_weights_fp16[layer_connection_offset + (current_neuron_base + lane_id_wmma) * neurons_previous_layer +
-														previous_neuron_base + w];
+														previous_neuron_base + weight_index];
 
 						for (unsigned int sample_tile_index = 0; sample_tile_index < sample_tile_count; sample_tile_index++)
 						{
 							fp16x16 previous_activations_fragment;
 
 							unsigned int sample_base = sample_tile_index * 16;
-							for (unsigned int a = 0; a < 16; a++)
-								previous_activations_fragment[a] =
-									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + a][sample_base + lane_id_wmma];
+							for (unsigned int activation_index = 0; activation_index < 16; activation_index++)
+								previous_activations_fragment[activation_index] =
+									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + activation_index][sample_base + lane_id_wmma];
 
 							activation_tiles[sample_tile_index] = hippt::amdgcn_wmma_f16_16x16x16_f16_w32(
 								neuron_weights_fragment, previous_activations_fragment, activation_tiles[sample_tile_index]);
 						}
 					}
 
-					for (unsigned int n_tile = 0; n_tile < sample_tile_count; n_tile++)
+					for (unsigned int neuron_tile = 0; neuron_tile < sample_tile_count; neuron_tile++)
 					{
-						for (int ele = 0; ele < 8; ++ele)
+						for (int element = 0; element < 8; ++element)
 						{
-							unsigned int r = ele * 2 + lane_high;
-							unsigned int m = current_neuron_base + r;
-							unsigned int n = n_tile * 16 + lane_id_wmma;
+							unsigned int row	= element * 2 + lane_high;
+							unsigned int neuron = current_neuron_base + row;
+							unsigned int sample = neuron_tile * 16 + lane_id_wmma;
 
-							float val = activation_tiles[n_tile][ele * 2];
+							float value = activation_tiles[neuron_tile][element * 2];
 							if constexpr (USE_BIASES)
-								val += neurons_biases[layer_neuron_offset + m];
+								value += neurons_biases[layer_neuron_offset + neuron];
 							if (layer_index < LAYER_COUNT - 1)
-								val = activation_function(val);
+								value = this->activation_function(value);
 							else if constexpr (USE_OUTPUT_ACTIVATION)
-								val = activation_function(val);
+								value = this->activation_function(value);
 
-							activations_buffer[out_shared_mem_ping_pong_offset + m][n]							   = static_cast<fp16>(val);
-							train_activations_global[(sample_offset + n) * NEURON_COUNT + layer_neuron_offset + m] = static_cast<fp16>(val);
+							activations_buffer[out_shared_mem_ping_pong_offset + neuron][sample]							 = static_cast<fp16>(value);
+							train_activations_global[(sample_offset + sample) * NEURON_COUNT + layer_neuron_offset + neuron] = static_cast<fp16>(value);
 						}
 					}
 				}
@@ -337,9 +228,9 @@ struct MLPFullyFusedDevice
 							if constexpr (USE_BIASES)
 								activation += neurons_biases[layer_neuron_offset + neuron_index];
 							if (layer_index < LAYER_COUNT - 1)
-								activation = activation_function(activation);
+								activation = this->activation_function(activation);
 							else if constexpr (USE_OUTPUT_ACTIVATION)
-								activation = activation_function(activation);
+								activation = this->activation_function(activation);
 
 							activations_buffer[out_shared_mem_ping_pong_offset + neuron_index][sample_index] = static_cast<fp16>(activation);
 							train_activations_global[(sample_offset + sample_index) * NEURON_COUNT + layer_neuron_offset + neuron_index] =
@@ -376,7 +267,7 @@ struct MLPFullyFusedDevice
 		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ERROR_WIDTH, "Error buffer must fit the padded output layer");
 		static_assert(HIDDEN_LAYER_SIZE <= ERROR_WIDTH, "Error buffer must fit hidden layers");
 
-#if NISML_GPU && NISML_HAS_WMMA
+#if NISML_HAS_WMMA
 		unsigned int lane_id	  = threadIdx.x & 31;
 		unsigned int warp_id	  = threadIdx.x / 32;
 		unsigned int lane_id_wmma = lane_id & 15;
@@ -394,16 +285,14 @@ struct MLPFullyFusedDevice
 		NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 		if (!output_errors_initialized)
 		{
-			for (unsigned int neuron_index = threadIdx.x; neuron_index < OUTPUT_SIZE_PADDED_WMMA * BlockSize_; neuron_index += BlockSize_)
+			for (unsigned int linear_index = threadIdx.x; linear_index < OUTPUT_SIZE_PADDED_WMMA * BlockSize_; linear_index += BlockSize_)
 			{
-				unsigned int output_neuron = neuron_index / BlockSize_;
-				unsigned int sample_index  = neuron_index % BlockSize_;
+				unsigned int output_neuron = linear_index / BlockSize_;
+				unsigned int sample_index  = linear_index % BlockSize_;
 				fp16 error				   = static_cast<fp16>(0.0f);
 
 				if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
-				{
 					error = static_cast<fp16>(output_gradient[output_neuron] * error_scale);
-				}
 
 				errors_buffer[output_errors_offset + output_neuron][sample_index] = error;
 			}
@@ -557,7 +446,7 @@ struct MLPFullyFusedDevice
 					float propagated_error		 = static_cast<float>(errors_buffer[previous_errors_offset + previous_neuron][sample_index]);
 					float previous_activation	 = static_cast<float>(activations_buffer[previous_neuron][sample_index]);
 
-					propagated_error *= activation_function_derivative(previous_activation);
+					propagated_error *= this->activation_function_derivative(previous_activation);
 					errors_buffer[previous_errors_offset + previous_neuron][sample_index] = static_cast<fp16>(propagated_error);
 				}
 			}
@@ -614,140 +503,6 @@ struct MLPFullyFusedDevice
 #endif
 		);
 	}
-
-	HIPRT_DEVICE void backpropagation_from_output_gradient(float* neurons_activations,
-														   const float* output_gradient,
-														   float* input_gradients			 = nullptr,
-														   unsigned int input_gradient_count = 0) const
-	{
-		float neurons_errors[NEURON_COUNT];
-
-		unsigned int output_layer_index = LAYER_COUNT - 1;
-		for (unsigned int neuron_index_in_output_layer = 0; neuron_index_in_output_layer < get_layer_neuron_count(output_layer_index);
-			 neuron_index_in_output_layer++)
-		{
-			unsigned int current_neuron_data_index = get_neuron_data_index(output_layer_index, neuron_index_in_output_layer);
-			float output_error					   = output_gradient[neuron_index_in_output_layer];
-
-			neurons_errors[current_neuron_data_index] = output_error;
-			if constexpr (USE_BIASES)
-				hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], output_error);
-
-			for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(output_layer_index - 1); previous_neuron_index++)
-			{
-				unsigned int previous_neuron_data_index = get_neuron_data_index(output_layer_index - 1, previous_neuron_index);
-				unsigned int connection_data_index		= get_connection_data_index(output_layer_index, previous_neuron_index, neuron_index_in_output_layer);
-
-				float previous_activation = neurons_activations[previous_neuron_data_index];
-				hippt::atomic_fetch_add(&gradient_weights[connection_data_index], output_error * previous_activation);
-			}
-		}
-
-		for (unsigned int layer_index = LAYER_COUNT - 2; layer_index > 0; layer_index--)
-		{
-			for (unsigned int neuron_index = 0; neuron_index < get_layer_neuron_count(layer_index); neuron_index++)
-			{
-				unsigned int current_neuron_data_index = get_neuron_data_index(layer_index, neuron_index);
-				float d_cost_d_z					   = 0.0f;
-
-				for (unsigned int next_neuron_index = 0; next_neuron_index < get_layer_neuron_count(layer_index + 1); next_neuron_index++)
-				{
-					unsigned int next_neuron_data_index = get_neuron_data_index(layer_index + 1, next_neuron_index);
-					unsigned int connection_data_index	= get_connection_data_index(layer_index + 1, neuron_index, next_neuron_index);
-
-					d_cost_d_z += neurons_errors[next_neuron_data_index] * connection_weights[connection_data_index];
-				}
-
-				float current_activation = neurons_activations[current_neuron_data_index];
-				d_cost_d_z *= activation_function_derivative(current_activation);
-
-				neurons_errors[current_neuron_data_index] = d_cost_d_z;
-				if constexpr (USE_BIASES)
-					hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_z);
-
-				for (unsigned int previous_neuron_index = 0; previous_neuron_index < get_layer_neuron_count(layer_index - 1); previous_neuron_index++)
-				{
-					unsigned int previous_neuron_data_index = get_neuron_data_index(layer_index - 1, previous_neuron_index);
-					unsigned int connection_data_index		= get_connection_data_index(layer_index, previous_neuron_index, neuron_index);
-
-					float previous_activation = neurons_activations[previous_neuron_data_index];
-					hippt::atomic_fetch_add(&gradient_weights[connection_data_index], d_cost_d_z * previous_activation);
-				}
-			}
-		}
-
-		if (input_gradients != nullptr)
-		{
-			unsigned int first_hidden_layer_offset	   = get_neuron_data_index(1, 0);
-			unsigned int first_layer_connection_offset = get_connection_data_index(1, 0, 0);
-			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
-			{
-				float input_gradient = 0.0f;
-				for (unsigned int hidden_index = 0; hidden_index < HIDDEN_LAYER_SIZE; hidden_index++)
-				{
-					unsigned int connection_index = first_layer_connection_offset + hidden_index * INPUT_SIZE_PADDED_WMMA + input_index;
-					input_gradient += neurons_errors[first_hidden_layer_offset + hidden_index] * connection_weights[connection_index];
-				}
-
-				input_gradients[input_index] = input_gradient;
-			}
-		}
-
-		hippt::atomic_fetch_add(last_training_sample_count, 1u);
-	}
-
-	HIPRT_DEVICE constexpr float leaky_ReLU(float x) const
-	{
-		return x > 0.0f ? x : 0.01f * x;
-	}
-
-	HIPRT_DEVICE constexpr float leaky_ReLU_derivative(float x) const
-	{
-		return x > 0.0f ? 1.0f : 0.01f;
-	}
-
-	HIPRT_DEVICE constexpr float ReLU(float x) const
-	{
-		return x > 0.0f ? x : 0.0f;
-	}
-
-	HIPRT_DEVICE constexpr float ReLU_derivative(float x) const
-	{
-		return x > 0.0f ? 1.0f : 0.0f;
-	}
-
-	HIPRT_DEVICE constexpr float activation_function(float x) const
-	{
-		if constexpr (ACTIVATION_FUNCTION == MLPActivationFunction::RELU)
-			return ReLU(x);
-		else
-			return leaky_ReLU(x);
-	}
-
-	HIPRT_DEVICE constexpr float activation_function_derivative(float x) const
-	{
-		if constexpr (ACTIVATION_FUNCTION == MLPActivationFunction::RELU)
-			return ReLU_derivative(x);
-		else
-			return leaky_ReLU_derivative(x);
-	}
-
-	float* neurons_biases			   = nullptr;
-	AtomicType<float>* gradient_biases = nullptr;
-
-	float* connection_weights			= nullptr;
-	fp16* connection_weights_fp16		= nullptr;
-	AtomicType<float>* gradient_weights = nullptr;
-
-	AtomicType<unsigned int>* last_training_sample_count = nullptr;
-
-	float* adam_weights_means	  = nullptr;
-	float* adam_weights_variances = nullptr;
-	float* adam_biases_means	  = nullptr;
-	float* adam_biases_variances  = nullptr;
-
-	// Adam optimizer parameters
-	float adam_learning_rate = 0.001f;
 };
 
 #endif

@@ -7,7 +7,7 @@
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_MLP_DATA_HOST_H
 
 #include "Device/includes/HashGridHash.h"
-#include "Device/includes/Neural/MLPFullyFusedDevice.h"
+#include "Device/includes/Neural/MLPFullyFusedDeviceCommon.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
