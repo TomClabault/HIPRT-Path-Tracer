@@ -199,7 +199,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	LightTreeSGDevice light_tree_sg				 = m_renderer->get_render_data().light_tree_sg;
 	unsigned int tree_cut_size					 = light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int active_node_count				 = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
+	unsigned int active_node_count				 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
 	unsigned int distribution_slot_count		 = active_node_count * tree_cut_size;
 	// Total number of nodes * tree cut node, to reset everything, not just active nodes as 'distribution_slot_count' represents
 	unsigned int all_distribution_slot_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size() * tree_cut_size;
@@ -245,8 +245,8 @@ void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
-	unsigned int node_count						 = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
-	unsigned int pending_cell_count				 = m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.download_data()[0];
+	unsigned int node_count						 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
+	unsigned int pending_cell_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count);
 	if (node_count == 0 || pending_cell_count == 0)
 		return;
 
@@ -313,12 +313,13 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 			// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
 			// Number of guiding nodes before the splitting
-			m_cached_current_guiding_node_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data()[0];
+			m_cached_current_guiding_node_count =
+				m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
 			if (m_cached_current_guiding_node_count == 0)
 				// Should never happen we should at least have the root node
 				Debug::debugbreak();
 			// TODO same here download async
-			m_cached_current_node_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data()[0];
+			m_cached_current_node_count	  = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
 			void* promotion_launch_args[] = { &kd_tree_device, &light_tree_sg.settings.effective_tree_cut_size, &m_cached_current_guiding_node_count };
 			// We launch blocks of 1024 threads here, and as many blocks as needed to cover all the guiding nodes that need to be promoted. This is because each
 			// thread block will be in charge of one cell to copy NEE guiding distributions from the parent to the 2 new children
@@ -339,7 +340,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			256, 1, kd_tree_device.nee_distributions.nee_training_record_capacity, 1, nee_training_records_launch_args, m_renderer->get_main_stream());
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
-		unsigned int active_guiding_count	= m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data()[0];
+		unsigned int active_guiding_count =
+			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
 		m_cached_current_guiding_node_count = active_guiding_count;
 		active_guiding_count *= static_cast<unsigned int>(SurfaceNormalFace_Count);
 		void* rebuild_nee_distributions_launch_args[] = { &kd_tree_device, &tree_cut_size, &active_guiding_count };

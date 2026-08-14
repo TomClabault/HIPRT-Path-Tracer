@@ -6,6 +6,7 @@
 #ifndef RENDERER_GENERIC_SOA_H
 #define RENDERER_GENERIC_SOA_H
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <tuple>
@@ -46,6 +47,48 @@ namespace GenericSoAHelpers
 	auto* get_buffer_data_ptr(Buffer& buffer)
 	{
 		return buffer.data();
+	}
+
+	template <typename T, typename Allocator>
+	void resize_host_pinned_mem(std::vector<T, Allocator>& buffer, std::size_t new_size)
+	{
+		buffer.resize(new_size);
+	}
+
+	template <typename Buffer>
+	void resize_host_pinned_mem(Buffer& buffer, std::size_t new_size)
+	{
+		buffer.resize_host_pinned_mem(static_cast<int>(new_size));
+	}
+
+	template <typename T, typename Allocator>
+	T* get_host_pinned_pointer(std::vector<T, Allocator>& buffer)
+	{
+		return buffer.data();
+	}
+
+	template <typename Buffer>
+	auto* get_host_pinned_pointer(Buffer& buffer)
+	{
+		return buffer.get_host_pinned_pointer();
+	}
+
+	template <typename T, typename Allocator, typename DestinationType>
+	void download_data_into(const std::vector<T, Allocator>& buffer, DestinationType* host_pointer)
+	{
+		if constexpr (IsStdAtomic<T>::value)
+		{
+			for (std::size_t index = 0; index < buffer.size(); index++)
+				host_pointer[index] = buffer[index].load();
+		}
+		else
+			std::copy(buffer.begin(), buffer.end(), host_pointer);
+	}
+
+	template <typename Buffer, typename DestinationType>
+	void download_data_into(const Buffer& buffer, DestinationType* host_pointer)
+	{
+		buffer.download_data_into(host_pointer);
 	}
 
 	template <typename T, typename Allocator>
@@ -91,6 +134,13 @@ struct GenericSoA
 
 		// Applies resize(new_element_count) on each buffer in the tuple and handles the excluded buffers
 		resize_with_exclusions_internal(new_element_count, excluded_buffer_indices, std::index_sequence_for<Types...>{});
+	}
+
+	void resize_host_pinned_mem(std::size_t new_element_count)
+	{
+		m_maximum_size = new_element_count;
+
+		resize_host_pinned_mem_internal(new_element_count, std::index_sequence_for<Types...>{});
 	}
 
 	template <int bufferIndex>
@@ -158,6 +208,18 @@ struct GenericSoA
 	const auto& get_buffer() const
 	{
 		return std::get<bufferIndex>(buffers);
+	}
+
+	template <int bufferIndex>
+	auto* get_host_pinned_pointer()
+	{
+		return GenericSoAHelpers::get_host_pinned_pointer(std::get<bufferIndex>(buffers));
+	}
+
+	template <int bufferIndex, typename DestinationType>
+	void download_buffer_into(DestinationType* host_pointer) const
+	{
+		GenericSoAHelpers::download_data_into(std::get<bufferIndex>(buffers), host_pointer);
 	}
 
 	template <int bufferIndex>
@@ -256,6 +318,12 @@ private:
 	{
 		// If the current buffer being processed has an index that is excluded, let's not resize it
 		((excluded_buffer_indices.count(indices) == 0 ? resize_buffer_internal(std::get<indices>(buffers), new_element_count) : void()), ...);
+	}
+
+	template <std::size_t... indices>
+	void resize_host_pinned_mem_internal(std::size_t new_element_count, std::index_sequence<indices...>)
+	{
+		(GenericSoAHelpers::resize_host_pinned_mem(std::get<indices>(buffers), new_element_count), ...);
 	}
 
 	template <typename BufferType>
