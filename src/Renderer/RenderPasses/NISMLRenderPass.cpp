@@ -212,6 +212,10 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 void NISMLRenderPass::print_train_profile(unsigned int training_record_count)
 {
+#if defined(NISML_TRAIN_PROFILING_DISABLED)
+	return;
+#endif
+
 	unsigned int profile_record_count	 = (training_record_count + NeuralImportanceSamplingMLP::BLOCK_SIZE - 1) / NeuralImportanceSamplingMLP::BLOCK_SIZE;
 	unsigned int profile_record_capacity = static_cast<unsigned int>(m_train_profile_records.get_element_count());
 	profile_record_count				 = std::min(profile_record_count, profile_record_capacity);

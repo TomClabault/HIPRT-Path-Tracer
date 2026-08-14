@@ -39,7 +39,7 @@ struct NISMLTrainProfileRecord
 	unsigned long long int phase_durations[NISML_TRAIN_PROFILE_PHASE_COUNT] = {};
 };
 
-#if defined(__KERNELCC__) && NISML_HAS_WMMA
+#if defined(__KERNELCC__) && NISML_HAS_WMMA && !defined(NISML_TRAIN_PROFILING_DISABLED)
 #if NISML_TRAIN_PROFILE_USE_CLOCK
 #define NISML_TRAIN_PROFILE_CLOCK() clock()
 #elif NISML_TRAIN_PROFILE_USE_CLOCK64

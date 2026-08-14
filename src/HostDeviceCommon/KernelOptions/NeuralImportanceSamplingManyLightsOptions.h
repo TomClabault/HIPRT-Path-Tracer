@@ -8,6 +8,8 @@
 
 // Temporary WMMA NISMLTrain profiling. Delete only after removing every profiling reference
 #define PROFILING_ENABLED
+// Uncomment to disable NISMLTrain profiling instrumentation while keeping the profiling declarations available.
+#define NISML_TRAIN_PROFILING_DISABLED
 
 #include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDevice.h"
