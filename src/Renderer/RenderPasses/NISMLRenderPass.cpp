@@ -96,14 +96,17 @@ NISMLRenderPass::NISMLRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[NISMLRenderPass::NISML_TRAIN] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_TRAIN);
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLTrain.h");
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_function_name("NISMLTrain");
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[NISMLRenderPass::NISML_OPTIMIZE] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_OPTIMIZE);
 	m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLOptimize.h");
 	m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->set_kernel_function_name("NISMLOptimize");
+	m_kernels[NISMLRenderPass::NISML_OPTIMIZE]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_GRID_OPTIMIZE);
 	m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLGridOptimize.h");
 	m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE]->set_kernel_function_name("NISMLGridOptimize");
+	m_kernels[NISMLRenderPass::NISML_GRID_OPTIMIZE]->synchronize_options_with(m_compiler_options, {});
 }
 
 bool NISMLRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,

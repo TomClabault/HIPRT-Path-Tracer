@@ -591,7 +591,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learnt_distributions(HI
 																			  const float3_t& view_direction,
 																			  Xorshift32Generator& random_number_generator)
 {
-
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 

@@ -119,6 +119,8 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT = "LightT
 
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT = "IlluminationAwareKDTreeMaximumLookaheadLevelCount";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE = "IlluminationAwareKDTreeDebugMode";
+
+const std::string GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES = "NISMLUseSGImportancesKDTreeCaches";
 const std::string GPUKernelCompilerOptions::NISML_DEBUG_MODE = "NISMLDebugMode";
 
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
@@ -257,6 +259,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
+
+	GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES,
 	GPUKernelCompilerOptions::NISML_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
@@ -400,6 +404,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT] =
 		std::make_shared<int>(IlluminationAwareKDTreeMaximumLookaheadLevelCount);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE] = std::make_shared<int>(IlluminationAwareKDTreeDebugMode);
+
+	m_options_macro_map[GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES] = std::make_shared<int>(NISMLUseSGImportancesKDTreeCaches);
 	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE] = std::make_shared<int>(NISMLDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);

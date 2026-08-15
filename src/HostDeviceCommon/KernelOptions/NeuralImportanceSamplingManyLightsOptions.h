@@ -122,6 +122,9 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
 #define NISML_ADAM_BETA2   0.999f
 #define NISML_ADAM_EPSILON 1e-8f
 
+#ifndef __KERNELCC__
+#define NISMLUseSGImportancesKDTreeCaches KERNEL_OPTION_TRUE
+
 /**
  * Debug view for neural importance sampling for many lights.
  *
@@ -132,7 +135,6 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
  * nearly uniform across the K active clusters. The heatmap maps blue to focused distributions and red
  * to uniform distributions.
  *
- *
  * NISML_DEBUG_MODE_KL_DIVERGENCE shows 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural cluster
  * distribution and p_baseline is the baseline cluster distribution before neural residuals are applied. Zero means
  * that NISML leaves the baseline unchanged; larger values indicate that NISML is
@@ -142,7 +144,6 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
  * projection. Similar 64-dimensional activations receive similar colors, while the quantization makes nearby
  * activations often receive the same color. This is a deterministic local projection, not a global clustering.
  */
-#ifndef __KERNELCC__
 #define NISMLDebugMode NISML_DEBUG_MODE_NO_DEBUG
 #endif
 

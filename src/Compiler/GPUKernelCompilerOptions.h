@@ -117,6 +117,8 @@ public:
 
 	static const std::string ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT;
 	static const std::string ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE;
+
+	static const std::string NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES;
 	static const std::string NISML_DEBUG_MODE;
 
 	static const std::string ENVMAP_SAMPLING_STRATEGY;

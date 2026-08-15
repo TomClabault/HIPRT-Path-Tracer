@@ -103,12 +103,12 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 												   unsigned int output_stride = 1,
 												   unsigned int output_index  = 0)
 {
-	const unsigned int invalid_node_index = 0xFFFFFFFF;
-	unsigned int cluster_count			  = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
+	unsigned int cluster_count = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		log_baseline_weights[cluster_index * output_stride + output_index] = -INFINITY;
 
+#if NISMLUseSGImportancesKDTreeCaches == KERNEL_OPTION_TRUE
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr)
 	{
@@ -127,6 +127,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 			}
 		}
 	}
+#endif
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
@@ -134,6 +135,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 	SGSpecularImportanceData spec_data;
 #endif
 
+	constexpr unsigned int invalid_node_index = 0xFFFFFFFF;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_index];
