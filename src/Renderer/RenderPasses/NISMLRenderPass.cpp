@@ -249,14 +249,26 @@ void NISMLRenderPass::print_train_profile(unsigned int training_record_count)
 
 	std::vector<NISMLTrainProfileSummary> summaries;
 	summaries.reserve(NISML_TRAIN_PROFILE_PHASE_COUNT);
+
+	double sum_minimum_ticks = 0.0;
+	double sum_maximum_ticks = 0.0;
+	double sum_average_ticks = 0.0;
 	for (unsigned int phase = 0; phase < NISML_TRAIN_PROFILE_PHASE_COUNT; phase++)
 	{
 		unsigned long long int minimum_phase_ticks = measured_block_count[phase] > 0 ? minimum_ticks[phase] : 0;
 		unsigned long long int maximum_phase_ticks = measured_block_count[phase] > 0 ? maximum_ticks[phase] : 0;
 		double average_phase_ticks				   = static_cast<double>(total_ticks[phase]) / static_cast<double>(profile_record_count);
 
+		sum_minimum_ticks += static_cast<double>(minimum_phase_ticks);
+		sum_maximum_ticks += static_cast<double>(maximum_phase_ticks);
+		sum_average_ticks += average_phase_ticks;
+
 		summaries.push_back({ nisml_train_profile_phase_name(phase), average_phase_ticks, minimum_phase_ticks, maximum_phase_ticks, total_ticks[phase] });
 	}
+
+	summaries.push_back({ "total", sum_average_ticks, static_cast<unsigned long long int>(sum_minimum_ticks),
+						  static_cast<unsigned long long int>(sum_maximum_ticks),
+						  static_cast<unsigned long long int>(sum_average_ticks * static_cast<double>(profile_record_count)) });
 
 	std::sort(summaries.begin(), summaries.end(), compare_nisml_train_profile_summaries);
 	std::size_t phase_name_width = 0;
