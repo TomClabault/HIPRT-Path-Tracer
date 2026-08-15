@@ -43,8 +43,8 @@ inline NISMLTrain(
 
 	bool valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
 	bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
-						record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
-	float weight = 0.0f;
+						 record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
+	float weight	   = 0.0f;
 	if (valid_weight)
 		weight = record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability * record.point_on_light_pdf_solid_angle);
 
@@ -156,10 +156,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x,
 											   // Residual layout:
 											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
-		/*valid_softmax = evaluate_nisml_softmax(output_probabilities_buffer,
-											   sample_activations +
-												   NeuralImportanceSamplingMLPGPU::get_neuron_data_index(NeuralImportanceSamplingMLPGPU::LAYER_COUNT - 1, 0),
-											   render_data.nisml.cluster_count, NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);*/
 	}
 	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_SOFTMAX, profile_start);
 
@@ -212,8 +208,9 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 
 	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_GRADIENT, profile_start);
 
-	mlp.backpropagation_wmma(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer, input_gradients,
-							 NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE, nullptr, error_scale, valid_training_sample, true, profile_record);
+	mlp.backpropagation_wmma<NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE>(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer,
+																			   input_gradients, nullptr, error_scale, valid_training_sample, true,
+																			   profile_record);
 
 	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_training_sample)

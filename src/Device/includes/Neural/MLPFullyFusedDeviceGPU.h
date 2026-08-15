@@ -251,12 +251,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		}
 	}
 
+	template <unsigned int input_gradient_count>
 	HIPRT_DEVICE void backpropagation_wmma_from_output_gradient(fp16* train_activations_global,
 																unsigned int sample_offset,
 																fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 																fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 																float* input_gradients,
-																unsigned int input_gradient_count,
 																const float* output_gradient,
 																bool count_training_sample,
 																float error_scale,
@@ -406,10 +406,15 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_BIAS_GRADIENTS, profile_start);
 			__syncthreads();
 
-			if (layer_index > 1)
+			bool propagate_input_gradients = layer_index == 1 && input_gradients != nullptr && input_gradient_count <= ERROR_WIDTH;
+			if (layer_index > 1 || propagate_input_gradients)
 			{
 				NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-				for (unsigned int previous_tile = warp_id; previous_tile < previous_tile_count; previous_tile += warp_count)
+
+				unsigned int propagated_previous_neuron_count = layer_index > 1 ? previous_neurons : input_gradient_count;
+				unsigned int propagated_previous_tile_count	  = PAD_SIZE_WMMA(propagated_previous_neuron_count) / 16;
+
+				for (unsigned int previous_tile = warp_id; previous_tile < propagated_previous_tile_count; previous_tile += warp_count)
 				{
 					unsigned int previous_neuron_base		   = previous_tile * 16;
 					fp16x16 propagated_errors[BlockSize_ / 16] = {};
@@ -417,10 +422,13 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					for (unsigned int current_tile = 0; current_tile < current_tile_count; current_tile++)
 					{
 						unsigned int current_neuron_base = current_tile * 16;
+
 						fp16x16 weights_fragment;
+
 						for (unsigned int current_neuron = 0; current_neuron < 16; current_neuron++)
 						{
 							unsigned int neuron = current_neuron_base + current_neuron;
+
 							weights_fragment[current_neuron] =
 								neuron < current_neurons
 									? connection_weights_fp16[connection_offset + neuron * previous_neurons + previous_neuron_base + lane_id_wmma]
@@ -448,7 +456,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 							unsigned int previous_neuron = previous_neuron_base + element * 2 + lane_high;
 							unsigned int sample_index	 = sample_tile * 16 + lane_id_wmma;
 
-							if (previous_neuron < previous_neurons)
+							if (previous_neuron < propagated_previous_neuron_count)
 								errors_buffer[previous_errors_offset + previous_neuron][sample_index] = propagated_errors[sample_tile][element * 2];
 						}
 					}
@@ -457,15 +465,18 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 
 				__syncthreads();
 
-				for (unsigned int linear_index = threadIdx.x; linear_index < previous_neurons * BlockSize_; linear_index += BlockSize_)
+				if (layer_index > 1)
 				{
-					unsigned int previous_neuron = linear_index / BlockSize_;
-					unsigned int sample_index	 = linear_index % BlockSize_;
-					float propagated_error		 = static_cast<float>(errors_buffer[previous_errors_offset + previous_neuron][sample_index]);
-					float previous_activation	 = static_cast<float>(activations_buffer[previous_neuron][sample_index]);
+					for (unsigned int linear_index = threadIdx.x; linear_index < previous_neurons * BlockSize_; linear_index += BlockSize_)
+					{
+						unsigned int previous_neuron = linear_index / BlockSize_;
+						unsigned int sample_index	 = linear_index % BlockSize_;
+						float propagated_error		 = static_cast<float>(errors_buffer[previous_errors_offset + previous_neuron][sample_index]);
+						float previous_activation	 = static_cast<float>(activations_buffer[previous_neuron][sample_index]);
 
-					propagated_error *= this->activation_function_derivative(previous_activation);
-					errors_buffer[previous_errors_offset + previous_neuron][sample_index] = static_cast<fp16>(propagated_error);
+						propagated_error *= this->activation_function_derivative(previous_activation);
+						errors_buffer[previous_errors_offset + previous_neuron][sample_index] = static_cast<fp16>(propagated_error);
+					}
 				}
 			}
 
@@ -475,20 +486,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		if (input_gradients != nullptr)
 		{
 			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-			unsigned int first_layer_connection_offset = get_connection_data_index(1, 0, 0);
-			unsigned int first_hidden_error_offset	   = ERROR_WIDTH;
-			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
-			{
-				float input_gradient = 0.0f;
-				for (unsigned int hidden_index = 0; hidden_index < HIDDEN_LAYER_SIZE; hidden_index++)
-				{
-					unsigned int connection_index = first_layer_connection_offset + hidden_index * INPUT_SIZE_PADDED_WMMA + input_index;
-					input_gradient += static_cast<float>(errors_buffer[first_hidden_error_offset + hidden_index][threadIdx.x]) *
-									  static_cast<float>(connection_weights_fp16[connection_index]) * inverse_error_scale;
-				}
 
-				input_gradients[input_index] = input_gradient;
-			}
+			static_assert(input_gradient_count <= ERROR_WIDTH, "input_gradient_count must be less than or equal to ERROR_WIDTH");
+
+			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
+				input_gradients[input_index] = static_cast<float>(errors_buffer[input_index][threadIdx.x]) * inverse_error_scale;
+
 			NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_INPUT_GRADIENTS, profile_start);
 		}
 
@@ -497,12 +500,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 #endif
 	}
 
+	template <unsigned int input_gradient_count>
 	HIPRT_DEVICE void backpropagation_wmma(fp16* train_activations_global,
 										   unsigned int sample_offset,
 										   fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE],
 										   fp16 errors_buffer[ERROR_WIDTH * 2][BLOCK_SIZE],
 										   float* input_gradients,
-										   unsigned int input_gradient_count,
 										   const float* output_gradient,
 										   float error_scale,
 										   bool count_training_sample,
@@ -513,11 +516,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 #endif
 	) const
 	{
-		backpropagation_wmma_from_output_gradient(train_activations_global, sample_offset, activations_buffer, errors_buffer, input_gradients,
-												  input_gradient_count, output_gradient, count_training_sample, error_scale, output_errors_initialized
+		backpropagation_wmma_from_output_gradient<input_gradient_count>(train_activations_global, sample_offset, activations_buffer, errors_buffer,
+																		input_gradients, output_gradient, count_training_sample, error_scale,
+																		output_errors_initialized
 #if NISML_HAS_WMMA
-												  ,
-												  profile_record
+																		,
+																		profile_record
 #endif
 		);
 	}
