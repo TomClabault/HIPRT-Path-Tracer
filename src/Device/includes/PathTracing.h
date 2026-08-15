@@ -52,9 +52,9 @@ HIPRT_DEVICE ColorRGB32F path_tracing_nisml_debug_heatmap(float normalized_value
 	return ColorRGB32F(interpolation, 1.0f - interpolation, 0.0f);
 }
 
-HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
+HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
 {
-#if NISMLDebugMode == NISML_DEBUG_MODE_NO_DEBUG
+#if NISMLDebugMode != NISML_DEBUG_MODE_ENTROPY
 	return false;
 #else
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
@@ -80,16 +80,6 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
 									 cluster_log_baseline_weights);
 
-#if NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
-	float baseline_probabilities[NISML_MAX_CLUSTER_COUNT];
-	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-		baseline_probabilities[cluster_index] = cluster_log_baseline_weights[cluster_index];
-
-	float zero_residuals[NISML_MAX_CLUSTER_COUNT] = {};
-	if (!evaluate_nisml_softmax(baseline_probabilities, zero_residuals, cluster_count))
-		return false;
-#endif
-
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 
 	NeuralImportanceSamplingMLP::InputLayer input;
@@ -102,7 +92,6 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 	if (!evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count))
 		return false;
 
-#if NISMLDebugMode == NISML_DEBUG_MODE_ENTROPY
 	float probability_sum = 0.0f;
 	float entropy		  = 0.0f;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
@@ -124,7 +113,59 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 		out_debug_value = 0.0f;
 	else
 		out_debug_value = entropy / logf(static_cast<float>(cluster_count));
-#elif NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
+
+	return true;
+#endif
+}
+
+HIPRT_DEVICE bool path_tracing_compute_nisml_kl_divergence_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
+{
+#if NISMLDebugMode != NISML_DEBUG_MODE_KL_DIVERGENCE
+	return false;
+#else
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return false;
+
+	NISMLDevice neural_light_sampling = render_data.nisml;
+	unsigned int cluster_count		  = neural_light_sampling.cluster_count;
+	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || neural_light_sampling.cluster_node_indices == nullptr ||
+		neural_light_sampling.position_learnable_dense_grid.features_fp16 == nullptr)
+		return false;
+
+	float3_t shading_point	= render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+
+	DeviceUnpackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index].unpack();
+	float sg_specular_weight;
+	float alpha_x;
+	float alpha_y;
+	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
+
+	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+									 cluster_log_baseline_weights);
+
+	float baseline_probabilities[NISML_MAX_CLUSTER_COUNT];
+	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
+		baseline_probabilities[cluster_index] = cluster_log_baseline_weights[cluster_index];
+
+	float zero_residuals[NISML_MAX_CLUSTER_COUNT] = {};
+	if (!evaluate_nisml_softmax(baseline_probabilities, zero_residuals, cluster_count))
+		return false;
+
+	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
+
+	NeuralImportanceSamplingMLP::InputLayer input;
+	build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+					  shading_point, view_direction, shading_normal, input);
+
+	float residuals[NISML_MAX_CLUSTER_COUNT];
+	neural_light_sampling.mlp.inference_single_thread(input, residuals);
+
+	if (!evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count))
+		return false;
+
 	float kl_divergence = 0.0f;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
@@ -140,7 +181,6 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 	}
 
 	out_debug_value = 1.0f - hippt::intrin_expf(-kl_divergence);
-#endif
 
 	return true;
 #endif
@@ -478,8 +518,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		{
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
-			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
-													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_sum = render_data.buffers.accumulated_ray_colors[pixel_index] /
+												 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
@@ -675,15 +715,22 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 #endif // ReGIR debug mode
 
-#elif NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
+#elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
+#if NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS
 	ColorRGB32F nisml_latent_activation_color;
 	if (path_tracing_compute_nisml_latent_activation_color(render_data, pixel_index, nisml_latent_activation_color))
 		out_debug_color = nisml_latent_activation_color * (render_data.render_settings.sample_number + 1);
 
-#elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
+#elif NISMLDebugMode == NISML_DEBUG_MODE_ENTROPY
 	float nisml_debug_value;
-	if (path_tracing_compute_nisml_debug_value(render_data, pixel_index, nisml_debug_value))
+	if (path_tracing_compute_nisml_entropy_debug_value(render_data, pixel_index, nisml_debug_value))
 		out_debug_color = path_tracing_nisml_debug_heatmap(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+
+#elif NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
+	float nisml_debug_value;
+	if (path_tracing_compute_nisml_kl_divergence_debug_value(render_data, pixel_index, nisml_debug_value))
+		out_debug_color = path_tracing_nisml_debug_heatmap(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+#endif // NISML debug mode
 
 #elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG &&                                                                    \
 	ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(DirectLightNEEEstimator, DirectLightSamplingStrategy)
