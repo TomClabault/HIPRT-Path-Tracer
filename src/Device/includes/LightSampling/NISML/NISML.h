@@ -105,9 +105,6 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 {
 	unsigned int cluster_count = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
-	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
-		log_baseline_weights[cluster_index * output_stride + output_index] = -INFINITY;
-
 #if NISMLUseSGImportancesKDTreeCaches == KERNEL_OPTION_TRUE
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr)
@@ -144,8 +141,8 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 
 		float importance = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
 														 sg_specular_weight, alpha_x, alpha_y);
-		if (importance > 0.0f)
-			log_baseline_weights[cluster_index * output_stride + output_index] = logf(importance);
+
+		log_baseline_weights[cluster_index * output_stride + output_index] = hippt::intrin_logf(hippt::max(1.0e-5f, importance));
 	}
 }
 
