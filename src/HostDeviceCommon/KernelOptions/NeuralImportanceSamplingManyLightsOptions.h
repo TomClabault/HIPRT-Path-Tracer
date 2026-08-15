@@ -15,9 +15,10 @@
 #include "Device/includes/Neural/MLPFullyFusedDeviceCPU.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceGPU.h"
 
-#define NISML_DEBUG_MODE_NO_DEBUG	   0
-#define NISML_DEBUG_MODE_ENTROPY	   1
-#define NISML_DEBUG_MODE_KL_DIVERGENCE 2
+#define NISML_DEBUG_MODE_NO_DEBUG			0
+#define NISML_DEBUG_MODE_ENTROPY			1
+#define NISML_DEBUG_MODE_KL_DIVERGENCE		2
+#define NISML_DEBUG_MODE_LATENT_ACTIVATIONS 3
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
@@ -133,10 +134,13 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
  *
  *
  * NISML_DEBUG_MODE_KL_DIVERGENCE shows 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural cluster
- * distribution and p_baseline is the baseline
- * cluster distribution before neural residuals are applied. Zero means
+ * distribution and p_baseline is the baseline cluster distribution before neural residuals are applied. Zero means
  * that NISML leaves the baseline unchanged; larger values indicate that NISML is
  * changing it more strongly.
+ *
+ * NISML_DEBUG_MODE_LATENT_ACTIVATIONS shows the normalized activations of the last hidden layer as a quantized RGB
+ * projection. Similar 64-dimensional activations receive similar colors, while the quantization makes nearby
+ * activations often receive the same color. This is a deterministic local projection, not a global clustering.
  */
 #ifndef __KERNELCC__
 #define NISMLDebugMode NISML_DEBUG_MODE_NO_DEBUG

@@ -146,6 +146,74 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 #endif
 }
 
+HIPRT_DEVICE bool path_tracing_compute_nisml_latent_activation_color(const HIPRTRenderData& render_data, int pixel_index, ColorRGB32F& out_debug_color)
+{
+#if NISMLDebugMode != NISML_DEBUG_MODE_LATENT_ACTIVATIONS
+	return false;
+#else
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return false;
+
+	NISMLDevice neural_light_sampling = render_data.nisml;
+	if (neural_light_sampling.position_learnable_dense_grid.features_fp16 == nullptr)
+		return false;
+
+	float3_t shading_point	= render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+
+	NeuralImportanceSamplingMLP::InputLayer input;
+	build_nisml_input(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
+					  shading_point, view_direction, shading_normal, input);
+
+	float latent_activations[NeuralImportanceSamplingMLP::HIDDEN_LAYER_SIZE];
+	unsigned int latent_layer_index = NeuralImportanceSamplingMLP::HIDDEN_LAYER_COUNT - 1;
+	if (!neural_light_sampling.mlp.inference_single_thread_hidden_layer(input, latent_layer_index, latent_activations))
+		return false;
+
+	float activation_norm_squared = 0.0f;
+	for (unsigned int neuron = 0; neuron < NeuralImportanceSamplingMLP::HIDDEN_LAYER_SIZE; neuron++)
+		activation_norm_squared += latent_activations[neuron] * latent_activations[neuron];
+
+	if (!(activation_norm_squared > 1.0e-12f))
+		return false;
+
+	float activation_norm = hippt::sqrt(activation_norm_squared);
+	float projections[3]  = {};
+	for (unsigned int projection_channel = 0; projection_channel < 3; projection_channel++)
+	{
+		float projection = 0.0f;
+		for (unsigned int neuron = 0; neuron < NeuralImportanceSamplingMLP::HIDDEN_LAYER_SIZE; neuron++)
+		{
+			unsigned int hash = (neuron + 1u) * 0x9E3779B9u;
+			hash ^= (projection_channel + 1u) * 0x85EBCA6Bu;
+			hash ^= hash >> 16;
+			hash *= 0x7FEB352Du;
+			hash ^= hash >> 15;
+
+			float projection_sign = (hash & 1u) == 0 ? 1.0f : -1.0f;
+			projection += latent_activations[neuron] / activation_norm * projection_sign;
+		}
+
+		projections[projection_channel] = projection * 0.125f;
+	}
+
+	float quantized_color[3];
+	for (unsigned int color_channel = 0; color_channel < 3; color_channel++)
+	{
+		float color_channel_value	   = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * projections[color_channel]);
+		unsigned int quantized_channel = static_cast<unsigned int>(color_channel_value * 15.0f + 0.5f);
+		quantized_color[color_channel] = static_cast<float>(quantized_channel) / 15.0f;
+	}
+
+	out_debug_color =
+		ColorRGB32F::random_color(static_cast<unsigned int>(quantized_color[0] * 0xFFFFFFFF) + static_cast<unsigned int>(quantized_color[1] * 0xFFFFFFFF) +
+								  static_cast<unsigned int>(quantized_color[2] * 0xFFFFFFFF));
+
+	return true;
+#endif
+}
+
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
 	HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
 {
@@ -606,6 +674,11 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		out_debug_color = ColorRGB32F(color);
 	}
 #endif // ReGIR debug mode
+
+#elif NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
+	ColorRGB32F nisml_latent_activation_color;
+	if (path_tracing_compute_nisml_latent_activation_color(render_data, pixel_index, nisml_latent_activation_color))
+		out_debug_color = nisml_latent_activation_color * (render_data.render_settings.sample_number + 1);
 
 #elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
 	float nisml_debug_value;

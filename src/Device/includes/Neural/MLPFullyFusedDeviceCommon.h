@@ -129,6 +129,64 @@ struct MLPFullyFusedDeviceCommon
 			output[output_index] = previous[output_index];
 	}
 
+	/**
+	 * Runs a scalar single-thread forward pass and returns the post-activation values of a zero-based hidden layer.
+	 * This is intended for debug
+	 * inspection and does not use the WMMA execution path.
+	 */
+	HIPRT_DEVICE bool inference_single_thread_hidden_layer(const InputLayer& input, unsigned int hidden_layer_index, float* output) const
+	{
+		if (hidden_layer_index >= HIDDEN_LAYER_COUNT)
+			return false;
+
+		float activations_a[ACTIVATION_WIDTH];
+		float activations_b[ACTIVATION_WIDTH];
+		load_input_ref(input.input, activations_a);
+
+		float* previous			  = activations_a;
+		float* current			  = activations_b;
+		unsigned int target_layer = hidden_layer_index + 1;
+
+		for (unsigned int layer = 1; layer <= target_layer; ++layer)
+		{
+			unsigned int previous_count = get_layer_neuron_count(layer - 1);
+			unsigned int current_count	= get_layer_neuron_count(layer);
+
+			for (unsigned int neuron = 0; neuron < current_count; ++neuron)
+			{
+				float value = 0.0f;
+
+				if constexpr (USE_BIASES)
+					value += neurons_biases[get_neuron_data_index(layer, neuron)];
+
+				for (unsigned int previous_neuron = 0; previous_neuron < previous_count; ++previous_neuron)
+				{
+					unsigned int connection = get_connection_data_index(layer, previous_neuron, neuron);
+					value += connection_weights[connection] * previous[previous_neuron];
+				}
+
+				if (layer != LAYER_COUNT - 1)
+					value = activation_function(value);
+
+				current[neuron] = value;
+			}
+
+			if (layer == target_layer)
+			{
+				for (unsigned int neuron = 0; neuron < current_count; ++neuron)
+					output[neuron] = current[neuron];
+
+				return true;
+			}
+
+			float* activation_swap = previous;
+			previous			   = current;
+			current				   = activation_swap;
+		}
+
+		return false;
+	}
+
 	HIPRT_DEVICE constexpr float leaky_ReLU(float x) const
 	{
 		return x > 0.0f ? x : 0.01f * x;
