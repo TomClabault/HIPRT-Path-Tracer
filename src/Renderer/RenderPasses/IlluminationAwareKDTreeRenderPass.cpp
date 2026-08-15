@@ -172,6 +172,57 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
+bool IlluminationAwareKDTreeRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+																	 const std::vector<hiprtFuncNameSet>& func_name_sets,
+																	 bool silent,
+																	 bool use_cache)
+{
+	if (!is_render_pass_used(*m_compiler_options))
+		return false;
+
+	bool updated													 = false;
+	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = get_all_kernels();
+	for (std::map<std::string, std::shared_ptr<GPUKernel>>::value_type& name_to_kernel : active_kernels)
+	{
+		if (name_to_kernel.second->has_been_compiled())
+			continue;
+
+		name_to_kernel.second->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+		updated = true;
+	}
+
+	return updated;
+}
+
+std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderPass::get_all_kernels()
+{
+	if (!is_render_pass_used(*m_compiler_options))
+		return {};
+
+	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
+	bool using_nisml												 = is_using_nisml(*m_compiler_options);
+	bool using_nee_learnt_distributions =
+		ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+															   m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
+
+	if (!using_nee_learnt_distributions)
+	{
+		active_kernels.erase(RESET_TREE_CUT_SAMPLING_DISTRIBUTIONS_KERNEL_ID);
+		active_kernels.erase(INITIALIZE_GLOBAL_TREE_CUT_PRIOR_SAMPLING_DISTRIBUTION_KERNEL_ID);
+		active_kernels.erase(INITIALIZE_ROOT_TREE_CUT_SAMPLING_DISTRIBUTION_KERNEL_ID);
+		active_kernels.erase(ACCUMULATE_NEE_DISTRIBUTION_TRAINING_RECORDS_KERNEL_ID);
+		active_kernels.erase(REBUILD_ACTIVE_NEE_DISTRIBUTIONS_KERNEL_ID);
+	}
+
+	if (!using_nisml)
+	{
+		active_kernels.erase(REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
+		active_kernels.erase(BUILD_NISML_CACHES_KERNEL_ID);
+	}
+
+	return active_kernels;
+}
+
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 
 bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)

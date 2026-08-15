@@ -142,7 +142,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 		float importance = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], spec_data, shading_point, view_direction, shading_normal,
 														 sg_specular_weight, alpha_x, alpha_y);
 
-		log_baseline_weights[cluster_index * output_stride + output_index] = hippt::intrin_logf(hippt::max(1.0e-5f, importance));
+		log_baseline_weights[cluster_index * output_stride + output_index] = hippt::intrin_logf(hippt::max(1.0e-4f, importance));
 	}
 }
 
