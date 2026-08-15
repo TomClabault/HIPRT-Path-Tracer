@@ -6,8 +6,8 @@
 #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NISML_DATA_HOST_H
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NISML_DATA_HOST_H
 
-#include "Device/includes/Neural/NISML.h"
 #include "Device/includes/Neural/NISML/NISMLDevice.h"
+#include "Device/includes/Neural/NISML/NISMLTrainingSample.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericAtomicType.h"

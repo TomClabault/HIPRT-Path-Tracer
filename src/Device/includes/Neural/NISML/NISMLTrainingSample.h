@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_NEURAL_NISML_H
-#define DEVICE_INCLUDES_NEURAL_NISML_H
+#ifndef DEVICE_INCLUDES_NEURAL_NISML_TRAINING_SAMPLE_H
+#define DEVICE_INCLUDES_NEURAL_NISML_TRAINING_SAMPLE_H
 
 #include "HostDeviceCommon/Maths/VecTypes.h"
 

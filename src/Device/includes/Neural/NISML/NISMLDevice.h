@@ -6,8 +6,8 @@
 #ifndef DEVICE_INCLUDES_NEURAL_NISML_DEVICE_H
 #define DEVICE_INCLUDES_NEURAL_NISML_DEVICE_H
 
-#include "Device/includes/Neural/NISML.h"
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
+#include "Device/includes/Neural/NISML/NISMLTrainingSample.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
