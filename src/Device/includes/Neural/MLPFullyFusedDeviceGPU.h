@@ -7,11 +7,12 @@
 #define DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_GPU_H
 
 #include "Device/includes/Neural/MLPFullyFusedDeviceCommon.h"
-#include "HostDeviceCommon/Neural/NISMLTrainProfiling.h"
 
 #ifndef NISML_HAS_WMMA
 #define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
 #endif
+
+#include "HostDeviceCommon/Neural/NISMLTrainProfiling.h"
 
 template <unsigned int InputSizeEncoded_,
 		  unsigned int HiddenLayerCount_,
