@@ -92,7 +92,7 @@ private:
 	OrochiBuffer<NISMLTrainProfileRecord> m_train_profile_records;
 
 	unsigned int m_adam_step			  = 0;
-	float m_training_record_percentage	  = 50.0f;
+	float m_training_record_percentage	  = 3.5f;
 	int m_training_spp					  = 0;
 	int m_training_record_buffer_capacity = NISMLDataHost<OrochiBuffer>::NISML_TRAINING_BATCH_SIZE;
 	float m_adam_learning_rate			  = 0.03f;
