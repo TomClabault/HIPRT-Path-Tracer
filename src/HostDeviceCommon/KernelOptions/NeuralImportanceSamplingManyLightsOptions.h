@@ -15,8 +15,9 @@
 #include "Device/includes/Neural/MLPFullyFusedDeviceCPU.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceGPU.h"
 
-#define NISML_DEBUG_MODE_NO_DEBUG 0
-#define NISML_DEBUG_MODE_ENTROPY  1
+#define NISML_DEBUG_MODE_NO_DEBUG	   0
+#define NISML_DEBUG_MODE_ENTROPY	   1
+#define NISML_DEBUG_MODE_KL_DIVERGENCE 2
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
@@ -123,12 +124,19 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
 /**
  * Debug view for neural importance sampling for many lights.
  *
- * NISML_DEBUG_MODE_ENTROPY displays normalized Shannon entropy H / log(K) of the NISML
+ * NISML_DEBUG_MODE_ENTROPY shows normalized Shannon entropy H / log(K) of the NISML
  * cluster probabilities.
- * Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means that the
- * distribution
- * is nearly uniform across the K active clusters. The heatmap maps blue to focused distributions and
- * red to uniform distributions.
+ * Entropy considers all clusters. Zero means that the network focuses on one or a few clusters; one means that the
+ * distribution is
+ * nearly uniform across the K active clusters. The heatmap maps blue to focused distributions and red
+ * to uniform distributions.
+ *
+ *
+ * NISML_DEBUG_MODE_KL_DIVERGENCE shows 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural cluster
+ * distribution and p_baseline is the baseline
+ * cluster distribution before neural residuals are applied. Zero means
+ * that NISML leaves the baseline unchanged; larger values indicate that NISML is
+ * changing it more strongly.
  */
 #ifndef __KERNELCC__
 #define NISMLDebugMode NISML_DEBUG_MODE_NO_DEBUG

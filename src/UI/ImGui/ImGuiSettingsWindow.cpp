@@ -4411,13 +4411,18 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
 				ImGui::SeparatorText("Debug");
 				ImGui::PopStyleVar();
-				const char* nisml_debug_view_items[]	= { "- No debug", "- NISML entropy" };
+				const char* nisml_debug_view_items[]	= { "- No debug", "- NISML entropy", "- NISML neural-vs-baseline KL divergence" };
 				const char* nisml_debug_view_tooltips[] = {
 					"Disable the NISML debug view.",
-					"NISML_DEBUG_MODE_ENTROPY displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
+
+					"Displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
 					"Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means "
 					"that the distribution is nearly uniform across the K active clusters. The heatmap maps blue to focused "
-					"distributions and red to uniform distributions."
+					"distributions and red to uniform distributions.",
+
+					"Displays 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural "
+					"cluster distribution and p_baseline is the baseline cluster distribution before neural residuals are applied. "
+					"Zero means that NISML leaves the baseline unchanged; larger values indicate that NISML is changing it more strongly."
 				};
 
 				if (ImGuiRenderer::ComboWithTooltips("NISML debug view",

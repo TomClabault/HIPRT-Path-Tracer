@@ -79,6 +79,17 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
 									 cluster_log_baseline_weights);
+
+#if NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
+	float baseline_probabilities[NISML_MAX_CLUSTER_COUNT];
+	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
+		baseline_probabilities[cluster_index] = cluster_log_baseline_weights[cluster_index];
+
+	float zero_residuals[NISML_MAX_CLUSTER_COUNT] = {};
+	if (!evaluate_nisml_softmax(baseline_probabilities, zero_residuals, cluster_count))
+		return false;
+#endif
+
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
 
 	NeuralImportanceSamplingMLP::InputLayer input;
@@ -91,6 +102,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 	if (!evaluate_nisml_softmax(cluster_log_baseline_weights, residuals, cluster_count))
 		return false;
 
+#if NISMLDebugMode == NISML_DEBUG_MODE_ENTROPY
 	float probability_sum = 0.0f;
 	float entropy		  = 0.0f;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
@@ -100,6 +112,8 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 			continue;
 
 		probability_sum += probability;
+
+		// Shannon entropy H = -sum(p_i * log(p_i)) for i in [0, K-1] where K is the number of clusters and p_i is the probability of cluster i
 		entropy -= probability * logf(probability);
 	}
 
@@ -110,6 +124,23 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_debug_value(const HIPRTRenderData& 
 		out_debug_value = 0.0f;
 	else
 		out_debug_value = entropy / logf(static_cast<float>(cluster_count));
+#elif NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
+	float kl_divergence = 0.0f;
+	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
+	{
+		float neural_probability = cluster_log_baseline_weights[cluster_index];
+		if (!(neural_probability > 0.0f))
+			continue;
+
+		float baseline_probability = baseline_probabilities[cluster_index];
+		if (!(baseline_probability > 0.0f))
+			return false;
+
+		kl_divergence += neural_probability * logf(neural_probability / baseline_probability);
+	}
+
+	out_debug_value = 1.0f - hippt::intrin_expf(-kl_divergence);
+#endif
 
 	return true;
 #endif
@@ -379,8 +410,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		{
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
-			ColorRGB32F accumulated_subset_sum = render_data.buffers.accumulated_ray_colors[pixel_index] /
-												 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
+													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
