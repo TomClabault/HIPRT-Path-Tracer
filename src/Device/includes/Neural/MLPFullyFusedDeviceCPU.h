@@ -34,31 +34,33 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 											 ActivationFunction_,
 											 UseOutputActivation_>;
 
+	using InputLayer = typename Common::InputLayer;
+
 	using Common::ACTIVATION_FUNCTION;
 	using Common::ACTIVATION_WIDTH;
 	using Common::BLOCK_SIZE;
-	using Common::connection_weights;
 	using Common::CONNECTIONS_COUNT;
 	using Common::ERROR_WIDTH;
+	using Common::HIDDEN_LAYER_COUNT;
+	using Common::HIDDEN_LAYER_SIZE;
+	using Common::INPUT_SIZE_ENCODED;
+	using Common::INPUT_SIZE_PADDED_WMMA;
+	using Common::LAYER_COUNT;
+	using Common::NEURON_COUNT;
+	using Common::OUTPUT_SIZE;
+	using Common::OUTPUT_SIZE_PADDED_WMMA;
+	using Common::USE_BIASES;
+	using Common::USE_OUTPUT_ACTIVATION;
+
+	using Common::connection_weights;
 	using Common::get_connection_data_index;
 	using Common::get_layer_neuron_count;
 	using Common::get_neuron_data_index;
 	using Common::gradient_biases;
 	using Common::gradient_weights;
-	using Common::HIDDEN_LAYER_COUNT;
-	using Common::HIDDEN_LAYER_SIZE;
-	using Common::INPUT_SIZE_ENCODED;
-	using Common::INPUT_SIZE_PADDED_WMMA;
-	using InputLayer = typename Common::InputLayer;
 	using Common::last_training_sample_count;
-	using Common::LAYER_COUNT;
 	using Common::load_input_ref;
-	using Common::NEURON_COUNT;
 	using Common::neurons_biases;
-	using Common::OUTPUT_SIZE;
-	using Common::OUTPUT_SIZE_PADDED_WMMA;
-	using Common::USE_BIASES;
-	using Common::USE_OUTPUT_ACTIVATION;
 
 	HIPRT_DEVICE void forward_single_thread(const InputLayer& input, float* neurons_activations) const
 	{

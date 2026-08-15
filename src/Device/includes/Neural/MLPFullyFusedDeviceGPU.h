@@ -40,31 +40,33 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 											 ActivationFunction_,
 											 UseOutputActivation_>;
 
+	using InputLayer = typename Common::InputLayer;
+
 	using Common::ACTIVATION_FUNCTION;
 	using Common::ACTIVATION_WIDTH;
 	using Common::BLOCK_SIZE;
-	using Common::connection_weights;
-	using Common::connection_weights_fp16;
 	using Common::CONNECTIONS_COUNT;
 	using Common::ERROR_WIDTH;
+	using Common::HIDDEN_LAYER_COUNT;
+	using Common::HIDDEN_LAYER_SIZE;
+	using Common::INPUT_SIZE_ENCODED;
+	using Common::INPUT_SIZE_PADDED_WMMA;
+	using Common::LAYER_COUNT;
+	using Common::NEURON_COUNT;
+	using Common::OUTPUT_SIZE;
+	using Common::OUTPUT_SIZE_PADDED_WMMA;
+	using Common::USE_BIASES;
+	using Common::USE_OUTPUT_ACTIVATION;
+
+	using Common::connection_weights;
+	using Common::connection_weights_fp16;
 	using Common::get_connection_data_index;
 	using Common::get_layer_neuron_count;
 	using Common::get_neuron_data_index;
 	using Common::gradient_biases;
 	using Common::gradient_weights;
-	using Common::HIDDEN_LAYER_COUNT;
-	using Common::HIDDEN_LAYER_SIZE;
-	using Common::INPUT_SIZE_ENCODED;
-	using Common::INPUT_SIZE_PADDED_WMMA;
-	using InputLayer = typename Common::InputLayer;
 	using Common::last_training_sample_count;
-	using Common::LAYER_COUNT;
-	using Common::NEURON_COUNT;
 	using Common::neurons_biases;
-	using Common::OUTPUT_SIZE;
-	using Common::OUTPUT_SIZE_PADDED_WMMA;
-	using Common::USE_BIASES;
-	using Common::USE_OUTPUT_ACTIVATION;
 
 	HIPRT_DEVICE void load_input(const float* input, fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
 	{
@@ -98,6 +100,8 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
 #if NISML_HAS_WMMA
+		unsigned int output_activation_index_block_base = sample_offset * NEURON_COUNT;
+
 		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
 		{
 			unsigned int neurons_current_layer				= get_layer_neuron_count(layer_index);
@@ -173,8 +177,10 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 							else if constexpr (USE_OUTPUT_ACTIVATION)
 								value = this->activation_function(value);
 
-							activations_buffer[out_shared_mem_ping_pong_offset + neuron][sample]							 = static_cast<fp16>(value);
-							train_activations_global[(sample_offset + sample) * NEURON_COUNT + layer_neuron_offset + neuron] = static_cast<fp16>(value);
+							activations_buffer[out_shared_mem_ping_pong_offset + neuron][sample] = static_cast<fp16>(value);
+
+							unsigned int output_activation_index = output_activation_index_block_base + (layer_neuron_offset + neuron) * BLOCK_SIZE + sample;
+							train_activations_global[output_activation_index] = static_cast<fp16>(value);
 						}
 					}
 				}
@@ -301,6 +307,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		__syncthreads();
 		NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_ERROR_INITIALIZATION, profile_start);
 
+		unsigned int activation_index_block_base = sample_offset * NEURON_COUNT;
 		for (unsigned int layer_index = output_layer_index; layer_index > 0; layer_index--)
 		{
 			unsigned int current_neurons		 = get_layer_neuron_count(layer_index);
@@ -317,20 +324,30 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			unsigned int sample_tile_count		 = BlockSize_ / 16;
 
 			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-			for (unsigned int linear_index = threadIdx.x; linear_index < previous_neurons_padded * BlockSize_; linear_index += BlockSize_)
+			constexpr unsigned int ITEMS_PER_THREAD = 32;
+
+			fp16* source	  = train_activations_global + activation_index_block_base + previous_layer_offset * BLOCK_SIZE;
+			fp16* destination = &activations_buffer[0][0];
+
+			unsigned int activation_count = previous_neurons * BLOCK_SIZE;
+			// This loop reorganizes the loads from the global mem train_activations_global ('source') buffer such that:
+			// each thread accesses contiguously:
+			// thread 0 : 0 1 2 3 4 5 6 7
+			// thread 1 : 8 9 10 11 12 13 14 15
+			//
+			// This is the fastest loading version that I found, it's faster than fully wave-coalesced accesses (probably because those would loose
+			// thread-contiguity: thread 0: 0 64 128 192 ...)
+			for (unsigned int base = threadIdx.x * ITEMS_PER_THREAD; base < activation_count; base += BLOCK_SIZE * ITEMS_PER_THREAD)
 			{
-				unsigned int previous_neuron = linear_index / BlockSize_;
-				unsigned int sample_index	 = linear_index % BlockSize_;
-				fp16 activation				 = static_cast<fp16>(0.0f);
-
-				if (previous_neuron < previous_neurons)
+				for (unsigned int i = 0; i < ITEMS_PER_THREAD; ++i)
 				{
-					unsigned int activation_index = (sample_offset + sample_index) * NEURON_COUNT + previous_layer_offset + previous_neuron;
-					activation					  = train_activations_global[activation_index];
-				}
+					unsigned int index = base + i;
 
-				activations_buffer[previous_neuron][sample_index] = activation;
+					if (index < activation_count)
+						destination[index] = source[index];
+				}
 			}
+
 			__syncthreads();
 			NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_ACTIVATION_RELOAD, profile_start);
 

@@ -151,8 +151,10 @@ template <typename residual_type>
 HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_probabilities,
 										 const residual_type* residuals,
 										 unsigned int cluster_count,
-										 unsigned int output_stride = 1,
-										 unsigned int output_index	= 0)
+										 unsigned int output_stride	  = 1,
+										 unsigned int output_index	  = 0,
+										 unsigned int residual_stride = 1,
+										 unsigned int residual_index  = 0)
 {
 	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
@@ -163,9 +165,9 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 		if (in_out_log_baseline_weights_probabilities[output_value_index] == -INFINITY)
 			continue;
 
-		float combined_logit = in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index]);
-		if (combined_logit > maximum_combined_logit)
-			maximum_combined_logit = combined_logit;
+		float combined_logit =
+			in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index * residual_stride + residual_index]);
+		maximum_combined_logit = hippt::max(maximum_combined_logit, combined_logit);
 	}
 
 	if (maximum_combined_logit == -INFINITY)
@@ -178,8 +180,9 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 		if (in_out_log_baseline_weights_probabilities[output_value_index] == -INFINITY)
 			continue;
 
-		float combined_logit = in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index]);
-		float exp_value		 = hippt::intrin_expf(combined_logit - maximum_combined_logit);
+		float combined_logit =
+			in_out_log_baseline_weights_probabilities[output_value_index] + static_cast<float>(residuals[cluster_index * residual_stride + residual_index]);
+		float exp_value = hippt::intrin_expf(combined_logit - maximum_combined_logit);
 		// Storing in the buffer so we don't have to recompute the exponentials in the next loop
 		in_out_log_baseline_weights_probabilities[output_value_index] = exp_value;
 

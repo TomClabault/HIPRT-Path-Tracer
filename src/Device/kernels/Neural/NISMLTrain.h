@@ -43,8 +43,8 @@ inline NISMLTrain(
 
 	bool valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
 	bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
-						record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
-	float weight = 0.0f;
+						 record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
+	float weight	   = 0.0f;
 	if (valid_weight)
 		weight = record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability * record.point_on_light_pdf_solid_angle);
 
@@ -139,9 +139,19 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 #if NISML_HAS_WMMA
 	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 #endif
+
+#if NISML_HAS_WMMA
+	unsigned int activation_block_base = blockIdx.x * NeuralImportanceSamplingMLPGPU::NEURON_COUNT * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE;
+
+	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLPGPU::INPUT_SIZE_PADDED_WMMA; neuron_index++)
+		train_activations[activation_block_base + neuron_index * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE + threadIdx.x] =
+			activations_buffer[neuron_index][threadIdx.x];
+#else
 	fp16* sample_activations = train_activations + record_index * NeuralImportanceSamplingMLPGPU::NEURON_COUNT;
 	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLPGPU::INPUT_SIZE_PADDED_WMMA; neuron_index++)
 		sample_activations[NeuralImportanceSamplingMLPGPU::get_neuron_data_index(0, neuron_index)] = activations_buffer[neuron_index][threadIdx.x];
+#endif
+
 #if NISML_HAS_WMMA
 	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_INPUT_ACTIVATION_STORE, profile_start);
 
@@ -200,11 +210,19 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	if (valid_record)
 	{
 #if NISML_HAS_WMMA
-		// On WMMA we can just read the residuals from the sample_activations buffer, no need to copy them to a separate array
-		valid_softmax = evaluate_nisml_softmax(output_probabilities_buffer,
+		constexpr unsigned int output_layer_offset = NeuralImportanceSamplingMLPGPU::get_neuron_data_index(NeuralImportanceSamplingMLPGPU::LAYER_COUNT - 1, 0);
+		unsigned int activation_block_base		   = blockIdx.x * NeuralImportanceSamplingMLPGPU::NEURON_COUNT * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE;
+		fp16* residuals = train_activations + activation_block_base + output_layer_offset * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE;
+
+		valid_softmax = evaluate_nisml_softmax(output_probabilities_buffer, residuals, render_data.nisml.cluster_count,
+											   // Baseline/probability layout:
+											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x,
+											   // Residual layout:
+											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
+		/*valid_softmax = evaluate_nisml_softmax(output_probabilities_buffer,
 											   sample_activations +
 												   NeuralImportanceSamplingMLPGPU::get_neuron_data_index(NeuralImportanceSamplingMLPGPU::LAYER_COUNT - 1, 0),
-											   render_data.nisml.cluster_count, NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
+											   render_data.nisml.cluster_count, NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);*/
 #else
 		valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
 #endif
