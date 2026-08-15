@@ -13,6 +13,7 @@
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/PathTracingDebugViews.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/SanityCheck.h"

@@ -400,7 +400,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT] =
 		std::make_shared<int>(IlluminationAwareKDTreeMaximumLookaheadLevelCount);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE] = std::make_shared<int>(IlluminationAwareKDTreeDebugMode);
-	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE] = std::make_shared<int>(NISML_DEBUG_MODE_KL_DIVERGENCE);
+	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE] = std::make_shared<int>(NISMLDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);

@@ -13,6 +13,7 @@
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/PathTracingDebugViews.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
