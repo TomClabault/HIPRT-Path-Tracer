@@ -64,6 +64,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/RebuildActiveNEEDistributions.h"
+#include "Device/kernels/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
@@ -87,7 +88,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner (image viewer).
 // If 1, it's bottom left corner (this renderer).
@@ -752,7 +753,6 @@ void CPURenderer::render()
 void CPURenderer::pre_sample_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_nisml_state.m_nisml_data.reset();
 	m_render_data.nisml.learning_enabled =
 		m_nisml_state.m_training_spp <= 0 || m_render_data.render_settings.sample_number < static_cast<unsigned int>(m_nisml_state.m_training_spp);
 	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
@@ -766,17 +766,10 @@ void CPURenderer::pre_sample_update(int frame_number)
 #if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
 	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	unsigned int node_count_for_cache = *kd_tree_device.core.node_count;
-	unsigned int cache_entry_count	  = node_count_for_cache * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
-	if (kd_tree_device.nisml.nisml_pending_cell_count->load() > 0u)
-		for (unsigned int cache_index = 0; cache_index < cache_entry_count; cache_index++)
-			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
-#endif
-	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int node_count				 = *kd_tree_device.core.node_count;
-	unsigned int distribution_slot_count = node_count * tree_cut_size;
-	unsigned int reset_thread_count		 = std::max(node_count, distribution_slot_count);
+	unsigned int tree_cut_size					 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
+	unsigned int node_count						 = *kd_tree_device.core.node_count;
+	unsigned int distribution_slot_count		 = node_count * tree_cut_size;
+	unsigned int reset_thread_count				 = std::max(node_count, distribution_slot_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
 		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(kd_tree_device, tree_cut_size, reset_index);
 #endif
@@ -832,6 +825,10 @@ void CPURenderer::post_sample_update(int frame_number)
 	ReGIR_post_sample_update();
 	ReSTIR_PT_post_sample_update();
 	illumination_aware_kd_tree_post_sample_update();
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	m_nisml_state.m_nisml_data.reset();
+#endif
 
 	if (m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number++;
@@ -899,67 +896,71 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	}
 #endif
 
-	unsigned int sample_count = kd_tree_device.core.training_sample_count->load();
-
-	for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
-		IlluminationAwareKDTree_AccumulateBatchTrainingSamples(kd_tree_device, sample_index);
-
-	const unsigned int node_count = *kd_tree_device.core.node_count;
-	for (unsigned int node_index = 0; node_index < node_count; node_index++)
-		IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory(kd_tree_device, node_index);
-
-	unsigned int* current_frontier					 = kd_tree_device.core.active_guiding_nodes;
-	AtomicType<unsigned int>* current_frontier_count = kd_tree_device.core.active_guiding_node_count;
-	unsigned int* next_frontier						 = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
-	AtomicType<unsigned int>* next_frontier_count =
-		m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
-	bool next_frontier_uses_first_buffer = true;
-
-	for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadLevelCount; depth++)
+	if (m_render_data.render_settings.sample_number <= kd_tree_device.core.user_settings.stop_refining_after_SPP - 1)
 	{
-		kd_tree_device.core.current_frontier	   = current_frontier;
-		kd_tree_device.core.current_frontier_count = current_frontier_count;
-		kd_tree_device.core.next_frontier		   = next_frontier;
-		kd_tree_device.core.next_frontier_count	   = next_frontier_count;
-		next_frontier_count->store(0u);
-
-		const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
-		const unsigned int current_frontier_count_value = current_frontier_count->load();
-		for (unsigned int frontier_index = 0; frontier_index < current_frontier_count_value; frontier_index++)
-			IlluminationAwareKDTree_ExpandOneLookaheadLevel(kd_tree_device, creation_tag, frontier_index);
+		unsigned int sample_count = kd_tree_device.core.training_sample_count->load();
 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
-			IlluminationAwareKDTree_ReplayTrainingSamplesKernel(kd_tree_device, creation_tag, sample_index);
+			IlluminationAwareKDTree_AccumulateBatchTrainingSamples(kd_tree_device, sample_index);
 
-		const unsigned int updated_node_count = *kd_tree_device.core.node_count;
-		for (unsigned int node_index = 0; node_index < updated_node_count; node_index++)
-			IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(kd_tree_device, creation_tag, node_index);
+		const unsigned int node_count = *kd_tree_device.core.node_count;
+		for (unsigned int node_index = 0; node_index < node_count; node_index++)
+			IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory(kd_tree_device, node_index);
 
-		const unsigned int next_frontier_count_value = next_frontier_count->load();
-		current_frontier							 = next_frontier;
-		current_frontier_count						 = next_frontier_count;
-		if (next_frontier_uses_first_buffer)
+		unsigned int* current_frontier					 = kd_tree_device.core.active_guiding_nodes;
+		AtomicType<unsigned int>* current_frontier_count = kd_tree_device.core.active_guiding_node_count;
+		unsigned int* next_frontier = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
+		AtomicType<unsigned int>* next_frontier_count =
+			m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
+		bool next_frontier_uses_first_buffer = true;
+
+		for (unsigned int depth = 0; depth < IlluminationAwareKDTreeMaximumLookaheadLevelCount; depth++)
 		{
-			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.data();
-		}
-		else
-		{
-			next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
-			next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
-		}
-		next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
+			kd_tree_device.core.current_frontier	   = current_frontier;
+			kd_tree_device.core.current_frontier_count = current_frontier_count;
+			kd_tree_device.core.next_frontier		   = next_frontier;
+			kd_tree_device.core.next_frontier_count	   = next_frontier_count;
+			next_frontier_count->store(0u);
 
-		if (next_frontier_count_value == 0)
-			break;
+			const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
+			const unsigned int current_frontier_count_value = current_frontier_count->load();
+			for (unsigned int frontier_index = 0; frontier_index < current_frontier_count_value; frontier_index++)
+				IlluminationAwareKDTree_ExpandOneLookaheadLevel(kd_tree_device, creation_tag, frontier_index);
+
+			for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
+				IlluminationAwareKDTree_ReplayTrainingSamplesKernel(kd_tree_device, creation_tag, sample_index);
+
+			const unsigned int updated_node_count = *kd_tree_device.core.node_count;
+			for (unsigned int node_index = 0; node_index < updated_node_count; node_index++)
+				IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel(kd_tree_device, creation_tag, node_index);
+
+			const unsigned int next_frontier_count_value = next_frontier_count->load();
+			current_frontier							 = next_frontier;
+			current_frontier_count						 = next_frontier_count;
+			if (next_frontier_uses_first_buffer)
+			{
+				next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.data();
+				next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.data();
+			}
+			else
+			{
+				next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier.data();
+				next_frontier_count = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
+			}
+			next_frontier_uses_first_buffer = !next_frontier_uses_first_buffer;
+
+			if (next_frontier_count_value == 0)
+				break;
+		}
+
+		const unsigned int active_guiding_node_count = kd_tree_device.core.active_guiding_node_count->load();
+		for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
+			IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(kd_tree_device, guiding_list_index);
+
+		for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
+			IlluminationAwareKDTree_PromoteGuidingCells(kd_tree_device, m_light_tree_builder_sg.get_tree_cut_size(), active_guiding_node_count,
+														guiding_list_index);
 	}
-
-	const unsigned int active_guiding_node_count = kd_tree_device.core.active_guiding_node_count->load();
-	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(kd_tree_device, guiding_list_index);
-
-	for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
-		IlluminationAwareKDTree_PromoteGuidingCells(kd_tree_device, m_light_tree_builder_sg.get_tree_cut_size(), active_guiding_node_count, guiding_list_index);
 
 #if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
 	unsigned int tree_cut_size			   = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
@@ -974,6 +975,18 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	for (unsigned int guiding_list_face_index = 0;
 		 guiding_list_face_index < updated_active_guiding_node_count * static_cast<unsigned int>(SurfaceNormalFace_Count); guiding_list_face_index++)
 		IlluminationAwareKDTree_RebuildActiveNEEDistributions(kd_tree_device, tree_cut_size, updated_active_guiding_node_count, guiding_list_face_index);
+#endif
+
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+	unsigned int training_record_capacity = m_render_data.nisml.training_record_capacity;
+	for (unsigned int record_index = 0; record_index < training_record_capacity; record_index++)
+		IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(m_render_data, record_index);
+
+	unsigned int node_count_for_cache = *kd_tree_device.core.node_count;
+	unsigned int cache_entry_count	  = node_count_for_cache * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
+	if (kd_tree_device.nisml.nisml_pending_cell_count->load() > 0u)
+		for (unsigned int cache_index = 0; cache_index < cache_entry_count; cache_index++)
+			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
 #endif
 #endif
 }
