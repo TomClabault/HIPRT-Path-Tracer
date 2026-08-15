@@ -20,6 +20,8 @@ ImGuiRenderer::ImGuiRenderer()
 	float windowDpiScale	= viewport->DpiScale;
 	if (windowDpiScale > 1.0f)
 		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
+
+	ImGui::GetStyle().IndentSpacing = 12.0f;
 }
 
 void ImGuiRenderer::init_imgui(GLFWwindow* glfw_window)
@@ -194,7 +196,7 @@ void ImGuiRenderer::draw_dockspace()
 			int renderer_width	= m_render_window->get_renderer()->m_render_resolution.x;
 			int renderer_height = m_render_window->get_renderer()->m_render_resolution.y;
 			m_dock_id_left		= ImGui::DockBuilderSplitNode(
-				 dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
+				dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
 			m_dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down,
 														   ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
 

@@ -1557,6 +1557,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_BASE_LIGHT_TREE_SG:
 				draw_light_tree_SG_settings_panel();
+				draw_illumination_aware_kd_tree_panel();
+				draw_neural_many_lights_panel();
 
 				break;
 			}
@@ -2472,7 +2474,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2653,7 +2655,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3734,7 +3736,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+
+	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+
+	bool using_neural_many_lights		  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
+	bool using_nee_learnt_distributions	  = ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(direct_light_nee_estimator, direct_light_sampling_strategy);
+	bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
+	// True if we are not using just the SG itself for sampling but rather a technique on of top of the SG tree
+	bool not_using_raw_sg_tree = using_neural_many_lights || using_nee_learnt_distributions;
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -3743,7 +3754,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes() / 1000000.0f);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		if (ImGui::CollapsingHeader("Build"))
+		ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+		ImGui::SeparatorText("Build");
+		ImGui::PopStyleVar();
 		{
 			switch (build_options.build_split_method)
 			{
@@ -3758,7 +3771,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 					if (ImGui::Button("Apply"))
 					{
-						current_bin_count		= hippt::clamp(2, 2000000000, current_bin_count);
 						build_options.bin_count = current_bin_count;
 
 						m_renderer->recompute_emissives_sampling_data_structure();
@@ -3812,10 +3824,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		if (ImGui::CollapsingHeader("Sampling"))
+		ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+		ImGui::SeparatorText("Sampling");
+		ImGui::PopStyleVar();
 		{
 			static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
 			ImGui::BeginDisabled(do_splitting);
+			ImGui::BeginDisabled(not_using_raw_sg_tree);
 
 			static bool use_tree_cut = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT);
 			if (ImGui::Checkbox("Use tree cut sampling", &use_tree_cut))
@@ -3826,16 +3841,25 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
-											"reservoir sampling. Changes require kernel recompilation.");
+			if (not_using_raw_sg_tree)
+				ImGuiRenderer::add_tooltip("Tree cut sampling is disabled because of currently using neural many lights or NEE learnt distributions. Those 2 "
+										   "techniques control the sampling. Tree cut sampling can only be used by the raw SG tree.");
+			else
+				ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
+												"reservoir sampling. This massively reduces variance but is quite expensive.");
 
 			static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 			ImGui::InputInt("Tree cut size", &current_tree_cut_size);
 			// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
 			current_tree_cut_size = hippt::clamp(1, 1024, current_tree_cut_size);
 
-			ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
-											"rebuilding the light-tree data.");
+			if (not_using_raw_sg_tree)
+				ImGuiRenderer::add_tooltip("Tree cut sampling is disabled because of currently using neural many lights or NEE learnt distributions. Those 2 "
+										   "techniques control the sampling. Tree cut sampling can only be used by the raw SG tree.");
+			else
+				ImGuiRenderer::show_help_marker(
+					"Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
+					"rebuilding the light-tree data.");
 			if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())
 			{
 				ImGui::TreePush("Apply button tree cut size");
@@ -3851,7 +3875,8 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 				ImGui::TreePop();
 			}
-			ImGui::EndDisabled();
+			ImGui::EndDisabled(); // not_using_raw_sg_tree
+			ImGui::EndDisabled(); // do_splitting
 
 			static int current_spatial_lobe_count = m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count();
 			ImGui::SliderInt("Spatial lobes per node", &current_spatial_lobe_count, 1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES);
@@ -3871,6 +3896,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
+			ImGui::BeginDisabled(not_using_raw_sg_tree);
 			if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
@@ -3879,6 +3905,10 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+			if (not_using_raw_sg_tree)
+				ImGuiRenderer::add_tooltip("Adaptive splitting is only available when using the SG tree itself for sampling, i.e. not when using a technique "
+										   "on top of the SG tree (neural many lights, NEE learnt distributions)");
+			ImGui::EndDisabled(); // not_using_raw_sg_tree
 
 			if (do_splitting)
 			{
@@ -3962,268 +3992,175 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+		}
 
-			bool use_neural_many_lights =
-				ILLUMINATION_AWARE_KD_TREE_IS_NISML(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
-													global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
-			if (use_neural_many_lights)
+		ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+		ImGui::SeparatorText("Debug");
+		ImGui::PopStyleVar();
+		{
+			if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::Checkbox("Random colors boxes", &render_data.light_tree_sg.settings.debug_draw_random_colors_boxes))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
+{
+	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
+	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
+	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+
+	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+	bool using_neural_many_lights		  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
+	bool using_nee_learnt_distributions	  = ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(direct_light_nee_estimator, direct_light_sampling_strategy);
+	bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
+	// True if we are not using just the SG itself for sampling but rather a technique on of top of the SG tree
+	bool not_using_raw_sg_tree = using_neural_many_lights || using_nee_learnt_distributions;
+
+	if (using_illumination_aware_kd_tree)
+	{
+		if (ImGui::CollapsingHeader("Illumination-aware KD-tree"))
+		{
+			ImGui::TreePush("Illumiantion aware KD-tree tree");
+
+			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
+															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
+															  : IlluminationAwareKDTreeVRAMUsage();
+			std::size_t vram_usage_bytes				= vram_usage.get_total_bytes();
+			std::size_t node_capacity = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
+			std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
+			std::size_t guiding_node_count =
+				illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
+
+			ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
+			ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
+						node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
+			ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
+			ImGui::Text("VRAM Usage breakdown:");
+
+			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
+			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
+														vram_usage.guiding_distribution_count + vram_usage.current_frontier +
+														vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
+			std::size_t direct_illumination_training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
+			std::size_t spatial_statistics_bytes =
+				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
+
+			std::string illumination_aware_vram_tooltip =
+				std::format("Breakdown:\n"
+							"  - KD-tree node structure: {:.3f}MB\n"
+							"    - Nodes: {:.3f}MB\n"
+							"    - Node bounds: {:.3f}MB\n"
+							"    - Node count: {:.3f}MB\n"
+							"  - Guiding-cell management: {:.3f}MB\n"
+							"    - Active guiding nodes: {:.3f}MB\n"
+							"    - Active guiding node count: {:.3f}MB\n"
+							"    - Needs-split flags: {:.3f}MB\n"
+							"    - Guiding distribution count: {:.3f}MB\n"
+							"    - Current frontier and count: {:.3f}MB\n"
+							"    - Next frontier and count: {:.3f}MB\n"
+							"  - Direct-illumination training buffers: {:.3f}MB\n"
+							"    - Training samples and count: {:.3f}MB\n"
+							"  - Spatial statistics: {:.3f}MB\n"
+							"    - Batch signatures: {:.3f}MB\n"
+							"    - History signatures: {:.3f}MB\n"
+							"    - Batch spatial moments: {:.3f}MB\n"
+							"    - History spatial moments: {:.3f}MB\n",
+							node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f,
+							vram_usage.node_count / 1000000.0f, guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f,
+							vram_usage.active_guiding_node_count / 1000000.0f, vram_usage.needs_split / 1000000.0f,
+							vram_usage.guiding_distribution_count / 1000000.0f, (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
+							(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
+							(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+							vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+							vram_usage.history_spatial_moments / 1000000.0f);
+
+			if (using_nee_learnt_distributions)
 			{
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::SeparatorText("Neural many lights");
+				std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
+				std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
+				std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
+														vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+														vram_usage.history_per_cell_normal_count;
+				std::size_t per_cut_history_bytes	  = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
+				std::size_t per_cut_batch_bytes		  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
+				std::size_t prior_distribution_bytes  = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
 
-				static int current_tree_cut_size_neural_many_lights =
-					m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights();
-				ImGui::InputInt("Tree cut size##neural_many_lights", &current_tree_cut_size_neural_many_lights);
-				// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
-				current_tree_cut_size_neural_many_lights = hippt::clamp(1, 1024, current_tree_cut_size_neural_many_lights);
+				illumination_aware_vram_tooltip += std::format(
+					"  - NEE distribution training buffers: {:.3f}MB\n"
+					"    - Training records and count: {:.3f}MB\n"
+					"  - Final NEE distributions: {:.3f}MB\n"
+					"    - Cut-slot probabilities: {:.3f}MB\n"
+					"    - Cut-slot CDFs: {:.3f}MB\n"
+					"  - Per-cell distribution history: {:.3f}MB\n"
+					"    - Cell sample count: {:.3f}MB\n"
+					"    - Cell normal sums (X/Y/Z): {:.3f}MB\n"
+					"    - Cell normal count: {:.3f}MB\n"
+					"  - Per-cut distribution history: {:.3f}MB\n"
+					"    - Conditional second moments: {:.3f}MB\n"
+					"    - Per-cut history sample counts: {:.3f}MB\n"
+					"  - Per-cut batch statistics: {:.3f}MB\n"
+					"    - Second-moment sums: {:.3f}MB\n"
+					"    - Batch sample counts: {:.3f}MB\n"
+					"  - Global prior distribution: {:.3f}MB\n"
+					"    - Prior PDFs: {:.3f}MB\n"
+					"    - Prior CDFs: {:.3f}MB\n",
+					nee_training_buffer_bytes / 1000000.0f, (vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f,
+					final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
+					vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f, vram_usage.history_per_cell_sample_count / 1000000.0f,
+					(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) /
+						1000000.0f,
+					vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
+					vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
+					per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
+					vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
+					vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
+			}
 
-				ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier used by the neural many-lights estimator. Changes require "
-												"rebuilding the light-tree data.");
-				if (current_tree_cut_size_neural_many_lights != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights())
+			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (illumination_aware_kd_tree_render_pass)
+			{
+				static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
+				ImGui::InputInt("Training sample buffer capacity", &training_sample_buffer_capacity);
+
+				if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
 				{
-					ImGui::TreePush("Apply button neural many lights tree cut size");
+					ImGui::TreePush("Apply button illumination-aware KD-tree training sample buffer capacity");
 
-					if (ImGui::Button("Apply##neural_many_lights_tree_cut_size"))
+					if (ImGui::Button("Apply"))
 					{
-						m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size_neural_many_lights(current_tree_cut_size_neural_many_lights);
+						illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity() = training_sample_buffer_capacity;
+						illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
 
-						m_renderer->recompute_emissives_sampling_data_structure();
 						m_render_window->set_render_dirty(true);
 					}
 
 					ImGui::TreePop();
 				}
-
-				if (nisml_render_pass)
-				{
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::SeparatorText("Neural many-lights training");
-
-					NISMLVRAMUsage vram_usage = nisml_render_pass->get_vram_usage_breakdown();
-					ImGui::Text("NISML VRAM usage: %.3fMB", vram_usage.get_total_bytes() / 1000000.0f);
-					ImGui::Text("VRAM Usage breakdown: ");
-
-					std::vector<char> vram_tooltip_buffer(4096);
-					snprintf(vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
-							 "  Neuron biases: %.3fMB\n"
-							 "  Gradient biases: %.3fMB\n"
-							 "  FP32 connection weights: %.3fMB\n"
-							 "  FP16 connection weights: %.3fMB\n"
-							 "  Gradient weights: %.3fMB\n"
-							 "  Adam weight means: %.3fMB\n"
-							 "  Adam weight variances: %.3fMB\n"
-							 "  Adam bias means: %.3fMB\n"
-							 "  Adam bias variances: %.3fMB\n"
-							 "  Training activations: %.3fMB\n"
-							 "  NEE training records: %.3fMB\n"
-							 "  Training sample counter: %.3fMB\n"
-							 "  Record counter: %.3fMB",
-							 vram_usage.neurons_biases / 1000000.0f, vram_usage.gradient_biases / 1000000.0f, vram_usage.connection_weights / 1000000.0f,
-							 vram_usage.connection_weights_fp16 / 1000000.0f, vram_usage.gradient_weights / 1000000.0f,
-							 vram_usage.adam_weights_means / 1000000.0f, vram_usage.adam_weights_variances / 1000000.0f,
-							 vram_usage.adam_biases_means / 1000000.0f, vram_usage.adam_biases_variances / 1000000.0f,
-							 vram_usage.train_activations / 1000000.0f, vram_usage.training_records / 1000000.0f, vram_usage.training_sample_count / 1000000.0f,
-							 vram_usage.training_record_count / 1000000.0f);
-					ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
-					{
-						nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
-
-					if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f,
-										   "%.1f%%"))
-					{
-						nisml_render_pass->get_training_record_percentage() = std::clamp(nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f);
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::show_help_marker("Percentage of valid NEE samples generated during each SPP that are retained for MLP training.");
-
-					if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
-
-					if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
-						m_render_window->set_render_dirty(true);
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					const char* nisml_debug_view_items[]	= { "- No debug", "- NISML entropy" };
-					const char* nisml_debug_view_tooltips[] = {
-						"Disable the NISML debug view.",
-						"NISML_DEBUG_MODE_ENTROPY displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
-						"Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means "
-						"that the distribution is nearly uniform across the K active clusters. The heatmap maps blue to focused "
-						"distributions and red to uniform distributions."
-					};
-					if (ImGuiRenderer::ComboWithTooltips("NISML debug view",
-														 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE),
-														 nisml_debug_view_items, IM_ARRAYSIZE(nisml_debug_view_items), nisml_debug_view_tooltips))
-					{
-						if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE) != NISML_DEBUG_MODE_NO_DEBUG)
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
-																   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-				}
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
-		}
 
-		int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-		int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-		bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
-		bool using_learnt_nee_distributions =
-			ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(direct_light_nee_estimator, direct_light_sampling_strategy);
-		bool using_nisml = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
-		if (using_illumination_aware_kd_tree)
-		{
-			if (ImGui::CollapsingHeader("Illumination-aware KD-tree"))
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+			ImGui::SeparatorText("Refinement");
+			ImGui::PopStyleVar();
 			{
-				IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
-																  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
-																  : IlluminationAwareKDTreeVRAMUsage();
-				std::size_t vram_usage_bytes				= vram_usage.get_total_bytes();
-				std::size_t node_capacity =
-					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
-				std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
-				std::size_t guiding_node_count =
-					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
-
-				ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
-				ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
-							node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
-				ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
-				ImGui::Text("VRAM Usage breakdown:");
-
-				std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
-				std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
-															vram_usage.guiding_distribution_count + vram_usage.current_frontier +
-															vram_usage.current_frontier_count + vram_usage.next_frontier + vram_usage.next_frontier_count;
-				std::size_t direct_illumination_training_buffer_bytes = vram_usage.training_samples + vram_usage.training_sample_count;
-				std::size_t spatial_statistics_bytes =
-					vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
-				std::size_t nisml_cache_bytes = vram_usage.nisml_cache + vram_usage.nisml_representative_sample_counts +
-												vram_usage.nisml_representative_write_locks + vram_usage.nisml_representative_ready +
-												vram_usage.nisml_cache_ready + vram_usage.nisml_pending_cell_count;
-
-				std::string illumination_aware_vram_tooltip = std::format(
-					"Breakdown:\n"
-					"  - KD-tree node structure: {:.3f}MB\n"
-					"    - Nodes: {:.3f}MB\n"
-					"    - Node bounds: {:.3f}MB\n"
-					"    - Node count: {:.3f}MB\n"
-					"  - Guiding-cell management: {:.3f}MB\n"
-					"    - Active guiding nodes: {:.3f}MB\n"
-					"    - Active guiding node count: {:.3f}MB\n"
-					"    - Needs-split flags: {:.3f}MB\n"
-					"    - Guiding distribution count: {:.3f}MB\n"
-					"    - Current frontier and count: {:.3f}MB\n"
-					"    - Next frontier and count: {:.3f}MB\n"
-					"  - Direct-illumination training buffers: {:.3f}MB\n"
-					"    - Training samples and count: {:.3f}MB\n"
-					"  - Spatial statistics: {:.3f}MB\n"
-					"    - Batch signatures: {:.3f}MB\n"
-					"    - History signatures: {:.3f}MB\n"
-					"    - Batch spatial moments: {:.3f}MB\n"
-					"    - History spatial moments: {:.3f}MB\n",
-					node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
-					guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
-					vram_usage.needs_split / 1000000.0f, vram_usage.guiding_distribution_count / 1000000.0f,
-					(vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
-					(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
-					(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
-					vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-					vram_usage.history_spatial_moments / 1000000.0f);
-
-				if (using_learnt_nee_distributions)
-				{
-					std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
-					std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
-					std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-														 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-														 vram_usage.history_per_cell_normal_count;
-					std::size_t per_cut_history_bytes = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
-					std::size_t per_cut_batch_bytes	  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
-					std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
-
-					illumination_aware_vram_tooltip += std::format(
-						"  - NEE distribution training buffers: {:.3f}MB\n"
-						"    - Training records and count: {:.3f}MB\n"
-						"  - Final NEE distributions: {:.3f}MB\n"
-						"    - Cut-slot probabilities: {:.3f}MB\n"
-						"    - Cut-slot CDFs: {:.3f}MB\n"
-						"  - Per-cell distribution history: {:.3f}MB\n"
-						"    - Cell sample count: {:.3f}MB\n"
-						"    - Cell normal sums (X/Y/Z): {:.3f}MB\n"
-						"    - Cell normal count: {:.3f}MB\n"
-						"  - Per-cut distribution history: {:.3f}MB\n"
-						"    - Conditional second moments: {:.3f}MB\n"
-						"    - Per-cut history sample counts: {:.3f}MB\n"
-						"  - Per-cut batch statistics: {:.3f}MB\n"
-						"    - Second-moment sums: {:.3f}MB\n"
-						"    - Batch sample counts: {:.3f}MB\n"
-						"  - Global prior distribution: {:.3f}MB\n"
-						"    - Prior PDFs: {:.3f}MB\n"
-						"    - Prior CDFs: {:.3f}MB\n",
-						nee_training_buffer_bytes / 1000000.0f, (vram_usage.nee_training_records + vram_usage.nee_training_record_count) / 1000000.0f,
-						final_distribution_bytes / 1000000.0f, vram_usage.tree_cut_sampling_probabilities / 1000000.0f,
-						vram_usage.tree_cut_sampling_cdfs / 1000000.0f, per_cell_history_bytes / 1000000.0f,
-						vram_usage.history_per_cell_sample_count / 1000000.0f,
-						(vram_usage.history_per_cell_normal_sum_x + vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z) /
-							1000000.0f,
-						vram_usage.history_per_cell_normal_count / 1000000.0f, per_cut_history_bytes / 1000000.0f,
-						vram_usage.history_per_cut_node_estimated_second_moment / 1000000.0f, vram_usage.history_per_cut_node_sample_count / 1000000.0f,
-						per_cut_batch_bytes / 1000000.0f, vram_usage.batch_per_cut_node_second_moment_sum / 1000000.0f,
-						vram_usage.batch_per_cut_node_sample_count / 1000000.0f, prior_distribution_bytes / 1000000.0f,
-						vram_usage.tree_cut_sampling_prior_pdfs / 1000000.0f, vram_usage.tree_cut_sampling_prior_cdfs / 1000000.0f);
-				}
-
-				if (using_nisml)
-				{
-					illumination_aware_vram_tooltip += std::format(
-						"  - NISML cache buffers: {:.3f}MB\n"
-						"    - Cache entries: {:.3f}MB\n"
-						"    - Representative sample counts: {:.3f}MB\n"
-						"    - Representative write locks: {:.3f}MB\n"
-						"    - Representative ready flags: {:.3f}MB\n"
-						"    - Cache ready flags: {:.3f}MB\n"
-						"    - Pending cell count: {:.3f}MB",
-						nisml_cache_bytes / 1000000.0f, vram_usage.nisml_cache / 1000000.0f, vram_usage.nisml_representative_sample_counts / 1000000.0f,
-						vram_usage.nisml_representative_write_locks / 1000000.0f, vram_usage.nisml_representative_ready / 1000000.0f,
-						vram_usage.nisml_cache_ready / 1000000.0f, vram_usage.nisml_pending_cell_count / 1000000.0f);
-				}
-
-				ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (illumination_aware_kd_tree_render_pass)
-				{
-					static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
-					ImGui::InputInt("Training sample buffer capacity", &training_sample_buffer_capacity);
+					ImGui::Checkbox("Freeze tree refinement", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
 
-					if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
-					{
-						ImGui::TreePush("Apply button illumination-aware KD-tree training sample buffer capacity");
-
-						if (ImGui::Button("Apply"))
-						{
-							illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity() = training_sample_buffer_capacity;
-							illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-
-							m_render_window->set_render_dirty(true);
-						}
-
-						ImGui::TreePop();
-					}
-				}
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Stop refining after SPP", &render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP, 1, 100))
 					m_render_window->set_render_dirty(true);
 
@@ -4281,14 +4218,13 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					if (subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::MEAN_RADIANCE_ONLY ||
 						subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL)
 					{
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 						if (ImGui::SliderFloat("Mean radiance threshold", &render_data.kd_tree_device.core.user_settings.mean_radiance_split_threshold, 0.01f,
 											   1.0f, "%.3f"))
 							m_render_window->set_render_dirty(true);
 					}
 				}
 
-				if (using_learnt_nee_distributions)
+				if (using_nee_learnt_distributions)
 				{
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Learnt NEE distributions");
@@ -4322,40 +4258,179 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 					}
 					ImGuiRenderer::show_help_marker("Maximum persistent observation count used when adapting learnt second-moment estimates.");
 				}
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+			ImGui::SeparatorText("Debug");
+			ImGui::PopStyleVar();
+
+			const char* debug_view_items[] = { "- No debug",
+											   "- KD tree leaves solid",
+											   "- KD tree leaves outlines",
+											   "- KD tree leaves outlines and lookaheads",
+											   "- KD tree leaves by normal solid",
+											   "- KD tree leaves by normal outlines" };
+			if (ImGui::Combo("Debug view",
+							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
+							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+			{
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE) !=
+					ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG)
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+	}
+}
+
+void ImGuiSettingsWindow::draw_neural_many_lights_panel()
+{
+	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
+	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
+	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+
+	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+	bool using_neural_many_lights	   = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
+
+	if (using_neural_many_lights)
+	{
+		if (ImGui::CollapsingHeader("Neural importance sampling of many lights"))
+		{
+			ImGui::TreePush("NISML tree");
+
+			if (nisml_render_pass)
+			{
+				NISMLVRAMUsage nisml_vram_usage						= nisml_render_pass->get_vram_usage_breakdown();
+				IlluminationAwareKDTreeVRAMUsage kd_tree_vram_usage = illumination_aware_kd_tree_render_pass
+																		  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
+																		  : IlluminationAwareKDTreeVRAMUsage();
+
+				std::size_t nisml_cache_bytes = kd_tree_vram_usage.nisml_cache + kd_tree_vram_usage.nisml_representative_sample_counts +
+												kd_tree_vram_usage.nisml_representative_write_locks + kd_tree_vram_usage.nisml_representative_ready +
+												kd_tree_vram_usage.nisml_cache_ready + kd_tree_vram_usage.nisml_pending_cell_count;
+
+				ImGui::Text("NISML VRAM usage: %.3fMB", (nisml_vram_usage.get_total_bytes() + nisml_cache_bytes) / 1000000.0f);
+				ImGui::Text("VRAM Usage breakdown: ");
+
+				std::vector<char> vram_tooltip_buffer(4096);
+				snprintf(vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
+						 "  Neuron biases: %.3fMB\n"
+						 "  Gradient biases: %.3fMB\n"
+						 "  FP32 connection weights: %.3fMB\n"
+						 "  FP16 connection weights: %.3fMB\n"
+						 "  Gradient weights: %.3fMB\n"
+						 "  Adam weight means: %.3fMB\n"
+						 "  Adam weight variances: %.3fMB\n"
+						 "  Adam bias means: %.3fMB\n"
+						 "  Adam bias variances: %.3fMB\n"
+						 "  Training activations: %.3fMB\n"
+						 "  NEE training records: %.3fMB\n"
+						 "  Training sample counter: %.3fMB\n"
+						 "  Record counter: %.3fMB\n"
+						 "  NISML cache buffers: %.3fMB\n"
+						 "    Cache entries: %.3fMB\n"
+						 "    Representative sample counts: %.3fMB\n"
+						 "    Representative write locks: %.3fMB\n"
+						 "    Representative ready flags: %.3fMB\n"
+						 "    Cache ready flags: %.3fMB\n"
+						 "    Pending cell count: %.3fMB",
+						 nisml_vram_usage.neurons_biases / 1000000.0f, nisml_vram_usage.gradient_biases / 1000000.0f,
+						 nisml_vram_usage.connection_weights / 1000000.0f, nisml_vram_usage.connection_weights_fp16 / 1000000.0f,
+						 nisml_vram_usage.gradient_weights / 1000000.0f, nisml_vram_usage.adam_weights_means / 1000000.0f,
+						 nisml_vram_usage.adam_weights_variances / 1000000.0f, nisml_vram_usage.adam_biases_means / 1000000.0f,
+						 nisml_vram_usage.adam_biases_variances / 1000000.0f, nisml_vram_usage.train_activations / 1000000.0f,
+						 nisml_vram_usage.training_records / 1000000.0f, nisml_vram_usage.training_sample_count / 1000000.0f,
+						 nisml_vram_usage.training_record_count / 1000000.0f, nisml_cache_bytes / 1000000.0f, kd_tree_vram_usage.nisml_cache / 1000000.0f,
+						 kd_tree_vram_usage.nisml_representative_sample_counts / 1000000.0f, kd_tree_vram_usage.nisml_representative_write_locks / 1000000.0f,
+						 kd_tree_vram_usage.nisml_representative_ready / 1000000.0f, kd_tree_vram_usage.nisml_cache_ready / 1000000.0f,
+						 kd_tree_vram_usage.nisml_pending_cell_count / 1000000.0f);
+				ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				const char* debug_view_items[] = { "- No debug",
-												   "- KD tree leaves solid",
-												   "- KD tree leaves outlines",
-												   "- KD tree leaves outlines and lookaheads",
-												   "- KD tree leaves by normal solid",
-												   "- KD tree leaves by normal outlines" };
-				if (ImGui::Combo("Debug view",
-								 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
-								 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+				ImGui::SeparatorText("Training");
+				ImGui::PopStyleVar();
+
+				static int current_tree_cut_size_neural_many_lights =
+					m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights();
+				ImGui::InputInt("Tree cut size##neural_many_lights", &current_tree_cut_size_neural_many_lights);
+				// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
+				current_tree_cut_size_neural_many_lights = hippt::clamp(1, 1024, current_tree_cut_size_neural_many_lights);
+
+				ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier used by the neural many-lights estimator. Changes require "
+												"rebuilding the light-tree data.");
+				if (current_tree_cut_size_neural_many_lights != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size_neural_many_lights())
 				{
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE) !=
-						ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG)
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
+					ImGui::TreePush("Apply button neural many lights tree cut size");
+
+					if (ImGui::Button("Apply##neural_many_lights_tree_cut_size"))
+					{
+						m_renderer->get_light_tree_sg_sampling_data_structure().set_tree_cut_size_neural_many_lights(current_tree_cut_size_neural_many_lights);
+
+						m_renderer->recompute_emissives_sampling_data_structure();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
+				{
+					nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
+
+				if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f, "%.1f%%"))
+				{
+					nisml_render_pass->get_training_record_percentage() = std::clamp(nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Percentage of valid NEE samples generated during each SPP that are retained for MLP training.");
+
+				if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
+
+				if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+				ImGui::SeparatorText("Debug");
+				ImGui::PopStyleVar();
+				const char* nisml_debug_view_items[]	= { "- No debug", "- NISML entropy" };
+				const char* nisml_debug_view_tooltips[] = {
+					"Disable the NISML debug view.",
+					"NISML_DEBUG_MODE_ENTROPY displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
+					"Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means "
+					"that the distribution is nearly uniform across the K active clusters. The heatmap maps blue to focused "
+					"distributions and red to uniform distributions."
+				};
+
+				if (ImGuiRenderer::ComboWithTooltips("NISML debug view",
+													 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE),
+													 nisml_debug_view_items, IM_ARRAYSIZE(nisml_debug_view_items), nisml_debug_view_tooltips))
+				{
+					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE) != NISML_DEBUG_MODE_NO_DEBUG)
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
+															   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
-
-				if (illumination_aware_kd_tree_render_pass)
-					ImGui::Checkbox("Freeze tree", &illumination_aware_kd_tree_render_pass->get_frozen_tree());
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::CollapsingHeader("SG tree debug"))
-			{
-				if (ImGui::Checkbox("Draw tree cut bounding boxes", &render_data.light_tree_sg.settings.debug_draw_tree_cut_bounding_boxes))
-					m_render_window->set_render_dirty(true);
-
-				if (ImGui::Checkbox("Random colors boxes", &render_data.light_tree_sg.settings.debug_draw_random_colors_boxes))
-					m_render_window->set_render_dirty(true);
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4811,7 +4886,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 			tooltips.push_back(
 				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher variance");
+				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher "
+				"variance");
 		}
 		else
 		{
@@ -5354,13 +5430,14 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			const char* energy_compensation_mode[]			= { "- LUTs Turquin 2019", "- Random walk Cui 2023" };
-			const char* tooltips_energy_compensation_mode[] = {
-				"Uses precomputed LUTs following the method of [Practical multiple scattering compensation for microfacet models, Turquin, 2019] to compensate "
-				"energy loss due to multiple scattering in microfacet BRDFs. Fast but approximate",
+			const char* tooltips_energy_compensation_mode[] = { "Uses precomputed LUTs following the method of [Practical multiple scattering compensation "
+																"for microfacet models, Turquin, 2019] to compensate "
+																"energy loss due to multiple scattering in microfacet BRDFs. Fast but approximate",
 
-				"Uses an implementation of the method proposed in[Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle, Cui et al., 2023] to "
-				"compute the true multiple scattering path integral within the microsurface.More expensive than LUTs but more accurate and physically based."
-			};
+																"Uses an implementation of the method proposed in[Multiple-bounce Smith Microfacet BRDFs "
+																"using the Invariance Principle, Cui et al., 2023] to "
+																"compute the true multiple scattering path integral within the microsurface.More expensive "
+																"than LUTs but more accurate and physically based." };
 
 			ImGui::SeparatorText("Energy compensation method");
 			if (ImGuiRenderer::ComboWithTooltips(
@@ -5822,7 +5899,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

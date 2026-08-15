@@ -18,16 +18,6 @@
 #define IlluminationAwareKDTreeTreeCutInitializationBlockSize 1024
 
 /**
- * Returns whether the given direct-lighting options use the illumination-aware KD-tree.
- *
- * The arguments may be runtime compiler-option values on the
- * host or compile-time kernel option macros on the device.
- */
-#define ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(nee_estimator, sampling_strategy)                                                                                \
-	(ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(nee_estimator, sampling_strategy) ||                                                               \
-	 ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy))
-
-/**
  * Returns whether the given direct-lighting options use neural importance sampling for many lights.
  *
  * The arguments may be runtime compiler-option
@@ -44,6 +34,16 @@
  */
 #define ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(nee_estimator, sampling_strategy)                                                               \
 	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_SG_TREE_LEARNT_DISTRIBUTIONS)
+
+/**
+ * Returns whether the given direct-lighting options use the illumination-aware KD-tree.
+ *
+ * The arguments may be runtime compiler-option values on the
+ * host or compile-time kernel option macros on the device.
+ */
+#define ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(nee_estimator, sampling_strategy)                                                                                \
+	(ILLUMINATION_AWARE_KD_TREE_IS_NEE_LEARNT_DISTRIBUTIONS(nee_estimator, sampling_strategy) ||                                                               \
+	 ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy))
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because the GPU compiler

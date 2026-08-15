@@ -58,6 +58,8 @@ private:
 	void draw_ReGIR_settings_panel();
 	void draw_light_tree_ATS_settings_panel();
 	void draw_light_tree_SG_settings_panel();
+	void draw_illumination_aware_kd_tree_panel();
+	void draw_neural_many_lights_panel();
 
 	template <int ReSTIRVariant>
 	void draw_ReSTIR_neighbor_heuristics_panel();
