@@ -27,7 +27,7 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_representative_sample_counts, cache_entry_count);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_occupied_counts, cache_entry_count);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_valid, representative_count);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_write_locks, cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_write_locks, representative_count);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_dirty, cache_entry_count);
 		GenericSoAHelpers::resize<DataContainer>(m_cache_ready, cache_entry_count);
 		GenericSoAHelpers::resize<DataContainer>(m_pending_cell_count, 1);
@@ -42,12 +42,13 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		{
 			for (GenericAtomicType<unsigned int, DataContainer>& sample_count : m_representative_sample_counts)
 				sample_count.store(0u);
-			for (unsigned int& occupied_count : m_representative_occupied_counts)
-				occupied_count = 0u;
+			for (GenericAtomicType<unsigned int, DataContainer>& occupied_count : m_representative_occupied_counts)
+				occupied_count.store(0u);
 			std::fill(m_representative_valid.begin(), m_representative_valid.end(), 0u);
 			for (GenericAtomicType<unsigned int, DataContainer>& write_lock : m_representative_write_locks)
 				write_lock.store(0u);
-			std::fill(m_representative_dirty.begin(), m_representative_dirty.end(), 0u);
+			for (GenericAtomicType<unsigned char, DataContainer>& dirty : m_representative_dirty)
+				dirty.store(0u);
 			std::fill(m_cache_ready.begin(), m_cache_ready.end(), 0u);
 			m_pending_cell_count[0].store(0u);
 		}
@@ -70,10 +71,10 @@ struct IlluminationAwareKDTreeNISMLDataHost
 
 		m_cache							 = DataContainer<IlluminationAwareKDTreeNISMLCache>();
 		m_representative_sample_counts	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_representative_occupied_counts = DataContainer<unsigned int>();
+		m_representative_occupied_counts = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_valid			 = DataContainer<unsigned char>();
 		m_representative_write_locks	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_representative_dirty			 = DataContainer<unsigned char>();
+		m_representative_dirty			 = DataContainer<GenericAtomicType<unsigned char, DataContainer>>();
 		m_cache_ready					 = DataContainer<unsigned char>();
 		m_pending_cell_count			 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_capacity		 = 1;
@@ -91,20 +92,20 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		kd_tree_device.nisml.nisml_cache						  = GenericSoAHelpers::get_buffer_data_ptr(m_cache);
 		kd_tree_device.nisml.nisml_representative_capacity		  = m_representative_capacity;
 		kd_tree_device.nisml.nisml_representative_sample_counts	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_sample_counts);
-		kd_tree_device.nisml.nisml_representative_occupied_counts = GenericSoAHelpers::get_buffer_data_ptr(m_representative_occupied_counts);
+		kd_tree_device.nisml.nisml_representative_occupied_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_occupied_counts);
 		kd_tree_device.nisml.nisml_representative_valid			  = GenericSoAHelpers::get_buffer_data_ptr(m_representative_valid);
 		kd_tree_device.nisml.nisml_representative_write_locks	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_write_locks);
-		kd_tree_device.nisml.nisml_representative_dirty			  = GenericSoAHelpers::get_buffer_data_ptr(m_representative_dirty);
+		kd_tree_device.nisml.nisml_representative_dirty			  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_dirty);
 		kd_tree_device.nisml.nisml_cache_ready					  = GenericSoAHelpers::get_buffer_data_ptr(m_cache_ready);
 		kd_tree_device.nisml.nisml_pending_cell_count			  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_pending_cell_count);
 	}
 
 	DataContainer<IlluminationAwareKDTreeNISMLCache> m_cache;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_sample_counts;
-	DataContainer<unsigned int> m_representative_occupied_counts;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_occupied_counts;
 	DataContainer<unsigned char> m_representative_valid;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_write_locks;
-	DataContainer<unsigned char> m_representative_dirty;
+	DataContainer<GenericAtomicType<unsigned char, DataContainer>> m_representative_dirty;
 	DataContainer<unsigned char> m_cache_ready;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_pending_cell_count;
 	unsigned int m_representative_capacity = 1;

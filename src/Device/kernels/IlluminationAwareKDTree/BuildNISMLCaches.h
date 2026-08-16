@@ -82,10 +82,10 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 		kd_tree_device.nisml.nisml_pending_cell_count == nullptr || kd_tree_device.nisml.nisml_representative_capacity == 0u)
 		return;
 
-	if (kd_tree_device.nisml.nisml_representative_dirty[cache_index] == 0)
+	if (hippt::atomic_load(&kd_tree_device.nisml.nisml_representative_dirty[cache_index]) == 0)
 		return;
 
-	unsigned int occupied_representative_count = kd_tree_device.nisml.nisml_representative_occupied_counts[cache_index];
+	unsigned int occupied_representative_count = hippt::atomic_load(&kd_tree_device.nisml.nisml_representative_occupied_counts[cache_index]);
 	if (occupied_representative_count == 0u)
 		return;
 
@@ -136,8 +136,8 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 		cache.log_importances[cluster_index] = -INFINITY;
 
 	// The cache is published only after all logits have been written. The host synchronizes this kernel before the next frame is uploaded.
-	kd_tree_device.nisml.nisml_cache_ready[cache_index]			 = 1;
-	kd_tree_device.nisml.nisml_representative_dirty[cache_index] = 0;
+	kd_tree_device.nisml.nisml_cache_ready[cache_index] = 1;
+	hippt::atomic_compare_exchange(&kd_tree_device.nisml.nisml_representative_dirty[cache_index], static_cast<unsigned char>(1), static_cast<unsigned char>(0));
 	hippt::atomic_fetch_add(kd_tree_device.nisml.nisml_pending_cell_count, static_cast<unsigned int>(-1));
 }
 

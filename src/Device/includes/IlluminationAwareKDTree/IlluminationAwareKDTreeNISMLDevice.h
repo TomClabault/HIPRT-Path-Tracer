@@ -31,21 +31,33 @@ struct IlluminationAwareKDTreeNISMLDevice
 
 		unsigned int sample_index	   = hippt::atomic_fetch_add(&nisml_representative_sample_counts[cache_index], 1u);
 		unsigned int replacement_index = sample_index;
+		bool is_reservoir_replacement  = false;
+
 		if (sample_index >= nisml_representative_capacity)
 		{
-			float replacement_probability = static_cast<float>(nisml_representative_capacity) / static_cast<float>(sample_index + 1u);
-			if (random_number_generator() >= replacement_probability)
+			replacement_index = static_cast<unsigned int>(random_number_generator.random_index(static_cast<int>(sample_index + 1u)));
+			if (replacement_index >= nisml_representative_capacity)
 				return;
 
-			replacement_index = static_cast<unsigned int>(random_number_generator.random_index(static_cast<int>(nisml_representative_capacity)));
+			is_reservoir_replacement = true;
 		}
 
-		if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[cache_index], 0u, 1u) != 0u)
-			// Simple fail fast approach: if the lock is already taken, we skip this representative. This may result in some representatives being skipped, but
-			// it avoids potential deadlocks and should be fine for the purpose of representative collection.
-			return;
+		unsigned int representative_index = get_nisml_representative_index(cache_index, replacement_index);
+		if (is_reservoir_replacement)
+		{
+			if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[representative_index], 0u, 1u) != 0u)
+				// Simple fail fast approach for reservoir replacements: if the selected representative slot is already being replaced, skip this
+				// replacement. This avoids potential deadlocks and does not affect the guaranteed initial representative slots.
+				return;
 
-		unsigned int representative_index		 = get_nisml_representative_index(cache_index, replacement_index);
+			// An initial representative may have claimed this slot but not published its data yet. Leave that slot to the initial representative.
+			if (nisml_representative_valid[representative_index] == 0)
+			{
+				hippt::atomic_exchange(&nisml_representative_write_locks[representative_index], 0u);
+				return;
+			}
+		}
+
 		IlluminationAwareKDTreeNISMLCache& cache = nisml_cache[representative_index];
 		cache.representative_position			 = position;
 		cache.representative_view_direction		 = view_direction;
@@ -57,16 +69,16 @@ struct IlluminationAwareKDTreeNISMLDevice
 		if (nisml_representative_valid[representative_index] == 0)
 		{
 			nisml_representative_valid[representative_index] = 1;
-			nisml_representative_occupied_counts[cache_index]++;
+			hippt::atomic_fetch_add(&nisml_representative_occupied_counts[cache_index], 1u);
 		}
 
-		if (nisml_representative_dirty[cache_index] == 0)
+		if (hippt::atomic_compare_exchange(&nisml_representative_dirty[cache_index], static_cast<unsigned char>(0), static_cast<unsigned char>(1)) == 0)
 		{
-			nisml_representative_dirty[cache_index] = 1;
 			hippt::atomic_fetch_add(nisml_pending_cell_count, 1u);
 		}
 
-		hippt::atomic_exchange(&nisml_representative_write_locks[cache_index], 0u);
+		if (is_reservoir_replacement)
+			hippt::atomic_exchange(&nisml_representative_write_locks[representative_index], 0u);
 	}
 
 	HIPRT_DEVICE unsigned int get_nisml_cache_index(unsigned int node_index, unsigned int normal_face) const
@@ -91,26 +103,26 @@ struct IlluminationAwareKDTreeNISMLDevice
 			unsigned int cache_index = get_nisml_cache_index(node_index, normal_face);
 			for (unsigned int representative_index = 0; representative_index < nisml_representative_capacity; representative_index++)
 			{
-				unsigned int flat_representative_index				  = get_nisml_representative_index(cache_index, representative_index);
-				nisml_cache[flat_representative_index]				  = {};
-				nisml_representative_valid[flat_representative_index] = 0;
+				unsigned int flat_representative_index						= get_nisml_representative_index(cache_index, representative_index);
+				nisml_cache[flat_representative_index]						= {};
+				nisml_representative_valid[flat_representative_index]		= 0;
+				nisml_representative_write_locks[flat_representative_index] = 0;
 			}
 
 			nisml_representative_sample_counts[cache_index]	  = 0;
 			nisml_representative_occupied_counts[cache_index] = 0;
-			nisml_representative_write_locks[cache_index]	  = 0;
 			nisml_representative_dirty[cache_index]			  = 0;
 			nisml_cache_ready[cache_index]					  = 0;
 		}
 	}
 
-	IlluminationAwareKDTreeNISMLCache* nisml_cache				 = nullptr;
-	unsigned int nisml_representative_capacity					 = 1;
-	AtomicType<unsigned int>* nisml_representative_sample_counts = nullptr;
-	unsigned int* nisml_representative_occupied_counts			 = nullptr;
-	unsigned char* nisml_representative_valid					 = nullptr;
-	AtomicType<unsigned int>* nisml_representative_write_locks	 = nullptr;
-	unsigned char* nisml_representative_dirty					 = nullptr;
+	IlluminationAwareKDTreeNISMLCache* nisml_cache				   = nullptr;
+	unsigned int nisml_representative_capacity					   = 1;
+	AtomicType<unsigned int>* nisml_representative_sample_counts   = nullptr;
+	AtomicType<unsigned int>* nisml_representative_occupied_counts = nullptr;
+	unsigned char* nisml_representative_valid					   = nullptr;
+	AtomicType<unsigned int>* nisml_representative_write_locks	   = nullptr;
+	AtomicType<unsigned char>* nisml_representative_dirty		   = nullptr;
 	// Indicates that log_importances contains a completely written, valid cache snapshot.
 	// It does not indicate that representative collection is complete. A cache may remain ready while new representatives mark it dirty and trigger a later
 	// rebuild.
