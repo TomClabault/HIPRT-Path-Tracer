@@ -25,6 +25,42 @@ HIPRT_DEVICE unsigned int illumination_aware_kd_tree_debug_cell_normal_face_key(
 	return guiding_cell_index * static_cast<unsigned int>(SurfaceNormalFace_Count) + normal_face + 1u;
 }
 
+HIPRT_DEVICE unsigned int path_tracing_compute_nisml_hash_key(const HIPRTRenderData& render_data, unsigned int pixel_index)
+{
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	return render_data.kd_tree_device.nisml.get_nisml_hash_key(guiding_cell_index, shading_normal);
+}
+
+HIPRT_DEVICE bool path_tracing_pixel_is_on_nisml_hash_key_outline(const HIPRTRenderData& render_data, unsigned int pixel_index, unsigned int nisml_hash_key)
+{
+	if (nisml_hash_key == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return false;
+
+	unsigned int image_width  = render_data.render_settings.render_resolution.x;
+	unsigned int image_height = render_data.render_settings.render_resolution.y;
+	unsigned int pixel_x	  = pixel_index % image_width;
+	unsigned int pixel_y	  = pixel_index / image_width;
+
+	if (pixel_x > 0 && path_tracing_compute_nisml_hash_key(render_data, pixel_index - 1) != nisml_hash_key)
+		return true;
+	if (pixel_x + 1 < image_width && path_tracing_compute_nisml_hash_key(render_data, pixel_index + 1) != nisml_hash_key)
+		return true;
+	if (pixel_y > 0 && path_tracing_compute_nisml_hash_key(render_data, pixel_index - image_width) != nisml_hash_key)
+		return true;
+	if (pixel_y + 1 < image_height && path_tracing_compute_nisml_hash_key(render_data, pixel_index + image_width) != nisml_hash_key)
+		return true;
+
+	return false;
+}
+
 HIPRT_DEVICE ColorRGB32F path_tracing_nisml_debug_heatmap(float normalized_value)
 {
 	normalized_value = hippt::clamp(0.0f, 1.0f, normalized_value);
@@ -462,6 +498,16 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	float nisml_debug_value;
 	if (path_tracing_compute_nisml_kl_divergence_debug_value(render_data, pixel_index, nisml_debug_value))
 		out_debug_color = path_tracing_nisml_debug_heatmap(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+
+#elif NISMLDebugMode == NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID
+	unsigned int nisml_hash_key = path_tracing_compute_nisml_hash_key(render_data, pixel_index);
+	if (nisml_hash_key != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		out_debug_color = ColorRGB32F::random_color(nisml_hash_key) * (render_data.render_settings.sample_number + 1);
+
+#elif NISMLDebugMode == NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE
+	unsigned int nisml_hash_key = path_tracing_compute_nisml_hash_key(render_data, pixel_index);
+	if (path_tracing_pixel_is_on_nisml_hash_key_outline(render_data, pixel_index, nisml_hash_key))
+		out_debug_color = ColorRGB32F::random_color(nisml_hash_key) * (render_data.render_settings.sample_number + 1);
 #endif // NISML debug mode
 
 #elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG &&                                                                    \

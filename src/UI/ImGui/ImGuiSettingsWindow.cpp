@@ -4474,8 +4474,12 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
 				ImGui::SeparatorText("Debug");
 				ImGui::PopStyleVar();
-				const char* nisml_debug_view_items[]	= { "- No debug", "- NISML entropy", "- NISML neural-vs-baseline KL divergence",
-															"- NISML latent activations" };
+				const char* nisml_debug_view_items[]	= { "- No debug",
+															"- NISML entropy",
+															"- NISML neural-vs-baseline KL divergence",
+															"- NISML latent activations",
+															"- NISML SG-importance caches (solid)",
+															"- NISML SG-importance caches (outlines)" };
 				const char* nisml_debug_view_tooltips[] = {
 					"Disable the NISML debug view.",
 
@@ -4490,7 +4494,12 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 					"Shows the normalized activations of the last hidden layer as a quantized RGB projection. Similar 64-dimensional "
 					"activations receive similar colors, while quantization makes nearby activations often receive the same color. "
-					"This is a deterministic local projection, not a global clustering."
+					"This is a deterministic local projection, not a global clustering.",
+
+					"Colors each guiding KD-tree node and quantized shading-normal bucket by its hash key. This shows the placement of SG importance caches.",
+
+					"Colors the outline of each guiding KD-tree node and quantized shading-normal bucket by its hash key. This shows the placement of SG "
+					"importance caches."
 				};
 
 				if (ImGuiRenderer::ComboWithTooltips("NISML debug view",

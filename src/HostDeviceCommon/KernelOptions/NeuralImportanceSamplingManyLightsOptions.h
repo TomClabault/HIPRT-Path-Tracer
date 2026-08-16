@@ -19,6 +19,8 @@
 #define NISML_DEBUG_MODE_ENTROPY			1
 #define NISML_DEBUG_MODE_KL_DIVERGENCE		2
 #define NISML_DEBUG_MODE_LATENT_ACTIVATIONS 3
+#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID	4
+#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE	5
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
@@ -145,6 +147,10 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
  * NISML_DEBUG_MODE_LATENT_ACTIVATIONS shows the normalized activations of the last hidden layer as a quantized RGB
  * projection. Similar 64-dimensional activations receive similar colors, while the quantization makes nearby
  * activations often receive the same color. This is a deterministic local projection, not a global clustering.
+ *
+ * NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID colors each guiding cell and quantized shading-normal bucket by its
+ * NISML SG-importance cache key.
+ * NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE draws outlines where that cache key changes between neighboring pixels.
  */
 #define NISMLDebugMode NISML_DEBUG_MODE_NO_DEBUG
 #endif
