@@ -9,8 +9,6 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNISMLCache.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
-#include "HostDeviceCommon/Xorshift.h"
-
 struct IlluminationAwareKDTreeNISMLDevice
 {
 	HIPRT_DEVICE void append_nisml_representative(unsigned int node_index,
@@ -20,8 +18,7 @@ struct IlluminationAwareKDTreeNISMLDevice
 												  float3_t normal,
 												  float sg_specular_weight,
 												  float alpha_x,
-												  float alpha_y,
-												  Xorshift32Generator& random_number_generator)
+												  float alpha_y)
 	{
 		if (node_index >= node_capacity)
 			return;
@@ -29,24 +26,64 @@ struct IlluminationAwareKDTreeNISMLDevice
 		unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(normal);
 		unsigned int cache_index = get_nisml_cache_index(node_index, normal_face);
 
-		unsigned int sample_index	   = hippt::atomic_fetch_add(&nisml_representative_sample_counts[cache_index], 1u);
-		unsigned int replacement_index = sample_index;
-		bool is_reservoir_replacement  = false;
+		unsigned int sample_index			 = hippt::atomic_fetch_add(&nisml_representative_sample_counts[cache_index], 1u);
+		unsigned int replacement_index		 = sample_index;
+		bool is_normal_diversity_replacement = false;
 
 		if (sample_index >= nisml_representative_capacity)
 		{
-			replacement_index = static_cast<unsigned int>(random_number_generator.random_index(static_cast<int>(sample_index + 1u)));
-			if (replacement_index >= nisml_representative_capacity)
+			// A single representative cannot provide normal diversity. Keep its first sample stable instead of doing unnecessary work.
+			if (nisml_representative_capacity <= 1u)
 				return;
 
-			is_reservoir_replacement = true;
+			float candidate_closest_similarity					= -1.0f;
+			unsigned int candidate_closest_representative_index = nisml_representative_capacity;
+			for (unsigned int representative_index = 0; representative_index < nisml_representative_capacity; representative_index++)
+			{
+				unsigned int flat_representative_index = get_nisml_representative_index(cache_index, representative_index);
+				if (nisml_representative_valid[flat_representative_index] == 0)
+					continue;
+
+				float normal_similarity = hippt::dot(normal, nisml_cache[flat_representative_index].representative_normal);
+				if (normal_similarity > candidate_closest_similarity)
+				{
+					candidate_closest_similarity		   = normal_similarity;
+					candidate_closest_representative_index = representative_index;
+				}
+			}
+
+			if (candidate_closest_representative_index >= nisml_representative_capacity)
+				return;
+
+			unsigned int selected_representative_flat_index	 = get_nisml_representative_index(cache_index, candidate_closest_representative_index);
+			float selected_representative_closest_similarity = -1.0f;
+			for (unsigned int representative_index = 0; representative_index < nisml_representative_capacity; representative_index++)
+			{
+				if (representative_index == candidate_closest_representative_index)
+					continue;
+
+				unsigned int flat_representative_index = get_nisml_representative_index(cache_index, representative_index);
+				if (nisml_representative_valid[flat_representative_index] == 0)
+					continue;
+
+				float normal_similarity					   = hippt::dot(nisml_cache[selected_representative_flat_index].representative_normal,
+																		nisml_cache[flat_representative_index].representative_normal);
+				selected_representative_closest_similarity = hippt::max(selected_representative_closest_similarity, normal_similarity);
+			}
+
+			// Replace a representative only when the candidate is more separated from the selected representative's closest neighbor.
+			if (candidate_closest_similarity >= selected_representative_closest_similarity)
+				return;
+
+			replacement_index				= candidate_closest_representative_index;
+			is_normal_diversity_replacement = true;
 		}
 
 		unsigned int representative_index = get_nisml_representative_index(cache_index, replacement_index);
-		if (is_reservoir_replacement)
+		if (is_normal_diversity_replacement)
 		{
 			if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[representative_index], 0u, 1u) != 0u)
-				// Simple fail fast approach for reservoir replacements: if the selected representative slot is already being replaced, skip this
+				// Simple fail fast approach for normal-diversity replacements: if the selected representative slot is already being replaced, skip this
 				// replacement. This avoids potential deadlocks and does not affect the guaranteed initial representative slots.
 				return;
 
@@ -77,7 +114,7 @@ struct IlluminationAwareKDTreeNISMLDevice
 			hippt::atomic_fetch_add(nisml_pending_cell_count, 1u);
 		}
 
-		if (is_reservoir_replacement)
+		if (is_normal_diversity_replacement)
 			hippt::atomic_exchange(&nisml_representative_write_locks[representative_index], 0u);
 	}
 

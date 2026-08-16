@@ -413,10 +413,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(closest_hit_info.inter_point);
 
-	Xorshift32Generator representative_random_number_generator = random_number_generator;
 	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, closest_hit_info.inter_point, view_direction,
 													 closest_hit_info.shading_normal, representative_sg_specular_weight, representative_alpha_x,
-													 representative_alpha_y, representative_random_number_generator);
+													 representative_alpha_y);
 
 	ColorRGB32F light_source_radiance;
 
