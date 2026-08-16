@@ -4271,7 +4271,8 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 											   "- KD tree leaves outlines",
 											   "- KD tree leaves outlines and lookaheads",
 											   "- KD tree leaves by normal solid",
-											   "- KD tree leaves by normal outlines" };
+											   "- KD tree leaves by normal outlines",
+											   "- NISML representative points" };
 			if (ImGui::Combo("Debug view",
 							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))

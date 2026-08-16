@@ -269,6 +269,54 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_tree_cut_bounding_box_edge(const HIPR
 	return false;
 }
 
+HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRenderData& render_data, int pixel_index, unsigned int guiding_cell_index)
+{
+	IlluminationAwareKDTreeNISMLDevice nisml = render_data.kd_tree_device.nisml;
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || nisml.nisml_cache == nullptr || nisml.nisml_representative_valid == nullptr ||
+		nisml.nisml_representative_capacity == 0u)
+		return false;
+
+	unsigned int image_width  = render_data.render_settings.render_resolution.x;
+	unsigned int image_height = render_data.render_settings.render_resolution.y;
+	unsigned int pixel_x	  = pixel_index % image_width;
+	unsigned int pixel_y	  = pixel_index / image_width;
+
+	float pixel_center_x = pixel_x + 0.5f;
+	float pixel_center_y = pixel_y + 0.5f;
+	hiprtRay center_ray	 = render_data.current_camera.get_camera_ray(pixel_center_x, pixel_center_y, render_data.render_settings.render_resolution);
+
+	float neighbor_x				 = pixel_x + 1 < image_width ? pixel_center_x + 1.0f : pixel_center_x - 1.0f;
+	float neighbor_y				 = pixel_y + 1 < image_height ? pixel_center_y + 1.0f : pixel_center_y - 1.0f;
+	hiprtRay horizontal_neighbor_ray = render_data.current_camera.get_camera_ray(neighbor_x, pixel_center_y, render_data.render_settings.render_resolution);
+	hiprtRay vertical_neighbor_ray	 = render_data.current_camera.get_camera_ray(pixel_center_x, neighbor_y, render_data.render_settings.render_resolution);
+	float horizontal_pixel_angular_radius = hippt::length(horizontal_neighbor_ray.direction - center_ray.direction);
+	float vertical_pixel_angular_radius	  = hippt::length(vertical_neighbor_ray.direction - center_ray.direction);
+	float pixel_angular_radius			  = hippt::max(horizontal_pixel_angular_radius, vertical_pixel_angular_radius);
+
+	for (unsigned int normal_face = 0; normal_face < ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT; normal_face++)
+	{
+		unsigned int cache_index = nisml.get_nisml_cache_index(guiding_cell_index, normal_face);
+		for (unsigned int representative_index = 0; representative_index < nisml.nisml_representative_capacity; representative_index++)
+		{
+			unsigned int flat_representative_index = nisml.get_nisml_representative_index(cache_index, representative_index);
+			if (nisml.nisml_representative_valid[flat_representative_index] == 0)
+				continue;
+
+			float3_t representative_position = nisml.nisml_cache[flat_representative_index].representative_position;
+			float ray_parameter				 = hippt::dot(representative_position - center_ray.origin, center_ray.direction);
+			if (ray_parameter <= 0.0f)
+				continue;
+
+			float3_t closest_point_difference = representative_position - (center_ray.origin + ray_parameter * center_ray.direction);
+			float world_point_radius		  = ray_parameter * pixel_angular_radius * 1.5f;
+			if (hippt::dot(closest_point_difference, closest_point_difference) <= world_point_radius * world_point_radius)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
@@ -590,6 +638,15 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		else if (is_lookahead_cell_outline && lookahead_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			// Using the same color as the encompassing guiding cell but darker
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1) * 0.5f;
+	}
+#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NISML_REPRESENTATIVE_POINTS
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+
+		if (path_tracing_pixel_is_near_nisml_representative(render_data, pixel_index, guiding_cell_index))
+			out_debug_color = ColorRGB32F(1.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
 	}
 #endif // LightTreeSG debug mode
 
