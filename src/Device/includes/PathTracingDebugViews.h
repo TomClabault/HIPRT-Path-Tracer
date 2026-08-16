@@ -639,15 +639,6 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 			// Using the same color as the encompassing guiding cell but darker
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1) * 0.5f;
 	}
-#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NISML_REPRESENTATIVE_POINTS
-	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
-	{
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
-
-		if (path_tracing_pixel_is_near_nisml_representative(render_data, pixel_index, guiding_cell_index))
-			out_debug_color = ColorRGB32F(1.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
-	}
 #endif // LightTreeSG debug mode
 
 #elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE
@@ -763,6 +754,17 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		else
 			out_debug_color = ColorRGB32F(2.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
 	}
+
+#if IlluminationAwareKDTreeDebugRepresentativePoints == KERNEL_OPTION_TRUE
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+	{
+		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+
+		if (path_tracing_pixel_is_near_nisml_representative(render_data, pixel_index, guiding_cell_index))
+			out_debug_color = ColorRGB32F(1.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
+	}
+#endif
 }
 
 #endif

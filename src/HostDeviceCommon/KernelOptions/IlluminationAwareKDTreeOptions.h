@@ -14,7 +14,6 @@
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD 3
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_NORMAL_SOLID			 4
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_NORMAL_OUTLINE		 5
-#define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NISML_REPRESENTATIVE_POINTS		 6
 
 #define IlluminationAwareKDTreeTreeCutInitializationBlockSize 1024
 
@@ -60,7 +59,8 @@
 /**
  * Debug view for the illumination-aware KD-tree.
  */
-#define IlluminationAwareKDTreeDebugMode ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG
+#define IlluminationAwareKDTreeDebugMode				 ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG
+#define IlluminationAwareKDTreeDebugRepresentativePoints KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 
