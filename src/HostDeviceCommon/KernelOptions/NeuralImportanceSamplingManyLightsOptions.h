@@ -22,6 +22,8 @@
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
+#define NISML_SGImportancesCachesHashGridCollisionResolutionMaxSteps 32
+
 #define NISML_NORMAL_ONE_BLOB_BIN_COUNT 32
 #define NISML_NORMAL_ONE_BLOB_KERNEL	OneBlobKernel::QUARTIC
 

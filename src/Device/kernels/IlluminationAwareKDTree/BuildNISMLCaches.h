@@ -74,12 +74,15 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 	unsigned int cache_index = x;
 #endif
 
-	unsigned int node_count		   = *kd_tree_device.core.node_count;
-	unsigned int cache_entry_count = node_count * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
-	if (cache_index >= cache_entry_count || kd_tree_device.nisml.nisml_cache == nullptr ||
+	if (cache_index >= kd_tree_device.nisml.nisml_hash_table_capacity || kd_tree_device.nisml.nisml_hash_keys == nullptr ||
+		kd_tree_device.nisml.nisml_hash_entry_states == nullptr || kd_tree_device.nisml.nisml_cache == nullptr ||
 		kd_tree_device.nisml.nisml_representative_occupied_counts == nullptr || kd_tree_device.nisml.nisml_representative_dirty == nullptr ||
 		kd_tree_device.nisml.nisml_representative_valid == nullptr || kd_tree_device.nisml.nisml_cache_ready == nullptr ||
 		kd_tree_device.nisml.nisml_pending_cell_count == nullptr || kd_tree_device.nisml.nisml_representative_capacity == 0u)
+		return;
+
+	if (hippt::atomic_load(&kd_tree_device.nisml.nisml_hash_keys[cache_index]) == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX ||
+		hippt::atomic_load(&kd_tree_device.nisml.nisml_hash_entry_states[cache_index]) != ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_READY)
 		return;
 
 	if (hippt::atomic_load(&kd_tree_device.nisml.nisml_representative_dirty[cache_index]) == 0)

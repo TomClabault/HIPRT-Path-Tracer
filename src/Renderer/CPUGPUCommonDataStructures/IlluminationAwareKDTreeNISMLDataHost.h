@@ -6,6 +6,7 @@
 #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_NISML_DATA_HOST_H
 #define RENDERER_ILLUMINATION_AWARE_KD_TREE_NISML_DATA_HOST_H
 
+#include "Device/includes/HashGrid.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
@@ -17,19 +18,39 @@
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeNISMLDataHost
 {
-	void resize(unsigned int new_node_capacity, unsigned int new_representative_capacity)
+	void resize(unsigned int, unsigned int new_representative_capacity, unsigned int new_hash_table_reserved_bytes, unsigned int new_hash_normal_precision)
 	{
-		unsigned int cache_entry_count	 = new_node_capacity * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
-		m_representative_capacity		 = new_representative_capacity > 0u ? new_representative_capacity : 1u;
-		std::size_t representative_count = static_cast<std::size_t>(cache_entry_count) * m_representative_capacity;
+		m_representative_capacity	= new_representative_capacity > 0u ? new_representative_capacity : 1u;
+		m_hash_table_reserved_bytes = new_hash_table_reserved_bytes;
+		m_hash_normal_precision		= std::clamp(new_hash_normal_precision, 1u, 5u);
+
+		// Representative cache payload for every representative stored in the hash entry.
+		std::size_t bytes_per_hash_entry = sizeof(IlluminationAwareKDTreeNISMLCache) * m_representative_capacity;
+		// Hash key, representative sample count, and representative occupied count.
+		bytes_per_hash_entry += sizeof(GenericAtomicType<unsigned int, DataContainer>) * 3;
+		// Representative dirty flag.
+		bytes_per_hash_entry += sizeof(GenericAtomicType<unsigned char, DataContainer>);
+		// Hash entry initialization state.
+		bytes_per_hash_entry += sizeof(GenericAtomicType<unsigned int, DataContainer>);
+		// Cache-ready flag.
+		bytes_per_hash_entry += sizeof(unsigned char);
+		// Per-representative valid flag and replacement write lock.
+		bytes_per_hash_entry += (sizeof(unsigned char) + sizeof(GenericAtomicType<unsigned int, DataContainer>)) * m_representative_capacity;
+
+		std::size_t hash_table_capacity	 = m_hash_table_reserved_bytes / bytes_per_hash_entry;
+		m_hash_table_capacity			 = static_cast<unsigned int>(std::max<std::size_t>(hash_table_capacity, 1u));
+		std::size_t representative_count = static_cast<std::size_t>(m_hash_table_capacity) * m_representative_capacity;
 
 		GenericSoAHelpers::resize<DataContainer>(m_cache, representative_count);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_sample_counts, cache_entry_count);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_occupied_counts, cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_sample_counts, m_hash_table_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_occupied_counts, m_hash_table_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_valid, representative_count);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_write_locks, representative_count);
-		GenericSoAHelpers::resize<DataContainer>(m_representative_dirty, cache_entry_count);
-		GenericSoAHelpers::resize<DataContainer>(m_cache_ready, cache_entry_count);
+		GenericSoAHelpers::resize<DataContainer>(m_representative_dirty, m_hash_table_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_cache_ready, m_hash_table_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_hash_keys, m_hash_table_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_hash_entry_states, m_hash_table_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_hash_occupied_entry_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_pending_cell_count, 1);
 	}
 
@@ -40,6 +61,11 @@ struct IlluminationAwareKDTreeNISMLDataHost
 
 		if constexpr (std::is_same_v<DataContainer<unsigned int>, std::vector<unsigned int>>)
 		{
+			for (GenericAtomicType<unsigned int, DataContainer>& hash_key : m_hash_keys)
+				hash_key.store(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+			for (GenericAtomicType<unsigned int, DataContainer>& entry_state : m_hash_entry_states)
+				entry_state.store(ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_EMPTY);
+			m_hash_occupied_entry_count[0].store(0u);
 			for (GenericAtomicType<unsigned int, DataContainer>& sample_count : m_representative_sample_counts)
 				sample_count.store(0u);
 			for (GenericAtomicType<unsigned int, DataContainer>& occupied_count : m_representative_occupied_counts)
@@ -54,6 +80,9 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		}
 		else
 		{
+			m_hash_keys.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+			m_hash_entry_states.memset_whole_buffer(ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_EMPTY);
+			m_hash_occupied_entry_count.memset_whole_buffer(0u);
 			m_representative_sample_counts.memset_whole_buffer(0u);
 			m_representative_occupied_counts.memset_whole_buffer(0u);
 			m_representative_valid.memset_whole_buffer(0u);
@@ -70,6 +99,9 @@ struct IlluminationAwareKDTreeNISMLDataHost
 			return false;
 
 		m_cache							 = DataContainer<IlluminationAwareKDTreeNISMLCache>();
+		m_hash_keys						 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_hash_entry_states				 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_hash_occupied_entry_count		 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_sample_counts	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_occupied_counts = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_valid			 = DataContainer<unsigned char>();
@@ -78,18 +110,24 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		m_cache_ready					 = DataContainer<unsigned char>();
 		m_pending_cell_count			 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_capacity		 = 1;
+		m_hash_table_capacity			 = 0;
 
 		return true;
 	}
 
 	std::size_t maximum_size() const
 	{
-		return m_cache.size();
+		return m_hash_table_capacity;
 	}
 
 	void to_device(IlluminationAwareKDTreeDevice& kd_tree_device)
 	{
 		kd_tree_device.nisml.nisml_cache						  = GenericSoAHelpers::get_buffer_data_ptr(m_cache);
+		kd_tree_device.nisml.nisml_hash_keys					  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_hash_keys);
+		kd_tree_device.nisml.nisml_hash_entry_states			  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_hash_entry_states);
+		kd_tree_device.nisml.nisml_hash_table_capacity			  = m_hash_table_capacity;
+		kd_tree_device.nisml.nisml_hash_normal_precision		  = m_hash_normal_precision;
+		kd_tree_device.nisml.nisml_hash_occupied_entry_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_hash_occupied_entry_count);
 		kd_tree_device.nisml.nisml_representative_capacity		  = m_representative_capacity;
 		kd_tree_device.nisml.nisml_representative_sample_counts	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_sample_counts);
 		kd_tree_device.nisml.nisml_representative_occupied_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_occupied_counts);
@@ -101,6 +139,9 @@ struct IlluminationAwareKDTreeNISMLDataHost
 	}
 
 	DataContainer<IlluminationAwareKDTreeNISMLCache> m_cache;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_hash_keys;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_hash_entry_states;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_hash_occupied_entry_count;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_sample_counts;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_occupied_counts;
 	DataContainer<unsigned char> m_representative_valid;
@@ -108,7 +149,10 @@ struct IlluminationAwareKDTreeNISMLDataHost
 	DataContainer<GenericAtomicType<unsigned char, DataContainer>> m_representative_dirty;
 	DataContainer<unsigned char> m_cache_ready;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_pending_cell_count;
-	unsigned int m_representative_capacity = 1;
+	unsigned int m_representative_capacity	 = 1;
+	unsigned int m_hash_table_capacity		 = 0;
+	unsigned int m_hash_table_reserved_bytes = 0;
+	unsigned int m_hash_normal_precision	 = 2;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_USER_SETTINGS_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSubdivisionMode.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
 struct IlluminationAwareKDTreeUserSettings
 {
@@ -14,7 +15,7 @@ struct IlluminationAwareKDTreeUserSettings
 	int minimum_sample_count_for_splitting			= 1000;
 	float mean_radiance_split_threshold				= 0.15f;
 
-	int stop_refining_after_SPP = 64;
+	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ? 32 : 64;
 
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 };

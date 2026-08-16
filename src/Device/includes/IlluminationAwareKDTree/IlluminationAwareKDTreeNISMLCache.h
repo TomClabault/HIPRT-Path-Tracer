@@ -9,8 +9,11 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
-static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_CLUSTER_COUNT	 = 64;
-static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT = static_cast<unsigned int>(SurfaceNormalFace_Count);
+static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_CLUSTER_COUNT		   = 64;
+static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT	   = static_cast<unsigned int>(SurfaceNormalFace_Count);
+static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_EMPTY		   = 0;
+static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_INITIALIZING = 1;
+static constexpr unsigned int ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_READY		   = 2;
 
 struct IlluminationAwareKDTreeNISMLCache
 {

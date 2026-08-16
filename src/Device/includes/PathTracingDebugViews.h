@@ -272,7 +272,8 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_tree_cut_bounding_box_edge(const HIPR
 HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRenderData& render_data, int pixel_index, unsigned int guiding_cell_index)
 {
 	IlluminationAwareKDTreeNISMLDevice nisml = render_data.kd_tree_device.nisml;
-	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || nisml.nisml_cache == nullptr || nisml.nisml_representative_valid == nullptr ||
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || nisml.nisml_cache == nullptr || nisml.nisml_hash_keys == nullptr ||
+		nisml.nisml_hash_entry_states == nullptr || nisml.nisml_representative_valid == nullptr || nisml.nisml_hash_table_capacity == 0u ||
 		nisml.nisml_representative_capacity == 0u)
 		return false;
 
@@ -293,9 +294,14 @@ HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRen
 	float vertical_pixel_angular_radius	  = hippt::length(vertical_neighbor_ray.direction - center_ray.direction);
 	float pixel_angular_radius			  = hippt::max(horizontal_pixel_angular_radius, vertical_pixel_angular_radius);
 
-	for (unsigned int normal_face = 0; normal_face < ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT; normal_face++)
+	for (unsigned int cache_index = 0; cache_index < nisml.nisml_hash_table_capacity; cache_index++)
 	{
-		unsigned int cache_index = nisml.get_nisml_cache_index(guiding_cell_index, normal_face);
+		unsigned int hash_key = hippt::atomic_load(&nisml.nisml_hash_keys[cache_index]);
+		if (hash_key == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX ||
+			hippt::atomic_load(&nisml.nisml_hash_entry_states[cache_index]) != ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_READY ||
+			nisml.get_nisml_hash_key_node_index(hash_key) != guiding_cell_index)
+			continue;
+
 		for (unsigned int representative_index = 0; representative_index < nisml.nisml_representative_capacity; representative_index++)
 		{
 			unsigned int flat_representative_index = nisml.get_nisml_representative_index(cache_index, representative_index);

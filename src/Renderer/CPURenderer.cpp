@@ -857,6 +857,7 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 {
 #if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
 	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
 	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
 	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
@@ -982,10 +983,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	for (unsigned int record_index = 0; record_index < training_record_capacity; record_index++)
 		IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(m_render_data, record_index);
 
-	unsigned int node_count_for_cache = *kd_tree_device.core.node_count;
-	unsigned int cache_entry_count	  = node_count_for_cache * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
 	if (kd_tree_device.nisml.nisml_pending_cell_count->load() > 0u)
-		for (unsigned int cache_index = 0; cache_index < cache_entry_count; cache_index++)
+		for (unsigned int cache_index = 0; cache_index < kd_tree_device.nisml.nisml_hash_table_capacity; cache_index++)
 			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
 #endif
 #endif

@@ -115,9 +115,9 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 		unsigned int node_index = kd_tree_device.core.find_guiding_cell(shading_point);
 		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < kd_tree_device.core.node_capacity)
 		{
-			unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
-			unsigned int cache_index = kd_tree_device.nisml.get_nisml_cache_index(node_index, normal_face);
-			if (kd_tree_device.nisml.nisml_cache_ready[cache_index] != 0)
+			unsigned int cache_index = 0;
+			if (kd_tree_device.nisml.find_nisml_cache_index(node_index, shading_normal, cache_index) &&
+				kd_tree_device.nisml.nisml_cache_ready[cache_index] != 0)
 			{
 				for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 					log_baseline_weights[cluster_index * output_stride + output_index] =

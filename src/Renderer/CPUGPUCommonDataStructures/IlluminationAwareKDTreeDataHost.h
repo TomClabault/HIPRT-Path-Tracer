@@ -21,10 +21,12 @@ struct IlluminationAwareKDTreeDataHost
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
 				int new_tree_cut_size,
-				unsigned int new_nisml_representative_capacity = 1)
+				unsigned int new_nisml_representative_capacity	 = 1,
+				unsigned int new_nisml_hash_table_reserved_bytes = 100000000u,
+				unsigned int new_nisml_hash_normal_precision	 = 2u)
 	{
 		m_kd_tree_data.resize(new_node_capacity, new_training_sample_capacity);
-		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity);
+		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity, new_nisml_hash_table_reserved_bytes, new_nisml_hash_normal_precision);
 		m_nee_learnt_distributions_data.resize(new_node_capacity, new_training_sample_capacity, new_tree_cut_size);
 		m_counter_download_buffer.resize_host_pinned_mem(1);
 	}

@@ -231,7 +231,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
 	{
-		m_buffers_need_reallocation = true;
+		m_buffers_need_reallocation		  = true;
+		m_nisml_hash_occupied_entry_count = 0;
 
 		return m_illumination_aware_kd_tree.free();
 	}
@@ -241,19 +242,25 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	if (nisml_representative_capacity_changed)
 		m_buffers_need_reallocation = true;
 
+	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
+	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
+	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
+									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+	if (nisml_hash_settings_changed)
+		m_buffers_need_reallocation = true;
+
 	bool render_data_invalidated = false;
 	if (m_buffers_need_reallocation)
 	{
 		int sg_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity,
-											sg_tree_cut_size, nisml_representative_capacity);
-
-		if (nisml_representative_capacity_changed)
-			m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
+											sg_tree_cut_size, nisml_representative_capacity, nisml_hash_table_reserved_bytes, nisml_hash_normal_precision);
 
 		m_buffers_need_reallocation = false;
 		render_data_invalidated		= true;
 
+		// Reallocation creates fresh cache buffers whose metadata must be initialized even when the tree is frozen.
+		m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
 		reset(false);
 	}
 
@@ -306,16 +313,15 @@ void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
-	unsigned int node_count						 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
 	unsigned int pending_cell_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count);
-	if (node_count == 0 || pending_cell_count == 0)
+	if (pending_cell_count == 0 || kd_tree_device.nisml.nisml_hash_table_capacity == 0u)
 		return;
 
 	HIPRTRenderData cache_render_data = render_data;
 	cache_render_data.kd_tree_device  = kd_tree_device;
 	void* launch_args[]				  = { &kd_tree_device, &cache_render_data };
-	unsigned int cache_entry_count	  = node_count * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, cache_entry_count, 1, launch_args,
+	unsigned int hash_table_capacity  = kd_tree_device.nisml.nisml_hash_table_capacity;
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, hash_table_capacity, 1, launch_args,
 																									m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
@@ -423,6 +429,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		}
 
 		build_nisml(render_data);
+
+		m_nisml_hash_occupied_entry_count =
+			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_nisml_data.m_hash_occupied_entry_count);
 	}
 }
 
@@ -505,6 +514,9 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		// moving around
 		return;
 
+	// The tree may reuse node indices after a full reset, so clear the separate hash-backed cache before rebuilding the root.
+	m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
+	m_nisml_hash_occupied_entry_count = 0;
 	m_illumination_aware_kd_tree.reset();
 	m_lookahead_frontier_initialized		 = false;
 	m_next_creation_tag						 = 0;
@@ -545,6 +557,26 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
 {
 	return m_nisml_representative_capacity;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_size_mb()
+{
+	return m_nisml_hash_table_size_mb;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_normal_precision()
+{
+	return m_nisml_hash_normal_precision;
+}
+
+unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_occupied_entry_count() const
+{
+	return m_nisml_hash_occupied_entry_count;
+}
+
+unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_capacity() const
+{
+	return static_cast<unsigned int>(m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_capacity);
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
@@ -606,6 +638,9 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_spatial_moments.get_byte_size();
 
 	vram_usage.nisml_cache							= m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
+	vram_usage.nisml_hash_keys						= m_illumination_aware_kd_tree.m_nisml_data.m_hash_keys.get_byte_size();
+	vram_usage.nisml_hash_entry_states				= m_illumination_aware_kd_tree.m_nisml_data.m_hash_entry_states.get_byte_size();
+	vram_usage.nisml_hash_occupied_entry_count		= m_illumination_aware_kd_tree.m_nisml_data.m_hash_occupied_entry_count.get_byte_size();
 	vram_usage.nisml_representative_sample_counts	= m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
 	vram_usage.nisml_representative_occupied_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_occupied_counts.get_byte_size();
 	vram_usage.nisml_representative_valid			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_valid.get_byte_size();
