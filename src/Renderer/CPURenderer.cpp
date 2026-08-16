@@ -55,20 +55,15 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/AccumulateNEEDistributionTrainingRecords.h"
 #include "Device/kernels/IlluminationAwareKDTree/BuildNISMLCaches.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeGlobalTreeCutPriorSamplingDistribution.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeRootTreeCutSamplingDistribution.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
-#include "Device/kernels/IlluminationAwareKDTree/RebuildActiveNEEDistributions.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndNEEDistributionsStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetTreeCutSamplingDistributions.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -244,11 +239,9 @@ void CPURenderer::setup_buffers()
 	m_nisml_state.m_position_learnable_dense_grid.initialize();
 #endif
 
-#if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
-	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
-																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY,
-																		 m_light_tree_builder_sg.get_tree_cut_size());
+																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 #endif
 
 	setup_bsdfs_data();
@@ -575,8 +568,7 @@ void CPURenderer::update_render_data()
 	m_render_data.nisml.training_record_probability = std::clamp(m_nisml_state.m_training_record_percentage / 100.0f, 0.0f, 1.0f);
 #endif
 
-#if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
-	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_render_data.kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 #else
 	m_render_data.kd_tree_device = {};
@@ -704,8 +696,7 @@ void CPURenderer::render()
 	ReSTIR_PG_reset_distributions();
 #endif
 
-#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG &&                                                                                                   \
-	(DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS)
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	illumination_aware_kd_tree_reset();
 #endif
 
@@ -763,15 +754,11 @@ void CPURenderer::pre_sample_update(int frame_number)
 	m_render_data.nisml.training_record_capacity = training_data.training_record_capacity;
 #endif
 
-#if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
-	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	unsigned int tree_cut_size					 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
 	unsigned int node_count						 = *kd_tree_device.core.node_count;
-	unsigned int distribution_slot_count		 = node_count * tree_cut_size;
-	unsigned int reset_thread_count				 = std::max(node_count, distribution_slot_count);
-	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
-		IlluminationAwareKDTree_ResetBatchKDTreeAndNEEDistributionsStatistics(kd_tree_device, tree_cut_size, reset_index);
+	for (unsigned int reset_index = 0; reset_index < node_count; reset_index++)
+		IlluminationAwareKDTree_ResetBatchKDTreeStatistics(kd_tree_device, reset_index);
 #endif
 
 	// Resetting the status buffers
@@ -855,8 +842,7 @@ void CPURenderer::reset()
 
 void CPURenderer::illumination_aware_kd_tree_reset()
 {
-#if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
-	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
 	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
@@ -868,34 +854,13 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	for (unsigned int node_index = 0; node_index < m_render_data.kd_tree_device.core.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.kd_tree_device, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
-	unsigned int tree_cut_size			 = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int distribution_slot_count = m_render_data.kd_tree_device.core.node_capacity * static_cast<unsigned int>(SurfaceNormalFace_Count) * tree_cut_size;
-	for (unsigned int reset_index = 0; reset_index < distribution_slot_count; reset_index++)
-		IlluminationAwareKDTree_ResetTreeCutSamplingDistributions(m_render_data.kd_tree_device, tree_cut_size, reset_index);
-#endif
 #endif
 }
 
 void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
-#if (DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                      \
-	DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
-	if (m_render_data.render_settings.sample_number == 0)
-	{
-		LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
-		unsigned int tree_cut_size		= light_tree_sg.settings.effective_tree_cut_size;
-		if (tree_cut_size > 0 && light_tree_sg.nodes != nullptr && light_tree_sg.tree_cut_node_indices != nullptr)
-		{
-			IlluminationAwareKDTree_InitializeGlobalTreeCutPriorSamplingDistribution(kd_tree_device, light_tree_sg, 0);
-
-			for (unsigned int slot = 0; slot < tree_cut_size; slot++)
-				IlluminationAwareKDTree_InitializeRootTreeCutSamplingDistribution(kd_tree_device, tree_cut_size, slot);
-		}
-	}
-#endif
 
 	if (m_render_data.render_settings.sample_number <= kd_tree_device.core.user_settings.stop_refining_after_SPP - 1)
 	{
@@ -959,24 +924,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 			IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(kd_tree_device, guiding_list_index);
 
 		for (unsigned int guiding_list_index = 0; guiding_list_index < active_guiding_node_count; guiding_list_index++)
-			IlluminationAwareKDTree_PromoteGuidingCells(kd_tree_device, m_light_tree_builder_sg.get_tree_cut_size(), active_guiding_node_count,
-														guiding_list_index);
+			IlluminationAwareKDTree_PromoteGuidingCells(kd_tree_device, active_guiding_node_count, guiding_list_index);
 	}
-
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS
-	unsigned int tree_cut_size			   = m_render_data.light_tree_sg.settings.effective_tree_cut_size;
-	unsigned int nee_training_record_count = kd_tree_device.nee_distributions.nee_training_record_count->load();
-	if (nee_training_record_count > kd_tree_device.nee_distributions.nee_training_record_capacity)
-		nee_training_record_count = kd_tree_device.nee_distributions.nee_training_record_capacity;
-
-	for (unsigned int record_index = 0; record_index < nee_training_record_count; record_index++)
-		IlluminationAwareKDTree_AccumulateNEEDistributionTrainingRecords(kd_tree_device, tree_cut_size, record_index);
-
-	unsigned int updated_active_guiding_node_count = kd_tree_device.core.active_guiding_node_count->load();
-	for (unsigned int guiding_list_face_index = 0;
-		 guiding_list_face_index < updated_active_guiding_node_count * static_cast<unsigned int>(SurfaceNormalFace_Count); guiding_list_face_index++)
-		IlluminationAwareKDTree_RebuildActiveNEEDistributions(kd_tree_device, tree_cut_size, updated_active_guiding_node_count, guiding_list_face_index);
-#endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	unsigned int training_record_capacity = m_render_data.nisml.training_record_capacity;

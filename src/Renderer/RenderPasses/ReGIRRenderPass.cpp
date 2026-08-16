@@ -445,7 +445,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (render_data.render_settings.sample_number <= 2 && render_data.render_settings.sample_number > 0 &&
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 	{
-		// Upadting ReGIR's cell light distributions to take NEE++ learnt visibility into account in the distributions
+		// Updating ReGIR's cell light distributions to take NEE++ visibility into account
 
 		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
 		launch_cell_light_distributions_precomputation(render_data);

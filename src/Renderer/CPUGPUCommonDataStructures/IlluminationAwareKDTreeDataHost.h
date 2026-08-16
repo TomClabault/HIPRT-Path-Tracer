@@ -9,7 +9,6 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeCoreDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeNEELearntDistributionsDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeNISMLDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
@@ -20,14 +19,12 @@ struct IlluminationAwareKDTreeDataHost
 
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
-				int new_tree_cut_size,
 				unsigned int new_nisml_representative_capacity	 = 1,
 				unsigned int new_nisml_hash_table_reserved_bytes = 100000000u,
 				unsigned int new_nisml_hash_normal_precision	 = 2u)
 	{
 		m_kd_tree_data.resize(new_node_capacity, new_training_sample_capacity);
 		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity, new_nisml_hash_table_reserved_bytes, new_nisml_hash_normal_precision);
-		m_nee_learnt_distributions_data.resize(new_node_capacity, new_training_sample_capacity, new_tree_cut_size);
 		m_counter_download_buffer.resize_host_pinned_mem(1);
 	}
 
@@ -38,14 +35,13 @@ struct IlluminationAwareKDTreeDataHost
 
 	bool free()
 	{
-		bool core_data_freed					 = m_kd_tree_data.free();
-		bool nisml_data_freed					 = m_nisml_data.free();
-		bool nee_learnt_distributions_data_freed = m_nee_learnt_distributions_data.free();
-		bool counter_download_buffer_freed		 = m_counter_download_buffer.maximum_size() > 0;
+		bool core_data_freed			   = m_kd_tree_data.free();
+		bool nisml_data_freed			   = m_nisml_data.free();
+		bool counter_download_buffer_freed = m_counter_download_buffer.maximum_size() > 0;
 		if (counter_download_buffer_freed)
 			m_counter_download_buffer.free();
 
-		return core_data_freed || nisml_data_freed || nee_learnt_distributions_data_freed || counter_download_buffer_freed;
+		return core_data_freed || nisml_data_freed || counter_download_buffer_freed;
 	}
 
 	template <typename CounterBuffer>
@@ -67,17 +63,14 @@ struct IlluminationAwareKDTreeDataHost
 		IlluminationAwareKDTreeDevice kd_tree_device = m_kd_tree_data.to_device();
 
 		m_nisml_data.to_device(kd_tree_device);
-		m_nee_learnt_distributions_data.to_device(kd_tree_device);
 
-		kd_tree_device.core.user_settings					   = render_data.kd_tree_device.core.user_settings;
-		kd_tree_device.nee_distributions.learning_nee_settings = render_data.kd_tree_device.nee_distributions.learning_nee_settings;
+		kd_tree_device.core.user_settings = render_data.kd_tree_device.core.user_settings;
 
 		return kd_tree_device;
 	}
 
 	IlluminationAwareKDTreeCoreDataHost<DataContainer> m_kd_tree_data;
 	IlluminationAwareKDTreeNISMLDataHost<DataContainer> m_nisml_data;
-	IlluminationAwareKDTreeNEELearntDistributionsDataHost<DataContainer> m_nee_learnt_distributions_data;
 
 	GenericSoA<DataContainer, unsigned int> m_counter_download_buffer;
 };

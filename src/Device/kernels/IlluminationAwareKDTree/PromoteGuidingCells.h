@@ -11,19 +11,14 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tree_device,
-												   unsigned int tree_cut_size,
-												   unsigned long long int original_guiding_node_count,
-												   int x)
+inline IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tree_device, unsigned long long int original_guiding_node_count, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tree_device,
-											unsigned int tree_cut_size,
-											unsigned long long int original_guiding_node_count)
+IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tree_device, unsigned long long int original_guiding_node_count)
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int guiding_list_index = blockIdx.x; // *blockDim.x + threadIdx.x;
+	unsigned int guiding_list_index = blockIdx.x;
 #else
 	unsigned int guiding_list_index = x;
 #endif
@@ -47,25 +42,18 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tre
 	unsigned int left_child_index  = parent.left_child_index;
 	unsigned int right_child_index = left_child_index + 1;
 
-	unsigned int parent_distribution_index = parent.guiding_distribution_index;
-
 	IlluminationAwareKDTreeNode& left_child	 = kd_tree_device.core.nodes[left_child_index];
 	IlluminationAwareKDTreeNode& right_child = kd_tree_device.core.nodes[right_child_index];
 
-	__shared__ unsigned int right_distribution_index;
 	__shared__ unsigned int active_guiding_output_index;
 	__shared__ bool allocation_valid;
 	// We launch one full 1024 threads block per each single cell. That's 1023 threads too many for 1 cell because we want a single atomic increment here so
 	// only thread 0 does it and shares the result with the other threads of the block. And also only thread 0 does the memory writes
 	if (threadIdx.x == 0)
 	{
-		// Only allocating 1 new distribution for the right child, the left child will keep the parent's distribution index
-		right_distribution_index = hippt::atomic_fetch_add(kd_tree_device.core.guiding_distribution_count, 1u);
-
 		// Replace the promoted guide with its left child and append the right child to the active guiding list so that's only 1 more allocated node
 		active_guiding_output_index = hippt::atomic_fetch_add(kd_tree_device.core.active_guiding_node_count, 1u);
-
-		allocation_valid = right_distribution_index < kd_tree_device.core.node_capacity && active_guiding_output_index < kd_tree_device.core.node_capacity;
+		allocation_valid			= active_guiding_output_index < kd_tree_device.core.node_capacity;
 	}
 	__syncthreads();
 
@@ -74,11 +62,6 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tre
 
 	if (threadIdx.x == 0)
 	{
-		// The left child keeps the parent's distribution index, the right child gets a new distribution index but we will copy the parent's distribution into
-		// the right child so that it starts with the same distribution as the left child (same as the parent)
-		left_child.guiding_distribution_index  = parent_distribution_index;
-		right_child.guiding_distribution_index = right_distribution_index;
-
 		left_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
 		left_child.flags &= ~IlluminationAwareKDTreeNodeFlag_Lookahead;
 		right_child.flags |= IlluminationAwareKDTreeNodeFlag_Guiding;
@@ -89,81 +72,9 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tre
 
 		// The parent is no longer a guiding node
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
-		parent.guiding_distribution_index = IlluminationAwareKDTreeNode::INVALID_GUIDING_DISTRIBUTION_INDEX;
 
 		kd_tree_device.core.active_guiding_nodes[guiding_list_index]		  = left_child_index;
 		kd_tree_device.core.active_guiding_nodes[active_guiding_output_index] = right_child_index;
-	}
-
-	// We want thread 0 writes to be visible
-	__syncthreads();
-
-	// Now we can finally use all the threads of the thread block correctly to copy the parent's distribution into the left and right child distribution
-	IlluminationAwareKDTreeNEELearntDistributionsDevice& nee_learnt_distributions = kd_tree_device.nee_distributions;
-
-	if (threadIdx.x == 0)
-	{
-		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
-		{
-			unsigned int left_distribution_index =
-				nee_learnt_distributions.get_normal_face_distribution_index(left_child.guiding_distribution_index, normal_face);
-			unsigned int right_distribution_index =
-				nee_learnt_distributions.get_normal_face_distribution_index(right_child.guiding_distribution_index, normal_face);
-
-			// Fresh distributions have no history, so we reset the history sample counts
-			nee_learnt_distributions.history_per_cell_sample_count[left_distribution_index]	 = 0;
-			nee_learnt_distributions.history_per_cell_sample_count[right_distribution_index] = 0;
-			nee_learnt_distributions.history_per_cell_normal_sum_x[left_distribution_index]	 = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_sum_x[right_distribution_index] = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_sum_y[left_distribution_index]	 = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_sum_y[right_distribution_index] = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_sum_z[left_distribution_index]	 = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_sum_z[right_distribution_index] = 0.0f;
-			nee_learnt_distributions.history_per_cell_normal_count[left_distribution_index]	 = 0;
-			nee_learnt_distributions.history_per_cell_normal_count[right_distribution_index] = 0;
-		}
-	}
-
-#ifndef __KERNELCC__
-	unsigned int threads_per_block = 1;
-#else
-	unsigned int threads_per_block = blockDim.x;
-#endif
-	for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
-	{
-		unsigned int face_parent_distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(parent_distribution_index, normal_face);
-		unsigned int left_distribution_index = nee_learnt_distributions.get_normal_face_distribution_index(left_child.guiding_distribution_index, normal_face);
-		unsigned int right_distribution_index =
-			nee_learnt_distributions.get_normal_face_distribution_index(right_child.guiding_distribution_index, normal_face);
-		unsigned int parent_distribution_offset		 = nee_learnt_distributions.get_tree_cut_offset(face_parent_distribution_index, tree_cut_size);
-		unsigned int left_child_distribution_offset	 = nee_learnt_distributions.get_tree_cut_offset(left_distribution_index, tree_cut_size);
-		unsigned int right_child_distribution_offset = nee_learnt_distributions.get_tree_cut_offset(right_distribution_index, tree_cut_size);
-
-		for (int slot_index = threadIdx.x; slot_index < tree_cut_size; slot_index += threads_per_block)
-		{
-			nee_learnt_distributions.history_per_cut_node_sample_count[right_child_distribution_offset + slot_index] = 1;
-			nee_learnt_distributions.history_per_cut_node_sample_count[left_child_distribution_offset + slot_index]	 = 1;
-			hippt::atomic_exchange(
-				&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[right_child_distribution_offset + slot_index],
-				hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
-			hippt::atomic_exchange(
-				&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[left_child_distribution_offset + slot_index],
-				hippt::atomic_load(&nee_learnt_distributions.history_per_cut_node_estimated_second_moment[parent_distribution_offset + slot_index]));
-
-			nee_learnt_distributions.tree_cut_sampling_probabilities[right_child_distribution_offset + slot_index] =
-				nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-			nee_learnt_distributions.tree_cut_sampling_probabilities[left_child_distribution_offset + slot_index] =
-				nee_learnt_distributions.tree_cut_sampling_probabilities[parent_distribution_offset + slot_index];
-			nee_learnt_distributions.tree_cut_sampling_cdfs[right_child_distribution_offset + slot_index] =
-				nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
-			nee_learnt_distributions.tree_cut_sampling_cdfs[left_child_distribution_offset + slot_index] =
-				nee_learnt_distributions.tree_cut_sampling_cdfs[parent_distribution_offset + slot_index];
-
-			nee_learnt_distributions.batch_per_cut_node_sample_count[right_child_distribution_offset + slot_index]		= 0;
-			nee_learnt_distributions.batch_per_cut_node_sample_count[left_child_distribution_offset + slot_index]		= 0;
-			nee_learnt_distributions.batch_per_cut_node_second_moment_sum[right_child_distribution_offset + slot_index] = 0;
-			nee_learnt_distributions.batch_per_cut_node_second_moment_sum[left_child_distribution_offset + slot_index]	= 0;
-		}
 	}
 
 	// The promoted subtree starts a fresh illumination-signature-history

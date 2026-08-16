@@ -50,67 +50,6 @@ extern ImGuiLogger g_imgui_logger;
 //	- Specular isn't amazing so do we even need the view direction in the input of the net?
 
 //
-// Summary of all the learnt NEE distributions issues so far:
-//	- We have dead cells even at light cut size 1
-//	- 1024 cut size is too big to learn, we need to subdivide the cut size adaptively based on the number of samples received by a given cut node
-//	- SG bootstrap to learn the SPP 1 distributions from is no good because SG bootstrap doesn't explore super well all the nodes of the cut so some
-//		probabilities are not learnt well enough
-//	- We still need normal aware distributions
-//	- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't learn
-//		fast enough
-//	- How to keep exploring when using learnt distributions to sample and update learnt distributions themselves? We have nothing for producing "exploration
-//		samples"
-//	- Why are distributions not converging perfectly (or very close to) even at high learning sample count? Where is the bottleneck?
-//	- We need a small uniform floor for all nodes probabilities otherwise this could be biased low (and also a node that actually doesn't have 0 importance can
-//		never prove it that it doesn't have 0 importance because it's never sampled)
-//
-//		Or better than a uniform floor is using the probability floor computed from that idea of precomputing the importance of each node from each cell for a
-//		bunch of points / normals in that cell
-//
-// TODO Illumination aware KD tree
-//		- We should use learning to cluster paper to learn the light cut instead of the simple merge-collapse of Reinforcment lightcut learning
-//		- How to reduce memory usage of the distributions?
-//		- Clearly learning speed is an issue as well: big KD tree cells are imprecise but learn quickly and are literally better than smaller cells that don't
-// learn fast enough
-//			- This is probably just an issue of clusters not receiving enough samples
-//		- We have an issue with exploration: if we keep using learnt distributions to sample and update learnt distributions themselves, we have nothing for
-//		producing "exploration samples"
-//		- The issue is that if using the prior for the first SPP, the records for refining the KD tree are extra noisy and we barely get any splits because of
-//		that. For the first SPP we should really refine the tree and shade from the base tree and then the next SPPs can use learnt distributions
-//		- We have issues because even with cut size 1 we have dead weird cells
-//		- Integrate envmap into the distribution
-//		- Compare theoretical best vs. distribution to understand why distributions are not perfect
-//		- Split first SPP purely based on sample to quickly get a good refinment of the kd tree?
-//		- How to efficiently train a 1024 nodes wide distribution per cell because that's a lot of cells to learn and we need tons of estimate to cover all of
-//		those
-//		- Can we maybe render 2SPP in one for the first SPP: shade from the base light tree but learn from a prior that explores better so that the learning
-//		distribution is good and the first SPP is good as well
-//			- Or maybe this is just conflicting with the idea of initializing the distributions from average point + average normal --> evaluate proba of
-//			reaching all cut nodes
-//		- After the first SPP, initialize the distributions of cell from the average probability of of bunch of points from the cell reaching all given cut
-//		nodes: this basically reproduces the behavior of the base tree itself
-//			- maybe we can even do that after cells are split and then still keep learning from actual runtime samples
-//		- It is actually possible to have reductions / scans in shared memory of more than 1024 threads by having one thread process multiple elements, the
-//		primitives then need a slightly different implementation but this should be workable for more than 1024-large cut sizes
-//		- Instead of having a normal-coherence-dependent prior distribution defensive usage, can we just have different distributions per normal binning in a
-//		given guiding cell?
-//		- We could start with a 64 cut size and then subdivide the cut size adaptively when the cut node has received enough samples instead of starting right
-//		away with a 1204 cut size which is too hard to learn
-//		- How to subdivide more where illumination changes a lot but keep a low subdivision where illumination is very uniform? How to replace the global
-//		threshold basically by 2 thresholds
-//		- Use CDFDevice16 for learnt distributions to save memory and bandwidth
-//		- How to improve the base prior distributions for the global cut better than power-based?
-//			- First sample should use the base SG tree and start learning from that, much better quality than the power-based prior
-//		- How to rely more on the base light tree when per-cell distributions are bad / not learnt enough? How to know when a distribution isn't learnt enough?
-//		- How to subdivide based on the sampler's variance? We don't want to subdivide at all at the back of the couch in the white room for example, but we
-//		want to subdivide a lot where the sampler is having trouble
-//		- How to not wait 1000 samples for cells that have low variance radiance estimates, we don't need 1000 samples in these cases to trust the estimates
-//		- When to stop splitting the tree?
-//		- Possible to use non-axis aligned splits?
-//		- For the learnt distributions, can we update trees cuts per each cell by subdividing nodes of the tree cut that accumulate all the probability mass and
-//		merging nodes that have very little mass
-//		- Can we not use doubles in should split mean radiance and still get away with it?
-//
 // TODO SG Light tree
 //	- Maybe still do the hard coded distributions, may still be good
 //	- How to use more SG spatial lobes per precomputed nodes of the tree cut (which is basically free quality) but no more of these lobes when traversing the
@@ -131,8 +70,6 @@ extern ImGuiLogger g_imgui_logger;
 //		To produce the 1024 root nodes, what if we use splitting until we have 1024 samples? instead of the same 1024 nodes for every cell? For the PDF: Store a
 //		macro-root ID on every light primitive.
 //
-//		We can also re-compute the tree cut per each cell after we've learnt a bit more the importance estimates to have a better cut for the cell by rejecting
-//		nodes that we've learnt don't contribute much
 //
 //		We're going to need a fallback for the cached light distributions so we need a wide tree for that, because we're not going to use splitting for the
 //		fallback so we can use a wide tree for lower variance

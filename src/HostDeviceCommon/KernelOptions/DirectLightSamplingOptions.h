@@ -12,16 +12,15 @@
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
-#define LSS_NO_DIRECT_LIGHT_SAMPLING	 0
-#define LSS_ONE_LIGHT					 1
-#define LSS_BSDF						 2
-#define LSS_MIS_LIGHT_BSDF				 3
-#define LSS_RIS_BSDF_AND_LIGHT			 4
-#define LSS_RISLTC						 5
-#define LSS_LTC_SHADING					 6
-#define LSS_SG_TREE_LEARNT_DISTRIBUTIONS 7
-#define LSS_RESTIR_DI					 8
-#define LSS_NEURAL_MANY_LIGHTS			 9
+#define LSS_NO_DIRECT_LIGHT_SAMPLING 0
+#define LSS_ONE_LIGHT				 1
+#define LSS_BSDF					 2
+#define LSS_MIS_LIGHT_BSDF			 3
+#define LSS_RIS_BSDF_AND_LIGHT		 4
+#define LSS_RISLTC					 5
+#define LSS_LTC_SHADING				 6
+#define LSS_RESTIR_DI				 7
+#define LSS_NEURAL_MANY_LIGHTS		 8
 
 #define LSS_BASE_UNIFORM		0
 #define LSS_BASE_POWER			1
@@ -118,11 +117,6 @@
  *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
  *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
  *
- *	- LSS_SG_TREE_LEARNT_DISTRIBUTIONS
- *		Uses the illumination aware KD tree of Zheng et al. 2026 to spatially subdivide the scene based on illumination frequency. A tree cut of the spherical
- *		gaussian tree (LSS_BASE_LIGHT_TREE_SG) is precomputed for the whole and probabilities of sampling the nodes of the tree cut are learnt at each cell of
- *		the KD-tree based on observed NEE contributions collected at sampling time
- *
  *	- LSS_RESTIR_DI
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
@@ -136,10 +130,6 @@
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
 #define DirectLightNEEEstimator LSS_NEURAL_MANY_LIGHTS
-#endif
-
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
-#error "DirectLightNEEEstimator is set to LSS_SG_TREE_LEARNT_DISTRIBUTIONS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG

@@ -11,14 +11,11 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
 #include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
-#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
+#include "Device/includes/PathGuiding/VMF.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #include <cstdint>
-
-// Placeholder
-using NEEGuidingDistribution = LightTreeSGNodeDevice;
 
 // Indexed by sqrtf(1.0f / effectiveKappa) to get the cosine of the maximum angle allowed between two distributions VMF for the mean radiance weighted
 // directions split criterion.
@@ -319,8 +316,7 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG ||                                                                                                   \
-	(DirectLightNEEEstimator != LSS_SG_TREE_LEARNT_DISTRIBUTIONS && DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS)
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
 		return;
 #endif
 
@@ -494,10 +490,9 @@ struct IlluminationAwareKDTreeCoreDevice
 	AtomicType<unsigned int>* node_count = nullptr;
 	unsigned int node_capacity			 = 0;
 
-	unsigned int* active_guiding_nodes					 = nullptr;
-	AtomicType<unsigned int>* active_guiding_node_count	 = nullptr;
-	uint8_t* needs_split								 = nullptr;
-	AtomicType<unsigned int>* guiding_distribution_count = nullptr;
+	unsigned int* active_guiding_nodes					= nullptr;
+	AtomicType<unsigned int>* active_guiding_node_count = nullptr;
+	uint8_t* needs_split								= nullptr;
 
 	// Two ping ponging frontier buffers for when we create lookahead cells
 	//

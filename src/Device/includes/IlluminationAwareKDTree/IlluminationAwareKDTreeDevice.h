@@ -7,14 +7,12 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeCoreDevice.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNEELearntDistributionsDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNISMLDevice.h"
 
 struct IlluminationAwareKDTreeDevice
 {
 	IlluminationAwareKDTreeCoreDevice core;
 	IlluminationAwareKDTreeNISMLDevice nisml;
-	IlluminationAwareKDTreeNEELearntDistributionsDevice nee_distributions;
 };
 
 #endif

@@ -38,13 +38,11 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice kd_tree_d
 		kd_tree_device.core.node_bounds[0].minimum = scene_bounds_minimum;
 		kd_tree_device.core.node_bounds[0].maximum = scene_bounds_maximum;
 
-		*kd_tree_device.core.node_count					= 1;
-		*kd_tree_device.core.guiding_distribution_count = 1;
-		*kd_tree_device.core.active_guiding_node_count	= 1;
-		kd_tree_device.core.active_guiding_nodes[0]		= 0;
+		*kd_tree_device.core.node_count				   = 1;
+		*kd_tree_device.core.active_guiding_node_count = 1;
+		kd_tree_device.core.active_guiding_nodes[0]	   = 0;
 
-		*kd_tree_device.core.training_sample_count					= 0;
-		*kd_tree_device.nee_distributions.nee_training_record_count = 0;
+		*kd_tree_device.core.training_sample_count = 0;
 		if (kd_tree_device.nisml.nisml_pending_cell_count != nullptr)
 			*kd_tree_device.nisml.nisml_pending_cell_count = 0;
 
