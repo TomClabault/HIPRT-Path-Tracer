@@ -4093,11 +4093,11 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 				std::size_t nee_training_buffer_bytes = vram_usage.nee_training_records + vram_usage.nee_training_record_count;
 				std::size_t final_distribution_bytes  = vram_usage.tree_cut_sampling_probabilities + vram_usage.tree_cut_sampling_cdfs;
 				std::size_t per_cell_history_bytes	  = vram_usage.history_per_cell_sample_count + vram_usage.history_per_cell_normal_sum_x +
-															vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
-															vram_usage.history_per_cell_normal_count;
-				std::size_t per_cut_history_bytes				  = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
-				std::size_t per_cut_batch_bytes					  = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
-				std::size_t prior_distribution_bytes	  = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
+													 vram_usage.history_per_cell_normal_sum_y + vram_usage.history_per_cell_normal_sum_z +
+													 vram_usage.history_per_cell_normal_count;
+				std::size_t per_cut_history_bytes	 = vram_usage.history_per_cut_node_estimated_second_moment + vram_usage.history_per_cut_node_sample_count;
+				std::size_t per_cut_batch_bytes		 = vram_usage.batch_per_cut_node_second_moment_sum + vram_usage.batch_per_cut_node_sample_count;
+				std::size_t prior_distribution_bytes = vram_usage.tree_cut_sampling_prior_pdfs + vram_usage.tree_cut_sampling_prior_cdfs;
 
 				illumination_aware_vram_tooltip += std::format(
 					"  - NEE distribution training buffers: {:.3f}MB\n"
@@ -4298,7 +4298,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4318,9 +4318,9 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 																		  : IlluminationAwareKDTreeVRAMUsage();
 
 				std::size_t nisml_cache_bytes = kd_tree_vram_usage.nisml_cache + kd_tree_vram_usage.nisml_representative_sample_counts +
-												kd_tree_vram_usage.nisml_representative_occupied_counts + kd_tree_vram_usage.nisml_representative_write_locks +
-												kd_tree_vram_usage.nisml_representative_dirty + kd_tree_vram_usage.nisml_cache_ready +
-												kd_tree_vram_usage.nisml_pending_cell_count;
+												kd_tree_vram_usage.nisml_representative_occupied_counts + kd_tree_vram_usage.nisml_representative_valid +
+												kd_tree_vram_usage.nisml_representative_write_locks + kd_tree_vram_usage.nisml_representative_dirty +
+												kd_tree_vram_usage.nisml_cache_ready + kd_tree_vram_usage.nisml_pending_cell_count;
 
 				ImGui::Text("NISML VRAM usage: %.3fMB", (nisml_vram_usage.get_total_bytes() + nisml_cache_bytes) / 1000000.0f);
 				ImGui::Text("VRAM Usage breakdown: ");
@@ -4344,6 +4344,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 						 "    Cache entries: %.3fMB\n"
 						 "    Representative sample counts: %.3fMB\n"
 						 "    Representative occupied counts: %.3fMB\n"
+						 "    Representative valid flags: %.3fMB\n"
 						 "    Representative write locks: %.3fMB\n"
 						 "    Representative dirty flags: %.3fMB\n"
 						 "    Cache ready flags: %.3fMB\n"
@@ -4356,9 +4357,9 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 						 nisml_vram_usage.training_records / 1000000.0f, nisml_vram_usage.training_sample_count / 1000000.0f,
 						 nisml_vram_usage.training_record_count / 1000000.0f, nisml_cache_bytes / 1000000.0f, kd_tree_vram_usage.nisml_cache / 1000000.0f,
 						 kd_tree_vram_usage.nisml_representative_sample_counts / 1000000.0f,
-						 kd_tree_vram_usage.nisml_representative_occupied_counts / 1000000.0f, kd_tree_vram_usage.nisml_representative_write_locks / 1000000.0f,
-						 kd_tree_vram_usage.nisml_representative_dirty / 1000000.0f, kd_tree_vram_usage.nisml_cache_ready / 1000000.0f,
-						 kd_tree_vram_usage.nisml_pending_cell_count / 1000000.0f);
+						 kd_tree_vram_usage.nisml_representative_occupied_counts / 1000000.0f, kd_tree_vram_usage.nisml_representative_valid / 1000000.0f,
+						 kd_tree_vram_usage.nisml_representative_write_locks / 1000000.0f, kd_tree_vram_usage.nisml_representative_dirty / 1000000.0f,
+						 kd_tree_vram_usage.nisml_cache_ready / 1000000.0f, kd_tree_vram_usage.nisml_pending_cell_count / 1000000.0f);
 				ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));

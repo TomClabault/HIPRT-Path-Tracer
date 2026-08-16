@@ -78,16 +78,15 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 	unsigned int cache_entry_count = node_count * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT;
 	if (cache_index >= cache_entry_count || kd_tree_device.nisml.nisml_cache == nullptr ||
 		kd_tree_device.nisml.nisml_representative_occupied_counts == nullptr || kd_tree_device.nisml.nisml_representative_dirty == nullptr ||
-		kd_tree_device.nisml.nisml_cache_ready == nullptr || kd_tree_device.nisml.nisml_pending_cell_count == nullptr ||
-		kd_tree_device.nisml.nisml_representative_capacity == 0u)
+		kd_tree_device.nisml.nisml_representative_valid == nullptr || kd_tree_device.nisml.nisml_cache_ready == nullptr ||
+		kd_tree_device.nisml.nisml_pending_cell_count == nullptr || kd_tree_device.nisml.nisml_representative_capacity == 0u)
 		return;
 
 	if (kd_tree_device.nisml.nisml_representative_dirty[cache_index] == 0)
 		return;
 
-	unsigned int representative_count = kd_tree_device.nisml.nisml_representative_occupied_counts[cache_index];
-	representative_count			  = hippt::min(representative_count, kd_tree_device.nisml.nisml_representative_capacity);
-	if (representative_count == 0u)
+	unsigned int occupied_representative_count = kd_tree_device.nisml.nisml_representative_occupied_counts[cache_index];
+	if (occupied_representative_count == 0u)
 		return;
 
 	unsigned int cluster_count = hippt::min(render_data.nisml.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
@@ -96,9 +95,12 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 
 	float average_probabilities[NISML_MAX_CLUSTER_COUNT] = {};
 	unsigned int valid_representative_count				 = 0;
-	for (unsigned int representative_index = 0; representative_index < representative_count; representative_index++)
+	for (unsigned int representative_index = 0; representative_index < kd_tree_device.nisml.nisml_representative_capacity; representative_index++)
 	{
-		unsigned int flat_representative_index						= kd_tree_device.nisml.get_nisml_representative_index(cache_index, representative_index);
+		unsigned int flat_representative_index = kd_tree_device.nisml.get_nisml_representative_index(cache_index, representative_index);
+		if (kd_tree_device.nisml.nisml_representative_valid[flat_representative_index] == 0)
+			continue;
+
 		IlluminationAwareKDTreeNISMLCache& representative			= kd_tree_device.nisml.nisml_cache[flat_representative_index];
 		HIPRTRenderData baseline_render_data						= render_data;
 		baseline_render_data.kd_tree_device.nisml.nisml_cache_ready = nullptr;

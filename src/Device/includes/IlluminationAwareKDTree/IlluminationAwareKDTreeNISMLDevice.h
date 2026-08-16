@@ -23,11 +23,6 @@ struct IlluminationAwareKDTreeNISMLDevice
 												  float alpha_y,
 												  Xorshift32Generator& random_number_generator)
 	{
-		if (nisml_cache == nullptr || nisml_representative_sample_counts == nullptr || nisml_representative_occupied_counts == nullptr ||
-			nisml_representative_write_locks == nullptr || nisml_representative_dirty == nullptr || nisml_cache_ready == nullptr ||
-			nisml_pending_cell_count == nullptr || nisml_representative_capacity == 0u)
-			return;
-
 		if (node_index >= node_capacity)
 			return;
 
@@ -46,6 +41,8 @@ struct IlluminationAwareKDTreeNISMLDevice
 		}
 
 		if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[cache_index], 0u, 1u) != 0u)
+			// Simple fail fast approach: if the lock is already taken, we skip this representative. This may result in some representatives being skipped, but
+			// it avoids potential deadlocks and should be fine for the purpose of representative collection.
 			return;
 
 		unsigned int representative_index		 = get_nisml_representative_index(cache_index, replacement_index);
@@ -57,8 +54,11 @@ struct IlluminationAwareKDTreeNISMLDevice
 		cache.representative_alpha_x			 = alpha_x;
 		cache.representative_alpha_y			 = alpha_y;
 
-		if (sample_index < nisml_representative_capacity && nisml_representative_occupied_counts[cache_index] < sample_index + 1u)
-			nisml_representative_occupied_counts[cache_index] = sample_index + 1u;
+		if (nisml_representative_valid[representative_index] == 0)
+		{
+			nisml_representative_valid[representative_index] = 1;
+			nisml_representative_occupied_counts[cache_index]++;
+		}
 
 		if (nisml_representative_dirty[cache_index] == 0)
 		{
@@ -82,8 +82,8 @@ struct IlluminationAwareKDTreeNISMLDevice
 	HIPRT_DEVICE void initialize_nisml_cache_for_guiding_cell(unsigned int node_index, unsigned int node_capacity)
 	{
 		if (nisml_cache == nullptr || nisml_representative_sample_counts == nullptr || nisml_representative_occupied_counts == nullptr ||
-			nisml_representative_write_locks == nullptr || nisml_representative_dirty == nullptr || nisml_cache_ready == nullptr ||
-			node_index >= node_capacity || nisml_representative_capacity == 0u)
+			nisml_representative_valid == nullptr || nisml_representative_write_locks == nullptr || nisml_representative_dirty == nullptr ||
+			nisml_cache_ready == nullptr || node_index >= node_capacity || nisml_representative_capacity == 0u)
 			return;
 
 		for (unsigned int normal_face = 0; normal_face < ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT; normal_face++)
@@ -91,8 +91,9 @@ struct IlluminationAwareKDTreeNISMLDevice
 			unsigned int cache_index = get_nisml_cache_index(node_index, normal_face);
 			for (unsigned int representative_index = 0; representative_index < nisml_representative_capacity; representative_index++)
 			{
-				unsigned int flat_representative_index = get_nisml_representative_index(cache_index, representative_index);
-				nisml_cache[flat_representative_index] = {};
+				unsigned int flat_representative_index				  = get_nisml_representative_index(cache_index, representative_index);
+				nisml_cache[flat_representative_index]				  = {};
+				nisml_representative_valid[flat_representative_index] = 0;
 			}
 
 			nisml_representative_sample_counts[cache_index]	  = 0;
@@ -107,6 +108,7 @@ struct IlluminationAwareKDTreeNISMLDevice
 	unsigned int nisml_representative_capacity					 = 1;
 	AtomicType<unsigned int>* nisml_representative_sample_counts = nullptr;
 	unsigned int* nisml_representative_occupied_counts			 = nullptr;
+	unsigned char* nisml_representative_valid					 = nullptr;
 	AtomicType<unsigned int>* nisml_representative_write_locks	 = nullptr;
 	unsigned char* nisml_representative_dirty					 = nullptr;
 	// Indicates that log_importances contains a completely written, valid cache snapshot.

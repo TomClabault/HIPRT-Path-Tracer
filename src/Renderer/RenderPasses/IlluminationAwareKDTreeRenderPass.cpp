@@ -608,6 +608,7 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.nisml_cache							= m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
 	vram_usage.nisml_representative_sample_counts	= m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
 	vram_usage.nisml_representative_occupied_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_occupied_counts.get_byte_size();
+	vram_usage.nisml_representative_valid			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_valid.get_byte_size();
 	vram_usage.nisml_representative_write_locks		= m_illumination_aware_kd_tree.m_nisml_data.m_representative_write_locks.get_byte_size();
 	vram_usage.nisml_representative_dirty			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_dirty.get_byte_size();
 	vram_usage.nisml_cache_ready					= m_illumination_aware_kd_tree.m_nisml_data.m_cache_ready.get_byte_size();

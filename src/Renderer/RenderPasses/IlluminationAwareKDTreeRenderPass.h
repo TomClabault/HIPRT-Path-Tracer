@@ -40,6 +40,7 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t nisml_cache							 = 0;
 	std::size_t nisml_representative_sample_counts	 = 0;
 	std::size_t nisml_representative_occupied_counts = 0;
+	std::size_t nisml_representative_valid			 = 0;
 	std::size_t nisml_representative_write_locks	 = 0;
 	std::size_t nisml_representative_dirty			 = 0;
 	std::size_t nisml_cache_ready					 = 0;
@@ -65,11 +66,12 @@ struct IlluminationAwareKDTreeVRAMUsage
 		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + guiding_distribution_count +
 			   current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count +
 			   nee_training_records + nee_training_record_count + batch_signatures + history_signatures + batch_spatial_moments + history_spatial_moments +
-			   nisml_cache + nisml_representative_sample_counts + nisml_representative_occupied_counts + nisml_representative_write_locks +
-			   nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count + tree_cut_sampling_probabilities + tree_cut_sampling_cdfs +
-			   history_per_cell_sample_count + history_per_cell_normal_sum_x + history_per_cell_normal_sum_y + history_per_cell_normal_sum_z +
-			   history_per_cell_normal_count + history_per_cut_node_estimated_second_moment + history_per_cut_node_sample_count +
-			   batch_per_cut_node_second_moment_sum + batch_per_cut_node_sample_count + tree_cut_sampling_prior_pdfs + tree_cut_sampling_prior_cdfs;
+			   nisml_cache + nisml_representative_sample_counts + nisml_representative_occupied_counts + nisml_representative_valid +
+			   nisml_representative_write_locks + nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count + tree_cut_sampling_probabilities +
+			   tree_cut_sampling_cdfs + history_per_cell_sample_count + history_per_cell_normal_sum_x + history_per_cell_normal_sum_y +
+			   history_per_cell_normal_sum_z + history_per_cell_normal_count + history_per_cut_node_estimated_second_moment +
+			   history_per_cut_node_sample_count + batch_per_cut_node_second_moment_sum + batch_per_cut_node_sample_count + tree_cut_sampling_prior_pdfs +
+			   tree_cut_sampling_prior_cdfs;
 	}
 };
 
