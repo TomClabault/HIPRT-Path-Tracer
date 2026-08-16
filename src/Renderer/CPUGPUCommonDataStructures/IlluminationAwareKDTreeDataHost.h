@@ -18,10 +18,13 @@ struct IlluminationAwareKDTreeDataHost
 {
 	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES = IlluminationAwareKDTreeCoreDataHost<DataContainer>::MAXIMUM_NUMBER_OF_NODES;
 
-	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity, int new_tree_cut_size)
+	void resize(unsigned int new_node_capacity,
+				unsigned int new_training_sample_capacity,
+				int new_tree_cut_size,
+				unsigned int new_nisml_representative_capacity = 1)
 	{
 		m_kd_tree_data.resize(new_node_capacity, new_training_sample_capacity);
-		m_nisml_data.resize(new_node_capacity);
+		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity);
 		m_nee_learnt_distributions_data.resize(new_node_capacity, new_training_sample_capacity, new_tree_cut_size);
 		m_counter_download_buffer.resize_host_pinned_mem(1);
 	}

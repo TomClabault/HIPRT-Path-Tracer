@@ -104,10 +104,13 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 												   unsigned int output_index  = 0)
 {
 	unsigned int cluster_count = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
+	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
+		log_baseline_weights[cluster_index * output_stride + output_index] = -INFINITY;
 
 #if NISMLUseSGImportancesKDTreeCaches == KERNEL_OPTION_TRUE
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
-	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr)
+	if (kd_tree_device.core.nodes != nullptr && kd_tree_device.nisml.nisml_cache != nullptr && kd_tree_device.nisml.nisml_cache_ready != nullptr &&
+		kd_tree_device.nisml.nisml_representative_capacity > 0u)
 	{
 		unsigned int node_index = kd_tree_device.core.find_guiding_cell(shading_point);
 		if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX && node_index < kd_tree_device.core.node_capacity)
@@ -118,7 +121,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 			{
 				for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 					log_baseline_weights[cluster_index * output_stride + output_index] =
-						kd_tree_device.nisml.nisml_cache[cache_index].log_importances[cluster_index];
+						kd_tree_device.nisml.nisml_cache[kd_tree_device.nisml.get_nisml_representative_index(cache_index, 0u)].log_importances[cluster_index];
 
 				return;
 			}

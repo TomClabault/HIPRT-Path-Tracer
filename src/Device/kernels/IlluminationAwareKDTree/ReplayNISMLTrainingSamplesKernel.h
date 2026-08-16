@@ -34,12 +34,7 @@ IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(HIPRTRenderData render_
 	const NISMLTrainingSample& training_record	  = render_data.nisml.training_records[training_record_index];
 	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(training_record.position);
-	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || kd_tree_device.nisml.nisml_representative_ready == nullptr)
-		return;
-
-	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(training_record.normal);
-	unsigned int cache_index = kd_tree_device.nisml.get_nisml_cache_index(node_index, normal_face);
-	if (kd_tree_device.nisml.nisml_representative_ready[cache_index] != 0)
+	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || kd_tree_device.nisml.nisml_representative_dirty == nullptr)
 		return;
 
 	Xorshift32Generator random_number_generator(training_record_index + 1u);

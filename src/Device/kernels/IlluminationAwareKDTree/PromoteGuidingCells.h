@@ -86,8 +86,6 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice kd_tre
 
 		kd_tree_device.nisml.initialize_nisml_cache_for_guiding_cell(left_child_index, kd_tree_device.core.node_capacity);
 		kd_tree_device.nisml.initialize_nisml_cache_for_guiding_cell(right_child_index, kd_tree_device.core.node_capacity);
-		if (kd_tree_device.nisml.nisml_pending_cell_count != nullptr)
-			hippt::atomic_fetch_add(kd_tree_device.nisml.nisml_pending_cell_count, 2u * ILLUMINATION_AWARE_KD_TREE_NISML_NORMAL_FACE_COUNT);
 
 		// The parent is no longer a guiding node
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;

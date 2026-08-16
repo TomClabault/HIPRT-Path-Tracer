@@ -227,6 +227,8 @@ void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned 
 
 bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 {
+	m_nisml_representative_capacity = std::max(m_nisml_representative_capacity, 1);
+
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
 	{
 		m_buffers_need_reallocation = true;
@@ -234,13 +236,20 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		return m_illumination_aware_kd_tree.free();
 	}
 
+	unsigned int nisml_representative_capacity = static_cast<unsigned int>(m_nisml_representative_capacity);
+	bool nisml_representative_capacity_changed = m_illumination_aware_kd_tree.m_nisml_data.m_representative_capacity != nisml_representative_capacity;
+	if (nisml_representative_capacity_changed)
+		m_buffers_need_reallocation = true;
+
 	bool render_data_invalidated = false;
 	if (m_buffers_need_reallocation)
 	{
 		int sg_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity,
-											sg_tree_cut_size);
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+											sg_tree_cut_size, nisml_representative_capacity);
+
+		if (nisml_representative_capacity_changed)
+			m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
 
 		m_buffers_need_reallocation = false;
 		render_data_invalidated		= true;
@@ -533,6 +542,11 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 	return m_training_sample_buffer_capacity;
 }
 
+int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
+{
+	return m_nisml_representative_capacity;
+}
+
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
 {
 	return m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size();
@@ -591,12 +605,13 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_spatial_moments.get_byte_size();
 	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_spatial_moments.get_byte_size();
 
-	vram_usage.nisml_cache						  = m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
-	vram_usage.nisml_representative_sample_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
-	vram_usage.nisml_representative_write_locks	  = m_illumination_aware_kd_tree.m_nisml_data.m_representative_write_locks.get_byte_size();
-	vram_usage.nisml_representative_ready		  = m_illumination_aware_kd_tree.m_nisml_data.m_representative_ready.get_byte_size();
-	vram_usage.nisml_cache_ready				  = m_illumination_aware_kd_tree.m_nisml_data.m_cache_ready.get_byte_size();
-	vram_usage.nisml_pending_cell_count			  = m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.get_byte_size();
+	vram_usage.nisml_cache							= m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
+	vram_usage.nisml_representative_sample_counts	= m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
+	vram_usage.nisml_representative_occupied_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_occupied_counts.get_byte_size();
+	vram_usage.nisml_representative_write_locks		= m_illumination_aware_kd_tree.m_nisml_data.m_representative_write_locks.get_byte_size();
+	vram_usage.nisml_representative_dirty			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_dirty.get_byte_size();
+	vram_usage.nisml_cache_ready					= m_illumination_aware_kd_tree.m_nisml_data.m_cache_ready.get_byte_size();
+	vram_usage.nisml_pending_cell_count				= m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.get_byte_size();
 
 	vram_usage.tree_cut_sampling_probabilities = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_probabilities.get_byte_size();
 	vram_usage.tree_cut_sampling_cdfs		   = m_illumination_aware_kd_tree.m_nee_learnt_distributions_data.m_tree_cut_sampling_cdfs.get_byte_size();
