@@ -4391,6 +4391,21 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 					}
 					ImGuiRenderer::show_help_marker("Number of reservoir representatives retained for each KD-tree cell and surface-normal cache entry. "
 													"Changing this invalidates existing NISML cache snapshots.");
+
+					bool use_nisml_normal_diversity_heuristic =
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_NISML_USE_NORMAL_DIVERSITY_HEURISTIC) ==
+						KERNEL_OPTION_TRUE;
+					if (ImGui::Checkbox("Use local normal-diversity heuristic##nisml", &use_nisml_normal_diversity_heuristic))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_NISML_USE_NORMAL_DIVERSITY_HEURISTIC,
+															   use_nisml_normal_diversity_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker(
+						"When enabled, overflow representatives replace locally redundant normals with more separated normals. "
+						"When disabled, the original random reservoir replacement algorithm is used. Changing this recompiles the kernels.");
 				}
 
 				static int current_tree_cut_size_neural_many_lights =

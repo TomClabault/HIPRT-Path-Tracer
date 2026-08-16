@@ -163,7 +163,7 @@ private:
 	// If true, the number of split iterations per SPP will be automatically adjusted based on the current SPP for efficiency
 	bool m_auto_split_iterations_per_SPP  = true;
 	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
-	int m_nisml_representative_capacity	  = 8;
+	int m_nisml_representative_capacity	  = 3;
 
 	std::size_t m_cached_current_node_count			= 1;
 	std::size_t m_cached_current_guiding_node_count = 1;

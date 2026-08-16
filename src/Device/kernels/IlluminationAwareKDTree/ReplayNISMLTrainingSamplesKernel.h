@@ -37,9 +37,10 @@ IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(HIPRTRenderData render_
 	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || kd_tree_device.nisml.nisml_representative_dirty == nullptr)
 		return;
 
+	Xorshift32Generator random_number_generator(training_record_index + 1u);
 	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, training_record.position,
 													 training_record.outgoing_direction, training_record.normal, training_record.sg_specular_weight,
-													 training_record.alpha_x, training_record.alpha_y);
+													 training_record.alpha_x, training_record.alpha_y, random_number_generator);
 }
 
 #endif

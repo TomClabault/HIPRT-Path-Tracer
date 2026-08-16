@@ -59,8 +59,9 @@
 /**
  * Debug view for the illumination-aware KD-tree.
  */
-#define IlluminationAwareKDTreeDebugMode				 ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG
+#define IlluminationAwareKDTreeDebugMode					 ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG
 #define IlluminationAwareKDTreeDebugRepresentativePoints KERNEL_OPTION_FALSE
+#define IlluminationAwareKDTreeNISMLUseNormalDiversityHeuristic KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 
