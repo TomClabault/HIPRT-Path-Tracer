@@ -4167,12 +4167,8 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 			ImGui::SeparatorText("Debug");
 			ImGui::PopStyleVar();
 
-			const char* debug_view_items[] = { "- No debug",
-											   "- KD tree leaves solid",
-											   "- KD tree leaves outlines",
-											   "- KD tree leaves outlines and lookaheads",
-											   "- KD tree leaves by normal solid",
-											   "- KD tree leaves by normal outlines" };
+			const char* debug_view_items[] = { "- No debug", "- KD tree leaves solid", "- KD tree leaves outlines",
+											   "- KD tree leaves outlines and lookaheads" };
 			if (ImGui::Combo("Debug view",
 							 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE),
 							 debug_view_items, IM_ARRAYSIZE(debug_view_items)))
