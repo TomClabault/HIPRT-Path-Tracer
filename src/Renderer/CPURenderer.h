@@ -289,6 +289,8 @@ private:
 		bool lookahead_frontier_initialized		= false;
 		bool current_frontier_uses_first_buffer = true;
 		uint32_t next_creation_tag				= 0;
+		int split_iterations_per_SPP			= 3;
+		bool auto_split_iterations_per_SPP		= true;
 	} m_illumination_aware_kd_tree_state;
 
 	struct NISMLState

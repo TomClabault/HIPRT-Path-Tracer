@@ -30,6 +30,12 @@ struct IlluminationAwareKDTreeNode
 	// INVALID_NODE_INDEX means that this node currently has no children.
 	uint32_t left_child_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
+	// Index of the per-cell adaptive light clustering.
+	//
+	// Only an active guiding cell owns a valid light clustering.
+	static constexpr unsigned int INVALID_LIGHT_CLUSTERING_INDEX = 0xFFFFFFFFu;
+	unsigned int light_clustering_normal_set_index				 = INVALID_LIGHT_CLUSTERING_INDEX;
+
 	// Identifies the lookahead-allocation pass that created this node.
 	//
 	// It is used when replaying the current SPP's samples into only

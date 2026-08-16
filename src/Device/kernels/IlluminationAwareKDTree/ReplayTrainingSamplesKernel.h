@@ -37,7 +37,7 @@ IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevic
 		{
 			kd_tree_device.core.atomic_add_illumination_signature(kd_tree_device.core.batch_signatures, node_index, sample);
 
-			if (sample.radiance_weight > 0.0f)
+			if (sample.spatial_radiance_weight > 0.0f)
 				kd_tree_device.core.atomic_add_spatial_moments(kd_tree_device.core.batch_spatial_moments, node_index, sample.position);
 		}
 

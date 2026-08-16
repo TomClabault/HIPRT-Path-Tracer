@@ -12,6 +12,8 @@
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
+#define LSS_SG_TREE_LEARNING_TO_CLUSTER 9
+
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT				 1
 #define LSS_BSDF					 2

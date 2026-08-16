@@ -17,9 +17,9 @@ struct IlluminationAwareKDTreeDirectIlluminationTrainingSample
 	float3_t position			= float3_t(0.0f, 0.0f, 0.0f);
 	float3_t incoming_direction = float3_t(0.0f, 0.0f, 0.0f);
 
-	float radiance_weight = 0.0f;
+	float spatial_radiance_weight = 0.0f;
 
-	unsigned int valid = false;
+	unsigned int valid_for_spatial_training = false;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #define RENDERER_LIGHT_TREE_SG_BUILDER_H
 
 #include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeBuilderCommon.h"
@@ -55,6 +56,11 @@ public:
 	void set_tree_cut_size(int tree_cut_size);
 	int get_tree_cut_size_neural_many_lights() const;
 	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
+	int get_second_tree_cut_size() const;
+	void set_second_tree_cut_size(int second_tree_cut_size);
+	unsigned int get_effective_second_tree_cut_size() const;
+	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
+	const std::vector<unsigned int>& get_second_tree_cut_node_indices() const;
 
 private:
 	/**
@@ -78,6 +84,9 @@ private:
 
 	std::vector<unsigned int> m_tree_cut_node_indices;
 	unsigned int m_effective_tree_cut_size = 0;
+	std::vector<unsigned int> m_second_tree_cut_node_indices;
+	unsigned int m_effective_second_tree_cut_size = 0;
+	int m_second_tree_cut_size					  = IlluminationAwareKDTreeInitialLightCutSize;
 
 	LightTreeSGBuilderNISML m_nisml;
 	LightTreeSGBuilderOptions m_build_options;
@@ -92,7 +101,8 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 	LightTreeSGBuilderDeviceData<DataContainer> device_data_out;
 	device_data_out.nodes_device.resize(m_nodes.size());
 	device_data_out.spatial_lobes_device.resize(m_nodes.size() * m_build_options.spatial_lobe_count);
-	device_data_out.tree_cut_node_indices_device = m_tree_cut_node_indices;
+	device_data_out.tree_cut_node_indices_device		= m_tree_cut_node_indices;
+	device_data_out.second_tree_cut_node_indices_device = m_second_tree_cut_node_indices;
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
@@ -150,10 +160,12 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 {
 	if (device_data.nodes_device.size() == 0)
 	{
-		render_data.light_tree_sg.settings.effective_tree_cut_size = 0;
-		render_data.light_tree_sg.nodes							   = nullptr;
-		render_data.light_tree_sg.spatial_lobes					   = nullptr;
-		render_data.light_tree_sg.tree_cut_node_indices			   = nullptr;
+		render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
+		render_data.light_tree_sg.settings.effective_second_tree_cut_size = 0;
+		render_data.light_tree_sg.nodes									  = nullptr;
+		render_data.light_tree_sg.spatial_lobes							  = nullptr;
+		render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
+		render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 
 		return;
 	}
@@ -165,8 +177,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{
-		device_data.m_device_spatial_lobes_buffer		  = device_data.spatial_lobes_device;
-		device_data.m_device_tree_cut_node_indices_buffer = device_data.tree_cut_node_indices_device;
+		device_data.m_device_spatial_lobes_buffer				 = device_data.spatial_lobes_device;
+		device_data.m_device_tree_cut_node_indices_buffer		 = device_data.tree_cut_node_indices_device;
+		device_data.m_device_second_tree_cut_node_indices_buffer = device_data.second_tree_cut_node_indices_device;
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
@@ -177,8 +190,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 	else
 	{
-		device_data.m_device_spatial_lobes_buffer		  = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
-		device_data.m_device_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
+		device_data.m_device_spatial_lobes_buffer				 = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
+		device_data.m_device_tree_cut_node_indices_buffer		 = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
+		device_data.m_device_second_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.second_tree_cut_node_indices_device);
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
@@ -188,13 +202,15 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		device_data.m_bit_trails_buffer			  = OrochiBuffer<unsigned int>(converted_bit_trails);
 	}
 
-	render_data.light_tree_sg.settings.spatial_lobe_count	   = m_build_options.spatial_lobe_count;
-	render_data.light_tree_sg.settings.effective_tree_cut_size = m_effective_tree_cut_size;
-	render_data.light_tree_sg.nodes							   = device_data.m_device_nodes_buffer.data();
-	render_data.light_tree_sg.spatial_lobes					   = device_data.m_device_spatial_lobes_buffer.data();
-	render_data.light_tree_sg.tree_cut_node_indices			   = device_data.m_device_tree_cut_node_indices_buffer.data();
-	render_data.light_tree_sg.indices_array					   = device_data.m_device_indices_array_buffer.data();
-	render_data.light_tree_sg.bit_trails					   = device_data.m_bit_trails_buffer.data();
+	render_data.light_tree_sg.settings.spatial_lobe_count			  = m_build_options.spatial_lobe_count;
+	render_data.light_tree_sg.settings.effective_tree_cut_size		  = m_effective_tree_cut_size;
+	render_data.light_tree_sg.settings.effective_second_tree_cut_size = m_effective_second_tree_cut_size;
+	render_data.light_tree_sg.nodes									  = device_data.m_device_nodes_buffer.data();
+	render_data.light_tree_sg.spatial_lobes							  = device_data.m_device_spatial_lobes_buffer.data();
+	render_data.light_tree_sg.tree_cut_node_indices					  = device_data.m_device_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.second_tree_cut_node_indices			  = device_data.m_device_second_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.indices_array							  = device_data.m_device_indices_array_buffer.data();
+	render_data.light_tree_sg.bit_trails							  = device_data.m_bit_trails_buffer.data();
 }
 
 #endif

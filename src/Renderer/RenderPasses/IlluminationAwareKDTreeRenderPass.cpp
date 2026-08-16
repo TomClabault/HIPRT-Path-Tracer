@@ -22,17 +22,27 @@
 
 const std::string IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME = "Illumination-Aware KD-Tree Render Pass";
 
-const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID								= "Reset Tree";
-const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID		= "Accumulate Batch Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID = "Accumulate Batch Statistics Into History";
-const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID			= "Reset Batch KD-Tree Statistics";
-const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID				= "Expand One Lookahead Level";
-const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID					= "Replay Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID			= "Initialize Created Node History";
-const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID			= "Mark Guiding Cells For Splitting";
-const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID					= "Promote Guiding Cells";
-const std::string IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID			= "Replay NISML Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID						= "Build NISML Caches";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID									= "Reset Tree";
+const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID				= "Initialize Root Light Clustering";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID			= "Accumulate Normal Face Observations";
+const std::string IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID		= "Allocate Normal Face Light Clusterings";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID			= "Accumulate Batch Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID = "Accumulate Light Clustering Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID		= "Commit Light Cluster Reservoir Proposals";
+const std::string IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID				= "Update Light Cluster Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID						= "Refine Light Clusterings";
+const std::string IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID		= "Apply Pending Light Cluster Q Updates";
+const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID		= "Accumulate Batch Statistics Into History";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID				= "Reset Batch KD-Tree Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID =
+	"Reset Batch KD-Tree And Light Clustering Statistics";
+const std::string IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID		= "Expand One Lookahead Level";
+const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID			= "Replay Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID	= "Initialize Created Node History";
+const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID = "Mark Guiding Cells For Splitting";
+const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID			= "Promote Guiding Cells";
+const std::string IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID	= "Replay NISML Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID				= "Build NISML Caches";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
@@ -43,6 +53,30 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetTree");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeRootLightClustering.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_InitializeRootLightClustering");
+	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AccumulateNormalFaceObservations");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AllocateNormalFaceLightClusterings");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
@@ -50,6 +84,46 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_AccumulateBatchTrainingSamples");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples");
+	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/CommitLightClusterReservoirProposals.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_CommitLightClusterReservoirProposals");
+	m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/UpdateLightClusterStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_UpdateLightClusterStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																										   "/IlluminationAwareKDTree/RefineLightClusterings.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_RefineLightClusterings");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ApplyPendingLightClusterQUpdates.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates");
+	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
@@ -66,6 +140,15 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_ResetBatchKDTreeStatistics");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
+																																		  {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
@@ -151,10 +234,23 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
 	bool using_nisml												 = is_using_nisml(*m_compiler_options);
+	bool using_learning_to_cluster									 = is_using_learning_to_cluster(*m_compiler_options);
 	if (!using_nisml)
 	{
 		active_kernels.erase(REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
 		active_kernels.erase(BUILD_NISML_CACHES_KERNEL_ID);
+	}
+	if (!using_learning_to_cluster)
+	{
+		active_kernels.erase(INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID);
+		active_kernels.erase(ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID);
+		active_kernels.erase(ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID);
+		active_kernels.erase(ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID);
+		active_kernels.erase(COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID);
+		active_kernels.erase(UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID);
+		active_kernels.erase(REFINE_LIGHT_CLUSTERINGS_KERNEL_ID);
+		active_kernels.erase(APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID);
+		active_kernels.erase(RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID);
 	}
 
 	return active_kernels;
@@ -203,6 +299,40 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	unsigned int active_node_count				 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
 	void* launch_args[]							 = { &kd_tree_device };
+	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()))
+	{
+		unsigned int light_clustering_count		= m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);
+		unsigned int reservoir_proposal_count	= light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride;
+		unsigned int reset_count				= std::max(std::max(active_node_count, light_clustering_count), reservoir_proposal_count);
+		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
+		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
+			1024, 1, reset_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		if (m_renderer->get_render_data().render_settings.sample_number == 0)
+		{
+			const std::vector<unsigned int>& second_tree_cut_node_indices =
+				m_renderer->get_light_tree_sg_sampling_data_structure().get_second_tree_cut_node_indices();
+			unsigned int effective_second_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_effective_second_tree_cut_size();
+			kd_tree_device.learning_to_cluster.effective_initial_light_cut_size								  = effective_second_tree_cut_size;
+			m_renderer->get_render_data().kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
+			if (!second_tree_cut_node_indices.empty() && effective_second_tree_cut_size > 0)
+			{
+				m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.upload_data_partial(0, second_tree_cut_node_indices.data(),
+																								  effective_second_tree_cut_size);
+
+				LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
+				void* initialize_root_light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
+				m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->launch_asynchronous(
+					IlluminationAwareKDTreeLightClusteringBlockSize, 1, IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+					initialize_root_light_clustering_launch_args, m_renderer->get_main_stream());
+				OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+			}
+		}
+
+		return render_data_invalidated;
+	}
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(1024, 1, active_node_count, 1, launch_args,
 																												m_renderer->get_main_stream());
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
@@ -214,6 +344,12 @@ bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOp
 {
 	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
+}
+
+bool IlluminationAwareKDTreeRenderPass::is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const
+{
+	return ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data)
@@ -304,6 +440,55 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 				1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
 			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		}
+	}
+
+	if (is_using_learning_to_cluster(compiler_options))
+	{
+		if (m_frozen_tree)
+			return;
+
+		m_cached_current_guiding_node_count =
+			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
+
+		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
+		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
+			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1, learning_to_cluster_launch_args,
+			m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
+			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		unsigned int light_clustering_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);
+		if (light_clustering_count > 0)
+		{
+			m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
+				IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride, 1,
+				learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+		}
+
+		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
+		void* light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
+		unsigned int light_clustering_work_count =
+			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize;
+		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	}
 
 	if (is_using_nisml(compiler_options))

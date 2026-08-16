@@ -41,6 +41,11 @@ public:
 	void set_tree_cut_size(int tree_cut_size);
 	int get_tree_cut_size_neural_many_lights() const;
 	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
+	int get_second_tree_cut_size() const;
+	void set_second_tree_cut_size(int second_tree_cut_size);
+	unsigned int get_effective_second_tree_cut_size() const;
+	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
+	const std::vector<unsigned int>& get_second_tree_cut_node_indices() const;
 
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;

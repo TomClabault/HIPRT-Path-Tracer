@@ -1330,7 +1330,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									   "- RISLTC BSDF + Light candidates",
 									   "- LTC Shading",
 									   "- ReSTIR DI (Primary hit only)",
-									   "- Neural importance sampling of many lights" };
+									   "- Neural importance sampling of many lights",
+									   "- Learning to cluster spherical Gaussian light tree" };
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 
@@ -1356,6 +1357,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"changed in the ReSTIR DI settings.",
 
 				"Temporary placeholder for neural many-lights sampling. Currently samples one random light in the scene without MIS.",
+
+				"Learns normal-dependent spherical Gaussian light clusters from the SG light tree.",
 			};
 			static_assert(IM_ARRAYSIZE(items) == IM_ARRAYSIZE(tooltips));
 
@@ -1367,11 +1370,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool regir		= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool mis_disabled = regir;
 
-			const bool ris_disabled				   = false;
-			const bool risltc_disabled			   = regir;
-			const bool ltc_shading_disabled		   = regir;
-			const bool restir_di_disabled		   = false;
-			const bool neural_many_lights_disabled = regir;
+			const bool ris_disabled					= false;
+			const bool risltc_disabled				= regir;
+			const bool ltc_shading_disabled			= regir;
+			const bool restir_di_disabled			= false;
+			const bool neural_many_lights_disabled	= regir;
+			const bool learning_to_cluster_disabled = regir;
 
 			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
 											   uniform_one_light_disabled,
@@ -1381,7 +1385,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 											   risltc_disabled,
 											   ltc_shading_disabled,
 											   restir_di_disabled,
-											   neural_many_lights_disabled };
+											   neural_many_lights_disabled,
+											   learning_to_cluster_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_base_strategy' array.
@@ -1457,6 +1462,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
 				{
 					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 32;
+				}
+				else if (nee_estimator == LSS_SG_TREE_LEARNING_TO_CLUSTER)
+				{
+					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 64;
 				}
 			}
 

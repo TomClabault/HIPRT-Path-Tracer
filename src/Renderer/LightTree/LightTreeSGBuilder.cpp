@@ -26,6 +26,8 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	{
 		m_tree_cut_node_indices.clear();
 		m_effective_tree_cut_size = 0;
+		m_second_tree_cut_node_indices.clear();
+		m_effective_second_tree_cut_size = 0;
 		m_nisml.free();
 
 		return;
@@ -33,6 +35,7 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 	compute_tree_cut(m_tree_cut_node_indices, m_effective_tree_cut_size, m_build_options.tree_cut_size);
+	compute_tree_cut(m_second_tree_cut_node_indices, m_effective_second_tree_cut_size, m_second_tree_cut_size);
 	compute_tree_cut(m_nisml.tree_cut_node_indices_neural_many_lights, m_nisml.effective_tree_cut_size_neural_many_lights,
 					 m_build_options.tree_cut_size_neural_many_lights);
 	m_nisml.build_lookup(m_light_tree_ats_builder.get_nodes(), m_light_tree_ats_builder.get_bit_trails(), m_light_tree_ats_builder.get_triangle_indices(),
@@ -395,6 +398,8 @@ void LightTreeSGBuilder::cleanup()
 	m_nodes.clear();
 	m_tree_cut_node_indices.clear();
 	m_effective_tree_cut_size = 0;
+	m_second_tree_cut_node_indices.clear();
+	m_effective_second_tree_cut_size = 0;
 }
 
 LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data()
@@ -450,4 +455,29 @@ int LightTreeSGBuilder::get_tree_cut_size_neural_many_lights() const
 void LightTreeSGBuilder::set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights)
 {
 	m_build_options.tree_cut_size_neural_many_lights = hippt::clamp(1, 2000000000, tree_cut_size_neural_many_lights);
+}
+
+int LightTreeSGBuilder::get_second_tree_cut_size() const
+{
+	return m_second_tree_cut_size;
+}
+
+void LightTreeSGBuilder::set_second_tree_cut_size(int second_tree_cut_size)
+{
+	m_second_tree_cut_size = hippt::clamp(1, IlluminationAwareKDTreeMaximumLightCutSize, second_tree_cut_size);
+}
+
+unsigned int LightTreeSGBuilder::get_effective_second_tree_cut_size() const
+{
+	return m_effective_second_tree_cut_size;
+}
+
+const std::vector<unsigned int>& LightTreeSGBuilder::get_tree_cut_node_indices() const
+{
+	return m_tree_cut_node_indices;
+}
+
+const std::vector<unsigned int>& LightTreeSGBuilder::get_second_tree_cut_node_indices() const
+{
+	return m_second_tree_cut_node_indices;
 }

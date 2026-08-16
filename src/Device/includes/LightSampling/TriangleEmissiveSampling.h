@@ -8,6 +8,7 @@
 
 #include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearningToCluster.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
