@@ -294,30 +294,26 @@ HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRen
 	float vertical_pixel_angular_radius	  = hippt::length(vertical_neighbor_ray.direction - center_ray.direction);
 	float pixel_angular_radius			  = hippt::max(horizontal_pixel_angular_radius, vertical_pixel_angular_radius);
 
-	for (unsigned int cache_index = 0; cache_index < nisml.nisml_hash_table_capacity; cache_index++)
+	float3_t shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int cache_index = 0;
+	if (!nisml.find_nisml_cache_index(guiding_cell_index, shading_normal, cache_index))
+		return false;
+
+	for (unsigned int representative_index = 0; representative_index < nisml.nisml_representative_capacity; representative_index++)
 	{
-		unsigned int hash_key = hippt::atomic_load(&nisml.nisml_hash_keys[cache_index]);
-		if (hash_key == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX ||
-			hippt::atomic_load(&nisml.nisml_hash_entry_states[cache_index]) != ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_READY ||
-			nisml.get_nisml_hash_key_node_index(hash_key) != guiding_cell_index)
+		unsigned int flat_representative_index = nisml.get_nisml_representative_index(cache_index, representative_index);
+		if (nisml.nisml_representative_valid[flat_representative_index] == 0)
 			continue;
 
-		for (unsigned int representative_index = 0; representative_index < nisml.nisml_representative_capacity; representative_index++)
-		{
-			unsigned int flat_representative_index = nisml.get_nisml_representative_index(cache_index, representative_index);
-			if (nisml.nisml_representative_valid[flat_representative_index] == 0)
-				continue;
+		float3_t representative_position = nisml.nisml_cache[flat_representative_index].representative_position;
+		float ray_parameter				 = hippt::dot(representative_position - center_ray.origin, center_ray.direction);
+		if (ray_parameter <= 0.0f)
+			continue;
 
-			float3_t representative_position = nisml.nisml_cache[flat_representative_index].representative_position;
-			float ray_parameter				 = hippt::dot(representative_position - center_ray.origin, center_ray.direction);
-			if (ray_parameter <= 0.0f)
-				continue;
-
-			float3_t closest_point_difference = representative_position - (center_ray.origin + ray_parameter * center_ray.direction);
-			float world_point_radius		  = ray_parameter * pixel_angular_radius * 1.5f;
-			if (hippt::dot(closest_point_difference, closest_point_difference) <= world_point_radius * world_point_radius)
-				return true;
-		}
+		float3_t closest_point_difference = representative_position - (center_ray.origin + ray_parameter * center_ray.direction);
+		float world_point_radius		  = ray_parameter * pixel_angular_radius * 1.5f;
+		if (hippt::dot(closest_point_difference, closest_point_difference) <= world_point_radius * world_point_radius)
+			return true;
 	}
 
 	return false;
