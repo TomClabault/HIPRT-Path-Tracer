@@ -59,4 +59,29 @@ struct LightTreeSGBuilderDeviceData
 	DataContainer<unsigned int> m_bit_trails_buffer;
 };
 
+template <template <typename> typename DataContainer>
+struct LightTreeSGBuildResult
+{
+	LightTreeSGBuilderDeviceData<DataContainer> device_data;
+
+	std::vector<unsigned int> tree_cut_node_indices;
+	unsigned int effective_tree_cut_size = 0;
+	std::vector<unsigned int> second_tree_cut_node_indices;
+	unsigned int effective_second_tree_cut_size = 0;
+
+	void free()
+	{
+		device_data.free();
+		tree_cut_node_indices.clear();
+		effective_tree_cut_size = 0;
+		second_tree_cut_node_indices.clear();
+		effective_second_tree_cut_size = 0;
+	}
+
+	size_t get_VRAM_usage_bytes() const
+	{
+		return device_data.get_VRAM_usage_bytes();
+	}
+};
+
 #endif

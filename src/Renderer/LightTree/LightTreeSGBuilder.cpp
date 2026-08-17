@@ -466,18 +466,3 @@ void LightTreeSGBuilder::set_second_tree_cut_size(int second_tree_cut_size)
 {
 	m_second_tree_cut_size = hippt::clamp(1, IlluminationAwareKDTreeMaximumLightCutSize, second_tree_cut_size);
 }
-
-unsigned int LightTreeSGBuilder::get_effective_second_tree_cut_size() const
-{
-	return m_effective_second_tree_cut_size;
-}
-
-const std::vector<unsigned int>& LightTreeSGBuilder::get_tree_cut_node_indices() const
-{
-	return m_tree_cut_node_indices;
-}
-
-const std::vector<unsigned int>& LightTreeSGBuilder::get_second_tree_cut_node_indices() const
-{
-	return m_second_tree_cut_node_indices;
-}

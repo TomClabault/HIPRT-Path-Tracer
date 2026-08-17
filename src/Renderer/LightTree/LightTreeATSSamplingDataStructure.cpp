@@ -44,16 +44,16 @@ void LightTreeATSSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompile
 
 									m_light_tree_builder.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance,
 																		  triangles_vertex_indices, vertices_positions);
-									m_light_tree_ats_device_data = m_light_tree_builder.compute_device_data<OrochiBuffer>();
+									m_light_tree_ats_build_result = m_light_tree_builder.compute_build_result<OrochiBuffer>();
 									m_light_tree_builder.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices,
-																   triangles_vertex_indices.size() / 3, m_light_tree_ats_device_data);
+																   triangles_vertex_indices.size() / 3, m_light_tree_ats_build_result);
 									m_light_tree_builder.cleanup();
 								});
 }
 
 void LightTreeATSSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
-	if (skip_if_already_computed && m_light_tree_ats_device_data.m_device_nodes_buffer.get_byte_size() > 0)
+	if (skip_if_already_computed && m_light_tree_ats_build_result.device_data.m_device_nodes_buffer.get_byte_size() > 0)
 		// Already computed
 		return;
 
@@ -81,7 +81,7 @@ void LightTreeATSSamplingDataStructure::recompute_if_needed_or_free(std::shared_
 
 void LightTreeATSSamplingDataStructure::free()
 {
-	m_light_tree_ats_device_data.free();
+	m_light_tree_ats_build_result.free();
 }
 
 bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
@@ -98,7 +98,7 @@ bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count, s
 
 size_t LightTreeATSSamplingDataStructure::get_VRAM_usage_bytes() const
 {
-	return m_light_tree_ats_device_data.get_VRAM_usage_bytes();
+	return m_light_tree_ats_build_result.get_VRAM_usage_bytes();
 }
 
 LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()

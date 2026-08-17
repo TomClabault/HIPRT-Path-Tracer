@@ -428,9 +428,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	(DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE && NEEPlusPlusGridPrepopulateLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
 	m_light_tree_builder_ats.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_average_emissive_power_luminance,
 											  parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions);
-	m_light_tree_ats_device_data = m_light_tree_builder_ats.compute_device_data<std::vector>();
+	m_light_tree_ats_build_result = m_light_tree_builder_ats.compute_build_result<std::vector>();
 	m_light_tree_builder_ats.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
-									   m_light_tree_ats_device_data);
+									   m_light_tree_ats_build_result);
 	m_light_tree_builder_ats.cleanup();
 #endif
 #if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG ||                                                                                                   \
@@ -440,9 +440,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 		m_light_tree_builder_sg.build_light_tree(parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_average_emissive_power_luminance,
 												 parsed_scene.triangles_vertex_indices, parsed_scene.vertices_positions,
 												 static_cast<unsigned int>(parsed_scene.triangles_vertex_indices.size() / 3));
-		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
+		m_light_tree_sg_build_result = m_light_tree_builder_sg.compute_build_result<std::vector>();
 		m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3,
-										  m_light_tree_sg_device_data);
+										  m_light_tree_sg_build_result);
 		m_light_tree_builder_sg.get_nisml_data().to_device<std::vector>(m_render_data.nisml);
 		m_light_tree_builder_sg.cleanup();
 	}

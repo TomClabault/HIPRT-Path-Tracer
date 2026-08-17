@@ -43,13 +43,11 @@ public:
 	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
 	int get_second_tree_cut_size() const;
 	void set_second_tree_cut_size(int second_tree_cut_size);
-	unsigned int get_effective_second_tree_cut_size() const;
-	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
-	const std::vector<unsigned int>& get_second_tree_cut_node_indices() const;
+	const LightTreeSGBuildResult<OrochiBuffer>& get_build_result() const;
 
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;
-	LightTreeSGBuilderDeviceData<OrochiBuffer> m_light_tree_sg_device_data;
+	LightTreeSGBuildResult<OrochiBuffer> m_light_tree_sg_build_result;
 
 	GPURenderer* m_renderer = nullptr;
 };

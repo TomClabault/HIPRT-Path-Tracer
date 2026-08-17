@@ -311,10 +311,10 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 		if (m_renderer->get_render_data().render_settings.sample_number == 0)
 		{
-			const std::vector<unsigned int>& second_tree_cut_node_indices =
-				m_renderer->get_light_tree_sg_sampling_data_structure().get_second_tree_cut_node_indices();
-			unsigned int effective_second_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_effective_second_tree_cut_size();
-			kd_tree_device.learning_to_cluster.effective_initial_light_cut_size								  = effective_second_tree_cut_size;
+			const LightTreeSGBuildResult<OrochiBuffer>& light_tree_sg_build_result = m_renderer->get_light_tree_sg_sampling_data_structure().get_build_result();
+			const std::vector<unsigned int>& second_tree_cut_node_indices		   = light_tree_sg_build_result.second_tree_cut_node_indices;
+			unsigned int effective_second_tree_cut_size							   = light_tree_sg_build_result.effective_second_tree_cut_size;
+			kd_tree_device.learning_to_cluster.effective_initial_light_cut_size	   = effective_second_tree_cut_size;
 			m_renderer->get_render_data().kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
 			if (!second_tree_cut_node_indices.empty() && effective_second_tree_cut_size > 0)
 			{

@@ -52,9 +52,9 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 									m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance,
 																			 triangles_vertex_indices, vertices_positions,
 																			 static_cast<unsigned int>(triangles_vertex_indices.size() / 3));
-									m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
+									m_light_tree_sg_build_result = m_light_tree_builder_sg.compute_build_result<OrochiBuffer>();
 									m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices,
-																	  triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
+																	  triangles_vertex_indices.size() / 3, m_light_tree_sg_build_result);
 									if (use_learning_to_cluster)
 										m_light_tree_builder_sg.set_second_tree_cut_size(configured_second_tree_cut_size);
 									m_light_tree_builder_sg.cleanup();
@@ -63,7 +63,7 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 
 void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
-	if (skip_if_already_computed && m_light_tree_sg_device_data.m_device_nodes_buffer.get_byte_size() > 0)
+	if (skip_if_already_computed && m_light_tree_sg_build_result.device_data.m_device_nodes_buffer.get_byte_size() > 0)
 		// Already computed
 		return;
 
@@ -91,7 +91,7 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 
 void LightTreeSGSamplingDataStructure::free()
 {
-	m_light_tree_sg_device_data.free();
+	m_light_tree_sg_build_result.free();
 	m_light_tree_builder_sg.get_nisml_data().free();
 
 	HIPRTRenderData& render_data									  = m_renderer->get_render_data();
@@ -120,7 +120,7 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, st
 
 size_t LightTreeSGSamplingDataStructure::get_VRAM_usage_bytes() const
 {
-	return m_light_tree_sg_device_data.get_VRAM_usage_bytes() + m_light_tree_builder_sg.get_nisml_data().get_VRAM_usage_bytes();
+	return m_light_tree_sg_build_result.get_VRAM_usage_bytes() + m_light_tree_builder_sg.get_nisml_data().get_VRAM_usage_bytes();
 }
 
 LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
@@ -173,17 +173,7 @@ void LightTreeSGSamplingDataStructure::set_second_tree_cut_size(int second_tree_
 	m_light_tree_builder_sg.set_second_tree_cut_size(second_tree_cut_size);
 }
 
-unsigned int LightTreeSGSamplingDataStructure::get_effective_second_tree_cut_size() const
+const LightTreeSGBuildResult<OrochiBuffer>& LightTreeSGSamplingDataStructure::get_build_result() const
 {
-	return m_light_tree_builder_sg.get_effective_second_tree_cut_size();
-}
-
-const std::vector<unsigned int>& LightTreeSGSamplingDataStructure::get_tree_cut_node_indices() const
-{
-	return m_light_tree_builder_sg.get_tree_cut_node_indices();
-}
-
-const std::vector<unsigned int>& LightTreeSGSamplingDataStructure::get_second_tree_cut_node_indices() const
-{
-	return m_light_tree_builder_sg.get_second_tree_cut_node_indices();
+	return m_light_tree_sg_build_result;
 }

@@ -37,7 +37,7 @@ public:
 
 private:
 	LightTreeATSBuilder m_light_tree_builder;
-	LightTreeATSBuilderDeviceData<OrochiBuffer> m_light_tree_ats_device_data;
+	LightTreeATSBuildResult<OrochiBuffer> m_light_tree_ats_build_result;
 
 	GPURenderer* m_renderer = nullptr;
 };

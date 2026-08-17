@@ -34,13 +34,13 @@ public:
 	void compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data);
 
 	template <template <typename> typename DataContainer>
-	LightTreeSGBuilderDeviceData<DataContainer> compute_device_data() const;
+	LightTreeSGBuildResult<DataContainer> compute_build_result() const;
 
 	template <template <typename> typename DataContainer>
 	void to_device(HIPRTRenderData& render_data,
 				   const std::vector<int>& emissive_triangles_primitive_indices,
 				   unsigned int total_scene_triangle_count,
-				   LightTreeSGBuilderDeviceData<DataContainer>& device_data);
+				   LightTreeSGBuildResult<DataContainer>& build_result);
 
 	void cleanup();
 
@@ -58,9 +58,6 @@ public:
 	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
 	int get_second_tree_cut_size() const;
 	void set_second_tree_cut_size(int second_tree_cut_size);
-	unsigned int get_effective_second_tree_cut_size() const;
-	const std::vector<unsigned int>& get_tree_cut_node_indices() const;
-	const std::vector<unsigned int>& get_second_tree_cut_node_indices() const;
 
 private:
 	/**
@@ -76,6 +73,8 @@ private:
 	static float3_t light_tree_sg_lobes_mean(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count);
 	void update_ats_builder_options();
 	void compute_tree_cut(std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size, int tree_cut_size);
+	template <template <typename> typename DataContainer>
+	LightTreeSGBuilderDeviceData<DataContainer> compute_device_data() const;
 
 private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
@@ -91,6 +90,19 @@ private:
 	LightTreeSGBuilderNISML m_nisml;
 	LightTreeSGBuilderOptions m_build_options;
 };
+
+template <template <typename> typename DataContainer>
+LightTreeSGBuildResult<DataContainer> LightTreeSGBuilder::compute_build_result() const
+{
+	LightTreeSGBuildResult<DataContainer> build_result;
+	build_result.device_data					= compute_device_data<DataContainer>();
+	build_result.tree_cut_node_indices			= m_tree_cut_node_indices;
+	build_result.effective_tree_cut_size		= m_effective_tree_cut_size;
+	build_result.second_tree_cut_node_indices	= m_second_tree_cut_node_indices;
+	build_result.effective_second_tree_cut_size = m_effective_second_tree_cut_size;
+
+	return build_result;
+}
 
 template <template <typename> typename DataContainer>
 LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_data() const
@@ -156,8 +168,10 @@ template <template <typename> typename DataContainer>
 void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 								   const std::vector<int>& emissive_triangles_primitive_indices,
 								   unsigned int total_scene_triangle_count,
-								   LightTreeSGBuilderDeviceData<DataContainer>& device_data)
+								   LightTreeSGBuildResult<DataContainer>& build_result)
 {
+	LightTreeSGBuilderDeviceData<DataContainer>& device_data = build_result.device_data;
+
 	if (device_data.nodes_device.size() == 0)
 	{
 		render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
@@ -203,8 +217,8 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 
 	render_data.light_tree_sg.settings.spatial_lobe_count			  = m_build_options.spatial_lobe_count;
-	render_data.light_tree_sg.settings.effective_tree_cut_size		  = m_effective_tree_cut_size;
-	render_data.light_tree_sg.settings.effective_second_tree_cut_size = m_effective_second_tree_cut_size;
+	render_data.light_tree_sg.settings.effective_tree_cut_size		  = build_result.effective_tree_cut_size;
+	render_data.light_tree_sg.settings.effective_second_tree_cut_size = build_result.effective_second_tree_cut_size;
 	render_data.light_tree_sg.nodes									  = device_data.m_device_nodes_buffer.data();
 	render_data.light_tree_sg.spatial_lobes							  = device_data.m_device_spatial_lobes_buffer.data();
 	render_data.light_tree_sg.tree_cut_node_indices					  = device_data.m_device_tree_cut_node_indices_buffer.data();

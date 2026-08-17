@@ -71,13 +71,13 @@ public:
 	void register_node_bit_trail(const LightTreeATSNode& node, const LightTreeBuilderTrianglesData& triangles_data);
 
 	template <template <typename> typename DataContainer>
-	LightTreeATSBuilderDeviceData<DataContainer> compute_device_data() const;
+	LightTreeATSBuildResult<DataContainer> compute_build_result() const;
 
 	template <template <typename> typename DataContainer>
 	void to_device(HIPRTRenderData& render_data,
 				   const std::vector<int>& emissive_triangles_primitive_indices,
 				   unsigned int total_scene_triangle_count,
-				   LightTreeATSBuilderDeviceData<DataContainer>& device_data);
+				   LightTreeATSBuildResult<DataContainer>& build_result);
 
 	/**
 	 * Frees up the memory that was needed for building the tree
@@ -92,6 +92,9 @@ public:
 	LightTreeATSBuilderOptions& get_build_options();
 
 private:
+	template <template <typename> typename DataContainer>
+	LightTreeATSBuilderDeviceData<DataContainer> compute_device_data() const;
+
 	LightTreeATSBuilderOptions m_build_options;
 
 	std::shared_ptr<std::atomic<unsigned int>> m_max_tree_depth		= nullptr;
@@ -102,6 +105,15 @@ private:
 	std::vector<int> m_triangle_indices;	// Original emissive-list indices of non-degenerate triangles
 	std::vector<unsigned int> m_bit_trails; // Indices of the emissive triangles from 0 to N - 1
 };
+
+template <template <typename> typename DataContainer>
+LightTreeATSBuildResult<DataContainer> LightTreeATSBuilder::compute_build_result() const
+{
+	LightTreeATSBuildResult<DataContainer> build_result;
+	build_result.device_data = compute_device_data<DataContainer>();
+
+	return build_result;
+}
 
 template <template <typename> typename DataContainer>
 LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device_data() const
@@ -141,8 +153,10 @@ template <template <typename> typename DataContainer>
 void LightTreeATSBuilder::to_device(HIPRTRenderData& render_data,
 									const std::vector<int>& emissive_triangles_primitive_indices,
 									unsigned int total_scene_triangle_count,
-									LightTreeATSBuilderDeviceData<DataContainer>& device_data)
+									LightTreeATSBuildResult<DataContainer>& build_result)
 {
+	LightTreeATSBuilderDeviceData<DataContainer>& device_data = build_result.device_data;
+
 	if (device_data.nodes_device.size() == 0)
 		return;
 

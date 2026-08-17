@@ -173,10 +173,10 @@ private:
 	EmissiveMeshesAliasTablesHost<std::vector> m_emissive_meshes_alias_tables;
 
 	LightTreeATSBuilder m_light_tree_builder_ats;
-	LightTreeATSBuilderDeviceData<std::vector> m_light_tree_ats_device_data;
+	LightTreeATSBuildResult<std::vector> m_light_tree_ats_build_result;
 
 	LightTreeSGBuilder m_light_tree_builder_sg;
-	LightTreeSGBuilderDeviceData<std::vector> m_light_tree_sg_device_data;
+	LightTreeSGBuildResult<std::vector> m_light_tree_sg_build_result;
 
 	NEEPlusPlusCPUData m_nee_plus_plus;
 

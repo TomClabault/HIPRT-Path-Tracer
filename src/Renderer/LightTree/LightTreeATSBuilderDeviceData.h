@@ -43,4 +43,20 @@ struct LightTreeATSBuilderDeviceData
 	DataContainer<unsigned int> m_bit_trails_buffer;
 };
 
+template <template <typename> typename DataContainer>
+struct LightTreeATSBuildResult
+{
+	LightTreeATSBuilderDeviceData<DataContainer> device_data;
+
+	void free()
+	{
+		device_data.free();
+	}
+
+	size_t get_VRAM_usage_bytes() const
+	{
+		return device_data.get_VRAM_usage_bytes();
+	}
+};
+
 #endif
