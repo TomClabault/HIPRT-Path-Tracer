@@ -5,6 +5,7 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
@@ -101,6 +102,11 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 
 bool MegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+	bool nisml_enabled = ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
+	if (nisml_enabled)
+		return false;
+
 	// Only active if we're not using ReSTIR GI/PT because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_GI &&

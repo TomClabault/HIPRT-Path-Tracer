@@ -179,8 +179,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 
 							activations_buffer[out_shared_mem_ping_pong_offset + neuron][sample] = static_cast<fp16>(value);
 
-							unsigned int output_activation_index = output_activation_index_block_base + (layer_neuron_offset + neuron) * BLOCK_SIZE + sample;
-							train_activations_global[output_activation_index] = static_cast<fp16>(value);
+							if (train_activations_global != nullptr)
+							{
+								unsigned int output_activation_index =
+									output_activation_index_block_base + (layer_neuron_offset + neuron) * BLOCK_SIZE + sample;
+								train_activations_global[output_activation_index] = static_cast<fp16>(value);
+							}
 						}
 					}
 				}
@@ -188,6 +192,11 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			__syncthreads();
 		}
 #endif
+	}
+
+	HIPRT_DEVICE void inference_wmma(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
+	{
+		forward_train_wmma(activations_buffer, nullptr, 0);
 	}
 
 	HIPRT_DEVICE void forward_train(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE], fp16* train_activations_global, unsigned int sample_offset) const

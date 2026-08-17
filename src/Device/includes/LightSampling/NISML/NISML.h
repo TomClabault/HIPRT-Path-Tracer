@@ -10,6 +10,7 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 #include "Device/includes/Neural/NISML/NISMLPositionLearnableDenseGrid.h"
+#include "Device/includes/RayPayload.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -27,6 +28,42 @@ struct NISMLLightSample
 	float conditional_light_probability = 0.0f;
 	float emissive_triangle_pdf			= 0.0f;
 };
+
+HIPRT_DEVICE bool append_nisml_query(HIPRTRenderData& render_data,
+									 unsigned int path_index,
+									 const RayPayload& ray_payload,
+									 const HitInfo& closest_hit_info,
+									 const float3_t& view_direction,
+									 Xorshift32Generator& random_number_generator,
+									 unsigned int& out_query_index)
+{
+#if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
+	return false;
+#endif
+
+	if (!ray_payload.material.can_do_light_sampling())
+		return false;
+
+	NISQuery query;
+	query.position			 = closest_hit_info.inter_point;
+	query.outgoing_direction = view_direction;
+	query.normal			 = closest_hit_info.shading_normal;
+	get_sg_specular_importance_parameters(ray_payload.material, query.sg_specular_weight, query.alpha_x, query.alpha_y);
+	query.path_index = path_index;
+	query.rng_state	 = random_number_generator.m_state.seed;
+
+	IlluminationAwareKDTreeDevice& kd_tree_device			   = render_data.kd_tree_device;
+	unsigned int node_index									   = kd_tree_device.core.find_guiding_cell(closest_hit_info.inter_point);
+	Xorshift32Generator representative_random_number_generator = random_number_generator;
+	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, closest_hit_info.inter_point, view_direction,
+													 closest_hit_info.shading_normal, query.sg_specular_weight, query.alpha_x, query.alpha_y,
+													 representative_random_number_generator);
+
+	out_query_index										   = hippt::atomic_fetch_add(render_data.nisml_mega_kernel.query_count, 1u);
+	render_data.nisml_mega_kernel.queries[out_query_index] = query;
+
+	return true;
+}
 
 HIPRT_DEVICE void build_nisml_input(const NISMLPositionLearnableDenseGridDevice& position_learnable_dense_grid,
 									const float3_t& scene_min,
@@ -331,6 +368,66 @@ HIPRT_DEVICE float infer_nisml_cluster_probability(const NISMLDevice& neural_lig
 	neural_light_sampling.mlp.inference_single_thread(input, residuals);
 
 	return evaluate_nisml_cluster_probability(neural_light_sampling, residuals, target_cluster_index);
+}
+
+HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_from_residuals(const HIPRTRenderData& render_data,
+																							 const float3_t& shading_point,
+																							 const float3_t& view_direction,
+																							 const float3_t& shading_normal,
+																							 const DeviceUnpackedEffectiveMaterial& material,
+																							 float sg_specular_weight,
+																							 float alpha_x,
+																							 float alpha_y,
+																							 Xorshift32Generator& random_number_generator,
+																							 const float* residuals)
+{
+	NISMLLightSample sampled_light;
+	NISMLDevice neural_light_sampling = render_data.nisml;
+
+	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
+
+	unsigned int invalid_node_index = 0xFFFFFFFF;
+	unsigned int cluster_count		= neural_light_sampling.cluster_count;
+
+	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
+		return sampled_light;
+
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
+#else
+	SGSpecularImportanceData spec_data;
+#endif
+
+	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
+	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
+									 cluster_log_baseline_weights);
+
+	// TODO stop these shenanigans and just pass cluster_log_baseline_weights down
+	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
+	float cluster_probability						   = 0.0f;
+	unsigned int selected_cluster_position			   = sample_nisml_cluster(neural_light_sampling, residuals, random_number_generator, cluster_probability);
+	if (selected_cluster_position >= cluster_count || !(cluster_probability > 0.0f))
+		return sampled_light;
+
+	unsigned int selected_cluster_node_index = neural_light_sampling.cluster_node_indices[selected_cluster_position];
+	if (selected_cluster_node_index == invalid_node_index)
+		return sampled_light;
+
+	LightSampleInformation conditional_sample =
+		sample_light_inside_nis_cluster(render_data, selected_cluster_node_index, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight,
+										alpha_x, alpha_y, random_number_generator);
+	if (conditional_sample.emissive_triangle_global_index == -1 || !(conditional_sample.pdf > 0.0f))
+		return sampled_light;
+
+	sampled_light.emissive_triangle_global_index = conditional_sample.emissive_triangle_global_index;
+	sampled_light.cluster_index					 = selected_cluster_position;
+	sampled_light.cluster_probability			 = cluster_probability;
+	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
+	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
+	if (!(sampled_light.emissive_triangle_pdf > 0.0f))
+		return NISMLLightSample();
+
+	return sampled_light;
 }
 
 HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(const HIPRTRenderData& render_data,

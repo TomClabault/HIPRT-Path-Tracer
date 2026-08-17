@@ -62,6 +62,7 @@ private:
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	std::shared_ptr<GPUKernel> m_ray_volume_state_byte_size_kernel = nullptr;
+	size_t m_ray_volume_state_byte_size							   = sizeof(RayVolumeState);
 };
 
 #endif

@@ -15,6 +15,7 @@
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
+#include "HostDeviceCommon/NISMLMegaKernelData.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
@@ -74,6 +75,10 @@ struct HIPRTRenderData
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
 	NISMLDevice nisml;
+	NISMLMegaKernelDevice nisml_mega_kernel;
+
+	// The GPU RayVolumeState size can change when the nested dielectric stack compiler option changes.
+	size_t ray_volume_state_byte_size = 0;
 
 	// Data for SSBN permutations
 	SSBNPermutationSettings ssbn_settings;

@@ -101,7 +101,8 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 void FillGBufferRenderPass::update_render_data()
 {
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	HIPRTRenderData& render_data		   = m_renderer->get_render_data();
+	render_data.ray_volume_state_byte_size = m_ray_volume_state_byte_size;
 
 	render_data.g_buffer = m_g_buffer.get_device_g_buffer();
 
@@ -132,7 +133,9 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 		// That's too much of a difference, there must be an issue
 		Debug::debugbreak();
 
-	return size;
+	m_ray_volume_state_byte_size							 = size;
+	m_renderer->get_render_data().ray_volume_state_byte_size = m_ray_volume_state_byte_size;
+	return m_ray_volume_state_byte_size;
 }
 
 void FillGBufferRenderPass::resize_g_buffer_ray_volume_states()

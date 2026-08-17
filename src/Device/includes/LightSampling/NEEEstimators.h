@@ -516,32 +516,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
 	return direct_light_contribution;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderData& render_data,
-																	RayPayload& ray_payload,
-																	const HitInfo closest_hit_info,
-																	const float3_t& view_direction,
-																	Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderData& render_data,
+																   RayPayload& ray_payload,
+																   const HitInfo closest_hit_info,
+																   const float3_t& view_direction,
+																   Xorshift32Generator& random_number_generator,
+																   const NISMLLightSample& nisml_sample)
 {
-	if (!ray_payload.material.can_do_light_sampling())
-		return ColorRGB32F(0.0f);
-
-	float representative_sg_specular_weight;
-	float representative_alpha_x;
-	float representative_alpha_y;
-	get_sg_specular_importance_parameters(ray_payload.material, representative_sg_specular_weight, representative_alpha_x, representative_alpha_y);
-
-	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
-	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(closest_hit_info.inter_point);
-
-	Xorshift32Generator representative_random_number_generator = random_number_generator;
-	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, closest_hit_info.inter_point, view_direction,
-													 closest_hit_info.shading_normal, representative_sg_specular_weight, representative_alpha_x,
-													 representative_alpha_y, representative_random_number_generator);
-
-	ColorRGB32F light_source_radiance;
-
-	NISMLLightSample nisml_sample = sample_one_emissive_triangle_neural_many_lights(
-		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
 	bool collect_training_record = nisml_sample.emissive_triangle_global_index >= 0 && nisml_sample.cluster_index < NISML_MAX_CLUSTER_COUNT &&
 								   nisml_sample.cluster_probability > 0.0f && nisml_sample.conditional_light_probability > 0.0f &&
 								   nisml_sample.emissive_triangle_pdf > 0.0f;
@@ -563,6 +544,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																ray_payload.material, nisml_sample.emissive_triangle_global_index, random_number_generator);
 
+	ColorRGB32F light_source_radiance;
 	float point_on_light_area_pdf = light_samples[0].area_measure_pdf;
 
 	light_samples[0].area_measure_pdf *= nisml_sample.emissive_triangle_pdf;
@@ -661,6 +643,57 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 	}
 
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+}
+
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights_from_residuals(HIPRTRenderData& render_data,
+																				   RayPayload& ray_payload,
+																				   const HitInfo closest_hit_info,
+																				   const float3_t& view_direction,
+																				   float sg_specular_weight,
+																				   float alpha_x,
+																				   float alpha_y,
+																				   Xorshift32Generator& random_number_generator,
+																				   const float* residuals,
+																				   NISMLLightSample& out_nisml_sample)
+{
+	out_nisml_sample = NISMLLightSample();
+
+	if (!ray_payload.material.can_do_light_sampling())
+		return ColorRGB32F(0.0f);
+
+	out_nisml_sample = sample_one_emissive_triangle_neural_many_lights_from_residuals(render_data, closest_hit_info.inter_point, view_direction,
+																					  closest_hit_info.shading_normal, ray_payload.material, sg_specular_weight,
+																					  alpha_x, alpha_y, random_number_generator, residuals);
+
+	return shade_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, out_nisml_sample);
+}
+
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderData& render_data,
+																	RayPayload& ray_payload,
+																	const HitInfo closest_hit_info,
+																	const float3_t& view_direction,
+																	Xorshift32Generator& random_number_generator)
+{
+	if (!ray_payload.material.can_do_light_sampling())
+		return ColorRGB32F(0.0f);
+
+	float representative_sg_specular_weight;
+	float representative_alpha_x;
+	float representative_alpha_y;
+	get_sg_specular_importance_parameters(ray_payload.material, representative_sg_specular_weight, representative_alpha_x, representative_alpha_y);
+
+	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(closest_hit_info.inter_point);
+
+	Xorshift32Generator representative_random_number_generator = random_number_generator;
+	kd_tree_device.nisml.append_nisml_representative(node_index, kd_tree_device.core.node_capacity, closest_hit_info.inter_point, view_direction,
+													 closest_hit_info.shading_normal, representative_sg_specular_weight, representative_alpha_x,
+													 representative_alpha_y, representative_random_number_generator);
+
+	NISMLLightSample nisml_sample = sample_one_emissive_triangle_neural_many_lights(
+		render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material, random_number_generator);
+
+	return shade_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, nisml_sample);
 }
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data,
@@ -831,20 +864,16 @@ HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lig
  * They can be ignored if not using ReSTIR DI
  */
 template <bool deferred_BSDF_MIS = true>
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
-												  RayPayload& ray_payload,
-												  ColorRGB32F ray_throughput,
-												  HitInfo& closest_hit_info,
-												  float3_t view_direction,
-												  int x,
-												  int y,
-												  NEEDeferredMISContext& out_nee_mis_context,
-												  Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
+																			 RayPayload& ray_payload,
+																			 ColorRGB32F ray_throughput,
+																			 ColorRGB32F emissive_geometry_direct_contribution,
+																			 HitInfo& closest_hit_info,
+																			 float3_t view_direction,
+																			 Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F total_direct_lighting;
 
-	ColorRGB32F emissive_geometry_direct_contribution = sample_emissive_geometry<deferred_BSDF_MIS>(
-		render_data, ray_payload, closest_hit_info, view_direction, make_int2(x, y), out_nee_mis_context, random_number_generator);
 	ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
 	// Clamping direct lighting
@@ -879,6 +908,38 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 #endif
 
 	return total_direct_lighting;
+}
+
+template <bool deferred_BSDF_MIS = true>
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
+												  RayPayload& ray_payload,
+												  ColorRGB32F ray_throughput,
+												  HitInfo& closest_hit_info,
+												  float3_t view_direction,
+												  int x,
+												  int y,
+												  NEEDeferredMISContext& out_nee_mis_context,
+												  Xorshift32Generator& random_number_generator)
+{
+	ColorRGB32F emissive_geometry_direct_contribution = sample_emissive_geometry<deferred_BSDF_MIS>(
+		render_data, ray_payload, closest_hit_info, view_direction, make_int2(x, y), out_nee_mis_context, random_number_generator);
+
+	return estimate_direct_lighting_from_emissive_contribution<deferred_BSDF_MIS>(
+		render_data, ray_payload, ray_throughput, emissive_geometry_direct_contribution, closest_hit_info, view_direction, random_number_generator);
+}
+
+template <bool deferred_BSDF_MIS = true>
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
+																			 RayPayload& ray_payload,
+																			 ColorRGB32F emissive_geometry_direct_contribution,
+																			 HitInfo& closest_hit_info,
+																			 float3_t view_direction,
+																			 Xorshift32Generator& random_number_generator)
+{
+	ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting_from_emissive_contribution<deferred_BSDF_MIS>(
+		render_data, ray_payload, ray_payload.throughput, emissive_geometry_direct_contribution, closest_hit_info, view_direction, random_number_generator);
+
+	return clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
 }
 
 /**
