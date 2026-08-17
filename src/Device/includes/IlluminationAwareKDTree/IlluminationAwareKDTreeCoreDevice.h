@@ -316,7 +316,9 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+		return;
+#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_SG_TREE_LEARNING_TO_CLUSTER
 		return;
 #endif
 
@@ -369,6 +371,9 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
+		if (!sample.valid_for_spatial_training)
+			return;
+
 		// First find the active guiding cell used at this position.
 		unsigned int node_index = find_guiding_cell(sample.position);
 

@@ -69,6 +69,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/RefineLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/IlluminationAwareKDTree/UpdateLightClusterStatistics.h"
@@ -704,7 +705,8 @@ void CPURenderer::render()
 	ReSTIR_PG_reset_distributions();
 #endif
 
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ||                                                                                                       \
+	(DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	illumination_aware_kd_tree_reset();
 #endif
 
@@ -765,8 +767,40 @@ void CPURenderer::pre_sample_update(int frame_number)
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 	unsigned int node_count						 = *kd_tree_device.core.node_count;
+
+#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+	unsigned int light_clustering_count	  = *kd_tree_device.learning_to_cluster.light_clustering_count;
+	unsigned int reset_thread_count		  = std::max(node_count, light_clustering_count);
+	unsigned int reservoir_proposal_count = light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride;
+	reset_thread_count					  = std::max(reset_thread_count, reservoir_proposal_count);
+	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
+		IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
+
+	if (m_render_data.render_settings.sample_number == 0)
+	{
+		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result			  = m_light_tree_sg_build_result;
+		const std::vector<unsigned int>& second_tree_cut_node_indices					  = light_tree_sg_build_result.second_tree_cut_node_indices;
+		unsigned int effective_second_tree_cut_size										  = light_tree_sg_build_result.effective_second_tree_cut_size;
+		kd_tree_device.learning_to_cluster.effective_initial_light_cut_size				  = effective_second_tree_cut_size;
+		m_render_data.kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
+
+		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.begin(),
+				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.end(),
+				  IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
+		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size,
+					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.begin());
+
+		if (effective_second_tree_cut_size > 0)
+		{
+			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
+			for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
+				IlluminationAwareKDTree_InitializeRootLightClustering(kd_tree_device, light_tree_sg, slot);
+		}
+	}
+#else
 	for (unsigned int reset_index = 0; reset_index < node_count; reset_index++)
 		IlluminationAwareKDTree_ResetBatchKDTreeStatistics(kd_tree_device, reset_index);
+#endif
 #endif
 
 	// Resetting the status buffers
