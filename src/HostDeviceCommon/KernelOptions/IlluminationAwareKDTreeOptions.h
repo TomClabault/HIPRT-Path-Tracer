@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
 #define ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(nee_estimator, sampling_strategy)                                                                    \
-	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_SG_TREE_LEARNING_TO_CLUSTER)
+	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_LEARNING_TO_CLUSTER)
 
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG							 0
 #define ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID				 1

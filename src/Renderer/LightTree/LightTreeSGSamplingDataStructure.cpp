@@ -43,7 +43,7 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 									}
 
 									bool use_learning_to_cluster = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) ==
-																   LSS_SG_TREE_LEARNING_TO_CLUSTER;
+																   LSS_LEARNING_TO_CLUSTER;
 									int configured_second_tree_cut_size = m_light_tree_builder_sg.get_second_tree_cut_size();
 									if (use_learning_to_cluster)
 										m_light_tree_builder_sg.set_second_tree_cut_size(static_cast<int>(

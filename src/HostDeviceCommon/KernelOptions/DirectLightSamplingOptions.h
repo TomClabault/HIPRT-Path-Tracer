@@ -12,16 +12,16 @@
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 
-#define LSS_NO_DIRECT_LIGHT_SAMPLING	0
-#define LSS_ONE_LIGHT					1
-#define LSS_BSDF						2
-#define LSS_MIS_LIGHT_BSDF				3
-#define LSS_RIS_BSDF_AND_LIGHT			4
-#define LSS_RISLTC						5
-#define LSS_LTC_SHADING					6
-#define LSS_RESTIR_DI					7
-#define LSS_NEURAL_MANY_LIGHTS			8
-#define LSS_SG_TREE_LEARNING_TO_CLUSTER 9
+#define LSS_NO_DIRECT_LIGHT_SAMPLING 0
+#define LSS_ONE_LIGHT				 1
+#define LSS_BSDF					 2
+#define LSS_MIS_LIGHT_BSDF			 3
+#define LSS_RIS_BSDF_AND_LIGHT		 4
+#define LSS_RISLTC					 5
+#define LSS_LTC_SHADING				 6
+#define LSS_RESTIR_DI				 7
+#define LSS_NEURAL_MANY_LIGHTS		 8
+#define LSS_LEARNING_TO_CLUSTER		 9
 
 #define LSS_BASE_UNIFORM		0
 #define LSS_BASE_POWER			1
@@ -125,12 +125,16 @@
  *	- LSS_NEURAL_MANY_LIGHTS
  *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling
  *		probabilities on clusters of a lightcut in the spherical gaussian light tree
+ *
+ *	- LSS_LEARNING_TO_CLUSTER
+ *		Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a lightcut
+ *		(hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut
  */
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_SG_TREE_LEARNING_TO_CLUSTER
+#define DirectLightNEEEstimator LSS_NEURAL_MANY_LIGHTS
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG

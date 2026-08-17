@@ -706,7 +706,7 @@ void CPURenderer::render()
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ||                                                                                                       \
-	(DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+	(DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	illumination_aware_kd_tree_reset();
 #endif
 
@@ -764,11 +764,11 @@ void CPURenderer::pre_sample_update(int frame_number)
 	m_render_data.nisml.training_record_capacity = training_data.training_record_capacity;
 #endif
 
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 	unsigned int node_count						 = *kd_tree_device.core.node_count;
 
-#if DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	unsigned int light_clustering_count	  = *kd_tree_device.learning_to_cluster.light_clustering_count;
 	unsigned int reset_thread_count		  = std::max(node_count, light_clustering_count);
 	unsigned int reservoir_proposal_count = light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride;
@@ -896,7 +896,7 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	for (unsigned int node_index = 0; node_index < m_render_data.kd_tree_device.core.node_capacity; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.kd_tree_device, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
-#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.reset();
 	m_illumination_aware_kd_tree_state.lookahead_frontier_initialized	  = false;
 	m_illumination_aware_kd_tree_state.current_frontier_uses_first_buffer = true;
@@ -914,7 +914,7 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 
 void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
+#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
 
 	if (m_render_data.render_settings.sample_number <= kd_tree_device.core.user_settings.stop_refining_after_SPP - 1)
@@ -990,7 +990,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	if (kd_tree_device.nisml.nisml_pending_cell_count->load() > 0u)
 		for (unsigned int cache_index = 0; cache_index < kd_tree_device.nisml.nisml_hash_table_capacity; cache_index++)
 			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
-#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster_training_sample_count->load();
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateNormalFaceObservations(kd_tree_device, sample_index);

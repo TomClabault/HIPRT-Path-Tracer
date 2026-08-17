@@ -318,7 +318,7 @@ struct IlluminationAwareKDTreeCoreDevice
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return;
-#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_SG_TREE_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
 		return;
 #endif
 

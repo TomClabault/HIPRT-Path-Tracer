@@ -755,7 +755,7 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	direct_light_contribution = sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_SG_TREE_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	direct_light_contribution =
 		sample_one_light_no_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
 #endif
