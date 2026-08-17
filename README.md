@@ -53,8 +53,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- ReGIR (more details on what was implemented below)
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
 	- Implementation of the illumination aware spatial subdivisions KD-tree [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/)
-		- Use the illumination frequency aware spatial structure to learn NEE guiding distributions on the SG light tree nodes, similar in spirit to [\[Pantaleoni, 2019\]](https://arxiv.org/abs/1911.10217) and [\[Hamann et al., 2023\]](https://publikationen.bibliothek.kit.edu/1000175687)
-	- All light sampling techniques support MIS with BSDF samples
+		- Use the illumination frequency aware spatial structure to learn lightcut nodes sampling probabilities with "Learning to Cluster for Rendering with Many Lights" [\[Wang et al., 2021\]](https://bulbaberry.xyz/publications/lcr-sa-2021/) 
+	- Neural Importance Sampling of Many Lights [\[Figuereido et al., 2025\]](https://pedrovfigueiredo.github.io/projects/manylights/SIGGRAPH_2025_Importance_Sampling/index.html)
 	
 - Area light sampling strategies:
 	- Uniform area sampling
