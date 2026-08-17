@@ -357,6 +357,10 @@ void GPURendererThread::render_internal()
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		post_sample_update(m_render_data_for_frame, m_compiler_options_for_frame);
+
+		if (m_render_data_for_frame.render_settings.sample_number == m_render_window->get_application_settings()->max_sample_count)
+			// Reached the max sample count
+			break;
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
