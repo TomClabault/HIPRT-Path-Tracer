@@ -45,7 +45,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 		NISMLLightSample nisml_sample;
 		ColorRGB32F emissive_geometry_direct_contribution =
 			sample_one_light_no_MIS_neural_many_lights_from_residuals(render_data, ray_payload, closest_hit_info, -ray.direction, query.sg_specular_weight,
-																							 query.alpha_x, query.alpha_y, random_number_generator, residuals, nisml_sample);
+																	  query.alpha_x, query.alpha_y, random_number_generator, residuals, nisml_sample);
 
 		nis_result.emissive_triangle_global_index = nisml_sample.emissive_triangle_global_index;
 		nis_result.cluster_index				  = nisml_sample.cluster_index;
