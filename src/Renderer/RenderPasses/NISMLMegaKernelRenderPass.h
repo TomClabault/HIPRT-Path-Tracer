@@ -55,6 +55,8 @@ private:
 	size_t m_allocated_ray_volume_state_byte_size = 0;
 
 	OrochiBuffer<HIPRTRenderData> m_shared_render_data;
+	OrochiBuffer<HIPRTRenderData> m_shared_render_data_host_pinned;
+	OrochiBuffer<HIPRTRenderData*> m_shared_render_data_pointer_host_pinned;
 
 	OrochiBuffer<NISMLMegaKernelPathData> m_path_data;
 	OrochiBuffer<NISMLMegaKernelPathState> m_path_states;
