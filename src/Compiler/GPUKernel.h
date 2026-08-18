@@ -188,6 +188,12 @@ public:
 	void set_measure_execution_time(bool measure_execution_time);
 
 private:
+	struct ModuleGlobal
+	{
+		oroDeviceptr_t device_pointer;
+		size_t size;
+	};
+
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
 
@@ -236,6 +242,7 @@ private:
 
 	oroFunction m_kernel_function = nullptr;
 	oroModule_t m_kernel_module	  = nullptr;
+	std::unordered_map<std::string, ModuleGlobal> m_module_globals;
 
 	// If true, this means that this kernel is only used for precompilation and will be
 	// discarded after it's been compiled

@@ -84,10 +84,12 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 
 void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache, bool silent)
 {
+	m_module_globals.clear();
+
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
-	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
+	std::string cache_key	  = g_gpu_kernel_compiler.get_additional_cache_key(*this);
 	oroModule_t kernel_module = nullptr;
 	m_kernel_function		  = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
 																	 /* num geom */ 1,
@@ -103,18 +105,24 @@ void GPUKernel::upload_to_module_global(const char* global_name, const void* dat
 		return;
 	}
 
-	oroDeviceptr_t global_pointer;
-	size_t global_size = 0;
-	OROCHI_CHECK_ERROR(oroModuleGetGlobal(&global_pointer, &global_size, m_kernel_module, global_name));
+	std::string global_name_string												   = global_name;
+	std::unordered_map<std::string, ModuleGlobal>::iterator module_global_iterator = m_module_globals.find(global_name_string);
+	if (module_global_iterator == m_module_globals.end())
+	{
+		ModuleGlobal module_global;
+		module_global.size = 0;
+		OROCHI_CHECK_ERROR(oroModuleGetGlobal(&module_global.device_pointer, &module_global.size, m_kernel_module, global_name));
+		module_global_iterator = m_module_globals.emplace(global_name_string, module_global).first;
+	}
 
-	if (global_size != data_size)
+	if (module_global_iterator->second.size != data_size)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Module global '%s' has size %zu, but %zu bytes were provided.", global_name,
-								global_size, data_size);
+								module_global_iterator->second.size, data_size);
 		return;
 	}
 
-	OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<void*>(global_pointer), data, data_size, oroMemcpyHostToDevice, stream));
+	OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<void*>(module_global_iterator->second.device_pointer), data, data_size, oroMemcpyHostToDevice, stream));
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
