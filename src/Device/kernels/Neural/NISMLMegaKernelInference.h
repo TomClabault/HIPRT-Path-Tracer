@@ -12,10 +12,10 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
-// HIP does not support dynamic initialization of HIPRTRenderData in constant memory, so keep the uploaded data as raw bytes.
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded pointer as raw bytes.
 extern "C"
 {
-	HIPRT_DEVICE __constant__ unsigned char NISML_MEGAKERNEL_INFERENCE_RENDER_DATA[sizeof(HIPRTRenderData)];
+	HIPRT_DEVICE __constant__ unsigned char NISML_MEGAKERNEL_INFERENCE_RENDER_DATA[sizeof(HIPRTRenderData*)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLMegaKernelInference()
 #else
@@ -23,8 +23,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData re
 #endif
 {
 #ifdef __KERNELCC__
-	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_MEGAKERNEL_INFERENCE_RENDER_DATA);
-	unsigned int query_index	 = blockIdx.x * blockDim.x + threadIdx.x;
+	HIPRTRenderData* render_data_pointer = *reinterpret_cast<HIPRTRenderData**>(NISML_MEGAKERNEL_INFERENCE_RENDER_DATA);
+	HIPRTRenderData& render_data		 = *render_data_pointer;
+	unsigned int query_index			 = blockIdx.x * blockDim.x + threadIdx.x;
 #else
 	unsigned int query_index = static_cast<unsigned int>(x + y * render_data.render_settings.render_resolution.x);
 #endif

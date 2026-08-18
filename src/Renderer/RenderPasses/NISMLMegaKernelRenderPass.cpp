@@ -72,6 +72,9 @@ bool NISMLMegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIP
 		}
 	}
 
+	if (updated)
+		m_shared_render_data_pointer_initialized = false;
+
 	return updated;
 }
 
@@ -118,9 +121,20 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	oroStream_t main_stream = m_renderer->get_main_stream();
 	OROCHI_CHECK_ERROR(oroEventRecord(m_launch_benchmark_start_event, main_stream));
-	m_kernels[GENERATE_QUERIES_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_GENERATE_QUERIES_RENDER_DATA", &render_data, sizeof(HIPRTRenderData),
-																main_stream);
-	m_kernels[INFERENCE_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_INFERENCE_RENDER_DATA", &render_data, sizeof(HIPRTRenderData), main_stream);
+	OROCHI_CHECK_ERROR(oroMemcpyAsync(m_shared_render_data.get_device_pointer(), &render_data, sizeof(HIPRTRenderData), oroMemcpyHostToDevice, main_stream));
+
+	if (!m_shared_render_data_pointer_initialized)
+	{
+		HIPRTRenderData* shared_render_data_pointer = m_shared_render_data.get_device_pointer();
+		m_kernels[GENERATE_QUERIES_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_GENERATE_QUERIES_RENDER_DATA", &shared_render_data_pointer,
+																	sizeof(shared_render_data_pointer), main_stream);
+		m_kernels[INFERENCE_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_INFERENCE_RENDER_DATA", &shared_render_data_pointer,
+															 sizeof(shared_render_data_pointer), main_stream);
+		m_kernels[RESUME_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_RESUME_RENDER_DATA", &shared_render_data_pointer,
+														  sizeof(shared_render_data_pointer), main_stream);
+		m_shared_render_data_pointer_initialized = true;
+	}
+
 	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
 	{
 		m_query_count.memset_whole_buffer(0u);
@@ -131,8 +145,6 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 		m_kernels[INFERENCE_KERNEL]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, render_data.nisml_mega_kernel.query_capacity, 1, nullptr,
 														 main_stream);
-
-		m_kernels[RESUME_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_RESUME_RENDER_DATA", &render_data, sizeof(HIPRTRenderData), main_stream);
 
 		void* resume_launch_args[] = { &stage_index };
 		m_kernels[RESUME_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
@@ -215,7 +227,7 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 	bool needs_resize = !m_staging_buffers_allocated || m_path_data.size() != path_count || m_path_states.size() != path_count ||
 						m_path_volume_states.size() != path_count || m_queries.size() != path_count ||
 						m_residuals.size() != path_count * NISML_MAX_CLUSTER_COUNT || m_results.size() != path_count || m_query_count.size() != 1 ||
-						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size;
+						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size || m_shared_render_data.size() != 1;
 	if (!needs_resize)
 		return false;
 
@@ -228,6 +240,8 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 	m_residuals.resize(path_count * NISML_MAX_CLUSTER_COUNT);
 	m_results.resize(path_count);
 	m_query_count.resize(1);
+	m_shared_render_data.resize(1);
+	m_shared_render_data_pointer_initialized = false;
 
 	m_allocated_ray_volume_state_byte_size = ray_volume_state_byte_size;
 	m_staging_buffers_allocated			   = true;
@@ -243,9 +257,11 @@ void NISMLMegaKernelRenderPass::free_staging_buffers()
 	m_residuals.free_no_error();
 	m_results.free_no_error();
 	m_query_count.free_no_error();
+	m_shared_render_data.free_no_error();
 
-	m_allocated_ray_volume_state_byte_size = 0;
-	m_staging_buffers_allocated			   = false;
+	m_allocated_ray_volume_state_byte_size	 = 0;
+	m_staging_buffers_allocated				 = false;
+	m_shared_render_data_pointer_initialized = false;
 }
 
 NISMLMegaKernelDevice NISMLMegaKernelRenderPass::get_device_data()
