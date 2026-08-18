@@ -36,6 +36,7 @@ public:
 	void set_kernel_function_name(const std::string& kernel_function_name);
 
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true, bool silent = true);
+	void upload_to_module_global(const char* global_name, const void* data, size_t data_size, oroStream_t stream);
 
 	/**
 	 * @param res_x The total number of elements to launch on the X axis. Should not be pre-divided by tile_size_x or anything
@@ -84,13 +85,13 @@ public:
 	 * @stream The stream to launch the kernel on. Can be 0 for the default stream
 	 */
 	void launch_asynchronous_3D_block_count(int block_count_x,
-											int block_count_y,
-											int block_count_z,
-											int block_size_x,
-											int block_size_y,
-											int block_size_z,
-											void** launch_args,
-											oroStream_t stream);
+												int block_count_y,
+												int block_count_z,
+												int block_size_x,
+												int block_size_y,
+												int block_size_z,
+												void** launch_args,
+												oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -234,6 +235,7 @@ private:
 	GPUKernelCompilerOptions m_compiler_options;
 
 	oroFunction m_kernel_function = nullptr;
+	oroModule_t m_kernel_module	  = nullptr;
 
 	// If true, this means that this kernel is only used for precompilation and will be
 	// discarded after it's been compiled

@@ -132,7 +132,8 @@ namespace HIPPTOrochiUtils
 								  unsigned int num_ray_types,
 								  bool use_compiler_cache,
 								  hiprtFuncNameSet* func_name_set,
-								  const std::string& additional_cache_key)
+								  const std::string& additional_cache_key,
+								  hiprtApiModule* module_out)
 	{
 		std::string kernel_source_code;
 
@@ -156,6 +157,6 @@ namespace HIPPTOrochiUtils
 		const char* func_name_cstr = function_name.c_str();
 		return hiprtBuildTraceKernels(ctxt, 1, &func_name_cstr, kernel_source_code.c_str(), kernel_file_path.c_str(), 0, nullptr, nullptr,
 									  compiler_options_cstr.size(), compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr, num_geom_types,
-									  num_ray_types, func_name_set, &kernel_function_out, nullptr, use_compiler_cache, additional_cache_key);
+									  num_ray_types, func_name_set, &kernel_function_out, module_out, use_compiler_cache, additional_cache_key);
 	}
 } // namespace HIPPTOrochiUtils

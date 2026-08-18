@@ -32,7 +32,8 @@ public:
 								 int num_ray_types,
 								 bool use_cache,
 								 const std::string& additional_cache_key,
-								 bool silent = false);
+								 bool silent			 = false,
+								 oroModule_t* module_out = nullptr);
 
 	/**
 	 * Takes an include name ("Device/includes/MyInclude.h" for example) and a list of include directories.

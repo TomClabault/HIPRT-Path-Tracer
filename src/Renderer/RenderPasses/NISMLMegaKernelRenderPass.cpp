@@ -114,7 +114,9 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 		m_kernels[INFERENCE_KERNEL]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, render_data.nisml_mega_kernel.query_capacity, 1,
 														 inference_launch_args, main_stream);
 
-		void* resume_launch_args[] = { &render_data, &stage_index };
+		m_kernels[RESUME_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_RESUME_RENDER_DATA", &render_data, sizeof(HIPRTRenderData), main_stream);
+
+		void* resume_launch_args[] = { &stage_index };
 		m_kernels[RESUME_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
 													  resume_launch_args, main_stream);
 	}

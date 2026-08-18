@@ -55,7 +55,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 												int num_ray_types,
 												bool use_cache,
 												const std::string& additional_cache_key,
-												bool silent)
+												bool silent,
+												oroModule_t* module_out)
 {
 	use_cache												= false;
 	std::string kernel_file_path							= kernel.get_kernel_file_path();
@@ -86,6 +87,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
+	hiprtApiModule trace_module_out = nullptr;
 	bool use_shader_cache;
 	if (m_shader_cache_force_usage == GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF)
 		use_shader_cache = false;
@@ -94,9 +96,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	else
 		use_shader_cache = use_cache;
 
-	hiprtError compile_status =
-		HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs,
-											 compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key);
+	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
+																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
+																	 function_name_sets, additional_cache_key, &trace_module_out);
 	if (compile_status != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
@@ -105,6 +107,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	}
 
 	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
+	if (module_out != nullptr)
+		*module_out = reinterpret_cast<oroModule_t>(trace_module_out);
 
 	if (kernel.is_precompiled())
 	{

@@ -88,9 +88,33 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<h
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function	  = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
-																 /* num geom */ 1,
-															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1, use_cache, cache_key, silent);
+	oroModule_t kernel_module = nullptr;
+	m_kernel_function		  = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
+																	 /* num geom */ 1,
+															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1, use_cache, cache_key, silent, &kernel_module);
+	m_kernel_module			  = kernel_module;
+}
+
+void GPUKernel::upload_to_module_global(const char* global_name, const void* data, size_t data_size, oroStream_t stream)
+{
+	if (m_kernel_module == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload to a module global before the kernel was compiled.");
+		return;
+	}
+
+	oroDeviceptr_t global_pointer;
+	size_t global_size = 0;
+	OROCHI_CHECK_ERROR(oroModuleGetGlobal(&global_pointer, &global_size, m_kernel_module, global_name));
+
+	if (global_size != data_size)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Module global '%s' has size %zu, but %zu bytes were provided.", global_name,
+								global_size, data_size);
+		return;
+	}
+
+	OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<void*>(global_pointer), data, data_size, oroMemcpyHostToDevice, stream));
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)

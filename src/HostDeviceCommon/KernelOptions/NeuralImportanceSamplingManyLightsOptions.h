@@ -9,18 +9,18 @@
 // Temporary WMMA NISMLTrain profiling. Delete only after removing every profiling reference
 #define PROFILING_ENABLED
 // Uncomment to disable NISMLTrain profiling instrumentation while keeping the profiling declarations available.
-// #define NISML_TRAIN_PROFILING_DISABLED
+#define NISML_TRAIN_PROFILING_DISABLED
 
 #include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceCPU.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceGPU.h"
 
-#define NISML_DEBUG_MODE_NO_DEBUG			0
-#define NISML_DEBUG_MODE_ENTROPY			1
-#define NISML_DEBUG_MODE_KL_DIVERGENCE		2
-#define NISML_DEBUG_MODE_LATENT_ACTIVATIONS 3
-#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID	4
-#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE	5
+#define NISML_DEBUG_MODE_NO_DEBUG					  0
+#define NISML_DEBUG_MODE_ENTROPY					  1
+#define NISML_DEBUG_MODE_KL_DIVERGENCE				  2
+#define NISML_DEBUG_MODE_LATENT_ACTIVATIONS			  3
+#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID	  4
+#define NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE 5
 
 #define NISML_MAX_CLUSTER_COUNT 64
 
