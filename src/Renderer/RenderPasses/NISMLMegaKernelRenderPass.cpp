@@ -102,11 +102,13 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 		bounce_count = std::min(3u, bounce_count);
 
 	oroStream_t main_stream = m_renderer->get_main_stream();
+	m_kernels[GENERATE_QUERIES_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_GENERATE_QUERIES_RENDER_DATA", &render_data, sizeof(HIPRTRenderData),
+																main_stream);
 	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
 	{
 		m_query_count.memset_whole_buffer(0u);
 
-		void* generate_queries_launch_args[] = { &render_data, &stage_index };
+		void* generate_queries_launch_args[] = { &stage_index };
 		m_kernels[GENERATE_QUERIES_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
 																generate_queries_launch_args, main_stream);
 
