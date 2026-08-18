@@ -104,6 +104,7 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	oroStream_t main_stream = m_renderer->get_main_stream();
 	m_kernels[GENERATE_QUERIES_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_GENERATE_QUERIES_RENDER_DATA", &render_data, sizeof(HIPRTRenderData),
 																main_stream);
+	m_kernels[INFERENCE_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_INFERENCE_RENDER_DATA", &render_data, sizeof(HIPRTRenderData), main_stream);
 	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
 	{
 		m_query_count.memset_whole_buffer(0u);
@@ -112,9 +113,8 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 		m_kernels[GENERATE_QUERIES_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
 																generate_queries_launch_args, main_stream);
 
-		void* inference_launch_args[] = { &render_data };
-		m_kernels[INFERENCE_KERNEL]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, render_data.nisml_mega_kernel.query_capacity, 1,
-														 inference_launch_args, main_stream);
+		m_kernels[INFERENCE_KERNEL]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, render_data.nisml_mega_kernel.query_capacity, 1, nullptr,
+														 main_stream);
 
 		m_kernels[RESUME_KERNEL]->upload_to_module_global("NISML_MEGAKERNEL_RESUME_RENDER_DATA", &render_data, sizeof(HIPRTRenderData), main_stream);
 
