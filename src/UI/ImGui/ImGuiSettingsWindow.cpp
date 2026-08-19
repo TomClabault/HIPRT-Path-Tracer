@@ -1551,6 +1551,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			case LSS_BASE_LIGHT_TREE_SG:
 				draw_light_tree_SG_settings_panel();
 				draw_illumination_aware_kd_tree_panel();
+				draw_learning_to_cluster_many_lights_panel();
 				draw_neural_many_lights_panel();
 
 				break;
@@ -4203,6 +4204,33 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Draw valid NISML representative positions as red dots on top of the selected KD-tree debug view.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+	}
+}
+
+void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
+{
+	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
+	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
+	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
+
+	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+	bool using_learning_to_cluster	   = ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(direct_light_nee_estimator, direct_light_sampling_strategy);
+
+	if (using_learning_to_cluster)
+	{
+		if (ImGui::CollapsingHeader("Learning to cluster many lights"))
+		{
+			ImGui::TreePush("Learning to cluster many lights tree");
+
+			if (ImGui::SliderInt("Stop learning after SPP##nisml", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(), 0, 128))
+				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();

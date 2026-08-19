@@ -59,6 +59,7 @@ private:
 	void draw_light_tree_ATS_settings_panel();
 	void draw_light_tree_SG_settings_panel();
 	void draw_illumination_aware_kd_tree_panel();
+	void draw_learning_to_cluster_many_lights_panel();
 	void draw_neural_many_lights_panel();
 
 	template <int ReSTIRVariant>

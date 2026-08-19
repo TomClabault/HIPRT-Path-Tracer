@@ -127,6 +127,9 @@ public:
 	int& get_split_iterations_per_SPP();
 	bool& get_auto_split_iterations_per_SPP();
 	int& get_training_sample_buffer_capacity();
+
+	int& get_learning_to_cluster_learning_spp();
+
 	int& get_nisml_representative_capacity();
 	int& get_nisml_hash_table_size_mb();
 	int& get_nisml_hash_normal_precision();
@@ -172,8 +175,11 @@ private:
 	// Higher number subdivide faster but is more expensive
 	int m_split_iterations_per_SPP = 3;
 	// If true, the number of split iterations per SPP will be automatically adjusted based on the current SPP for efficiency
-	bool m_auto_split_iterations_per_SPP		   = true;
-	int m_training_sample_buffer_capacity		   = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+	bool m_auto_split_iterations_per_SPP  = true;
+	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+
+	int m_learning_to_cluster_learning_spp = 128;
+
 	int m_nisml_representative_capacity			   = 2;
 	int m_nisml_hash_table_size_mb				   = 275;
 	int m_nisml_hash_normal_precision			   = 3;

@@ -438,13 +438,16 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_learning_to_cluster(compiler_options))
 	{
-		m_cached_current_guiding_node_count =
-			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
+		bool learning_to_cluster_learning_budget_reached = render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp;
+		if (learning_to_cluster_learning_budget_reached)
+			return;
 
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
+		m_cached_current_guiding_node_count =
+			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
 		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1, learning_to_cluster_launch_args,
@@ -610,6 +613,11 @@ bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
 	return m_training_sample_buffer_capacity;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_spp()
+{
+	return m_learning_to_cluster_learning_spp;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
