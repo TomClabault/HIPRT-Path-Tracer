@@ -84,17 +84,17 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 
 void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache, bool silent)
 {
-	m_module_globals.clear();
+	m_module_globals_cache.clear();
 
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
-	std::string cache_key	  = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	oroModule_t kernel_module = nullptr;
-	m_kernel_function		  = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
-																	 /* num geom */ 1,
-															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1, use_cache, cache_key, silent, &kernel_module);
-	m_kernel_module			  = kernel_module;
+	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
+
+	m_kernel_module	  = nullptr;
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
+															 /* num geom */ 1,
+															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1, use_cache, cache_key, silent, &m_kernel_module);
 }
 
 void GPUKernel::upload_to_module_global(const char* global_name, const void* data, size_t data_size, oroStream_t stream)
@@ -102,23 +102,28 @@ void GPUKernel::upload_to_module_global(const char* global_name, const void* dat
 	if (m_kernel_module == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload to a module global before the kernel was compiled.");
+
 		return;
 	}
 
-	std::string global_name_string												   = global_name;
-	std::unordered_map<std::string, ModuleGlobal>::iterator module_global_iterator = m_module_globals.find(global_name_string);
-	if (module_global_iterator == m_module_globals.end())
+	std::string global_name_string = global_name;
+
+	auto module_global_iterator = m_module_globals_cache.find(global_name_string);
+	if (module_global_iterator == m_module_globals_cache.end())
 	{
-		ModuleGlobal module_global;
-		module_global.size = 0;
+		ModuleGlobal module_global{ nullptr, 0 };
+
 		OROCHI_CHECK_ERROR(oroModuleGetGlobal(&module_global.device_pointer, &module_global.size, m_kernel_module, global_name));
-		module_global_iterator = m_module_globals.emplace(global_name_string, module_global).first;
+
+		// Cache the module for the next time we want to upload to this global
+		module_global_iterator = m_module_globals_cache.emplace(global_name_string, module_global).first;
 	}
 
 	if (module_global_iterator->second.size != data_size)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Module global '%s' has size %zu, but %zu bytes were provided.", global_name,
 								module_global_iterator->second.size, data_size);
+
 		return;
 	}
 

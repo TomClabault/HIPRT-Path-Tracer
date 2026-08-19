@@ -242,7 +242,7 @@ private:
 
 	oroFunction m_kernel_function = nullptr;
 	oroModule_t m_kernel_module	  = nullptr;
-	std::unordered_map<std::string, ModuleGlobal> m_module_globals;
+	std::unordered_map<std::string, ModuleGlobal> m_module_globals_cache;
 
 	// If true, this means that this kernel is only used for precompilation and will be
 	// discarded after it's been compiled
