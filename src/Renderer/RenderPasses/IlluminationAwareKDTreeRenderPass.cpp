@@ -278,7 +278,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -307,7 +307,6 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
 			1024, 1, reset_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		if (m_renderer->get_render_data().render_settings.sample_number == 0)
 		{
@@ -326,7 +325,6 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 				m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->launch_asynchronous(
 					IlluminationAwareKDTreeLightClusteringBlockSize, 1, IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 					initialize_root_light_clustering_launch_args, m_renderer->get_main_stream());
-				OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 			}
 		}
 
@@ -335,7 +333,6 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(1024, 1, active_node_count, 1, launch_args,
 																												m_renderer->get_main_stream());
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 	return render_data_invalidated;
 }
@@ -368,7 +365,6 @@ void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data
 	unsigned int hash_table_capacity  = kd_tree_device.nisml.nisml_hash_table_capacity;
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, hash_table_capacity, 1, launch_args,
 																									m_renderer->get_main_stream());
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
 
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -396,10 +392,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		void* launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		int split_iterations = m_split_iterations_per_SPP;
 		if (m_auto_split_iterations_per_SPP)
@@ -419,7 +414,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			void* mark_guiding_cell_launch_args[] = { &kd_tree_device };
 			m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 				256, 1, kd_tree_device.core.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
-			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 			// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
 			// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
@@ -438,7 +432,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			// TODO we could be launching only number of blocks = nodes that have been marked for splitting instead of all the guiding nodes
 			m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
 				1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
-			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		}
 	}
 
@@ -453,17 +446,14 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeLightClusteringBlockSize, 1,
 			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		unsigned int light_clustering_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);
 		if (light_clustering_count > 0)
@@ -471,7 +461,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
 				IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride, 1,
 				learning_to_cluster_launch_args, m_renderer->get_main_stream());
-			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		}
 
 		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
@@ -480,15 +469,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize;
 		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
 			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	}
 
 	if (is_using_nisml(compiler_options))
@@ -499,7 +485,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			void* replay_nisml_training_samples_launch_args[] = { &render_data };
 			m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 				256, 1, training_record_capacity, 1, replay_nisml_training_samples_launch_args, m_renderer->get_main_stream());
-			OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 		}
 
 		build_nisml(render_data);
@@ -536,13 +521,12 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		void* expansion_launch_args[] = { &kd_tree_device, &creation_tag };
 		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
 		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
-		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 
 		current_frontier	   = next_frontier;
 		current_frontier_count = next_frontier_count;
@@ -604,7 +588,6 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->launch_asynchronous(256, 1, m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size(),
 																							1, launch_args, m_renderer->get_main_stream());
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
