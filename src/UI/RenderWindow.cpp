@@ -54,6 +54,7 @@ extern ImGuiLogger g_imgui_logger;
 //		Or if caching spatially works well, do caching of the wider subtree as well to avoid
 //	- Why doesn't learning to cluster reach 0 variance? Where is the bottleneck? Compare against optimal brute force and find where the bottleneck is
 //	- Online Bayesian regression for the optimal cluster sampling probabilities assuming that the subtree sampler isn't optimal
+//	- Use a hash grid for normal aware stuff instead of dense 6-face, same as NISML
 //
 // TODO SG Light tree
 //	- Maybe still do the hard coded distributions, may still be good

@@ -384,7 +384,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
 
 	// Using -1 because this counter is 0-based but the SPPs displayed at the top of the UI are 1-based. This is just to match the user's HUD
-	if (!m_frozen_tree && render_data.render_settings.sample_number <= kd_tree_device.core.user_settings.stop_refining_after_SPP - 1)
+	bool refinement_spp_budget_reached = render_data.render_settings.sample_number > kd_tree_device.core.user_settings.stop_refining_after_SPP - 1;
+	if (!m_frozen_tree && !refinement_spp_budget_reached)
 	{
 		// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads
 		// and
@@ -437,9 +438,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_learning_to_cluster(compiler_options))
 	{
-		if (m_frozen_tree)
-			return;
-
 		m_cached_current_guiding_node_count =
 			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
 
@@ -479,6 +477,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_nisml(compiler_options))
 	{
+		if (!render_data.nisml.learning_enabled)
+			return;
+
 		unsigned int training_record_capacity = render_data.nisml.training_record_capacity;
 		if (training_record_capacity > 0)
 		{
