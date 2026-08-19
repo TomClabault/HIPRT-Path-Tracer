@@ -33,10 +33,6 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // Ideas for neural importance sampling many lights:
-//	- Can we cache the 64 cluster SG importance spatially to avoid recomputing them everytime at runtime, use the kd tree for that?
-//		- Is it valid though that the baseline changes as the networks learns since with the kd tree we're going to subdivide more and more = cached sg
-//		importances are going to evolve
-//	- Use ATS for the base 64 clusters importance and learn residual on that?
 //	- Splitting in the subtree + RIS
 //		Or maybe juste do splitting in the subtree if visibility variance is high
 //		The better theoretical question is when is splitting needed? This is probably not necessarily when vis variance is high
@@ -46,9 +42,18 @@ extern ImGuiLogger g_imgui_logger;
 //	for the subtree wide root clusters.
 //		Or maybe a single MLP that does all that
 //	- How to to NISML but on 1024 root node clusters?
-//  - Why is it that 50% of training samples budet doesn't learn much faster than 15%? What is the theory behind that?
+//  - Why is it that 50% of training samples budget doesn't learn much faster than 15%? What is the theory behind that?
 //	- Specular isn't amazing so do we even need the view direction in the input of the net?
-
+//
+// Ideas for learning to cluster:
+//	- Spatial filtering to reduce grid artifacts, Practical Path Guiding 2019
+//	- Splitting in the subtree + RIS
+//		Or maybe juste do splitting in the subtree if visibility variance is high
+//		The better theoretical question is when is splitting needed? This is probably not necessarily when vis variance is high
+//	- Wider subtree + sample one root cluster brute force WRS
+//		Or if caching spatially works well, do caching of the wider subtree as well to avoid
+//	- Why doesn't learning to cluster reach 0 variance? Where is the bottleneck? Compare against optimal brute force and find where the bottleneck is
+//	- Online Bayesian regression for the optimal cluster sampling probabilities assuming that the subtree sampler isn't optimal
 //
 // TODO SG Light tree
 //	- Maybe still do the hard coded distributions, may still be good
@@ -90,8 +95,8 @@ extern ImGuiLogger g_imgui_logger;
 //
 //
 //
-//	- Add a scene statistics panel in the UI, rename "Objects" as "Scene"
-//	- Multithread app startup scene loading with kernel compilation
+// - Add a scene statistics panel in the UI, rename "Objects" as "Scene"
+// - Multithread app startup scene loading with kernel compilation
 // - Test MLP kernels with __restrict__ for all pointers, should be faster?
 // - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
 // - What if we select the reuse cell based on sum luminance * UCW instead of confidence?
