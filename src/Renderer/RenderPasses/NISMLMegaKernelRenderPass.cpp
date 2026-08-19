@@ -113,7 +113,8 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
 	{
-		m_query_count.memset_whole_buffer(0u, m_renderer->get_main_stream());
+		m_query_count_host_pinned.get_host_pinned_pointer()[0] = 0;
+		m_query_count_device.upload_data_async(m_query_count_host_pinned.get_host_pinned_pointer(), m_renderer->get_main_stream());
 
 		void* generate_queries_launch_args[] = { &stage_index };
 		m_kernels[GENERATE_QUERIES_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
@@ -188,8 +189,9 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 
 	bool needs_resize = !m_staging_buffers_allocated || m_path_data.size() != path_count || m_path_states.size() != path_count ||
 						m_path_volume_states.size() != path_count || m_queries.size() != path_count ||
-						m_residuals.size() != path_count * NISML_MAX_CLUSTER_COUNT || m_results.size() != path_count || m_query_count.size() != 1 ||
-						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size || m_render_data_host_pinned.size() != 1;
+						m_residuals.size() != path_count * NISML_MAX_CLUSTER_COUNT || m_results.size() != path_count || m_query_count_host_pinned.size() != 1 ||
+						m_query_count_device.size() != 1 || m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
+						m_render_data_host_pinned.size() != 1;
 	if (!needs_resize)
 		return false;
 
@@ -201,7 +203,8 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 	m_queries.resize(path_count);
 	m_residuals.resize(path_count * NISML_MAX_CLUSTER_COUNT);
 	m_results.resize(path_count);
-	m_query_count.resize(1);
+	m_query_count_host_pinned.resize_host_pinned_mem(1);
+	m_query_count_device.resize(1);
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
 	m_allocated_ray_volume_state_byte_size = ray_volume_state_byte_size;
@@ -217,7 +220,8 @@ void NISMLMegaKernelRenderPass::free_staging_buffers()
 	m_queries.free_no_error();
 	m_residuals.free_no_error();
 	m_results.free_no_error();
-	m_query_count.free_no_error();
+	m_query_count_host_pinned.free_no_error();
+	m_query_count_device.free_no_error();
 	m_render_data_host_pinned.free_no_error();
 
 	m_allocated_ray_volume_state_byte_size = 0;
@@ -233,7 +237,7 @@ NISMLMegaKernelDevice NISMLMegaKernelRenderPass::get_device_data()
 	device_data.queries			   = m_queries.get_device_pointer();
 	device_data.residuals		   = m_residuals.get_device_pointer();
 	device_data.results			   = m_results.get_device_pointer();
-	device_data.query_count		   = m_query_count.get_atomic_device_pointer();
+	device_data.query_count		   = m_query_count_device.get_atomic_device_pointer();
 	device_data.path_count		   = static_cast<unsigned int>(m_path_data.size());
 	device_data.query_capacity	   = static_cast<unsigned int>(m_queries.size());
 	device_data.residual_stride	   = NISML_MAX_CLUSTER_COUNT;

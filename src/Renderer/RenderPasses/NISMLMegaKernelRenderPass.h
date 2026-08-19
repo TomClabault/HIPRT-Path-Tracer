@@ -6,10 +6,10 @@
 #ifndef RENDERER_NISML_MEGA_KERNEL_RENDER_PASS_H
 #define RENDERER_NISML_MEGA_KERNEL_RENDER_PASS_H
 
-#include "HostDeviceCommon/NISMLMegaKernelData.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
-#include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HostDeviceCommon/NISMLMegaKernelData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include <cstddef>
@@ -62,7 +62,9 @@ private:
 	OrochiBuffer<NISQuery> m_queries;
 	OrochiBuffer<float> m_residuals;
 	OrochiBuffer<NISResult> m_results;
-	OrochiBuffer<unsigned int> m_query_count;
+
+	OrochiBuffer<unsigned int> m_query_count_host_pinned;
+	OrochiBuffer<unsigned int> m_query_count_device;
 };
 
 #endif
