@@ -51,12 +51,9 @@ private:
 
 	int2_t m_render_resolution					  = make_int2(0, 0);
 	bool m_staging_buffers_allocated			  = false;
-	bool m_shared_render_data_pointer_initialized = false;
 	size_t m_allocated_ray_volume_state_byte_size = 0;
 
-	OrochiBuffer<HIPRTRenderData> m_shared_render_data;
-	OrochiBuffer<HIPRTRenderData> m_shared_render_data_host_pinned;
-	OrochiBuffer<HIPRTRenderData*> m_shared_render_data_pointer_host_pinned;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	OrochiBuffer<NISMLMegaKernelPathData> m_path_data;
 	OrochiBuffer<NISMLMegaKernelPathState> m_path_states;
