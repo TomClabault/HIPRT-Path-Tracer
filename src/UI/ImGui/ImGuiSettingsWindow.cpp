@@ -4209,18 +4209,6 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			bool draw_nisml_representative_points =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS) == KERNEL_OPTION_TRUE;
-			if (ImGui::Checkbox("Draw NISML representative points", &draw_nisml_representative_points))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
-													   draw_nisml_representative_points ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Draw valid NISML representative positions as red dots on top of the selected KD-tree debug view.");
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
@@ -4461,6 +4449,19 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
+
+				bool draw_nisml_representative_points =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS) ==
+					KERNEL_OPTION_TRUE;
+				if (ImGui::Checkbox("Draw NISML representative points", &draw_nisml_representative_points))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
+														   draw_nisml_representative_points ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Draw valid NISML representative positions as red dots on top of the selected KD-tree debug view.");
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
