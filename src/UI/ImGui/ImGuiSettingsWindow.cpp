@@ -4026,7 +4026,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	{
 		if (ImGui::CollapsingHeader("Illumination-aware KD-tree"))
 		{
-			ImGui::TreePush("Illumiantion aware KD-tree tree");
+			ImGui::TreePush("Illumination aware KD-tree tree");
 
 			IlluminationAwareKDTreeVRAMUsage vram_usage = illumination_aware_kd_tree_render_pass
 															  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
@@ -4098,6 +4098,22 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 						m_render_window->set_render_dirty(true);
 					}
 
+					ImGui::TreePop();
+				}
+
+				static int nodes_buffer_capacity = illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity();
+				ImGui::InputInt("Nodes buffer capacity", &nodes_buffer_capacity);
+
+				if (nodes_buffer_capacity != illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity())
+				{
+					ImGui::TreePush("Apply button illumination-aware KD-tree nodes buffer capacity");
+					if (ImGui::Button("Apply"))
+					{
+						illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() = nodes_buffer_capacity;
+						illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+						m_render_window->set_render_dirty(true);
+					}
 					ImGui::TreePop();
 				}
 			}

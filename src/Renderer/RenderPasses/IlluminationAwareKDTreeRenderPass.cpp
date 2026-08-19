@@ -285,8 +285,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	bool render_data_invalidated = false;
 	if (m_buffers_need_reallocation)
 	{
-		m_illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES, m_training_sample_buffer_capacity,
-											nisml_representative_capacity, nisml_hash_table_reserved_bytes, nisml_hash_normal_precision);
+		m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
+											nisml_hash_table_reserved_bytes, nisml_hash_normal_precision);
 
 		m_buffers_need_reallocation = false;
 		render_data_invalidated		= true;
@@ -645,9 +645,9 @@ unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_capacity() 
 	return static_cast<unsigned int>(m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_capacity);
 }
 
-std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity() const
+int& IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity()
 {
-	return m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.size();
+	return m_nodes_buffer_capacity;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_count() const

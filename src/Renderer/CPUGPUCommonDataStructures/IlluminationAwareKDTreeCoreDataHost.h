@@ -13,7 +13,8 @@
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeCoreDataHost
 {
-	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES = 100000;
+	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES				  = 200000;
+	static constexpr unsigned int INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY = 2000000;
 
 	void resize(unsigned int new_node_capacity, unsigned int new_training_sample_capacity)
 	{

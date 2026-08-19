@@ -249,8 +249,9 @@ void CPURenderer::setup_buffers()
 #endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(IlluminationAwareKDTreeDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
-																		 IlluminationAwareKDTreeRenderPass::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(
+		IlluminationAwareKDTreeCoreDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
+		IlluminationAwareKDTreeCoreDataHost<std::vector>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
 #endif
 
 	setup_bsdfs_data();

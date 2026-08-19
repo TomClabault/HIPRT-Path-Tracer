@@ -8,19 +8,16 @@
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
+#include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeCoreDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeIlluminationSignatureSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeNISMLDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeSpatialSampleMomentsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeDataHost
 {
-	static constexpr unsigned int MAXIMUM_NUMBER_OF_NODES			  = IlluminationAwareKDTreeCoreDataHost<DataContainer>::MAXIMUM_NUMBER_OF_NODES;
-	static constexpr unsigned int MAXIMUM_NUMBER_OF_LIGHT_CLUSTERINGS = MAXIMUM_NUMBER_OF_NODES * 2;
-
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
 				unsigned int new_nisml_representative_capacity	 = 1,

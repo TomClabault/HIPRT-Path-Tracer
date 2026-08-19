@@ -102,8 +102,6 @@ public:
 	static const std::string REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string BUILD_NISML_CACHES_KERNEL_ID;
 
-	static constexpr int INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY = 2000000;
-
 public:
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
@@ -136,7 +134,7 @@ public:
 	unsigned int get_nisml_hash_occupied_entry_count() const;
 	unsigned int get_nisml_hash_table_capacity() const;
 
-	std::size_t get_current_node_buffer_capacity() const;
+	int& get_current_node_buffer_capacity();
 	std::size_t get_current_node_count() const;
 	std::size_t get_current_guiding_node_count() const;
 
@@ -176,7 +174,8 @@ private:
 	int m_split_iterations_per_SPP = 3;
 	// If true, the number of split iterations per SPP will be automatically adjusted based on the current SPP for efficiency
 	bool m_auto_split_iterations_per_SPP  = true;
-	int m_training_sample_buffer_capacity = INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+	int m_nodes_buffer_capacity			  = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES;
+	int m_training_sample_buffer_capacity = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
 
 	int m_learning_to_cluster_learning_spp = 128;
 
