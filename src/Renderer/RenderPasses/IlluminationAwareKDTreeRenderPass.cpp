@@ -298,7 +298,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 	unsigned int active_node_count				 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
-	void* launch_args[]							 = { &kd_tree_device };
+
+	void* launch_args[] = { &kd_tree_device };
 	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()))
 	{
 		unsigned int light_clustering_count		= m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);

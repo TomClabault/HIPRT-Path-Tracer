@@ -32,6 +32,13 @@ extern ImGuiLogger g_imgui_logger;
 // - Move the illumination aware estimator to a sampling technique in the UI, it's more explicit but just keep it as an estimator under the hood for easy code
 //		design
 //
+// IMMEDIATE TODOS:
+//	- No LTC synchronous counter download
+//	- LTC stop training after N seconds
+//	- Select ATS + splitting and switch to LTC = crash
+//	- Constant memory for all kernels
+//
+//
 // Ideas for neural importance sampling many lights:
 //	- Splitting in the subtree + RIS
 //		Or maybe juste do splitting in the subtree if visibility variance is high

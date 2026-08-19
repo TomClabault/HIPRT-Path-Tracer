@@ -134,11 +134,13 @@
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_NEURAL_MANY_LIGHTS
+#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER
 #endif
 
-#if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
-#error "DirectLightNEEEstimator is set to LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
+#if (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                               \
+	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#error                                                                                                                                                         \
+	"DirectLightNEEEstimator is set to LSS_LEARNING_TO_CLUSTER or LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
 #endif
 
 /**
