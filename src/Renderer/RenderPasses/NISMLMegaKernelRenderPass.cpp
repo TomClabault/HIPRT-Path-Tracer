@@ -10,10 +10,8 @@
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
-#include "UI/ImGui/ImGuiLogger.h"
 
 #include <algorithm>
-#include <chrono>
 
 const std::string NISMLMegaKernelRenderPass::NISML_MEGA_KERNEL_RENDER_PASS_NAME = "NISML Megakernel Render Pass";
 const std::string NISMLMegaKernelRenderPass::GENERATE_QUERIES_KERNEL			= "NISML Megakernel - Generate Queries";
@@ -41,17 +39,6 @@ NISMLMegaKernelRenderPass::NISMLMegaKernelRenderPass(GPURenderer* renderer, std:
 		name_to_kernel.second->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 		name_to_kernel.second->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 	}
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_launch_benchmark_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_launch_benchmark_stop_event));
-}
-
-NISMLMegaKernelRenderPass::~NISMLMegaKernelRenderPass()
-{
-	if (m_launch_benchmark_start_event != nullptr)
-		OROCHI_CHECK_ERROR(oroEventDestroy(m_launch_benchmark_start_event));
-	if (m_launch_benchmark_stop_event != nullptr)
-		OROCHI_CHECK_ERROR(oroEventDestroy(m_launch_benchmark_stop_event));
 }
 
 bool NISMLMegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -111,16 +98,13 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	std::chrono::steady_clock::time_point cpu_start_time = std::chrono::steady_clock::now();
-
 	render_data.nisml_mega_kernel = get_device_data();
 
 	unsigned int bounce_count = static_cast<unsigned int>(render_data.render_settings.nb_bounces);
 	if (render_data.render_settings.do_render_low_resolution())
 		bounce_count = std::min(3u, bounce_count);
 
-	oroStream_t main_stream = m_renderer->get_main_stream();
-	OROCHI_CHECK_ERROR(oroEventRecord(m_launch_benchmark_start_event, main_stream));
+	oroStream_t main_stream					 = m_renderer->get_main_stream();
 	HIPRTRenderData* host_pinned_render_data = m_shared_render_data_host_pinned.get_host_pinned_pointer();
 	*host_pinned_render_data				 = render_data;
 	OROCHI_CHECK_ERROR(
@@ -154,20 +138,6 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 		m_kernels[RESUME_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
 													  resume_launch_args, main_stream);
 	}
-
-	OROCHI_CHECK_ERROR(oroEventRecord(m_launch_benchmark_stop_event, main_stream));
-	std::chrono::steady_clock::time_point cpu_submission_end_time = std::chrono::steady_clock::now();
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(main_stream));
-	std::chrono::steady_clock::time_point cpu_end_time = std::chrono::steady_clock::now();
-
-	float gpu_stream_duration_ms = 0.0f;
-	OROCHI_CHECK_ERROR(oroEventElapsedTime(&gpu_stream_duration_ms, m_launch_benchmark_start_event, m_launch_benchmark_stop_event));
-
-	double cpu_submission_duration_ms = std::chrono::duration<double, std::milli>(cpu_submission_end_time - cpu_start_time).count();
-	double cpu_total_duration_ms	  = std::chrono::duration<double, std::milli>(cpu_end_time - cpu_start_time).count();
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
-							"[NISML benchmark] launch_async CPU submission: %.3f ms, CPU total: %.3f ms, GPU stream: %.3f ms", cpu_submission_duration_ms,
-							cpu_total_duration_ms, gpu_stream_duration_ms);
 
 	return true;
 }

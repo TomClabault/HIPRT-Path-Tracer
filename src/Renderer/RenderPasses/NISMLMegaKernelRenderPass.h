@@ -25,7 +25,7 @@ public:
 	static const std::string RESUME_KERNEL;
 
 	NISMLMegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
-	~NISMLMegaKernelRenderPass();
+	~NISMLMegaKernelRenderPass() = default;
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
 											  const std::vector<hiprtFuncNameSet>& func_name_sets,
@@ -66,10 +66,6 @@ private:
 	OrochiBuffer<float> m_residuals;
 	OrochiBuffer<NISResult> m_results;
 	OrochiBuffer<unsigned int> m_query_count;
-
-	// Events used to measure the GPU stream interval of launch_async().
-	oroEvent_t m_launch_benchmark_start_event = nullptr;
-	oroEvent_t m_launch_benchmark_stop_event  = nullptr;
 };
 
 #endif
