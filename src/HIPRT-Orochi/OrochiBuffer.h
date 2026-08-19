@@ -33,6 +33,7 @@ public:
 	void operator=(OrochiBuffer<T>&& other) noexcept;
 
 	void memset_whole_buffer(T value);
+	void memset_whole_buffer_async(T value, oroStream_t stream);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
 	void resize_host_pinned_mem(int new_element_count, size_t type_size_override = 0);
@@ -84,6 +85,7 @@ public:
 
 	static void upload_data(T* device_data_pointer, const std::vector<T>& data_to_upload, size_t element_count);
 	static void upload_data(T* device_data_pointer, const T* data_to_upload, size_t element_count);
+
 	/**
 	 * Uploads as many elements as returned by size from the data std::vector into the buffer.
 	 * The given std::vector must therefore contain at least size() elements.
@@ -94,6 +96,10 @@ public:
 	 */
 	void upload_data(const std::vector<T>& data);
 	void upload_data(const T* data);
+
+	void upload_data_async(const std::vector<T>& data, oroStream_t stream);
+	void upload_data_async(const T* data, oroStream_t stream);
+
 	/**
 	 * Uploads 'element_count' elmements from 'data' starting (it will be overriden) at element number 'start_index' in the buffer
 	 */
@@ -212,6 +218,20 @@ inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 	std::vector<T> data(m_element_count, value);
 
 	upload_data(data);
+}
+
+template <typename T>
+inline void OrochiBuffer<T>::memset_whole_buffer_async(T value, oroStream_t stream)
+{
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
+		return;
+	}
+
+	std::vector<T> data(m_element_count, value);
+
+	upload_data_async(data, stream);
 }
 
 template <typename T>
@@ -481,24 +501,38 @@ void OrochiBuffer<T>::upload_data(T* device_data_pointer, const T* data_to_uploa
 template <typename T>
 void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
-	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * hippt::min(data.size(), m_element_count),
-									 oroMemcpyHostToDevice));
-	else
-	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
-		Debug::debugbreak();
-	}
+	upload_data_async(data, 0);
 }
 
 template <typename T>
 void OrochiBuffer<T>::upload_data(const T* data)
 {
+	upload_data_async(data, 0);
+}
+
+template <typename T>
+void OrochiBuffer<T>::upload_data_async(const std::vector<T>& data, oroStream_t stream)
+{
 	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
+		OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * hippt::min(data.size(), m_element_count),
+										  oroMemcpyHostToDevice, stream));
 	else
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+
+		Debug::debugbreak();
+	}
+}
+
+template <typename T>
+void OrochiBuffer<T>::upload_data_async(const T* data, oroStream_t stream)
+{
+	if (m_data_pointer)
+		OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice, stream));
+	else
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+
 		Debug::debugbreak();
 	}
 }
@@ -519,6 +553,7 @@ inline void OrochiBuffer<T>::upload_data_partial(size_t start_index, const T* da
 	else
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload partial data to an OrochiBuffer that hasn't been allocated yet!");
+
 		Debug::debugbreak();
 	}
 }

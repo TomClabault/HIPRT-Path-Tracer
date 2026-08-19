@@ -113,7 +113,7 @@ bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 
 	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
 	{
-		m_query_count.memset_whole_buffer(0u);
+		m_query_count.memset_whole_buffer(0u, m_renderer->get_main_stream());
 
 		void* generate_queries_launch_args[] = { &stage_index };
 		m_kernels[GENERATE_QUERIES_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
