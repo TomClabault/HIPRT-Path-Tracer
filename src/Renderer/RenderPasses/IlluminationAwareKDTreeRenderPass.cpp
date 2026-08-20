@@ -387,6 +387,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	bool refinement_spp_budget_reached = render_data.render_settings.sample_number > kd_tree_device.core.user_settings.stop_refining_after_SPP - 1;
 	if (!m_frozen_tree && !refinement_spp_budget_reached)
 	{
+		m_expand_one_lookahead_level_timing_events.recorded_event_count		  = 0;
+		m_replay_training_samples_timing_events.recorded_event_count		  = 0;
+		m_initialize_created_node_history_timing_events.recorded_event_count  = 0;
+		m_mark_guiding_cells_for_splitting_timing_events.recorded_event_count = 0;
+		m_promote_guiding_cells_timing_events.recorded_event_count			  = 0;
+
 		// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads
 		// and
 		// having threads beyond the training_sample_count do nothing? Maybe worth it in perf despite CPU overhead?
@@ -417,8 +423,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_illumination_aware_kd_tree.m_any_cell_needs_split.memset_whole_buffer_async(any_cell_needs_split_host_pinned, 1, m_renderer->get_main_stream());
 
 			void* mark_guiding_cell_launch_args[] = { &kd_tree_device };
+			record_kernel_timing_start(m_mark_guiding_cells_for_splitting_timing_events);
 			m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 				256, 1, kd_tree_device.core.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
+			record_kernel_timing_stop(m_mark_guiding_cells_for_splitting_timing_events);
 
 			// The host-pinned flag lets us break out when no cell was marked for splitting.
 			m_illumination_aware_kd_tree.m_any_cell_needs_split.download_data_into(any_cell_needs_split_host_pinned);
@@ -429,8 +437,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			// The GPU kernel reads the active guiding count directly and returns for threads beyond the current count.
 			// Launching at node capacity avoids synchronizing these counters back to the host.
 			void* promotion_launch_args[] = { &kd_tree_device };
+			record_kernel_timing_start(m_promote_guiding_cells_timing_events);
 			m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
 				1024, 1, kd_tree_device.core.node_capacity * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
+			record_kernel_timing_stop(m_promote_guiding_cells_timing_events);
 		}
 
 		m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data_async(&m_cached_current_guiding_node_count,
@@ -521,14 +531,20 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &kd_tree_device, &creation_tag };
+		record_kernel_timing_start(m_expand_one_lookahead_level_timing_events);
 		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+		record_kernel_timing_stop(m_expand_one_lookahead_level_timing_events);
 
+		record_kernel_timing_start(m_replay_training_samples_timing_events);
 		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+		record_kernel_timing_stop(m_replay_training_samples_timing_events);
 
+		record_kernel_timing_start(m_initialize_created_node_history_timing_events);
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+		record_kernel_timing_stop(m_initialize_created_node_history_timing_events);
 
 		current_frontier	   = next_frontier;
 		current_frontier_count = next_frontier_count;
@@ -558,6 +574,63 @@ void IlluminationAwareKDTreeRenderPass::update_render_data()
 	}
 
 	m_renderer->get_render_data().kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
+}
+
+void IlluminationAwareKDTreeRenderPass::record_kernel_timing_start(KernelTimingEvents& timing_events)
+{
+	if (timing_events.recorded_event_count == timing_events.start_events.size())
+	{
+		// We need to create more events
+		oroEvent_t start_event = nullptr;
+		oroEvent_t stop_event  = nullptr;
+
+		OROCHI_CHECK_ERROR(oroEventCreate(&start_event));
+		OROCHI_CHECK_ERROR(oroEventCreate(&stop_event));
+
+		timing_events.start_events.push_back(start_event);
+		timing_events.stop_events.push_back(stop_event);
+	}
+
+	OROCHI_CHECK_ERROR(oroEventRecord(timing_events.start_events[timing_events.recorded_event_count], m_renderer->get_main_stream()));
+	timing_events.recorded_event_count++;
+}
+
+void IlluminationAwareKDTreeRenderPass::record_kernel_timing_stop(KernelTimingEvents& timing_events)
+{
+	OROCHI_CHECK_ERROR(oroEventRecord(timing_events.stop_events[timing_events.recorded_event_count - 1], m_renderer->get_main_stream()));
+}
+
+void IlluminationAwareKDTreeRenderPass::accumulate_kernel_times(const std::string& kernel_id, KernelTimingEvents& timing_events)
+{
+	if (timing_events.recorded_event_count == 0)
+		return;
+
+	float total_execution_time = 0.0f;
+	for (std::size_t event_index = 0; event_index < timing_events.recorded_event_count; event_index++)
+	{
+		float execution_time = 0.0f;
+
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&execution_time, timing_events.start_events[event_index], timing_events.stop_events[event_index]));
+
+		total_execution_time += execution_time;
+	}
+
+	m_renderer->get_render_pass_times()[kernel_id] = total_execution_time;
+	timing_events.recorded_event_count			   = 0;
+}
+
+void IlluminationAwareKDTreeRenderPass::compute_render_times()
+{
+	if (!is_render_pass_used(*m_compiler_options))
+		return;
+
+	RenderPass::compute_render_times();
+
+	accumulate_kernel_times(EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID, m_expand_one_lookahead_level_timing_events);
+	accumulate_kernel_times(REPLAY_TRAINING_SAMPLES_KERNEL_ID, m_replay_training_samples_timing_events);
+	accumulate_kernel_times(INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID, m_initialize_created_node_history_timing_events);
+	accumulate_kernel_times(MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID, m_mark_guiding_cells_for_splitting_timing_events);
+	accumulate_kernel_times(PROMOTE_GUIDING_CELLS_KERNEL_ID, m_promote_guiding_cells_timing_events);
 }
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
