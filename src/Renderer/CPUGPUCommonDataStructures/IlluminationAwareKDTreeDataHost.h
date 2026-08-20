@@ -85,15 +85,6 @@ struct IlluminationAwareKDTreeDataHost
 		return core_data_freed || nisml_data_freed || light_clustering_data_freed || counter_download_buffer_freed;
 	}
 
-	template <typename CounterBuffer>
-	unsigned int download_counter(const CounterBuffer& counter)
-	{
-		unsigned int* host_pinned_pointer = m_counter_download_buffer.template get_host_pinned_pointer<0>();
-		GenericSoAHelpers::download_data_into(counter, host_pinned_pointer);
-
-		return host_pinned_pointer[0];
-	}
-
 	std::size_t maximum_size() const
 	{
 		return m_kd_tree_data.maximum_size();

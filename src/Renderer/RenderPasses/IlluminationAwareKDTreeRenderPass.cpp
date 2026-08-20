@@ -356,8 +356,7 @@ void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
-	unsigned int pending_cell_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count);
-	if (pending_cell_count == 0 || kd_tree_device.nisml.nisml_hash_table_capacity == 0u)
+	if (kd_tree_device.nisml.nisml_hash_table_capacity == 0u)
 		return;
 
 	HIPRTRenderData cache_render_data = render_data;
@@ -418,23 +417,17 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 				256, 1, kd_tree_device.core.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
 			// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
 
-			// TODO this download data could be done with a DtoD async copy of the current guiding count into another 1*unsigned int buffer
-			// Number of guiding nodes before the splitting
-			m_cached_current_guiding_node_count =
-				m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
-			if (m_cached_current_guiding_node_count == 0)
-				// Should never happen we should at least have the root node
-				Debug::debugbreak();
-			// TODO same here download async
-			m_cached_current_node_count	  = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
-			void* promotion_launch_args[] = { &kd_tree_device, &m_cached_current_guiding_node_count };
-			// We launch blocks of 1024 threads here, and as many blocks as needed to cover all the guiding nodes that need to be promoted. This is because each
-			// thread block will be in charge of one cell to promote the parent to its 2 new children
-			//
-			// TODO we could be launching only number of blocks = nodes that have been marked for splitting instead of all the guiding nodes
+			// The number of guiding nodes before the splitting is read directly by the GPU promotion kernel.
+			// The GPU kernel reads the active guiding count directly and returns for threads beyond the current count.
+			// Launching at node capacity avoids synchronizing these counters back to the host.
+			void* promotion_launch_args[] = { &kd_tree_device };
 			m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->launch_asynchronous(
-				1024, 1, m_cached_current_guiding_node_count * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
+				1024, 1, kd_tree_device.core.node_capacity * 1024, 1, promotion_launch_args, m_renderer->get_main_stream());
 		}
+
+		m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.download_data_async(&m_cached_current_guiding_node_count,
+																									m_renderer->get_main_stream());
+		m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.download_data_async(&m_cached_current_node_count, m_renderer->get_main_stream());
 	}
 
 	if (is_using_learning_to_cluster(compiler_options))
@@ -448,36 +441,34 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
-		m_cached_current_guiding_node_count =
-			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count);
+		unsigned int maximum_light_clustering_work_count =
+			kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize;
 		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1,
-			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize, 1, learning_to_cluster_launch_args,
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
-		unsigned int light_clustering_count = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);
-		if (light_clustering_count > 0)
-		{
-			m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
-				IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride, 1,
-				learning_to_cluster_launch_args, m_renderer->get_main_stream());
-		}
+		unsigned int maximum_light_clustering_reservoir_proposal_count =
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
+		m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
+			m_renderer->get_main_stream());
 
 		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
 		void* light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
-		unsigned int light_clustering_work_count =
-			m_cached_current_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize;
 		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 	}
 
 	if (is_using_nisml(compiler_options))
@@ -494,9 +485,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		}
 
 		build_nisml(render_data);
-
-		m_nisml_hash_occupied_entry_count =
-			m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_nisml_data.m_hash_occupied_entry_count);
 	}
 }
 

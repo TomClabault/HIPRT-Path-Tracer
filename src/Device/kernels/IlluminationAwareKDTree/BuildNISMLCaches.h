@@ -80,6 +80,8 @@ IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_d
 		kd_tree_device.nisml.nisml_representative_valid == nullptr || kd_tree_device.nisml.nisml_cache_ready == nullptr ||
 		kd_tree_device.nisml.nisml_pending_cell_count == nullptr || kd_tree_device.nisml.nisml_representative_capacity == 0u)
 		return;
+	if (hippt::atomic_load(kd_tree_device.nisml.nisml_pending_cell_count) == 0u)
+		return;
 
 	if (hippt::atomic_load(&kd_tree_device.nisml.nisml_hash_keys[cache_index]) == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX ||
 		hippt::atomic_load(&kd_tree_device.nisml.nisml_hash_entry_states[cache_index]) != ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_READY)

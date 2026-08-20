@@ -16,19 +16,21 @@ inline IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice
 												   int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, unsigned long long int original_guiding_node_count)
+IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int guiding_list_index = blockIdx.x;
-	unsigned int thread_slot		= threadIdx.x;
+	unsigned int guiding_list_index	  = blockIdx.x;
+	unsigned int thread_slot		  = threadIdx.x;
+	unsigned int active_guiding_count = *illumination_aware_kd_tree.core.active_guiding_node_count;
+	if (guiding_list_index >= active_guiding_count)
+		return;
 #else
 	unsigned int guiding_list_index = static_cast<unsigned int>(x);
 	unsigned int thread_slot		= 0;
-#endif
-
 	if (guiding_list_index >= original_guiding_node_count)
 		return;
+#endif
 
 	if (illumination_aware_kd_tree.core.needs_split[guiding_list_index] == 0)
 		return;

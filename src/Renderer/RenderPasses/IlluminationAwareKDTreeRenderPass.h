@@ -177,7 +177,7 @@ private:
 	int m_nodes_buffer_capacity			  = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES;
 	int m_training_sample_buffer_capacity = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
 
-	int m_learning_to_cluster_learning_spp = 128;
+	int m_learning_to_cluster_learning_spp = 4096;
 
 	int m_nisml_representative_capacity			   = 2;
 	int m_nisml_hash_table_size_mb				   = 275;
