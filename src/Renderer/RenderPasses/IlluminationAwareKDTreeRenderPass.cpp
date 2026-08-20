@@ -412,10 +412,18 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		{
 			ensure_all_lookahead_cell_levels(render_data, compiler_options);
 
+			unsigned char* any_cell_needs_split_host_pinned = m_illumination_aware_kd_tree.m_any_cell_needs_split_host_pinned.get_host_pinned_pointer();
+			*any_cell_needs_split_host_pinned				= 0;
+			m_illumination_aware_kd_tree.m_any_cell_needs_split.memset_whole_buffer_async(any_cell_needs_split_host_pinned, 1, m_renderer->get_main_stream());
+
 			void* mark_guiding_cell_launch_args[] = { &kd_tree_device };
 			m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->launch_asynchronous(
 				256, 1, kd_tree_device.core.node_capacity, 1, mark_guiding_cell_launch_args, m_renderer->get_main_stream());
-			// TODO if no cell was marked for splitting, no need to continue this whole loop, we can break
+
+			// The host-pinned flag lets us break out when no cell was marked for splitting.
+			m_illumination_aware_kd_tree.m_any_cell_needs_split.download_data_into(any_cell_needs_split_host_pinned);
+			if (*any_cell_needs_split_host_pinned == 0)
+				break;
 
 			// The number of guiding nodes before the splitting is read directly by the GPU promotion kernel.
 			// The GPU kernel reads the active guiding count directly and returns for threads beyond the current count.

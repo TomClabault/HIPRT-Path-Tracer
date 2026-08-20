@@ -34,6 +34,8 @@ struct IlluminationAwareKDTreeDevice
 	IlluminationAwareKDTreeLearningToClusterDevice learning_to_cluster;
 	IlluminationAwareKDTreeNISMLDevice nisml;
 
+	unsigned char* any_cell_needs_split = nullptr;
+
 	IlluminationAwareKDTreeLearningToClusterTrainingSample* learning_to_cluster_training_samples = nullptr;
 	AtomicType<unsigned int>* learning_to_cluster_training_sample_count							 = nullptr;
 	unsigned int learning_to_cluster_training_sample_capacity									 = 0;

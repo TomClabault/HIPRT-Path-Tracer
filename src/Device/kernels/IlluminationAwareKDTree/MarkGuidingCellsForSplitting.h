@@ -99,6 +99,8 @@ IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting(IlluminationAwareKDTr
 	}
 
 	kd_tree_device.core.needs_split[guiding_list_index] = needs_split;
+	if (needs_split)
+		*kd_tree_device.any_cell_needs_split = 1;
 }
 
 #endif

@@ -49,6 +49,8 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, light_clustering_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, light_clustering_capacity);
 
+		GenericSoAHelpers::resize<DataContainer>(m_any_cell_needs_split, 1);
+		GenericSoAHelpers::resize_host_pinned_mem(m_any_cell_needs_split_host_pinned, 1);
 		m_counter_download_buffer.resize_host_pinned_mem(1);
 	}
 
@@ -78,11 +80,16 @@ struct IlluminationAwareKDTreeDataHost
 		m_reservoir_proposals						= DataContainer<GenericAtomicType<unsigned long long int, DataContainer>>();
 		m_representative_shading_contexts			= DataContainer<IlluminationAwareKDTreeSGShadingContext>();
 		m_representative_shading_context_states		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		bool any_cell_needs_split_freed				= m_any_cell_needs_split.size() > 0;
+		m_any_cell_needs_split						= DataContainer<unsigned char>();
+		bool any_cell_needs_split_host_pinned_freed = m_any_cell_needs_split_host_pinned.size() > 0;
+		m_any_cell_needs_split_host_pinned			= DataContainer<unsigned char>();
 		bool counter_download_buffer_freed			= m_counter_download_buffer.maximum_size() > 0;
 		if (counter_download_buffer_freed)
 			m_counter_download_buffer.free();
 
-		return core_data_freed || nisml_data_freed || light_clustering_data_freed || counter_download_buffer_freed;
+		return core_data_freed || nisml_data_freed || light_clustering_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed ||
+			   counter_download_buffer_freed;
 	}
 
 	std::size_t maximum_size() const
@@ -95,6 +102,7 @@ struct IlluminationAwareKDTreeDataHost
 		IlluminationAwareKDTreeDevice kd_tree_device = m_kd_tree_data.to_device();
 
 		m_nisml_data.to_device(kd_tree_device);
+		kd_tree_device.any_cell_needs_split = GenericSoAHelpers::get_buffer_data_ptr(m_any_cell_needs_split);
 
 		kd_tree_device.core.user_settings									= render_data.kd_tree_device.core.user_settings;
 		kd_tree_device.learning_to_cluster.user_settings					= render_data.kd_tree_device.learning_to_cluster.user_settings;
@@ -149,6 +157,8 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<IlluminationAwareKDTreeSGShadingContext> m_representative_shading_contexts;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_shading_context_states;
 
+	DataContainer<unsigned char> m_any_cell_needs_split;
+	DataContainer<unsigned char> m_any_cell_needs_split_host_pinned;
 	GenericSoA<DataContainer, unsigned int> m_counter_download_buffer;
 };
 
