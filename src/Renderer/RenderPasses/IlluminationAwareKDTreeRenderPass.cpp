@@ -278,7 +278,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -297,17 +297,17 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	}
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
-	unsigned int active_node_count				 = m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count);
+	unsigned int node_reset_thread_count		 = kd_tree_device.core.node_capacity;
 
 	void* launch_args[] = { &kd_tree_device };
 	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()))
 	{
-		unsigned int light_clustering_count		= m_illumination_aware_kd_tree.download_counter(m_illumination_aware_kd_tree.m_light_clustering_count);
-		unsigned int reservoir_proposal_count	= light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride;
-		unsigned int reset_count				= std::max(std::max(active_node_count, light_clustering_count), reservoir_proposal_count);
+		unsigned int reservoir_proposal_reset_thread_count =
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
+		unsigned int reset_thread_count			= std::max(node_reset_thread_count, reservoir_proposal_reset_thread_count);
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			1024, 1, reset_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			1024, 1, reset_thread_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		if (m_renderer->get_render_data().render_settings.sample_number == 0)
 		{
@@ -332,8 +332,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 		return render_data_invalidated;
 	}
 
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(1024, 1, active_node_count, 1, launch_args,
-																												m_renderer->get_main_stream());
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(1024, 1, node_reset_thread_count, 1,
+																												launch_args, m_renderer->get_main_stream());
 
 	return render_data_invalidated;
 }
