@@ -1251,7 +1251,7 @@ void ReGIRRenderPass::compute_render_times()
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 	for (auto& name_to_kernel : get_all_kernels())
 	{
-		float execution_time = m_kernels[name_to_kernel.first]->compute_execution_time();
+		float execution_time = m_kernels[name_to_kernel.first]->compute_execution_time_and_reset_execution_count();
 
 		// Scaling the execution time based on the frame skip settings because if skipping 1 frame
 		// for example, the grid fill and spatial reuse kernels essentially run every 2 frames so

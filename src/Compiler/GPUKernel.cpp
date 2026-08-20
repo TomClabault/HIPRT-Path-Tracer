@@ -17,11 +17,7 @@ extern ImGuiLogger g_imgui_logger;
 const std::vector<std::string> GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY,
 																					OROCHI_INCLUDES_DIRECTORY, "./" };
 
-GPUKernel::GPUKernel()
-{
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
-}
+GPUKernel::GPUKernel() = default;
 
 GPUKernel::GPUKernel(const std::string& kernel_name) : GPUKernel()
 {
@@ -210,28 +206,67 @@ void GPUKernel::launch_3D_block_size(
 
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
 											 stream, launch_args, 0));
-
-	m_launched_at_least_once = true;
 }
 
 void GPUKernel::launch_asynchronous_3D_block_count(
 	int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream)
 {
+	if (m_measure_execution_time)
+		record_execution_start(stream);
+
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
 											 stream, launch_args, 0));
-	m_launched_at_least_once = true;
+
+	if (m_measure_execution_time)
+		record_execution_stop(stream);
 }
 
 void GPUKernel::launch_synchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, float* execution_time_out)
 {
-	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, 0));
+	if (!m_measure_execution_time)
+	{
+		launch(block_size_x, block_size_y, nb_threads_x, nb_threads_y, launch_args, 0);
+
+		if (execution_time_out != nullptr)
+			*execution_time_out = 0.0f;
+
+		return;
+	}
+
+	record_execution_start(0);
 
 	launch(block_size_x, block_size_y, nb_threads_x, nb_threads_y, launch_args, 0);
 
-	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, 0));
-	OROCHI_CHECK_ERROR(oroEventSynchronize(m_execution_stop_event));
+	record_execution_stop(0);
+
+	std::size_t execution_event_index = m_recorded_execution_event_count - 1;
+	OROCHI_CHECK_ERROR(oroEventSynchronize(m_execution_stop_events[execution_event_index]));
 	if (execution_time_out != nullptr)
-		OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
+		OROCHI_CHECK_ERROR(
+			oroEventElapsedTime(execution_time_out, m_execution_start_events[execution_event_index], m_execution_stop_events[execution_event_index]));
+}
+
+void GPUKernel::record_execution_start(oroStream_t stream)
+{
+	if (m_recorded_execution_event_count == m_execution_start_events.size())
+	{
+		oroEvent_t start_event = nullptr;
+		oroEvent_t stop_event  = nullptr;
+
+		OROCHI_CHECK_ERROR(oroEventCreate(&start_event));
+		OROCHI_CHECK_ERROR(oroEventCreate(&stop_event));
+
+		m_execution_start_events.push_back(start_event);
+		m_execution_stop_events.push_back(stop_event);
+	}
+
+	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_events[m_recorded_execution_event_count], stream));
+}
+
+void GPUKernel::record_execution_stop(oroStream_t stream)
+{
+	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_events[m_recorded_execution_event_count], stream));
+	m_recorded_execution_event_count++;
 }
 
 void GPUKernel::parse_option_macros_used()
@@ -245,17 +280,29 @@ bool GPUKernel::uses_macro(const std::string& name) const
 	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
-float GPUKernel::compute_execution_time()
+float GPUKernel::compute_execution_time_and_reset_execution_count()
 {
-	if (!m_launched_at_least_once || !m_measure_execution_time)
+	if (!m_measure_execution_time)
+	{
+		m_recorded_execution_event_count = 0;
+		m_last_execution_time			 = 0.0f;
+
 		return 0.0f;
+	}
 
-	float out;
-	OROCHI_CHECK_ERROR(oroEventElapsedTime(&out, m_execution_start_event, m_execution_stop_event));
+	float total_execution_time = 0.0f;
+	for (std::size_t event_index = 0; event_index < m_recorded_execution_event_count; event_index++)
+	{
+		float execution_time = 0.0f;
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&execution_time, m_execution_start_events[event_index], m_execution_stop_events[event_index]));
 
-	m_last_execution_time = out;
+		total_execution_time += execution_time;
+	}
 
-	return out;
+	m_last_execution_time			 = total_execution_time;
+	m_recorded_execution_event_count = 0;
+
+	return total_execution_time;
 }
 
 float GPUKernel::get_last_execution_time() const
@@ -289,6 +336,12 @@ bool GPUKernel::is_measuring_execution_time() const
 void GPUKernel::set_measure_execution_time(bool measure_execution_time)
 {
 	m_measure_execution_time = measure_execution_time;
+
+	if (!measure_execution_time)
+	{
+		m_recorded_execution_event_count = 0;
+		m_last_execution_time			 = 0.0f;
+	}
 }
 
 void GPUKernel::launch_asynchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, oroStream_t stream)
@@ -300,10 +353,10 @@ void GPUKernel::launch_asynchronous_3D(
 	int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
 {
 	if (m_measure_execution_time)
-		OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
+		record_execution_start(stream);
 
 	launch_3D_block_size(block_size_x, block_size_y, block_size_z, nb_threads_x, nb_threads_y, nb_threads_z, launch_args, stream);
 
 	if (m_measure_execution_time)
-		OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
+		record_execution_stop(stream);
 }

@@ -275,7 +275,7 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::reduce(
 template <typename InputType, typename TransformedType, typename OutputType>
 float ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_last_execution_time()
 {
-	m_scan_kernel.compute_execution_time();
+	m_scan_kernel.compute_execution_time_and_reset_execution_count();
 
 	return m_scan_kernel.get_last_execution_time();
 }
@@ -425,8 +425,8 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 {
 	std::mt19937 engine_uint(42);
 	auto rng = std::bind(std::conditional_t<std::is_integral_v<InputDataType>, std::uniform_int_distribution<unsigned int>,
-											std::uniform_real_distribution<float>>(1, 5),
-						 engine_uint);
+																	std::uniform_real_distribution<float>>(1, 5),
+											 engine_uint);
 
 	// Full tests with random sizes
 	oroEvent_t scan_start;
@@ -550,8 +550,8 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 										("ParallelSegmentedReduction unit test failed for test %d at index %lld (size=%u): got " + formatter + ", expected " +
 										 formatter)
-																.c_str(),
-										i, j, test_size, output[j], expected_output[j]);
+																																										.c_str(),
+																																																								 i, j, test_size, output[j], expected_output[j]);
 
 				Debug::debugbreak();
 

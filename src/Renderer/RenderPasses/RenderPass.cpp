@@ -56,7 +56,7 @@ void RenderPass::compute_render_times()
 	// render pass times of the renderer
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 	for (auto& name_to_kernel : get_all_kernels())
-		render_pass_times[name_to_kernel.first] = m_kernels[name_to_kernel.first]->compute_execution_time();
+		render_pass_times[name_to_kernel.first] = m_kernels[name_to_kernel.first]->compute_execution_time_and_reset_execution_count();
 }
 
 void RenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)

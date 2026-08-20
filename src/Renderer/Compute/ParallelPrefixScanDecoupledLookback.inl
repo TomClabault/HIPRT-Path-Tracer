@@ -202,8 +202,8 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 template <typename InputType, typename TransformedType, typename OutputType>
 float ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_last_execution_time()
 {
-	m_block_descriptor_init_kernel.compute_execution_time();
-	m_scan_kernel.compute_execution_time();
+	m_block_descriptor_init_kernel.compute_execution_time_and_reset_execution_count();
+	m_scan_kernel.compute_execution_time_and_reset_execution_count();
 
 	return m_block_descriptor_init_kernel.get_last_execution_time() + m_scan_kernel.get_last_execution_time();
 }

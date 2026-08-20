@@ -121,7 +121,6 @@ public:
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;
-	virtual void compute_render_times() override;
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	int& get_split_iterations_per_SPP();
@@ -152,17 +151,6 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
-	struct KernelTimingEvents
-	{
-		std::vector<oroEvent_t> start_events;
-		std::vector<oroEvent_t> stop_events;
-		std::size_t recorded_event_count = 0;
-	};
-
-	void record_kernel_timing_start(KernelTimingEvents& timing_events);
-	void record_kernel_timing_stop(KernelTimingEvents& timing_events);
-	void accumulate_kernel_times(const std::string& kernel_id, KernelTimingEvents& timing_events);
-
 	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
 	bool is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const;
 	void build_nisml(HIPRTRenderData& render_data);
@@ -207,13 +195,6 @@ private:
 
 	bool m_mark_guiding_cells_debug_check_done	  = false;
 	bool m_promote_guiding_cells_debug_check_done = false;
-
-	// Events for timing every execution of kernels that are launched multiple times per frame.
-	KernelTimingEvents m_expand_one_lookahead_level_timing_events;
-	KernelTimingEvents m_replay_training_samples_timing_events;
-	KernelTimingEvents m_initialize_created_node_history_timing_events;
-	KernelTimingEvents m_mark_guiding_cells_for_splitting_timing_events;
-	KernelTimingEvents m_promote_guiding_cells_timing_events;
 };
 
 #endif

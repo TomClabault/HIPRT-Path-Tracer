@@ -62,14 +62,8 @@ public:
 	 * @param nb_threads_y The total number of elements to launch on the Y axis. Should not be pre-divided by block_size_y or anything
 	 * @param nb_threads_z The total number of elements to launch on the Z axis. Should not be pre-divided by block_size_z or anything
 	 */
-	void launch_asynchronous_3D(int block_size_x,
-								int block_size_y,
-								int block_size_z,
-								int nb_threads_x,
-								int nb_threads_y,
-								int nb_threads_z,
-								void** launch_args,
-								oroStream_t stream);
+	void launch_asynchronous_3D(
+		int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream);
 
 	/**
 	 * @param block_count_x The number of blocks to launch on the X axis of the grid
@@ -84,14 +78,8 @@ public:
 	 * parameters
 	 * @stream The stream to launch the kernel on. Can be 0 for the default stream
 	 */
-	void launch_asynchronous_3D_block_count(int block_count_x,
-												int block_count_y,
-												int block_count_z,
-												int block_size_x,
-												int block_size_y,
-												int block_size_z,
-												void** launch_args,
-												oroStream_t stream);
+	void launch_asynchronous_3D_block_count(
+		int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -156,9 +144,9 @@ public:
 	void synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded = {});
 
 	/**
-	 * Returns the time taken for the last execution of this kernel in milliseconds
+	 * Returns the total time taken by all executions of this kernel since the previous call in milliseconds.
 	 */
-	float compute_execution_time();
+	float compute_execution_time_and_reset_execution_count();
 	float get_last_execution_time() const;
 
 	/**
@@ -196,6 +184,8 @@ private:
 
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
+	void record_execution_start(oroStream_t stream);
+	void record_execution_stop(oroStream_t stream);
 
 	// Custom name for the kernel
 	std::string m_name = "";
@@ -204,16 +194,13 @@ private:
 	// Name of the __global__ function entry point of the kernel
 	std::string m_kernel_function_name = "";
 
-	// Whether or not the kernel has been launched at least once
-	// This is used to avoid CUDA/HIP errors when trying to read
-	// the stop/start event elapsed time whereas the kernel has never
-	// been launched
-	bool m_launched_at_least_once = false;
-	// GPU events to time the execution time
-	oroEvent_t m_execution_start_event = nullptr;
-	oroEvent_t m_execution_stop_event  = nullptr;
-	float m_last_execution_time		   = 0.0f;
-	// If true, the execution time of this kernel will be measured with CUDA/HIP events and returned by compute_execution_time() and get_last_execution_time().
+	// GPU event pairs used to time every execution of this kernel during a frame.
+	std::vector<oroEvent_t> m_execution_start_events;
+	std::vector<oroEvent_t> m_execution_stop_events;
+	std::size_t m_recorded_execution_event_count = 0;
+	float m_last_execution_time					 = 0.0f;
+	// If true, the execution time of this kernel will be measured with CUDA/HIP events and returned by compute_execution_time_and_reset_execution_count() and
+	// get_last_execution_time().
 	// If false, the execution time returned by these functions will be 0.0f.
 	//
 	// Launching CUDA events can have non negligible overhead, so for some very fast kernels, it can be better to disable the execution time measurement to

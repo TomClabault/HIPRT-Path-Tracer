@@ -246,7 +246,7 @@ public:
 	 *
 	 * For example, for the initial candidates pass of ReSTIR DI:
 	 * ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] =
-	 * m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].compute_execution_time();
+	 * m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].compute_execution_time_and_reset_execution_count();
 	 *
 	 * The key used in the map can be arbitrary but should be unique. The practice used in this
 	 * codebase is to define the keys in the render pass itself as "static const std::string" and
