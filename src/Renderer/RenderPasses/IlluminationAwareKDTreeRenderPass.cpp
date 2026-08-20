@@ -278,7 +278,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -439,7 +439,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_learning_to_cluster(compiler_options))
 	{
-		bool learning_to_cluster_learning_budget_reached = render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp;
+		bool learning_to_cluster_learning_budget_reached =
+			render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp && m_learning_to_cluster_learning_spp > 0;
 		if (learning_to_cluster_learning_budget_reached)
 			return;
 
