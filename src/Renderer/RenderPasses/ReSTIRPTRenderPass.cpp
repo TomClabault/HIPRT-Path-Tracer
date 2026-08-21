@@ -61,6 +61,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: MegaKernelRenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID);
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
@@ -386,7 +388,8 @@ void ReSTIRPTRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 		unsigned char* per_pixel_spatial_reuse_radius =
 			m_directional_spatial_reuse_data.m_spatial_reuse_data
 				.get_buffer_data_ptr<ReSTIRDirectionalSpatialReuseDataHostBuffers::RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
-		void* launch_args[] = { &render_data, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
+		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, render_data);
+		void* launch_args[] = { &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(
 			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
@@ -401,10 +404,10 @@ void ReSTIRPTRenderPass::configure_initial_candidates_pass(HIPRTRenderData& rend
 
 void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &render_data };
+	upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, render_data);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 		m_renderer->get_main_stream());
 }
 
@@ -418,8 +421,9 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
-	unsigned int num_cells			   = spmis_settings.pixel_hashes_count;
-	void* reset_counters_launch_args[] = { &render_data, &num_cells };
+	unsigned int num_cells = spmis_settings.pixel_hashes_count;
+	upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, render_data);
+	void* reset_counters_launch_args[] = { &num_cells };
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
 																								   reset_counters_launch_args, m_renderer->get_main_stream());
 
@@ -539,12 +543,13 @@ void ReSTIRPTRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_d
 
 void ReSTIRPTRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &render_data };
-
 	if (render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+	{
+		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID, render_data);
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 			m_renderer->get_main_stream());
+	}
 }
 
 void ReSTIRPTRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index)
@@ -588,8 +593,6 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 	if (!render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
 		return;
 
-	void* launch_args[] = { &render_data };
-
 	for (int pass_index = 0; pass_index < render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; pass_index++)
 	{
 		configure_spatial_reuse_pass(render_data, pass_index);
@@ -598,15 +601,19 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 		{
 			launch_spmis_create_reuse_cells_pass(render_data, compiler_options, render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
+			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, render_data);
 
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->launch_asynchronous(
-				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 				m_renderer->get_main_stream());
 		}
 		else
+		{
+			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, render_data);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
-				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 				m_renderer->get_main_stream());
+		}
 	}
 }
 
@@ -626,11 +633,11 @@ void ReSTIRPTRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
 
 void ReSTIRPTRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &render_data };
+	upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID, render_data);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight,
 																					m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-																					launch_args, m_renderer->get_main_stream());
+																					nullptr, m_renderer->get_main_stream());
 }
 
 bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -670,11 +677,25 @@ void ReSTIRPTRenderPass::post_sample_update_async(HIPRTRenderData& render_data, 
 	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
-		void* launch_args[] = { &render_data };
+		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, render_data);
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->launch_asynchronous(
-			64, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, launch_args,
+			64, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, nullptr,
 			m_renderer->get_main_stream());
 	}
+}
+
+void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+
+	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID
+											  ? "RESTIR_DIRECTIONAL_REUSE_RENDER_DATA"
+										  : kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID ||
+												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID
+											  ? "RESTIR_SPMIS_RENDER_DATA"
+											  : "RESTIR_PT_RENDER_DATA";
+	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData), m_renderer->get_main_stream());
 }
 
 void ReSTIRPTRenderPass::update_render_data()

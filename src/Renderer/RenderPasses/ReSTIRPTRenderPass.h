@@ -7,6 +7,7 @@
 #define RESTIR_PT_RENDER_PASS_H
 
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
@@ -63,6 +64,7 @@ public:
 	void launch_spatial_reuse_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	void configure_shading_pass(HIPRTRenderData& render_data);
 	void launch_shading_pass(HIPRTRenderData& render_data);
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -87,6 +89,7 @@ private:
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
 
 	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	ReSTIRSPMISDataHost<OrochiBuffer> m_spmis_data;
 
 	ReSTIRPTReservoir* m_last_temporal_output_reservoirs = nullptr;

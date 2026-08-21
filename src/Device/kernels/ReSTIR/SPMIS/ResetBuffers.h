@@ -10,14 +10,21 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char RESTIR_SPMIS_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data)
+ReSTIR_SPMIS_ResetBuffers()
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 #endif
 {
 #ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_SPMIS_RENDER_DATA);
+
 	const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
