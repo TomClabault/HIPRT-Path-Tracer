@@ -68,8 +68,12 @@ void RenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer>
 	// Add the render pass times computed by 'compute_render_times()' (which was called before
 	// 'update_perf_metrics') into the performance metrics computer
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
+	float samples_per_frame									  = static_cast<float>(m_renderer->get_render_data().render_settings.samples_per_frame);
+	if (samples_per_frame <= 0.0f)
+		samples_per_frame = 1.0f;
+
 	for (auto& name_to_kernel : get_all_kernels())
-		perf_metrics->add_value(name_to_kernel.first, render_pass_times[name_to_kernel.first]);
+		perf_metrics->add_value(name_to_kernel.first, render_pass_times[name_to_kernel.first] / samples_per_frame);
 }
 
 float RenderPass::get_full_frame_time()

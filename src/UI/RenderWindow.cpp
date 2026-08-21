@@ -33,10 +33,13 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // IMMEDIATE TODOS:
-//	- No LTC synchronous counter download
+//	- All render passes should use the new automatic in-GPUKernel timings aggregation, no more override compute_pass_times() shenanigans
+//	- Still something a bit fishy with the perf of accumulate batch training samples when going from 1 samples per frame to 4, timings go up quite a bit and
+//overall FPS overlay goes down, not expected
 //	- LTC stop training after N seconds
 //	- Select ATS + splitting and switch to LTC = crash
 //	- Constant memory for all kernels
+//	- Start investigating grid artifacts LTC
 //
 //
 // Ideas for neural importance sampling many lights:
