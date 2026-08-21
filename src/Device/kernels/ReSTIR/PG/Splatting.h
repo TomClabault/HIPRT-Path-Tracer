@@ -82,12 +82,19 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 
 // Dispatched as 1D render_resolution.x * render_resolution.y threads to facilitate mapping thread indices to proper warps for coalescing
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Splatting(HIPRTRenderData render_data)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Splatting()
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_data, uint32_t index)
 #endif
 {
 #ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
+
 	const uint32_t index = threadIdx.x + blockIdx.x * blockDim.x;
 #endif
 

@@ -6,6 +6,7 @@
 #ifndef RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H
 #define RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
@@ -46,6 +47,8 @@ public:
 	float get_hash_grid_load_factor() const;
 
 private:
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
+
 	ReSTIRPGSplattingSampleSoAHost<OrochiBuffer> m_splatting_samples_soa_buffer;
 
 	ReSTIRPGDistributionSoAHost<OrochiBuffer> m_hash_grid_distributions_soa_buffer;
@@ -56,6 +59,7 @@ private:
 
 	// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
 	ReSTIRPGSufficientStatisticsSoAHost<OrochiBuffer> m_hash_grid_distributions_sufficient_statistics_soa_buffer;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
 #endif

@@ -24,6 +24,8 @@ ReSTIRPGRenderPass::ReSTIRPGRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 ReSTIRPGRenderPass::ReSTIRPGRenderPass(const std::string& name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(name, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL);
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/ReSTIR/PG/Splatting.h");
@@ -183,14 +185,15 @@ bool ReSTIRPGRenderPass::pre_frame_render_update(float delta_time)
 			if (updated)
 				update_render_data();
 
-			void* launch_args[] = { &render_data };
+			upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID, render_data);
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_HASH_GRID]->launch_asynchronous(
-				256, 1, m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
+				256, 1, m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells(), 1, nullptr, m_renderer->get_main_stream());
 
+			upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL, render_data);
 			m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_DISTRIBUTIONS_KERNEL]->launch_asynchronous(
 				256, 1,
 				m_hash_grid_distributions_soa_buffer.get_last_resize_number_of_cells() * m_hash_grid_distributions_soa_buffer.get_last_resize_component_count(),
-				1, launch_args, m_renderer->get_main_stream());
+				1, nullptr, m_renderer->get_main_stream());
 
 			m_grid_cell_alive_buffer.memset_whole_buffer(0);
 		}
@@ -204,23 +207,31 @@ bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	void* launch_args[] = { &render_data };
+	upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL, render_data);
 
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL]->launch_asynchronous(
-		512, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, launch_args,
-		m_renderer->get_main_stream());
+		512, 1, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y, 1, nullptr, m_renderer->get_main_stream());
 
-	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, 1,
-																				 render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells,
-																				 1, launch_args, m_renderer->get_main_stream());
+	upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL, render_data);
+	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_FITTING_KERNEL]->launch_asynchronous(
+		KernelBlockWidthHeight, 1, render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells, 1, nullptr, m_renderer->get_main_stream());
 
+	upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL, render_data);
 	m_kernels[ReSTIRPGRenderPass::RESTIR_PG_RESET_SUFFICIENT_STATISTICS_KERNEL]->launch_asynchronous(
 		256, 1,
 		render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells *
 			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT),
-		1, launch_args, m_renderer->get_main_stream());
+		1, nullptr, m_renderer->get_main_stream());
 
 	return true;
+}
+
+void ReSTIRPGRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+
+	m_kernels[kernel_id]->upload_to_module_global("RESTIR_PG_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), m_renderer->get_main_stream());
 }
 
 void ReSTIRPGRenderPass::update_render_data()
