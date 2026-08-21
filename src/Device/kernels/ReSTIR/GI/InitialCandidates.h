@@ -50,14 +50,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 		// Pixel isn't active because of adaptive sampling or render resolution scaling
 		return;
 
+	int bounce_count = render_data.render_settings.nb_bounces;
 	if (render_data.render_settings.do_render_low_resolution())
 		// Reducing the number of bounces to 3 if rendering at low resolution
 		// for better interactivity
-		render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
+		bounce_count = hippt::min(3, bounce_count);
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	// Resetting splatting samples
-	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
+	for (int bounce = 0; bounce < bounce_count; bounce++)
 		render_data.render_settings.restir_pg_settings.invalidate_splatting_sample(render_data.render_settings.render_resolution, x, y, bounce);
 #endif
 
@@ -108,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 	// + 1 to nb_bounces here because we want "0" bounces to still act as one
 	// hit and to return some color
 	NEEDeferredMISContext nee_deferred_MIS_context;
-	for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
+	for (int& bounce = ray_payload.bounce; bounce < bounce_count + 1; bounce++)
 	{
 		if (ray_payload.next_ray_state != RayState::MISSED)
 		{
@@ -167,7 +168,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 				// Not the last bounce
-				if (bounce != render_data.render_settings.nb_bounces)
+				if (bounce != bounce_count)
 				{
 					ReSTIRPGSplattingSample sample;
 					sample.position			  = closest_hit_info.inter_point;
