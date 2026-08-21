@@ -78,7 +78,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	else
 	{
 		unsigned int random_value = pcg_hash(sample_index ^ pcg_hash(clustering_index) ^ pcg_hash(cluster_data.iteration));
-		unsigned int random_slot  = uniform_random_index(random_value, stream_index + 1u);
+		unsigned int random_slot  = Xorshift32Generator(random_value).random_index(stream_index + 1u);
 		if (random_slot < iteration_budget)
 		{
 			target_slot			 = random_slot;
@@ -91,6 +91,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 		unsigned int proposal_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride + target_slot;
 		unsigned long long int proposal =
 			((static_cast<unsigned long long int>(stream_index) + 1ull) << 32) | static_cast<unsigned long long int>(sample_index);
+
 		hippt::atomic_max(kd_tree.learning_to_cluster.reservoir_proposals + proposal_offset, proposal);
 	}
 
@@ -103,6 +104,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 		kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index] = sample.shading_context;
 
 		__threadfence();
+
 		hippt::atomic_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY);
 	}
 }

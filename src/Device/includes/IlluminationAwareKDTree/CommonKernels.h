@@ -6,8 +6,8 @@
 #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_COMMON_KERNELS_H
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_COMMON_KERNELS_H
 
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
 															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
@@ -16,25 +16,6 @@ HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationA
 	float multiplier = hippt::max(growth, 2.0f);
 
 	return static_cast<unsigned int>(ceil(multiplier * static_cast<float>(settings.initial_sampling_budget_n0)));
-}
-
-HIPRT_DEVICE unsigned int uniform_random_index(unsigned int random_value, unsigned int exclusive_upper_bound)
-{
-	if (exclusive_upper_bound <= 1u)
-		return 0u;
-
-	unsigned int rejection_threshold = -exclusive_upper_bound % exclusive_upper_bound;
-
-	while (true)
-	{
-		unsigned long long int product = static_cast<unsigned long long int>(random_value) * exclusive_upper_bound;
-		unsigned int low_bits		   = static_cast<unsigned int>(product);
-
-		if (low_bits >= rejection_threshold)
-			return static_cast<unsigned int>(product >> 32);
-
-		random_value = pcg_hash(random_value);
-	}
 }
 
 HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
