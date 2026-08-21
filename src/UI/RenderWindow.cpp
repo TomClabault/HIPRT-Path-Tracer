@@ -33,7 +33,6 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // IMMEDIATE TODOS:
-//	- Select ATS + splitting and switch to LTC = crash
 //	- Constant memory for all kernels
 //	- Start investigating grid artifacts LTC
 //

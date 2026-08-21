@@ -18,6 +18,7 @@ FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer, std::shared_
 	: RenderPass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME, renderer, options)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + FillGBufferRenderPass::FILL_GBUFFER_KERNEL);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
@@ -91,10 +92,14 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 
 bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	void* launch_args[] = { &render_data };
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->upload_to_module_global("FILL_GBUFFER_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																				   m_renderer->get_main_stream());
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
-																			   m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+																			   m_render_resolution.y, nullptr, m_renderer->get_main_stream());
 
 	return true;
 }

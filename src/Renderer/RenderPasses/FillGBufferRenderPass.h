@@ -6,6 +6,7 @@
 #ifndef CAMERA_RAYS_RENDER_PASS_H
 #define CAMERA_RAYS_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
@@ -63,6 +64,8 @@ private:
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	std::shared_ptr<GPUKernel> m_ray_volume_state_byte_size_kernel = nullptr;
 	size_t m_ray_volume_state_byte_size							   = sizeof(RayVolumeState);
+
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
 #endif
