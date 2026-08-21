@@ -66,8 +66,6 @@ public:
 
 	virtual void reset(bool reset_by_camera_movement) override;
 
-	virtual void compute_render_times() override;
-
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 	void request_temporal_bufffers_clear();
 
@@ -103,11 +101,6 @@ private:
 	// If true, the temporal buffers are going to be reset by the temporal pass
 	bool m_temporal_buffer_clear_requested = false;
 	bool odd_frame						   = false;
-
-	// Events for timing the cumulated render time of all the spatial reuses passes
-	bool m_spatial_reuse_events_recorded  = false;
-	oroEvent_t m_spatial_reuse_time_start = nullptr;
-	oroEvent_t m_spatial_reuse_time_stop  = nullptr;
 };
 
 #endif

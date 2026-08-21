@@ -72,7 +72,6 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
-	virtual void compute_render_times() override;
 
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 	void request_temporal_bufffers_clear();
@@ -83,15 +82,6 @@ public:
 	float get_VRAM_usage() const;
 
 private:
-	// Events for timing the time taken by spatial reuse
-	bool m_spatial_reuse_events_recorded = false;
-	oroEvent_t m_spatial_reuse_time_start;
-	oroEvent_t m_spatial_reuse_time_stop;
-
-	bool m_spmis_sorting_events_recorded = false;
-	oroEvent_t m_spmis_sorting_time_start;
-	oroEvent_t m_spmis_sorting_time_stop;
-
 	OrochiBuffer<ReSTIRPTReservoir> m_initial_candidates_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;

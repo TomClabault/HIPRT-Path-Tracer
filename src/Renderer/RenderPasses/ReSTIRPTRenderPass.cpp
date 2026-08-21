@@ -61,11 +61,6 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: MegaKernelRenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
 {
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_start));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_stop));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_spmis_sorting_time_start));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_spmis_sorting_time_stop));
-
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID);
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
@@ -421,8 +416,6 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) != RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 		return;
 
-	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_start, m_renderer->get_main_stream()));
-
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 	unsigned int num_cells			   = spmis_settings.pixel_hashes_count;
@@ -500,9 +493,6 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
 			1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
 	}
-
-	OROCHI_CHECK_ERROR(oroEventRecord(m_spmis_sorting_time_stop, m_renderer->get_main_stream()));
-	m_spmis_sorting_events_recorded = true;
 }
 
 void ReSTIRPTRenderPass::resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count)
@@ -600,9 +590,6 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 
 	void* launch_args[] = { &render_data };
 
-	// Emitting an event for timing all the spatial reuse passes combined
-	OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_start, m_renderer->get_main_stream()));
-
 	for (int pass_index = 0; pass_index < render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; pass_index++)
 	{
 		configure_spatial_reuse_pass(render_data, pass_index);
@@ -621,10 +608,6 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
 				m_renderer->get_main_stream());
 	}
-
-	// Emitting the stop event
-	OROCHI_CHECK_ERROR(oroEventRecord(m_spatial_reuse_time_stop, m_renderer->get_main_stream()));
-	m_spatial_reuse_events_recorded = true;
 }
 
 void ReSTIRPTRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
@@ -655,9 +638,7 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	// Resetting the flag here just to know that we need not to read the spatial reuse
-	// pass oroEvents (if that flag isn't set to true before)
-	m_spatial_reuse_events_recorded = false;
+	// GPUKernel records every kernel launch automatically and accumulates its execution time for the frame.
 
 	compute_optimal_spatial_reuse_radii(render_data);
 
@@ -747,33 +728,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTRenderPass::get_tracin
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
-}
-
-void ReSTIRPTRenderPass::compute_render_times()
-{
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	if (!is_render_pass_used(*m_compiler_options))
-		return;
-
-	RenderPass::compute_render_times();
-
-	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
-	ReSTIRPTSettings& restir_pt_settings					 = render_data.render_settings.restir_pt_settings;
-
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
-	{
-		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start,
-											   m_spatial_reuse_time_stop));
-	}
-
-	bool using_spmis = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-						   RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-					   m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-						   RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes >= 1 && m_spmis_sorting_events_recorded && using_spmis)
-		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID], m_spmis_sorting_time_start,
-											   m_spmis_sorting_time_stop));
 }
 
 bool ReSTIRPTRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
