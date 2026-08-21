@@ -7,6 +7,7 @@
 #define RENDERER_SSBN_PERMUTATION_RENDER_PASS_H
 
 #include "Compiler/GPUKernel.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
@@ -54,9 +55,12 @@ public:
 	int& get_refresh_seeds_sample_interval();
 
 private:
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
+
 	bool m_using_ssbn_permutation = true;
 	bool m_do_retargeting		  = false;
 
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<unsigned int> m_sorted_seeds_buffer;
 	OrochiBuffer<unsigned char> m_blue_noise_dither_texture_buffer;
 	OrochiBuffer<int> m_blue_noise_retargeting_texture_buffer;

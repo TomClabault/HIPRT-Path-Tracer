@@ -10,14 +10,20 @@
 #include "Device/includes/Random.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) SSBNPermutationRefreshSeedsPass(HIPRTRenderData render_data)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char SSBN_PERMUTATION_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) SSBNPermutationRefreshSeedsPass()
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline SSBNPermutationRefreshSeedsPass(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(SSBN_PERMUTATION_RENDER_DATA);
+	const uint32_t x			 = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t y			 = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;

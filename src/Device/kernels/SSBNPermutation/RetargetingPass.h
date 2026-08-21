@@ -11,14 +11,31 @@
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char SSBN_PERMUTATION_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
-							   const int* __restrict__ blue_noise_retargeting_texture_buffer,
+SSBNPermutationRetargetingPass(const int* __restrict__ blue_noise_retargeting_texture_buffer,
 							   unsigned int blue_noise_texture_width,
 							   unsigned int blue_noise_texture_height,
 							   const unsigned int* __restrict__ sorted_seeds_buffer,
 							   unsigned int* __restrict__ out_retargeted_seeds_buffer)
+#else
+GLOBAL_KERNEL_SIGNATURE(void)
+inline SSBNPermutationRetargetingPass(HIPRTRenderData render_data,
+									  const int* __restrict__ blue_noise_retargeting_texture_buffer,
+									  unsigned int blue_noise_texture_width,
+									  unsigned int blue_noise_texture_height,
+									  const unsigned int* __restrict__ sorted_seeds_buffer,
+									  unsigned int* __restrict__ out_retargeted_seeds_buffer)
+#endif
 {
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(SSBN_PERMUTATION_RENDER_DATA);
+#endif
 	int resolution_x = render_data.render_settings.render_resolution.x;
 	int resolution_y = render_data.render_settings.render_resolution.y;
 

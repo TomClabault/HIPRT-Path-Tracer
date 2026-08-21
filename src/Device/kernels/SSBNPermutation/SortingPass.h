@@ -154,15 +154,33 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 	values[thread_index_in_block]	  = value_sorted_coordinates[thread_index_in_block];
 }
 
+#ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char SSBN_PERMUTATION_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-SSBNPermutationSortingPass(HIPRTRenderData render_data,
-						   unsigned char* __restrict__ blue_noise_dither_texture_buffer,
+SSBNPermutationSortingPass(unsigned char* __restrict__ blue_noise_dither_texture_buffer,
 						   unsigned int blue_noise_texture_width,
 						   unsigned int blue_noise_texture_height,
 						   unsigned int* __restrict__ in_seeds_to_sort,
 						   unsigned int* __restrict__ out_sorted_seeds_buffer,
 						   const int* __restrict__ in_hash_grid_cell_offsets_buffer)
+#else
+GLOBAL_KERNEL_SIGNATURE(void)
+inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
+								  unsigned char* __restrict__ blue_noise_dither_texture_buffer,
+								  unsigned int blue_noise_texture_width,
+								  unsigned int blue_noise_texture_height,
+								  unsigned int* __restrict__ in_seeds_to_sort,
+								  unsigned int* __restrict__ out_sorted_seeds_buffer,
+								  const int* __restrict__ in_hash_grid_cell_offsets_buffer)
+#endif
 {
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(SSBN_PERMUTATION_RENDER_DATA);
+#endif
 	int resolution_x = render_data.render_settings.render_resolution.x;
 	int resolution_y = render_data.render_settings.render_resolution.y;
 

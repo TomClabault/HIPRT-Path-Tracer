@@ -20,6 +20,7 @@ const std::string SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS
 SSBNPermutationRenderPass::SSBNPermutationRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS);
 	m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/SSBNPermutation/SortingPass.h");
@@ -192,6 +193,14 @@ bool SSBNPermutationRenderPass::launch_async(HIPRTRenderData& render_data, GPUKe
 	return is_render_pass_used(compiler_options);
 }
 
+void SSBNPermutationRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+	m_kernels[kernel_id]->upload_to_module_global("SSBN_PERMUTATION_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+												  m_renderer->get_main_stream());
+}
+
 void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
@@ -233,9 +242,9 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	{
 		// Refreshing the seeds for the next frame to ensure convergence otherwise we'll keep rendering the image with the same seeds, just shuffled around by
 		// the sorting passes but that's not enough and we'll lose convergence eventually so we need to refresh the seeds.
-		void* launch_args_refresh_seeds[] = { &render_data };
-		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(
-			32, 1, render_resolution_x, render_resolution_y, launch_args_refresh_seeds, m_renderer->get_main_stream());
+		upload_render_data(SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS, render_data);
+		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_REFRESH_SEEDS_PASS]->launch_asynchronous(32, 1, render_resolution_x, render_resolution_y, nullptr,
+																									   m_renderer->get_main_stream());
 
 		// And return because now we have brand new seeds, the luminance currently in the buffer doesn't correspond so sorting and retargeting will be helpless,
 		// we'll just render the next frame normally. This will be a white noise frame but not sure what else to do when we need to refresh the seeds....
@@ -249,14 +258,11 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 			OrochiBuffer<unsigned int>::download_data(render_data.buffers.get_input_random_seeds_pointer(), render_resolution_x * render_resolution_y);
 
 		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
-		void* launch_args_sorting[]			  = { &render_data,
-												  &blue_noise_texture_buffer_pointer,
-												  &m_blue_noise_texture_width,
-												  &m_blue_noise_texture_height,
-												  &render_data.buffers.get_input_random_seeds_pointer(),
-												  &sorted_seeds_buffer_pointer,
-												  &hash_grid_offsets_buffer_pointer };
+		void* launch_args_sorting[]			  = { &blue_noise_texture_buffer_pointer, &m_blue_noise_texture_width,
+												  &m_blue_noise_texture_height,		  &render_data.buffers.get_input_random_seeds_pointer(),
+												  &sorted_seeds_buffer_pointer,		  &hash_grid_offsets_buffer_pointer };
 
+		upload_render_data(SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS, render_data);
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
 			block_size * block_size, 1, block_size * block_size * m_different_hash_count, 1, launch_args_sorting, m_renderer->get_main_stream());
 
@@ -264,27 +270,24 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 			OrochiBuffer<unsigned int>::download_data(sorted_seeds_buffer_pointer, render_resolution_x * render_resolution_y);
 
 		int* blue_noise_retargeting_texture_buffer_pointer = m_blue_noise_retargeting_texture_buffer.get_device_pointer();
-		void* launch_args_retargeting[]					   = { &render_data,
-															   &blue_noise_retargeting_texture_buffer_pointer,
-															   &m_blue_noise_texture_width,
-															   &m_blue_noise_texture_height,
-															   &sorted_seeds_buffer_pointer,
-															   &render_data.buffers.get_input_random_seeds_pointer() };
+		void* launch_args_retargeting[] = { &blue_noise_retargeting_texture_buffer_pointer, &m_blue_noise_texture_width, &m_blue_noise_texture_height,
+											&sorted_seeds_buffer_pointer, &render_data.buffers.get_input_random_seeds_pointer() };
 
+		upload_render_data(SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS, render_data);
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_RETARGETING_PASS]->launch_asynchronous(32, 32, render_resolution_x, render_resolution_y,
 																									 launch_args_retargeting, m_renderer->get_main_stream());
 	}
 	else
 	{
 		int* hash_grid_offsets_buffer_pointer = m_screen_space_hash_grid_cell_offsets_buffer.get_device_pointer();
-		void* launch_args_sorting[]			  = { &render_data,
-												  &blue_noise_texture_buffer_pointer,
+		void* launch_args_sorting[]			  = { &blue_noise_texture_buffer_pointer,
 												  &m_blue_noise_texture_width,
 												  &m_blue_noise_texture_height,
 												  &render_data.buffers.get_input_random_seeds_pointer(),
 												  &render_data.buffers.get_input_random_seeds_pointer(),
 												  &hash_grid_offsets_buffer_pointer };
 
+		upload_render_data(SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS, render_data);
 		m_kernels[SSBNPermutationRenderPass::SSBN_PERMUTATION_SORTING_PASS]->launch_asynchronous(
 			block_size * block_size, 1, block_size * block_size * m_different_hash_count, 1, launch_args_sorting, m_renderer->get_main_stream());
 	}
