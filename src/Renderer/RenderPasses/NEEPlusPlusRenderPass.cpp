@@ -24,6 +24,8 @@ const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 
@@ -97,10 +99,15 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 		// Just making sure that this is not set to false
 		render_data.nee_plus_plus.m_update_visibility_map = true;
 
-		void* launch_args[] = { &render_data };
+		HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+		*host_pinned_render_data				 = render_data;
+
+		m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->upload_to_module_global("NEE_PLUS_PLUS_RENDER_DATA", host_pinned_render_data,
+																							  sizeof(HIPRTRenderData), m_renderer->get_main_stream());
+
 		m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->launch_asynchronous(
 			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x / NEEPlusPlus_GridPrepoluationResolutionDownscale,
-			m_renderer->m_render_resolution.y / NEEPlusPlus_GridPrepoluationResolutionDownscale, launch_args, m_renderer->get_main_stream());
+			m_renderer->m_render_resolution.y / NEEPlusPlus_GridPrepoluationResolutionDownscale, nullptr, m_renderer->get_main_stream());
 
 		has_rehashed = m_nee_plus_plus_storage.try_resize(render_data, *m_compiler_options, m_max_vram_usage_megabytes);
 		if (has_rehashed)

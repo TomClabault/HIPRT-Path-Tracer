@@ -6,6 +6,7 @@
 #ifndef NEE_PLUS_PLUS_RENDER_PASS_H
 #define NEE_PLUS_PLUS_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/RenderPasses/NEEPlusPlusHashGridStorage.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -48,6 +49,8 @@ public:
 
 private:
 	friend class NEEPlusPlusHashGridStorage;
+
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	// Maximum VRAM usage in megabytes
 	float m_max_vram_usage_megabytes = 200.0f;
