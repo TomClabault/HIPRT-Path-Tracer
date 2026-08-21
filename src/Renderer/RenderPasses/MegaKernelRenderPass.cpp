@@ -21,6 +21,7 @@ MegaKernelRenderPass::MegaKernelRenderPass(const std::string& name, GPURenderer*
 	: RenderPass(name, renderer, options)
 {
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MegaKernelRenderPass::MEGAKERNEL_KERNEL);
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_function_name("MegaKernel");
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
@@ -75,10 +76,14 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 	if (!is_render_pass_used(compiler_options))
 		return false;
 
-	void* launch_args[] = { &render_data };
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+
+	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->upload_to_module_global("MEGAKERNEL_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																				m_renderer->get_main_stream());
 
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
-																			m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+																			m_render_resolution.y, nullptr, m_renderer->get_main_stream());
 
 	return true;
 }

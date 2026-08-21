@@ -21,14 +21,20 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) MegaKernel(HIPRTRenderData render_data)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char MEGAKERNEL_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) MegaKernel()
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(MEGAKERNEL_RENDER_DATA);
+	const uint32_t x			 = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t y			 = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
@@ -38,10 +44,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		return;
 
+	int bounce_count = render_data.render_settings.nb_bounces;
 	if (render_data.render_settings.do_render_low_resolution())
 		// Reducing the number of bounces to 3 if rendering at low resolution
 		// for better interactivity
-		render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
+		bounce_count = hippt::min(3, bounce_count);
 
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
@@ -70,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	bool intersection_found = closest_hit_info.primitive_index != -1;
 
 	NEEDeferredMISContext nee_deferred_MIS_context;
-	for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
+	for (int& bounce = ray_payload.bounce; bounce < bounce_count + 1; bounce++)
 	{
 		if (ray_payload.next_ray_state != RayState::MISSED)
 		{

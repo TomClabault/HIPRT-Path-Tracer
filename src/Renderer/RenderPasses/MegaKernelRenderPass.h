@@ -6,6 +6,7 @@
 #ifndef MEGAKERNEL_RENDER_PASS_H
 #define MEGAKERNEL_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 class MegaKernelRenderPass : public RenderPass
@@ -35,6 +36,8 @@ public:
 
 private:
 	int2_t m_render_resolution = make_int2(0, 0);
+
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
 #endif
