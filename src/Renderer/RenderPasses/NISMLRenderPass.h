@@ -6,6 +6,7 @@
 #ifndef RENDERER_NISML_RENDER_PASS_H
 #define RENDERER_NISML_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionLearnableDenseGridDataHost.h"
@@ -81,6 +82,8 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
+	void upload_render_data(HIPRTRenderData& render_data);
+
 	bool pre_render_update();
 
 	void print_train_profile(unsigned int training_record_count);
@@ -89,6 +92,7 @@ private:
 	NISMLPositionLearnableDenseGridDataHost<OrochiBuffer> m_position_learnable_dense_grid;
 	NISMLDataHost<OrochiBuffer> m_nisml_data;
 
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<NISMLTrainProfileRecord> m_train_profile_records;
 
 	unsigned int m_adam_step			  = 0;

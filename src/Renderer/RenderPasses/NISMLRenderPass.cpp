@@ -93,6 +93,7 @@ const std::string NISMLRenderPass::NISML_GRID_OPTIMIZE	  = "NIS Many Lights Grid
 NISMLRenderPass::NISMLRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(NISMLRenderPass::NISML_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_kernels[NISMLRenderPass::NISML_TRAIN] = std::make_shared<GPUKernel>(this->get_name() + "::" + NISMLRenderPass::NISML_TRAIN);
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Neural/NISMLTrain.h");
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->set_kernel_function_name("NISMLTrain");
@@ -186,8 +187,9 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (training_record_count == 0)
 		return true;
 
-	fp16* train_activations	  = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
-	void* train_launch_args[] = { &mlp_device, &render_data, &train_activations, &training_record_count };
+	fp16* train_activations = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
+	upload_render_data(render_data);
+	void* train_launch_args[] = { &mlp_device, &train_activations, &training_record_count };
 	m_kernels[NISMLRenderPass::NISML_TRAIN]->launch_asynchronous(NeuralImportanceSamplingMLP::BLOCK_SIZE, 1, training_record_count, 1, train_launch_args,
 																 m_renderer->get_main_stream());
 
@@ -212,6 +214,14 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	m_mlp.m_mlp_data.template memset_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>(0);
 
 	return true;
+}
+
+void NISMLRenderPass::upload_render_data(HIPRTRenderData& render_data)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+	m_kernels[NISMLRenderPass::NISML_TRAIN]->upload_to_module_global("NISML_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																	 m_renderer->get_main_stream());
 }
 
 void NISMLRenderPass::print_train_profile(unsigned int training_record_count)

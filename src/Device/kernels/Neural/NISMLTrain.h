@@ -43,8 +43,8 @@ inline NISMLTrain(
 
 	bool valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
 	bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
-						 record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
-	float weight	   = 0.0f;
+						record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
+	float weight = 0.0f;
 	if (valid_weight)
 		weight = record.contribution_luminance / (record.cluster_probability * record.conditional_light_probability * record.point_on_light_pdf_solid_angle);
 
@@ -66,16 +66,24 @@ inline NISMLTrain(
 }
 
 #else
+#ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char NISML_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+#endif
 #if NISML_HAS_WMMA
 
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
-	NISMLTrain(NeuralImportanceSamplingMLPGPU mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int training_record_count)
+	NISMLTrain(NeuralImportanceSamplingMLPGPU mlp, fp16* train_activations, unsigned int training_record_count)
 {
-	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int record_count = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_RENDER_DATA);
+	unsigned int record_index	 = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int record_count	 = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 
 	if (blockIdx.x * blockDim.x >= record_count)
 		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
@@ -228,10 +236,11 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
-	NISMLTrain(NeuralImportanceSamplingMLPGPU mlp, HIPRTRenderData render_data, fp16* train_activations, unsigned int training_record_count)
+	NISMLTrain(NeuralImportanceSamplingMLPGPU mlp, fp16* train_activations, unsigned int training_record_count)
 {
-	unsigned int record_index = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int record_count = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_RENDER_DATA);
+	unsigned int record_index	 = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int record_count	 = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 
 	if (blockIdx.x * blockDim.x >= record_count)
 		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
