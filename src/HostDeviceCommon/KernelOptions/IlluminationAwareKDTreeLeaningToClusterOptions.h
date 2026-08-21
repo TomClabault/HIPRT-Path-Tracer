@@ -21,8 +21,10 @@
 
 /**
  * Initialize light-cluster Q0 values using the SG node's total power instead of the view-dependent SG node importance.
+ *
+ * KERNEL_OPTION_TRUE for using total power, KERNEL_OPTION_FALSE for using view-dependent importance (sg_node_importance).
  */
-#define LearningToClusterQ0UseTotalPower KERNEL_OPTION_TRUE
+#define LearningToClusterQ0UseTotalPower KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 
