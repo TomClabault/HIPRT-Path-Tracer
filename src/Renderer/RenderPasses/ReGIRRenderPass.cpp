@@ -53,6 +53,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_hash_grid_storage.set_regir_render_pass(this);
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_pre_integration_async_stream));
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_grid_fill_async_stream_primary_hits));
@@ -600,6 +601,13 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 	}
 }
 
+void ReGIRRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data, oroStream_t stream)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+	m_kernels[kernel_id]->upload_to_module_global("REGIR_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), stream);
+}
+
 void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 {
 	bool has_rehashed = false;
@@ -608,14 +616,14 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 	{
 		update_all_cell_alive_count(render_data);
 
-		void* launch_args[] = { &render_data };
+		upload_render_data(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE, render_data, m_renderer->get_main_stream());
 
 		// Only launching / 4 in each dimension because we don't need a super high precision for the grid pre-population.
 		//
 		// We just need some rays bouncing around the scene but that's it
 		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_synchronous(
 			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x / ReGIR_GridPrepopulationResolutionDownscale,
-			m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale, launch_args);
+			m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale, nullptr);
 
 		has_rehashed = rehash(render_data);
 	} while (has_rehashed);
@@ -645,8 +653,6 @@ void ReGIRRenderPass::launch_grid_fill(
 	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int reservoirs_per_cell   = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 
-	void* launch_args[] = { &render_data, &grid_fill_output_reservoirs_grid, &number_of_cells_alive, &primary_hit };
-
 	// Only launching a maximum of render_resolution.x * render_resolution.y thread at a time.
 	//
 	// Why? Because with visibility reuse, we're shooting rays from the kernel.
@@ -666,15 +672,25 @@ void ReGIRRenderPass::launch_grid_fill(
 		// No grid cell alive to fill
 		return;
 
+	std::string kernel_id;
 	if (for_pre_integration)
-		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args,
-																													  stream);
+		kernel_id = ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
+	else if (primary_hit)
+		kernel_id = ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID;
+	else
+		kernel_id = ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID;
+
+	upload_render_data(kernel_id, render_data, stream);
+	void* launch_args[] = { &grid_fill_output_reservoirs_grid, &number_of_cells_alive, &primary_hit };
+
+	if (for_pre_integration)
+		m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	else
 	{
 		if (primary_hit)
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
+			m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 		else
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
+			m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	}
 }
 
@@ -704,9 +720,6 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 	{
 		render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
 
-		void* launch_args[] = { &render_data, &first_input_reservoirs, &first_output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive,
-								&primary_hit };
-
 		// Same reason for nb_threads here as explained in the GridFill kernel launch
 		unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell,
 											 (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
@@ -714,14 +727,25 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 			// No grid cell alive to spatially reuse
 			return ReGIRHashGridSoADevice();
 
+		std::string kernel_id;
 		if (for_pre_integration)
-			m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
+			kernel_id = ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
+		else if (primary_hit)
+			kernel_id = ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID;
+		else
+			kernel_id = ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID;
+
+		upload_render_data(kernel_id, render_data, stream);
+		void* launch_args[] = { &first_input_reservoirs, &first_output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive, &primary_hit };
+
+		if (for_pre_integration)
+			m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 		else
 		{
 			if (primary_hit)
-				m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
+				m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 			else
-				m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
+				m_kernels[kernel_id]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 		}
 
 		// Swapping the input and output for the next spatial reuse apss (if any)
@@ -783,12 +807,13 @@ void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_
 	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 		return;
 
-	void* launch_args[] = { &render_data, &input_reservoirs_to_copy };
-
 	unsigned int nb_threads = m_number_of_cells_alive_primary_hits * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
 	if (nb_threads == 0)
 		// No cell alive to copy
 		return;
+
+	upload_render_data(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, render_data, m_renderer->get_main_stream());
+	void* launch_args[] = { &input_reservoirs_to_copy };
 
 	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args,
 																								m_renderer->get_main_stream());
@@ -975,7 +1000,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	unsigned int cell_offset = 0;
 	for (int iter = 0; iter < iteration_needed; iter++)
 	{
-		void* launch_args[] = { &render_data, &scratch_buffer_sorting_keys_address, &scratch_buffer_sorting_values_address, &cell_offset, &primary_hit };
+		upload_render_data(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID, render_data, m_renderer->get_main_stream());
+		void* launch_args[] = { &scratch_buffer_sorting_keys_address, &scratch_buffer_sorting_values_address, &cell_offset, &primary_hit };
 
 		// Computing the contributions of emissive meshes
 		unsigned int contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;

@@ -18,11 +18,8 @@
 
 #if ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
-											 const ReGIRGridFillSurface& cell_surface,
-											 unsigned int mesh_index_for_grid_cell,
-											 bool primary_hit,
-											 Xorshift32Generator& rng)
+HIPRT_DEVICE float compute_mesh_contribution(
+	HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
 	EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
 	float total_contribution_to_cell			  = 0.0f;
@@ -36,21 +33,20 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
 		float sample_PDF;
 		int emissive_triangle_global_index			  = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
 		LightSamplePointInformation mesh_light_sample = sample_point_on_light_and_fill_light_sample_information(
-								render_data, cell_surface.cell_point, hippt::normalize(render_data.current_camera.position - cell_surface.cell_point),
-								cell_surface.cell_normal, approximate_material, emissive_triangle_global_index, rng);
+			render_data, cell_surface.cell_point, hippt::normalize(render_data.current_camera.position - cell_surface.cell_point), cell_surface.cell_normal,
+			approximate_material, emissive_triangle_global_index, rng);
 		if (mesh_light_sample.emissive_triangle_global_index == -1)
 			continue;
 
 		sample_PDF *= mesh_light_sample.area_measure_pdf;
 
-		total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
-															  /* visibility */ false, ReGIR_GridFillTargetFunctionCosineTerm,
-															  ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillPrimaryHitsTargetFunctionBSDF,
-															  ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-															  ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
-															  render_data, cell_surface, primary_hit, mesh_light_sample.emission,
-															  mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) /
-									  sample_PDF;
+		total_contribution_to_cell +=
+			ReGIR_grid_fill_evaluate_target_function<
+				/* visibility */ false, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
+				ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+				ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, cell_surface, primary_hit, mesh_light_sample.emission,
+																			 mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) /
+			sample_PDF;
 	}
 
 	return total_contribution_to_cell / (float)ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
@@ -58,11 +54,8 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
 
 #else // ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
-											 const ReGIRGridFillSurface& cell_surface,
-											 unsigned int mesh_index_for_grid_cell,
-											 bool primary_hit,
-											 Xorshift32Generator& rng)
+HIPRT_DEVICE float compute_mesh_contribution(
+	HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
 	float3_t mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
 	float3_t mesh_normal;
@@ -88,10 +81,10 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
 	ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_data.meshes_total_power[mesh_index_for_grid_cell]);
 
 	return ReGIR_grid_fill_evaluate_target_function<
-							/* visibility */ false, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
-							ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-							ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, cell_surface, primary_hit, total_mesh_power, mesh_normal,
-																						 mesh_average_point, rng);
+		/* visibility */ false, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
+		ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+		ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, cell_surface, primary_hit, total_mesh_power, mesh_normal, mesh_average_point,
+																	 rng);
 }
 
 #endif // ReGIR_GridFillCellDistributionsIntegrateMesh
@@ -104,9 +97,13 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data,
  * which will be used to sample important emissive meshes directly, in one alias table sample
  */
 #ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char REGIR_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_data,
-												  unsigned int* contributions_scratch_buffer_sort_keys,
+ReGIR_LightDistributionsBuildComputeContributions(unsigned int* contributions_scratch_buffer_sort_keys,
 												  unsigned int* contributions_scratch_buffer_sort_values,
 												  unsigned int cell_index_offset,
 												  bool primary_hit)
@@ -120,6 +117,9 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 														 unsigned int thread_index)
 #endif
 {
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
+#endif
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
@@ -156,7 +156,7 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 	// regroup the contributions by cell after sorting (since contributions of different cells are mixed together in the scratch buffer) and we need the
 	// contribution in the lower bits because we want to sort by contribution first.
 	contributions_scratch_buffer_sort_keys[thread_index] =
-							static_cast<unsigned int>((~hippt::half_as_ushort(log_mesh_contribution_fp16)) & 0xFFFF) | (local_cell_index << 16);
+		static_cast<unsigned int>((~hippt::half_as_ushort(log_mesh_contribution_fp16)) & 0xFFFF) | (local_cell_index << 16);
 	// This is just going to be mesh indices in [0, emissive_mesh_count - 1], per each grid cell
 	contributions_scratch_buffer_sort_values[thread_index] = mesh_index_for_grid_cell;
 }

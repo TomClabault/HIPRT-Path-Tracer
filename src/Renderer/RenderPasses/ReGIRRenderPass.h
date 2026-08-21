@@ -6,6 +6,7 @@
 #ifndef REGIR_RENDER_PASS_H
 #define REGIR_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/Compute/ParallelSegmentedReduction.h"
 #include "Renderer/Compute/RadixSort.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
@@ -172,10 +173,13 @@ public:
 	bool lights_in_scene(HIPRTRenderData& render_data) const;
 
 private:
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data, oroStream_t stream);
+
 	unsigned int m_number_of_cells_alive_primary_hits	= 0;
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;
 
 	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;

@@ -16,14 +16,20 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Grid_Prepopulate(HIPRTRenderData render_data)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char REGIR_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Grid_Prepopulate()
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
-	const uint32_t x = (blockIdx.x * blockDim.x + threadIdx.x) * ReGIR_GridPrepopulationResolutionDownscale;
-	const uint32_t y = (blockIdx.y * blockDim.y + threadIdx.y) * ReGIR_GridPrepopulationResolutionDownscale;
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
+	const uint32_t x			 = (blockIdx.x * blockDim.x + threadIdx.x) * ReGIR_GridPrepopulationResolutionDownscale;
+	const uint32_t y			 = (blockIdx.y * blockDim.y + threadIdx.y) * ReGIR_GridPrepopulationResolutionDownscale;
 #endif
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;

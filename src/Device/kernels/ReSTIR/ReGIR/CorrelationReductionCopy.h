@@ -15,12 +15,20 @@
  * of the old (smaller) hash table into the new (larger) hash table
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char REGIR_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Correlation_Reduction_Copy(ReGIRHashGridSoADevice input_reservoirs_to_copy)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
 #endif
 {
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
+#endif
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 #ifdef __KERNELCC__
@@ -29,10 +37,10 @@ inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGr
 
 #ifdef __KERNELCC__
 	if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count *
-												regir_settings.get_number_of_reservoirs_per_cell(true))
+							regir_settings.get_number_of_reservoirs_per_cell(true))
 #else
 	if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() *
-												regir_settings.get_number_of_reservoirs_per_cell(true))
+							regir_settings.get_number_of_reservoirs_per_cell(true))
 #endif
 	{
 		return;
@@ -51,8 +59,7 @@ inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGr
 	ReGIRReservoir reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(input_reservoirs_to_copy, reservoir_index_in_grid);
 
 	unsigned int reservoir_index_in_supersampling_grid =
-							reservoir_index_in_grid +
-							regir_settings.correlation_reduction.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
+		reservoir_index_in_grid + regir_settings.correlation_reduction.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
 
 	render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.correlation_reduction.correlation_reduction_grid,
 																			  reservoir_to_copy, reservoir_index_in_supersampling_grid);

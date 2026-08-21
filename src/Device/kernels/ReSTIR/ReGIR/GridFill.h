@@ -295,9 +295,13 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
  */
 #ifdef __KERNELCC__
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char REGIR_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64)
-	ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
+__launch_bounds__(64) ReGIR_Grid_Fill(ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
 #else
 template <bool accumulatePreIntegration>
 GLOBAL_KERNEL_SIGNATURE(void)
@@ -305,6 +309,9 @@ inline ReGIR_Grid_Fill(
 	HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
+#endif
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
