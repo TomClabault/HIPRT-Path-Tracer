@@ -27,12 +27,19 @@
  */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data)
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char RESTIR_GI_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse()
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_GI_RENDER_DATA);
+
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
@@ -156,7 +163,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		float temporal_neighbor_resampling_mis_weight =
 			mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-														  center_pixel_surface, temporal_neighbor_reservoir.confidence, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+																												center_pixel_surface, temporal_neighbor_reservoir.confidence,
+																												TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
@@ -189,7 +197,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	float initial_candidates_mis_weight =
 		mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-													  center_pixel_surface, temporal_neighbor_reservoir.confidence, INITIAL_CANDIDATES_ID, random_number_generator);
+																												center_pixel_surface, temporal_neighbor_reservoir.confidence,
+																												INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
