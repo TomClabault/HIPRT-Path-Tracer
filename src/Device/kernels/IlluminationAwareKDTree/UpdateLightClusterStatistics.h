@@ -42,18 +42,17 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
 #else
-	// statistics.estimated_importance_Q						  = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
-	statistics.estimated_importance_Q = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
+	statistics.estimated_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
 #endif
-	statistics.mean						  = 0.0f;
-	statistics.M2						  = 0.0f;
-	statistics.visit_count					  = 0u;
+	statistics.mean		   = 0.0f;
+	statistics.M2		   = 0.0f;
+	statistics.visit_count = 0u;
 }
 
 HIPRT_DEVICE void append_observation(IlluminationAwareKDTreeLightClusterStatistics& statistics, float observation)
 {
 	unsigned int previous_count = statistics.visit_count;
-	float delta								= observation - statistics.mean;
+	float delta					= observation - statistics.mean;
 	statistics.mean += delta / static_cast<float>(previous_count + 1u);
 	float delta2 = observation - statistics.mean;
 	statistics.M2 += delta * delta2;

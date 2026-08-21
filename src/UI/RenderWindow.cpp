@@ -33,8 +33,8 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // IMMEDIATE TODOS:
-//	- Constant memory for all kernels
 //	- Start investigating grid artifacts LTC
+//		----> Because of zero support for non 0 cluster nodes of the tree
 //
 //
 // Ideas for neural importance sampling many lights:
