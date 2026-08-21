@@ -794,7 +794,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		if (effective_second_tree_cut_size > 0)
 		{
 			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
-			for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
+			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
 				IlluminationAwareKDTree_InitializeRootLightClustering(kd_tree_device, light_tree_sg, slot);
 		}
 	}

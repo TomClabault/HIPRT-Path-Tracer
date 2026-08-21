@@ -39,7 +39,7 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
 
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-#if IlluminationAwareKDTreeQ0UseTotalPower == KERNEL_OPTION_TRUE
+#if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
 #else
 	// statistics.estimated_importance_Q						  = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);

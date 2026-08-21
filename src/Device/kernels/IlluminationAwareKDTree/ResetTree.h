@@ -88,7 +88,7 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 		illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[reset_index] =
 			IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
-		for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
+		for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
 		{
 			unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(reset_index, slot);
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[cluster_offset] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;

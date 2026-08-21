@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"

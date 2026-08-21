@@ -67,7 +67,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 	{
 		unsigned int initial_cut_size = kd_tree.learning_to_cluster.effective_initial_light_cut_size;
-		if (initial_cut_size == 0 || initial_cut_size > IlluminationAwareKDTreeMaximumLightCutSize)
+		if (initial_cut_size == 0 || initial_cut_size > LearningToClusterMaximumLightCutSize)
 			return result;
 
 		float total_weight		   = 0.0f;
@@ -110,7 +110,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 
 	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	unsigned int cut_size										   = cluster_data.cut_size;
-	if (cut_size == 0 || cut_size > IlluminationAwareKDTreeMaximumLightCutSize)
+	if (cut_size == 0 || cut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
 	float total_weight		   = 0.0f;

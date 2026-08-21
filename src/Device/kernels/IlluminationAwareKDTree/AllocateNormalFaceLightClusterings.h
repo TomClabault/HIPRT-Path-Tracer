@@ -77,7 +77,7 @@ IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(IlluminationAwareKDTr
 	if (new_clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
 		return;
 
-	for (unsigned int cluster_slot = 0; cluster_slot < IlluminationAwareKDTreeMaximumLightCutSize; cluster_slot++)
+	for (unsigned int cluster_slot = 0; cluster_slot < LearningToClusterMaximumLightCutSize; cluster_slot++)
 		initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, cluster_slot);
 
 	clustering_set.clustering_indices[normal_face] = new_clustering_index;

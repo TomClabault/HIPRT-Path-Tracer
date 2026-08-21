@@ -10,7 +10,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreePendingLightClusterRecord.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 struct IlluminationAwareKDTreeLightClusterStatistics
@@ -35,7 +35,7 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 
 static_assert(sizeof(IlluminationAwareKDTreeLightClusterStatistics) == 16);
 
-static constexpr unsigned int IlluminationAwareKDTreePendingLightClusterRecordStride = IlluminationAwareKDTreeMaximumLightCutSize;
+static constexpr unsigned int IlluminationAwareKDTreePendingLightClusterRecordStride = LearningToClusterMaximumLightCutSize;
 
 struct IlluminationAwareKDTreeLightClusteringData
 {
@@ -87,7 +87,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const
 	{
-		return light_clustering_index * IlluminationAwareKDTreeMaximumLightCutSize + slot;
+		return light_clustering_index * LearningToClusterMaximumLightCutSize + slot;
 	}
 
 	HIPRT_DEVICE unsigned int get_normal_face_observation_offset(unsigned int set_index, unsigned int normal_face) const

@@ -5,6 +5,7 @@
 
 #include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
@@ -118,7 +119,7 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SA
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT = "LightTreeSGUseTreeCut";
 
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT = "IlluminationAwareKDTreeMaximumLookaheadLevelCount";
-const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_Q0_USE_TOTAL_POWER = "IlluminationAwareKDTreeQ0UseTotalPower";
+const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER = "LearningToClusterQ0UseTotalPower";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE = "IlluminationAwareKDTreeDebugMode";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS = "IlluminationAwareKDTreeDebugRepresentativePoints";
 
@@ -260,7 +261,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT,
 
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
-	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_Q0_USE_TOTAL_POWER,
+	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
 
@@ -407,8 +408,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT] =
 		std::make_shared<int>(IlluminationAwareKDTreeMaximumLookaheadLevelCount);
-	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_Q0_USE_TOTAL_POWER] =
-		std::make_shared<int>(IlluminationAwareKDTreeQ0UseTotalPower);
+	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER] =
+		std::make_shared<int>(LearningToClusterQ0UseTotalPower);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE] = std::make_shared<int>(IlluminationAwareKDTreeDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS] =
 		std::make_shared<int>(IlluminationAwareKDTreeDebugRepresentativePoints);

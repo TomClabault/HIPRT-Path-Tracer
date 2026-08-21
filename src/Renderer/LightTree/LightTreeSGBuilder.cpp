@@ -464,5 +464,5 @@ int LightTreeSGBuilder::get_second_tree_cut_size() const
 
 void LightTreeSGBuilder::set_second_tree_cut_size(int second_tree_cut_size)
 {
-	m_second_tree_cut_size = hippt::clamp(1, IlluminationAwareKDTreeMaximumLightCutSize, second_tree_cut_size);
+	m_second_tree_cut_size = hippt::clamp(1, LearningToClusterMaximumLightCutSize, second_tree_cut_size);
 }

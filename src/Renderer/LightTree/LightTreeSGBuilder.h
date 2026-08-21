@@ -7,7 +7,7 @@
 #define RENDERER_LIGHT_TREE_SG_BUILDER_H
 
 #include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeBuilderCommon.h"
@@ -85,7 +85,7 @@ private:
 	unsigned int m_effective_tree_cut_size = 0;
 	std::vector<unsigned int> m_second_tree_cut_node_indices;
 	unsigned int m_effective_second_tree_cut_size = 0;
-	int m_second_tree_cut_size					  = IlluminationAwareKDTreeInitialLightCutSize;
+	int m_second_tree_cut_size					  = LearningToClusterInitialLightCutSize;
 
 	LightTreeSGBuilderNISML m_nisml;
 	LightTreeSGBuilderOptions m_build_options;

@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -317,7 +318,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 				LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
 				void* initialize_root_light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
 				m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->launch_asynchronous(
-					IlluminationAwareKDTreeLightClusteringBlockSize, 1, IlluminationAwareKDTreeLightClusteringBlockSize, 1,
+				LearningToClusterLightClusteringBlockSize, 1, LearningToClusterLightClusteringBlockSize, 1,
 					initialize_root_light_clustering_launch_args, m_renderer->get_main_stream());
 			}
 		}
@@ -466,9 +467,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		unsigned int maximum_light_clustering_work_count =
-			kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * IlluminationAwareKDTreeLightClusteringBlockSize;
+			kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * LearningToClusterLightClusteringBlockSize;
 		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, learning_to_cluster_launch_args,
+			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
@@ -477,21 +478,21 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int maximum_light_clustering_reservoir_proposal_count =
 			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
 		m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
+			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
 		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
 		void* light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
 		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
-			IlluminationAwareKDTreeLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
 	}
 

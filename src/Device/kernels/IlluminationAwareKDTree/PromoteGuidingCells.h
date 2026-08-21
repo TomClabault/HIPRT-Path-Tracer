@@ -114,10 +114,10 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 	if (right_set_allocation_valid && parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 	{
-		for (unsigned int slot_iteration = 0; slot_iteration < IlluminationAwareKDTreeMaximumLightCutSize; slot_iteration++)
+		for (unsigned int slot_iteration = 0; slot_iteration < LearningToClusterMaximumLightCutSize; slot_iteration++)
 		{
 			unsigned int slot = thread_slot + slot_iteration;
-			if (slot >= IlluminationAwareKDTreeMaximumLightCutSize)
+			if (slot >= LearningToClusterMaximumLightCutSize)
 				continue;
 
 			for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
@@ -230,7 +230,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 				continue;
 
 			right_set.clustering_indices[normal_face] = right_clustering_index;
-			for (unsigned int slot = 0; slot < IlluminationAwareKDTreeMaximumLightCutSize; slot++)
+			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
 			{
 				unsigned int source_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(parent_clustering_index, slot);
 				unsigned int right_offset  = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(right_clustering_index, slot);

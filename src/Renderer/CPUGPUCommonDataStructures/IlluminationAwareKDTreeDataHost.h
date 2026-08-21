@@ -32,12 +32,12 @@ struct IlluminationAwareKDTreeDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_learning_to_cluster_training_samples, new_training_sample_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_learning_to_cluster_training_sample_count, 1);
 
-		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, IlluminationAwareKDTreeMaximumLightCutSize);
+		GenericSoAHelpers::resize<DataContainer>(m_initial_light_cut_node_indices, LearningToClusterMaximumLightCutSize);
 		GenericSoAHelpers::resize<DataContainer>(m_normal_clustering_sets, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_normal_face_observation_counts, static_cast<size_t>(new_node_capacity) * SurfaceNormalFace_Count);
 
 		size_t light_clustering_capacity   = static_cast<size_t>(new_node_capacity) * 2;
-		size_t light_cluster_slot_capacity = light_clustering_capacity * IlluminationAwareKDTreeMaximumLightCutSize;
+		size_t light_cluster_slot_capacity = light_clustering_capacity * LearningToClusterMaximumLightCutSize;
 		size_t pending_record_capacity	   = light_clustering_capacity * IlluminationAwareKDTreePendingLightClusterRecordStride;
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, light_cluster_slot_capacity);
