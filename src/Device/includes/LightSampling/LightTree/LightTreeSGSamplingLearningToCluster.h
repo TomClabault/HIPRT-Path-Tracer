@@ -227,7 +227,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_on
 		return {};
 
 	if (!sample_light_inside_cluster(render_data, context, random_number_generator, sample))
-		return {};
+		return sample;
 
 	return sample;
 }

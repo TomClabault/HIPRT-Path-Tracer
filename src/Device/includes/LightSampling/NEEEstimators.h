@@ -352,6 +352,31 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_multi_sample(HIPRTRenderData& rend
 	return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
+// A selected learned cluster can have no SG-valid descendant for the current shading context. Keep that failed choice observable to the
+// learning-to-cluster update as a zero-reward observation.
+HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData& render_data,
+																 const float3_t& position,
+																 const IlluminationAwareKDTreeSGShadingContext& shading_context,
+																 const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& triangle_sample)
+{
+	if (triangle_sample.light_clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
+		triangle_sample.cluster_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || !(triangle_sample.cluster_probability > 0.0f))
+		return;
+
+	IlluminationAwareKDTreeLearningToClusterTrainingSample training_sample{};
+	training_sample.position					   = position;
+	training_sample.shading_context				   = shading_context;
+	training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
+	training_sample.cluster_probability			   = triangle_sample.cluster_probability;
+	training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
+	training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
+	training_sample.sampled_cut_revision		   = triangle_sample.cut_revision;
+	training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
+	training_sample.valid_for_light_clustering	   = true;
+
+	render_data.kd_tree_device.append_learning_to_cluster_training_sample(training_sample);
+}
+
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
 																			 RayPayload& ray_payload,
 																			 const HitInfo closest_hit_info,
@@ -369,7 +394,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, random_number_generator);
 
 	if (!triangle_sample.valid())
+	{
+		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, triangle_sample);
+
 		return ColorRGB32F(0.0f);
+	}
 
 	LightSamplePointInformation light_sample =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,

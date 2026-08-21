@@ -4233,6 +4233,8 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 		{
 			ImGui::TreePush("Learning to cluster many lights tree");
 
+			ImGui::SeparatorText("Initialization");
+
 			ImGui::SeparatorText("Refinement stopping conditions");
 			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),
 								 0, 128))
