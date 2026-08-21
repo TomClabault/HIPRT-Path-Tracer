@@ -84,6 +84,7 @@ private:
 	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_spatial_reuse_passes(HIPRTRenderData& render_data);
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
 
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> m_initial_candidates_reservoirs;
@@ -97,6 +98,7 @@ private:
 
 	ReSTIRDIReservoir* m_last_restir_output_reservoirs = nullptr;
 	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	// If true, the temporal buffers are going to be reset by the temporal pass
 	bool m_temporal_buffer_clear_requested = false;

@@ -34,6 +34,8 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
@@ -300,7 +302,8 @@ void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 		unsigned char* per_pixel_spatial_reuse_radius =
 			m_directional_spatial_reuse_data.m_spatial_reuse_data
 				.get_buffer_data_ptr<ReSTIRDirectionalSpatialReuseDataHostBuffers::RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
-		void* launch_args[] = { &render_data, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
+		upload_render_data(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, render_data);
+		void* launch_args[] = { &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(
 			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
@@ -317,10 +320,10 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 {
 	configure_initial_pass(render_data);
 
-	void* launch_args[] = { &render_data };
+	upload_render_data(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, render_data);
 
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 		m_renderer->get_main_stream());
 }
 
@@ -367,11 +370,11 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass(HIPRTRenderData& render_data
 {
 	configure_temporal_pass(render_data);
 
-	void* launch_args[] = { &render_data };
+	upload_render_data(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, render_data);
 
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight,
 																						   m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
-																						   launch_args, m_renderer->get_main_stream());
+																						   nullptr, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_spatial_pass(HIPRTRenderData& render_data, int spatial_pass_index)
@@ -417,16 +420,25 @@ void ReSTIRDIRenderPass::configure_spatial_pass(HIPRTRenderData& render_data, in
 
 void ReSTIRDIRenderPass::launch_spatial_reuse_passes(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &render_data };
-
 	for (int spatial_reuse_pass = 0; spatial_reuse_pass < render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes;
 		 spatial_reuse_pass++)
 	{
 		configure_spatial_pass(render_data, spatial_reuse_pass);
+		upload_render_data(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, render_data);
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
+			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
 			m_renderer->get_main_stream());
 	}
+}
+
+void ReSTIRDIRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
+{
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	*host_pinned_render_data				 = render_data;
+
+	std::string render_data_global_name =
+		kernel_id == ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID ? "RESTIR_DIRECTIONAL_REUSE_RENDER_DATA" : "RESTIR_DI_RENDER_DATA";
+	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData), m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_output_buffer(HIPRTRenderData& render_data)
