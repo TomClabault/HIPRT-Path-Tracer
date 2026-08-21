@@ -94,6 +94,9 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 
 	do
 	{
+		// Just making sure that this is not set to false
+		render_data.nee_plus_plus.m_update_visibility_map = true;
+
 		void* launch_args[] = { &render_data };
 		m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->launch_asynchronous(
 			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x / NEEPlusPlus_GridPrepoluationResolutionDownscale,

@@ -21,9 +21,6 @@
 HIPRT_DEVICE void accumulate_NEE_plus_plus(
 	HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
-	// Just making sure that this is not set to false
-	render_data.nee_plus_plus.m_update_visibility_map = true;
-
 	for (int sample = 0; sample < render_data.nee_plus_plus.grid_prepopulate_sample_count; sample++)
 	{
 		LightSamplePointArray light_samples = sample_one_point_on_light<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(
