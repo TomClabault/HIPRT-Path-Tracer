@@ -328,7 +328,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	return updated;
 }
 
-bool ReGIRRenderPass::pre_sample_update(float delta_time)
+bool ReGIRRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data  = m_renderer->get_render_data();
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -341,7 +341,7 @@ bool ReGIRRenderPass::pre_sample_update(float delta_time)
 
 	if (is_render_pass_used(*m_compiler_options))
 	{
-		bool storage_updated = m_hash_grid_storage.pre_sample_update(render_data);
+		bool storage_updated = m_hash_grid_storage.pre_frame_render_update(render_data);
 		if (storage_updated)
 			m_grid_cells_alive_count_staging_host_pinned_buffer.resize_host_pinned_mem(1);
 

@@ -25,7 +25,7 @@ public:
 
 	std::size_t get_byte_size() const;
 
-	bool pre_sample_update(HIPRTRenderData& render_data);
+	bool pre_frame_render_update(HIPRTRenderData& render_data);
 	void post_sample_update_async(HIPRTRenderData& render_data);
 	void increment_correlation_reduction_counters(HIPRTRenderData& render_data);
 	bool try_rehash(HIPRTRenderData& render_data);

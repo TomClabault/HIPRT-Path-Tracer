@@ -716,7 +716,7 @@ void CPURenderer::render()
 	{
 		m_render_data.render_settings.do_update_status_buffers = true;
 
-		pre_sample_update(frame_number);
+		pre_frame_render_update(frame_number);
 		update_cameras(frame_number);
 
 		camera_rays_pass();
@@ -752,7 +752,7 @@ void CPURenderer::render()
 	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
-void CPURenderer::pre_sample_update(int frame_number)
+void CPURenderer::pre_frame_render_update(int frame_number)
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_render_data.nisml.learning_enabled =

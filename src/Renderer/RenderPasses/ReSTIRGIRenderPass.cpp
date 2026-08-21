@@ -148,11 +148,11 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	return recompiled;
 }
 
-bool ReSTIRGIRenderPass::pre_sample_update(float delta_time)
+bool ReSTIRGIRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	MegaKernelRenderPass::pre_sample_update(delta_time);
+	MegaKernelRenderPass::pre_frame_render_update(delta_time);
 
 	bool render_data_invalidated = false;
 

@@ -200,7 +200,7 @@ void GPURendererThread::wait_on_render_completion()
 	m_render_completed_condition_variable.wait(lock, [this] { return !m_currently_rendering; });
 }
 
-void GPURendererThread::pre_sample_update(float delta_time)
+void GPURendererThread::pre_frame_render_update(float delta_time)
 {
 	m_renderer->step_animations(delta_time);
 	m_renderer->prepare_light_sampling_data_structures();
@@ -210,7 +210,7 @@ void GPURendererThread::pre_sample_update(float delta_time)
 	if (m_active_render_graph->pre_render_compilation_check(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets, true, true))
 		// Some kernels have been recompiled, renderer is now dirty
 		m_render_window->set_render_dirty(true);
-	m_renderer->m_render_data_buffers_invalidated |= m_active_render_graph->pre_sample_update(delta_time);
+	m_renderer->m_render_data_buffers_invalidated |= m_active_render_graph->pre_frame_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();

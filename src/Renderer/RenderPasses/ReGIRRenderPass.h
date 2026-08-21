@@ -89,7 +89,7 @@ public:
 											  const std::vector<hiprtFuncNameSet>& func_name_sets = {},
 											  bool silent										  = false,
 											  bool use_cache									  = true) override;
-	virtual bool pre_sample_update(float delta_time) override;
+	virtual bool pre_frame_render_update(float delta_time) override;
 
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 

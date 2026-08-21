@@ -88,7 +88,7 @@ public:
 	virtual void resize(unsigned int new_width, unsigned int new_height) = 0;
 
 	/**
-	 * Function before 'pre_sample_update()' that should compile kernels that haven't
+	 * Function before 'pre_frame_render_update()' that should compile kernels that haven't
 	 * been compiled so far if necessary
 	 *
 	 * For example, in a ReSTIR DI render pass, if the temporal reuse is disabled
@@ -130,7 +130,7 @@ public:
 	 *
 	 * Returns false otherwise
 	 */
-	virtual bool pre_sample_update(float delta_time) = 0;
+	virtual bool pre_frame_render_update(float delta_time) = 0;
 
 	/**
 	 * *** Do not use this function in *_async function! ***
@@ -140,7 +140,7 @@ public:
 	 *
 	 * This is the case of ReSTIR render passes for example: the ReSTIR render passes are not always used for rendering.
 	 *
-	 * This function is called just before pre_sample_update() and should return true if the render pass is going to be active
+	 * This function is called just before pre_frame_render_update() and should return true if the render pass is going to be active
 	 * for the current frame.
 	 * Should return false if the render pass is not going to be active this frame.
 	 *

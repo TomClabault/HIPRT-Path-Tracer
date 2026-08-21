@@ -113,7 +113,7 @@ void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_splatting_samples_soa_buffer.resize(new_width, new_height, nb_bounces);
 }
 
-bool ReSTIRPGRenderPass::pre_sample_update(float delta_time)
+bool ReSTIRPGRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

@@ -258,7 +258,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 
-bool IlluminationAwareKDTreeRenderPass::pre_sample_update(float delta_time)
+bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time)
 {
 	m_nisml_representative_capacity = std::max(m_nisml_representative_capacity, 1);
 

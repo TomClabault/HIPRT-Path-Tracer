@@ -54,7 +54,7 @@ void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_heigh
 	m_render_resolution.y = new_height;
 }
 
-bool MegaKernelRenderPass::pre_sample_update(float delta_time)
+bool MegaKernelRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

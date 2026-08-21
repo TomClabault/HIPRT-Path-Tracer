@@ -68,7 +68,7 @@ void NISMLMegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_
 	m_render_resolution.y = new_height;
 }
 
-bool NISMLMegaKernelRenderPass::pre_sample_update(float delta_time)
+bool NISMLMegaKernelRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

@@ -23,7 +23,7 @@ public:
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_sample_update(float delta_time) override;
+	virtual bool pre_frame_render_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override {}
 

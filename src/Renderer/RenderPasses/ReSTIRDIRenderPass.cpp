@@ -84,7 +84,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 		ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_RESTIR_VARIANT_COMPILE_OPTION_NAME, ReSTIR_VARIANT_DI);
 }
 
-bool ReSTIRDIRenderPass::pre_sample_update(float delta_time)
+bool ReSTIRDIRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

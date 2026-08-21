@@ -57,7 +57,7 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 	m_render_resolution = m_renderer->m_render_resolution;
 }
 
-bool FillGBufferRenderPass::pre_sample_update(float delta_time)
+bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

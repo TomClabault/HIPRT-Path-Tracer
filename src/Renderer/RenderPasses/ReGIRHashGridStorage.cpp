@@ -30,7 +30,7 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 		   m_cells_light_distributions_primary_hits.get_byte_size() + m_cells_light_distributions_secondary_hits.get_byte_size();
 }
 
-bool ReGIRHashGridStorage::pre_sample_update(HIPRTRenderData& render_data)
+bool ReGIRHashGridStorage::pre_frame_render_update(HIPRTRenderData& render_data)
 {
 	bool updated = false;
 
@@ -56,7 +56,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	bool grid_not_allocated = get_total_number_of_cells(primary_hit) == 0;
 	bool grid_res_changed	= m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size ||
-												  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
+							  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed =
 		regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
 
@@ -425,7 +425,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		// It may happen that the buffers are not allocated if update_render_data is called before the light distributions
 		// have been computed by a call to launch_async(). That's light distributions are computed and allocated and device
 		// pointers are set when the light distributions are actually computed in lauch_async(). This process isn't
-		// done ahead of time in pre_sample_update() like the rest of the buffers so we may get here with unallocated buffers.
+		// done ahead of time in pre_frame_render_update() like the rest of the buffers so we may get here with unallocated buffers.
 		render_data.render_settings.regir_settings.cells_light_distributions_primary_hits = get_cell_light_distributions(true).to_device(render_data);
 
 	// Secondary hits grid cells
