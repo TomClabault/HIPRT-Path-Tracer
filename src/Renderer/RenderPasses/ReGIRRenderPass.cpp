@@ -335,7 +335,7 @@ bool ReGIRRenderPass::pre_frame_render_update(float delta_time)
 
 	bool updated = false;
 
-	// We wouldn't want to resize/whatever pre_sample_update does to the buffers
+	// We wouldn't want to resize/whatever pre_frame_render_update does to the buffers
 	// while async compute is filling them so synchronization here
 	synchronize_async_compute();
 

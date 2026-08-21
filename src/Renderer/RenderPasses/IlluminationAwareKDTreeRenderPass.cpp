@@ -296,21 +296,11 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 		reset(false);
 	}
 
-	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
-	unsigned int node_reset_thread_count		 = kd_tree_device.core.node_capacity;
-
-	void* launch_args[] = { &kd_tree_device };
 	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()))
 	{
-		unsigned int reservoir_proposal_reset_thread_count =
-			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
-		unsigned int reset_thread_count			= std::max(node_reset_thread_count, reservoir_proposal_reset_thread_count);
-		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
-		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			1024, 1, reset_thread_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
-
 		if (m_renderer->get_render_data().render_settings.sample_number == 0)
 		{
+			IlluminationAwareKDTreeDevice kd_tree_device						   = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
 			const LightTreeSGBuildResult<OrochiBuffer>& light_tree_sg_build_result = m_renderer->get_light_tree_sg_sampling_data_structure().get_build_result();
 			const std::vector<unsigned int>& second_tree_cut_node_indices		   = light_tree_sg_build_result.second_tree_cut_node_indices;
 			unsigned int effective_second_tree_cut_size							   = light_tree_sg_build_result.effective_second_tree_cut_size;
@@ -332,10 +322,31 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 		return render_data_invalidated;
 	}
 
+	return render_data_invalidated;
+}
+
+void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	if (!is_render_pass_used(compiler_options))
+		return;
+
+	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
+	unsigned int node_reset_thread_count		 = kd_tree_device.core.node_capacity;
+	void* launch_args[]							 = { &kd_tree_device };
+
+	if (is_using_learning_to_cluster(compiler_options))
+	{
+		unsigned int reservoir_proposal_reset_thread_count =
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
+		unsigned int reset_thread_count = std::max(node_reset_thread_count, reservoir_proposal_reset_thread_count);
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
+			1024, 1, reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
+		return;
+	}
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->launch_asynchronous(1024, 1, node_reset_thread_count, 1,
 																												launch_args, m_renderer->get_main_stream());
-
-	return render_data_invalidated;
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const

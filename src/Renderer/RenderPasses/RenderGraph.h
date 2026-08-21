@@ -45,6 +45,7 @@ public:
 
 	virtual void prepass() override;
 	virtual bool pre_frame_render_update(float delta_time) override;
+	virtual void pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 

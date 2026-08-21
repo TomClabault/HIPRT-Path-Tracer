@@ -82,10 +82,16 @@ bool RenderGraph::pre_frame_render_update(float delta_time)
 	for (auto& name_to_render_pass : m_render_passes)
 		render_data_invalidated |= name_to_render_pass.second->pre_frame_render_update(delta_time);
 
-	// pre_sample_update means that this is a new frame
+	// pre_frame_render_update means that this is a new frame
 	m_new_frame = true;
 
 	return render_data_invalidated;
+}
+
+void RenderGraph::pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
+	traverse_render_passes_in_dependency_order([&render_data, &compiler_options](RenderPass* render_pass)
+																					   { render_pass->pre_sample_update_async(render_data, compiler_options); });
 }
 
 bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)

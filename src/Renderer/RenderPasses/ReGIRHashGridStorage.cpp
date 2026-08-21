@@ -56,7 +56,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	bool grid_not_allocated = get_total_number_of_cells(primary_hit) == 0;
 	bool grid_res_changed	= m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size ||
-							  m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
+							m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed =
 		regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
 
@@ -306,7 +306,7 @@ void ReGIRHashGridStorage::reset_internal(bool primary_hit)
 	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 	{
 		if (get_spatial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().size() > 0)
-			// We need to check the size before the reset because the reset method is called before the pre_sample_update method
+			// We need to check the size before the reset because the reset method is called before the pre_frame_render_update method
 			// (where the buffer is allocated) so this reset call may try to reset a buffer that wasn't allocated
 			get_spatial_grid_buffers(primary_hit)
 				.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>()

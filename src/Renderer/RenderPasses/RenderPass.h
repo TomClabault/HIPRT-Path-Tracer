@@ -42,7 +42,7 @@ public:
 	 * This will be called once when the render pass is created.
 	 *
 	 * After this function is called, the render pass should be ready to be
-	 * launch()ed (pre_sample_update() will be called before launch() though)
+	 * launch()ed (pre_frame_render_update() will be called before launch() though)
 	 *
 	 * This compile method will always be called on all render passes of a renderer.
 	 * It is the responsibility of the class overriding this method to compile the kernels if necessary or not.
@@ -131,6 +131,15 @@ public:
 	 * Returns false otherwise
 	 */
 	virtual bool pre_frame_render_update(float delta_time) = 0;
+
+	/**
+	 * Called once per sample, immediately before launch_async().
+	 *
+	 * This function may enqueue asynchronous GPU work needed before the sample is rendered.
+	 * It must not resize or free buffers, update frame-level state, or access the renderer's UI-owned render data directly.
+	 * The render_data and compiler_options arguments are the per-frame snapshots used for the current sample.
+	 */
+	virtual void pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
 
 	/**
 	 * *** Do not use this function in *_async function! ***
