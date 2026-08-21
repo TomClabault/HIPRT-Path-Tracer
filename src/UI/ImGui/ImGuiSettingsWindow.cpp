@@ -6,8 +6,8 @@
 #include "Compiler/GPUKernelCompiler.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
@@ -1303,9 +1303,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGuiRenderer::show_help_marker(std::string("Whether or not to integrate direct lighting (NEE) at the primary hit (G-buffer surface)."));
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			const char* items_base_strategy[]	 = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
-													 "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)" };
-			const char* tooltips_base_strategy[] = {
+			const char* items_light_sampling_strategy[]	   = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
+															   "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)" };
+			const char* tooltips_light_sampling_strategy[] = {
 				"All lights are sampled uniformly.",
 
 				"Lights are sampled proportionally to their power.",
@@ -1319,21 +1319,35 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
+			bool using_learning_to_cluster_or_nisml =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_LEARNING_TO_CLUSTER ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
+			bool uniform_sampling_disabled = using_learning_to_cluster_or_nisml;
+			bool power_sampling_disabled   = using_learning_to_cluster_or_nisml;
+			bool light_tree_ats_disabled   = using_learning_to_cluster_or_nisml;
+			bool sg_light_tree_disabled	   = false;
+			bool regir_disabled			   = using_learning_to_cluster_or_nisml;
+
+			unsigned char disabled_light_sampling_strategies[] = { uniform_sampling_disabled, power_sampling_disabled, light_tree_ats_disabled,
+																   sg_light_tree_disabled, regir_disabled };
+			static_assert(IM_ARRAYSIZE(disabled_light_sampling_strategies) == IM_ARRAYSIZE(items_light_sampling_strategy));
+
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips(
 				"Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY),
-				items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
+				items_light_sampling_strategy, IM_ARRAYSIZE(items_light_sampling_strategy), tooltips_light_sampling_strategy,
+				disabled_light_sampling_strategies);
 
-			const char* items[]	   = { "- No direct light sampling",
-									   "- Light sampling",
-									   "- BSDF Sampling",
-									   "- MIS (1 Light + 1 BSDF)",
-									   "- RIS BDSF + Light candidates",
-									   "- RISLTC BSDF + Light candidates",
-									   "- LTC Shading",
-									   "- ReSTIR DI (Primary hit only)",
-									   "- Neural importance sampling of many lights",
-									   "- Learning to cluster SG light tree" };
-			const char* tooltips[] = {
+			const char* items_nee_estimators[]	  = { "- No direct light sampling",
+													  "- Light sampling",
+													  "- BSDF Sampling",
+													  "- MIS (1 Light + 1 BSDF)",
+													  "- RIS BDSF + Light candidates",
+													  "- RISLTC BSDF + Light candidates",
+													  "- LTC Shading",
+													  "- ReSTIR DI (Primary hit only)",
+													  "- Neural importance sampling of many lights",
+													  "- Learning to cluster SG light tree" };
+			const char* tooltips_nee_estimators[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 
 				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular "
@@ -1363,7 +1377,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a "
 				"lightcut (hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut",
 			};
-			static_assert(IM_ARRAYSIZE(items) == IM_ARRAYSIZE(tooltips));
+			static_assert(IM_ARRAYSIZE(items_nee_estimators) == IM_ARRAYSIZE(tooltips_nee_estimators));
 
 			const bool no_direct_light_sampling_disabled = false;
 			const bool uniform_one_light_disabled =
@@ -1380,30 +1394,44 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool neural_many_lights_disabled	= regir;
 			const bool learning_to_cluster_disabled = regir;
 
-			unsigned char disabled_items[] = { no_direct_light_sampling_disabled,
-											   uniform_one_light_disabled,
-											   bsdf_sampling_disabled,
-											   mis_disabled,
-											   ris_disabled,
-											   risltc_disabled,
-											   ltc_shading_disabled,
-											   restir_di_disabled,
-											   neural_many_lights_disabled,
-											   learning_to_cluster_disabled };
+			unsigned char disabled_nee_estimator_items[] = { no_direct_light_sampling_disabled,
+															 uniform_one_light_disabled,
+															 bsdf_sampling_disabled,
+															 mis_disabled,
+															 ris_disabled,
+															 risltc_disabled,
+															 ltc_shading_disabled,
+															 restir_di_disabled,
+															 neural_many_lights_disabled,
+															 learning_to_cluster_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
-			// fallback for the techniques in the same order that they are in the 'items_base_strategy' array.
+			// fallback for the techniques in the same order that they are in the 'items_light_sampling_strategy' array.
 			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
-			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_base_strategy));
+			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_light_sampling_strategy));
 
 			bool nee_estimator_changed	= false;
 			bool nee_estimator_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
 			ImGui::BeginDisabled(nee_estimator_disabled);
-			if (ImGuiRenderer::ComboWithTooltips("NEE Estimator",
-												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
-												 items, IM_ARRAYSIZE(items), tooltips, disabled_items))
+			if (ImGuiRenderer::ComboWithTooltips(
+					"NEE Estimator", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
+					items_nee_estimators, IM_ARRAYSIZE(items_nee_estimators), tooltips_nee_estimators, disabled_nee_estimator_items))
 			{
 				nee_estimator_changed = true;
+
+				int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
+				{
+					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 32;
+
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+				}
+				else if (nee_estimator == LSS_LEARNING_TO_CLUSTER)
+				{
+					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 64;
+
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+				}
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1412,16 +1440,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGuiRenderer::add_tooltip("The NEE estimator is controlled by ReSTIR PT.");
 			ImGui::EndDisabled(); // nee_estimator_disabled
 
-			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
+			if (disabled_nee_estimator_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
 			{
 				int preferred_base_strategy =
 					preferred_fallback_technique[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)];
-				if (disabled_items[preferred_base_strategy])
+				if (disabled_nee_estimator_items[preferred_base_strategy])
 				{
 					// If also the preferred technique is disabled, choosing the first enabled one
-					for (int i = 1; i < IM_ARRAYSIZE(disabled_items); i++)
+					for (int i = 1; i < IM_ARRAYSIZE(disabled_nee_estimator_items); i++)
 					{
-						if (!disabled_items[i])
+						if (!disabled_nee_estimator_items[i])
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, i);
 
@@ -1456,20 +1484,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompute_emissives_sampling_data_structure();
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
-			}
-
-			if (nee_estimator_changed)
-			{
-				int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-
-				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
-				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 32;
-				}
-				else if (nee_estimator == LSS_LEARNING_TO_CLUSTER)
-				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 64;
-				}
 			}
 
 			const char* items_triangle_sampling[]	 = { "- Uniform area", "- Solid angle", "- Projected solid angle" };
@@ -3046,7 +3060,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Sampling strategies");
 
-			const char* items_base_strategy[]				   = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
+			const char* items_light_sampling_strategy[]		   = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
 																   "- SG light tree (Tokuyoshi et al. 2024)" };
 			const char* tooltips_base_strategy_non_canonical[] = {
 				"All lights are sampled uniformly",
@@ -3077,7 +3091,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGuiRenderer::ComboWithTooltips(
 					"Non canonical",
 					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL),
-					items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_non_canonical))
+					items_light_sampling_strategy, IM_ARRAYSIZE(items_light_sampling_strategy), tooltips_base_strategy_non_canonical))
 			{
 				// Will recompute the alias table if necessary
 				m_renderer->recompute_emissives_sampling_data_structure();
@@ -3091,7 +3105,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGuiRenderer::ComboWithTooltips(
 					"Canonical",
 					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL),
-					items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_canonical))
+					items_light_sampling_strategy, IM_ARRAYSIZE(items_light_sampling_strategy), tooltips_base_strategy_canonical))
 			{
 				// Will recompute the alias table if necessary
 				m_renderer->recompute_emissives_sampling_data_structure();
