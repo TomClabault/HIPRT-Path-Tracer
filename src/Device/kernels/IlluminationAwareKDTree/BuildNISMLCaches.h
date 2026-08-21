@@ -64,12 +64,18 @@ HIPRT_DEVICE bool normalize_nisml_baseline_distribution(float* log_importances, 
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_device, HIPRTRenderData render_data, int x)
 #else
+// HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
+extern "C"
+{
+	HIPRT_DEVICE __constant__ unsigned char ILLUMINATION_AWARE_KD_TREE_RENDER_DATA[sizeof(HIPRTRenderData)];
+}
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_device, HIPRTRenderData render_data)
+IlluminationAwareKDTree_BuildNISMLCaches(IlluminationAwareKDTreeDevice kd_tree_device)
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int cache_index = blockIdx.x * blockDim.x + threadIdx.x;
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(ILLUMINATION_AWARE_KD_TREE_RENDER_DATA);
+	unsigned int cache_index	 = blockIdx.x * blockDim.x + threadIdx.x;
 #else
 	unsigned int cache_index = x;
 #endif

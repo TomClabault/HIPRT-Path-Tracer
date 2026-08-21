@@ -6,6 +6,7 @@
 #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
 #define RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -153,6 +154,8 @@ public:
 	std::size_t get_vram_usage_bytes() const;
 
 private:
+	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
+
 	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
 	bool is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const;
 	void build_nisml(HIPRTRenderData& render_data);
@@ -162,6 +165,7 @@ private:
 
 	IlluminationAwareKDTreeUserSettings m_user_settings;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	// How many times to:
 	//	for (int split; split < m_split_iterations; split++)
