@@ -14,6 +14,8 @@ const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL	= "Compute G-MoN";
 GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(GMoNRenderPass::GMON_RENDER_PASS_NAME, renderer, options)
 {
+	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + GMoNRenderPass::COMPUTE_GMON_KERNEL);
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_function_name("GMoNComputeMedianOfMeans");
@@ -109,11 +111,14 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 
 		render_data.buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
 
-		void* launch_args[] = { &render_data };
+		HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+		*host_pinned_render_data				 = render_data;
+
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->upload_to_module_global("GMON_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																				m_renderer->get_main_stream());
 
 		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->launch_asynchronous(GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize,
-																			render_resolution.x, render_resolution.y, launch_args,
-																			m_renderer->get_main_stream());
+																			render_resolution.x, render_resolution.y, nullptr, m_renderer->get_main_stream());
 
 		m_gmon.m_gmon_recomputed			  = true;
 		m_gmon.m_gmon_recomputation_requested = false;

@@ -7,6 +7,7 @@
 #define RENDERER_GMON_RENDER_PASS_H
 
 #include "Compiler/GPUKernel.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/GMoNGPUData.h"
@@ -70,6 +71,7 @@ public:
 private:
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
+	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	int m_next_set_to_accumulate = 0;
 };
