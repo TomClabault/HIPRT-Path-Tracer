@@ -4233,7 +4233,13 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 		{
 			ImGui::TreePush("Learning to cluster many lights tree");
 
-			if (ImGui::SliderInt("Stop learning after SPP##nisml", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(), 0, 128))
+			ImGui::SeparatorText("Refinement stopping conditions");
+			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),
+								 0, 128))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderInt("Stop learning after seconds##learningtocluster",
+								 &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_seconds(), 0, 128))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

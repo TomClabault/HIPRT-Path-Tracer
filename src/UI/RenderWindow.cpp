@@ -33,8 +33,6 @@ extern ImGuiLogger g_imgui_logger;
 //		design
 //
 // IMMEDIATE TODOS:
-//	- Still something a bit fishy with the perf of accumulate batch training samples when going from 1 samples per frame to 4, timings go up quite a bit and
-// overall FPS overlay goes down, not expected
 //	- LTC stop training after N seconds
 //	- Select ATS + splitting and switch to LTC = crash
 //	- Constant memory for all kernels

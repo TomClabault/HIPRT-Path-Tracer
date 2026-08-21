@@ -260,6 +260,9 @@ void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned 
 
 bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time)
 {
+	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()) && m_learning_to_cluster_learning_seconds > 0)
+		m_learning_to_cluster_elapsed_seconds += delta_time / 1000.0f;
+
 	m_nisml_representative_capacity = std::max(m_nisml_representative_capacity, 1);
 
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
@@ -451,9 +454,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_learning_to_cluster(compiler_options))
 	{
-		bool learning_to_cluster_learning_budget_reached =
+		bool learning_to_cluster_learning_spp_budget_reached =
 			render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp && m_learning_to_cluster_learning_spp > 0;
-		if (learning_to_cluster_learning_budget_reached)
+		bool learning_to_cluster_learning_time_budget_reached =
+			m_learning_to_cluster_elapsed_seconds >= m_learning_to_cluster_learning_seconds && m_learning_to_cluster_learning_seconds > 0;
+		if (learning_to_cluster_learning_spp_budget_reached || learning_to_cluster_learning_time_budget_reached)
 			return;
 
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
@@ -580,6 +585,8 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		// Nothing to reset
 		return;
 
+	m_learning_to_cluster_elapsed_seconds = 0.0f;
+
 	if (m_frozen_tree)
 		// If the tree is frozen, we don't want to reset it even if the camera moves. Useful for debugging to see how the tree is subdivided over the scene by
 		// moving around
@@ -627,6 +634,11 @@ int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_spp()
 {
 	return m_learning_to_cluster_learning_spp;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_seconds()
+{
+	return m_learning_to_cluster_learning_seconds;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
