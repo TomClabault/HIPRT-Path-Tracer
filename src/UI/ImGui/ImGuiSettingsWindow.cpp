@@ -4234,6 +4234,19 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			ImGui::TreePush("Learning to cluster many lights tree");
 
 			ImGui::SeparatorText("Initialization");
+			int q0_initialization =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_Q0_USE_TOTAL_POWER) == KERNEL_OPTION_TRUE;
+			bool q0_initialization_changed = false;
+			q0_initialization_changed |= ImGui::RadioButton("Total power", &q0_initialization, 1);
+			ImGui::SameLine();
+			q0_initialization_changed |= ImGui::RadioButton("SG node importance", &q0_initialization, 0);
+			if (q0_initialization_changed)
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_Q0_USE_TOTAL_POWER,
+													   q0_initialization == 1 ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::SeparatorText("Refinement stopping conditions");
 			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),

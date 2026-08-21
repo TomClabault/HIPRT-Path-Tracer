@@ -52,6 +52,11 @@
 #define IlluminationAwareKDTreeMaximumLookaheadLevelCount 6
 
 /**
+ * Initialize light-cluster Q0 values using the SG node's total power instead of the view-dependent SG node importance.
+ */
+#define IlluminationAwareKDTreeQ0UseTotalPower KERNEL_OPTION_TRUE
+
+/**
  * Debug view for the illumination-aware KD-tree.
  */
 #define IlluminationAwareKDTreeDebugMode				 ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG

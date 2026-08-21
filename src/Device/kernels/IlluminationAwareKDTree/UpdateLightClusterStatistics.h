@@ -38,18 +38,22 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 	unsigned int cluster_node_index						   = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
 	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
 
-	float initial_importance_Q								  = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-	statistics.estimated_importance_Q						  = initial_importance_Q;
-	statistics.mean											  = 0.0f;
-	statistics.M2											  = 0.0f;
-	statistics.visit_count									  = 0u;
+#if IlluminationAwareKDTreeQ0UseTotalPower == KERNEL_OPTION_TRUE
+	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
+#else
+	// statistics.estimated_importance_Q						  = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
+	statistics.estimated_importance_Q = light_clustering_node_importance(light_tree_sg, cluster_node_index, context);
+#endif
+	statistics.mean						  = 0.0f;
+	statistics.M2						  = 0.0f;
+	statistics.visit_count					  = 0u;
 }
 
 HIPRT_DEVICE void append_observation(IlluminationAwareKDTreeLightClusterStatistics& statistics, float observation)
 {
 	unsigned int previous_count = statistics.visit_count;
-	float delta					= observation - statistics.mean;
+	float delta								= observation - statistics.mean;
 	statistics.mean += delta / static_cast<float>(previous_count + 1u);
 	float delta2 = observation - statistics.mean;
 	statistics.M2 += delta * delta2;
