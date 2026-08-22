@@ -70,41 +70,38 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int active_pair_index = blockIdx.x;
-	unsigned int slot			   = threadIdx.x;
+	unsigned int clustering_index		= blockIdx.x;
+	unsigned int slot					= threadIdx.x;
+	unsigned int light_clustering_count = *kd_tree.learning_to_cluster.light_clustering_count;
+	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+		return;
 #else
-	unsigned int active_pair_index = static_cast<unsigned int>(x);
-	unsigned int slot			   = 0;
+	unsigned int clustering_index = static_cast<unsigned int>(x);
+	unsigned int slot			  = 0;
+	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+		return;
 #endif
-
-	if (slot != 0u)
-		return;
-
-	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
-		return;
-
-	unsigned int guiding_list_index = active_pair_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_pair_index % SurfaceNormalFace_Count;
-	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-		return;
-
-	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
-		return;
 
 	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 
 	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
 	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 	{
+#ifdef __KERNELCC__
+		initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, slot);
+
+		if (slot == 0u)
+		{
+			cluster_data.Q0_initialized			 = true;
+			cluster_data.light_cluster_cdf_dirty = true;
+		}
+#else
 		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
 			initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, cluster_slot);
 
 		cluster_data.Q0_initialized			 = true;
 		cluster_data.light_cluster_cdf_dirty = true;
+#endif
 	}
 
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
@@ -114,6 +111,20 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 		return;
 
 	unsigned int base_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+#ifdef __KERNELCC__
+	if (slot >= cluster_data.cut_size)
+		return;
+
+	unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+	unsigned int cluster_node_index							  = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
+	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+	{
+		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+		if (record.cluster_node_index == cluster_node_index)
+			append_observation(statistics, record.variance_observation);
+	}
+#else
 	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
 	{
 		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
@@ -124,6 +135,7 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, static_cast<unsigned int>(slot_index));
 		append_observation(kd_tree.learning_to_cluster.light_cluster_statistics[offset], record.variance_observation);
 	}
+#endif
 }
 
 #endif

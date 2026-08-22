@@ -509,10 +509,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
+		unsigned int maximum_light_clustering_statistics_work_count =
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * learning_to_cluster_light_clustering_block_size;
 		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
 		void* light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
 		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_statistics_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
