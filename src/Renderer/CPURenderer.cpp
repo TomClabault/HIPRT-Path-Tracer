@@ -786,11 +786,11 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		kd_tree_device.learning_to_cluster.effective_initial_light_cut_size				  = effective_second_tree_cut_size;
 		m_render_data.kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
 
-		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.begin(),
-				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.end(),
+		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.begin(),
+				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.end(),
 				  IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
 		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size,
-					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_initial_light_cut_node_indices.begin());
+					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.begin());
 
 		if (effective_second_tree_cut_size > 0)
 		{
@@ -905,9 +905,9 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	m_illumination_aware_kd_tree_state.next_creation_tag				  = 0;
 
 	m_render_data.kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	unsigned int reset_count =
-		std::max(m_render_data.kd_tree_device.core.node_capacity,
-				 static_cast<unsigned int>(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_light_clustering_data.size()));
+	unsigned int reset_count	 = std::max(
+		m_render_data.kd_tree_device.core.node_capacity,
+		static_cast<unsigned int>(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_clustering_data.size()));
 	for (unsigned int node_index = 0; node_index < reset_count; node_index++)
 		IlluminationAwareKDTree_ResetTree(m_render_data.kd_tree_device, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 

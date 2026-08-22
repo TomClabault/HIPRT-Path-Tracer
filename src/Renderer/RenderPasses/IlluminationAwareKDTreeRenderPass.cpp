@@ -289,7 +289,7 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 
 	unsigned int maximum_light_cut_size = static_cast<unsigned int>(
 		m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
-	if (m_illumination_aware_kd_tree.m_maximum_light_cut_size != maximum_light_cut_size)
+	if (m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_maximum_light_cut_size != maximum_light_cut_size)
 		m_buffers_need_reallocation = true;
 
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
@@ -337,8 +337,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 			m_renderer->get_render_data().kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
 			if (!second_tree_cut_node_indices.empty() && effective_second_tree_cut_size > 0)
 			{
-				m_illumination_aware_kd_tree.m_initial_light_cut_node_indices.upload_data_partial(0, second_tree_cut_node_indices.data(),
-																								  effective_second_tree_cut_size);
+				m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.upload_data_partial(
+					0, second_tree_cut_node_indices.data(), effective_second_tree_cut_size);
 
 				LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
 				void* initialize_root_light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
@@ -770,7 +770,7 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.training_samples		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_samples.get_byte_size();
 	vram_usage.training_sample_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_sample_count.get_byte_size();
 
-	vram_usage.light_cluster_cdfs = m_illumination_aware_kd_tree.m_light_cluster_cdfs.get_byte_size();
+	vram_usage.light_cluster_cdfs = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_cluster_cdfs.get_byte_size();
 
 	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();
