@@ -64,9 +64,16 @@ extern ImGuiLogger g_imgui_logger;
 //	- When to stop learning automatically?
 //	- Is it worth it to only use a few SG lobes for descending the subtree? It's going to be much faster and maybe we don't need the precision of many lobes at
 //		that point? Maybe variance will be fine while being much faster?
+//		------> Yes it's much better
+//	- Can we do something that accumulates NEE samples in the clusters of the light cuts, update statistics, refine, potentially split the lightcut and then
+//		accumulate the samples again? The goal is to be able to learn (update statistics)/split the lightcut multiple times per SPP to greatly accelerate
+//		learning. For that we should probably drop the reservoir logic per cluster and just keep every NEE samples, same as for the KD tree update and then just
+//		replay those samples into learning to cluster, finding what cluster of the lightcut that light sample went through and accumulate that light sample into
+//		that cluster of the cut
+//
 //
 // TODO SG Light tree
-//	- Maybe still do the hard coded distributions, may still be good
+//	- Maybe still do the hard coded distributions, cache points style, may still be good
 //	- How to use more SG spatial lobes per precomputed nodes of the tree cut (which is basically free quality) but no more of these lobes when traversing the
 // subtrees to not tank perf
 //	- Can we somehow have a root node that is very large (1024?) and build a conservative distribution on it, cache points like. Basically what was done for

@@ -111,47 +111,74 @@ struct HIPRTGeometry
 
 		build_options.buildFlags = build_flags;
 
-		geometry_build_input.type					= hiprtPrimitiveTypeTriangleMesh;
-		geometry_build_input.primitive.triangleMesh = m_mesh;
-		// Geom type 0 here
-		geometry_build_input.geomType = 0;
-
-		log_bvh_building(build_options.buildFlags);
-		// Getting the buffer sizes for the construction of the BVH
-		HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
-
-		oroError_t error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
-		if (error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
+		do
 		{
+			geometry_build_input.type					= hiprtPrimitiveTypeTriangleMesh;
+			geometry_build_input.primitive.triangleMesh = m_mesh;
+			// Geom type 0 here
+			geometry_build_input.geomType = 0;
+
+			log_bvh_building(build_options.buildFlags);
+			// Getting the buffer sizes for the construction of the BVH
+			HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
+
+			oroError_t error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
 			if (error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
 			{
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
-										"Out of memory while trying to build the BVH... Retrying without spatial splits. Tracing performance may suffer...");
-
-				build_options.buildFlags |= hiprtBuildFlagBitDisableSpatialSplits;
-
-				HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
-				error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
-
-				if (error != oroSuccess)
+				if (build_options.buildFlags & hiprtBuildFlagBitDisableSpatialSplits)
 				{
+					// We already have disabled spatial splits and we still got an OOM error, so we can't build the BVH
 					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
 											"Error while trying to build the BVH even without spatial splits... Aborting...");
 
-					OROCHI_CHECK_ERROR(error);
+					Debug::debugbreak();
 				}
+
+				build_options.buildFlags |= hiprtBuildFlagBitDisableSpatialSplits;
+
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+										"Out of memory while trying to build the BVH... Retrying without spatial splits. Tracing performance may suffer...");
 			}
-		}
-		else
-			OROCHI_CHECK_ERROR(error);
+			else
+				OROCHI_CHECK_ERROR(error);
 
-		if (m_geometry != nullptr)
-		{
-			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
+			if (m_geometry != nullptr)
+			{
+				HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
 
-			m_geometry = nullptr;
-		}
-		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
+				m_geometry = nullptr;
+			}
+
+			hiprtError error_create_geometry = hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry);
+			if (error_create_geometry == hiprtErrorOutOfDeviceMemory && disable_spatial_splits_on_OOM)
+			{
+				if (build_options.buildFlags & hiprtBuildFlagBitDisableSpatialSplits)
+				{
+					// We already have disabled spatial splits and we still got an OOM error, so we can't build the BVH
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+											"Error while trying to build the BVH even without spatial splits... Aborting...");
+
+					Debug::debugbreak();
+				}
+
+				build_options.buildFlags |= hiprtBuildFlagBitDisableSpatialSplits;
+
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+										"Out of memory while trying to create the BVH... Retrying without spatial splits. Tracing performance may suffer...");
+
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+			}
+			else if (error_create_geometry != hiprtSuccess)
+			{
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Error while trying to build the BVH... Aborting...");
+
+				HIPRT_CHECK_ERROR(error_create_geometry);
+			}
+			else
+				// Success
+				break;
+		} while (true);
+
 		HIPRT_CHECK_ERROR(
 			hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
