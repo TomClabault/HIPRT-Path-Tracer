@@ -81,8 +81,8 @@ HIPRT_DEVICE float light_clustering_node_importance_for_refinement(const LightTr
 #endif
 
 	// return light_tree_sg.nodes[cluster_node_index].get_total_power();
-	return hippt::max(0.1f, light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
-														  context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y));
+	return hippt::max(1.0e-3f, light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
+															 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y));
 }
 
 HIPRT_DEVICE IlluminationAwareKDTreeLightClusterStatistics

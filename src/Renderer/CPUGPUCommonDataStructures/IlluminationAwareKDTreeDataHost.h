@@ -39,6 +39,7 @@ struct IlluminationAwareKDTreeDataHost
 		size_t light_clustering_capacity   = static_cast<size_t>(new_node_capacity) * 2;
 		size_t light_cluster_slot_capacity = light_clustering_capacity * LearningToClusterMaximumLightCutSize;
 		size_t pending_record_capacity	   = light_clustering_capacity * IlluminationAwareKDTreePendingLightClusterRecordStride;
+
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_data, light_clustering_capacity);
@@ -51,7 +52,6 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_any_cell_needs_split, 1);
 		GenericSoAHelpers::resize_host_pinned_mem(m_any_cell_needs_split_host_pinned, 1);
-		m_counter_download_buffer.resize_host_pinned_mem(1);
 	}
 
 	void reset()
@@ -61,9 +61,10 @@ struct IlluminationAwareKDTreeDataHost
 
 	bool free()
 	{
-		bool core_data_freed						= m_kd_tree_data.free();
-		bool nisml_data_freed						= m_nisml_data.free();
-		bool light_clustering_data_freed			= m_light_clustering_count.size() > 0;
+		bool core_data_freed			 = m_kd_tree_data.free();
+		bool nisml_data_freed			 = m_nisml_data.free();
+		bool light_clustering_data_freed = m_light_clustering_count.size() > 0;
+
 		m_light_clustering_count					= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_normal_clustering_set_count				= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_learning_to_cluster_training_samples		= DataContainer<IlluminationAwareKDTreeLearningToClusterTrainingSample>();
@@ -80,16 +81,14 @@ struct IlluminationAwareKDTreeDataHost
 		m_reservoir_proposals						= DataContainer<GenericAtomicType<unsigned long long int, DataContainer>>();
 		m_representative_shading_contexts			= DataContainer<IlluminationAwareKDTreeSGShadingContext>();
 		m_representative_shading_context_states		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		bool any_cell_needs_split_freed				= m_any_cell_needs_split.size() > 0;
-		m_any_cell_needs_split						= DataContainer<unsigned char>();
+
+		bool any_cell_needs_split_freed = m_any_cell_needs_split.size() > 0;
+		m_any_cell_needs_split			= DataContainer<unsigned char>();
+
 		bool any_cell_needs_split_host_pinned_freed = m_any_cell_needs_split_host_pinned.size() > 0;
 		m_any_cell_needs_split_host_pinned			= DataContainer<unsigned char>();
-		bool counter_download_buffer_freed			= m_counter_download_buffer.maximum_size() > 0;
-		if (counter_download_buffer_freed)
-			m_counter_download_buffer.free();
 
-		return core_data_freed || nisml_data_freed || light_clustering_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed ||
-			   counter_download_buffer_freed;
+		return core_data_freed || nisml_data_freed || light_clustering_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed;
 	}
 
 	std::size_t maximum_size() const
@@ -159,7 +158,6 @@ struct IlluminationAwareKDTreeDataHost
 
 	DataContainer<unsigned char> m_any_cell_needs_split;
 	DataContainer<unsigned char> m_any_cell_needs_split_host_pinned;
-	GenericSoA<DataContainer, unsigned int> m_counter_download_buffer;
 };
 
 #endif

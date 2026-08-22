@@ -42,7 +42,7 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
 #else
-	statistics.estimated_importance_Q = hippt::max(0.1f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
+	statistics.estimated_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
 #endif
 	statistics.mean		   = 0.0f;
 	statistics.M2		   = 0.0f;

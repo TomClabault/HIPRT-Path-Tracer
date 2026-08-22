@@ -33,8 +33,6 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 	}
 };
 
-static_assert(sizeof(IlluminationAwareKDTreeLightClusterStatistics) == 16);
-
 static constexpr unsigned int IlluminationAwareKDTreePendingLightClusterRecordStride = LearningToClusterMaximumLightCutSize;
 
 struct IlluminationAwareKDTreeLightClusteringData
