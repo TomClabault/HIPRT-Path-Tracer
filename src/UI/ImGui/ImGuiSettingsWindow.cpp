@@ -4252,9 +4252,72 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 		{
 			ImGui::TreePush("Learning to cluster many lights tree");
 
+			IlluminationAwareKDTreeVRAMUsage kd_tree_vram_usage = illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown();
+			std::size_t learning_to_cluster_vram_bytes =
+				kd_tree_vram_usage.light_clustering_count + kd_tree_vram_usage.normal_clustering_set_count +
+				kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_count +
+				kd_tree_vram_usage.initial_light_cut_node_indices + kd_tree_vram_usage.normal_clustering_sets +
+				kd_tree_vram_usage.normal_face_observation_counts + kd_tree_vram_usage.light_cluster_node_indices +
+				kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs + kd_tree_vram_usage.pending_light_cluster_records +
+				kd_tree_vram_usage.pending_light_cluster_record_counts + kd_tree_vram_usage.reservoir_seen_counts + kd_tree_vram_usage.reservoir_proposals +
+				kd_tree_vram_usage.light_clustering_data + kd_tree_vram_usage.representative_shading_contexts +
+				kd_tree_vram_usage.representative_shading_context_states;
+
+			ImGui::Text("Learning to cluster VRAM usage: %.3fMB", learning_to_cluster_vram_bytes / 1000000.0f);
+			ImGui::Text("VRAM Usage breakdown: ");
+
+			std::vector<char> vram_tooltip_buffer(4096);
+			snprintf(vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
+					 "  Light-clustering counters: %.3fMB\n"
+					 "    Light-clustering count: %.3fMB\n"
+					 "    Normal-clustering set count: %.3fMB\n"
+					 "  Learning-to-cluster training buffers: %.3fMB\n"
+					 "    Training samples: %.3fMB\n"
+					 "    Training sample count: %.3fMB\n"
+					 "  Initial light cut: %.3fMB\n"
+					 "    Initial light-cut node indices: %.3fMB\n"
+					 "  Normal-clustering buffers: %.3fMB\n"
+					 "    Normal-clustering sets: %.3fMB\n"
+					 "    Normal-face observation counts: %.3fMB\n"
+					 "  Light-cluster buffers: %.3fMB\n"
+					 "    Light-cluster node indices: %.3fMB\n"
+					 "    Light-cluster statistics: %.3fMB\n"
+					 "    Light-cluster CDFs: %.3fMB\n"
+					 "  Pending light-cluster records: %.3fMB\n"
+					 "    Pending records: %.3fMB\n"
+					 "    Pending record counts: %.3fMB\n"
+					 "  Reservoir buffers: %.3fMB\n"
+					 "    Seen counts: %.3fMB\n"
+					 "    Proposals: %.3fMB\n"
+					 "  Light-clustering data: %.3fMB\n"
+					 "  Representative shading contexts: %.3fMB\n"
+					 "    Contexts: %.3fMB\n"
+					 "    Context states: %.3fMB",
+					 (kd_tree_vram_usage.light_clustering_count + kd_tree_vram_usage.normal_clustering_set_count) / 1000000.0f,
+					 kd_tree_vram_usage.light_clustering_count / 1000000.0f, kd_tree_vram_usage.normal_clustering_set_count / 1000000.0f,
+					 (kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_count) / 1000000.0f,
+					 kd_tree_vram_usage.learning_to_cluster_training_samples / 1000000.0f,
+					 kd_tree_vram_usage.learning_to_cluster_training_sample_count / 1000000.0f, kd_tree_vram_usage.initial_light_cut_node_indices / 1000000.0f,
+					 kd_tree_vram_usage.initial_light_cut_node_indices / 1000000.0f,
+					 (kd_tree_vram_usage.normal_clustering_sets + kd_tree_vram_usage.normal_face_observation_counts) / 1000000.0f,
+					 kd_tree_vram_usage.normal_clustering_sets / 1000000.0f, kd_tree_vram_usage.normal_face_observation_counts / 1000000.0f,
+					 (kd_tree_vram_usage.light_cluster_node_indices + kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs) /
+						 1000000.0f,
+					 kd_tree_vram_usage.light_cluster_node_indices / 1000000.0f, kd_tree_vram_usage.light_cluster_statistics / 1000000.0f,
+					 kd_tree_vram_usage.light_cluster_cdfs / 1000000.0f,
+					 (kd_tree_vram_usage.pending_light_cluster_records + kd_tree_vram_usage.pending_light_cluster_record_counts) / 1000000.0f,
+					 kd_tree_vram_usage.pending_light_cluster_records / 1000000.0f, kd_tree_vram_usage.pending_light_cluster_record_counts / 1000000.0f,
+					 (kd_tree_vram_usage.reservoir_seen_counts + kd_tree_vram_usage.reservoir_proposals) / 1000000.0f,
+					 kd_tree_vram_usage.reservoir_seen_counts / 1000000.0f, kd_tree_vram_usage.reservoir_proposals / 1000000.0f,
+					 kd_tree_vram_usage.light_clustering_data / 1000000.0f,
+					 (kd_tree_vram_usage.representative_shading_contexts + kd_tree_vram_usage.representative_shading_context_states) / 1000000.0f,
+					 kd_tree_vram_usage.representative_shading_contexts / 1000000.0f, kd_tree_vram_usage.representative_shading_context_states / 1000000.0f);
+			ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Initialization");
 
-			ImGui::Text("light cut node Q0 probability");
+			ImGui::Text("Light cut node Q0 probability");
 			int q0_initialization =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER) == KERNEL_OPTION_TRUE;
 			bool q0_initialization_changed = false;

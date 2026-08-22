@@ -770,7 +770,27 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.training_samples		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_samples.get_byte_size();
 	vram_usage.training_sample_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_sample_count.get_byte_size();
 
-	vram_usage.light_cluster_cdfs = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_cluster_cdfs.get_byte_size();
+	vram_usage.light_clustering_count	   = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_clustering_count.get_byte_size();
+	vram_usage.normal_clustering_set_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_clustering_set_count.get_byte_size();
+	vram_usage.learning_to_cluster_training_samples =
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_samples.get_byte_size();
+	vram_usage.learning_to_cluster_training_sample_count =
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_sample_count.get_byte_size();
+	vram_usage.initial_light_cut_node_indices = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.get_byte_size();
+	vram_usage.normal_clustering_sets		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_clustering_sets.get_byte_size();
+	vram_usage.normal_face_observation_counts = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_face_observation_counts.get_byte_size();
+	vram_usage.light_cluster_node_indices	  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_cluster_node_indices.get_byte_size();
+	vram_usage.light_cluster_statistics		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_cluster_statistics.get_byte_size();
+	vram_usage.light_cluster_cdfs			  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_cluster_cdfs.get_byte_size();
+	vram_usage.pending_light_cluster_records  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_pending_light_cluster_records.get_byte_size();
+	vram_usage.pending_light_cluster_record_counts =
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_pending_light_cluster_record_counts.get_byte_size();
+	vram_usage.reservoir_seen_counts		   = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_reservoir_seen_counts.get_byte_size();
+	vram_usage.reservoir_proposals			   = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_reservoir_proposals.get_byte_size();
+	vram_usage.light_clustering_data		   = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_clustering_data.get_byte_size();
+	vram_usage.representative_shading_contexts = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_representative_shading_contexts.get_byte_size();
+	vram_usage.representative_shading_context_states =
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_representative_shading_context_states.get_byte_size();
 
 	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();
