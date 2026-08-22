@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LIGHT_TREE_LIGHT_TREE_SG_SAMPLING_LEARNING_TO_CLUSTER_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_LIGHT_TREE_LIGHT_TREE_SG_SAMPLING_LEARNING_TO_CLUSTER_H
 
+#include "Device/includes/CDF.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterCutTriangleSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
@@ -113,43 +114,29 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	if (cut_size == 0 || cut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
-	float total_weight		   = 0.0f;
-	float selected_weight	   = 0.0f;
-	unsigned int selected_slot = cut_size - 1;
-
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
-	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
-#else
-	SGSpecularImportanceData specular_data;
-#endif
-
-	for (unsigned int slot = 0; slot < cut_size; slot++)
+	unsigned int selected_slot = 0;
+	unsigned int cdf_offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, 0);
+	float total_weight		   = kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset];
+	if (total_weight > 0.0f)
 	{
-		unsigned int offset				= kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		unsigned int cluster_node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
-		float weight					= 0.0f;
+		CDFDevice light_cluster_cdf;
 
-		if (cluster_data.Q0_initialized)
-			weight = kd_tree.learning_to_cluster.light_cluster_statistics[offset].estimated_importance_Q;
-		else
-			// This should never be reached, but if it is, we can still sample the cluster by power just for correctness
-			weight = render_data.light_tree_sg.nodes[cluster_node_index].get_total_power();
+		light_cluster_cdf.cdf  = kd_tree.learning_to_cluster.light_cluster_cdfs + cdf_offset;
+		light_cluster_cdf.size = cut_size;
 
-		weight = hippt::max(weight, 0.0f);
-		total_weight += weight;
-
-		if (weight > 0.0f && random_number_generator() < weight / total_weight)
-		{
-			selected_slot	= slot;
-			selected_weight = weight;
-		}
+		selected_slot = light_cluster_cdf.sample(random_number_generator);
 	}
-
-	if (total_weight <= 0.0f)
+	else
 		selected_slot = random_number_generator.random_index(cut_size);
 
-	float selected_probability	  = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(cut_size);
-	unsigned int selected_offset  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
+	unsigned int selected_offset	 = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
+	unsigned int selected_node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[selected_offset];
+
+	float selected_weight = kd_tree.learning_to_cluster.light_cluster_statistics[selected_offset].estimated_importance_Q;
+	selected_weight		  = hippt::max(selected_weight, 0.0f);
+
+	float selected_probability = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(cut_size);
+
 	result.light_clustering_index = clustering_index;
 	result.cluster_slot			  = selected_slot;
 	result.cluster_node_index	  = kd_tree.learning_to_cluster.light_cluster_node_indices[selected_offset];

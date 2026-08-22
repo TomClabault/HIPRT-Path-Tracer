@@ -59,6 +59,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/ApplyPendingLightClusterQUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/BuildLightClusterSamplingCDFs.h"
 #include "Device/kernels/IlluminationAwareKDTree/BuildNISMLCaches.h"
 #include "Device/kernels/IlluminationAwareKDTree/CommitLightClusterReservoirProposals.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
@@ -1015,6 +1016,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_RefineLightClusterings(kd_tree_device, light_tree_sg, active_pair_index);
 	for (unsigned int active_pair_index = 0; active_pair_index < active_guiding_count * SurfaceNormalFace_Count; active_pair_index++)
 		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(kd_tree_device, active_pair_index);
+	for (unsigned int clustering_index = 0; clustering_index < kd_tree_device.learning_to_cluster.light_clustering_capacity; clustering_index++)
+		IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 #endif
 #endif
 }

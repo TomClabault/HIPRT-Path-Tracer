@@ -33,6 +33,7 @@ const std::string IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERV
 const std::string IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID				= "Update Light Cluster Statistics";
 const std::string IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID						= "Refine Light Clusterings";
 const std::string IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID		= "Apply Pending Light Cluster Q Updates";
+const std::string IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID			= "Build Light Cluster Sampling CDFs";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID		= "Accumulate Batch Statistics Into History";
 const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID				= "Reset Batch KD-Tree Statistics";
 const std::string IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID =
@@ -126,6 +127,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates");
 	m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/BuildLightClusterSamplingCDFs.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_BuildLightClusterSamplingCDFs");
+	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
@@ -252,6 +261,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 		active_kernels.erase(UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID);
 		active_kernels.erase(REFINE_LIGHT_CLUSTERINGS_KERNEL_ID);
 		active_kernels.erase(APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID);
+		active_kernels.erase(BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID);
 		active_kernels.erase(RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID);
 	}
 
@@ -288,7 +298,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -512,6 +522,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
 			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
+
+		m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->launch_asynchronous(
+			learning_to_cluster_light_clustering_block_size, 1,
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * learning_to_cluster_light_clustering_block_size, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 	}
 
 	if (is_using_nisml(compiler_options))
@@ -734,6 +749,8 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 
 	vram_usage.training_samples		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_samples.get_byte_size();
 	vram_usage.training_sample_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_sample_count.get_byte_size();
+
+	vram_usage.light_cluster_cdfs = m_illumination_aware_kd_tree.m_light_cluster_cdfs.get_byte_size();
 
 	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
 	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();

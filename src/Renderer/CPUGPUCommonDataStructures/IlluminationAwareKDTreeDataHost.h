@@ -45,6 +45,7 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, light_cluster_slot_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_cdfs, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_data, light_clustering_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_pending_light_cluster_records, pending_record_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_pending_light_cluster_record_counts, light_clustering_capacity);
@@ -77,6 +78,7 @@ struct IlluminationAwareKDTreeDataHost
 		m_normal_face_observation_counts			= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_light_cluster_node_indices				= DataContainer<unsigned int>();
 		m_light_cluster_statistics					= DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
+		m_light_cluster_cdfs						= DataContainer<float>();
 		m_light_clustering_data						= DataContainer<IlluminationAwareKDTreeLightClusteringData>();
 		m_pending_light_cluster_records				= DataContainer<IlluminationAwareKDTreePendingLightClusterRecord>();
 		m_pending_light_cluster_record_counts		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
@@ -120,6 +122,7 @@ struct IlluminationAwareKDTreeDataHost
 		kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = render_data.kd_tree_device.learning_to_cluster.effective_initial_light_cut_size;
 		kd_tree_device.learning_to_cluster.light_cluster_node_indices		= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_node_indices);
 		kd_tree_device.learning_to_cluster.light_cluster_statistics			= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_statistics);
+		kd_tree_device.learning_to_cluster.light_cluster_cdfs				= GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_cdfs);
 		kd_tree_device.learning_to_cluster.light_clustering_data			= GenericSoAHelpers::get_buffer_data_ptr(m_light_clustering_data);
 		kd_tree_device.learning_to_cluster.pending_light_cluster_records	= GenericSoAHelpers::get_buffer_data_ptr(m_pending_light_cluster_records);
 		kd_tree_device.learning_to_cluster.pending_light_cluster_record_counts =
@@ -151,6 +154,7 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_face_observation_counts;
 	DataContainer<unsigned int> m_light_cluster_node_indices;
 	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_light_cluster_statistics;
+	DataContainer<float> m_light_cluster_cdfs;
 	DataContainer<IlluminationAwareKDTreeLightClusteringData> m_light_clustering_data;
 	DataContainer<IlluminationAwareKDTreePendingLightClusterRecord> m_pending_light_cluster_records;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_pending_light_cluster_record_counts;

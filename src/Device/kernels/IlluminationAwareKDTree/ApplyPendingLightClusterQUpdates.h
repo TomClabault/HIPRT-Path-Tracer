@@ -67,6 +67,7 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 	}
 
 	cluster_data.iteration++;
+	cluster_data.light_cluster_cdf_dirty											  = true;
 	cluster_data.pending_record_budget												  = 0u;
 	kd_tree.learning_to_cluster.reservoir_seen_counts[clustering_index]				  = 0u;
 	kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index] = 0u;

@@ -137,6 +137,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[right_offset] =
+					illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
 			}
 		}
@@ -248,6 +250,8 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[right_offset] =
+					illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
 			}
 		}

@@ -93,6 +93,7 @@ inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illuminat
 			unsigned int cluster_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(reset_index, slot);
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[cluster_offset] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[cluster_offset]	  = {};
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[cluster_offset]		  = 0.0f;
 			illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[cluster_offset]		  = 0ull;
 		}
 	}

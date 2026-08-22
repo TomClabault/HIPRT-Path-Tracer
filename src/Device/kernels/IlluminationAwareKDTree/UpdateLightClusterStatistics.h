@@ -103,7 +103,8 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
 			initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, cluster_slot);
 
-		cluster_data.Q0_initialized = true;
+		cluster_data.Q0_initialized			 = true;
+		cluster_data.light_cluster_cdf_dirty = true;
 	}
 
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;

@@ -48,6 +48,9 @@ struct IlluminationAwareKDTreeLightClusteringData
 	// Q has been initialized using Equation 5
 	unsigned int Q0_initialized = false;
 
+	// The persistent CDF used to sample the light cut needs to be rebuilt after Q or cut changes
+	unsigned int light_cluster_cdf_dirty = true;
+
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
 
@@ -106,6 +109,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	unsigned int* light_cluster_node_indices								= nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
+	float* light_cluster_cdfs												= nullptr;
 
 	IlluminationAwareKDTreeLightClusteringData* light_clustering_data				= nullptr;
 	IlluminationAwareKDTreePendingLightClusterRecord* pending_light_cluster_records = nullptr;
