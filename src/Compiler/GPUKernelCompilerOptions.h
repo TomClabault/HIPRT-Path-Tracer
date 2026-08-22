@@ -116,6 +116,7 @@ public:
 	static const std::string LIGHT_TREE_SG_USE_TREE_CUT;
 
 	static const std::string ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT;
+	static const std::string LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE;
 	static const std::string LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER;
 	static const std::string LEARNING_TO_CLUSTER_DEBUG_MODE;
 	static const std::string ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE;

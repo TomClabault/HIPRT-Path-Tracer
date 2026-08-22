@@ -9,7 +9,6 @@
 struct IlluminationAwareKDTreeLearningToClusterUserSettings
 {
 	unsigned int initial_light_cut_size = 4;
-	unsigned int maximum_light_cut_size = 64;
 
 	// These parameters are kept internal to the implementation.
 	float learning_rate_beta  = 4.0f;

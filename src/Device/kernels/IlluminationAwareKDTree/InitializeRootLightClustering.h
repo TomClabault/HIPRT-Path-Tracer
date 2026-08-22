@@ -24,7 +24,7 @@ IlluminationAwareKDTree_InitializeRootLightClustering(IlluminationAwareKDTreeDev
 	unsigned int slot = static_cast<unsigned int>(x);
 #endif
 
-	if (slot >= LearningToClusterLightClusteringBlockSize)
+	if (slot >= LearningToClusterMaximumLightCutSize)
 		return;
 
 	if (slot == 0)

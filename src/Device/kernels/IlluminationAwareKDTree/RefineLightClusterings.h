@@ -120,7 +120,7 @@ HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTre
 	if (context_state != IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY || cluster_data.cut_size == 0u)
 		return false;
 
-	unsigned int maximum_cut_size = hippt::min(settings.maximum_light_cut_size, static_cast<unsigned int>(LearningToClusterMaximumLightCutSize));
+	unsigned int maximum_cut_size = LearningToClusterMaximumLightCutSize;
 	if (cluster_data.cut_size >= maximum_cut_size)
 	{
 		cluster_data.refinement_stopped = true;
@@ -183,7 +183,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 		total_variance += old_statistics[slot].get_refinement_variance();
 	}
 
-	unsigned int maximum_cut_size	  = hippt::min(settings.maximum_light_cut_size, static_cast<unsigned int>(LearningToClusterMaximumLightCutSize));
+	unsigned int maximum_cut_size	  = LearningToClusterMaximumLightCutSize;
 	unsigned int remaining_capacity	  = maximum_cut_size - old_cut_size;
 	unsigned int accepted_split_count = 0u;
 	for (unsigned int slot = 0; slot < old_cut_size; slot++)
@@ -300,7 +300,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 	IlluminationAwareKDTreeLightClusterStatistics old_cluster_statistics = load_light_cluster_statistics(old_statistics[slot]);
 	float local_variance												 = slot < old_cut_size ? old_cluster_statistics.get_refinement_variance() : 0.0f;
-	float total_variance												 = block_reduce<LearningToClusterLightClusteringBlockSize>(local_variance);
+	float total_variance												 = block_reduce<LearningToClusterMaximumLightCutSize>(local_variance);
 
 	bool can_split			= slot < old_cut_size && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
 	float split_probability = 0.0f;
@@ -313,12 +313,12 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 		random_value = compute_refinement_random_value(clustering_index, cluster_data.iteration, old_node_indices[slot]);
 	split_flags[slot] = can_split && random_value < split_probability ? 1 : 0;
 
-	unsigned int proposed_splits_before = block_prefix_scan_exclusive<LearningToClusterLightClusteringBlockSize>(split_flags[slot]);
-	unsigned int maximum_cut_size		= hippt::min(settings.maximum_light_cut_size, static_cast<unsigned int>(LearningToClusterMaximumLightCutSize));
+	unsigned int proposed_splits_before = block_prefix_scan_exclusive<LearningToClusterMaximumLightCutSize>(split_flags[slot]);
+	unsigned int maximum_cut_size		= LearningToClusterMaximumLightCutSize;
 	unsigned int remaining_capacity		= maximum_cut_size - old_cut_size;
 	bool split_accepted					= slot < old_cut_size && split_flags[slot] != 0 && proposed_splits_before < remaining_capacity;
 	unsigned int accepted_splits_before = hippt::min(proposed_splits_before, remaining_capacity);
-	unsigned int accepted_split_count	= block_reduce<LearningToClusterLightClusteringBlockSize>(split_accepted ? 1u : 0u);
+	unsigned int accepted_split_count	= block_reduce<LearningToClusterMaximumLightCutSize>(split_accepted ? 1u : 0u);
 	unsigned int output_slot			= slot + accepted_splits_before;
 
 	if (slot < old_cut_size)

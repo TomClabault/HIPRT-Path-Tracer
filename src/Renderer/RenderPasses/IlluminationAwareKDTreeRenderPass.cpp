@@ -7,8 +7,8 @@
 #include "Renderer/RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -280,10 +280,15 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 	if (nisml_representative_capacity_changed)
 		m_buffers_need_reallocation = true;
 
+	unsigned int maximum_light_cut_size = static_cast<unsigned int>(
+		m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
+	if (m_illumination_aware_kd_tree.m_maximum_light_cut_size != maximum_light_cut_size)
+		m_buffers_need_reallocation = true;
+
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -291,7 +296,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 	if (m_buffers_need_reallocation)
 	{
 		m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
-											nisml_hash_table_reserved_bytes, nisml_hash_normal_precision);
+											nisml_hash_table_reserved_bytes, nisml_hash_normal_precision, maximum_light_cut_size);
 
 		m_buffers_need_reallocation = false;
 		render_data_invalidated		= true;
@@ -318,9 +323,10 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 
 				LightTreeSGDevice light_tree_sg						 = m_renderer->get_render_data().light_tree_sg;
 				void* initialize_root_light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
+				unsigned int block_size =
+					m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
 				m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->launch_asynchronous(
-					LearningToClusterLightClusteringBlockSize, 1, LearningToClusterLightClusteringBlockSize, 1, initialize_root_light_clustering_launch_args,
-					m_renderer->get_main_stream());
+					block_size, 1, block_size, 1, initialize_root_light_clustering_launch_args, m_renderer->get_main_stream());
 			}
 		}
 
@@ -476,10 +482,12 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
+		unsigned int learning_to_cluster_light_clustering_block_size =
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
 		unsigned int maximum_light_clustering_work_count =
-			kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * LearningToClusterLightClusteringBlockSize;
+			kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * learning_to_cluster_light_clustering_block_size;
 		m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, learning_to_cluster_launch_args,
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
@@ -488,19 +496,22 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int maximum_light_clustering_reservoir_proposal_count =
 			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
 		m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
-			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());
 
 		LightTreeSGDevice light_tree_sg		 = render_data.light_tree_sg;
 		void* light_clustering_launch_args[] = { &kd_tree_device, &light_tree_sg };
 		m_kernels[IlluminationAwareKDTreeRenderPass::UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->launch_asynchronous(
-			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
-			LearningToClusterLightClusteringBlockSize, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args, m_renderer->get_main_stream());
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			m_renderer->get_main_stream());
 	}
 
 	if (is_using_nisml(compiler_options))

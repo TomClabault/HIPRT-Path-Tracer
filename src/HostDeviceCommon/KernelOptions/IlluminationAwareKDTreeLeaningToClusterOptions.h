@@ -10,8 +10,6 @@
 
 #define LearningToClusterTreeCutInitializationBlockSize 1024
 #define LearningToClusterInitialLightCutSize			4
-#define LearningToClusterMaximumLightCutSize			64
-#define LearningToClusterLightClusteringBlockSize		64
 
 #define LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG				  0
 #define LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP 1
@@ -21,6 +19,11 @@
  * receives their values through -D compiler options.
  */
 #ifndef __KERNELCC__
+
+/**
+ * Maximum number of nodes in a learning to cluster light cut. The light cut cannot be refined beyond that number of nodes.
+ */
+#define LearningToClusterMaximumLightCutSize 64
 
 /**
  * Initialize light-cluster Q0 values using the SG node's total power instead of the view-dependent SG node importance.
@@ -35,5 +38,9 @@
 #define LearningToClusterDebugMode LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
+
+#ifdef LearningToClusterMaximumLightCutSize
+static_assert(LearningToClusterMaximumLightCutSize <= 1024, "Learning to cluster maximum cut size cannot exceed 1024");
+#endif
 
 #endif
