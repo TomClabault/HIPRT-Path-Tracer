@@ -132,8 +132,8 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		if (cluster_data.Q0_initialized)
 			weight = kd_tree.learning_to_cluster.light_cluster_statistics[offset].estimated_importance_Q;
 		else
-			weight = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
-												   context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+			// This should never be reached, but if it is, we can still sample the cluster by power just for correctness
+			weight = render_data.light_tree_sg.nodes[cluster_node_index].get_total_power();
 
 		weight = hippt::max(weight, 0.0f);
 		total_weight += weight;

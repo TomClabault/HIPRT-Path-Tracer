@@ -25,10 +25,10 @@ HIPRT_DEVICE float light_clustering_node_importance(const LightTreeSGDevice& lig
 										 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
 }
 
-HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevice kd_tree,
-													 const LightTreeSGDevice& light_tree_sg,
-													 unsigned int clustering_index,
-													 unsigned int slot)
+HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_tree,
+											  const LightTreeSGDevice& light_tree_sg,
+											  unsigned int clustering_index,
+											  unsigned int slot)
 {
 	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	if (cluster_data.Q0_initialized || slot >= cluster_data.cut_size)
@@ -52,8 +52,10 @@ HIPRT_DEVICE void initialize_light_cluster_Q_from_Lu(IlluminationAwareKDTreeDevi
 HIPRT_DEVICE void append_observation(IlluminationAwareKDTreeLightClusterStatistics& statistics, float observation)
 {
 	unsigned int previous_count = statistics.visit_count;
-	float delta					= observation - statistics.mean;
+
+	float delta = observation - statistics.mean;
 	statistics.mean += delta / static_cast<float>(previous_count + 1u);
+
 	float delta2 = observation - statistics.mean;
 	statistics.M2 += delta * delta2;
 	statistics.visit_count = previous_count + 1u;
@@ -93,21 +95,22 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
-	unsigned int pending_count											 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
-	unsigned int iteration_budget										 = get_light_cluster_iteration_budget(cluster_data, settings);
-	if (pending_count < iteration_budget)
-		return;
+	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 
 	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
 	if (!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY)
 	{
 		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
-			initialize_light_cluster_Q_from_Lu(kd_tree, light_tree_sg, clustering_index, cluster_slot);
+			initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, cluster_slot);
 
 		cluster_data.Q0_initialized = true;
 	}
+
+	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+	unsigned int pending_count											 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
+	unsigned int iteration_budget										 = get_light_cluster_iteration_budget(cluster_data, settings);
+	if (pending_count < iteration_budget)
+		return;
 
 	unsigned int base_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
 	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
