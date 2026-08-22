@@ -146,14 +146,16 @@ HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTre
 }
 
 #ifndef __KERNELCC__
-HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_tree, const LightTreeSGDevice& light_tree_sg, unsigned int active_pair_index)
+HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_tree,
+											  const LightTreeSGDevice& light_tree_sg,
+											  unsigned int active_guiding_node_face_index)
 {
 	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
+	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
 		return;
 
-	unsigned int guiding_list_index = active_pair_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_pair_index % SurfaceNormalFace_Count;
+	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
+	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
 	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
@@ -251,17 +253,19 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_RefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
-HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree, const LightTreeSGDevice& light_tree_sg, unsigned int active_pair_index)
+HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree,
+											  const LightTreeSGDevice& light_tree_sg,
+											  unsigned int active_guiding_node_face_index)
 #endif
 {
 #ifdef __KERNELCC__
 	unsigned int slot				  = threadIdx.x;
 	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
+	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
 		return;
 
-	unsigned int guiding_list_index = active_pair_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_pair_index % SurfaceNormalFace_Count;
+	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
+	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
 	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)

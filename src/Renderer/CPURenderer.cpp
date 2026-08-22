@@ -998,8 +998,9 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_AccumulateNormalFaceObservations(kd_tree_device, sample_index);
 
 	unsigned int active_guiding_count = kd_tree_device.core.active_guiding_node_count->load();
-	for (unsigned int active_pair_index = 0; active_pair_index < active_guiding_count * SurfaceNormalFace_Count; active_pair_index++)
-		IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(kd_tree_device, active_pair_index);
+	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
+		 active_guiding_node_face_index++)
+		IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(kd_tree_device, active_guiding_node_face_index);
 
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(kd_tree_device, sample_index);
@@ -1012,10 +1013,12 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
 		IlluminationAwareKDTree_UpdateLightClusterStatistics(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
-	for (unsigned int active_pair_index = 0; active_pair_index < active_guiding_count * SurfaceNormalFace_Count; active_pair_index++)
-		IlluminationAwareKDTree_RefineLightClusterings(kd_tree_device, light_tree_sg, active_pair_index);
-	for (unsigned int active_pair_index = 0; active_pair_index < active_guiding_count * SurfaceNormalFace_Count; active_pair_index++)
-		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(kd_tree_device, active_pair_index);
+	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
+		 active_guiding_node_face_index++)
+		IlluminationAwareKDTree_RefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
+		 active_guiding_node_face_index++)
+		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(kd_tree_device, active_guiding_node_face_index);
 	for (unsigned int clustering_index = 0; clustering_index < kd_tree_device.learning_to_cluster.light_clustering_capacity; clustering_index++)
 		IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 #endif

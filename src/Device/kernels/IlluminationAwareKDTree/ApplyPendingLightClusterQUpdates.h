@@ -19,22 +19,22 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int active_pair_index = blockIdx.x;
-	unsigned int slot			   = threadIdx.x;
+	unsigned int active_guiding_node_face_index = blockIdx.x;
+	unsigned int slot							= threadIdx.x;
 #else
-	unsigned int active_pair_index = static_cast<unsigned int>(x);
-	unsigned int slot			   = 0;
+	unsigned int active_guiding_node_face_index = static_cast<unsigned int>(x);
+	unsigned int slot							= 0;
 #endif
 
 	if (slot != 0u)
 		return;
 
 	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	if (active_pair_index >= active_guiding_count * SurfaceNormalFace_Count)
+	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
 		return;
 
-	unsigned int guiding_list_index = active_pair_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_pair_index % SurfaceNormalFace_Count;
+	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
+	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
 	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
@@ -67,8 +67,9 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 	}
 
 	cluster_data.iteration++;
-	cluster_data.light_cluster_cdf_dirty											  = true;
-	cluster_data.pending_record_budget												  = 0u;
+	cluster_data.light_cluster_cdf_dirty = true;
+	cluster_data.pending_record_budget	 = 0u;
+
 	kd_tree.learning_to_cluster.reservoir_seen_counts[clustering_index]				  = 0u;
 	kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index] = 0u;
 }
