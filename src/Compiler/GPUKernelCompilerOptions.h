@@ -121,9 +121,11 @@ public:
 	static const std::string LEARNING_TO_CLUSTER_DEBUG_MODE;
 	static const std::string ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE;
 	static const std::string ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS;
+	static const std::string LEARNING_TO_CLUSTER_DEBUG_MODE_HEATMAP_INDEX;
 
 	static const std::string NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES;
 	static const std::string NISML_DEBUG_MODE;
+	static const std::string NISML_DEBUG_MODE_HEATMAP_INDEX;
 
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;

@@ -8,6 +8,13 @@
 
 #include "HostDeviceCommon/Color.h"
 
+#define HEATMAP_INDEX_BLUE_GREEN_RED 0
+#define HEATMAP_INDEX_MAGMA			 1
+#define HEATMAP_INDEX_INFERNO		 2
+#define HEATMAP_INDEX_VIRIDIS		 3
+#define HEATMAP_INDEX_GRAYSCALE		 4
+#define HEATMAP_COUNT				 5
+
 #define HEATMAP_BLUE_GREEN_RED ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f)
 
 #define HEATMAP_MAGMA                                                                                                                                          \
@@ -39,6 +46,23 @@ HIPRT_DEVICE ColorRGB32F map_0_1_to_heatmap_color(float scalar_0_1)
 
 	float interpolation = color_position - static_cast<float>(lower_color_index);
 	return colors[lower_color_index] * (1.0f - interpolation) + colors[upper_color_index] * interpolation;
+}
+
+template <unsigned int heatmap_index>
+HIPRT_DEVICE ColorRGB32F map_0_1_to_heatmap_color_by_index(float scalar_0_1)
+{
+	static_assert(heatmap_index < HEATMAP_COUNT, "Invalid heatmap index");
+
+	if constexpr (heatmap_index == HEATMAP_INDEX_BLUE_GREEN_RED)
+		return map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(scalar_0_1);
+	else if constexpr (heatmap_index == HEATMAP_INDEX_MAGMA)
+		return map_0_1_to_heatmap_color<HEATMAP_MAGMA>(scalar_0_1);
+	else if constexpr (heatmap_index == HEATMAP_INDEX_INFERNO)
+		return map_0_1_to_heatmap_color<HEATMAP_INFERNO>(scalar_0_1);
+	else if constexpr (heatmap_index == HEATMAP_INDEX_VIRIDIS)
+		return map_0_1_to_heatmap_color<HEATMAP_VIRIDIS>(scalar_0_1);
+	else
+		return map_0_1_to_heatmap_color<HEATMAP_GRAYSCALE>(scalar_0_1);
 }
 
 #endif // DEVICE_INCLUDES_HEATMAP_H

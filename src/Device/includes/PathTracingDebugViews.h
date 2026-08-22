@@ -6,8 +6,8 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 #define DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 
-#include "Device/includes/Heatmap.h"
 #include "Device/includes/PathTracing.h"
+#include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 
 HIPRT_DEVICE unsigned int path_tracing_compute_nisml_hash_key(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {
@@ -492,7 +492,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 	float learning_to_cluster_debug_value;
 	if (path_tracing_compute_learning_to_cluster_cut_size_debug_value(render_data, pixel_index, learning_to_cluster_debug_value))
-		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(learning_to_cluster_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color_by_index<LearningToClusterDebugModeHeatmapIndex>(learning_to_cluster_debug_value) *
+						  (render_data.render_settings.sample_number + 1);
 #endif // LearningToClusterDebugMode
 
 #elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
@@ -504,12 +505,12 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #elif NISMLDebugMode == NISML_DEBUG_MODE_ENTROPY
 	float nisml_debug_value;
 	if (path_tracing_compute_nisml_entropy_debug_value(render_data, pixel_index, nisml_debug_value))
-		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color_by_index<NISMLDebugModeHeatmapIndex>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
 
 #elif NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
 	float nisml_debug_value;
 	if (path_tracing_compute_nisml_kl_divergence_debug_value(render_data, pixel_index, nisml_debug_value))
-		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color_by_index<NISMLDebugModeHeatmapIndex>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
 
 #elif NISMLDebugMode == NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID
 	unsigned int nisml_hash_key = path_tracing_compute_nisml_hash_key(render_data, pixel_index);

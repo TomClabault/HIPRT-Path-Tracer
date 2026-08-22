@@ -6,6 +6,7 @@
 #include "Compiler/GPUKernelCompiler.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
@@ -4323,7 +4324,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			const char* debug_view_items[]	  = { "- No debug", "- Light-cut size heatmap" };
 			const char* debug_view_tooltips[] = { "Disable the learning-to-cluster debug view.",
 												  "Displays the active light-cut size for each visible KD-tree cell and surface-normal bucket. The heatmap "
-												  "maps small cuts to blue and large cuts to red." };
+												  "maps smaller cuts to its first color and larger cuts to its last color." };
 			if (ImGuiRenderer::ComboWithTooltips(
 					"Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE),
 					debug_view_items, IM_ARRAYSIZE(debug_view_items), debug_view_tooltips))
@@ -4337,6 +4338,19 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE) ==
+				LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP)
+			{
+				const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
+				if (ImGui::Combo("Debug view heatmap##learning-to-cluster",
+								 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE_HEATMAP_INDEX),
+								 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4524,8 +4538,8 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 					"Displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
 					"Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means "
-					"that the distribution is nearly uniform across the K active clusters. The heatmap maps blue to focused "
-					"distributions and red to uniform distributions.",
+					"that the distribution is nearly uniform across the K active clusters. The selected heatmap maps lower values "
+					"to its first color and higher values to its last color.",
 
 					"Displays 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural "
 					"cluster distribution and p_baseline is the baseline cluster distribution before neural residuals are applied. "
@@ -4555,6 +4569,19 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
+				}
+
+				int nisml_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE);
+				if (nisml_debug_mode == NISML_DEBUG_MODE_ENTROPY || nisml_debug_mode == NISML_DEBUG_MODE_KL_DIVERGENCE)
+				{
+					const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
+					if (ImGui::Combo("Debug view heatmap##nisml",
+									 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX),
+									 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
+					{
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
 				}
 
 				bool draw_nisml_representative_points =
