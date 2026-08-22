@@ -312,12 +312,7 @@ struct ColorRGB32F
 		b = value;
 	}
 
-	HIPRT_DEVICE ColorRGB32F(float _r, float _g, float _b)
-	{
-		r = _r;
-		g = _g;
-		b = _b;
-	}
+	HIPRT_HOST_DEVICE constexpr ColorRGB32F(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
 
 	HIPRT_DEVICE explicit ColorRGB32F(float3_t vec)
 	{

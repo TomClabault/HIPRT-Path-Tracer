@@ -7090,7 +7090,7 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 							commandline_string += "-I" + include_dir + " ";
 
 						// For debugging info and assembly-source code line correspondences
-						commandline_string += "-std=c++17 -gline-tables-only --save-temps ";
+						commandline_string += "-std=c++20 -gline-tables-only --save-temps ";
 						// For hardware ray tracing instructions
 						commandline_string += "--offload-arch=gfx1100 ";
 						// To avoid some warnings caused by kernel compilation options causing constant

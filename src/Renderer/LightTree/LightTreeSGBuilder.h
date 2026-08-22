@@ -83,6 +83,7 @@ private:
 
 	std::vector<unsigned int> m_tree_cut_node_indices;
 	unsigned int m_effective_tree_cut_size = 0;
+
 	std::vector<unsigned int> m_second_tree_cut_node_indices;
 	unsigned int m_effective_second_tree_cut_size = 0;
 	int m_second_tree_cut_size					  = LearningToClusterInitialLightCutSize;

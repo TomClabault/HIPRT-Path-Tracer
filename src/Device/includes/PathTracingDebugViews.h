@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 #define DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 
+#include "Device/includes/Heatmap.h"
 #include "Device/includes/PathTracing.h"
 
 HIPRT_DEVICE unsigned int path_tracing_compute_nisml_hash_key(const HIPRTRenderData& render_data, unsigned int pixel_index)
@@ -42,20 +43,6 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_nisml_hash_key_outline(const HIPRTRen
 		return true;
 
 	return false;
-}
-
-HIPRT_DEVICE ColorRGB32F path_tracing_nisml_debug_heatmap(float normalized_value)
-{
-	normalized_value = hippt::clamp(0.0f, 1.0f, normalized_value);
-
-	if (normalized_value < 0.5f)
-	{
-		float interpolation = normalized_value * 2.0f;
-		return ColorRGB32F(0.0f, interpolation, 1.0f - interpolation);
-	}
-
-	float interpolation = (normalized_value - 0.5f) * 2.0f;
-	return ColorRGB32F(interpolation, 1.0f - interpolation, 0.0f);
 }
 
 HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
@@ -269,13 +256,10 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_latent_activation_color(const HIPRT
 		float projection = 0.0f;
 		for (unsigned int neuron = 0; neuron < NeuralImportanceSamplingMLP::HIDDEN_LAYER_SIZE; neuron++)
 		{
-			unsigned int hash = (neuron + 1u) * 0x9E3779B9u;
-			hash ^= (projection_channel + 1u) * 0x85EBCA6Bu;
-			hash ^= hash >> 16;
-			hash *= 0x7FEB352Du;
-			hash ^= hash >> 15;
+			unsigned int hash = pcg_hash(neuron * pcg_hash(projection_channel));
 
 			float projection_sign = (hash & 1u) == 0 ? 1.0f : -1.0f;
+
 			projection += latent_activations[neuron] / activation_norm * projection_sign;
 		}
 
@@ -508,7 +492,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 	float learning_to_cluster_debug_value;
 	if (path_tracing_compute_learning_to_cluster_cut_size_debug_value(render_data, pixel_index, learning_to_cluster_debug_value))
-		out_debug_color = path_tracing_nisml_debug_heatmap(learning_to_cluster_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(learning_to_cluster_debug_value) * (render_data.render_settings.sample_number + 1);
 #endif // LearningToClusterDebugMode
 
 #elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
@@ -520,12 +504,12 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 #elif NISMLDebugMode == NISML_DEBUG_MODE_ENTROPY
 	float nisml_debug_value;
 	if (path_tracing_compute_nisml_entropy_debug_value(render_data, pixel_index, nisml_debug_value))
-		out_debug_color = path_tracing_nisml_debug_heatmap(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
 
 #elif NISMLDebugMode == NISML_DEBUG_MODE_KL_DIVERGENCE
 	float nisml_debug_value;
 	if (path_tracing_compute_nisml_kl_divergence_debug_value(render_data, pixel_index, nisml_debug_value))
-		out_debug_color = path_tracing_nisml_debug_heatmap(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
+		out_debug_color = map_0_1_to_heatmap_color<HEATMAP_BLUE_GREEN_RED>(nisml_debug_value) * (render_data.render_settings.sample_number + 1);
 
 #elif NISMLDebugMode == NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_SOLID
 	unsigned int nisml_hash_key = path_tracing_compute_nisml_hash_key(render_data, pixel_index);
