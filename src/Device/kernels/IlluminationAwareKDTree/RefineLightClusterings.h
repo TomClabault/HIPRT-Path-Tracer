@@ -80,8 +80,9 @@ HIPRT_DEVICE float light_clustering_node_importance_for_refinement(const LightTr
 	SGSpecularImportanceData specular_data;
 #endif
 
-	return hippt::max(1.0e-3f, light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
-															 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y));
+	// return light_tree_sg.nodes[cluster_node_index].get_total_power();
+	return hippt::max(0.1f, light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
+														  context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y));
 }
 
 HIPRT_DEVICE IlluminationAwareKDTreeLightClusterStatistics
@@ -95,6 +96,7 @@ initialize_child_statistics_from_parent_Q(const LightTreeSGDevice& light_tree_sg
 	float sibling_importance			= light_clustering_node_importance_for_refinement(light_tree_sg, sibling_node_index, context);
 	float importance_sum				= child_importance + sibling_importance;
 	float expected_child_visit_fraction = importance_sum > 0.0f ? child_importance / importance_sum : 0.5f;
+
 	IlluminationAwareKDTreeLightClusterStatistics child{};
 	// Q_x(c) estimates the aggregate contribution of a cut member. Partition the learned parent estimate between the children until they receive new
 	// observations.

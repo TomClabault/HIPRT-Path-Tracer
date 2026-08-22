@@ -58,6 +58,44 @@ HIPRT_DEVICE ColorRGB32F path_tracing_nisml_debug_heatmap(float normalized_value
 	return ColorRGB32F(interpolation, 1.0f - interpolation, 0.0f);
 }
 
+HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
+{
+#if LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+	return false;
+#else
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return false;
+
+	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+	if (kd_tree_device.core.nodes == nullptr || kd_tree_device.core.node_capacity == 0 ||
+		kd_tree_device.learning_to_cluster.normal_clustering_sets == nullptr || kd_tree_device.learning_to_cluster.light_clustering_data == nullptr)
+		return false;
+
+	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	unsigned int guiding_cell_index = kd_tree_device.core.find_guiding_cell(primary_hit);
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_cell_index >= kd_tree_device.core.node_capacity)
+		return false;
+
+	const IlluminationAwareKDTreeNode& guiding_cell = kd_tree_device.core.nodes[guiding_cell_index];
+	unsigned int normal_set_index					= guiding_cell.light_clustering_normal_set_index;
+	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
+		normal_set_index >= kd_tree_device.learning_to_cluster.normal_clustering_set_capacity)
+		return false;
+
+	float3_t shading_normal		  = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int normal_face	  = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+	unsigned int clustering_index = kd_tree_device.learning_to_cluster.normal_clustering_sets[normal_set_index].clustering_indices[normal_face];
+	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
+		clustering_index >= kd_tree_device.learning_to_cluster.light_clustering_capacity)
+		return false;
+
+	unsigned int cut_size = kd_tree_device.learning_to_cluster.light_clustering_data[clustering_index].cut_size;
+	out_debug_value		  = static_cast<float>(cut_size) / static_cast<float>(LearningToClusterMaximumLightCutSize);
+
+	return true;
+#endif
+}
+
 HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
 {
 #if NISMLDebugMode != NISML_DEBUG_MODE_ENTROPY
@@ -465,6 +503,13 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		out_debug_color = ColorRGB32F(color);
 	}
 #endif // ReGIR debug mode
+#elif LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG &&                                                                                 \
+	ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator, DirectLightSamplingStrategy)
+#if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+	float learning_to_cluster_debug_value;
+	if (path_tracing_compute_learning_to_cluster_cut_size_debug_value(render_data, pixel_index, learning_to_cluster_debug_value))
+		out_debug_color = path_tracing_nisml_debug_heatmap(learning_to_cluster_debug_value) * (render_data.render_settings.sample_number + 1);
+#endif // LearningToClusterDebugMode
 
 #elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy)
 #if NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS

@@ -164,6 +164,7 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 	ImGui::TreePush("Emissive and light-tree memory");
 	ImGui::Text("Emissive triangles: %u", scene.emissive_triangles_count);
 	ImGui::Text("Emissive meshes: %u", scene.emissive_meshes_data.m_meshes_PDFs.size());
+	// TODO this is wrong
 	ImGui::Text("Triangles with emissive textures: %zu", scene.emissive_triangles_indices_and_emissive_textures.get_element_count());
 	draw_memory_stat("Emissive triangle indices", emissive_index_memory);
 	draw_memory_stat("Emissive luminance", scene.triangle_average_emissive_luminance.get_byte_size());

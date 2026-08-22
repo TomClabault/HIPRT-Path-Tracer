@@ -13,6 +13,9 @@
 #define LearningToClusterMaximumLightCutSize			64
 #define LearningToClusterLightClusteringBlockSize		64
 
+#define LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG				  0
+#define LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP 1
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because the GPU compiler
  * receives their values through -D compiler options.
@@ -25,6 +28,11 @@
  * KERNEL_OPTION_TRUE for using total power, KERNEL_OPTION_FALSE for using view-dependent importance (sg_node_importance).
  */
 #define LearningToClusterQ0UseTotalPower KERNEL_OPTION_FALSE
+
+/**
+ * Debug view for learning to cluster.
+ */
+#define LearningToClusterDebugMode LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 

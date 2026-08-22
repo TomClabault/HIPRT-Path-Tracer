@@ -35,6 +35,7 @@ extern ImGuiLogger g_imgui_logger;
 // IMMEDIATE TODOS:
 //	- Start investigating grid artifacts LTC
 //		----> Because of zero support for non 0 cluster nodes of the tree
+//		---> But now what to do to ensure support without massive high variance? Maybe multiple shading points + a small floor?
 //
 //
 // Ideas for neural importance sampling many lights:
@@ -61,6 +62,8 @@ extern ImGuiLogger g_imgui_logger;
 //	- Online Bayesian regression for the optimal cluster sampling probabilities assuming that the subtree sampler isn't optimal
 //	- Use a hash grid for normal aware stuff instead of dense 6-face, same as NISML
 //	- When to stop learning automatically?
+//	- Is it worth it to only use a few SG lobes for descending the subtree? It's going to be much faster and maybe we don't need the precision of many lobes at
+//		that point? Maybe variance will be fine while being much faster?
 //
 // TODO SG Light tree
 //	- Maybe still do the hard coded distributions, may still be good

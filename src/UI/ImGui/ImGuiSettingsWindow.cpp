@@ -2483,7 +2483,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2664,7 +2664,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3745,7 +3745,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4028,7 +4028,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4218,7 +4218,10 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 			{
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE) !=
 					ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG)
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE, LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
+				}
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -4274,6 +4277,30 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
+			ImGui::SeparatorText("Debug");
+			ImGui::PopStyleVar();
+
+			const char* debug_view_items[]	  = { "- No debug", "- Light-cut size heatmap" };
+			const char* debug_view_tooltips[] = { "Disable the learning-to-cluster debug view.",
+												  "Displays the active light-cut size for each visible KD-tree cell and surface-normal bucket. The heatmap "
+												  "maps small cuts to blue and large cuts to red." };
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE),
+					debug_view_items, IM_ARRAYSIZE(debug_view_items), debug_view_tooltips))
+			{
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE) != LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG)
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
+														   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
+				}
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
 	}
@@ -4287,7 +4314,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4480,8 +4507,12 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 													 nisml_debug_view_items, IM_ARRAYSIZE(nisml_debug_view_items), nisml_debug_view_tooltips))
 				{
 					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE) != NISML_DEBUG_MODE_NO_DEBUG)
+					{
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
 															   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
+															   LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
+					}
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -5967,7 +5998,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
