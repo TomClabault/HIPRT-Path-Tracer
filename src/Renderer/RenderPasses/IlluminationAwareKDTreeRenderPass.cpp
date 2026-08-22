@@ -522,7 +522,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_work_count, 1, light_clustering_launch_args,
+			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_statistics_work_count, 1, light_clustering_launch_args,
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->launch_asynchronous(

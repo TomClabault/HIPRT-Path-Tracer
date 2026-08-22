@@ -8,10 +8,11 @@
 
 struct IlluminationAwareKDTreePendingLightClusterRecord
 {
+	float q_reward			   = 0.0f;
+	float variance_observation = 0.0f;
+
 	unsigned int cluster_node_index = 0;
-	float q_reward					= 0.0f;
-	float variance_observation		= 0.0f;
-	unsigned int stream_index			= 0;
+	unsigned int stream_index		= 0;
 };
 
 #endif

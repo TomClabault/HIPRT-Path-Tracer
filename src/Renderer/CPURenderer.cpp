@@ -1016,9 +1016,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 		 active_guiding_node_face_index++)
 		IlluminationAwareKDTree_RefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
-	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
-		 active_guiding_node_face_index++)
-		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(kd_tree_device, active_guiding_node_face_index);
+	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
+		IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(kd_tree_device, static_cast<int>(clustering_index));
 	for (unsigned int clustering_index = 0; clustering_index < kd_tree_device.learning_to_cluster.light_clustering_capacity; clustering_index++)
 		IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 #endif
