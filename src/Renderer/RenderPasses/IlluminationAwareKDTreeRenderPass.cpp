@@ -270,11 +270,8 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 
 void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 
-bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time)
+bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 {
-	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()) && m_learning_to_cluster_learning_seconds > 0)
-		m_learning_to_cluster_elapsed_seconds += delta_time / 1000.0f;
-
 	m_nisml_representative_capacity = std::max(m_nisml_representative_capacity, 1);
 
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
@@ -302,17 +299,29 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
+	if (!m_buffers_need_reallocation)
+		return false;
+
+	m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
+										nisml_hash_table_reserved_bytes, nisml_hash_normal_precision, maximum_light_cut_size);
+
+	m_buffers_need_reallocation = false;
+
+	// Reallocation creates fresh cache buffers whose metadata must be initialized even when the tree is frozen.
+	m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
+
+	return true;
+}
+
+bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time)
+{
+	if (is_using_learning_to_cluster(*m_renderer->get_global_compiler_options()) && m_learning_to_cluster_learning_seconds > 0)
+		m_learning_to_cluster_elapsed_seconds += delta_time / 1000.0f;
+
 	bool render_data_invalidated = false;
-	if (m_buffers_need_reallocation)
+	if (ensure_buffers_match_configuration())
 	{
-		m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
-											nisml_hash_table_reserved_bytes, nisml_hash_normal_precision, maximum_light_cut_size);
-
-		m_buffers_need_reallocation = false;
-		render_data_invalidated		= true;
-
-		// Reallocation creates fresh cache buffers whose metadata must be initialized even when the tree is frozen.
-		m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
+		render_data_invalidated = true;
 		reset(false);
 	}
 
@@ -614,6 +623,15 @@ void IlluminationAwareKDTreeRenderPass::update_render_data()
 
 void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 {
+	bool buffers_reallocated = ensure_buffers_match_configuration();
+	if (buffers_reallocated)
+	{
+		if (m_illumination_aware_kd_tree.maximum_size() > 0)
+			update_render_data();
+		else
+			m_renderer->get_render_data().kd_tree_device = {};
+	}
+
 	if (!is_render_pass_used(*m_compiler_options))
 		return;
 

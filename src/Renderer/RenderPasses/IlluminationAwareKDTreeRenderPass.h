@@ -157,6 +157,7 @@ public:
 
 private:
 	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
+	bool ensure_buffers_match_configuration();
 
 	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
 	bool is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const;
