@@ -39,7 +39,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 	unsigned int cdf_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, 0);
 	if (cut_size == 0 || cut_size > LearningToClusterMaximumLightCutSize)
 	{
-		kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = 0.0f;
+		kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = 0u;
 
 		cluster_data.light_cluster_cdf_dirty = false;
 
@@ -55,8 +55,10 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 		total_weight += get_light_cluster_sampling_weight(kd_tree, light_tree_sg, cluster_data, cluster_offset, cluster_node_index);
 	}
 
-	kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = total_weight;
-	float cumulative_weight									   = 0.0f;
+	// CDFDeviceU16 ignores cdf[0], so it is used as a marker for whether the cut has any positive sampling weight.
+	kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = total_weight > 0.0f ? 65535u : 0u;
+
+	float cumulative_weight = 0.0f;
 	for (unsigned int slot = 1; slot < cut_size; slot++)
 	{
 		unsigned int cluster_offset				 = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
@@ -66,7 +68,8 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 
 		cumulative_weight += previous_weight;
 
-		kd_tree.learning_to_cluster.light_cluster_cdfs[cluster_offset] = total_weight > 0.0f ? cumulative_weight / total_weight : 0.0f;
+		float normalized_prefix										   = total_weight > 0.0f ? cumulative_weight / total_weight : 0.0f;
+		kd_tree.learning_to_cluster.light_cluster_cdfs[cluster_offset] = static_cast<unsigned short int>(hippt::min(normalized_prefix, 1.0f) * 65535.0f);
 	}
 
 	cluster_data.light_cluster_cdf_dirty = false;
@@ -101,7 +104,7 @@ IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDev
 	{
 		if (slot == 0u)
 		{
-			kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = 0.0f;
+			kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = 0u;
 			cluster_data.light_cluster_cdf_dirty					   = false;
 		}
 
@@ -117,20 +120,22 @@ IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDev
 		weight = get_light_cluster_sampling_weight(kd_tree, light_tree_sg, cluster_data, cluster_offset, cluster_node_index);
 	}
 
-	float exclusive_prefix_weight = block_prefix_scan_exclusive<LearningToClusterMaximumLightCutSize>(weight);
 	__shared__ float total_weight;
+	float exclusive_prefix_weight = block_prefix_scan_exclusive<LearningToClusterMaximumLightCutSize>(weight);
 	if (slot == cut_size - 1u)
 		total_weight = exclusive_prefix_weight + weight;
 
 	__syncthreads();
 
 	if (slot == 0u)
-		kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = total_weight;
+		// CDFDeviceU16 ignores cdf[0], so it is used as a marker for whether the cut has any positive sampling weight.
+		kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset] = total_weight > 0.0f ? 65535u : 0u;
 	else if (slot < cut_size)
 	{
 		unsigned int cluster_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 
-		kd_tree.learning_to_cluster.light_cluster_cdfs[cluster_offset] = total_weight > 0.0f ? exclusive_prefix_weight / total_weight : 0.0f;
+		float normalized_prefix										   = total_weight > 0.0f ? exclusive_prefix_weight / total_weight : 0.0f;
+		kd_tree.learning_to_cluster.light_cluster_cdfs[cluster_offset] = static_cast<unsigned short int>(hippt::min(normalized_prefix, 1.0f) * 65535.0f);
 	}
 
 	__syncthreads();

@@ -109,7 +109,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	unsigned int* light_cluster_node_indices								= nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
-	float* light_cluster_cdfs												= nullptr;
+	unsigned short int* light_cluster_cdfs									= nullptr;
 
 	IlluminationAwareKDTreeLightClusteringData* light_clustering_data				= nullptr;
 	IlluminationAwareKDTreePendingLightClusterRecord* pending_light_cluster_records = nullptr;

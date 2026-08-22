@@ -19,7 +19,7 @@ HIPRT_DEVICE void initialize_light_clustering_from_initial_cut(IlluminationAware
 		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 	kd_tree.learning_to_cluster.light_cluster_statistics[offset] = {};
-	kd_tree.learning_to_cluster.light_cluster_cdfs[offset]		 = 0.0f;
+	kd_tree.learning_to_cluster.light_cluster_cdfs[offset]		 = 0u;
 	kd_tree.learning_to_cluster.reservoir_proposals[offset]		 = 0ull;
 
 	if (slot == 0)

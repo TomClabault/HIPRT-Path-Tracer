@@ -78,7 +78,7 @@ struct IlluminationAwareKDTreeDataHost
 		m_normal_face_observation_counts			= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_light_cluster_node_indices				= DataContainer<unsigned int>();
 		m_light_cluster_statistics					= DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
-		m_light_cluster_cdfs						= DataContainer<float>();
+		m_light_cluster_cdfs						= DataContainer<unsigned short int>();
 		m_light_clustering_data						= DataContainer<IlluminationAwareKDTreeLightClusteringData>();
 		m_pending_light_cluster_records				= DataContainer<IlluminationAwareKDTreePendingLightClusterRecord>();
 		m_pending_light_cluster_record_counts		= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
@@ -154,7 +154,7 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_face_observation_counts;
 	DataContainer<unsigned int> m_light_cluster_node_indices;
 	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_light_cluster_statistics;
-	DataContainer<float> m_light_cluster_cdfs;
+	DataContainer<unsigned short int> m_light_cluster_cdfs;
 	DataContainer<IlluminationAwareKDTreeLightClusteringData> m_light_clustering_data;
 	DataContainer<IlluminationAwareKDTreePendingLightClusterRecord> m_pending_light_cluster_records;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_pending_light_cluster_record_counts;

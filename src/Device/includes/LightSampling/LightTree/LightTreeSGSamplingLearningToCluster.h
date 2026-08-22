@@ -114,28 +114,19 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	if (cut_size == 0 || cut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
-	unsigned int selected_slot = 0;
-	unsigned int cdf_offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, 0);
-	float total_weight		   = kd_tree.learning_to_cluster.light_cluster_cdfs[cdf_offset];
-	if (total_weight > 0.0f)
-	{
-		CDFDevice light_cluster_cdf;
+	unsigned int cdf_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, 0);
 
-		light_cluster_cdf.cdf  = kd_tree.learning_to_cluster.light_cluster_cdfs + cdf_offset;
-		light_cluster_cdf.size = cut_size;
+	CDFDeviceU16 light_cluster_cdf;
+	light_cluster_cdf.cdf_u16 = kd_tree.learning_to_cluster.light_cluster_cdfs + cdf_offset;
+	light_cluster_cdf.size	  = cut_size;
 
-		selected_slot = light_cluster_cdf.sample(random_number_generator);
-	}
-	else
-		selected_slot = random_number_generator.random_index(cut_size);
+	unsigned int selected_slot	 = light_cluster_cdf.sample(random_number_generator);
+	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
 
-	unsigned int selected_offset	 = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
-	unsigned int selected_node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[selected_offset];
-
-	float selected_weight = kd_tree.learning_to_cluster.light_cluster_statistics[selected_offset].estimated_importance_Q;
-	selected_weight		  = hippt::max(selected_weight, 0.0f);
-
-	float selected_probability = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(cut_size);
+	unsigned short int selected_cdf_start = selected_slot == 0u ? 0u : kd_tree.learning_to_cluster.light_cluster_cdfs[selected_offset];
+	unsigned short int selected_cdf_end	  = selected_slot + 1u < cut_size ? kd_tree.learning_to_cluster.light_cluster_cdfs[selected_offset + 1u] : 65535u;
+	unsigned int selected_cdf_range		  = static_cast<unsigned int>(selected_cdf_end) - static_cast<unsigned int>(selected_cdf_start);
+	float selected_probability			  = static_cast<float>(selected_cdf_range) / 65535.0f;
 
 	result.light_clustering_index = clustering_index;
 	result.cluster_slot			  = selected_slot;

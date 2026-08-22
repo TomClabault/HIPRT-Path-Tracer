@@ -4245,7 +4245,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
 	bool using_learning_to_cluster	   = ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(direct_light_nee_estimator, direct_light_sampling_strategy);
 
-	if (using_learning_to_cluster)
+	if (using_learning_to_cluster && illumination_aware_kd_tree_render_pass)
 	{
 		if (ImGui::CollapsingHeader("Learning to cluster many lights"))
 		{
