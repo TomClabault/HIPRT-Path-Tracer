@@ -81,6 +81,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 	const LightTreeATSNode& ats_node												 = ats_nodes[node_index];
 
 	LightTreeSGNode& sg_node = m_nodes[node_index];
+	sg_node.triangle_count	 = ats_node.triangle_count;
+	if (ats_node.triangle_count == 0)
+		// Inner node
+		sg_node.left_child_index = ats_node.left_child_index;
+	else
+		sg_node.first_triangle_index = ats_node.first_triangle_index;
 
 	if (ats_node.triangle_count == 0)
 	{
@@ -158,9 +164,6 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		}
 
 		sg_node.bounding_sphere_radius = hippt::sqrt(radius_squared);
-
-		sg_node.left_child_index = ats_node.left_child_index;
-		sg_node.triangle_count	 = 0;
 	}
 	else
 	{
