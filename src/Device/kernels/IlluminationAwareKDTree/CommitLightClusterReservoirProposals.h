@@ -65,11 +65,12 @@ IlluminationAwareKDTree_CommitLightClusterReservoirProposals(IlluminationAwareKD
 	unsigned int slot			  = threadIdx.x;
 
 	unsigned int light_clustering_count = *kd_tree.learning_to_cluster.light_clustering_count;
-	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity ||
-		slot >= kd_tree.learning_to_cluster.pending_record_stride)
+	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
 		return;
 
-	commit_light_cluster_reservoir_proposal(kd_tree, clustering_index, slot);
+	if (slot < kd_tree.learning_to_cluster.pending_record_stride)
+		commit_light_cluster_reservoir_proposal(kd_tree, clustering_index, slot);
+
 	__syncthreads();
 
 	if (slot == 0u)
