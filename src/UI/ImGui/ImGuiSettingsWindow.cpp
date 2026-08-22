@@ -4253,29 +4253,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 
 			ImGui::SeparatorText("Initialization");
 
-			static int maximum_light_cut_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
-			ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, 4, 1024, "%d", ImGuiSliderFlags_AlwaysClamp);
-			if (maximum_light_cut_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE))
-			{
-				ImGui::TreePush("Apply button learning-to-cluster maximum light cut size");
-
-				if (ImGui::Button("Apply##learning-to-cluster maximum light cut size"))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE, maximum_light_cut_size);
-
-					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-
-					m_renderer->recompute_emissives_sampling_data_structure();
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				ImGui::TreePop();
-			}
-			ImGuiRenderer::show_help_marker(
-				"Maximum number of SG light-tree clusters in the LTC cut. Changing this recompiles the LTC kernels and resets the render.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::Text("light cut node Q0 probability");
 			int q0_initialization =
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER) == KERNEL_OPTION_TRUE;
 			bool q0_initialization_changed = false;
@@ -4299,6 +4277,43 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			if (ImGui::SliderInt("Stop learning after seconds##learningtocluster",
 								 &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_seconds(), 0, 128))
 				m_render_window->set_render_dirty(true);
+
+			static int initial_light_cut_size = static_cast<int>(render_data.kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size);
+			static int maximum_light_cut_size = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
+			ImGui::SliderInt("Initial light cut size", &initial_light_cut_size, 1, maximum_light_cut_size, "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGuiRenderer::show_help_marker("Initial number of SG light-tree clusters used by LTC before adaptive refinement.");
+
+			ImGui::SliderInt("Maximum light cut size", &maximum_light_cut_size, initial_light_cut_size, 1024, "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGuiRenderer::show_help_marker("Maximum number of SG light-tree clusters in the LTC cut.");
+
+			if (maximum_light_cut_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE))
+			{
+				ImGui::TreePush("Apply button learning-to-cluster maximum light cut size");
+
+				if (ImGui::Button("Apply##learning-to-cluster light cut sizes"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE, maximum_light_cut_size);
+					render_data.kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size = initial_light_cut_size;
+
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+			else if (initial_light_cut_size != static_cast<int>(render_data.kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size))
+			{
+				if (ImGui::Button("Apply##learning-to-cluster initial light cut size"))
+				{
+					render_data.kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size = initial_light_cut_size;
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+					m_render_window->set_render_dirty(true);
+				}
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
