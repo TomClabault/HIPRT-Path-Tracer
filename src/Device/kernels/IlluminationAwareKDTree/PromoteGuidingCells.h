@@ -105,6 +105,7 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 		if (parent_clustering_index != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		{
 			unsigned int right_clustering_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.light_clustering_count, 1u);
+
 			if (right_clustering_index < illumination_aware_kd_tree.learning_to_cluster.light_clustering_capacity)
 				right_set.clustering_indices[thread_slot] = right_clustering_index;
 		}
@@ -135,11 +136,19 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
-				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
-					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
+
+				// Only inheriting the estimated importance Q, not the other statistics, because we want to start learning fresh for both the new cells
+				float parent_estimated_importance_Q =
+					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset].estimated_importance_Q;
+
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset] = IlluminationAwareKDTreeLightClusterStatistics{};
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset]  = IlluminationAwareKDTreeLightClusterStatistics{};
+
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset].estimated_importance_Q = parent_estimated_importance_Q;
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset].estimated_importance_Q  = parent_estimated_importance_Q;
 			}
 		}
 	}
@@ -159,48 +168,55 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 					parent_clustering_index =
 						illumination_aware_kd_tree.learning_to_cluster.normal_clustering_sets[parent_set_index].clustering_indices[normal_face];
 
-				unsigned int right_clustering_index = right_set.clustering_indices[normal_face];
+				unsigned int parent_observation_offset =
+					illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(parent_set_index, normal_face);
 				unsigned int right_observation_offset =
 					illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(right_set_index, normal_face);
 
+				unsigned int right_clustering_index = right_set.clustering_indices[normal_face];
 				if (parent_clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
 					right_clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 				{
-					unsigned int parent_observation_offset =
-						illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(parent_set_index, normal_face);
 					illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[parent_observation_offset] = 0;
 					illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[right_observation_offset]	 = 0;
 
 					continue;
 				}
 
-				unsigned int parent_observation_offset =
-					illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(parent_set_index, normal_face);
-
 				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index] =
 					illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index];
-				illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[right_clustering_index]		   = 0;
-				illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[right_clustering_index]					   = 0;
-				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].pending_record_budget = 0;
+
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].pending_record_budget	   = 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].iteration				   = 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].last_refinement_iteration = 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].refinement_stopped		   = false;
+
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].pending_record_budget		= 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].iteration					= 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].last_refinement_iteration = 0;
+				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].refinement_stopped		= false;
+
+				illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[right_clustering_index]	= 0;
+				illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[parent_clustering_index] = 0;
+
+				illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[right_clustering_index]  = 0;
+				illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[parent_clustering_index] = 0;
+
 				illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[right_clustering_index] =
 					IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
-
-				illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[parent_clustering_index]			= 0;
-				illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[parent_clustering_index]						= 0;
-				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].pending_record_budget = 0;
 				illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[parent_clustering_index] =
 					IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
-				unsigned int parent_observation_count =
-					hippt::atomic_fetch_add(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[parent_observation_offset], 0u);
-				hippt::atomic_exchange(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[right_observation_offset],
-									   parent_observation_count);
+				illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[right_observation_offset]	 = 0u;
+				illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[parent_observation_offset] = 0u;
 			}
 		}
 	}
 
 	__syncthreads();
+
 #else
+
 	unsigned int right_set_index			 = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.normal_clustering_set_count, 1u);
 	unsigned int active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.core.active_guiding_node_count, 1u);
 	if (active_guiding_output_index >= illumination_aware_kd_tree.core.node_capacity)
@@ -246,17 +262,29 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 			{
 				unsigned int source_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(parent_clustering_index, slot);
 				unsigned int right_offset  = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(right_clustering_index, slot);
+
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_node_indices[source_offset];
-				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_offset] =
-					illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.light_cluster_cdfs[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.reservoir_proposals[right_offset] = 0ull;
 			}
+
+			// Only inheriting the estimated importance Q, not the other statistics, because we want to start learning fresh for both the new cells
+			float parent_estimated_importance_Q =
+				illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[parent_clustering_index].estimated_importance_Q;
+
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_clustering_index] = IlluminationAwareKDTreeLightClusterStatistics{};
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[right_clustering_index].estimated_importance_Q =
+				parent_estimated_importance_Q;
+
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[parent_clustering_index] = IlluminationAwareKDTreeLightClusterStatistics{};
+			illumination_aware_kd_tree.learning_to_cluster.light_cluster_statistics[parent_clustering_index].estimated_importance_Q =
+				parent_estimated_importance_Q;
 		}
 
 		illumination_aware_kd_tree.learning_to_cluster.normal_clustering_sets[right_set_index] = right_set;
+
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{
 			unsigned int parent_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
@@ -284,22 +312,29 @@ IlluminationAwareKDTree_PromoteGuidingCells(IlluminationAwareKDTreeDevice illumi
 
 			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_data_index] =
 				illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index];
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].pending_record_budget	   = 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].iteration				   = 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].last_refinement_iteration = 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_index].refinement_stopped		   = false;
+
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].pending_record_budget		= 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].iteration					= 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].last_refinement_iteration = 0;
+			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].refinement_stopped		= false;
+
 			illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[right_clustering_data_index]			= 0;
 			illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[right_clustering_data_index]						= 0;
 			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[right_clustering_data_index].pending_record_budget = 0;
 			illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[right_clustering_data_index] =
 				IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
-			illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[parent_clustering_index]			= 0;
-			illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[parent_clustering_index]						= 0;
-			illumination_aware_kd_tree.learning_to_cluster.light_clustering_data[parent_clustering_index].pending_record_budget = 0;
+			illumination_aware_kd_tree.learning_to_cluster.pending_light_cluster_record_counts[parent_clustering_index] = 0;
+			illumination_aware_kd_tree.learning_to_cluster.reservoir_seen_counts[parent_clustering_index]				= 0;
 			illumination_aware_kd_tree.learning_to_cluster.representative_shading_context_states[parent_clustering_index] =
 				IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT;
 
-			unsigned int parent_observation_count =
-				hippt::atomic_fetch_add(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[parent_observation_offset], 0u);
-			hippt::atomic_exchange(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[right_observation_offset],
-								   parent_observation_count);
+			hippt::atomic_exchange(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[right_observation_offset], 0u);
+			hippt::atomic_exchange(&illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[parent_observation_offset], 0u);
 		}
 	}
 

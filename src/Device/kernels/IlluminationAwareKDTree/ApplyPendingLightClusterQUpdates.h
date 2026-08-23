@@ -36,6 +36,7 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 	unsigned int pending_count											 = kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index];
 	unsigned int iteration_budget										 = get_light_cluster_iteration_budget(cluster_data, settings);
 	if (pending_count < iteration_budget)
+		// Waiting until we have enough pending records to update the light cluster statistics.
 		return;
 
 	float learning_rate		 = compute_light_cluster_learning_rate(cluster_data.iteration, settings);
