@@ -75,9 +75,6 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 
 		final_color = bsdf_color * reservoir.UCW / point_pdf_solid_angle * sample.emission *
 					  hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
-		if (!sample.is_bsdf_sample)
-			final_color /= nee_plus_plus_context.unoccluded_probability;
-
 		sanity_check<true>(render_data, final_color, -1, -1);
 	}
 

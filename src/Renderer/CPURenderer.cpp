@@ -286,9 +286,7 @@ void CPURenderer::setup_nee_plus_plus()
 
 	m_render_data.nee_plus_plus.m_total_number_of_cells = 1000000;
 
-	m_render_data.nee_plus_plus.m_total_shadow_ray_queries	  = &m_nee_plus_plus.total_shadow_ray_queries;
-	m_render_data.nee_plus_plus.m_shadow_rays_actually_traced = &m_nee_plus_plus.shadow_rays_actually_traced;
-	m_render_data.nee_plus_plus.m_total_cells_alive_count	  = &m_nee_plus_plus.total_cell_alive_count;
+	m_render_data.nee_plus_plus.m_total_cells_alive_count = &m_nee_plus_plus.total_cell_alive_count;
 #endif
 }
 

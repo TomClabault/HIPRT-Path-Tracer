@@ -97,7 +97,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 					{
 						float cosine_term			= hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
 						const ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
-						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						const ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf;
 						light_source_radiance += estimator;
 
 						// Just a CPU-only sanity check
@@ -210,8 +210,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_deferred_BSDF(HIPRTRenderData& ren
 								balance_heuristic(light_sample_solid_angle_pdf, DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf, 1);
 
 							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf /
-														 nee_plus_plus_context.unoccluded_probability;
+							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf;
 
 							// Just a CPU-only sanity check
 							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);
@@ -284,8 +283,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_multi_sample(HIPRTRenderData& rend
 								balance_heuristic(light_sample_solid_angle_pdf, DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf, 1);
 
 							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf /
-														 nee_plus_plus_context.unoccluded_probability;
+							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf;
 
 							// Just a CPU-only sanity check
 							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);
@@ -463,7 +461,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 				{
 					float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
 					ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
-					ColorRGB32F estimator = numerator / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+					ColorRGB32F estimator = numerator / solid_angle_pdf;
 					light_source_radiance += estimator;
 
 					float full_estimator									 = estimator.luminance();
@@ -629,7 +627,7 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 
 						numerator = light_sample.emission * cosine_term * bsdf_color * visibility;
 
-						ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						ColorRGB32F estimator = numerator / light_sample_solid_angle_pdf;
 
 						light_source_radiance += estimator;
 

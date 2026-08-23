@@ -18,16 +18,6 @@ struct NEEPlusPlusContext
 {
 	float3_t shaded_point	= make_float3(0.0f, 0.0f, 0.0f);
 	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
-
-	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
-	// this member will be filled with the probability that the points 'shaded_point'
-	// and 'point_on_light' are mutually visible.
-	//
-	// If the call to 'evaluate_shadow_ray_nee_plus_plus' returns 'false' i.e. that the
-	// points are mutually visibile, you will need to account this
-	// 'unoccluded_probability' in the PDF of the light you sampled i.e. multiply
-	// your PDF by this 'unoccluded_probability' to guarantee unbiasedness
-	float unoccluded_probability = 1.0f;
 	// Set this flag to true if this context should be used
 	// for testing visibility probability between 'shaded_point' and the
 	// envmap.
@@ -57,10 +47,6 @@ struct NEEPlusPlusDevice
 	bool m_reset_visibility_map = false;
 	// If true, the grid visibility will be updated this frame (new visibility values will be accumulated)
 	bool m_update_visibility_map = true;
-	// Whether or not to do russian roulette with NEE++ on emissive lights
-	bool m_enable_nee_plus_plus_RR_for_emissives = true;
-	// Whether or not to do russian roulette with NEE++ on envmap samples
-	bool m_enable_nee_plus_plus_RR_for_envmap = false;
 
 	unsigned int m_total_number_of_cells	= 0;
 	float m_grid_cell_min_size				= 0.25f;
@@ -124,20 +110,12 @@ struct NEEPlusPlusDevice
 	// Counter that keep tracks of how many cells are currently used in the hash grid
 	AtomicType<unsigned int>* m_total_cells_alive_count = nullptr;
 
-	// If a voxel-to-voxel unocclusion probability is higher than that, the voxel will be considered unoccluded
-	// and so a shadow ray will be traced. This is to avoid trusting voxel that have a low probability of
-	// being unoccluded
+	// If a voxel-to-voxel unocclusion probability is higher than this threshold, the visibility estimate
+	// is treated as fully visible instead of trusting a low-probability estimate.
 	//
-	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
+	// 0.0f treats every populated visibility-map entry as fully visible.
 	float m_confidence_threshold	 = 0.0025f;
 	float m_minimum_unoccluded_proba = 0.0f;
-
-	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
-	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
-	bool do_update_shadow_rays_traced_statistics = true;
-
-	AtomicType<unsigned long long int>* m_total_shadow_ray_queries	  = nullptr;
-	AtomicType<unsigned long long int>* m_shadow_rays_actually_traced = nullptr;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, unsigned int hash_grid_index)
 	{
@@ -184,16 +162,14 @@ struct NEEPlusPlusDevice
 		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot read the cache for this
 			//
-			// Returning 1.0f indicating that the two points are not occluded such that the caller
-			// tests for a shadow ray
+			// Returning 1.0f because there is no cached visibility information for these points
 			return 1.0f;
 
 		out_cell_total_accumulation_count = read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(out_hash_grid_index);
 		if (out_cell_total_accumulation_count == 0)
 			// No information for these two points
 			//
-			// Returning 1.0f indicating that the two points are not occluded such that the caller
-			// tests for a shadow ray
+			// Returning 1.0f because there is no cached visibility information for these points
 			return 1.0f;
 		else
 		{

@@ -29,8 +29,6 @@ public:
 	unsigned int update_cell_alive_count();
 	unsigned int get_cell_alive_count() const;
 
-	std::size_t get_shadow_rays_actually_traced_from_GPU() const;
-	std::size_t get_total_shadow_rays_queries_from_GPU() const;
 	std::size_t get_byte_size() const;
 	float get_load_factor() const;
 
@@ -41,10 +39,6 @@ private:
 	OrochiBuffer<unsigned char> m_total_num_rays;
 
 	OrochiBuffer<unsigned int> m_checksum_buffer;
-
-	// Counters on the GPU for tracking
-	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
-	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;
 
 	OrochiBuffer<unsigned int> m_total_cells_alive_count;
 	OrochiBuffer<unsigned int> m_total_cells_alive_count_cpu_host_pinned_buffer;

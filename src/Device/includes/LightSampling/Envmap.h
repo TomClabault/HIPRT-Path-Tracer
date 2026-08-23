@@ -214,8 +214,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				float mis_weight = 1.0f;
 #endif
 
-				envmap_mis_contribution =
-					bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle / nee_plus_plus_context.unoccluded_probability;
+				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
 			}
 		}
 	}

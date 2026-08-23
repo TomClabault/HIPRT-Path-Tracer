@@ -98,9 +98,6 @@ const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR = "Direct
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS = "DirectLightUseNEEPlusPlus";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY = "NEEPlusPlusGridPrepopulateLightSamplingStrategy";
-const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE = "DirectLightUseNEEPlusPlusRR";
-const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED = "DirectLightNEEPlusPlusDisplayShadowRaysDiscarded";
-const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE = "DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce";
 const std::string GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS = "NEEPlusPlus_LinearProbingSteps";
 const std::string GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE = "NEEPlusPlusDebugMode";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION = "DirectLightSamplingDeltaDistributionOptimization";
@@ -244,9 +241,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE,
-	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
-	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE,
 	GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS,
 	GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION,
@@ -394,9 +388,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS] = std::make_shared<int>(DirectLightUseNEEPlusPlus);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(NEEPlusPlusGridPrepopulateLightSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE] = std::make_shared<int>(DirectLightUseNEEPlusPlusRR);
-	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED] = std::make_shared<int>(DirectLightNEEPlusPlusDisplayShadowRaysDiscarded);
-	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE] = std::make_shared<int>(DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce);
 	m_options_macro_map[GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS] = std::make_shared<int>(NEEPlusPlus_LinearProbingSteps);
 	m_options_macro_map[GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE] = std::make_shared<int>(NEEPlusPlusDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION] = std::make_shared<int>(DirectLightSamplingDeltaDistributionOptimization);

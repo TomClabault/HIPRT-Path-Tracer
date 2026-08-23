@@ -374,66 +374,6 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 													NEEPlusPlusContext& nee_plus_plus_context,
 													Xorshift32Generator& random_number_generator)
 {
-#if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-	bool shadow_ray_discarded = false;
-	bool shadow_ray_occluded  = false;
-
-	if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
-		// Updating the statistics
-		hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1ull);
-
-	bool nee_plus_plus_envmap_rr_disabled	 = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap;
-	bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_emissives;
-	if (nee_plus_plus_envmap_rr_disabled || nee_plus_plus_emissives_rr_disabled)
-	{
-		// This is NEE++ RR for envmap sampling but envmap NEE++ RR is disabled
-		nee_plus_plus_context.unoccluded_probability = 1.0f;
-
-		if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
-			// Updating the statistics
-			hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
-
-		shadow_ray_occluded	 = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
-		shadow_ray_discarded = false;
-	}
-
-	// Getting the matrix index from 'estimate_visibility_probability' in case we need to accumulate
-	// visibility in the visibility map with 'accumulate_visibility'. If we do need to do that,
-	// then that matrix index can be reused instead of being recomputed automatically by 'accumulate_visibility'
-	// to save a little bit of computations
-	unsigned int seed_before = random_number_generator.m_state.seed;
-
-	unsigned int nee_plus_plus_hash_grid_cell_index;
-	float visible_probability = nee_plus_plus_context.unoccluded_probability =
-		render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
-	bool likely_visible = random_number_generator() < visible_probability;
-
-	if (likely_visible)
-	{
-		if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
-			// Updating the statistics
-			hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
-
-		// The shadow ray is likely visible, testing with a shadow ray
-		shadow_ray_occluded	 = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
-		shadow_ray_discarded = false;
-
-		if (render_data.nee_plus_plus.m_update_visibility_map)
-			render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_hash_grid_cell_index);
-	}
-	else
-	{
-		shadow_ray_discarded = true;
-
-		// NEE++ tells us that these two points are going to be occluded so we're not testing
-		// the shadow ray and assuming occluded instead
-		shadow_ray_occluded = true;
-	}
-#else
-	// Setting this to 1.0f if not using NEE++ so that is has no effect when the caller
-	// divides by it
-	nee_plus_plus_context.unoccluded_probability = 1.0f;
-
 	bool shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
 
 	// We may still want to update the visibility map
@@ -443,27 +383,6 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 
 		render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_hash_grid_cell_index);
 	}
-#endif
-
-#if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
-	uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	uint32_t seed		 = blockIdx.x + blockIdx.y * gridDim.x + 1 + (threadIdx.y >= 4) * 1;
-	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
-
-	Xorshift32Generator color_random(wang_hash(seed));
-
-	ColorRGB32F block_color = ColorRGB32F(color_random(), color_random(), color_random()) * (render_data.render_settings.sample_number + 1);
-
-	if (bounce == DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce)
-	{
-		if (shadow_ray_discarded)
-			render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
-		else
-			render_data.buffers.accumulated_ray_colors[pixel_index] = block_color;
-	}
-#endif
 
 	return shadow_ray_occluded;
 }

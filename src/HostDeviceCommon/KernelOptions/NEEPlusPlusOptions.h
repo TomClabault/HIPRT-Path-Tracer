@@ -50,26 +50,6 @@
 #define NEEPlusPlusGridPrepopulateLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
 
 /**
- * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
- * information of NEE++
- */
-#define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_FALSE
-
-/**
- * This a debug option to visualize shadow rays discarded by the NEE++ russian roulette
- */
-#define DirectLightNEEPlusPlusDisplayShadowRaysDiscarded KERNEL_OPTION_FALSE
-
-/**
- * When using the 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded' kernel options
- * for displaying in the viewport where shadow rays were discarded, this parameter is used
- * to determine at what bounce in the scene we should display the shadow ray discarded or not
- *
- * 0 is the first hit
- */
-#define DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce 0
-
-/**
  * Maximum number of steps for the linear probing of the NEE++ hash grid
  */
 #define NEEPlusPlus_LinearProbingSteps 4

@@ -80,8 +80,6 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 		}
 
 		final_color = bsdf_color * reservoir.UCW * sample.emission * cosine_at_evaluated_point;
-		if (!sample.is_bsdf_sample)
-			final_color /= nee_plus_plus_context.unoccluded_probability;
 	}
 
 	return final_color;

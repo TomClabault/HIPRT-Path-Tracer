@@ -367,9 +367,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 	// Modifying the ray color such that we display some debug color to the screen
 
-#if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
-	// Nothing to do, the debug is already handled in the shadow ray NEE function
-#elif NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit

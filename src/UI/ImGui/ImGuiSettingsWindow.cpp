@@ -5455,65 +5455,14 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 												"stop to save some performance because accumulating forever isn't necessary for visibility caching precision.");
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-				bool use_nee_plus_plus_rr = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE);
-				if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE,
-														   use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Implementation of NEE++, [Guo et al., 2020].\n"
-												"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
-												"stochastically determine whether or not attempt at all to trace a shadow at "
-												"a light during next-event-estimation.");
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE) == KERNEL_OPTION_TRUE)
-					ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() /
-																  (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() *
-																  100.0f);
-
-				if (use_nee_plus_plus_rr)
-				{
-					ImGui::TreePush("NEE++ RR options tree");
-
-					if (ImGui::Checkbox("Use NEE++ RR for emissives", &render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_emissives))
-						m_render_window->set_render_dirty(true);
-
-					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap))
-						m_render_window->set_render_dirty(true);
-
-					{
-						unsigned int traced = 0;
-						unsigned int total	= 0;
-
-						ImGui::SameLine();
-						std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
-						if (ImGui::Button(button_text.c_str()))
-							render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics =
-								!render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
-
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-					ImGui::TreePop();
-				}
-
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
 			{
 				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.m_confidence_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is higher than that, "
-												"the voxel will be considered unoccluded and so a shadow ray will be traced. This is to "
-												"avoid trusting voxel that have a low probability of being unoccluded\n\n"
-												""
-												"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.\n\n"
-												""
-												"Higher values yield higher performance but also higher variance (and the tradeoff doesn't seem "
-												"worth it, hence the very low default value which means that we only allow ourselves "
-												"to save shadow rays when we have a very high probability that the two voxels are occluded.");
+				ImGuiRenderer::show_help_marker("Cached voxel-to-voxel visibility probabilities at or above this threshold are treated as fully visible. "
+												"Lower values preserve the measured probability for NEE++ visibility queries.");
 
 				if (ImGui::SliderFloat("Minimum unoccluded proba", &render_data.nee_plus_plus.m_minimum_unoccluded_proba, 0.0f, 0.1f))
 					m_render_window->set_render_dirty(true);
@@ -5567,36 +5516,6 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				{
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
-				}
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				bool display_shadow_rays =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
-				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
-				{
-					m_renderer->get_global_compiler_options()->set_macro_value(
-						GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
-						display_shadow_rays ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-					m_renderer->recompile_kernels();
-
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("With this debug view enabled, every black pixel is a pixel which discarded its "
-												"shadow ray thanks to NEE++ russian roulette.\n"
-												"A colored pixel didn't discard its shadow ray.");
-				if (display_shadow_rays)
-				{
-					ImGui::TreePush("Display shadow rays tree");
-
-					static int shadow_ray_bounce_to_display = DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce;
-					if (ImGui::SliderInt("Bounce to display", &shadow_ray_bounce_to_display, 0, m_renderer->get_render_settings().nb_bounces))
-					{
-						m_renderer->get_global_compiler_options()->set_macro_value(
-							GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE, shadow_ray_bounce_to_display);
-						m_renderer->recompile_kernels();
-					}
-
-					ImGui::TreePop();
 				}
 
 				ImGui::TreePop();

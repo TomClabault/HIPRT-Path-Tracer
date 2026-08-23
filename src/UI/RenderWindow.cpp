@@ -24,7 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 // ******* TODO ReSTIR PT & refactor **********
 // - Remove ReSTIR DI impl
 // - Remove ReSTIR GI impl
-// - Remove NEE++ RR impl
+// - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
 // - Remove ReGIR
 // - Remove RIS LTC estimator
@@ -392,8 +392,7 @@ extern ImGuiLogger g_imgui_logger;
 //		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting
 // because of the lack of pre integration information
-// - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe
-// not too bad?
+// - Can we use NEE++ visibility estimates to improve shading of multiple reservoirs? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
 // - Can we evaluate the ratio between the UCW and the final contribution? If the ratio is higher than a threshold then that's an outlier / Firefly and we may
 // want to skip it attenuate it
@@ -508,7 +507,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO performance improvements branch:
 // - FP16 wherever possible
-// - Shadow rays NEE RR
+// - NEE++ shadow-ray visibility queries
 // - Use semi packed material in the shaders with unorm floats as uchar instead of full float, unpacing should be cheap and easy for those so we may gain
 // something
 // - Thread swizzling for loading/storing Gbuffer/screen space info because at the moment 8x8 blocks do not coalesce fully accross the 32-wide warps: we only

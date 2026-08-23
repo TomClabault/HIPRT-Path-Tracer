@@ -54,10 +54,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
 
 		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator, ray_payload.bounce);
+														   random_number_generator);
 
 		if (!in_shadow)
-			return selected_sample_radiance / light_sample.area_measure_pdf / nee_plus_plus_context.unoccluded_probability;
+			return selected_sample_radiance / light_sample.area_measure_pdf;
 		else
 			return ColorRGB32F(0.0f);
 #endif
@@ -134,8 +134,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 						if (light_sample_solid_angle_pdf > 0.0f)
 						{
 							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance +=
-								light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+							light_source_radiance += light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf;
 
 							// Just a CPU-only sanity check
 							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
