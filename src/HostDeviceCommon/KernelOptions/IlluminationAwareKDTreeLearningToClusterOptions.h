@@ -38,8 +38,10 @@
  * probability to use for sampling clusters according to [Bayesian online regression for adaptive direct illumination sampling, Vevoda et al., 2018].
  *
  * Only estimates the average contribution of clusters directly if KERNEL_OPTION_FALSE.
+ *
+ * In practice though the second moment estimation has higher variance...
  */
-#define LearningToClusterEstimateSecondMomentQ KERNEL_OPTION_TRUE
+#define LearningToClusterEstimateSecondMomentQ KERNEL_OPTION_FALSE
 
 /**
  * Debug view for learning to cluster.

@@ -56,7 +56,14 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 				kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
 
 			if (record.cluster_node_index == cluster_node_index)
+			{
+#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
+				statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
+																learning_rate * record.q_reward * record.q_reward);
+#else
 				statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
+#endif
+			}
 		}
 	}
 
