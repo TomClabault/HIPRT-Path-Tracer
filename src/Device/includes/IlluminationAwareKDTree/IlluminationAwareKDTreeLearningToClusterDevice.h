@@ -42,6 +42,7 @@ struct IlluminationAwareKDTreeLightClusteringData
 	// Current number of active SG nodes in the cut
 	unsigned int cut_size = 0;
 
+	// Current iteration of this lightcut
 	unsigned int iteration = 0;
 
 	// t' in the paper's refinement stopping rule
@@ -55,9 +56,6 @@ struct IlluminationAwareKDTreeLightClusteringData
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
-
-	// Incremented only when the light cut is modified
-	unsigned int cut_revision = 0;
 
 	// Budget of the currently pending learning iteration
 	unsigned int pending_record_budget = 0;
@@ -94,14 +92,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING	  = 1u;
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_READY	  = 2u;
 
-	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;
-
 	HIPRT_DEVICE void append_learning_to_cluster_training_sample(const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample);
-
-	IlluminationAwareKDTreeLearningToClusterTrainingSample* training_samples = nullptr;
-	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice training_samples_soa;
-	AtomicType<unsigned int>* training_sample_count = nullptr;
-	unsigned int training_sample_capacity			= 0;
 
 	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const
 	{
@@ -112,6 +103,13 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	{
 		return set_index * SurfaceNormalFace_Count + normal_face;
 	}
+
+	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;
+
+	IlluminationAwareKDTreeLearningToClusterTrainingSample* training_samples = nullptr;
+	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice training_samples_soa;
+	AtomicType<unsigned int>* training_sample_count = nullptr;
+	unsigned int training_sample_capacity			= 0;
 
 	AtomicType<unsigned int>* light_clustering_count = nullptr;
 	unsigned int light_clustering_capacity			 = 0;

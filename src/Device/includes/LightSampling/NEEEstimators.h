@@ -368,7 +368,6 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 	training_sample.cluster_probability			   = triangle_sample.cluster_probability;
 	training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
 	training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
-	training_sample.sampled_cut_revision		   = triangle_sample.cut_revision;
 	training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
 	training_sample.valid_for_light_clustering	   = true;
 
@@ -417,7 +416,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
 	learning_to_cluster_training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
 	learning_to_cluster_training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
-	learning_to_cluster_training_sample.sampled_cut_revision		   = triangle_sample.cut_revision;
 	learning_to_cluster_training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
 	learning_to_cluster_training_sample.valid_for_light_clustering	   = true;
 

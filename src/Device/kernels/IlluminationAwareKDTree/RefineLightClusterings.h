@@ -243,8 +243,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	if (accepted_split_count > 0u)
 	{
 		cluster_data.last_refinement_iteration = cluster_data.iteration;
-		cluster_data.cut_revision++;
-		cluster_data.light_cluster_cdf_dirty = true;
+		cluster_data.light_cluster_cdf_dirty   = true;
 	}
 }
 #endif
@@ -372,8 +371,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 		if (accepted_split_count > 0u)
 		{
 			cluster_data.last_refinement_iteration = cluster_data.iteration;
-			cluster_data.cut_revision++;
-			cluster_data.light_cluster_cdf_dirty = true;
+			cluster_data.light_cluster_cdf_dirty   = true;
 		}
 	}
 #else

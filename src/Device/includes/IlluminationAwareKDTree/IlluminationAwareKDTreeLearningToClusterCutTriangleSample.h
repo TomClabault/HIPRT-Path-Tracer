@@ -6,8 +6,8 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_CUT_TRIANGLE_SAMPLE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_CUT_TRIANGLE_SAMPLE_H
 
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
 struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 {
@@ -17,7 +17,6 @@ struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 	unsigned int cluster_slot			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	unsigned int cluster_node_index		= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-	unsigned int cut_revision		  = 0;
 	unsigned int cut_size_at_sampling = 0;
 
 	// p(c | x)

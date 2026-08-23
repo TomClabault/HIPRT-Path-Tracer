@@ -23,7 +23,6 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 
 	unsigned int sampled_light_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
 	unsigned int selected_cluster_slot			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	unsigned int sampled_cut_revision			= 0;
 	unsigned int sampled_cut_size				= 0;
 
 	unsigned int valid_for_light_clustering = false;
