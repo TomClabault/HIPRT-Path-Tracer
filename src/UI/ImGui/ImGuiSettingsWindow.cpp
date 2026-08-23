@@ -4364,6 +4364,18 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 								 128))
 				m_render_window->set_render_dirty(true);
 
+			if (ImGui::SliderFloat("Learning rate beta", &render_data.kd_tree_device.learning_to_cluster.user_settings.learning_rate_beta, 1.0f, 8.0f))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Learning rate beta controls the overall magnitude of updates. With beta = 4, the first update has alpha = 0.25: 25 % new reward and 75 % "
+				"previous estimate.Increasing beta makes learning slower and more stable; decreasing it makes learning more reactive and noisier.");
+
+			if (ImGui::SliderFloat("Learning rate omega", &render_data.kd_tree_device.learning_to_cluster.user_settings.learning_rate_omega, 0.0f, 1.0f, "%.3f",
+								   ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("Learning rate omega controls how quickly the learning rate decays over learning iterations. Increasing omega "
+											"makes the estimator 'freeze' faster. Decreasing it lets new observations continue to have influence longer.");
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement stopping conditions");
 			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),
