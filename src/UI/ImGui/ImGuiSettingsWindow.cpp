@@ -4360,6 +4360,10 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 											"adaptive direct illumination sampling, Vevoda et al., 2018].\n\n"
 											"Only estimates the average contribution of clusters directly if E[L_c]");
 
+			if (ImGui::SliderInt("Per-cluster sampling budget", &render_data.kd_tree_device.learning_to_cluster.user_settings.initial_sampling_budget_n0, 4,
+								 128))
+				m_render_window->set_render_dirty(true);
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement stopping conditions");
 			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),
