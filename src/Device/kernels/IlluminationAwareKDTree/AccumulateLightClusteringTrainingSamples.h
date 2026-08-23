@@ -90,7 +90,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 
 	if (proposes_replacement)
 	{
-		unsigned int proposal_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride + target_slot;
+		unsigned int proposal_offset = clustering_index * LearningToClusterMaximumClusterRecordCount + target_slot;
 		unsigned long long int proposal =
 			((static_cast<unsigned long long int>(stream_index) + 1ull) << 32) | static_cast<unsigned long long int>(sample_index);
 

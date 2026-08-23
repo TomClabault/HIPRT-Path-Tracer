@@ -31,7 +31,7 @@ IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(Illuminatio
 	}
 
 	unsigned int light_clustering_count	  = *illumination_aware_kd_tree.learning_to_cluster.light_clustering_count;
-	unsigned int reservoir_proposal_count = light_clustering_count * illumination_aware_kd_tree.learning_to_cluster.pending_record_stride;
+	unsigned int reservoir_proposal_count = light_clustering_count * LearningToClusterMaximumClusterRecordCount;
 	if (reset_index >= node_count && reset_index >= reservoir_proposal_count)
 		return;
 

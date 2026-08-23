@@ -771,8 +771,9 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
 	unsigned int light_clustering_count	  = *kd_tree_device.learning_to_cluster.light_clustering_count;
 	unsigned int reset_thread_count		  = std::max(node_count, light_clustering_count);
-	unsigned int reservoir_proposal_count = light_clustering_count * kd_tree_device.learning_to_cluster.pending_record_stride;
-	reset_thread_count					  = std::max(reset_thread_count, reservoir_proposal_count);
+	unsigned int reservoir_proposal_count = light_clustering_count * LearningToClusterMaximumClusterRecordCount;
+
+	reset_thread_count = std::max(reset_thread_count, reservoir_proposal_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
 		IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
 

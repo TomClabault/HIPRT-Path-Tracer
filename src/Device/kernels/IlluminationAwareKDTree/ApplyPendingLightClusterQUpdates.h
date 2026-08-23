@@ -41,7 +41,7 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 
 	float learning_rate		 = compute_light_cluster_learning_rate(cluster_data.iteration, settings);
 	float history_weight	 = 1.0f - learning_rate;
-	unsigned int base_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+	unsigned int base_offset = clustering_index * LearningToClusterMaximumClusterRecordCount;
 
 #ifdef __KERNELCC__
 	if (slot < cluster_data.cut_size)

@@ -110,7 +110,7 @@ IlluminationAwareKDTree_UpdateLightClusterStatistics(IlluminationAwareKDTreeDevi
 	if (pending_count < iteration_budget)
 		return;
 
-	unsigned int base_offset = clustering_index * kd_tree.learning_to_cluster.pending_record_stride;
+	unsigned int base_offset = clustering_index * LearningToClusterMaximumClusterRecordCount;
 #ifdef __KERNELCC__
 	if (slot >= cluster_data.cut_size)
 		return;

@@ -367,7 +367,7 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 	if (is_using_learning_to_cluster(compiler_options))
 	{
 		unsigned int reservoir_proposal_reset_thread_count =
-			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * LearningToClusterMaximumClusterRecordCount;
 		unsigned int reset_thread_count = std::max(node_reset_thread_count, reservoir_proposal_reset_thread_count);
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->launch_asynchronous(
@@ -513,7 +513,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		unsigned int maximum_light_clustering_reservoir_proposal_count =
-			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
+			kd_tree_device.learning_to_cluster.light_clustering_capacity * LearningToClusterMaximumClusterRecordCount;
 		m_kernels[IlluminationAwareKDTreeRenderPass::COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID]->launch_asynchronous(
 			learning_to_cluster_light_clustering_block_size, 1, maximum_light_clustering_reservoir_proposal_count, 1, learning_to_cluster_launch_args,
 			m_renderer->get_main_stream());

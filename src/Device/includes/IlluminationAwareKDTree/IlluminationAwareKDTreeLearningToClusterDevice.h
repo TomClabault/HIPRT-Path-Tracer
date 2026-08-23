@@ -35,8 +35,6 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 	}
 };
 
-static constexpr unsigned int IlluminationAwareKDTreePendingLightClusterRecordStride = LearningToClusterMaximumLightCutSize;
-
 struct IlluminationAwareKDTreeLightClusteringData
 {
 	// Current number of active SG nodes in the cut
@@ -131,7 +129,6 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	AtomicType<unsigned int>* pending_light_cluster_record_counts					= nullptr;
 	AtomicType<unsigned int>* reservoir_seen_counts									= nullptr;
 	AtomicType<unsigned long long int>* reservoir_proposals							= nullptr;
-	unsigned int pending_record_stride												= 0;
 
 	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
 	AtomicType<unsigned int>* representative_shading_context_states			 = nullptr;

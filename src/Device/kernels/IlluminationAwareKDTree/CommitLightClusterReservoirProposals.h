@@ -12,7 +12,7 @@
 
 HIPRT_DEVICE void commit_light_cluster_reservoir_proposal(IlluminationAwareKDTreeDevice kd_tree, unsigned int clustering_index, unsigned int slot)
 {
-	unsigned int proposal_offset	= clustering_index * kd_tree.learning_to_cluster.pending_record_stride + slot;
+	unsigned int proposal_offset	= clustering_index * LearningToClusterMaximumClusterRecordCount + slot;
 	unsigned long long int proposal = kd_tree.learning_to_cluster.reservoir_proposals[proposal_offset];
 
 	if (proposal == 0ull)
@@ -37,10 +37,12 @@ HIPRT_DEVICE void finalize_light_cluster_reservoir(IlluminationAwareKDTreeDevice
 {
 	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
-	unsigned int iteration_budget										 = get_light_cluster_iteration_budget(cluster_data, settings);
-	unsigned int seen_count												 = kd_tree.learning_to_cluster.reservoir_seen_counts[clustering_index];
 
-	cluster_data.pending_record_budget												  = iteration_budget;
+	unsigned int iteration_budget = get_light_cluster_iteration_budget(cluster_data, settings);
+	unsigned int seen_count		  = kd_tree.learning_to_cluster.reservoir_seen_counts[clustering_index];
+
+	cluster_data.pending_record_budget = iteration_budget;
+
 	kd_tree.learning_to_cluster.pending_light_cluster_record_counts[clustering_index] = hippt::min(seen_count, iteration_budget);
 }
 
@@ -52,7 +54,7 @@ inline IlluminationAwareKDTree_CommitLightClusterReservoirProposals(Illumination
 	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
 		return;
 
-	for (unsigned int slot = 0; slot < kd_tree.learning_to_cluster.pending_record_stride; slot++)
+	for (unsigned int slot = 0; slot < LearningToClusterMaximumClusterRecordCount; slot++)
 		commit_light_cluster_reservoir_proposal(kd_tree, clustering_index, slot);
 
 	finalize_light_cluster_reservoir(kd_tree, clustering_index);
@@ -68,7 +70,7 @@ IlluminationAwareKDTree_CommitLightClusterReservoirProposals(IlluminationAwareKD
 	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
 		return;
 
-	if (slot < kd_tree.learning_to_cluster.pending_record_stride)
+	if (slot < LearningToClusterMaximumClusterRecordCount)
 		commit_light_cluster_reservoir_proposal(kd_tree, clustering_index, slot);
 
 	__syncthreads();
