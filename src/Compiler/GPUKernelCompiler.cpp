@@ -113,11 +113,16 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	}
 #endif // _WIN32
 
-	// Locking because the parent process loads kernels into the same HIPRT context and neither NVIDIA nor AMD can do that on multiple threads at the same time.
 	// The worker process performs the expensive compilation separately, so it can run in parallel with other worker processes.
 	// The worker process compiles the kernel and fills the HIPRT cache. The parent process must load the cached binary
 	// in its own HIPRT context because function and module handles cannot be shared between processes.
-	std::unique_lock<std::mutex> lock(m_compile_mutex);
+	std::unique_lock<std::mutex> lock(m_compile_mutex, std::defer_lock);
+#ifndef _WIN32
+	lock.lock();
+#else
+	if (!use_shader_cache)
+		lock.lock();
+#endif // _WIN32
 	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
 																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
 																	 function_name_sets, additional_cache_key, &trace_module_out);
