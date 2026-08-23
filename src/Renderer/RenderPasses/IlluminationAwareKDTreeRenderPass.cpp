@@ -499,7 +499,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
-			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		unsigned int learning_to_cluster_light_clustering_block_size =
 			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
@@ -510,7 +510,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
-			256, 1, kd_tree_device.learning_to_cluster_training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		unsigned int maximum_light_clustering_reservoir_proposal_count =
 			kd_tree_device.learning_to_cluster.light_clustering_capacity * kd_tree_device.learning_to_cluster.pending_record_stride;
@@ -774,6 +774,8 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.normal_clustering_set_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_clustering_set_count.get_byte_size();
 	vram_usage.learning_to_cluster_training_samples =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_samples.get_byte_size();
+	vram_usage.learning_to_cluster_training_sample_soa =
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_samples_soa.get_byte_size();
 	vram_usage.learning_to_cluster_training_sample_count =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_sample_count.get_byte_size();
 	vram_usage.initial_light_cut_node_indices = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.get_byte_size();

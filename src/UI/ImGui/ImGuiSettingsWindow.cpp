@@ -2484,7 +2484,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2665,7 +2665,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3746,7 +3746,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4029,7 +4029,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4255,9 +4255,9 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			IlluminationAwareKDTreeVRAMUsage kd_tree_vram_usage = illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown();
 			std::size_t learning_to_cluster_vram_bytes =
 				kd_tree_vram_usage.light_clustering_count + kd_tree_vram_usage.normal_clustering_set_count +
-				kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_count +
-				kd_tree_vram_usage.initial_light_cut_node_indices + kd_tree_vram_usage.normal_clustering_sets +
-				kd_tree_vram_usage.normal_face_observation_counts + kd_tree_vram_usage.light_cluster_node_indices +
+				kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_soa +
+				kd_tree_vram_usage.learning_to_cluster_training_sample_count + kd_tree_vram_usage.initial_light_cut_node_indices +
+				kd_tree_vram_usage.normal_clustering_sets + kd_tree_vram_usage.normal_face_observation_counts + kd_tree_vram_usage.light_cluster_node_indices +
 				kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs + kd_tree_vram_usage.pending_light_cluster_records +
 				kd_tree_vram_usage.pending_light_cluster_record_counts + kd_tree_vram_usage.reservoir_seen_counts + kd_tree_vram_usage.reservoir_proposals +
 				kd_tree_vram_usage.light_clustering_data + kd_tree_vram_usage.representative_shading_contexts +
@@ -4273,6 +4273,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 					 "    Normal-clustering set count: %.3fMB\n"
 					 "  Learning-to-cluster training buffers: %.3fMB\n"
 					 "    Training samples: %.3fMB\n"
+					 "    Training sample SoA: %.3fMB\n"
 					 "    Training sample count: %.3fMB\n"
 					 "  Initial light cut: %.3fMB\n"
 					 "    Initial light-cut node indices: %.3fMB\n"
@@ -4295,8 +4296,11 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 					 "    Context states: %.3fMB",
 					 (kd_tree_vram_usage.light_clustering_count + kd_tree_vram_usage.normal_clustering_set_count) / 1000000.0f,
 					 kd_tree_vram_usage.light_clustering_count / 1000000.0f, kd_tree_vram_usage.normal_clustering_set_count / 1000000.0f,
-					 (kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_count) / 1000000.0f,
+					 (kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_soa +
+					  kd_tree_vram_usage.learning_to_cluster_training_sample_count) /
+						 1000000.0f,
 					 kd_tree_vram_usage.learning_to_cluster_training_samples / 1000000.0f,
+					 kd_tree_vram_usage.learning_to_cluster_training_sample_soa / 1000000.0f,
 					 kd_tree_vram_usage.learning_to_cluster_training_sample_count / 1000000.0f, kd_tree_vram_usage.initial_light_cut_node_indices / 1000000.0f,
 					 kd_tree_vram_usage.initial_light_cut_node_indices / 1000000.0f,
 					 (kd_tree_vram_usage.normal_clustering_sets + kd_tree_vram_usage.normal_face_observation_counts) / 1000000.0f,
@@ -4430,7 +4434,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -6046,7 +6050,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

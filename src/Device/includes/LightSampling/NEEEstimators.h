@@ -372,7 +372,7 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 	training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
 	training_sample.valid_for_light_clustering	   = true;
 
-	render_data.kd_tree_device.append_learning_to_cluster_training_sample(training_sample);
+	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(training_sample);
 }
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
@@ -476,7 +476,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	}
 
 	render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
-	render_data.kd_tree_device.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 
 	return light_source_radiance;
 }

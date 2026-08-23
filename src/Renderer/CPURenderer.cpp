@@ -991,7 +991,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		for (unsigned int cache_index = 0; cache_index < kd_tree_device.nisml.nisml_hash_table_capacity; cache_index++)
 			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
-	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster_training_sample_count->load();
+	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster.training_sample_count->load();
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
 		IlluminationAwareKDTree_AccumulateNormalFaceObservations(kd_tree_device, sample_index);
 

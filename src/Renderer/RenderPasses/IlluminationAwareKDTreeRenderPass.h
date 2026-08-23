@@ -33,6 +33,7 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t training_samples						  = 0;
 	std::size_t training_sample_count					  = 0;
 	std::size_t learning_to_cluster_training_samples	  = 0;
+	std::size_t learning_to_cluster_training_sample_soa	  = 0;
 	std::size_t learning_to_cluster_training_sample_count = 0;
 
 	std::size_t batch_signatures		= 0;
@@ -70,13 +71,14 @@ struct IlluminationAwareKDTreeVRAMUsage
 	{
 		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count +
 			   normal_clustering_set_count + current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples +
-			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_count + batch_signatures +
-			   history_signatures + batch_spatial_moments + history_spatial_moments + initial_light_cut_node_indices + normal_clustering_sets +
-			   normal_face_observation_counts + light_cluster_node_indices + light_cluster_statistics + light_cluster_cdfs + pending_light_cluster_records +
-			   pending_light_cluster_record_counts + reservoir_seen_counts + reservoir_proposals + light_clustering_data + representative_shading_contexts +
-			   representative_shading_context_states + nisml_cache + nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count +
-			   nisml_representative_sample_counts + nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks +
-			   nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count;
+			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa +
+			   learning_to_cluster_training_sample_count + batch_signatures + history_signatures + batch_spatial_moments + history_spatial_moments +
+			   initial_light_cut_node_indices + normal_clustering_sets + normal_face_observation_counts + light_cluster_node_indices +
+			   light_cluster_statistics + light_cluster_cdfs + pending_light_cluster_records + pending_light_cluster_record_counts + reservoir_seen_counts +
+			   reservoir_proposals + light_clustering_data + representative_shading_contexts + representative_shading_context_states + nisml_cache +
+			   nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts +
+			   nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty +
+			   nisml_cache_ready + nisml_pending_cell_count;
 	}
 };
 

@@ -23,15 +23,14 @@ IlluminationAwareKDTree_AccumulateNormalFaceObservations(IlluminationAwareKDTree
 	unsigned int sample_index = static_cast<unsigned int>(x);
 #endif
 
-	unsigned int sample_count = *kd_tree.learning_to_cluster_training_sample_count;
+	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
 
-	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster_training_samples[sample_index];
-	if (!sample.valid_for_light_clustering)
+	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_light_clustering[sample_index] == 0u)
 		return;
 
-	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(sample.position);
+	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(kd_tree.learning_to_cluster.training_samples_soa.positions[sample_index]);
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
@@ -39,8 +38,10 @@ IlluminationAwareKDTree_AccumulateNormalFaceObservations(IlluminationAwareKDTree
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 
-	unsigned int normal_face		= illumination_aware_kd_tree_classify_surface_normal_face(sample.shading_context.shading_normal);
+	unsigned int normal_face =
+		illumination_aware_kd_tree_classify_surface_normal_face(kd_tree.learning_to_cluster.training_samples_soa.shading_normals[sample_index]);
 	unsigned int observation_offset = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
+
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.normal_face_observation_counts + observation_offset, 1u);
 }
 

@@ -13,6 +13,8 @@
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
+struct IlluminationAwareKDTreeLearningToClusterTrainingSample;
+
 struct IlluminationAwareKDTreeLightClusterStatistics
 {
 	// Q_x(c): estimated contribution of this light cluster, light clusters of the cut are sampled proportionally to this value
@@ -63,6 +65,7 @@ struct IlluminationAwareKDTreeLightClusteringData
 
 struct IlluminationAwareKDTreeSGShadingContext
 {
+	// TODO those fields are duplicated with LearningToClusterTrainingSampleSoA
 	float3_t position;
 	float3_t shading_normal;
 	float3_t view_direction;
@@ -78,6 +81,13 @@ struct IlluminationAwareKDTreeNormalClusteringSet
 	unsigned int clustering_indices[SurfaceNormalFace_Count];
 };
 
+struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
+{
+	float3_t* positions						 = nullptr;
+	float3_t* shading_normals				 = nullptr;
+	unsigned int* valid_for_light_clustering = nullptr;
+};
+
 struct IlluminationAwareKDTreeLearningToClusterDevice
 {
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT = 0u;
@@ -85,6 +95,13 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_READY	  = 2u;
 
 	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;
+
+	HIPRT_DEVICE void append_learning_to_cluster_training_sample(const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample);
+
+	IlluminationAwareKDTreeLearningToClusterTrainingSample* training_samples = nullptr;
+	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice training_samples_soa;
+	AtomicType<unsigned int>* training_sample_count = nullptr;
+	unsigned int training_sample_capacity			= 0;
 
 	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const
 	{

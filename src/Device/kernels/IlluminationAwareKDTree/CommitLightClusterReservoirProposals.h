@@ -20,12 +20,12 @@ HIPRT_DEVICE void commit_light_cluster_reservoir_proposal(IlluminationAwareKDTre
 
 	unsigned int stream_index = static_cast<unsigned int>((proposal >> 32) - 1ull);
 	unsigned int sample_index = static_cast<unsigned int>(proposal & 0xffffffffull);
-	unsigned int sample_count = *kd_tree.learning_to_cluster_training_sample_count;
+	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 
 	if (sample_index >= sample_count)
 		return;
 
-	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster_training_samples[sample_index];
+	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
 	IlluminationAwareKDTreePendingLightClusterRecord& record			 = kd_tree.learning_to_cluster.pending_light_cluster_records[proposal_offset];
 	record.cluster_node_index											 = sample.selected_cluster_node_index;
 	record.q_reward														 = sample.q_reward;
