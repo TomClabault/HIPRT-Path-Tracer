@@ -9,6 +9,8 @@
 #include "Compiler/GPUKernel.h"
 
 #include <atomic>
+#include <iostream>
+#include <mutex>
 #include <system_error>
 
 #ifdef _WIN32
@@ -93,6 +95,40 @@ std::filesystem::path GPUKernelCompilerWindowProcess::make_request_file_path()
 									 std::to_wstring(request_number) + L".bin";
 	return std::filesystem::temp_directory_path() / request_file_name;
 }
+
+std::string GPUKernelCompilerWindowProcess::read_worker_output(void* output_read_handle)
+{
+	HANDLE read_handle = reinterpret_cast<HANDLE>(output_read_handle);
+	std::string output;
+	char buffer[4096];
+
+	while (true)
+	{
+		DWORD bytes_read	= 0;
+		BOOL read_succeeded = ReadFile(read_handle, buffer, sizeof(buffer), &bytes_read, nullptr);
+		if (read_succeeded == FALSE || bytes_read == 0)
+			break;
+
+		output.append(buffer, bytes_read);
+	}
+
+	CloseHandle(read_handle);
+	return output;
+}
+
+void GPUKernelCompilerWindowProcess::print_worker_output(const std::string& output)
+{
+	if (output.empty())
+		return;
+
+	static std::mutex output_mutex;
+	std::lock_guard<std::mutex> lock(output_mutex);
+	std::cout.write(output.data(), static_cast<std::streamsize>(output.size()));
+	if (output.back() != '\n')
+		std::cout << std::endl;
+	else
+		std::cout.flush();
+}
 #endif // _WIN32
 
 bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProcessCompilationRequest& request)
@@ -130,26 +166,59 @@ bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProces
 
 		STARTUPINFOW startup_info		 = {};
 		startup_info.cb					 = sizeof(startup_info);
+		startup_info.dwFlags			 = STARTF_USESTDHANDLES;
 		PROCESS_INFORMATION process_info = {};
-		BOOL process_created = CreateProcessW(worker_executable_path.wstring().c_str(), command_line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
-											  current_directory.c_str(), &startup_info, &process_info);
 
-		if (process_created == FALSE)
+		SECURITY_ATTRIBUTES pipe_security_attributes = {};
+		pipe_security_attributes.nLength			 = sizeof(pipe_security_attributes);
+		pipe_security_attributes.bInheritHandle		 = TRUE;
+
+		HANDLE output_read_handle  = nullptr;
+		HANDLE output_write_handle = nullptr;
+		if (CreatePipe(&output_read_handle, &output_write_handle, &pipe_security_attributes, 0) == FALSE)
 		{
 			std::error_code remove_error;
 			std::filesystem::remove(request_file_path, remove_error);
 			return false;
 		}
 
-		DWORD wait_result		= WaitForSingleObject(process_info.hProcess, INFINITE);
-		DWORD process_exit_code = 1;
-		BOOL exit_code_read		= GetExitCodeProcess(process_info.hProcess, &process_exit_code);
+		if (SetHandleInformation(output_read_handle, HANDLE_FLAG_INHERIT, 0) == FALSE)
+		{
+			CloseHandle(output_read_handle);
+			CloseHandle(output_write_handle);
+			std::error_code remove_error;
+			std::filesystem::remove(request_file_path, remove_error);
+			return false;
+		}
+
+		startup_info.hStdOutput = output_write_handle;
+		startup_info.hStdError	= output_write_handle;
+		BOOL process_created = CreateProcessW(worker_executable_path.wstring().c_str(), command_line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr,
+											  current_directory.c_str(), &startup_info, &process_info);
+		CloseHandle(output_write_handle);
+
+		if (process_created == FALSE)
+		{
+			CloseHandle(output_read_handle);
+			std::error_code remove_error;
+			std::filesystem::remove(request_file_path, remove_error);
+			return false;
+		}
+
+		std::string worker_output = GPUKernelCompilerWindowProcess::read_worker_output(output_read_handle);
+		DWORD wait_result		  = WaitForSingleObject(process_info.hProcess, INFINITE);
+		DWORD process_exit_code	  = 1;
+		BOOL exit_code_read		  = GetExitCodeProcess(process_info.hProcess, &process_exit_code);
 		CloseHandle(process_info.hThread);
 		CloseHandle(process_info.hProcess);
 
 		std::error_code remove_error;
 		std::filesystem::remove(request_file_path, remove_error);
-		return wait_result == WAIT_OBJECT_0 && exit_code_read != FALSE && process_exit_code == 0;
+		bool worker_succeeded = wait_result == WAIT_OBJECT_0 && exit_code_read != FALSE && process_exit_code == 0;
+		if (!worker_succeeded)
+			GPUKernelCompilerWindowProcess::print_worker_output(worker_output);
+
+		return worker_succeeded;
 	}
 	catch (const std::exception&)
 	{

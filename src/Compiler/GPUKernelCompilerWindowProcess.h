@@ -38,6 +38,9 @@ public:
 		hiprtFuncNameSet* function_name_sets,
 		const std::string& additional_cache_key,
 		int device_index);
+
+	static std::string read_worker_output(void* output_read_handle);
+	static void print_worker_output(const std::string& output);
 #endif // _WIN32
 
 private:
