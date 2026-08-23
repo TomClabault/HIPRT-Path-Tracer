@@ -31,8 +31,8 @@ void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const
 		return;
 
 	for (auto& name_to_kernel : get_all_kernels())
-		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[name_to_kernel.first],
-									hiprt_orochi_ctx, std::ref(func_name_sets));
+		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, name_to_kernel.second, hiprt_orochi_ctx,
+									std::ref(func_name_sets));
 }
 
 void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -43,7 +43,8 @@ void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, co
 
 	// The default implementation recompiles all the kernels returned by 'get_all_kernels()'
 	for (auto& name_to_kernel : get_all_kernels())
-		name_to_kernel.second->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, name_to_kernel.second, hiprt_orochi_ctx,
+									std::ref(func_name_sets));
 }
 
 void RenderPass::compute_render_times()

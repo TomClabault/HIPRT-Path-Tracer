@@ -681,6 +681,8 @@ void GPURenderer::recompile_kernels(bool use_cache)
 
 	for (auto& [rg_name, render_graph] : m_render_thread.get_render_graphs())
 		render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
+
+	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
