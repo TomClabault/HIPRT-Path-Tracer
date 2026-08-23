@@ -104,11 +104,10 @@ bool GPUKernelCompilerWorker::compile_in_worker(const GPUKernelCompilerWindowPro
 	}
 
 	hiprtApiFunction kernel_function = nullptr;
-	hiprtApiModule kernel_module	 = nullptr;
 	hiprtError compile_status		 = HIPPTOrochiUtils::build_trace_kernel(
 		   hiprt_context, request.kernel_file_path, request.kernel_function_name, kernel_function, request.additional_include_directories,
 		   request.compiler_options, static_cast<unsigned int>(request.num_geom_types), static_cast<unsigned int>(request.num_ray_types),
-		   request.use_compiler_cache, request.has_function_name_sets ? function_name_sets.data() : nullptr, request.additional_cache_key, &kernel_module);
+		   request.use_compiler_cache, request.has_function_name_sets ? function_name_sets.data() : nullptr, request.additional_cache_key, nullptr, false);
 
 	GPUKernelCompilerWorker::destroy_worker_context(hiprt_context, orochi_context);
 	if (compile_status != hiprtSuccess)
