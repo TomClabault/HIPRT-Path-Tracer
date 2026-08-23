@@ -23,7 +23,7 @@
 /**
  * Maximum number of nodes in a learning to cluster light cut. The light cut cannot be refined beyond that number of nodes.
  */
-#define LearningToClusterMaximumLightCutSize 64
+#define LearningToClusterMaximumLightCutSize 256
 
 /**
  * Initialize light-cluster Q0 values using the SG node's total power instead of the view-dependent SG node importance.

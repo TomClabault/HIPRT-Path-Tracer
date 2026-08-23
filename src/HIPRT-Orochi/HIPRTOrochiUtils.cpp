@@ -4,13 +4,40 @@
  */
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
-#include "UI/ImGui/ImGuiLogger.h"
-#include "Utils/Utils.h"
+#include "Utils/Debug.h"
 
+#include <cerrno>
+#include <cstring>
 #include <deque>
+#include <fstream>
 #include <unordered_set>
 
+#ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
+#include <cstdarg>
+#include <cstdio>
+#include <iostream>
+#else
+#include "UI/ImGui/ImGuiLogger.h"
+
 extern ImGuiLogger g_imgui_logger;
+#endif
+
+#ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
+static void log_error(const char* format, ...)
+{
+	char formatted_message[4096];
+	va_list arguments;
+	va_start(arguments, format);
+	std::vsnprintf(formatted_message, sizeof(formatted_message), format, arguments);
+	va_end(arguments);
+
+	std::cout << formatted_message << std::endl;
+}
+
+#define HIPPT_OROCHI_LOG_ERROR(...) log_error(__VA_ARGS__)
+#else
+#define HIPPT_OROCHI_LOG_ERROR(...) g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, __VA_ARGS__)
+#endif
 
 void orochi_check_error(oroError res, const char* file, uint32_t line)
 {
@@ -18,7 +45,7 @@ void orochi_check_error(oroError res, const char* file, uint32_t line)
 	{
 		const char* msg;
 		oroGetErrorString(res, &msg);
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Orochi error: '%s' on line %d in '%s'.", msg, line, file);
+		HIPPT_OROCHI_LOG_ERROR("Orochi error: '%s' on line %d in '%s'.", msg, line, file);
 
 		Debug::debugbreak();
 		exit(EXIT_FAILURE);
@@ -29,8 +56,7 @@ void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line)
 {
 	if (res != ORORTC_SUCCESS)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line,
-								file);
+		HIPPT_OROCHI_LOG_ERROR("ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line, file);
 
 		Debug::debugbreak();
 		exit(EXIT_FAILURE);
@@ -41,7 +67,7 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 {
 	if (res != hiprtSuccess)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPRT error: '%d' on line %d in '%s'.", res, line, file);
+		HIPPT_OROCHI_LOG_ERROR("HIPRT error: '%d' on line %d in '%s'.", res, line, file);
 
 		Debug::debugbreak();
 		exit(EXIT_FAILURE);
@@ -77,7 +103,7 @@ namespace HIPPTOrochiUtils
 							if (!a)
 							{
 								// Not even '"' was find, that's invalid #include syntax
-								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to parse header name in line '%s'", line.c_str());
+								HIPPT_OROCHI_LOG_ERROR("Unable to parse header name in line '%s'", line.c_str());
 
 								continue;
 							}
@@ -90,7 +116,7 @@ namespace HIPPTOrochiUtils
 
 							if (!b)
 							{
-								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to parse header name in line '%s'", line.c_str());
+								HIPPT_OROCHI_LOG_ERROR("Unable to parse header name in line '%s'", line.c_str());
 
 								continue;
 							}
@@ -115,7 +141,7 @@ namespace HIPPTOrochiUtils
 		}
 		else
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to open file '%s' for reading: %s", path.c_str(), std::strerror(errno));
+			HIPPT_OROCHI_LOG_ERROR("Unable to open file '%s' for reading: %s", path.c_str(), std::strerror(errno));
 			Debug::debugbreak();
 		}
 
@@ -160,3 +186,5 @@ namespace HIPPTOrochiUtils
 									  num_ray_types, func_name_set, &kernel_function_out, module_out, use_compiler_cache, additional_cache_key);
 	}
 } // namespace HIPPTOrochiUtils
+
+#undef HIPPT_OROCHI_LOG_ERROR

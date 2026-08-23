@@ -5,6 +5,8 @@
 
 #include "Compiler/GPUKernelCompiler.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "Compiler/GPUKernelCompilerWindowProcessCompilationRequest.h"
+#include "Compiler/GPUKernelCompilerWindowProcess.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
@@ -17,7 +19,7 @@
 GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<std::string>& compiler_options)
+void GPUKernelCompiler::enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<std::string>& compiler_options)
 {
 	if (std::string(hiprt_orochi_ctx->device_properties.name).find("NVIDIA") == std::string::npos)
 	{
@@ -58,7 +60,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 												bool silent,
 												oroModule_t* module_out)
 {
-	use_cache												= false;
 	std::string kernel_file_path							= kernel.get_kernel_file_path();
 	std::string kernel_function_name						= kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
@@ -79,15 +80,14 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	// compiler_options.push_back("-g");
 	// compiler_options.push_back("-ggdb");
 
-	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads at the same time
-	// with their runtime API (but NVCC/HIPCC can compile in parallel with the commandline) so we may as well
-	// lock here to have better control on when to compile a kernel as well as have proper compilation times
-	std::unique_lock<std::mutex> lock(m_compile_mutex);
+#ifndef _WIN32
+	use_cache = false;
+#endif // _WIN32
 
 	auto start = std::chrono::high_resolution_clock::now();
 
-	hiprtApiFunction trace_function_out;
-	hiprtApiModule trace_module_out = nullptr;
+	hiprtApiFunction trace_function_out = nullptr;
+	hiprtApiModule trace_module_out		= nullptr;
 	bool use_shader_cache;
 	if (m_shader_cache_force_usage == GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF)
 		use_shader_cache = false;
@@ -96,6 +96,28 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	else
 		use_shader_cache = use_cache;
 
+#ifdef _WIN32
+	if (use_shader_cache)
+	{
+		GPUKernelCompilerWindowProcessCompilationRequest request = GPUKernelCompilerWindowProcess::make_window_process_compilation_request(
+			kernel, additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key,
+			hiprt_orochi_ctx->device_index);
+
+		if (!GPUKernelCompilerWindowProcess::compile(request))
+		{
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\" in the worker process. Cannot continue.",
+									kernel_function_name.c_str());
+
+			return nullptr;
+		}
+	}
+#endif // _WIN32
+
+	// Locking because the parent process loads kernels into the same HIPRT context and neither NVIDIA nor AMD can do that on multiple threads at the same time.
+	// The worker process performs the expensive compilation separately, so it can run in parallel with other worker processes.
+	// The worker process compiles the kernel and fills the HIPRT cache. The parent process must load the cached binary
+	// in its own HIPRT context because function and module handles cannot be shared between processes.
+	std::unique_lock<std::mutex> lock(m_compile_mutex);
 	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
 																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
 																	 function_name_sets, additional_cache_key, &trace_module_out);

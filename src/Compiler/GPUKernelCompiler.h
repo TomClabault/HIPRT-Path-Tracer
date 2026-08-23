@@ -120,6 +120,8 @@ public:
 	ShaderCacheUsageOverride get_shader_cache_usage_override() const;
 
 private:
+	static void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<std::string>& compiler_options);
+
 	// Cache that maps a filepath to the option macros that it contains.
 	// This saves us having to reparse the file to find the options macros
 	// if the file was already parsed for another kernel by this GPUKernelCompiler

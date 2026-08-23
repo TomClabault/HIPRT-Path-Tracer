@@ -51,6 +51,7 @@ link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
 
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h src/*.inl)
+list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/src/GPUKernelCompilerWorker/.*")
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 # Selecting only what we need from the whole ImGui submodule
@@ -74,6 +75,29 @@ file(GLOB_RECURSE TINYFILEDIALOGS_SOURCE_AND_HEADERS thirdparties/libtinyfiledia
 file(GLOB_RECURSE NVIDIA_FLIP_HEADERS thirdparties/nvidia-FLIP/*.h)
 file(GLOB_RECURSE IMPLOT_FLIP_SOURCES_AND_HEADERS thirdparties/implot/implot.h thirdparties/implot/implot_internal.h thirdparties/implot/implot.cpp thirdparties/implot/implot_demo.cpp thirdparties/implot/implot_items.cpp)
 
+if (WIN32)
+	add_executable(GPUKernelCompilerWorker
+		src/GPUKernelCompilerWorker/GPUKernelCompilerWorkerMain.cpp
+		src/GPUKernelCompilerWorker/GPUKernelCompilerWorker.cpp
+		src/Compiler/GPUKernelCompilerWindowProcessSerialization.cpp
+		src/HIPRT-Orochi/HIPRTOrochiUtils.cpp
+		src/Utils/Debug.cpp
+		${OROCHI_SOURCES_AND_HEADERS}
+		${CUEW_SOURCES_AND_HEADERS}
+		${HIPEW_SOURCES_AND_HEADERS}
+	)
+
+	set_property(TARGET GPUKernelCompilerWorker PROPERTY CXX_STANDARD 23)
+	target_compile_definitions(GPUKernelCompilerWorker PRIVATE GPU_KERNEL_COMPILER_WORKER_BUILD)
+
+	target_include_directories(GPUKernelCompilerWorker PRIVATE "src/")
+	target_include_directories(GPUKernelCompilerWorker PRIVATE ${HIPRT_HEADERS_DIR}/..)
+	target_include_directories(GPUKernelCompilerWorker PRIVATE ${OROCHI_SOURCES_DIR}/..)
+	target_include_directories(GPUKernelCompilerWorker PRIVATE ".")
+
+	target_link_libraries(GPUKernelCompilerWorker PRIVATE hiprt03001)
+endif()
+
 add_executable(HIPRTPathTracer
 	${SOURCE_FILES}
 
@@ -92,6 +116,10 @@ add_executable(HIPRTPathTracer
 	${NVIDIA_FLIP_HEADERS}
 	${IMPLOT_FLIP_SOURCES_AND_HEADERS}
 )
+
+if (WIN32)
+	add_dependencies(HIPRTPathTracer GPUKernelCompilerWorker)
+endif()
 
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 23)
 
@@ -157,6 +185,7 @@ if (WIN32)
 	# Create target which consume the command via DEPENDS.
 	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME} ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG})
 	add_dependencies(HIPRTPathTracer hiprtCopyDLL)
+	add_dependencies(GPUKernelCompilerWorker hiprtCopyDLL)
 
 	message(STATUS "Copying Glew binaries...")
 	file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -39,6 +39,7 @@ struct HIPRTOrochiCtx
 
 	void init(int device_index)
 	{
+		this->device_index = device_index;
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing Orochi...");
 
 #ifdef OROCHI_ENABLE_CUEW
@@ -118,6 +119,7 @@ struct HIPRTOrochiCtx
 	}
 
 	hiprtContextCreationInput hiprt_ctx_input = { nullptr, -1, hiprtDeviceAMD };
+	int device_index						  = 0;
 
 	oroCtx orochi_ctx				= nullptr;
 	oroDevice orochi_device			= -1;
