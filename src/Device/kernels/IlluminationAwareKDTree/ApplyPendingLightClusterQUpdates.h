@@ -74,7 +74,12 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 
+#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
+		statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
+														learning_rate * record.q_reward * record.q_reward);
+#else
 		statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
+#endif
 	}
 #endif
 

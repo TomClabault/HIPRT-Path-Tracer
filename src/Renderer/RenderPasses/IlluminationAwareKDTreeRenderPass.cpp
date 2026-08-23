@@ -7,7 +7,7 @@
 #include "Renderer/RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -295,7 +295,7 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 

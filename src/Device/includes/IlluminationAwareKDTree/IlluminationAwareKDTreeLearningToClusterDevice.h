@@ -10,7 +10,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreePendingLightClusterRecord.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSample;

@@ -7,7 +7,7 @@
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
@@ -37,6 +37,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 static const std::vector<std::string>& assimp_supported_extensions()
 {
 	static std::vector<std::string> extensions;
+
 	if (extensions.empty())
 	{
 		Assimp::Importer importer;
@@ -49,6 +50,7 @@ static const std::vector<std::string>& assimp_supported_extensions()
 			if (token.size() >= 2 && token[0] == '*')
 				extensions.push_back(token.substr(1));
 	}
+
 	return extensions;
 }
 
@@ -2484,7 +2486,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2665,7 +2667,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3746,7 +3748,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4029,7 +4031,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4332,9 +4334,31 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER,
 													   q0_initialization == 1 ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Refinement");
+			ImGui::Text("Q probabilities target");
+			int q_target = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q) == KERNEL_OPTION_TRUE;
+			bool q_target_changed = false;
+			q_target_changed |= ImGui::RadioButton("E[L_c]", &q_target, 0);
+			ImGui::SameLine();
+			q_target_changed |= ImGui::RadioButton("E[L_c^2]", &q_target, 1);
+			if (q_target_changed)
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q,
+													   q_target == 1 ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("E[L_c^2] estimates the second moment of the contribution of clusters for Q sampling probabilites (which is the "
+											"true variance-optimal probability to use for sampling clusters according to [Bayesian online regression for "
+											"adaptive direct illumination sampling, Vevoda et al., 2018].\n\n"
+											"Only estimates the average contribution of clusters directly if E[L_c]");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement stopping conditions");
@@ -4434,7 +4458,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -6050,7 +6074,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

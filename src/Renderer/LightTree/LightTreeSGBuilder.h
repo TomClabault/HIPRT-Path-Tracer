@@ -7,7 +7,7 @@
 #define RENDERER_LIGHT_TREE_SG_BUILDER_H
 
 #include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLeaningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeBuilderCommon.h"
