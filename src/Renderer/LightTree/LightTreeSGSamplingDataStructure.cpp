@@ -46,13 +46,12 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 			}
 
 			bool use_learning_to_cluster = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_LEARNING_TO_CLUSTER;
-			int configured_second_tree_cut_size = m_light_tree_builder_sg.get_second_tree_cut_size();
 			if (use_learning_to_cluster)
 			{
 				int initial_light_cut_size =
 					static_cast<int>(m_renderer->get_render_data().kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size);
-				int maximum_light_cut_size = compiler_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
-				m_light_tree_builder_sg.set_second_tree_cut_size(std::min(initial_light_cut_size, maximum_light_cut_size));
+
+				m_light_tree_builder_sg.set_second_tree_cut_size(initial_light_cut_size);
 			}
 
 			m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangles_vertex_indices,
@@ -60,8 +59,11 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 			m_light_tree_sg_build_result = m_light_tree_builder_sg.compute_build_result<OrochiBuffer>();
 			m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3,
 											  m_light_tree_sg_build_result);
+
+			int configured_second_tree_cut_size = m_light_tree_builder_sg.get_second_tree_cut_size();
 			if (use_learning_to_cluster)
 				m_light_tree_builder_sg.set_second_tree_cut_size(configured_second_tree_cut_size);
+
 			m_light_tree_builder_sg.cleanup();
 		});
 }
