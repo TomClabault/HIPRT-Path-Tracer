@@ -10,6 +10,25 @@
 #include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
+HIPRT_DEVICE void apply_aggregated_light_cluster_q_update(IlluminationAwareKDTreeLightClusterStatistics& statistics,
+														  float learning_rate,
+														  float history_weight,
+														  float reward_sum,
+														  float reward_squared_sum,
+														  unsigned int matching_record_count)
+{
+	if (matching_record_count == 0u)
+		return;
+
+#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
+	statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
+													learning_rate * reward_squared_sum / static_cast<float>(matching_record_count));
+#else
+	statistics.estimated_importance_Q =
+		history_weight * statistics.estimated_importance_Q + learning_rate * reward_sum / static_cast<float>(matching_record_count);
+#endif
+}
+
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, int x)
@@ -50,6 +69,9 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 		unsigned int cluster_node_index = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
 
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		float reward_sum										  = 0.0f;
+		float reward_squared_sum								  = 0.0f;
+		unsigned int matching_record_count						  = 0u;
 		for (unsigned int record_index = 0; record_index < pending_count; record_index++)
 		{
 			const IlluminationAwareKDTreePendingLightClusterRecord& record =
@@ -57,37 +79,90 @@ IlluminationAwareKDTree_ApplyPendingLightClusterQUpdates(IlluminationAwareKDTree
 
 			if (record.cluster_node_index == cluster_node_index)
 			{
+				if (settings.aggregate_q_updates)
+				{
+					reward_sum += record.q_reward;
+					reward_squared_sum += record.q_reward * record.q_reward;
+					matching_record_count++;
+				}
+				else
+				{
 #if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
-				statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
-																learning_rate * record.q_reward * record.q_reward);
+					statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
+																	learning_rate * record.q_reward * record.q_reward);
 #else
-				statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
+					statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
 #endif
+				}
 			}
 		}
+
+		if (settings.aggregate_q_updates)
+			apply_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
 	}
 
 	__syncthreads();
 	if (slot != 0u)
 		return;
 #else
-	for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+	if (settings.aggregate_q_updates)
 	{
-		const IlluminationAwareKDTreePendingLightClusterRecord& record = kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
-		int slot_index												   = find_light_cluster_slot(kd_tree, clustering_index, record.cluster_node_index);
-		if (slot_index < 0)
-			continue;
+		float reward_sums[LearningToClusterMaximumLightCutSize];
+		float reward_squared_sums[LearningToClusterMaximumLightCutSize];
+		unsigned int matching_record_counts[LearningToClusterMaximumLightCutSize];
 
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, static_cast<unsigned int>(slot_index));
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+		{
+			reward_sums[slot]			 = 0.0f;
+			reward_squared_sums[slot]	 = 0.0f;
+			matching_record_counts[slot] = 0u;
+		}
 
-		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+		{
+			const IlluminationAwareKDTreePendingLightClusterRecord& record =
+				kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+			int slot_index = find_light_cluster_slot(kd_tree, clustering_index, record.cluster_node_index);
+			if (slot_index < 0)
+				continue;
+
+			unsigned int matching_slot_index = static_cast<unsigned int>(slot_index);
+
+			reward_sums[matching_slot_index] += record.q_reward;
+			reward_squared_sums[matching_slot_index] += record.q_reward * record.q_reward;
+			matching_record_counts[matching_slot_index]++;
+		}
+
+		for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+		{
+			unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+			IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+			apply_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sums[slot], reward_squared_sums[slot],
+													matching_record_counts[slot]);
+		}
+	}
+
+	if (!settings.aggregate_q_updates)
+	{
+		for (unsigned int record_index = 0; record_index < pending_count; record_index++)
+		{
+			const IlluminationAwareKDTreePendingLightClusterRecord& record =
+				kd_tree.learning_to_cluster.pending_light_cluster_records[base_offset + record_index];
+			int slot_index = find_light_cluster_slot(kd_tree, clustering_index, record.cluster_node_index);
+			if (slot_index < 0)
+				continue;
+
+			unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, static_cast<unsigned int>(slot_index));
+
+			IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 
 #if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
-		statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
-														learning_rate * record.q_reward * record.q_reward);
+			statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
+															learning_rate * record.q_reward * record.q_reward);
 #else
-		statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
+			statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * record.q_reward;
 #endif
+		}
 	}
 #endif
 

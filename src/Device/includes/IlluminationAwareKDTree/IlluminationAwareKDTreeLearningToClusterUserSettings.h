@@ -6,9 +6,11 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_USER_SETTINGS_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_USER_SETTINGS_H
 
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
+
 struct IlluminationAwareKDTreeLearningToClusterUserSettings
 {
-	unsigned int initial_light_cut_size = 4;
+	unsigned int initial_light_cut_size = LearningToClusterInitialLightCutSize;
 
 	// These parameters are kept internal to the implementation.
 	float learning_rate_beta  = 4.0f;
@@ -18,6 +20,8 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	unsigned int refinement_stopping_gamma = 128;
 
 	bool enable_light_cut_refinement = true;
+	// Diagnostic switch for applying one batch-averaged Q update instead of one update per pending record.
+	bool aggregate_q_updates = false;
 };
 
 #endif

@@ -4381,6 +4381,13 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 											"makes the estimator 'freeze' faster. Decreasing it lets new observations continue to have influence longer.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::Checkbox("Aggregate Q updates##learningtocluster", &render_data.kd_tree_device.learning_to_cluster.user_settings.aggregate_q_updates))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Applies one batch-averaged Q update per cluster and learning iteration instead of applying the learning rate once per pending record. "
+				"Uses the mean reward, or RMS reward when the second-moment Q estimator is enabled.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement stopping conditions");
 			if (ImGui::SliderInt("Stop learning after SPP##learningtocluster", &illumination_aware_kd_tree_render_pass->get_learning_to_cluster_learning_spp(),
 								 0, 128))
