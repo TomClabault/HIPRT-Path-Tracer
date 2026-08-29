@@ -12,8 +12,7 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 {
 	unsigned int initial_light_cut_size = LearningToClusterInitialLightCutSize;
 
-	// These parameters are kept internal to the implementation.
-	float learning_rate_beta  = 4.0f;
+	float learning_rate_beta  = 1.0f;
 	float learning_rate_omega = 6.0f / 7.0f;
 
 	int initial_sampling_budget_n0		   = 32;
@@ -21,7 +20,7 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 
 	bool enable_light_cut_refinement = true;
 	// Diagnostic switch for applying one batch-averaged Q update instead of one update per pending record.
-	bool aggregate_q_updates = false;
+	bool aggregate_q_updates = true;
 };
 
 #endif
