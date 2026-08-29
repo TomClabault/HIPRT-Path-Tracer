@@ -16,6 +16,8 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 	IlluminationAwareKDTreeSGShadingContext shading_context{};
 
 	unsigned int selected_cluster_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	// Stable identity of the sampled light used to determine which child owns this sample after a light-tree split.
+	int emissive_triangle_global_index = -1;
 
 	float cluster_probability  = 0.0f;
 	float q_reward			   = 0.0f;

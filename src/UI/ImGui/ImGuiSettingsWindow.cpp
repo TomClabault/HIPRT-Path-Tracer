@@ -4260,8 +4260,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_soa +
 				kd_tree_vram_usage.learning_to_cluster_training_sample_count + kd_tree_vram_usage.initial_light_cut_node_indices +
 				kd_tree_vram_usage.normal_clustering_sets + kd_tree_vram_usage.normal_face_observation_counts + kd_tree_vram_usage.light_cluster_node_indices +
-				kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs + kd_tree_vram_usage.pending_light_cluster_records +
-				kd_tree_vram_usage.pending_light_cluster_record_counts + kd_tree_vram_usage.reservoir_seen_counts + kd_tree_vram_usage.reservoir_proposals +
+				kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs + kd_tree_vram_usage.light_cluster_sample_counts +
 				kd_tree_vram_usage.light_clustering_data + kd_tree_vram_usage.representative_shading_contexts +
 				kd_tree_vram_usage.representative_shading_context_states;
 
@@ -4286,12 +4285,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 					 "    Light-cluster node indices: %.3fMB\n"
 					 "    Light-cluster statistics: %.3fMB\n"
 					 "    Light-cluster CDFs: %.3fMB\n"
-					 "  Pending light-cluster records: %.3fMB\n"
-					 "    Pending records: %.3fMB\n"
-					 "    Pending record counts: %.3fMB\n"
-					 "  Reservoir buffers: %.3fMB\n"
-					 "    Seen counts: %.3fMB\n"
-					 "    Proposals: %.3fMB\n"
+					 "    Light-cluster sample counts: %.3fMB\n"
 					 "  Light-clustering data: %.3fMB\n"
 					 "  Representative shading contexts: %.3fMB\n"
 					 "    Contexts: %.3fMB\n"
@@ -4310,11 +4304,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 					 (kd_tree_vram_usage.light_cluster_node_indices + kd_tree_vram_usage.light_cluster_statistics + kd_tree_vram_usage.light_cluster_cdfs) /
 						 1000000.0f,
 					 kd_tree_vram_usage.light_cluster_node_indices / 1000000.0f, kd_tree_vram_usage.light_cluster_statistics / 1000000.0f,
-					 kd_tree_vram_usage.light_cluster_cdfs / 1000000.0f,
-					 (kd_tree_vram_usage.pending_light_cluster_records + kd_tree_vram_usage.pending_light_cluster_record_counts) / 1000000.0f,
-					 kd_tree_vram_usage.pending_light_cluster_records / 1000000.0f, kd_tree_vram_usage.pending_light_cluster_record_counts / 1000000.0f,
-					 (kd_tree_vram_usage.reservoir_seen_counts + kd_tree_vram_usage.reservoir_proposals) / 1000000.0f,
-					 kd_tree_vram_usage.reservoir_seen_counts / 1000000.0f, kd_tree_vram_usage.reservoir_proposals / 1000000.0f,
+					 kd_tree_vram_usage.light_cluster_cdfs / 1000000.0f, kd_tree_vram_usage.light_cluster_sample_counts / 1000000.0f,
 					 kd_tree_vram_usage.light_clustering_data / 1000000.0f,
 					 (kd_tree_vram_usage.representative_shading_contexts + kd_tree_vram_usage.representative_shading_context_states) / 1000000.0f,
 					 kd_tree_vram_usage.representative_shading_contexts / 1000000.0f, kd_tree_vram_usage.representative_shading_context_states / 1000000.0f);

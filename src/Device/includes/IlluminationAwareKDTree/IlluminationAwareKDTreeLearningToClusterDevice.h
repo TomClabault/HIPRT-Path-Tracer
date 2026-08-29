@@ -7,7 +7,6 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreePendingLightClusterRecord.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
@@ -54,9 +53,6 @@ struct IlluminationAwareKDTreeLightClusteringData
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
-
-	// Budget of the currently pending learning iteration
-	unsigned int pending_record_budget = 0;
 };
 
 struct IlluminationAwareKDTreeSGShadingContext
@@ -124,11 +120,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
 	unsigned short int* light_cluster_cdfs									= nullptr;
 
-	IlluminationAwareKDTreeLightClusteringData* light_clustering_data				= nullptr;
-	IlluminationAwareKDTreePendingLightClusterRecord* pending_light_cluster_records = nullptr;
-	AtomicType<unsigned int>* pending_light_cluster_record_counts					= nullptr;
-	AtomicType<unsigned int>* reservoir_seen_counts									= nullptr;
-	AtomicType<unsigned long long int>* reservoir_proposals							= nullptr;
+	IlluminationAwareKDTreeLightClusteringData* light_clustering_data = nullptr;
+	AtomicType<unsigned int>* light_cluster_sample_counts			  = nullptr;
 
 	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
 	AtomicType<unsigned int>* representative_shading_context_states			 = nullptr;

@@ -413,6 +413,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
 	learning_to_cluster_training_sample.shading_context				   = shading_context;
 	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
+	learning_to_cluster_training_sample.emissive_triangle_global_index = triangle_sample.emissive_triangle_global_index;
 	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
 	learning_to_cluster_training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
 	learning_to_cluster_training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;

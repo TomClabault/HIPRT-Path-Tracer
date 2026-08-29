@@ -16,11 +16,9 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 {
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
-				unsigned int maximum_light_cut_size		  = LearningToClusterMaximumLightCutSize,
-				unsigned int maximum_cluster_record_count = LearningToClusterMaximumClusterRecordCount)
+				unsigned int maximum_light_cut_size = LearningToClusterMaximumLightCutSize)
 	{
-		m_maximum_light_cut_size	   = maximum_light_cut_size;
-		m_maximum_cluster_record_count = maximum_cluster_record_count;
+		m_maximum_light_cut_size = maximum_light_cut_size;
 
 		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_normal_clustering_set_count, 1);
@@ -34,16 +32,12 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 
 		std::size_t light_clustering_capacity	= static_cast<std::size_t>(new_node_capacity) * 2;
 		std::size_t light_cluster_slot_capacity = light_clustering_capacity * maximum_light_cut_size;
-		std::size_t pending_record_capacity		= light_clustering_capacity * maximum_cluster_record_count;
 
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_node_indices, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_statistics, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_cdfs, light_cluster_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_light_clustering_data, light_clustering_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_pending_light_cluster_records, pending_record_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_pending_light_cluster_record_counts, light_clustering_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_reservoir_seen_counts, light_clustering_capacity);
-		GenericSoAHelpers::resize<DataContainer>(m_reservoir_proposals, pending_record_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_light_cluster_sample_counts, light_clustering_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_contexts, light_clustering_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_representative_shading_context_states, light_clustering_capacity);
 	}
@@ -65,10 +59,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		m_light_cluster_statistics				= DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
 		m_light_cluster_cdfs					= DataContainer<unsigned short int>();
 		m_light_clustering_data					= DataContainer<IlluminationAwareKDTreeLightClusteringData>();
-		m_pending_light_cluster_records			= DataContainer<IlluminationAwareKDTreePendingLightClusterRecord>();
-		m_pending_light_cluster_record_counts	= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_reservoir_seen_counts					= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_reservoir_proposals					= DataContainer<GenericAtomicType<unsigned long long int, DataContainer>>();
+		m_light_cluster_sample_counts			= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_representative_shading_contexts		= DataContainer<IlluminationAwareKDTreeSGShadingContext>();
 		m_representative_shading_context_states = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
@@ -82,22 +73,18 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 
 	void to_device(IlluminationAwareKDTreeDevice& kd_tree_device)
 	{
-		kd_tree_device.learning_to_cluster.light_clustering_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
-		kd_tree_device.learning_to_cluster.light_clustering_capacity	  = static_cast<unsigned int>(m_light_clustering_data.size());
-		kd_tree_device.learning_to_cluster.normal_clustering_sets		  = GenericSoAHelpers::get_buffer_data_ptr(m_normal_clustering_sets);
-		kd_tree_device.learning_to_cluster.normal_clustering_set_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_clustering_set_count);
-		kd_tree_device.learning_to_cluster.normal_clustering_set_capacity = static_cast<unsigned int>(m_normal_clustering_sets.size());
-		kd_tree_device.learning_to_cluster.normal_face_observation_counts = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_face_observation_counts);
-		kd_tree_device.learning_to_cluster.initial_light_cut_node_indices = GenericSoAHelpers::get_buffer_data_ptr(m_initial_light_cut_node_indices);
-		kd_tree_device.learning_to_cluster.light_cluster_node_indices	  = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_node_indices);
-		kd_tree_device.learning_to_cluster.light_cluster_statistics		  = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_statistics);
-		kd_tree_device.learning_to_cluster.light_cluster_cdfs			  = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_cdfs);
-		kd_tree_device.learning_to_cluster.light_clustering_data		  = GenericSoAHelpers::get_buffer_data_ptr(m_light_clustering_data);
-		kd_tree_device.learning_to_cluster.pending_light_cluster_records  = GenericSoAHelpers::get_buffer_data_ptr(m_pending_light_cluster_records);
-		kd_tree_device.learning_to_cluster.pending_light_cluster_record_counts =
-			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_pending_light_cluster_record_counts);
-		kd_tree_device.learning_to_cluster.reservoir_seen_counts		   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_reservoir_seen_counts);
-		kd_tree_device.learning_to_cluster.reservoir_proposals			   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_reservoir_proposals);
+		kd_tree_device.learning_to_cluster.light_clustering_count		   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_clustering_count);
+		kd_tree_device.learning_to_cluster.light_clustering_capacity	   = static_cast<unsigned int>(m_light_clustering_data.size());
+		kd_tree_device.learning_to_cluster.normal_clustering_sets		   = GenericSoAHelpers::get_buffer_data_ptr(m_normal_clustering_sets);
+		kd_tree_device.learning_to_cluster.normal_clustering_set_count	   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_clustering_set_count);
+		kd_tree_device.learning_to_cluster.normal_clustering_set_capacity  = static_cast<unsigned int>(m_normal_clustering_sets.size());
+		kd_tree_device.learning_to_cluster.normal_face_observation_counts  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_face_observation_counts);
+		kd_tree_device.learning_to_cluster.initial_light_cut_node_indices  = GenericSoAHelpers::get_buffer_data_ptr(m_initial_light_cut_node_indices);
+		kd_tree_device.learning_to_cluster.light_cluster_node_indices	   = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_node_indices);
+		kd_tree_device.learning_to_cluster.light_cluster_statistics		   = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_statistics);
+		kd_tree_device.learning_to_cluster.light_cluster_cdfs			   = GenericSoAHelpers::get_buffer_data_ptr(m_light_cluster_cdfs);
+		kd_tree_device.learning_to_cluster.light_clustering_data		   = GenericSoAHelpers::get_buffer_data_ptr(m_light_clustering_data);
+		kd_tree_device.learning_to_cluster.light_cluster_sample_counts	   = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_light_cluster_sample_counts);
 		kd_tree_device.learning_to_cluster.representative_shading_contexts = GenericSoAHelpers::get_buffer_data_ptr(m_representative_shading_contexts);
 		kd_tree_device.learning_to_cluster.representative_shading_context_states =
 			GenericSoAHelpers::get_buffer_data_atomic_ptr(m_representative_shading_context_states);
@@ -121,15 +108,11 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_light_cluster_statistics;
 	DataContainer<unsigned short int> m_light_cluster_cdfs;
 	DataContainer<IlluminationAwareKDTreeLightClusteringData> m_light_clustering_data;
-	DataContainer<IlluminationAwareKDTreePendingLightClusterRecord> m_pending_light_cluster_records;
-	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_pending_light_cluster_record_counts;
-	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_reservoir_seen_counts;
-	DataContainer<GenericAtomicType<unsigned long long int, DataContainer>> m_reservoir_proposals;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_light_cluster_sample_counts;
 	DataContainer<IlluminationAwareKDTreeSGShadingContext> m_representative_shading_contexts;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_representative_shading_context_states;
 
-	unsigned int m_maximum_light_cut_size		= LearningToClusterMaximumLightCutSize;
-	unsigned int m_maximum_cluster_record_count = LearningToClusterMaximumClusterRecordCount;
+	unsigned int m_maximum_light_cut_size = LearningToClusterMaximumLightCutSize;
 };
 
 #endif

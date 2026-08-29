@@ -47,10 +47,7 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t light_cluster_node_indices			  = 0;
 	std::size_t light_cluster_statistics			  = 0;
 	std::size_t light_cluster_cdfs					  = 0;
-	std::size_t pending_light_cluster_records		  = 0;
-	std::size_t pending_light_cluster_record_counts	  = 0;
-	std::size_t reservoir_seen_counts				  = 0;
-	std::size_t reservoir_proposals					  = 0;
+	std::size_t light_cluster_sample_counts			  = 0;
 	std::size_t light_clustering_data				  = 0;
 	std::size_t representative_shading_contexts		  = 0;
 	std::size_t representative_shading_context_states = 0;
@@ -74,11 +71,10 @@ struct IlluminationAwareKDTreeVRAMUsage
 			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa +
 			   learning_to_cluster_training_sample_count + batch_signatures + history_signatures + batch_spatial_moments + history_spatial_moments +
 			   initial_light_cut_node_indices + normal_clustering_sets + normal_face_observation_counts + light_cluster_node_indices +
-			   light_cluster_statistics + light_cluster_cdfs + pending_light_cluster_records + pending_light_cluster_record_counts + reservoir_seen_counts +
-			   reservoir_proposals + light_clustering_data + representative_shading_contexts + representative_shading_context_states + nisml_cache +
-			   nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts +
-			   nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty +
-			   nisml_cache_ready + nisml_pending_cell_count;
+			   light_cluster_statistics + light_cluster_cdfs + light_cluster_sample_counts + light_clustering_data + representative_shading_contexts +
+			   representative_shading_context_states + nisml_cache + nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count +
+			   nisml_representative_sample_counts + nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks +
+			   nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count;
 	}
 };
 
@@ -92,10 +88,10 @@ public:
 	static const std::string ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID;
-	static const std::string COMMIT_LIGHT_CLUSTER_RESERVOIR_PROPOSALS_KERNEL_ID;
-	static const std::string UPDATE_LIGHT_CLUSTER_STATISTICS_KERNEL_ID;
+	static const std::string INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID;
 	static const std::string REFINE_LIGHT_CLUSTERINGS_KERNEL_ID;
-	static const std::string APPLY_PENDING_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID;
+	static const std::string REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID;
+	static const std::string REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID;
 	static const std::string BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;
 	static const std::string RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID;

@@ -25,15 +25,6 @@ HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, c
 	return 1.0f / (settings.learning_rate_beta * hippt::intrin_pow(static_cast<float>(time_step), settings.learning_rate_omega));
 }
 
-HIPRT_DEVICE unsigned int get_light_cluster_iteration_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
-															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
-{
-	if (cluster_data.pending_record_budget > 0u)
-		return hippt::min(cluster_data.pending_record_budget, static_cast<unsigned int>(LearningToClusterMaximumClusterRecordCount));
-
-	return hippt::min(compute_refinement_sampling_budget(cluster_data, settings), static_cast<unsigned int>(LearningToClusterMaximumClusterRecordCount));
-}
-
 HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)
 {
 	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];

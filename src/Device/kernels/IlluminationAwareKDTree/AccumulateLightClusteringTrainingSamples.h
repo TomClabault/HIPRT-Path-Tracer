@@ -64,39 +64,6 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	if (selected_slot == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	unsigned int iteration_budget = get_light_cluster_iteration_budget(cluster_data, kd_tree.learning_to_cluster.user_settings);
-	if (iteration_budget == 0u)
-		return;
-
-	unsigned int stream_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.reservoir_seen_counts + clustering_index, 1u);
-	unsigned int target_slot  = 0u;
-	bool proposes_replacement = false;
-
-	if (stream_index < iteration_budget)
-	{
-		target_slot			 = stream_index;
-		proposes_replacement = true;
-	}
-	else
-	{
-		unsigned int random_value = pcg_hash(sample_index ^ pcg_hash(clustering_index) ^ pcg_hash(cluster_data.iteration));
-		unsigned int random_slot  = Xorshift32Generator(random_value).random_index(stream_index + 1u);
-		if (random_slot < iteration_budget)
-		{
-			target_slot			 = random_slot;
-			proposes_replacement = true;
-		}
-	}
-
-	if (proposes_replacement)
-	{
-		unsigned int proposal_offset = clustering_index * LearningToClusterMaximumClusterRecordCount + target_slot;
-		unsigned long long int proposal =
-			((static_cast<unsigned long long int>(stream_index) + 1ull) << 32) | static_cast<unsigned long long int>(sample_index);
-
-		hippt::atomic_max(kd_tree.learning_to_cluster.reservoir_proposals + proposal_offset, proposal);
-	}
-
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
 	unsigned int previous_state =
 		hippt::atomic_compare_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT,
