@@ -138,6 +138,8 @@ struct HIPRTGeometry
 
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
 										"Out of memory while trying to build the BVH... Retrying without spatial splits. Tracing performance may suffer...");
+
+				continue;
 			}
 			else
 				OROCHI_CHECK_ERROR(error);
@@ -181,7 +183,7 @@ struct HIPRTGeometry
 
 		HIPRT_CHECK_ERROR(
 			hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
-		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+ 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		if (do_compaction)
 			HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
