@@ -4341,6 +4341,10 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement");
+			if (ImGui::Checkbox("Enable light-cut refinements", &render_data.kd_tree_device.learning_to_cluster.user_settings.enable_light_cut_refinement))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("Enable adaptive refinement of the light cut after its initial construction.");
+
 			ImGui::Text("Q probabilities target");
 			int q_target = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q) == KERNEL_OPTION_TRUE;
 			bool q_target_changed = false;
