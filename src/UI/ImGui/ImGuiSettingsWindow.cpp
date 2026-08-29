@@ -4107,7 +4107,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 			if (illumination_aware_kd_tree_render_pass)
 			{
 				static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
-				ImGui::InputInt("Training sample buffer capacity", &training_sample_buffer_capacity);
+				ImGui::InputInt("Training sample buffer capacity##kdtree", &training_sample_buffer_capacity);
 
 				if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
 				{
@@ -4314,6 +4314,24 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				kd_tree_vram_usage.lightcut_representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
+			static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
+			ImGui::InputInt("Training sample buffer capacity##kdtree", &training_sample_buffer_capacity);
+
+			if (training_sample_buffer_capacity != illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity())
+			{
+				ImGui::TreePush("Apply button illumination-aware KD-tree training sample buffer capacity");
+
+				if (ImGui::Button("Apply"))
+				{
+					illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity() = training_sample_buffer_capacity;
+					illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Initialization");
 
@@ -4338,6 +4356,7 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			if (ImGui::Checkbox("Enable light-cut refinements", &render_data.kd_tree_device.learning_to_cluster.user_settings.enable_lightcut_refinement))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("Enable adaptive refinement of the light cut after its initial construction.");
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			if (ImGui::SliderInt("Per-cluster sampling budget", &render_data.kd_tree_device.learning_to_cluster.user_settings.initial_sampling_budget_n0, 4,
 								 128))
