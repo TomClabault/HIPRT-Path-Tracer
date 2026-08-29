@@ -60,20 +60,20 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		return result;
 
 	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(context.shading_normal);
-	unsigned int set_index	 = kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index	 = kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return result;
 
-	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
-		unsigned int initial_cut_size = kd_tree.learning_to_cluster.effective_initial_light_cut_size;
-		if (initial_cut_size == 0 || initial_cut_size > LearningToClusterMaximumLightCutSize)
+		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;
+		if (initial_lightcut_size == 0 || initial_lightcut_size > LearningToClusterMaximumLightCutSize)
 			return result;
 
 		float total_weight		   = 0.0f;
 		float selected_weight	   = 0.0f;
-		unsigned int selected_slot = initial_cut_size - 1;
+		unsigned int selected_slot = initial_lightcut_size - 1;
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 		SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
@@ -81,9 +81,9 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		SGSpecularImportanceData specular_data;
 #endif
 
-		for (unsigned int slot = 0; slot < initial_cut_size; slot++)
+		for (unsigned int slot = 0; slot < initial_lightcut_size; slot++)
 		{
-			unsigned int node_index = kd_tree.learning_to_cluster.initial_light_cut_node_indices[slot];
+			unsigned int node_index = kd_tree.learning_to_cluster.initial_lightcut_node_indices[slot];
 			float weight = light_tree_sg_node_importance(render_data.light_tree_sg.nodes[node_index], specular_data, context.position, context.view_direction,
 														 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
 			weight		 = hippt::max(weight, 0.0f);
@@ -98,41 +98,41 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 
 		if (total_weight <= 0.0f)
 		{
-			selected_slot	= random_number_generator.random_index(initial_cut_size);
+			selected_slot	= random_number_generator.random_index(initial_lightcut_size);
 			selected_weight = 1.0f;
-			total_weight	= static_cast<float>(initial_cut_size);
+			total_weight	= static_cast<float>(initial_lightcut_size);
 		}
 
-		result.cluster_node_index  = kd_tree.learning_to_cluster.initial_light_cut_node_indices[selected_slot];
+		result.cluster_node_index  = kd_tree.learning_to_cluster.initial_lightcut_node_indices[selected_slot];
 		result.cluster_probability = selected_weight / total_weight;
 
 		return result;
 	}
 
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int cut_size										   = cluster_data.cut_size;
-	if (cut_size == 0 || cut_size > LearningToClusterMaximumLightCutSize)
+	const IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	unsigned int lightcut_size										= lightcut_data.lightcut_size;
+	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
-	unsigned int cdf_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, 0);
+	unsigned int cdf_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0);
 
-	CDFDeviceU16 light_cluster_cdf;
-	light_cluster_cdf.cdf_u16 = kd_tree.learning_to_cluster.light_cluster_cdfs + cdf_offset;
-	light_cluster_cdf.size	  = cut_size;
+	CDFDeviceU16 lightcut_cdf;
+	lightcut_cdf.cdf_u16 = kd_tree.learning_to_cluster.lightcut_cdfs + cdf_offset;
+	lightcut_cdf.size	 = lightcut_size;
 
-	unsigned int selected_slot	 = light_cluster_cdf.sample(random_number_generator);
-	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, selected_slot);
+	unsigned int selected_slot	 = lightcut_cdf.sample(random_number_generator);
+	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, selected_slot);
 
-	unsigned short int selected_cdf_start = selected_slot == 0u ? 0u : kd_tree.learning_to_cluster.light_cluster_cdfs[selected_offset];
-	unsigned short int selected_cdf_end	  = selected_slot + 1u < cut_size ? kd_tree.learning_to_cluster.light_cluster_cdfs[selected_offset + 1u] : 65535u;
+	unsigned short int selected_cdf_start = selected_slot == 0u ? 0u : kd_tree.learning_to_cluster.lightcut_cdfs[selected_offset];
+	unsigned short int selected_cdf_end	  = selected_slot + 1u < lightcut_size ? kd_tree.learning_to_cluster.lightcut_cdfs[selected_offset + 1u] : 65535u;
 	unsigned int selected_cdf_range		  = static_cast<unsigned int>(selected_cdf_end) - static_cast<unsigned int>(selected_cdf_start);
 	float selected_probability			  = static_cast<float>(selected_cdf_range) / 65535.0f;
 
-	result.light_clustering_index = clustering_index;
-	result.cluster_slot			  = selected_slot;
-	result.cluster_node_index	  = kd_tree.learning_to_cluster.light_cluster_node_indices[selected_offset];
-	result.cut_size_at_sampling	  = cut_size;
-	result.cluster_probability	  = selected_probability;
+	result.lightcut_index			 = lightcut_index;
+	result.lightcut_slot			 = selected_slot;
+	result.cluster_node_index		 = kd_tree.learning_to_cluster.lightcut_node_indices[selected_offset];
+	result.lightcut_size_at_sampling = lightcut_size;
+	result.cluster_probability		 = selected_probability;
 
 	return result;
 }

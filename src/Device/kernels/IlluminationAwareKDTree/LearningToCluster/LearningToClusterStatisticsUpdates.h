@@ -31,70 +31,70 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int clustering_index		= blockIdx.x;
-	unsigned int slot					= threadIdx.x;
-	unsigned int light_clustering_count = *kd_tree.learning_to_cluster.light_clustering_count;
-	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = blockIdx.x;
+	unsigned int slot			= threadIdx.x;
+	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #else
-	unsigned int clustering_index = static_cast<unsigned int>(x);
-	unsigned int slot			  = 0u;
-	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = static_cast<unsigned int>(x);
+	unsigned int slot			= 0u;
+	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #endif
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	if (!cluster_data.Q0_initialized)
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	if (!lightcut_data.Q0_initialized)
 		return;
 
 	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 #ifdef __KERNELCC__
 	if (threadIdx.x == 0u)
-		kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index] = 0u;
+		kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 	__syncthreads();
 
-	if (slot < cluster_data.cut_size)
+	if (slot < lightcut_data.lightcut_size)
 	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
 
-		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{
 			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
 
-			unsigned int sample_clustering_index = get_replayed_light_clustering_index(kd_tree, sample);
-			if (sample_clustering_index != clustering_index)
+			unsigned int sample_lightcut_index = get_replayed_light_clustering_index(kd_tree, sample);
+			if (sample_lightcut_index != lightcut_index)
 				continue;
 
-			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, clustering_index, sample);
+			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
 			if (sample_slot != static_cast<int>(slot))
 				continue;
 
 			append_replayed_light_cluster_observation(statistics, sample.variance_observation);
 
-			hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_cluster_sample_counts + clustering_index, 1u);
+			hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_sample_counts + lightcut_index, 1u);
 		}
 	}
 #else
-	kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index] = 0u;
-	for (slot = 0u; slot < cluster_data.cut_size; slot++)
+	kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
+	for (slot = 0u; slot < lightcut_data.lightcut_size; slot++)
 	{
-		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{
 			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
-			unsigned int sample_clustering_index								 = get_replayed_light_clustering_index(kd_tree, sample);
-			if (sample_clustering_index != clustering_index)
+			unsigned int sample_lightcut_index									 = get_replayed_light_clustering_index(kd_tree, sample);
+			if (sample_lightcut_index != lightcut_index)
 				continue;
 
-			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, clustering_index, sample);
+			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
 			if (sample_slot != static_cast<int>(slot))
 				continue;
 
 			append_replayed_light_cluster_observation(statistics, sample.variance_observation);
-			kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index]++;
+			kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index]++;
 		}
 	}
 #endif

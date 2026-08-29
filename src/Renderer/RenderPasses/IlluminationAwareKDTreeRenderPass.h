@@ -19,11 +19,11 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t node_bounds = 0;
 	std::size_t node_count	= 0;
 
-	std::size_t active_guiding_nodes		= 0;
-	std::size_t active_guiding_node_count	= 0;
-	std::size_t needs_split					= 0;
-	std::size_t light_clustering_count		= 0;
-	std::size_t normal_clustering_set_count = 0;
+	std::size_t active_guiding_nodes	  = 0;
+	std::size_t active_guiding_node_count = 0;
+	std::size_t needs_split				  = 0;
+	std::size_t lightcut_count			  = 0;
+	std::size_t normal_lightcut_set_count = 0;
 
 	std::size_t current_frontier	   = 0;
 	std::size_t current_frontier_count = 0;
@@ -41,16 +41,16 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t batch_spatial_moments	= 0;
 	std::size_t history_spatial_moments = 0;
 
-	std::size_t initial_light_cut_node_indices		  = 0;
-	std::size_t normal_clustering_sets				  = 0;
-	std::size_t normal_face_observation_counts		  = 0;
-	std::size_t light_cluster_node_indices			  = 0;
-	std::size_t light_cluster_statistics			  = 0;
-	std::size_t light_cluster_cdfs					  = 0;
-	std::size_t light_cluster_sample_counts			  = 0;
-	std::size_t light_clustering_data				  = 0;
-	std::size_t representative_shading_contexts		  = 0;
-	std::size_t representative_shading_context_states = 0;
+	std::size_t initial_lightcut_node_indices				   = 0;
+	std::size_t normal_lightcut_sets						   = 0;
+	std::size_t normal_face_observation_counts				   = 0;
+	std::size_t lightcut_node_indices						   = 0;
+	std::size_t lightcut_statistics							   = 0;
+	std::size_t lightcut_cdfs								   = 0;
+	std::size_t lightcut_sample_counts						   = 0;
+	std::size_t lightcut_data								   = 0;
+	std::size_t lightcut_representative_shading_contexts	   = 0;
+	std::size_t lightcut_representative_shading_context_states = 0;
 
 	std::size_t nisml_cache							 = 0;
 	std::size_t nisml_hash_keys						 = 0;
@@ -66,15 +66,14 @@ struct IlluminationAwareKDTreeVRAMUsage
 
 	std::size_t get_total_bytes() const
 	{
-		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + light_clustering_count +
-			   normal_clustering_set_count + current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples +
-			   training_sample_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa +
-			   learning_to_cluster_training_sample_count + batch_signatures + history_signatures + batch_spatial_moments + history_spatial_moments +
-			   initial_light_cut_node_indices + normal_clustering_sets + normal_face_observation_counts + light_cluster_node_indices +
-			   light_cluster_statistics + light_cluster_cdfs + light_cluster_sample_counts + light_clustering_data + representative_shading_contexts +
-			   representative_shading_context_states + nisml_cache + nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count +
-			   nisml_representative_sample_counts + nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks +
-			   nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count;
+		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + lightcut_count + normal_lightcut_set_count +
+			   current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count +
+			   learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa + learning_to_cluster_training_sample_count + batch_signatures +
+			   history_signatures + batch_spatial_moments + history_spatial_moments + initial_lightcut_node_indices + normal_lightcut_sets +
+			   normal_face_observation_counts + lightcut_node_indices + lightcut_statistics + lightcut_cdfs + lightcut_sample_counts + lightcut_data +
+			   lightcut_representative_shading_contexts + lightcut_representative_shading_context_states + nisml_cache + nisml_hash_keys +
+			   nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts + nisml_representative_occupied_counts +
+			   nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count;
 	}
 };
 
@@ -83,19 +82,19 @@ class IlluminationAwareKDTreeRenderPass : public RenderPass
 public:
 	static const std::string ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME;
 	static const std::string RESET_TREE_KERNEL_ID;
-	static const std::string INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_INITIALIZE_ROOT_LIGHTCUT_KERNEL_ID;
 	static const std::string ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID;
-	static const std::string ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
-	static const std::string ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID;
-	static const std::string INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID;
-	static const std::string REFINE_LIGHT_CLUSTERINGS_KERNEL_ID;
-	static const std::string REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID;
-	static const std::string REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID;
-	static const std::string BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_INITIALIZE_LIGHTCUT_Q0_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_STATISTICS_UPDATES_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_Q_UPDATES_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_BUILD_LIGHTCUT_SAMPLING_CDFS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID;
 	static const std::string RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID;
-	static const std::string RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID;
+	static const std::string LEARNING_TO_CLUSTER_RESET_BATCH_KD_TREE_AND_LIGHTCUT_STATISTICS_KERNEL_ID;
 	static const std::string EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID;
 	static const std::string REPLAY_TRAINING_SAMPLES_KERNEL_ID;
 	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;

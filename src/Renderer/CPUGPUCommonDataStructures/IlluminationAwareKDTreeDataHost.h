@@ -21,14 +21,14 @@ struct IlluminationAwareKDTreeDataHost
 {
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
-				unsigned int new_nisml_representative_capacity			= 1,
-				unsigned int new_nisml_hash_table_reserved_bytes		= 100000000u,
-				unsigned int new_nisml_hash_normal_precision			= 2u,
-				unsigned int maximum_learning_to_cluster_light_cut_size = LearningToClusterMaximumLightCutSize)
+				unsigned int new_nisml_representative_capacity		   = 1,
+				unsigned int new_nisml_hash_table_reserved_bytes	   = 100000000u,
+				unsigned int new_nisml_hash_normal_precision		   = 2u,
+				unsigned int maximum_learning_to_cluster_lightcut_size = LearningToClusterMaximumLightCutSize)
 	{
 		m_kd_tree_data.resize(new_node_capacity, new_training_sample_capacity);
 		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity, new_nisml_hash_table_reserved_bytes, new_nisml_hash_normal_precision);
-		m_learning_to_cluster_data.resize(new_node_capacity, new_training_sample_capacity, maximum_learning_to_cluster_light_cut_size);
+		m_learning_to_cluster_data.resize(new_node_capacity, new_training_sample_capacity, maximum_learning_to_cluster_lightcut_size);
 
 		GenericSoAHelpers::resize<DataContainer>(m_any_cell_needs_split, 1);
 		GenericSoAHelpers::resize_host_pinned_mem(m_any_cell_needs_split_host_pinned, 1);
@@ -67,9 +67,9 @@ struct IlluminationAwareKDTreeDataHost
 		m_learning_to_cluster_data.to_device(kd_tree_device);
 		kd_tree_device.any_cell_needs_split = GenericSoAHelpers::get_buffer_data_ptr(m_any_cell_needs_split);
 
-		kd_tree_device.core.user_settings									= render_data.kd_tree_device.core.user_settings;
-		kd_tree_device.learning_to_cluster.user_settings					= render_data.kd_tree_device.learning_to_cluster.user_settings;
-		kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = render_data.kd_tree_device.learning_to_cluster.effective_initial_light_cut_size;
+		kd_tree_device.core.user_settings								   = render_data.kd_tree_device.core.user_settings;
+		kd_tree_device.learning_to_cluster.user_settings				   = render_data.kd_tree_device.learning_to_cluster.user_settings;
+		kd_tree_device.learning_to_cluster.effective_initial_lightcut_size = render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size;
 
 		return kd_tree_device;
 	}

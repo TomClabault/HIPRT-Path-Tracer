@@ -769,24 +769,24 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 	unsigned int node_count						 = *kd_tree_device.core.node_count;
 
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	unsigned int light_clustering_count = *kd_tree_device.learning_to_cluster.light_clustering_count;
-	unsigned int reset_thread_count		= std::max(node_count, light_clustering_count);
+	unsigned int lightcut_count		= *kd_tree_device.learning_to_cluster.lightcut_count;
+	unsigned int reset_thread_count = std::max(node_count, lightcut_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
-		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result			  = m_light_tree_sg_build_result;
-		const std::vector<unsigned int>& second_tree_cut_node_indices					  = light_tree_sg_build_result.second_tree_cut_node_indices;
-		unsigned int effective_second_tree_cut_size										  = light_tree_sg_build_result.effective_second_tree_cut_size;
-		kd_tree_device.learning_to_cluster.effective_initial_light_cut_size				  = effective_second_tree_cut_size;
-		m_render_data.kd_tree_device.learning_to_cluster.effective_initial_light_cut_size = effective_second_tree_cut_size;
+		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result			 = m_light_tree_sg_build_result;
+		const std::vector<unsigned int>& second_tree_cut_node_indices					 = light_tree_sg_build_result.second_tree_cut_node_indices;
+		unsigned int effective_second_tree_cut_size										 = light_tree_sg_build_result.effective_second_tree_cut_size;
+		kd_tree_device.learning_to_cluster.effective_initial_lightcut_size				 = effective_second_tree_cut_size;
+		m_render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size = effective_second_tree_cut_size;
 
-		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.begin(),
-				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.end(),
+		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.begin(),
+				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.end(),
 				  IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
 		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size,
-					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_light_cut_node_indices.begin());
+					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.begin());
 
 		if (effective_second_tree_cut_size > 0)
 		{
@@ -901,9 +901,9 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	m_illumination_aware_kd_tree_state.next_creation_tag				  = 0;
 
 	m_render_data.kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-	unsigned int reset_count	 = std::max(
-		m_render_data.kd_tree_device.core.node_capacity,
-		static_cast<unsigned int>(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_light_clustering_data.size()));
+	unsigned int reset_count =
+		std::max(m_render_data.kd_tree_device.core.node_capacity,
+				 static_cast<unsigned int>(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_data.size()));
 	for (unsigned int node_index = 0; node_index < reset_count; node_index++)
 		IlluminationAwareKDTree_CoreResetTree(m_render_data.kd_tree_device, m_scene_bounding_box.mini, m_scene_bounding_box.maxi, node_index);
 
@@ -989,8 +989,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		for (unsigned int cache_index = 0; cache_index < kd_tree_device.nisml.nisml_hash_table_capacity; cache_index++)
 			IlluminationAwareKDTree_NISMLBuildCaches(kd_tree_device, m_render_data, cache_index);
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
-	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster.training_sample_count->load();
-	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
+	unsigned int lightcut_sample_count = kd_tree_device.learning_to_cluster.training_sample_count->load();
+	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(kd_tree_device, sample_index);
 
 	unsigned int active_guiding_count = kd_tree_device.core.active_guiding_node_count->load();
@@ -998,23 +998,23 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		 active_guiding_node_face_index++)
 		IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(kd_tree_device, active_guiding_node_face_index);
 
-	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
+	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(kd_tree_device, sample_index);
 
-	unsigned int light_clustering_count = kd_tree_device.learning_to_cluster.light_clustering_count->load();
-	active_guiding_count				= kd_tree_device.core.active_guiding_node_count->load();
-	LightTreeSGDevice light_tree_sg		= m_render_data.light_tree_sg;
-	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
-	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+	unsigned int lightcut_count		= kd_tree_device.learning_to_cluster.lightcut_count->load();
+	active_guiding_count			= kd_tree_device.core.active_guiding_node_count->load();
+	LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
+	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+		IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
+	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 		 active_guiding_node_face_index++)
 		IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
-	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_LearningToClusterQUpdates(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
-	for (unsigned int clustering_index = 0; clustering_index < kd_tree_device.learning_to_cluster.light_clustering_capacity; clustering_index++)
-		IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+		IlluminationAwareKDTree_LearningToClusterQUpdates(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
+	for (unsigned int lightcut_index = 0; lightcut_index < kd_tree_device.learning_to_cluster.lightcut_capacity; lightcut_index++)
+		IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 #endif
 #endif
 }

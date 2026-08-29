@@ -27,18 +27,18 @@ HIPRT_DEVICE float light_clustering_node_importance(const LightTreeSGDevice& lig
 
 HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_tree,
 											  const LightTreeSGDevice& light_tree_sg,
-											  unsigned int clustering_index,
+											  unsigned int lightcut_index,
 											  unsigned int slot)
 {
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	if (cluster_data.Q0_initialized || slot >= cluster_data.cut_size)
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	if (lightcut_data.Q0_initialized || slot >= lightcut_data.lightcut_size)
 		return;
 
-	unsigned int offset									   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-	unsigned int cluster_node_index						   = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
-	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
+	unsigned int offset									   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+	unsigned int cluster_node_index						   = kd_tree.learning_to_cluster.lightcut_node_indices[offset];
+	const IlluminationAwareKDTreeSGShadingContext& context = kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[lightcut_index];
 
-	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
 #else
@@ -58,40 +58,40 @@ IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAw
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int clustering_index		= blockIdx.x;
-	unsigned int slot					= threadIdx.x;
-	unsigned int light_clustering_count = *kd_tree.learning_to_cluster.light_clustering_count;
-	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = blockIdx.x;
+	unsigned int slot			= threadIdx.x;
+	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #else
-	unsigned int clustering_index = static_cast<unsigned int>(x);
-	unsigned int slot			  = 0u;
-	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = static_cast<unsigned int>(x);
+	unsigned int slot			= 0u;
+	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #endif
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int context_state								 = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	unsigned int context_state								  = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states[lightcut_index];
 	bool should_initialize_Q0 =
-		!cluster_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY;
+		!lightcut_data.Q0_initialized && context_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY;
 
 #ifdef __KERNELCC__
 	if (should_initialize_Q0)
-		initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, slot);
+		initialize_light_cluster_Q0(kd_tree, light_tree_sg, lightcut_index, slot);
 
 	if (should_initialize_Q0 && threadIdx.x == 0u)
 	{
-		cluster_data.Q0_initialized			 = true;
-		cluster_data.light_cluster_cdf_dirty = true;
+		lightcut_data.Q0_initialized	 = true;
+		lightcut_data.lightcut_cdf_dirty = true;
 	}
 #else
 	if (should_initialize_Q0)
 	{
-		for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
-			initialize_light_cluster_Q0(kd_tree, light_tree_sg, clustering_index, cluster_slot);
+		for (unsigned int lightcut_slot = 0; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
+			initialize_light_cluster_Q0(kd_tree, light_tree_sg, lightcut_index, lightcut_slot);
 
-		cluster_data.Q0_initialized			 = true;
-		cluster_data.light_cluster_cdf_dirty = true;
+		lightcut_data.Q0_initialized	 = true;
+		lightcut_data.lightcut_cdf_dirty = true;
 	}
 #endif
 }

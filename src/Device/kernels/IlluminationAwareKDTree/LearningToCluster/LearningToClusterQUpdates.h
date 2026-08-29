@@ -39,32 +39,32 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 #endif
 {
 #ifdef __KERNELCC__
-	unsigned int clustering_index		= blockIdx.x;
-	unsigned int slot					= threadIdx.x;
-	unsigned int light_clustering_count = *kd_tree.learning_to_cluster.light_clustering_count;
-	if (clustering_index >= light_clustering_count || clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = blockIdx.x;
+	unsigned int slot			= threadIdx.x;
+	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #else
-	unsigned int clustering_index = static_cast<unsigned int>(x);
-	unsigned int slot			  = 0u;
-	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int lightcut_index = static_cast<unsigned int>(x);
+	unsigned int slot			= 0u;
+	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #endif
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int replayed_sample_count						 = kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index];
-	if (!cluster_data.Q0_initialized)
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	unsigned int replayed_sample_count						  = kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index];
+	if (!lightcut_data.Q0_initialized)
 		return;
 
-	float learning_rate		  = compute_light_cluster_learning_rate(cluster_data.iteration, kd_tree.learning_to_cluster.user_settings);
+	float learning_rate		  = compute_light_cluster_learning_rate(lightcut_data.iteration, kd_tree.learning_to_cluster.user_settings);
 	float history_weight	  = 1.0f - learning_rate;
 	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 
 #ifdef __KERNELCC__
-	if (slot < cluster_data.cut_size)
+	if (slot < lightcut_data.lightcut_size)
 	{
-		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		float reward_sum										  = 0.0f;
 		float reward_squared_sum								  = 0.0f;
 		unsigned int matching_record_count						  = 0u;
@@ -72,11 +72,11 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{
 			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
-			unsigned int sample_clustering_index								 = get_replayed_light_clustering_index(kd_tree, sample);
-			if (sample_clustering_index != clustering_index)
+			unsigned int sample_lightcut_index									 = get_replayed_light_clustering_index(kd_tree, sample);
+			if (sample_lightcut_index != lightcut_index)
 				continue;
 
-			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, clustering_index, sample);
+			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
 			if (sample_slot != static_cast<int>(slot))
 				continue;
 
@@ -105,10 +105,10 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 	if (slot != 0u)
 		return;
 #else
-	for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
+	for (unsigned int lightcut_slot = 0; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
 	{
-		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, cluster_slot);
-		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, lightcut_slot);
+		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		float reward_sum										  = 0.0f;
 		float reward_squared_sum								  = 0.0f;
 		unsigned int matching_record_count						  = 0u;
@@ -116,12 +116,12 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{
 			const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
-			unsigned int sample_clustering_index								 = get_replayed_light_clustering_index(kd_tree, sample);
-			if (sample_clustering_index != clustering_index)
+			unsigned int sample_lightcut_index									 = get_replayed_light_clustering_index(kd_tree, sample);
+			if (sample_lightcut_index != lightcut_index)
 				continue;
 
-			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, clustering_index, sample);
-			if (sample_slot != static_cast<int>(cluster_slot))
+			int sample_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
+			if (sample_slot != static_cast<int>(lightcut_slot))
 				continue;
 
 			if (kd_tree.learning_to_cluster.user_settings.aggregate_q_updates)
@@ -148,11 +148,11 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 
 	if (replayed_sample_count > 0u)
 	{
-		cluster_data.iteration++;
-		cluster_data.light_cluster_cdf_dirty = true;
+		lightcut_data.iteration++;
+		lightcut_data.lightcut_cdf_dirty = true;
 	}
 
-	kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index] = 0u;
+	kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 }
 
 #endif

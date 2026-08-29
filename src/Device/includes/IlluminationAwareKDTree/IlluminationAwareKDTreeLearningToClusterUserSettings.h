@@ -10,7 +10,7 @@
 
 struct IlluminationAwareKDTreeLearningToClusterUserSettings
 {
-	unsigned int initial_light_cut_size = LearningToClusterInitialLightCutSize;
+	unsigned int initial_lightcut_size = LearningToClusterInitialLightCutSize;
 
 	float learning_rate_beta  = 1.0f;
 	float learning_rate_omega = 6.0f / 7.0f;
@@ -18,7 +18,7 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	int initial_sampling_budget_n0		   = 32;
 	unsigned int refinement_stopping_gamma = 128;
 
-	bool enable_light_cut_refinement = true;
+	bool enable_lightcut_refinement = true;
 	// Diagnostic switch for applying one batch-averaged Q update instead of one update per pending record.
 	bool aggregate_q_updates = true;
 };

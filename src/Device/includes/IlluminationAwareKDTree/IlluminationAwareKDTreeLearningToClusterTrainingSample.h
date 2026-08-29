@@ -23,11 +23,11 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 	float q_reward			   = 0.0f;
 	float variance_observation = 0.0f;
 
-	unsigned int sampled_light_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
-	unsigned int selected_cluster_slot			= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	unsigned int sampled_cut_size				= 0;
+	unsigned int sampled_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	unsigned int selected_lightcut_slot = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int sampled_lightcut_size	= 0;
 
-	unsigned int valid_for_light_clustering = false;
+	unsigned int valid_for_lightcut = false;
 };
 
 HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::append_learning_to_cluster_training_sample(
@@ -45,10 +45,10 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 	if (sample_index >= training_sample_capacity)
 		return;
 
-	training_samples[sample_index]								  = sample;
-	training_samples_soa.positions[sample_index]				  = sample.position;
-	training_samples_soa.shading_normals[sample_index]			  = sample.shading_context.shading_normal;
-	training_samples_soa.valid_for_light_clustering[sample_index] = sample.valid_for_light_clustering;
+	training_samples[sample_index]						  = sample;
+	training_samples_soa.positions[sample_index]		  = sample.position;
+	training_samples_soa.shading_normals[sample_index]	  = sample.shading_context.shading_normal;
+	training_samples_soa.valid_for_lightcut[sample_index] = sample.valid_for_lightcut;
 }
 
 #endif

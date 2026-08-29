@@ -54,8 +54,8 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 		return false;
 
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
-	if (kd_tree_device.core.nodes == nullptr || kd_tree_device.core.node_capacity == 0 ||
-		kd_tree_device.learning_to_cluster.normal_clustering_sets == nullptr || kd_tree_device.learning_to_cluster.light_clustering_data == nullptr)
+	if (kd_tree_device.core.nodes == nullptr || kd_tree_device.core.node_capacity == 0 || kd_tree_device.learning_to_cluster.normal_lightcut_sets == nullptr ||
+		kd_tree_device.learning_to_cluster.lightcut_data == nullptr)
 		return false;
 
 	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
@@ -64,43 +64,42 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 		return false;
 
 	const IlluminationAwareKDTreeNode& guiding_cell = kd_tree_device.core.nodes[guiding_cell_index];
-	unsigned int normal_set_index					= guiding_cell.light_clustering_normal_set_index;
-	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
-		normal_set_index >= kd_tree_device.learning_to_cluster.normal_clustering_set_capacity)
+	unsigned int normal_set_index					= guiding_cell.lightcut_normal_set_index;
+	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
+		normal_set_index >= kd_tree_device.learning_to_cluster.normal_lightcut_set_capacity)
 		return false;
 
-	float3_t shading_normal		  = render_data.g_buffer.shading_normals[pixel_index].unpack();
-	unsigned int normal_face	  = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
-	unsigned int clustering_index = kd_tree_device.learning_to_cluster.normal_clustering_sets[normal_set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
-		clustering_index >= kd_tree_device.learning_to_cluster.light_clustering_capacity)
+	float3_t shading_normal		= render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int normal_face	= illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+	unsigned int lightcut_index = kd_tree_device.learning_to_cluster.normal_lightcut_sets[normal_set_index].lightcut_indices[normal_face];
+	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || lightcut_index >= kd_tree_device.learning_to_cluster.lightcut_capacity)
 		return false;
 
-	unsigned int cut_size = kd_tree_device.learning_to_cluster.light_clustering_data[clustering_index].cut_size;
-	out_debug_value		  = static_cast<float>(cut_size) / static_cast<float>(LearningToClusterMaximumLightCutSize);
+	unsigned int lightcut_size = kd_tree_device.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
+	out_debug_value			   = static_cast<float>(lightcut_size) / static_cast<float>(LearningToClusterMaximumLightCutSize);
 
 	return true;
 #endif
 }
 
 HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face(const HIPRTRenderData& render_data,
-	unsigned int pixel_index,
-	unsigned int& out_guiding_cell_index,
-	unsigned int& out_normal_face)
+																		unsigned int pixel_index,
+																		unsigned int& out_guiding_cell_index,
+																		unsigned int& out_normal_face)
 {
 	out_guiding_cell_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	out_normal_face = 0u;
+	out_normal_face		   = 0u;
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 
-	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
 	unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
 	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return false;
 
 	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
-	out_guiding_cell_index = guiding_cell_index;
-	out_normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+	out_guiding_cell_index	= guiding_cell_index;
+	out_normal_face			= illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
 	return true;
 }
 
@@ -110,14 +109,14 @@ HIPRT_DEVICE unsigned int path_tracing_get_learning_to_cluster_cell_normal_face_
 }
 
 HIPRT_DEVICE bool path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_outline(const HIPRTRenderData& render_data,
-	unsigned int pixel_index,
-	unsigned int guiding_cell_index,
-	unsigned int normal_face)
+																						unsigned int pixel_index,
+																						unsigned int guiding_cell_index,
+																						unsigned int normal_face)
 {
-	unsigned int image_width = render_data.render_settings.render_resolution.x;
+	unsigned int image_width  = render_data.render_settings.render_resolution.x;
 	unsigned int image_height = render_data.render_settings.render_resolution.y;
-	unsigned int pixel_x = pixel_index % image_width;
-	unsigned int pixel_y = pixel_index / image_width;
+	unsigned int pixel_x	  = pixel_index % image_width;
+	unsigned int pixel_y	  = pixel_index / image_width;
 
 	if (pixel_x > 0u)
 	{

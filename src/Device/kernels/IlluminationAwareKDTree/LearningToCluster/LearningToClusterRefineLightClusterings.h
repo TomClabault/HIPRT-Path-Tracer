@@ -15,24 +15,24 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 
 HIPRT_DEVICE float compute_cluster_split_probability(
-	float cluster_variance, float total_cut_variance, unsigned int visit_count, unsigned int cut_size, unsigned int initial_cut_size)
+	float cluster_variance, float total_lightcut_variance, unsigned int visit_count, unsigned int lightcut_size, unsigned int initial_lightcut_size)
 {
 	if (!(cluster_variance > 0.0f) || visit_count <= 1u)
 		return 0.0f;
 
-	float cut_growth			   = static_cast<float>(cut_size) / static_cast<float>(initial_cut_size);
-	float complexity_factor		   = 1.0f / (1.0f + cut_growth * hippt::intrin_expf(-hippt::min(cluster_variance, 80.0f)));
-	float relative_variance_factor = cluster_variance / (total_cut_variance + 1.0e-6f);
+	float lightcut_growth		   = static_cast<float>(lightcut_size) / static_cast<float>(initial_lightcut_size);
+	float complexity_factor		   = 1.0f / (1.0f + lightcut_growth * hippt::intrin_expf(-hippt::min(cluster_variance, 80.0f)));
+	float relative_variance_factor = cluster_variance / (total_lightcut_variance + 1.0e-6f);
 	float visit_factor			   = 1.0f - 1.0f / static_cast<float>(visit_count);
 
 	return hippt::clamp(0.0f, 1.0f, complexity_factor * relative_variance_factor * visit_factor);
 }
 
-HIPRT_DEVICE float compute_refinement_random_value(unsigned int clustering_index, unsigned int iteration, unsigned int node_index)
+HIPRT_DEVICE float compute_refinement_random_value(unsigned int lightcut_index, unsigned int iteration, unsigned int node_index)
 {
 	unsigned int hash = pcg_hash(node_index);
 	hash			  = pcg_hash(hash ^ iteration);
-	hash			  = pcg_hash(hash ^ clustering_index);
+	hash			  = pcg_hash(hash ^ lightcut_index);
 
 	return static_cast<float>(hash & 0x00ffffffu) * (1.0f / 16777216.0f);
 }
@@ -50,7 +50,7 @@ static_assert(sizeof(IlluminationAwareKDTreeSharedLightClusterStatistics) == siz
 // The persistent statistics type has default member initializers, which HIP does not allow for __shared__ arrays.
 // Keep the shared representation trivially initialized and explicitly convert at the global-memory boundary.
 HIPRT_DEVICE IlluminationAwareKDTreeLightClusterStatistics
-load_light_cluster_statistics(const IlluminationAwareKDTreeSharedLightClusterStatistics& shared_statistics)
+load_lightcut_statistics(const IlluminationAwareKDTreeSharedLightClusterStatistics& shared_statistics)
 {
 	IlluminationAwareKDTreeLightClusterStatistics statistics{};
 	statistics.estimated_importance_Q = shared_statistics.estimated_importance_Q;
@@ -61,8 +61,8 @@ load_light_cluster_statistics(const IlluminationAwareKDTreeSharedLightClusterSta
 	return statistics;
 }
 
-HIPRT_DEVICE void store_light_cluster_statistics(IlluminationAwareKDTreeSharedLightClusterStatistics& shared_statistics,
-												 const IlluminationAwareKDTreeLightClusterStatistics& statistics)
+HIPRT_DEVICE void store_lightcut_statistics(IlluminationAwareKDTreeSharedLightClusterStatistics& shared_statistics,
+											const IlluminationAwareKDTreeLightClusterStatistics& statistics)
 {
 	shared_statistics.estimated_importance_Q = statistics.estimated_importance_Q;
 	shared_statistics.mean					 = statistics.mean;
@@ -108,36 +108,36 @@ initialize_child_statistics_from_parent_Q(const LightTreeSGDevice& light_tree_sg
 	return child;
 }
 
-HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTreeDevice kd_tree, unsigned int clustering_index)
+HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTreeDevice kd_tree, unsigned int lightcut_index)
 {
-	IlluminationAwareKDTreeLightClusteringData& cluster_data			 = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data			 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
 
-	if (!settings.enable_light_cut_refinement || cluster_data.refinement_stopped || !cluster_data.Q0_initialized)
+	if (!settings.enable_lightcut_refinement || lightcut_data.refinement_stopped || !lightcut_data.Q0_initialized)
 		return false;
 
-	unsigned int context_state = kd_tree.learning_to_cluster.representative_shading_context_states[clustering_index];
-	if (context_state != IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY || cluster_data.cut_size == 0u)
+	unsigned int context_state = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states[lightcut_index];
+	if (context_state != IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_READY || lightcut_data.lightcut_size == 0u)
 		return false;
 
-	unsigned int maximum_cut_size = LearningToClusterMaximumLightCutSize;
-	if (cluster_data.cut_size >= maximum_cut_size)
+	unsigned int maximum_lightcut_size = LearningToClusterMaximumLightCutSize;
+	if (lightcut_data.lightcut_size >= maximum_lightcut_size)
 	{
-		cluster_data.refinement_stopped = true;
+		lightcut_data.refinement_stopped = true;
 
 		return false;
 	}
 
-	unsigned int sampling_budget	   = compute_refinement_sampling_budget(cluster_data, settings);
-	unsigned int replayed_sample_count = kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index];
+	unsigned int sampling_budget	   = compute_refinement_sampling_budget(lightcut_data, settings);
+	unsigned int replayed_sample_count = kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index];
 	if (replayed_sample_count < sampling_budget)
 		return false;
 
 	float inactivity_per_cluster =
-		static_cast<float>(cluster_data.iteration - cluster_data.last_refinement_iteration) / static_cast<float>(cluster_data.cut_size);
+		static_cast<float>(lightcut_data.iteration - lightcut_data.last_refinement_iteration) / static_cast<float>(lightcut_data.lightcut_size);
 	if (inactivity_per_cluster > static_cast<float>(settings.refinement_stopping_gamma))
 	{
-		cluster_data.refinement_stopped = true;
+		lightcut_data.refinement_stopped = true;
 
 		return false;
 	}
@@ -157,18 +157,19 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
 	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX || !light_clustering_refinement_is_eligible(kd_tree, clustering_index))
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data			  = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings  = kd_tree.learning_to_cluster.user_settings;
-	const IlluminationAwareKDTreeSGShadingContext& representative_context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
-	unsigned int old_cut_size											  = cluster_data.cut_size;
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data			 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+	const IlluminationAwareKDTreeSGShadingContext& representative_context =
+		kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[lightcut_index];
+	unsigned int old_lightcut_size = lightcut_data.lightcut_size;
 
 	unsigned int old_node_indices[LearningToClusterMaximumLightCutSize];
 	IlluminationAwareKDTreeLightClusterStatistics old_statistics[LearningToClusterMaximumLightCutSize];
@@ -177,31 +178,31 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned char split_flags[LearningToClusterMaximumLightCutSize];
 
 	float total_variance = 0.0f;
-	for (unsigned int slot = 0; slot < old_cut_size; slot++)
+	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
-		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		old_node_indices[slot] = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
-		old_statistics[slot]   = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
+		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		old_node_indices[slot] = kd_tree.learning_to_cluster.lightcut_node_indices[offset];
+		old_statistics[slot]   = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		total_variance += old_statistics[slot].get_refinement_variance();
 	}
 
-	unsigned int maximum_cut_size	  = LearningToClusterMaximumLightCutSize;
-	unsigned int remaining_capacity	  = maximum_cut_size - old_cut_size;
-	unsigned int accepted_split_count = 0u;
-	for (unsigned int slot = 0; slot < old_cut_size; slot++)
+	unsigned int maximum_lightcut_size = LearningToClusterMaximumLightCutSize;
+	unsigned int remaining_capacity	   = maximum_lightcut_size - old_lightcut_size;
+	unsigned int accepted_split_count  = 0u;
+	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
 		const LightTreeSGNodeDevice& node = light_tree_sg.nodes[old_node_indices[slot]];
 		bool can_split					  = node.triangle_count == 0 && old_statistics[slot].visit_count > 1u;
 		float split_probability			  = 0.0f;
 		if (can_split)
 			split_probability = compute_cluster_split_probability(old_statistics[slot].get_refinement_variance(), total_variance,
-																  old_statistics[slot].visit_count, old_cut_size, settings.initial_light_cut_size);
+																  old_statistics[slot].visit_count, old_lightcut_size, settings.initial_lightcut_size);
 
-		float random_value = compute_refinement_random_value(clustering_index, cluster_data.iteration, old_node_indices[slot]);
+		float random_value = compute_refinement_random_value(lightcut_index, lightcut_data.iteration, old_node_indices[slot]);
 		split_flags[slot]  = can_split && random_value < split_probability ? 1 : 0;
 	}
 
-	for (unsigned int slot = 0; slot < old_cut_size; slot++)
+	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
 		unsigned int proposed_splits_before = 0u;
 		for (unsigned int previous_slot = 0; previous_slot < slot; previous_slot++)
@@ -231,19 +232,19 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 		}
 	}
 
-	unsigned int new_cut_size = old_cut_size + accepted_split_count;
-	for (unsigned int slot = 0; slot < new_cut_size; slot++)
+	unsigned int new_lightcut_size = old_lightcut_size + accepted_split_count;
+	for (unsigned int slot = 0; slot < new_lightcut_size; slot++)
 	{
-		unsigned int offset											   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		kd_tree.learning_to_cluster.light_cluster_node_indices[offset] = new_node_indices[slot];
-		kd_tree.learning_to_cluster.light_cluster_statistics[offset]   = new_statistics[slot];
+		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		kd_tree.learning_to_cluster.lightcut_node_indices[offset] = new_node_indices[slot];
+		kd_tree.learning_to_cluster.lightcut_statistics[offset]	  = new_statistics[slot];
 	}
 
-	cluster_data.cut_size = new_cut_size;
+	lightcut_data.lightcut_size = new_lightcut_size;
 	if (accepted_split_count > 0u)
 	{
-		cluster_data.last_refinement_iteration = cluster_data.iteration;
-		cluster_data.light_cluster_cdf_dirty   = true;
+		lightcut_data.last_refinement_iteration = lightcut_data.iteration;
+		lightcut_data.lightcut_cdf_dirty		= true;
 	}
 }
 #endif
@@ -266,18 +267,19 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
 	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX || !light_clustering_refinement_is_eligible(kd_tree, clustering_index))
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
 
-	IlluminationAwareKDTreeLightClusteringData& cluster_data			  = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings  = kd_tree.learning_to_cluster.user_settings;
-	const IlluminationAwareKDTreeSGShadingContext& representative_context = kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index];
-	unsigned int old_cut_size											  = cluster_data.cut_size;
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data			 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	const IlluminationAwareKDTreeLearningToClusterUserSettings& settings = kd_tree.learning_to_cluster.user_settings;
+	const IlluminationAwareKDTreeSGShadingContext& representative_context =
+		kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[lightcut_index];
+	unsigned int old_lightcut_size = lightcut_data.lightcut_size;
 
 	__shared__ unsigned int old_node_indices[LearningToClusterMaximumLightCutSize];
 	__shared__ IlluminationAwareKDTreeSharedLightClusterStatistics old_statistics[LearningToClusterMaximumLightCutSize];
@@ -285,11 +287,11 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	__shared__ IlluminationAwareKDTreeSharedLightClusterStatistics new_statistics[LearningToClusterMaximumLightCutSize];
 	__shared__ unsigned char split_flags[LearningToClusterMaximumLightCutSize];
 
-	if (slot < old_cut_size)
+	if (slot < old_lightcut_size)
 	{
-		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		old_node_indices[slot] = kd_tree.learning_to_cluster.light_cluster_node_indices[offset];
-		store_light_cluster_statistics(old_statistics[slot], kd_tree.learning_to_cluster.light_cluster_statistics[offset]);
+		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		old_node_indices[slot] = kd_tree.learning_to_cluster.lightcut_node_indices[offset];
+		store_lightcut_statistics(old_statistics[slot], kd_tree.learning_to_cluster.lightcut_statistics[offset]);
 	}
 	else
 	{
@@ -302,35 +304,35 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 	__syncthreads();
 
-	IlluminationAwareKDTreeLightClusterStatistics old_cluster_statistics = load_light_cluster_statistics(old_statistics[slot]);
-	float local_variance												 = slot < old_cut_size ? old_cluster_statistics.get_refinement_variance() : 0.0f;
+	IlluminationAwareKDTreeLightClusterStatistics old_cluster_statistics = load_lightcut_statistics(old_statistics[slot]);
+	float local_variance												 = slot < old_lightcut_size ? old_cluster_statistics.get_refinement_variance() : 0.0f;
 	float total_variance												 = block_reduce<LearningToClusterMaximumLightCutSize>(local_variance);
 
-	bool can_split			= slot < old_cut_size && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
+	bool can_split = slot < old_lightcut_size && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
 	float split_probability = 0.0f;
 	if (can_split)
 		split_probability = compute_cluster_split_probability(old_cluster_statistics.get_refinement_variance(), total_variance,
-															  old_cluster_statistics.visit_count, old_cut_size, settings.initial_light_cut_size);
+															  old_cluster_statistics.visit_count, old_lightcut_size, settings.initial_lightcut_size);
 
 	float random_value = 1.0f;
-	if (slot < old_cut_size)
-		random_value = compute_refinement_random_value(clustering_index, cluster_data.iteration, old_node_indices[slot]);
+	if (slot < old_lightcut_size)
+		random_value = compute_refinement_random_value(lightcut_index, lightcut_data.iteration, old_node_indices[slot]);
 	split_flags[slot] = can_split && random_value < split_probability ? 1 : 0;
 
 	unsigned int proposed_splits_before = block_prefix_scan_exclusive<LearningToClusterMaximumLightCutSize>(split_flags[slot]);
-	unsigned int maximum_cut_size		= LearningToClusterMaximumLightCutSize;
-	unsigned int remaining_capacity		= maximum_cut_size - old_cut_size;
-	bool split_accepted					= slot < old_cut_size && split_flags[slot] != 0 && proposed_splits_before < remaining_capacity;
+	unsigned int maximum_lightcut_size	= LearningToClusterMaximumLightCutSize;
+	unsigned int remaining_capacity		= maximum_lightcut_size - old_lightcut_size;
+	bool split_accepted					= slot < old_lightcut_size && split_flags[slot] != 0 && proposed_splits_before < remaining_capacity;
 	unsigned int accepted_splits_before = hippt::min(proposed_splits_before, remaining_capacity);
 	unsigned int accepted_split_count	= block_reduce<LearningToClusterMaximumLightCutSize>(split_accepted ? 1u : 0u);
 	unsigned int output_slot			= slot + accepted_splits_before;
 
-	if (slot < old_cut_size)
+	if (slot < old_lightcut_size)
 	{
 		if (!split_accepted)
 		{
 			new_node_indices[output_slot] = old_node_indices[slot];
-			store_light_cluster_statistics(new_statistics[output_slot], old_cluster_statistics);
+			store_lightcut_statistics(new_statistics[output_slot], old_cluster_statistics);
 		}
 		else
 		{
@@ -339,10 +341,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 			unsigned int right_child_index			 = left_child_index + 1u;
 			new_node_indices[output_slot]			 = left_child_index;
 			new_node_indices[output_slot + 1u]		 = right_child_index;
-			store_light_cluster_statistics(
-				new_statistics[output_slot],
-				initialize_child_statistics_from_parent_Q(light_tree_sg, left_child_index, right_child_index, representative_context, old_cluster_statistics));
-			store_light_cluster_statistics(
+			store_lightcut_statistics(new_statistics[output_slot], initialize_child_statistics_from_parent_Q(light_tree_sg, left_child_index, right_child_index,
+																											 representative_context, old_cluster_statistics));
+			store_lightcut_statistics(
 				new_statistics[output_slot + 1u],
 				initialize_child_statistics_from_parent_Q(light_tree_sg, right_child_index, left_child_index, representative_context, old_cluster_statistics));
 		}
@@ -350,13 +351,13 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 	__syncthreads();
 
-	unsigned int new_cut_size = old_cut_size + accepted_split_count;
-	if (slot < new_cut_size)
+	unsigned int new_lightcut_size = old_lightcut_size + accepted_split_count;
+	if (slot < new_lightcut_size)
 	{
-		unsigned int offset												= kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		kd_tree.learning_to_cluster.light_cluster_node_indices[offset]	= new_node_indices[slot];
-		IlluminationAwareKDTreeLightClusterStatistics& statistics		= kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		IlluminationAwareKDTreeLightClusterStatistics output_statistics = load_light_cluster_statistics(new_statistics[slot]);
+		unsigned int offset												= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		kd_tree.learning_to_cluster.lightcut_node_indices[offset]		= new_node_indices[slot];
+		IlluminationAwareKDTreeLightClusterStatistics& statistics		= kd_tree.learning_to_cluster.lightcut_statistics[offset];
+		IlluminationAwareKDTreeLightClusterStatistics output_statistics = load_lightcut_statistics(new_statistics[slot]);
 		statistics.estimated_importance_Q								= output_statistics.estimated_importance_Q;
 		statistics.mean													= output_statistics.mean;
 		statistics.M2													= output_statistics.M2;
@@ -367,11 +368,11 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 	if (slot == 0u)
 	{
-		cluster_data.cut_size = new_cut_size;
+		lightcut_data.lightcut_size = new_lightcut_size;
 		if (accepted_split_count > 0u)
 		{
-			cluster_data.last_refinement_iteration = cluster_data.iteration;
-			cluster_data.light_cluster_cdf_dirty   = true;
+			lightcut_data.last_refinement_iteration = lightcut_data.iteration;
+			lightcut_data.lightcut_cdf_dirty		= true;
 		}
 	}
 #else

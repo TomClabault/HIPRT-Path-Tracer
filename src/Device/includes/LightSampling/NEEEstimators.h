@@ -357,19 +357,19 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 																 const IlluminationAwareKDTreeSGShadingContext& shading_context,
 																 const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& triangle_sample)
 {
-	if (triangle_sample.light_clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
+	if (triangle_sample.lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
 		triangle_sample.cluster_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || !(triangle_sample.cluster_probability > 0.0f))
 		return;
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSample training_sample{};
-	training_sample.position					   = position;
-	training_sample.shading_context				   = shading_context;
-	training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
-	training_sample.cluster_probability			   = triangle_sample.cluster_probability;
-	training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
-	training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
-	training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
-	training_sample.valid_for_light_clustering	   = true;
+	training_sample.position					= position;
+	training_sample.shading_context				= shading_context;
+	training_sample.selected_cluster_node_index = triangle_sample.cluster_node_index;
+	training_sample.cluster_probability			= triangle_sample.cluster_probability;
+	training_sample.sampled_lightcut_index		= triangle_sample.lightcut_index;
+	training_sample.selected_lightcut_slot		= triangle_sample.lightcut_slot;
+	training_sample.sampled_lightcut_size		= triangle_sample.lightcut_size_at_sampling;
+	training_sample.valid_for_lightcut			= true;
 
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(training_sample);
 }
@@ -415,10 +415,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
 	learning_to_cluster_training_sample.emissive_triangle_global_index = triangle_sample.emissive_triangle_global_index;
 	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
-	learning_to_cluster_training_sample.sampled_light_clustering_index = triangle_sample.light_clustering_index;
-	learning_to_cluster_training_sample.selected_cluster_slot		   = triangle_sample.cluster_slot;
-	learning_to_cluster_training_sample.sampled_cut_size			   = triangle_sample.cut_size_at_sampling;
-	learning_to_cluster_training_sample.valid_for_light_clustering	   = true;
+	learning_to_cluster_training_sample.sampled_lightcut_index		   = triangle_sample.lightcut_index;
+	learning_to_cluster_training_sample.selected_lightcut_slot		   = triangle_sample.lightcut_slot;
+	learning_to_cluster_training_sample.sampled_lightcut_size		   = triangle_sample.lightcut_size_at_sampling;
+	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
 
 	ColorRGB32F light_source_radiance(0.0f);
 

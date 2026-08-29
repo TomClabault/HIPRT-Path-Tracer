@@ -28,7 +28,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	if (sample_index >= sample_count)
 		return;
 
-	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_light_clustering[sample_index] == 0u)
+	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_lightcut[sample_index] == 0u)
 		return;
 
 	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(kd_tree.learning_to_cluster.training_samples_soa.positions[sample_index]);
@@ -37,23 +37,23 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 
 	unsigned int normal_face =
 		illumination_aware_kd_tree_classify_surface_normal_face(kd_tree.learning_to_cluster.training_samples_soa.shading_normals[sample_index]);
-	unsigned int set_index = kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index = kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	unsigned int clustering_index = kd_tree.learning_to_cluster.normal_clustering_sets[set_index].clustering_indices[normal_face];
-	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
 	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
 
-	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
+	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states + lightcut_index;
 	unsigned int previous_state =
 		hippt::atomic_compare_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT,
 									   IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING);
 	if (previous_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT)
 	{
-		kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index] = sample_shading_context;
+		kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[lightcut_index] = sample_shading_context;
 
 		__threadfence();
 

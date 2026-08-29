@@ -48,10 +48,10 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 			bool use_learning_to_cluster = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_LEARNING_TO_CLUSTER;
 			if (use_learning_to_cluster)
 			{
-				int initial_light_cut_size =
-					static_cast<int>(m_renderer->get_render_data().kd_tree_device.learning_to_cluster.user_settings.initial_light_cut_size);
+				int initial_lightcut_size =
+					static_cast<int>(m_renderer->get_render_data().kd_tree_device.learning_to_cluster.user_settings.initial_lightcut_size);
 
-				m_light_tree_builder_sg.set_second_tree_cut_size(initial_light_cut_size);
+				m_light_tree_builder_sg.set_second_tree_cut_size(initial_lightcut_size);
 			}
 
 			m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangles_vertex_indices,

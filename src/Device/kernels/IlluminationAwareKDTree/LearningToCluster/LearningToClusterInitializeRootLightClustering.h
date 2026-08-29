@@ -29,13 +29,13 @@ IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(Illuminat
 
 	if (slot == 0)
 	{
-		kd_tree.core.nodes[0].light_clustering_normal_set_index	 = 0;
-		*kd_tree.learning_to_cluster.light_clustering_count		 = 0;
-		*kd_tree.learning_to_cluster.normal_clustering_set_count = 1;
+		kd_tree.core.nodes[0].lightcut_normal_set_index		   = 0;
+		*kd_tree.learning_to_cluster.lightcut_count			   = 0;
+		*kd_tree.learning_to_cluster.normal_lightcut_set_count = 1;
 	}
 
 	if (slot < SurfaceNormalFace_Count)
-		kd_tree.learning_to_cluster.normal_clustering_sets[0].clustering_indices[slot] = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
+		kd_tree.learning_to_cluster.normal_lightcut_sets[0].lightcut_indices[slot] = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 }
 
 #endif

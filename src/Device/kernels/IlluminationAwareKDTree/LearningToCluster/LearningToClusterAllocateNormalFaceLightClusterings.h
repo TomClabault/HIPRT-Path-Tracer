@@ -35,27 +35,27 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
 	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
 	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	IlluminationAwareKDTreeNormalClusteringSet& clustering_set = kd_tree.learning_to_cluster.normal_clustering_sets[set_index];
-	unsigned int observation_offset							   = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
+	IlluminationAwareKDTreeNormalClusteringSet& lightcut_set = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index];
+	unsigned int observation_offset							 = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
 
 #ifdef __KERNELCC__
-	__shared__ unsigned int new_clustering_index;
+	__shared__ unsigned int new_lightcut_index;
 	__shared__ bool allocation_valid;
 
 	if (slot == 0)
 	{
-		new_clustering_index = IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX;
-		allocation_valid	 = false;
+		new_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+		allocation_valid   = false;
 
-		if (clustering_set.clustering_indices[normal_face] == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX &&
+		if (lightcut_set.lightcut_indices[normal_face] == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
 			kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] >= MinimumNormalFaceObservations)
 		{
-			new_clustering_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_count, 1u);
-			allocation_valid	 = new_clustering_index < kd_tree.learning_to_cluster.light_clustering_capacity;
+			new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+			allocation_valid   = new_lightcut_index < kd_tree.learning_to_cluster.lightcut_capacity;
 		}
 	}
 
@@ -63,24 +63,24 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 	if (!allocation_valid)
 		return;
 
-	learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, slot);
+	learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, slot);
 	__syncthreads();
 
 	if (slot == 0)
-		clustering_set.clustering_indices[normal_face] = new_clustering_index;
+		lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
 #else
-	if (clustering_set.clustering_indices[normal_face] != IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX ||
+	if (lightcut_set.lightcut_indices[normal_face] != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
 		kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] < MinimumNormalFaceObservations)
 		return;
 
-	unsigned int new_clustering_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.light_clustering_count, 1u);
-	if (new_clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
+	unsigned int new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+	if (new_lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 
-	for (unsigned int cluster_slot = 0; cluster_slot < LearningToClusterMaximumLightCutSize; cluster_slot++)
-		learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, cluster_slot);
+	for (unsigned int lightcut_slot = 0; lightcut_slot < LearningToClusterMaximumLightCutSize; lightcut_slot++)
+		learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, lightcut_slot);
 
-	clustering_set.clustering_indices[normal_face] = new_clustering_index;
+	lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
 #endif
 }
 

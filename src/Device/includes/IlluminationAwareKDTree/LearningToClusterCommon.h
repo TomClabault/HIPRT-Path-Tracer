@@ -9,10 +9,10 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
-HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& cluster_data,
+HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& lightcut_data,
 															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)
 {
-	float growth	 = static_cast<float>(cluster_data.cut_size) / static_cast<float>(settings.initial_light_cut_size);
+	float growth	 = static_cast<float>(lightcut_data.lightcut_size) / static_cast<float>(settings.initial_lightcut_size);
 	float multiplier = hippt::max(growth, 2.0f);
 
 	return static_cast<unsigned int>(ceil(multiplier * static_cast<float>(settings.initial_sampling_budget_n0)));
@@ -25,14 +25,14 @@ HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, c
 	return 1.0f / (settings.learning_rate_beta * hippt::intrin_pow(static_cast<float>(time_step), settings.learning_rate_omega));
 }
 
-HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int clustering_index, unsigned int cluster_node_index)
+HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int lightcut_index, unsigned int cluster_node_index)
 {
-	const IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
+	const IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
+	for (unsigned int slot = 0; slot < lightcut_data.lightcut_size; slot++)
 	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		if (kd_tree.learning_to_cluster.light_cluster_node_indices[offset] == cluster_node_index)
+		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		if (kd_tree.learning_to_cluster.lightcut_node_indices[offset] == cluster_node_index)
 			return static_cast<int>(slot);
 	}
 

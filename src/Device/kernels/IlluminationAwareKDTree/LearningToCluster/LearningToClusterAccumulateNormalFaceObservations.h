@@ -27,15 +27,15 @@ IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(Illumi
 	if (sample_index >= sample_count)
 		return;
 
-	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_light_clustering[sample_index] == 0u)
+	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_lightcut[sample_index] == 0u)
 		return;
 
 	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(kd_tree.learning_to_cluster.training_samples_soa.positions[sample_index]);
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return;
 
-	unsigned int set_index = kd_tree.core.nodes[guiding_node_index].light_clustering_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
+	unsigned int set_index = kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
+	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
 	unsigned int normal_face =

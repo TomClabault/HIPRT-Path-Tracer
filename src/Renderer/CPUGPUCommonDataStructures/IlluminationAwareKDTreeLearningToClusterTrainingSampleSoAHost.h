@@ -51,7 +51,7 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_POSITIONS>();
 		learning_to_cluster_device.training_samples_soa.shading_normals =
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_SHADING_NORMALS>();
-		learning_to_cluster_device.training_samples_soa.valid_for_light_clustering =
+		learning_to_cluster_device.training_samples_soa.valid_for_lightcut =
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING>();
 	}
 

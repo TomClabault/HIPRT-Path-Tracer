@@ -37,7 +37,7 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 struct IlluminationAwareKDTreeLightClusteringData
 {
 	// Current number of active SG nodes in the cut
-	unsigned int cut_size = 0;
+	unsigned int lightcut_size = 0;
 
 	// Current iteration of this lightcut
 	unsigned int iteration = 0;
@@ -49,7 +49,7 @@ struct IlluminationAwareKDTreeLightClusteringData
 	unsigned int Q0_initialized = false;
 
 	// The persistent CDF used to sample the light cut needs to be rebuilt after Q or cut changes
-	unsigned int light_cluster_cdf_dirty = true;
+	unsigned int lightcut_cdf_dirty = true;
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
@@ -70,14 +70,14 @@ struct IlluminationAwareKDTreeSGShadingContext
 
 struct IlluminationAwareKDTreeNormalClusteringSet
 {
-	unsigned int clustering_indices[SurfaceNormalFace_Count];
+	unsigned int lightcut_indices[SurfaceNormalFace_Count];
 };
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
 {
-	float3_t* positions						 = nullptr;
-	float3_t* shading_normals				 = nullptr;
-	unsigned int* valid_for_light_clustering = nullptr;
+	float3_t* positions				 = nullptr;
+	float3_t* shading_normals		 = nullptr;
+	unsigned int* valid_for_lightcut = nullptr;
 };
 
 struct IlluminationAwareKDTreeLearningToClusterDevice
@@ -88,9 +88,9 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	HIPRT_DEVICE void append_learning_to_cluster_training_sample(const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample);
 
-	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int light_clustering_index, unsigned int slot) const
+	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int lightcut_index, unsigned int slot) const
 	{
-		return light_clustering_index * LearningToClusterMaximumLightCutSize + slot;
+		return lightcut_index * LearningToClusterMaximumLightCutSize + slot;
 	}
 
 	HIPRT_DEVICE unsigned int get_normal_face_observation_offset(unsigned int set_index, unsigned int normal_face) const
@@ -105,26 +105,29 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	AtomicType<unsigned int>* training_sample_count = nullptr;
 	unsigned int training_sample_capacity			= 0;
 
-	AtomicType<unsigned int>* light_clustering_count = nullptr;
-	unsigned int light_clustering_capacity			 = 0;
+	AtomicType<unsigned int>* lightcut_count = nullptr;
+	unsigned int lightcut_capacity			 = 0;
 
-	IlluminationAwareKDTreeNormalClusteringSet* normal_clustering_sets = nullptr;
-	AtomicType<unsigned int>* normal_clustering_set_count			   = nullptr;
-	unsigned int normal_clustering_set_capacity						   = 0;
-	AtomicType<unsigned int>* normal_face_observation_counts		   = nullptr;
+	IlluminationAwareKDTreeNormalClusteringSet* normal_lightcut_sets = nullptr;
+	AtomicType<unsigned int>* normal_lightcut_set_count				 = nullptr;
+	unsigned int normal_lightcut_set_capacity						 = 0;
+	AtomicType<unsigned int>* normal_face_observation_counts		 = nullptr;
 
-	unsigned int* initial_light_cut_node_indices  = nullptr;
-	unsigned int effective_initial_light_cut_size = 0;
+	unsigned int* initial_lightcut_node_indices	 = nullptr;
+	unsigned int effective_initial_lightcut_size = 0;
 
-	unsigned int* light_cluster_node_indices								= nullptr;
-	IlluminationAwareKDTreeLightClusterStatistics* light_cluster_statistics = nullptr;
-	unsigned short int* light_cluster_cdfs									= nullptr;
+	unsigned int* lightcut_node_indices								   = nullptr;
+	IlluminationAwareKDTreeLightClusterStatistics* lightcut_statistics = nullptr;
+	unsigned short int* lightcut_cdfs								   = nullptr;
 
-	IlluminationAwareKDTreeLightClusteringData* light_clustering_data = nullptr;
-	AtomicType<unsigned int>* light_cluster_sample_counts			  = nullptr;
+	IlluminationAwareKDTreeLightClusteringData* lightcut_data = nullptr;
+	// Incremented once per sample matched to any slot.
+	// Used by refinement eligibility.
+	// Reset after Q updates, so it is a per-update count, not cumulative.
+	AtomicType<unsigned int>* lightcut_sample_counts = nullptr;
 
-	IlluminationAwareKDTreeSGShadingContext* representative_shading_contexts = nullptr;
-	AtomicType<unsigned int>* representative_shading_context_states			 = nullptr;
+	IlluminationAwareKDTreeSGShadingContext* lightcut_representative_shading_contexts = nullptr;
+	AtomicType<unsigned int>* lightcut_representative_shading_context_states		  = nullptr;
 };
 
 #endif
