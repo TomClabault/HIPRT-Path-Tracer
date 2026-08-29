@@ -1426,15 +1426,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
 				{
 					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 32;
+					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 				}
 				else if (nee_estimator == LSS_LEARNING_TO_CLUSTER)
 				{
 					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 64;
+					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 				}
+				else
+					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(
+						LightTreeSGBuilderOptions::LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2486,7 +2491,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2667,7 +2672,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3748,7 +3753,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4031,7 +4036,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4453,7 +4458,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -6069,7 +6074,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
