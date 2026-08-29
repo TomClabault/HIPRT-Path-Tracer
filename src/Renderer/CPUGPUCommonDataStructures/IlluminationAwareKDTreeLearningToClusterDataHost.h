@@ -9,6 +9,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
+#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost.h"
 
 template <template <typename> typename DataContainer>
@@ -35,6 +36,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_node_indices, lightcut_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_statistics, lightcut_slot_capacity);
+		m_lightcut_batch_statistics.resize(static_cast<unsigned int>(lightcut_slot_capacity));
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_cdfs, lightcut_slot_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_data, lightcut_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_sample_counts, lightcut_capacity);
@@ -52,18 +54,20 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		m_learning_to_cluster_training_sample_count			= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		bool learning_to_cluster_training_samples_soa_freed = m_learning_to_cluster_training_samples_soa.maximum_size() > 0;
 		m_learning_to_cluster_training_samples_soa.free();
-		m_initial_lightcut_node_indices					 = DataContainer<unsigned int>();
-		m_normal_lightcut_sets							 = DataContainer<IlluminationAwareKDTreeNormalClusteringSet>();
-		m_normal_face_observation_counts				 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
-		m_lightcut_node_indices							 = DataContainer<unsigned int>();
-		m_lightcut_statistics							 = DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
+		m_initial_lightcut_node_indices		 = DataContainer<unsigned int>();
+		m_normal_lightcut_sets				 = DataContainer<IlluminationAwareKDTreeNormalClusteringSet>();
+		m_normal_face_observation_counts	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_lightcut_node_indices				 = DataContainer<unsigned int>();
+		m_lightcut_statistics				 = DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
+		bool lightcut_batch_statistics_freed = m_lightcut_batch_statistics.maximum_size() > 0;
+		m_lightcut_batch_statistics.free();
 		m_lightcut_cdfs									 = DataContainer<unsigned short int>();
 		m_lightcut_data									 = DataContainer<IlluminationAwareKDTreeLightClusteringData>();
 		m_lightcut_sample_counts						 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_lightcut_representative_shading_contexts		 = DataContainer<IlluminationAwareKDTreeSGShadingContext>();
 		m_lightcut_representative_shading_context_states = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
-		return lightcut_data_freed || learning_to_cluster_training_samples_soa_freed;
+		return lightcut_data_freed || learning_to_cluster_training_samples_soa_freed || lightcut_batch_statistics_freed;
 	}
 
 	std::size_t maximum_size() const
@@ -82,6 +86,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		kd_tree_device.learning_to_cluster.initial_lightcut_node_indices  = GenericSoAHelpers::get_buffer_data_ptr(m_initial_lightcut_node_indices);
 		kd_tree_device.learning_to_cluster.lightcut_node_indices		  = GenericSoAHelpers::get_buffer_data_ptr(m_lightcut_node_indices);
 		kd_tree_device.learning_to_cluster.lightcut_statistics			  = GenericSoAHelpers::get_buffer_data_ptr(m_lightcut_statistics);
+		kd_tree_device.learning_to_cluster.lightcut_batch_statistics	  = m_lightcut_batch_statistics.to_device();
 		kd_tree_device.learning_to_cluster.lightcut_cdfs				  = GenericSoAHelpers::get_buffer_data_ptr(m_lightcut_cdfs);
 		kd_tree_device.learning_to_cluster.lightcut_data				  = GenericSoAHelpers::get_buffer_data_ptr(m_lightcut_data);
 		kd_tree_device.learning_to_cluster.lightcut_sample_counts		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_lightcut_sample_counts);
@@ -107,6 +112,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_face_observation_counts;
 	DataContainer<unsigned int> m_lightcut_node_indices;
 	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_lightcut_statistics;
+	IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost<DataContainer> m_lightcut_batch_statistics;
 	DataContainer<unsigned short int> m_lightcut_cdfs;
 	DataContainer<IlluminationAwareKDTreeLightClusteringData> m_lightcut_data;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_lightcut_sample_counts;

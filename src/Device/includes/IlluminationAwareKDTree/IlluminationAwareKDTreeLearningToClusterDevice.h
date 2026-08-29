@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
@@ -75,9 +76,11 @@ struct IlluminationAwareKDTreeNormalClusteringSet
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
 {
-	float3_t* positions				 = nullptr;
-	float3_t* shading_normals		 = nullptr;
-	unsigned int* valid_for_lightcut = nullptr;
+	float3_t* positions						= nullptr;
+	float3_t* shading_normals				= nullptr;
+	unsigned int* valid_for_lightcut		= nullptr;
+	unsigned int* replayed_lightcut_indices = nullptr;
+	unsigned int* replayed_lightcut_slots	= nullptr;
 };
 
 struct IlluminationAwareKDTreeLearningToClusterDevice
@@ -118,7 +121,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 
 	unsigned int* lightcut_node_indices								   = nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* lightcut_statistics = nullptr;
-	unsigned short int* lightcut_cdfs								   = nullptr;
+	IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice lightcut_batch_statistics;
+	unsigned short int* lightcut_cdfs = nullptr;
 
 	IlluminationAwareKDTreeLightClusteringData* lightcut_data = nullptr;
 	// Incremented once per sample matched to any slot.

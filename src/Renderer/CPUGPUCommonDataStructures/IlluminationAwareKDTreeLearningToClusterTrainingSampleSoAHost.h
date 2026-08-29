@@ -13,13 +13,16 @@
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostInternal = GenericSoA<DataContainer, float3_t, float3_t, unsigned int>;
+using IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostInternal =
+	GenericSoA<DataContainer, float3_t, float3_t, unsigned int, unsigned int, unsigned int>;
 
 enum IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostBuffers
 {
 	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_POSITIONS,
 	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_SHADING_NORMALS,
-	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING
+	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING,
+	ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_INDICES,
+	ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_SLOTS
 };
 
 template <template <typename> typename DataContainer>
@@ -53,6 +56,10 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_SHADING_NORMALS>();
 		learning_to_cluster_device.training_samples_soa.valid_for_lightcut =
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING>();
+		learning_to_cluster_device.training_samples_soa.replayed_lightcut_indices =
+			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_INDICES>();
+		learning_to_cluster_device.training_samples_soa.replayed_lightcut_slots =
+			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_SLOTS>();
 	}
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostInternal<DataContainer> m_training_samples;
