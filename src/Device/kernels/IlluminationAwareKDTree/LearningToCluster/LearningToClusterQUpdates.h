@@ -32,10 +32,10 @@ HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(IlluminationA
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ReplayLightClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ReplayLightClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 #endif
 {
 #ifdef __KERNELCC__
@@ -52,7 +52,7 @@ IlluminationAwareKDTree_ReplayLightClusterQUpdates(IlluminationAwareKDTreeDevice
 #endif
 
 	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-	unsigned int replayed_sample_count						 = kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index];
+	unsigned int replayed_sample_count								= kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index];
 	if (!cluster_data.Q0_initialized)
 		return;
 
@@ -107,11 +107,11 @@ IlluminationAwareKDTree_ReplayLightClusterQUpdates(IlluminationAwareKDTreeDevice
 #else
 	for (unsigned int cluster_slot = 0; cluster_slot < cluster_data.cut_size; cluster_slot++)
 	{
-		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, cluster_slot);
+		unsigned int offset											  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, cluster_slot);
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
-		float reward_sum										  = 0.0f;
-		float reward_squared_sum								  = 0.0f;
-		unsigned int matching_record_count						  = 0u;
+		float reward_sum											  = 0.0f;
+		float reward_squared_sum									  = 0.0f;
+		unsigned int matching_record_count							  = 0u;
 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{

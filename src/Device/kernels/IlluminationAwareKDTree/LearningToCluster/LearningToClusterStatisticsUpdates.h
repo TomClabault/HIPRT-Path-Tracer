@@ -24,10 +24,10 @@ HIPRT_DEVICE void append_replayed_light_cluster_observation(IlluminationAwareKDT
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ReplayLightClusterStatistics(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ReplayLightClusterStatistics(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 #endif
 {
 #ifdef __KERNELCC__
@@ -80,7 +80,7 @@ IlluminationAwareKDTree_ReplayLightClusterStatistics(IlluminationAwareKDTreeDevi
 	kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index] = 0u;
 	for (slot = 0u; slot < cluster_data.cut_size; slot++)
 	{
-		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		unsigned int offset													   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{

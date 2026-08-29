@@ -9,7 +9,9 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
-HIPRT_DEVICE void initialize_light_clustering_from_initial_cut(IlluminationAwareKDTreeDevice kd_tree, unsigned int clustering_index, unsigned int slot)
+HIPRT_DEVICE void learning_to_cluster_initialize_light_clustering_from_initial_cut(IlluminationAwareKDTreeDevice kd_tree,
+																				   unsigned int clustering_index,
+																				   unsigned int slot)
 {
 	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 

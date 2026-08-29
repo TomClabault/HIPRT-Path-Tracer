@@ -76,7 +76,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 {
 	unsigned int clustering_index = static_cast<unsigned int>(x);
 	if (clustering_index >= kd_tree.learning_to_cluster.light_clustering_capacity)
@@ -86,7 +86,7 @@ inline IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(IlluminationAwareKD
 }
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
 	unsigned int clustering_index		= blockIdx.x;
 	unsigned int slot					= threadIdx.x;

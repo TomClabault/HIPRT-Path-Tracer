@@ -59,25 +59,25 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeRootLightClustering.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeRootLightClustering.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_InitializeRootLightClustering");
+		"IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateNormalFaceObservations");
+		"IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightClusterings.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AllocateNormalFaceLightClusterings");
+		"IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
@@ -91,49 +91,49 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples");
+		"IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeLightClusterQ0.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightClusterQ0.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_InitializeLightClusterQ0");
+		"IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_LIGHT_CLUSTER_Q0_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																										   "/IlluminationAwareKDTree/RefineLightClusterings.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightClusterings.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_RefineLightClusterings");
+		"IlluminationAwareKDTree_LearningToClusterRefineLightClusterings");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REFINE_LIGHT_CLUSTERINGS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayLightClusterStatistics.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ReplayLightClusterStatistics");
+		"IlluminationAwareKDTree_LearningToClusterStatisticsUpdates");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayLightClusterQUpdates.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ReplayLightClusterQUpdates");
+		"IlluminationAwareKDTree_LearningToClusterQUpdates");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_LIGHT_CLUSTER_Q_UPDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/BuildLightClusterSamplingCDFs.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightClusterSamplingCDFs.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_BuildLightClusterSamplingCDFs");
+		"IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs");
 	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
@@ -155,9 +155,9 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightClusteringStatistics.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics");
+		"IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																																		  {});
 

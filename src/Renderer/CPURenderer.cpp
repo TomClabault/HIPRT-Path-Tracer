@@ -55,23 +55,23 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/AccumulateLightClusteringTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/AccumulateNormalFaceObservations.h"
-#include "Device/kernels/IlluminationAwareKDTree/AllocateNormalFaceLightClusterings.h"
-#include "Device/kernels/IlluminationAwareKDTree/BuildLightClusterSamplingCDFs.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightClusterings.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightClusterSamplingCDFs.h"
 #include "Device/kernels/IlluminationAwareKDTree/BuildNISMLCaches.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeLightClusterQ0.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeRootLightClustering.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightClusterQ0.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeRootLightClustering.h"
 #include "Device/kernels/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h"
 #include "Device/kernels/IlluminationAwareKDTree/PromoteGuidingCells.h"
-#include "Device/kernels/IlluminationAwareKDTree/ReplayLightClusterQUpdates.h"
-#include "Device/kernels/IlluminationAwareKDTree/ReplayLightClusterStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/RefineLightClusterings.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
-#include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeAndLightClusteringStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightClusteringStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetTree.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
@@ -772,7 +772,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 	unsigned int light_clustering_count = *kd_tree_device.learning_to_cluster.light_clustering_count;
 	unsigned int reset_thread_count		= std::max(node_count, light_clustering_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
-		IlluminationAwareKDTree_ResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
+		IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
@@ -792,7 +792,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		{
 			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
-				IlluminationAwareKDTree_InitializeRootLightClustering(kd_tree_device, light_tree_sg, slot);
+				IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(kd_tree_device, light_tree_sg, slot);
 		}
 	}
 #else
@@ -991,30 +991,30 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster.training_sample_count->load();
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
-		IlluminationAwareKDTree_AccumulateNormalFaceObservations(kd_tree_device, sample_index);
+		IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(kd_tree_device, sample_index);
 
 	unsigned int active_guiding_count = kd_tree_device.core.active_guiding_node_count->load();
 	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 		 active_guiding_node_face_index++)
-		IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(kd_tree_device, active_guiding_node_face_index);
+		IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(kd_tree_device, active_guiding_node_face_index);
 
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
-		IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(kd_tree_device, sample_index);
+		IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(kd_tree_device, sample_index);
 
 	unsigned int light_clustering_count = kd_tree_device.learning_to_cluster.light_clustering_count->load();
 	active_guiding_count				= kd_tree_device.core.active_guiding_node_count->load();
 	LightTreeSGDevice light_tree_sg		= m_render_data.light_tree_sg;
 	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_InitializeLightClusterQ0(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+		IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_ReplayLightClusterStatistics(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 		 active_guiding_node_face_index++)
-		IlluminationAwareKDTree_RefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+		IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
 	for (unsigned int clustering_index = 0; clustering_index < light_clustering_count; clustering_index++)
-		IlluminationAwareKDTree_ReplayLightClusterQUpdates(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+		IlluminationAwareKDTree_LearningToClusterQUpdates(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 	for (unsigned int clustering_index = 0; clustering_index < kd_tree_device.learning_to_cluster.light_clustering_capacity; clustering_index++)
-		IlluminationAwareKDTree_BuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
+		IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(clustering_index));
 #endif
 #endif
 }

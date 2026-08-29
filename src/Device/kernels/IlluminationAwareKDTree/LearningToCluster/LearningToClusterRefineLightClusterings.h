@@ -250,7 +250,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_RefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
 HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree,
 											  const LightTreeSGDevice& light_tree_sg,
@@ -381,7 +381,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_RefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
 	refine_light_clustering_gpu(kd_tree, light_tree_sg, blockIdx.x);
 }

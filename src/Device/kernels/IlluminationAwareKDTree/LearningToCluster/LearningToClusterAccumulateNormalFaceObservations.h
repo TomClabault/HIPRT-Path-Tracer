@@ -11,10 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_AccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree, int x)
+inline IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_AccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree)
+IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree)
 #endif
 {
 #ifdef __KERNELCC__

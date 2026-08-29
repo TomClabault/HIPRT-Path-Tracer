@@ -12,10 +12,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwareKDTreeDevice kd_tree, int x)
+inline IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationAwareKDTreeDevice kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwareKDTreeDevice kd_tree)
+IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationAwareKDTreeDevice kd_tree)
 #endif
 {
 #ifdef __KERNELCC__

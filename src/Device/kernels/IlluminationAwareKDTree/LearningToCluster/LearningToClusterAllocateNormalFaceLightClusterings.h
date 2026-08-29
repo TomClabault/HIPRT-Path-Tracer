@@ -8,16 +8,16 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
-#include "Device/kernels/IlluminationAwareKDTree/InitializeLightClustering.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightClustering.h"
 
 #define MinimumNormalFaceObservations 1
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree, int x)
+inline IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree)
+IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree)
 #endif
 {
 #ifdef __KERNELCC__
@@ -63,7 +63,7 @@ IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(IlluminationAwareKDTr
 	if (!allocation_valid)
 		return;
 
-	initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, slot);
+	learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, slot);
 	__syncthreads();
 
 	if (slot == 0)
@@ -78,7 +78,7 @@ IlluminationAwareKDTree_AllocateNormalFaceLightClusterings(IlluminationAwareKDTr
 		return;
 
 	for (unsigned int cluster_slot = 0; cluster_slot < LearningToClusterMaximumLightCutSize; cluster_slot++)
-		initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, cluster_slot);
+		learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_clustering_index, cluster_slot);
 
 	clustering_set.clustering_indices[normal_face] = new_clustering_index;
 #endif
