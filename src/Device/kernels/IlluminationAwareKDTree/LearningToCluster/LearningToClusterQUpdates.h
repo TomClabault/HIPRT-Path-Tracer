@@ -80,25 +80,12 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 			if (sample_slot != static_cast<int>(slot))
 				continue;
 
-			if (kd_tree.learning_to_cluster.user_settings.aggregate_q_updates)
-			{
-				reward_sum += sample.q_reward;
-				reward_squared_sum += sample.q_reward * sample.q_reward;
-				matching_record_count++;
-			}
-			else
-			{
-#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
-				statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
-																learning_rate * sample.q_reward * sample.q_reward);
-#else
-				statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * sample.q_reward;
-#endif
-			}
+			reward_sum += sample.q_reward;
+			reward_squared_sum += sample.q_reward * sample.q_reward;
+			matching_record_count++;
 		}
 
-		if (kd_tree.learning_to_cluster.user_settings.aggregate_q_updates)
-			apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
+		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
 	}
 
 	__syncthreads();
@@ -124,25 +111,12 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 			if (sample_slot != static_cast<int>(lightcut_slot))
 				continue;
 
-			if (kd_tree.learning_to_cluster.user_settings.aggregate_q_updates)
-			{
-				reward_sum += sample.q_reward;
-				reward_squared_sum += sample.q_reward * sample.q_reward;
-				matching_record_count++;
-			}
-			else
-			{
-#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
-				statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
-																learning_rate * sample.q_reward * sample.q_reward);
-#else
-				statistics.estimated_importance_Q = history_weight * statistics.estimated_importance_Q + learning_rate * sample.q_reward;
-#endif
-			}
+			reward_sum += sample.q_reward;
+			reward_squared_sum += sample.q_reward * sample.q_reward;
+			matching_record_count++;
 		}
 
-		if (kd_tree.learning_to_cluster.user_settings.aggregate_q_updates)
-			apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
+		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
 	}
 #endif
 

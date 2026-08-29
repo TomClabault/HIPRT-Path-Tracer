@@ -19,8 +19,6 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	unsigned int refinement_stopping_gamma = 128;
 
 	bool enable_lightcut_refinement = true;
-	// Diagnostic switch for applying one batch-averaged Q update instead of one update per pending record.
-	bool aggregate_q_updates = true;
 };
 
 #endif
