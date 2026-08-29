@@ -83,6 +83,81 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 #endif
 }
 
+HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face(const HIPRTRenderData& render_data,
+	unsigned int pixel_index,
+	unsigned int& out_guiding_cell_index,
+	unsigned int& out_normal_face)
+{
+	out_guiding_cell_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	out_normal_face = 0u;
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
+		return false;
+
+	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+	unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return false;
+
+	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	out_guiding_cell_index = guiding_cell_index;
+	out_normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+	return true;
+}
+
+HIPRT_DEVICE unsigned int path_tracing_get_learning_to_cluster_cell_normal_face_color_seed(unsigned int guiding_cell_index, unsigned int normal_face)
+{
+	return guiding_cell_index * SurfaceNormalFace_Count + normal_face;
+}
+
+HIPRT_DEVICE bool path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_outline(const HIPRTRenderData& render_data,
+	unsigned int pixel_index,
+	unsigned int guiding_cell_index,
+	unsigned int normal_face)
+{
+	unsigned int image_width = render_data.render_settings.render_resolution.x;
+	unsigned int image_height = render_data.render_settings.render_resolution.y;
+	unsigned int pixel_x = pixel_index % image_width;
+	unsigned int pixel_y = pixel_index / image_width;
+
+	if (pixel_x > 0u)
+	{
+		unsigned int neighbor_guiding_cell_index;
+		unsigned int neighbor_normal_face;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index - 1u, neighbor_guiding_cell_index, neighbor_normal_face) &&
+			(neighbor_guiding_cell_index != guiding_cell_index || neighbor_normal_face != normal_face))
+			return true;
+	}
+
+	if (pixel_x + 1u < image_width)
+	{
+		unsigned int neighbor_guiding_cell_index;
+		unsigned int neighbor_normal_face;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index + 1u, neighbor_guiding_cell_index, neighbor_normal_face) &&
+			(neighbor_guiding_cell_index != guiding_cell_index || neighbor_normal_face != normal_face))
+			return true;
+	}
+
+	if (pixel_y > 0u)
+	{
+		unsigned int neighbor_guiding_cell_index;
+		unsigned int neighbor_normal_face;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index - image_width, neighbor_guiding_cell_index, neighbor_normal_face) &&
+			(neighbor_guiding_cell_index != guiding_cell_index || neighbor_normal_face != normal_face))
+			return true;
+	}
+
+	if (pixel_y + 1u < image_height)
+	{
+		unsigned int neighbor_guiding_cell_index;
+		unsigned int neighbor_normal_face;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index + image_width, neighbor_guiding_cell_index, neighbor_normal_face) &&
+			(neighbor_guiding_cell_index != guiding_cell_index || neighbor_normal_face != normal_face))
+			return true;
+	}
+
+	return false;
+}
+
 HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
 {
 #if NISMLDebugMode != NISML_DEBUG_MODE_ENTROPY
@@ -491,6 +566,19 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	float learning_to_cluster_debug_value;
 	if (path_tracing_compute_learning_to_cluster_cut_size_debug_value(render_data, pixel_index, learning_to_cluster_debug_value))
 		out_debug_color = map_0_1_to_heatmap_color_by_index<LearningToClusterDebugModeHeatmapIndex>(learning_to_cluster_debug_value) *
+						  (render_data.render_settings.sample_number + 1);
+#elif LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_SOLID
+	unsigned int guiding_cell_index;
+	unsigned int normal_face;
+	if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index, guiding_cell_index, normal_face))
+		out_debug_color = ColorRGB32F::random_color(path_tracing_get_learning_to_cluster_cell_normal_face_color_seed(guiding_cell_index, normal_face)) *
+						  (render_data.render_settings.sample_number + 1);
+#elif LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_OUTLINE
+	unsigned int guiding_cell_index;
+	unsigned int normal_face;
+	if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index, guiding_cell_index, normal_face) &&
+		path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_outline(render_data, pixel_index, guiding_cell_index, normal_face))
+		out_debug_color = ColorRGB32F::random_color(path_tracing_get_learning_to_cluster_cell_normal_face_color_seed(guiding_cell_index, normal_face)) *
 						  (render_data.render_settings.sample_number + 1);
 #endif // LearningToClusterDebugMode
 

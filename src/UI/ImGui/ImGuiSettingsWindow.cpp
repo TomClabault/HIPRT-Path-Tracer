@@ -4432,10 +4432,15 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			ImGui::SeparatorText("Debug");
 			ImGui::PopStyleVar();
 
-			const char* debug_view_items[]	  = { "- No debug", "- Light-cut size heatmap" };
-			const char* debug_view_tooltips[] = { "Disable the learning-to-cluster debug view.",
-												  "Displays the active light-cut size for each visible KD-tree cell and surface-normal bucket. The heatmap "
-												  "maps smaller cuts to its first color and larger cuts to its last color." };
+			const char* debug_view_items[]	  = { "- No debug", "- Light-cut size heatmap", "- Cell/normal-face colors solid",
+												  "- Cell/normal-face colors outlines" };
+			const char* debug_view_tooltips[] = {
+				"Disable the learning-to-cluster debug view.",
+				"Displays the active light-cut size for each visible KD-tree cell and surface-normal bucket. The heatmap maps smaller cuts to its first "
+				"color and larger cuts to its last color.",
+				"Displays one deterministic random color for each visible KD-tree cell and surface-normal bucket.",
+				"Displays outlines where neighboring pixels belong to different KD-tree cells or surface-normal buckets."
+			};
 			if (ImGuiRenderer::ComboWithTooltips(
 					"Debug view", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE),
 					debug_view_items, IM_ARRAYSIZE(debug_view_items), debug_view_tooltips))
