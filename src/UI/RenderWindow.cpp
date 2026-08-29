@@ -62,6 +62,9 @@ extern ImGuiLogger g_imgui_logger;
 //	- Online Bayesian regression for the optimal cluster sampling probabilities assuming that the subtree sampler isn't optimal
 //	- Use a hash grid for normal aware stuff instead of dense 6-face, same as NISML
 //	- When to stop learning automatically?
+//	- Rename clustering to lightcut: IlluminationAwareKDTreeLightClusteringData ---> IlluminationAwareKDTreeLightcutData
+//	- How to refine more aggressively? Because now that we are learning from all samples, waiting fir lightcut refinement is actually the bottleneck, we need to
+//		refine more aggressively to learn better & faster
 //	- Is it worth it to only use a few SG lobes for descending the subtree? It's going to be much faster and maybe we don't need the precision of many lobes at
 //		that point? Maybe variance will be fine while being much faster?
 //		------> Yes it's much better
