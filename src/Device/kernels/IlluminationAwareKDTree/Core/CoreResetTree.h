@@ -12,15 +12,15 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-										 const float3_t scene_bounds_minimum,
-										 const float3_t scene_bounds_maximum,
-										 unsigned int reset_index)
+inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+											 const float3_t scene_bounds_minimum,
+											 const float3_t scene_bounds_maximum,
+											 unsigned int reset_index)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
-										 const float3 scene_bounds_minimum,
-										 const float3 scene_bounds_maximum)
+inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
+											 const float3 scene_bounds_minimum,
+											 const float3 scene_bounds_maximum)
 #endif
 {
 #ifdef __KERNELCC__

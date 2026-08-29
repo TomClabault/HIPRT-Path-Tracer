@@ -11,10 +11,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
+inline IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ReplayTrainingSamplesKernel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
+IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
 #endif
 {
 #ifdef __KERNELCC__

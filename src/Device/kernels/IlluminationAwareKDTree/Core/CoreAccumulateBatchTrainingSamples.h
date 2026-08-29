@@ -11,9 +11,9 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, int x)
+inline IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, int x)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_AccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device)
+GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device)
 #endif
 {
 #ifdef __KERNELCC__

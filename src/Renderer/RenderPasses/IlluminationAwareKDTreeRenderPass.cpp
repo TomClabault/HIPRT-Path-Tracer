@@ -52,8 +52,9 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetTree.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_ResetTree");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
+																							 "/IlluminationAwareKDTree/Core/CoreResetTree.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_CoreResetTree");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_ROOT_LIGHT_CLUSTERING_KERNEL_ID] =
@@ -83,9 +84,9 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchTrainingSamples.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreAccumulateBatchTrainingSamples.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateBatchTrainingSamples");
+		"IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_KERNEL_ID] =
@@ -139,17 +140,17 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/AccumulateBatchStatisticsIntoHistory.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreAccumulateBatchStatisticsIntoHistory.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_AccumulateBatchStatisticsIntoHistory");
+		"IlluminationAwareKDTree_CoreAccumulateBatchStatisticsIntoHistory");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreResetBatchKDTreeStatistics.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ResetBatchKDTreeStatistics");
+		"IlluminationAwareKDTree_CoreResetBatchKDTreeStatistics");
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_STATISTICS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_BATCH_KD_TREE_AND_LIGHT_CLUSTERING_STATISTICS_KERNEL_ID] =
@@ -164,40 +165,40 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreExpandOneLookaheadLevel.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ExpandOneLookaheadLevel");
+		"IlluminationAwareKDTree_CoreExpandOneLookaheadLevel");
 	m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreReplayTrainingSamples.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_ReplayTrainingSamplesKernel");
+		"IlluminationAwareKDTree_CoreReplayTrainingSamples");
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreInitializeCreatedNodeHistory.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_InitializeCreatedNodeHistoryKernel");
+		"IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory");
 	m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/MarkGuidingCellsForSplitting.h");
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreMarkGuidingCellsForSplitting.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTreeDevice_MarkGuidingCellsForSplitting");
+		"IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting");
 	m_kernels[IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																										"/IlluminationAwareKDTree/PromoteGuidingCells.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_PromoteGuidingCells");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CorePromoteGuidingCells.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_CorePromoteGuidingCells");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID] =
