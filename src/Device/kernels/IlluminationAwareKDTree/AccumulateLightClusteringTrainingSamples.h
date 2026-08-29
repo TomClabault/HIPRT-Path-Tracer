@@ -45,24 +45,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 	if (clustering_index == IlluminationAwareKDTreeNode::INVALID_LIGHT_CLUSTERING_INDEX)
 		return;
 
-	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
-
-	IlluminationAwareKDTreeLightClusteringData& cluster_data = kd_tree.learning_to_cluster.light_clustering_data[clustering_index];
-
-	unsigned int selected_slot = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	// TODO we should just store the cut not slot in sample in the future instead of looping like that
-	for (unsigned int slot = 0; slot < cluster_data.cut_size; slot++)
-	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
-		if (kd_tree.learning_to_cluster.light_cluster_node_indices[offset] == sample.selected_cluster_node_index)
-		{
-			selected_slot = slot;
-			break;
-		}
-	}
-
-	if (selected_slot == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return;
+	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.representative_shading_context_states + clustering_index;
 	unsigned int previous_state =
@@ -70,7 +53,7 @@ IlluminationAwareKDTree_AccumulateLightClusteringTrainingSamples(IlluminationAwa
 									   IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING);
 	if (previous_state == IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT)
 	{
-		kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index] = sample.shading_context;
+		kd_tree.learning_to_cluster.representative_shading_contexts[clustering_index] = sample_shading_context;
 
 		__threadfence();
 
