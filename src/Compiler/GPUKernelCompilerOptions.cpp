@@ -119,7 +119,6 @@ const std::string GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT = "LightT
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT = "IlluminationAwareKDTreeMaximumLookaheadLevelCount";
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE = "LearningToClusterMaximumLightCutSize";
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER = "LearningToClusterQ0UseTotalPower";
-const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q = "LearningToClusterEstimateSecondMomentQ";
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE = "LearningToClusterDebugMode";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE = "IlluminationAwareKDTreeDebugMode";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS = "IlluminationAwareKDTreeDebugRepresentativePoints";
@@ -263,7 +262,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT,
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE,
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER,
-	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q,
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
@@ -414,7 +412,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 		std::make_shared<int>(LearningToClusterMaximumLightCutSize);
 	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER] =
 		std::make_shared<int>(LearningToClusterQ0UseTotalPower);
-	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q] = std::make_shared<int>(LearningToClusterEstimateSecondMomentQ);
 	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE] = std::make_shared<int>(LearningToClusterDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE] = std::make_shared<int>(IlluminationAwareKDTreeDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS] =

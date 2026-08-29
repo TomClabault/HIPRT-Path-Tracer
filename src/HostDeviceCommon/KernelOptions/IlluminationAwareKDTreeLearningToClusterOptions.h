@@ -35,14 +35,9 @@
 #define LearningToClusterQ0UseTotalPower KERNEL_OPTION_FALSE
 
 /**
- * Estimate the second moment of the contribution of clusters for Q values for learning to cluster if KERNEL_OPTION_TRUE (which is the true variance-optimal
- * probability to use for sampling clusters according to [Bayesian online regression for adaptive direct illumination sampling, Vevoda et al., 2018].
- *
- * Only estimates the average contribution of clusters directly if KERNEL_OPTION_FALSE.
- *
- * In practice though the second moment estimation has higher variance...
+ * Q values estimate the average contribution of clusters directly. The second moment estimator is intentionally disabled because it has higher variance in
+ * practice.
  */
-#define LearningToClusterEstimateSecondMomentQ KERNEL_OPTION_FALSE
 
 /**
  * Debug view for learning to cluster.

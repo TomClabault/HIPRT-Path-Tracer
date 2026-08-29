@@ -11,23 +11,14 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/ReplayLightClusterTrainingSamples.h"
 
-HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(IlluminationAwareKDTreeLightClusterStatistics& statistics,
-																   float learning_rate,
-																   float history_weight,
-																   float reward_sum,
-																   float reward_squared_sum,
-																   unsigned int matching_record_count)
+HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(
+	IlluminationAwareKDTreeLightClusterStatistics& statistics, float learning_rate, float history_weight, float reward_sum, unsigned int matching_record_count)
 {
 	if (matching_record_count == 0u)
 		return;
 
-#if LearningToClusterEstimateSecondMomentQ == KERNEL_OPTION_TRUE
-	statistics.estimated_importance_Q = hippt::sqrt(history_weight * statistics.estimated_importance_Q * statistics.estimated_importance_Q +
-													learning_rate * reward_squared_sum / static_cast<float>(matching_record_count));
-#else
 	statistics.estimated_importance_Q =
 		history_weight * statistics.estimated_importance_Q + learning_rate * reward_sum / static_cast<float>(matching_record_count);
-#endif
 }
 
 #ifndef __KERNELCC__
@@ -66,7 +57,6 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		float reward_sum										  = 0.0f;
-		float reward_squared_sum								  = 0.0f;
 		unsigned int matching_record_count						  = 0u;
 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
@@ -81,11 +71,10 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 				continue;
 
 			reward_sum += sample.q_reward;
-			reward_squared_sum += sample.q_reward * sample.q_reward;
 			matching_record_count++;
 		}
 
-		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
+		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, matching_record_count);
 	}
 
 	__syncthreads();
@@ -97,7 +86,6 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, lightcut_slot);
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		float reward_sum										  = 0.0f;
-		float reward_squared_sum								  = 0.0f;
 		unsigned int matching_record_count						  = 0u;
 
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
@@ -112,11 +100,10 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 				continue;
 
 			reward_sum += sample.q_reward;
-			reward_squared_sum += sample.q_reward * sample.q_reward;
 			matching_record_count++;
 		}
 
-		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, reward_squared_sum, matching_record_count);
+		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, matching_record_count);
 	}
 #endif
 

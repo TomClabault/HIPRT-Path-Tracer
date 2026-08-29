@@ -4334,25 +4334,6 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("Enable adaptive refinement of the light cut after its initial construction.");
 
-			ImGui::Text("Q probabilities target");
-			int q_target = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q) == KERNEL_OPTION_TRUE;
-			bool q_target_changed = false;
-			q_target_changed |= ImGui::RadioButton("E[L_c]", &q_target, 0);
-			ImGui::SameLine();
-			q_target_changed |= ImGui::RadioButton("E[L_c^2]", &q_target, 1);
-			if (q_target_changed)
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_ESTIMATE_SECOND_MOMENT_Q,
-													   q_target == 1 ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("E[L_c^2] estimates the second moment of the contribution of clusters for Q sampling probabilites (which is the "
-											"true variance-optimal probability to use for sampling clusters according to [Bayesian online regression for "
-											"adaptive direct illumination sampling, Vevoda et al., 2018].\n\n"
-											"Only estimates the average contribution of clusters directly if E[L_c]");
-
 			if (ImGui::SliderInt("Per-cluster sampling budget", &render_data.kd_tree_device.learning_to_cluster.user_settings.initial_sampling_budget_n0, 4,
 								 128))
 				m_render_window->set_render_dirty(true);
