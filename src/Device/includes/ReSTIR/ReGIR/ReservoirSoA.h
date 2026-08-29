@@ -11,7 +11,7 @@
 #ifndef __KERNELCC__
 template <template <typename> typename DataContainer>
 struct ReGIRHashGridSoAHost;
-#endif // #ifndef __KERNELCC__
+#endif
 
 struct ReGIRSampleSoADevice
 {

@@ -8,7 +8,7 @@
 
 #ifndef __KERNELCC__
 #include <string>
-#endif // #ifndef __KERNELCC__
+#endif
 
 #include "HostDeviceCommon/BSDFsData.h"
 

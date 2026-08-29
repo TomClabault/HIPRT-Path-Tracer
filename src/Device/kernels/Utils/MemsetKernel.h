@@ -12,7 +12,7 @@
 // Just so the compiler and intellisense are happy
 #define DATA_TYPE float
 #define VALUE 0.0f
-#endif // #ifndef __KERNELCC__
+#endif
 
 GLOBAL_KERNEL_SIGNATURE(void) Memset(DATA_TYPE* buffer, unsigned int size)
 {

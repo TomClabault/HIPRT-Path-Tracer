@@ -12,7 +12,7 @@
 
 #ifndef __KERNELCC__
 #include <array>
-#endif // #ifndef __KERNELCC__
+#endif
 
 /**
  * Reference:
@@ -243,9 +243,9 @@ struct NestedDielectricsInteriorStack
 
 #ifdef __KERNELCC__
 	StackPriorityEntry stack_entries[NestedDielectricsStackSize];
-#else // #ifdef __KERNELCC__
+#else
 	std::array<StackPriorityEntry, NestedDielectricsStackSize> stack_entries;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	static constexpr unsigned int MAX_MATERIAL_INDEX = StackPriorityEntry::MATERIAL_INDEX_MAXIMUM;
 

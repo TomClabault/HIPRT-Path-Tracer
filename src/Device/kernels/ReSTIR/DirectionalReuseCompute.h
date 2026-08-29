@@ -59,9 +59,9 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 
 #ifdef __KERNELCC__
 	constexpr int RESTIR_VARIANT = ComputingSpatialDirectionalReuseReSTIRVariant;
-#else // #ifdef __KERNELCC__
+#else
 	constexpr int RESTIR_VARIANT = ReSTIRVariant;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<RESTIR_VARIANT>(render_data);
 

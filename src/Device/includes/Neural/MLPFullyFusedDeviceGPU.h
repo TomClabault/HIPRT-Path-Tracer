@@ -10,7 +10,7 @@
 
 #ifndef NISML_HAS_WMMA
 #define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
-#endif // #ifndef NISML_HAS_WMMA
+#endif
 
 #include "HostDeviceCommon/Neural/NISMLTrainProfiling.h"
 
@@ -273,7 +273,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 #if NISML_HAS_WMMA
 																,
 																NISMLTrainProfileRecord* profile_record
-#endif // #if NISML_HAS_WMMA
+#endif
 	) const
 	{
 		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
@@ -522,7 +522,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 #if NISML_HAS_WMMA
 										   ,
 										   NISMLTrainProfileRecord* profile_record
-#endif // #if NISML_HAS_WMMA
+#endif
 	) const
 	{
 		backpropagation_wmma_from_output_gradient<input_gradient_count>(train_activations_global, sample_offset, activations_buffer, errors_buffer,
@@ -531,7 +531,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 #if NISML_HAS_WMMA
 																		,
 																		profile_record
-#endif // #if NISML_HAS_WMMA
+#endif
 		);
 	}
 };

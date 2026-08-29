@@ -130,9 +130,9 @@ struct GMoNRadixSortHistogram
 
 #if GMoNSortRadixSize == 1
 	unsigned int histogram0 = 0;
-#elif GMoNSortRadixSize == 2 // #if GMoNSortRadixSize == 1
+#elif GMoNSortRadixSize == 2
 	unsigned int histogram0 = 0;
-#elif GMoNSortRadixSize == 4 // #if GMoNSortRadixSize == 1
+#elif GMoNSortRadixSize == 4
 	unsigned int histogram0 = 0, histogram1 = 0, histogram2 = 0;
 #endif // #if GMoNSortRadixSize == 1
 };

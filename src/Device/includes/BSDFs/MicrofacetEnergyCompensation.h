@@ -38,9 +38,9 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	const void* GGX_directional_albedo_texture_pointer = nullptr;
 #ifdef __KERNELCC__
 	GGX_directional_albedo_texture_pointer = &render_data.bsdfs_data.GGX_conductor_directional_albedo;
-#else // #ifdef __KERNELCC__
+#else
 	GGX_directional_albedo_texture_pointer = render_data.bsdfs_data.GGX_conductor_directional_albedo;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	// Reading the precomputed directional albedo from the texture
 	float2_t uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
@@ -57,7 +57,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
 	ColorRGB32F fresnel_compensation_term = F0;
-#else // #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
+#else
 	// 1.0f F so that the fresnel compensation has no effect
 	ColorRGB32F fresnel_compensation_term = ColorRGB32F(1.0f);
 #endif // #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE

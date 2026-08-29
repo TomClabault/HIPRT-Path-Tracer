@@ -35,7 +35,7 @@
 
 #ifndef __CUDACC__
 inline void __syncwarp(unsigned int mask) {}
-#endif // #ifndef __CUDACC__
+#endif
 #else // #ifdef __KERNELCC__
 
 struct dummyVec3
@@ -81,9 +81,9 @@ inline unsigned int __ballot()
 
 #if defined(__KERNELCC__) // GPU
 #define GPU_CPU_ALIGN(n) __align__(n)
-#elif defined(__GNUC__) // GCC // #if defined(__KERNELCC__)
+#elif defined(__GNUC__) // GCC
 #define GPU_CPU_ALIGN(n) __attribute__((aligned(n)))
-#elif defined(_MSC_VER) // MSVC // #if defined(__KERNELCC__)
+#elif defined(_MSC_VER) // MSVC
 #define GPU_CPU_ALIGN(n) __declspec(align(n))
 #else // #if defined(__KERNELCC__)
 #error "Please provide a definition for GPU_CPU_ALIGN macro for your host compiler!"

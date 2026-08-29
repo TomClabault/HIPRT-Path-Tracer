@@ -43,7 +43,7 @@ HIPRT_DEVICE static bool check_for_negative_color(ColorRGB32F ray_color, int x, 
 	{
 #ifndef __KERNELCC__
 		std::cout << "Negative color at [" << x << ", " << y << "], sample " << sample << std::endl;
-#endif // #ifndef __KERNELCC__
+#endif
 
 		return true;
 	}
@@ -68,7 +68,7 @@ HIPRT_DEVICE static bool check_for_nan(ColorRGB32F ray_color, int x, int y, int 
 #ifndef __KERNELCC__
 		std::lock_guard<std::mutex> logging_lock(g_mutex);
 		std::cout << "NaN/INF at [" << x << ", " << y << "], sample" << sample << std::endl;
-#endif // #ifndef __KERNELCC__
+#endif
 		return true;
 	}
 
@@ -82,7 +82,7 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorR
 	{
 #ifdef __KERNELCC__
 		return true;
-#endif // #ifdef __KERNELCC__
+#endif
 	}
 
 	bool valid = true;
@@ -94,7 +94,7 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorR
 	{
 #ifndef __KERNELCC__
 		Debug::debugbreak();
-#endif // #ifndef __KERNELCC__
+#endif
 
 		if (render_data.render_settings.display_NaNs && x >= 0 && x < render_data.render_settings.render_resolution.x && y >= 0 &&
 			y < render_data.render_settings.render_resolution.y)

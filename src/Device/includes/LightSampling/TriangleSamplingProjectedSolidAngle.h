@@ -42,7 +42,7 @@ struct projected_solid_angle_triangle_t
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// LTC lobe sampled during the preparation of the projected solid angle triangle
 	LTCLobe ltc_lobe;
-#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#endif
 
 	// Utilitary functions that I found to be faster than indexing in arrays
 	// of float2_t
@@ -642,7 +642,7 @@ prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(const 
 	projected_solid_angle_triangle_t prepared_triangle = prepare_projected_solid_angle_triangle_sampling(clipped_vertex_count, vertices_local_space);
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	prepared_triangle.ltc_lobe = ltc_lobe;
-#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#endif
 
 	return prepared_triangle;
 }

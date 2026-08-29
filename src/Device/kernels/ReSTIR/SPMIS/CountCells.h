@@ -34,7 +34,7 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 {
 #ifdef __KERNELCC__
 	const uint32_t linear_pixel_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (linear_pixel_index >= size)
 		return;

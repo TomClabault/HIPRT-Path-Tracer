@@ -16,6 +16,6 @@
 #ifndef __KERNELCC__
 #define LearningToClusterDebugModeHeatmapIndex HEATMAP_INDEX_BLUE_GREEN_RED
 #define NISMLDebugModeHeatmapIndex			   HEATMAP_INDEX_BLUE_GREEN_RED
-#endif // #ifndef __KERNELCC__
+#endif
 
 #endif // HOST_DEVICE_COMMON_KERNEL_OPTIONS_HEATMAP_OPTIONS_H // #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_HEATMAP_OPTIONS_H

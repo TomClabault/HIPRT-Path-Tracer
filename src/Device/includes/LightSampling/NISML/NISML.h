@@ -39,7 +39,7 @@ HIPRT_DEVICE bool append_nisml_query(HIPRTRenderData& render_data,
 {
 #if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
 	return false;
-#endif // #if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
+#endif
 
 	if (!ray_payload.material.can_do_light_sampling())
 		return false;
@@ -168,9 +168,9 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 	constexpr unsigned int invalid_node_index = 0xFFFFFFFF;
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
@@ -394,9 +394,9 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
@@ -455,9 +455,9 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,
@@ -525,9 +525,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 	float cluster_log_baseline_weights[NISML_MAX_CLUSTER_COUNT];
 	build_nisml_log_baseline_weights(render_data, neural_light_sampling, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y,

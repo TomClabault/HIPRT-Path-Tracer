@@ -14,14 +14,14 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TraceTest(HIPRTRenderData render_data, int2_t res)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2_t res, int x, int y)
-#endif // #ifdef __KERNELCC__
+#endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif // #ifdef __KERNELCC__
+#endif
 	if (x >= res.x || y >= res.y)
 		return;
 

@@ -56,7 +56,7 @@ struct solid_angle_triangle_t
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// LTC lobe sampled during the preparation of the solid angle triangle
 	LTCLobe ltc_lobe;
-#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#endif
 };
 
 /*! Prepares all intermediate values to sample a triangle fan around vertex 0

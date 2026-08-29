@@ -23,7 +23,7 @@ HIPRT_DEVICE static float compute_cosine_term_at_light_source(float3_t light_sou
 #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
 	// abs() to allow backfacing lights
 	return hippt::abs(hippt::dot(light_source_normal, minus_direction_to_light));
-#else // #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
+#else
 	// clamping to 0 to disallow backfacing lights
 	return hippt::max(0.0f, hippt::dot(light_source_normal, minus_direction_to_light));
 #endif // #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE

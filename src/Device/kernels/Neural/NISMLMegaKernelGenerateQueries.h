@@ -23,7 +23,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelGenerateQueries(HIPRTRenderD
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_MEGAKERNEL_GENERATE_QUERIES_RENDER_DATA);
 	unsigned int x				 = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int y				 = blockIdx.y * blockDim.y + threadIdx.y;
-#endif // #ifdef __KERNELCC__
+#endif
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 

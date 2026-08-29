@@ -9,7 +9,7 @@
 #ifdef __KERNELCC__
 template <typename T>
 using AtomicType = T;
-#else // #ifdef __KERNELCC__
+#else
 #include <atomic>
 
 template <typename T>

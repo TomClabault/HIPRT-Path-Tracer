@@ -143,7 +143,7 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 #ifdef __KERNELCC__
 		// Swapping the buffer indices on the GPU
 		input_buffer_index = !input_buffer_index;
-#else // #ifdef __KERNELCC__
+#else
 		// On the CPU, input/output ping-ponging is just a swap of pointer
 		unsigned int* temp = keys;
 		keys			   = scratch_memory;
@@ -154,7 +154,7 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 #ifndef __KERNELCC__
 	// The result is in keys for 32 digit keys
 	return std::make_pair<>(keys_vector, sorted_keys);
-#endif // #ifndef __KERNELCC__
+#endif
 }
 
 #endif // #ifndef DEVICE_GMON_RADIX_SORT_H

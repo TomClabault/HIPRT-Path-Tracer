@@ -180,7 +180,7 @@ inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(SSBN_PERMUTATION_RENDER_DATA);
-#endif // #ifdef __KERNELCC__
+#endif
 	int resolution_x = render_data.render_settings.render_resolution.x;
 	int resolution_y = render_data.render_settings.render_resolution.y;
 

@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
 
 	const uint32_t index = threadIdx.x + blockIdx.x * blockDim.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	const uint32_t x = index % render_data.render_settings.render_resolution.x;
 	const uint32_t y = index / render_data.render_settings.render_resolution.x;
@@ -114,14 +114,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		restir_reservoir_pixel_index = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		restir_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#else // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
+#else
 		restir_reservoir_pixel_index = -1;
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
-#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#endif
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 	}
 	if (restir_reservoir_pixel_index == static_cast<unsigned int>(-1))
@@ -215,7 +215,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		// On the GPU, we're going to do some warp intrinsic stuff to accumulate samples so all threads need to go in there otherwise that's going to be UB. On
 		// the CPU though we only want to accumulate samples for actually valid sample so we do check for should_participate
 		if (should_participate)
-#endif // #ifndef __KERNELCC__
+#endif
 		{
 			for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
 			{

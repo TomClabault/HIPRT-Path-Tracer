@@ -28,13 +28,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void copy_function(const TEST_COPY_KERNEL_SIMPLE_
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelSimple(TestCopyKernelSimpleInputData input, size_t buffer_size)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelSimple(TestCopyKernelSimpleInputData input, size_t buffer_size, int x)
-#endif // #ifdef __KERNELCC__
+#endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 	uint32_t offset = 13;
 	uint32_t index	= x + offset;
 

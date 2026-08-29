@@ -201,7 +201,7 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
 		pdf = lambertian_brdf_pdf(local_to_light_direction.z);
-#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+#endif
 
 	return eval;
 }
@@ -258,7 +258,7 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
 		return cosine_weighted_sample_z_up_frame(random_number_generator);
-#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+#endif
 
 	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true);
 }
@@ -285,9 +285,9 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffe
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_eval(material, local_to_light_direction.z, pdf);
-#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
-#endif // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+#endif
 }
 
 HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMaterial& material,
@@ -297,9 +297,9 @@ HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMa
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_pdf(local_to_light_direction.z);
-#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_pdf(material, local_view_direction, local_to_light_direction);
-#endif // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+#endif
 }
 
 /**
@@ -1947,7 +1947,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 {
 #if PrincipledBSDFSampleDiffuseLuminance == KERNEL_OPTION_TRUE
 	diffuse_weight *= material.base_color.luminance();
-#endif // #if PrincipledBSDFSampleDiffuseLuminance == KERNEL_OPTION_TRUE
+#endif
 
 #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
 	// Adjusting the probability of sampling the diffuse or specular lobe based on the

@@ -101,7 +101,7 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 	ltc_diffuse = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE);
 
 	return ltc_diffuse;
-#else // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#else
 	if (material.coat > 0.0f)
 		ltc_coat = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::COAT_LOBE);
 

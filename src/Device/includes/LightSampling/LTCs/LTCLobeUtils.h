@@ -125,7 +125,7 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	return LTCLobe::DIFFUSE_LOBE;
-#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#endif
 
 	float cdf[3];
 	cdf[0] = lobe_probabilities.coat_proba;

@@ -23,7 +23,7 @@
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#endif // #ifndef __KERNELCC__
+#endif
 
 // Just used for initializing some structure members below
 #define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
@@ -310,7 +310,7 @@ struct HIPRTRenderSettings
 	// Only need this one on the host
 #ifndef __KERNELCC__
 	HIPRT_HOST bool use_prev_frame_g_buffer(GPURenderer* renderer) const;
-#endif // #ifndef __KERNELCC__
+#endif
 };
 
 #endif // #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H

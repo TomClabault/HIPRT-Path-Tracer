@@ -24,7 +24,7 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 {
 #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 	return;
-#endif // #if DirectLightSamplingStrategy != LSS_BASE_REGIR
+#endif
 
 	if (primitive_index == -1)
 		return;

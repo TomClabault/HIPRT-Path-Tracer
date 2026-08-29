@@ -49,7 +49,7 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 {
 #if LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 	return false;
-#else // #if LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+#else
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 
@@ -161,7 +161,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRend
 {
 #if NISMLDebugMode != NISML_DEBUG_MODE_ENTROPY
 	return false;
-#else // #if NISMLDebugMode != NISML_DEBUG_MODE_ENTROPY
+#else
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 
@@ -227,7 +227,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_kl_divergence_debug_value(const HIP
 {
 #if NISMLDebugMode != NISML_DEBUG_MODE_KL_DIVERGENCE
 	return false;
-#else // #if NISMLDebugMode != NISML_DEBUG_MODE_KL_DIVERGENCE
+#else
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 
@@ -295,7 +295,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_latent_activation_color(const HIPRT
 {
 #if NISMLDebugMode != NISML_DEBUG_MODE_LATENT_ACTIVATIONS
 	return false;
-#else // #if NISMLDebugMode != NISML_DEBUG_MODE_LATENT_ACTIVATIONS
+#else
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 

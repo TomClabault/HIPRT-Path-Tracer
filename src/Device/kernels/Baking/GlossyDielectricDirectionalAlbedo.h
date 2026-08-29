@@ -46,7 +46,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o +
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);

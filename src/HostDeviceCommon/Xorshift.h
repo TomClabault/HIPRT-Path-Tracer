@@ -8,7 +8,7 @@
 
 #ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
-#endif // #ifdef __KERNELCC__
+#endif
 
 #include "HostDeviceCommon/Maths/Math.h"
 

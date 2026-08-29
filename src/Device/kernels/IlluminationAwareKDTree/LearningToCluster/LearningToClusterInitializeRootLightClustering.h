@@ -13,16 +13,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int slot = threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int slot = static_cast<unsigned int>(x);
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (slot >= LearningToClusterMaximumLightCutSize)
 		return;

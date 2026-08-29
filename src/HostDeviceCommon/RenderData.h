@@ -25,7 +25,7 @@
 #ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
-#endif // #ifdef __KERNELCC__
+#endif
 
 /**
  * The CPU and GPU use the same kernel code but the CPU still need some specific data

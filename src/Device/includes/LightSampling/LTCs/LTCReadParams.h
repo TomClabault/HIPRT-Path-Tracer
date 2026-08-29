@@ -44,15 +44,15 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	const void* texture_ptr = nullptr;
 #ifdef __KERNELCC__
 	texture_ptr = &ltcs_data_param_pointer;
-#else // #ifdef __KERNELCC__
+#else
 	texture_ptr = ltcs_data_param_pointer;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
-#else // #ifdef __KERNELCC__
+#else
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
-#endif // #ifdef __KERNELCC__
+#endif
 
 	// R, G, B and A components represent respectively:
 	// m00, m02, m11 and m20 of the LTC matrix
@@ -89,15 +89,15 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float c
 
 #ifdef __KERNELCC__
 	texture_ptr = &ltcs_data_amplitude_texture;
-#else // #ifdef __KERNELCC__
+#else
 	texture_ptr = ltcs_data_amplitude_texture;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
-#else // #ifdef __KERNELCC__
+#else
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
-#endif // #ifdef __KERNELCC__
+#endif
 
 	return sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 }
@@ -125,15 +125,15 @@ HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_t
 
 #ifdef __KERNELCC__
 	texture_ptr = &ltcs_data_fresnel_texture;
-#else // #ifdef __KERNELCC__
+#else
 	texture_ptr = ltcs_data_fresnel_texture;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
-#else // #ifdef __KERNELCC__
+#else
 	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
-#endif // #ifdef __KERNELCC__
+#endif
 
 	return sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 }

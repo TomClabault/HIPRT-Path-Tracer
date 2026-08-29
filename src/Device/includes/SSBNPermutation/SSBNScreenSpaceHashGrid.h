@@ -14,7 +14,7 @@ HIPRT_DEVICE void SSBN_update_screen_space_hash_grid(
 {
 #if SSBNPermutationEnabled == KERNEL_OPTION_FALSE
 	return;
-#endif // #if SSBNPermutationEnabled == KERNEL_OPTION_FALSE
+#endif
 
 	if (render_data.render_settings.sample_number != 0)
 		// We only do this at the first sample because the camera doesn't move for offline rendering

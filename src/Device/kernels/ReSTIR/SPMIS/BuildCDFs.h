@@ -83,7 +83,7 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 
 #ifdef __KERNELCC__
 	const uint32_t cell_alive_index = blockIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int cell_index = cell_alive_list[cell_alive_index];
 	if (cell_index >= size)

@@ -43,7 +43,7 @@ HIPRT_DEVICE float2_t sample_uv_on_triangle_uniform_area(float triangle_area, Xo
 	float sqrt_r1 = sqrt(rand_1);
 	float u		  = 1.0f - sqrt_r1;
 	float v		  = (1.0f - rand_2) * sqrt_r1;
-#elif TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019 // #if TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
+#elif TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
 	float2_t remapped = square_to_triangle(rand_1, rand_2);
 
 	float u = remapped.x;
@@ -139,7 +139,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 
 #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 	out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf, out_sample_point_uvs);
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
 
 	out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(render_data, vertex_A, vertex_B, vertex_C, normal, shading_point, view_direction,
 																		shading_normal, triangle_emission, material, out_point_pdf, rng);

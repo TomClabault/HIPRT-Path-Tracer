@@ -25,7 +25,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 {
 #ifdef __KERNELCC__
 	unsigned int reset_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int maximum_reset_count = illumination_aware_kd_tree.learning_to_cluster.lightcut_capacity;
 	if (illumination_aware_kd_tree.core.node_capacity > maximum_reset_count)

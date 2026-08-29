@@ -26,7 +26,7 @@ inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_SPMIS_RENDER_DATA);
 
 	const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (index >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
 		return;

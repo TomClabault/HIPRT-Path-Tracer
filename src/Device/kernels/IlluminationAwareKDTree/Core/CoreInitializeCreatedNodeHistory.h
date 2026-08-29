@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t node_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	const uint32_t node_index = x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	const uint32_t node_count = *kd_tree_device.core.node_count;
 	if (node_index >= node_count)

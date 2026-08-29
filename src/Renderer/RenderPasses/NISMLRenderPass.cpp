@@ -63,9 +63,9 @@ namespace
 	{
 #if NISML_TRAIN_PROFILE_USE_CLOCK
 		return "clock ticks";
-#elif NISML_TRAIN_PROFILE_USE_CLOCK64 // #if NISML_TRAIN_PROFILE_USE_CLOCK
+#elif NISML_TRAIN_PROFILE_USE_CLOCK64
 		return "clock64 ticks";
-#else // #if NISML_TRAIN_PROFILE_USE_CLOCK
+#else
 		return "wall_clock64 ticks";
 #endif // #if NISML_TRAIN_PROFILE_USE_CLOCK
 	}
@@ -228,7 +228,7 @@ void NISMLRenderPass::print_train_profile(unsigned int training_record_count)
 {
 #if defined(NISML_TRAIN_PROFILING_DISABLED)
 	return;
-#endif // #if defined(NISML_TRAIN_PROFILING_DISABLED)
+#endif
 
 	unsigned int profile_record_count	 = (training_record_count + NeuralImportanceSamplingMLP::BLOCK_SIZE - 1) / NeuralImportanceSamplingMLP::BLOCK_SIZE;
 	unsigned int profile_record_capacity = static_cast<unsigned int>(m_train_profile_records.get_element_count());

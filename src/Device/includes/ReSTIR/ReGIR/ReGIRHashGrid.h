@@ -56,7 +56,7 @@ struct ReGIRHashGrid
 
 #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
 		return grid_cell_min_size;
-#else // #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
+#else
 		float cell_size_step = hippt::length(world_position - current_camera.position) *
 							   tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
 		float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));

@@ -32,7 +32,7 @@ HIPRT_DEVICE void apply_replayed_light_cluster_batch_q_update(
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else  // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree)
 #endif // #ifndef __KERNELCC__

@@ -67,7 +67,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 	// Resetting splatting samples
 	for (int bounce = 0; bounce < bounce_count; bounce++)
 		render_data.render_settings.restir_pg_settings.invalidate_splatting_sample(render_data.render_settings.render_resolution, x, y, bounce);
-#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#endif
 
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 

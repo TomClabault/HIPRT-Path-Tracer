@@ -23,7 +23,7 @@
 #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
 #include <Windows.h> // for is_file_on_SSD() and other functions
 #undef min
-#endif // #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
+#endif
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -169,7 +169,7 @@ void* Utils::get_volume_handle_for_file(const char* filePath)
 {
 #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__) // Only defining the code on Windows
 	return nullptr;
-#else // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
+#else
 	char volume_path[MAX_PATH];
 	if (!GetVolumePathName(filePath, volume_path, ARRAYSIZE(volume_path)))
 		return nullptr;
@@ -191,7 +191,7 @@ bool Utils::is_file_on_ssd(const char* file_path)
 #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 	// Not on Windows, haven't written the code to determine that on Linux yet
 	return false;
-#else // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
+#else
 	bool is_ssd{ false };
 	HANDLE volume = get_volume_handle_for_file(file_path);
 	if (volume == INVALID_HANDLE_VALUE)

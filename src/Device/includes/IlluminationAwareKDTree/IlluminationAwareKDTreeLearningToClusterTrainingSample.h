@@ -35,7 +35,7 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 {
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
 	return;
-#endif // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
+#endif
 
 	unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 	if (sample_index >= training_sample_capacity)

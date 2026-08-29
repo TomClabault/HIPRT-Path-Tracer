@@ -50,9 +50,9 @@ HIPRT_DEVICE static ColorRGB32F read_LTC_parameters(const HIPRTRenderData& rende
 	const void* ltc_parameters_texture_pointer;
 #ifdef __KERNELCC__
 	ltc_parameters_texture_pointer = &render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
-#else // #ifdef __KERNELCC__
+#else
 	ltc_parameters_texture_pointer = render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	float2_t parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, roughness));
 	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, parameters_uv, 0, false, false);

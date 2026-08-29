@@ -85,7 +85,7 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
 	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
 												  random_number_generator, incident_light_info);
-#else // #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
+#else
 	restir_pg_sample_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator,
 							incident_light_info);
 #endif // #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
@@ -107,7 +107,7 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif
 
 	// Returning this bounce's unweighted throughput
 	return this_bounce_unweighted_throughput;

@@ -15,10 +15,10 @@
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#else // #ifndef KERNEL_OPTION_TRUE
+#else
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#endif // #ifndef KERNEL_OPTION_FALSE
+#endif
 #endif // #ifndef KERNEL_OPTION_TRUE
 
 /**

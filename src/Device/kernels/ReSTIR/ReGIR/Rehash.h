@@ -46,7 +46,7 @@ inline ReGIR_Rehash(HIPRTCamera current_camera,
 {
 #ifdef __KERNELCC__
 	const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (cell_index >= old_cell_count)
 		return;

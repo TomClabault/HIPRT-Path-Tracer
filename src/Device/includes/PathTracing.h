@@ -192,7 +192,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
 		// If we have sampling, only taking envmap into account on camera ray miss
 		if (bounce == 0)
-#endif // #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
+#endif
 		{
 			// We're only getting the skysphere radiance for the first rays because the
 			// syksphere is importance sampled.

@@ -45,14 +45,14 @@ struct HIPRTOrochiCtx
 #ifdef OROCHI_ENABLE_CUEW
 #ifdef _WIN32
 		Utils::AddEnvVarError error = add_CUDA_PATH_to_PATH();
-#endif // #ifdef _WIN32
-#endif // #ifdef OROCHI_ENABLE_CUEW
+#endif
+#endif
 
 #ifdef OROCHI_ENABLE_CUEW
 		int error_initialize = oroInitialize((oroApi)(ORO_API_CUDA), 0);
-#else // #ifdef OROCHI_ENABLE_CUEW
+#else
 		int error_initialize = oroInitialize((oroApi)(ORO_API_HIP), 0);
-#endif // #ifdef OROCHI_ENABLE_CUEW
+#endif
 		if (error_initialize != oroSuccess)
 		{
 			switch (error_initialize)

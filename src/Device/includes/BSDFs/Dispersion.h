@@ -777,9 +777,9 @@ HIPRT_HOST_DEVICE static ColorRGB32F wavelength_to_RGB(float wavelength)
 {
 #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
 	return wavelength_to_RGB_fit(wavelength);
-#elif WavelengthToRGBMethod == WAVELENGTH_TO_RGB_TABLES // #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
+#elif WavelengthToRGBMethod == WAVELENGTH_TO_RGB_TABLES
 	return wavelength_to_RGB_clamped(wavelength);
-#endif // #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
+#endif
 }
 
 HIPRT_HOST_DEVICE static float sample_wavelength_uniformly(Xorshift32Generator& random_number_generator)

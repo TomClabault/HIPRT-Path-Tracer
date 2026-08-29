@@ -14,7 +14,7 @@
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
-#endif // #ifndef __KERNELCC__
+#endif
 
 template <typename T>
 HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, const float2_t& texcoords, int texture_index, bool is_srgb);
@@ -73,7 +73,7 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
 		if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
 			material.base_color = get_base_color(render_data, trash_alpha, texcoords, material.base_color_texture_index);
-#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
+#endif
 	}
 
 	// Reading some parameters from the textures

@@ -40,10 +40,10 @@
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#else // #ifndef KERNEL_OPTION_TRUE
+#else
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#endif // #ifndef KERNEL_OPTION_FALSE
+#endif
 #endif // #ifndef KERNEL_OPTION_TRUE
 
 /**
@@ -133,7 +133,7 @@
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
-#else // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#else
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
@@ -141,7 +141,7 @@
 	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 #error                                                                                                                                                         \
 	"DirectLightNEEEstimator is set to LSS_LEARNING_TO_CLUSTER or LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
-#endif // #if (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#endif
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant

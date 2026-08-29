@@ -48,6 +48,6 @@
 
 #ifdef LearningToClusterMaximumLightCutSize
 static_assert(LearningToClusterMaximumLightCutSize <= 1024, "Learning to cluster maximum cut size cannot exceed 1024");
-#endif // #ifdef LearningToClusterMaximumLightCutSize
+#endif
 
 #endif // #ifndef HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_OPTIONS_H

@@ -28,7 +28,7 @@ struct MicrofacetRegularization
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
-#endif // #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
+#endif
 
 		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
 			return initial_roughness;
@@ -53,9 +53,9 @@ struct MicrofacetRegularization
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;
-#else // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#else
 		float final_tau = consistent_tau;
-#endif // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#endif
 
 		float regularized_roughness = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi)));
 
@@ -72,7 +72,7 @@ struct MicrofacetRegularization
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
-#endif // #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
+#endif
 
 		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
 			return initial_roughness;
@@ -97,9 +97,9 @@ struct MicrofacetRegularization
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;
-#else // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#else
 		float final_tau = consistent_tau;
-#endif // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#endif
 
 		float regularized_roughness = hippt::sqrt(hippt::sqrt(
 								1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
@@ -117,7 +117,7 @@ struct MicrofacetRegularization
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
-#endif // #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
+#endif
 
 		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
 			return initial_roughness;
@@ -142,9 +142,9 @@ struct MicrofacetRegularization
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;
-#else // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#else
 		float final_tau = consistent_tau;
-#endif // #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+#endif
 
 		float regularized_roughness_reflection = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi)));
 
@@ -174,7 +174,7 @@ struct MicrofacetRegularization
 	{
 #if PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization == KERNEL_OPTION_FALSE
 		return tau_0;
-#endif // #if PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization == KERNEL_OPTION_FALSE
+#endif
 
 		// Eq. 16 of the paper
 		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi *

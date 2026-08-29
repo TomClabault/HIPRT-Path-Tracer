@@ -225,7 +225,7 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations,
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline GGXGlassDirectionalAlbedoBakeEntering(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline GGXGlassDirectionalAlbedoBakeEntering(
 						int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
@@ -235,7 +235,7 @@ inline GGXGlassDirectionalAlbedoBakeEntering(
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o +
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
@@ -249,7 +249,7 @@ inline GGXGlassDirectionalAlbedoBakeEntering(
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline GGXGlassDirectionalAlbedoBakeExiting(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline GGXGlassDirectionalAlbedoBakeExiting(
 						int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
@@ -259,7 +259,7 @@ inline GGXGlassDirectionalAlbedoBakeExiting(
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o +
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);

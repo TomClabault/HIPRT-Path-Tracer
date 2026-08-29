@@ -13,7 +13,7 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 ReSTIR_SPMIS_Sort(
 	unsigned int* all_pixel_hashes, unsigned int* all_pixels_index_in_cell, unsigned int* cell_offsets, unsigned int* pixel_indices_sorted, unsigned int size)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_Sort(unsigned int* all_pixel_hashes,
 						 unsigned int* all_pixels_index_in_cell,
@@ -25,7 +25,7 @@ inline ReSTIR_SPMIS_Sort(unsigned int* all_pixel_hashes,
 {
 #ifdef __KERNELCC__
 	const uint32_t linear_pixel_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (linear_pixel_index >= size)
 		return;

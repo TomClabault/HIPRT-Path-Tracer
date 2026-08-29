@@ -82,7 +82,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 
 #ifndef _WIN32
 	use_cache = false;
-#endif // _WIN32 // #ifndef _WIN32
+#endif // _WIN32
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -119,7 +119,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	std::unique_lock<std::mutex> lock(m_compile_mutex, std::defer_lock);
 #ifndef _WIN32
 	lock.lock();
-#else // #ifndef _WIN32
+#else
 	if (!use_shader_cache)
 		lock.lock();
 #endif // _WIN32 // #ifndef _WIN32

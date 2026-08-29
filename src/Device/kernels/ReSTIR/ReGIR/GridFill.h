@@ -28,7 +28,7 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSam
 #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
 	return sample_one_emissive_triangle_light_tree_ats<false>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal,
 															  surface.cell_primitive_index, dummy_ray_payload, rng);
-#else // #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
+#else
 	return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(
 		render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 #endif // #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
@@ -311,7 +311,7 @@ inline ReGIR_Grid_Fill(
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif // #ifdef __KERNELCC__
+#endif
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
@@ -321,7 +321,7 @@ inline ReGIR_Grid_Fill(
 #ifdef __KERNELCC__
 	uint32_t thread_index		= blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t thread_count = gridDim.x * blockDim.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	while (thread_index < regir_settings.get_number_of_reservoirs_per_cell(primary_hit) * number_of_cells_alive)
 	{
@@ -345,9 +345,9 @@ inline ReGIR_Grid_Fill(
 		// Grid fill
 #ifdef __KERNELCC__
 		constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = ReGIR_GridFillSpatialReuse_AccumulatePreIntegration;
-#else // #ifdef __KERNELCC__
+#else
 		constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = accumulatePreIntegration;
-#endif // #ifdef __KERNELCC__
+#endif
 		output_reservoir = grid_fill<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell,
 																		cell_surface, primary_hit, random_number_generator);
 		// Normalizing the reservoir
@@ -364,7 +364,7 @@ inline ReGIR_Grid_Fill(
 		// We're dispatching exactly one thread per reservoir to compute on the CPU so no need
 		// for the work queue style of things that is only needed on the GPU, we can just exit here
 		break;
-#else // #ifndef __KERNELCC__
+#else
 		// We need to compute the next reservoir index for the next iteration
 		thread_index += thread_count;
 #endif // #ifndef __KERNELCC__

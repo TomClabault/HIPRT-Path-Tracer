@@ -26,7 +26,7 @@ inline ReSTIR_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int siz
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_SPMIS_RENDER_DATA);
 
 	const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	if (cell_index >= size)
 		return;

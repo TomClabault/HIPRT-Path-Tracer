@@ -25,7 +25,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData re
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_MEGAKERNEL_INFERENCE_RENDER_DATA);
 	unsigned int query_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int query_index = static_cast<unsigned int>(x + y * render_data.render_settings.render_resolution.x);
 #endif // #ifdef __KERNELCC__
 

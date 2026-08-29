@@ -318,9 +318,9 @@ struct IlluminationAwareKDTreeCoreDevice
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return;
-#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
 		return;
-#endif // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#endif
 
 		// Invalid samples must not consume buffer space or affect b0.
 		if (!sample.valid_for_spatial_training)

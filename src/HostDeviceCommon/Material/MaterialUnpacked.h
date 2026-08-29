@@ -119,7 +119,7 @@ struct DeviceUnpackedEffectiveMaterial
 	{
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 		return 1.0f;
-#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#endif
 
 		float coat_roughness_	   = coat > 0.0f ? coat_roughness : 1.0f;
 		float specular_roughness   = specular > 0.0f ? roughness : 1.0f;
@@ -351,7 +351,7 @@ struct DeviceUnpackedEffectiveMaterial
 		// These BSDFs do not support tranmission so every material
 		// should have the same priority
 		return 0;
-#else // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#else
 		return dielectric_priority;
 #endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	}

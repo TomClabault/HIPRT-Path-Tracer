@@ -37,7 +37,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		// We already know that a selected sample isn't in shadow otherwise its target
 		// function would have been 0 and it would have never been selected
 		return selected_sample_radiance / light_sample.area_measure_pdf;
-#else // #if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
+#else
 		// ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
 		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
 		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
@@ -66,12 +66,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 	{
 #if ReGIRDebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
 		return ColorRGB32F(1.0e10f, 0.0f, 1.0e10f);
-#endif // #if ReGIRDebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
+#endif
 
 #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
 		// Invalid fallback strategy
 		invalid ReGIR light sampling fallback strategy
-#endif // #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
+#endif
 
 			// Fallback method as the point was outside of the ReGIR grid
 			ColorRGB32F light_source_radiance;
@@ -120,7 +120,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
+#else
 					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);

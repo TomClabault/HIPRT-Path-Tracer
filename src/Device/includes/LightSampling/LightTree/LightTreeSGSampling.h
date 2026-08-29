@@ -403,7 +403,7 @@ HIPRT_DEVICE void light_tree_sg_build_best_first_split_plan(const LightTreeSGNod
 
 #if LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate == KERNEL_OPTION_TRUE
 				break;
-#endif // #if LightTreeSGNewSplittingModelAlwaysSplitFirstCandidate == KERNEL_OPTION_TRUE
+#endif
 			}
 		}
 
@@ -522,14 +522,14 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 	return sample_one_emissive_triangle_light_tree_sg_best_first(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight,
 																 alpha_x, alpha_y, rng);
-#else // #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
+#else
 	int stack_pointer												   = 0;
 	unsigned int node_index_stack[LightTreeSGSplittingMaxLightSamples] = { 0 };
 	unsigned int light_samples_counter								   = 1;
@@ -882,14 +882,14 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 	return pdf_of_emissive_triangle_light_tree_sg_best_first(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight, alpha_x,
 															 alpha_y, global_emissive_triangle_index);
-#else // #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
+#else
 	float root_node_importance =
 		light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
@@ -1208,14 +1208,14 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 #if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
 	return sample_one_emissive_triangle_light_tree_sg_tree_cut(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight,
 															   alpha_x, alpha_y, rng);
-#endif // #if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
+#endif
 
 	float cumulative_probability = 1.0f;
 	while (nodes[current_node_index].triangle_count == 0)
@@ -1283,14 +1283,14 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
-#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#else
 	SGSpecularImportanceData spec_data;
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif
 
 #if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
 	return pdf_of_emissive_triangle_light_tree_sg_tree_cut(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight, alpha_x,
 														   alpha_y, global_emissive_triangle_index);
-#endif // #if LightTreeSGUseTreeCut == KERNEL_OPTION_TRUE
+#endif
 
 	float root_node_importance =
 		light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);

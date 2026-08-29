@@ -14,7 +14,7 @@
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
-#endif // #ifndef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 // Dummy usings so that the GPU compiler doesn't complain that Image8Bit / Image32Bit don't exist.

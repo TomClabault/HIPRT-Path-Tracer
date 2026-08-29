@@ -15,7 +15,7 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree)
 #endif // #ifndef __KERNELCC__
@@ -23,7 +23,7 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 #ifdef __KERNELCC__
 	unsigned int slot							= threadIdx.x;
 	unsigned int active_guiding_node_face_index = blockIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int slot							= 0;
 	unsigned int active_guiding_node_face_index = static_cast<unsigned int>(x);
 #endif // #ifdef __KERNELCC__

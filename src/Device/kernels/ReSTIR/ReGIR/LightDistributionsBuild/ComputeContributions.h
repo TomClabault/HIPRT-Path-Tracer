@@ -119,7 +119,7 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif // #ifdef __KERNELCC__
+#endif
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
@@ -128,7 +128,7 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 
 #ifdef __KERNELCC__
 	uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
 	// Cell index within the dispatch

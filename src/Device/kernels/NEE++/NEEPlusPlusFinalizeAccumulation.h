@@ -11,13 +11,13 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) NEEPlusPlusFinalizeAccumulation(NEEPlusPlusDevice nee_plus_plus_data)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusFinalizeAccumulation(NEEPlusPlusDevice nee_plus_plus_data, int x)
-#endif // #ifdef __KERNELCC__
+#endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 	uint32_t pixel_index = x;
 	if (x >= nee_plus_plus_data.m_total_number_of_cells)
 		return;

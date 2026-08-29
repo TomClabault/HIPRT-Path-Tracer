@@ -256,7 +256,7 @@ void CPURenderer::setup_buffers()
 	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(
 		IlluminationAwareKDTreeCoreDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
 		IlluminationAwareKDTreeCoreDataHost<std::vector>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
-#endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#endif
 
 	setup_bsdfs_data();
 	setup_nee_plus_plus();
@@ -326,7 +326,7 @@ void CPURenderer::ReGIR_post_sample_update()
 {
 #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 	return;
-#endif // #if DirectLightSamplingStrategy != LSS_BASE_REGIR
+#endif
 
 	if (m_render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 	{
@@ -359,7 +359,7 @@ void CPURenderer::ReSTIR_PT_post_sample_update()
 {
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
 	return;
-#endif // #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif
 
 	unsigned int pixel_count = m_resolution.x * m_resolution.y;
 
@@ -458,7 +458,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_nisml_state.m_nisml_data.resize();
-#endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#endif
 }
 
 void CPURenderer::update_render_data()
@@ -586,9 +586,9 @@ void CPURenderer::update_render_data()
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_render_data.kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-#else  // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#else
 	m_render_data.kd_tree_device = {};
-#endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#endif
 }
 
 void CPURenderer::bsdfs_data_to_device()
@@ -710,12 +710,12 @@ void CPURenderer::render()
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	ReSTIR_PG_reset_hash_grid();
 	ReSTIR_PG_reset_distributions();
-#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#endif
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ||                                                                                                       \
 	(DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	illumination_aware_kd_tree_reset();
-#endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy ==
+#endif
 	   // LSS_BASE_LIGHT_TREE_SG)
 
 	// Using 'samples_per_frame' as the number of samples to render on the CPU
@@ -730,24 +730,24 @@ void CPURenderer::render()
 
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 		ReGIR_pass();
-#endif // #if DirectLightSamplingStrategy == LSS_BASE_REGIR
+#endif
 
 #if DirectLightNEEEstimator == LSS_RESTIR_DI
 		// Only doing ReSTIR DI is ReSTIR DI is enabled
 		ReSTIR_DI_pass();
-#endif // #if DirectLightNEEEstimator == LSS_RESTIR_DI
+#endif
 
 #if PathSamplingStrategy == PATH_SAMPLING_BSDF
 		tracing_pass();
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		ReSTIR_GI_pass();
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		ReSTIR_PT_pass();
 #endif												  // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 		ReSTIR_PG_pass();
-#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#endif
 
 		post_sample_update(frame_number);
 
@@ -863,7 +863,7 @@ void CPURenderer::post_sample_update(int frame_number)
 
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	m_nisml_state.m_nisml_data.reset();
-#endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
+#endif
 
 	if (m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number++;
@@ -1068,7 +1068,7 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 #if DEBUG_OTHER_FLIP_Y
 	debug_x = DEBUG_OTHER_PIXEL_X;
 	debug_y = DEBUG_OTHER_PIXEL_Y;
-#else  // DEBUG_OTHER_FLIP_Y // #if DEBUG_OTHER_FLIP_Y
+#else  // DEBUG_OTHER_FLIP_Y
 	debug_x = DEBUG_OTHER_PIXEL_X;
 	debug_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
 #endif // DEBUG_OTHER_FLIP_Y // #if DEBUG_OTHER_FLIP_Y
@@ -1118,7 +1118,7 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_FALSE
 	return;
-#endif // #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_FALSE
+#endif
 
 	debug_render_pass([this](int x, int y) { NEEPlusPlus_Grid_Prepopulate(m_render_data, x, y); });
 }
@@ -1220,7 +1220,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions()
 {
 #if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_FALSE
 	return;
-#endif // #if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_FALSE
+#endif
 
 	ReGIR_compute_cells_light_distributions_internal(true);
 	ReGIR_compute_cells_light_distributions_internal(false);
@@ -2005,7 +2005,7 @@ void CPURenderer::ReSTIR_PG_reset_distributions()
 {
 #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
 	return;
-#endif // #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
+#endif
 
 	for (int index = 0; index < m_restir_pg_state.hash_grid_distributions_soa_buffer.get_total_element_count() * ReSTIRPGDistributionComponentCount; index++)
 	{

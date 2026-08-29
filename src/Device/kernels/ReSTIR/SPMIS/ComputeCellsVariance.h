@@ -76,7 +76,7 @@ inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pi
 
 #ifdef __KERNELCC__
 	const uint32_t cell_alive_index = blockIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int cell_index = cell_alive_list[cell_alive_index];
 	if (cell_index >= size)

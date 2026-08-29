@@ -28,17 +28,17 @@ inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGr
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif // #ifdef __KERNELCC__
+#endif
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 #ifdef __KERNELCC__
 	const uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count *
 							regir_settings.get_number_of_reservoirs_per_cell(true))
-#else // #ifdef __KERNELCC__
+#else
 	if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() *
 							regir_settings.get_number_of_reservoirs_per_cell(true))
 #endif // #ifdef __KERNELCC__

@@ -13,16 +13,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationAwareKDTreeDevice kd_tree)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int sample_index = static_cast<unsigned int>(x);
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 	if (sample_index >= sample_count)

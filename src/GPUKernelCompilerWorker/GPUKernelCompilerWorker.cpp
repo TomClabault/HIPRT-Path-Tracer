@@ -20,9 +20,9 @@ bool GPUKernelCompilerWorker::initialize_worker_context(int device_index, hiprtC
 {
 #ifdef OROCHI_ENABLE_CUEW
 	int error_initialize = oroInitialize(static_cast<oroApi>(ORO_API_CUDA), 0);
-#else // #ifdef OROCHI_ENABLE_CUEW
+#else
 	int error_initialize = oroInitialize(static_cast<oroApi>(ORO_API_HIP), 0);
-#endif // #ifdef OROCHI_ENABLE_CUEW
+#endif
 	if (error_initialize != oroSuccess || oroInit(0) != oroSuccess)
 		return false;
 

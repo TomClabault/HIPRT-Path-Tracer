@@ -83,7 +83,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 	envmap_pdf_solid_angle = 0.0f;
 
 	return ColorRGB32F();
-#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#endif
 
 	int x, y;
 	float env_map_total_sum = world_settings.envmap_total_sum;
@@ -91,7 +91,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 	// Importance sampling a texel of the envmap with a binary search on the CDF
 	envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
-#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
+#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
 
 	y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
@@ -145,7 +145,7 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 	pdf = 0.0f;
 
 	return ColorRGB32F();
-#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#endif
 
 	const WorldSettings& world_settings = render_data.world_settings;
 
@@ -210,9 +210,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 
 #if EnvmapSamplingDoBSDFMIS
 				float mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
-#else // #if EnvmapSamplingDoBSDFMIS
+#else
 				float mis_weight = 1.0f;
-#endif // #if EnvmapSamplingDoBSDFMIS
+#endif
 
 				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
 			}
@@ -280,9 +280,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	return ColorRGB32F(0.0f);
-#else // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#else
 	return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#endif
 }
 
 #endif // #ifndef DEVICE_ENVMAP_H

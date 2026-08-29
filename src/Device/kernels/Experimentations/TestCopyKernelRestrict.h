@@ -15,7 +15,7 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelRestrict(float* buffer_a, float* buffer_b, float* buffer_c, float* buffer_d, size_t buffer_size)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 TestCopyKernelRestrict(float* __restrict__ buffer_a,
 					   const float* __restrict__ buffer_b,
@@ -27,7 +27,7 @@ TestCopyKernelRestrict(float* __restrict__ buffer_a,
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif // #ifdef __KERNELCC__
+#endif
 	if (x >= buffer_size)
 		return;
 

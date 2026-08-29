@@ -95,9 +95,9 @@ HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& l
 
 #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
 	return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
 	// TODO
 #else // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	// Not implemented

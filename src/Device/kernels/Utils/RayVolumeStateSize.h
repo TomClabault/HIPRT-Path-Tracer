@@ -11,9 +11,9 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) RayVolumeStateSize(size_t* out_buffer)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void) inline RayVolumeStateSize(size_t* out_buffer)
-#endif // #ifdef __KERNELCC__
+#endif
 {
 	out_buffer[0] = sizeof(RayVolumeState);
 }

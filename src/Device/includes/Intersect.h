@@ -231,7 +231,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	hiprtHit hit;
 	bool skipping_volume_boundary = false;
@@ -241,7 +241,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal, render_data, render_data.GPU_BVH, ray, last_hit_primitive_index, random_number_generator);
 
 		hit = traversal.getNextHit();
-#else // #ifdef __KERNELCC__
+#else
 		hit = intersect_scene_cpu(render_data, render_data.cpu_only.bvh, ray, last_hit_primitive_index, random_number_generator);
 #endif // #ifdef __KERNELCC__
 
@@ -316,7 +316,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -404,7 +404,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	if (render_data.light_GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -521,7 +521,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -619,7 +619,7 @@ HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data,
 	// This if is necessary to avoid declaring 0 size arrays if the
 	// shared stack traversal sizes are 0
 	DECLARE_SHARED_STACK_BUFFER;
-#else // #if SharedStackBVHTraversalSize > 0
+#else
 	hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif // #if SharedStackBVHTraversalSize > 0
 	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);

@@ -175,8 +175,8 @@ using NeuralImportanceSamplingMLPGPU = MLPFullyFusedDeviceGPU<NISML_INPUT_SIZE_E
 
 #ifdef __KERNELCC__
 using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPGPU;
-#else // #ifdef __KERNELCC__
+#else
 using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPCPU;
-#endif // #ifdef __KERNELCC__
+#endif
 
 #endif // #ifndef HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H

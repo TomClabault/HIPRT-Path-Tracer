@@ -8,7 +8,7 @@
 
 #if defined(__KERNELCC__)
 #include <hiprt/hiprt_device.h>
-#else // #if defined(__KERNELCC__)
+#else
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 // For hippt::debugbreak()
@@ -995,9 +995,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return __shfl_sync(0xFFFFFFFF, var, src_lane, width);
-#else // #ifdef __CUDACC__
+#else
 		return __shfl(var, src_lane, width);
-#endif // #ifdef __CUDACC__
+#endif
 	}
 
 	/**
@@ -1026,9 +1026,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return warp_shfl_down_sync(0xFFFFFFFF, var, delta, width);
-#else // #ifdef __CUDACC__
+#else
 		return __shfl_down(var, delta, width);
-#endif // #ifdef __CUDACC__
+#endif
 	}
 
 	template <typename T>
@@ -1045,9 +1045,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return warp_shfl_up_sync(0xFFFFFFFF, var, delta, width);
-#else // #ifdef __CUDACC__
+#else
 		return __shfl_up(var, delta, width);
-#endif // #ifdef __CUDACC__
+#endif
 	}
 
 	template <typename T>
@@ -1060,7 +1060,7 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		__syncwarp(mask);
-#endif // #ifdef __CUDACC__
+#endif
 	}
 
 	template <bool opsel = false>

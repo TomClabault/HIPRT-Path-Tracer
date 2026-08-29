@@ -16,7 +16,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <iostream>
-#else // #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
+#else
 #include "UI/ImGui/ImGuiLogger.h"
 
 extern ImGuiLogger g_imgui_logger;

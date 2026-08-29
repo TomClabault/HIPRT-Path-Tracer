@@ -9,7 +9,7 @@
 #ifndef __KERNELCC__
 template <template <typename> typename DataContainer>
 struct ReGIRCellsLightDistributionsSoAHost;
-#endif // #ifndef __KERNELCC__
+#endif
 
 struct ReGIRCellsLightDistributionsSoADevice
 {
@@ -99,7 +99,7 @@ private:
 #ifndef __KERNELCC__
 	template <template <typename> typename OtherContainer>
 	friend struct ReGIRCellsLightDistributionsSoAHost;
-#endif // #ifndef __KERNELCC__
+#endif
 };
 
 #endif // #ifndef REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_DEVICE_H

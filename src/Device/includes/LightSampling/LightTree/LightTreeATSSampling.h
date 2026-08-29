@@ -159,9 +159,9 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 #if DirectLightSamplingAllowBackfacingLights
 			cos_theta_prime = hippt::abs(cos_theta_prime);
-#else // #if DirectLightSamplingAllowBackfacingLights
+#else
 			cos_theta_prime = hippt::max(0.0f, cos_theta_prime);
-#endif // #if DirectLightSamplingAllowBackfacingLights
+#endif
 		}
 	}
 

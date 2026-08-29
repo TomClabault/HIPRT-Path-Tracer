@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int reset_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int reset_index = x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int node_count = *illumination_aware_kd_tree.core.node_count;
 	if (reset_index == 0)

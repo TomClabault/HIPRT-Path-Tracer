@@ -39,7 +39,7 @@ HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const Illuminati
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else  // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree)
 #endif // #ifndef __KERNELCC__
@@ -63,7 +63,7 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 #ifdef __KERNELCC__
 	if (slot < lightcut_data.lightcut_size)
 		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, slot);
-#else  // #ifdef __KERNELCC__
+#else
 	for (unsigned int lightcut_slot = 0u; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
 		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, lightcut_slot);
 #endif // #ifdef __KERNELCC__

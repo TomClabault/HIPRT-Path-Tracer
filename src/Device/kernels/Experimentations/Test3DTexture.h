@@ -15,15 +15,15 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) Test3DTexture(oroTextureObject_t texture_3D, int tex_size, float* out_buffer)
-#else // #ifdef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void) Test3DTexture(oroTextureObject_t texture_3D, int tex_size, float* out_buffer, int x, int y, int z)
-#endif // #ifdef __KERNELCC__
+#endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
-#endif // #ifdef __KERNELCC__
+#endif
 	if (x >= tex_size || y >= tex_size || z >= tex_size)
 		return;
 

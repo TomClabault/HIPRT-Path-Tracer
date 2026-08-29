@@ -303,7 +303,7 @@ struct ReGIRPairwiseMIS
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
 			float canonical_PDF = pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, sample_triangle_index) /
 								  triangle_load_area(render_data, sample_triangle_index);
-#else // #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
+#else
 			float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, primary_hit,
 																			 canonical_RIS_integral_center_grid_cell, sample_point_on_light,
 																			 sample_light_source_normal, sample_emission, random_number_generator);
@@ -312,7 +312,7 @@ struct ReGIRPairwiseMIS
 			float bsdf_PDF = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, sample_point_on_light, sample_light_source_normal, sample_emission,
 																 view_direction, shading_point, shading_normal, geometric_normal,
 																 BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index);
-#else // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
+#else
 			float bsdf_PDF = 0.0f;
 #endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			mis_weight = mis_weight_normalization *

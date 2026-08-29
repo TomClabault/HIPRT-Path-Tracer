@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
-#else // #ifndef __KERNELCC__
+#else
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int frontier_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else // #ifdef __KERNELCC__
+#else
 	unsigned int frontier_index = x;
-#endif // #ifdef __KERNELCC__
+#endif
 
 	unsigned int current_frontier_count = *kd_tree_device.core.current_frontier_count;
 	if (frontier_index >= current_frontier_count)
