@@ -12,7 +12,7 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(HIPRTRenderData render_data, int x)
+inline IlluminationAwareKDTree_NISMLReplayTrainingSamples(HIPRTRenderData render_data, int x)
 #else
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
@@ -20,7 +20,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char ILLUMINATION_AWARE_KD_TREE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel()
+IlluminationAwareKDTree_NISMLReplayTrainingSamples()
 #endif
 {
 #ifdef __KERNELCC__

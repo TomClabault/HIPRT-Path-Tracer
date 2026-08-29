@@ -59,7 +59,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightClusterings.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightClusterSamplingCDFs.h"
-#include "Device/kernels/IlluminationAwareKDTree/BuildNISMLCaches.h"
+#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLBuildCaches.h"
 #include "Device/kernels/IlluminationAwareKDTree/ExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/InitializeCreatedNodeHistoryKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightClusterQ0.h"
@@ -69,7 +69,7 @@
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightClusterings.h"
-#include "Device/kernels/IlluminationAwareKDTree/ReplayNISMLTrainingSamplesKernel.h"
+#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLReplayTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/ReplayTrainingSamplesKernel.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightClusteringStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/ResetBatchKDTreeStatistics.h"
@@ -983,11 +983,11 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 	unsigned int training_record_capacity = m_render_data.nisml.training_record_capacity;
 	for (unsigned int record_index = 0; record_index < training_record_capacity; record_index++)
-		IlluminationAwareKDTree_ReplayNISMLTrainingSamplesKernel(m_render_data, record_index);
+		IlluminationAwareKDTree_NISMLReplayTrainingSamples(m_render_data, record_index);
 
 	if (kd_tree_device.nisml.nisml_pending_cell_count->load() > 0u)
 		for (unsigned int cache_index = 0; cache_index < kd_tree_device.nisml.nisml_hash_table_capacity; cache_index++)
-			IlluminationAwareKDTree_BuildNISMLCaches(kd_tree_device, m_render_data, cache_index);
+			IlluminationAwareKDTree_NISMLBuildCaches(kd_tree_device, m_render_data, cache_index);
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 	unsigned int light_clustering_sample_count = kd_tree_device.learning_to_cluster.training_sample_count->load();
 	for (unsigned int sample_index = 0; sample_index < light_clustering_sample_count; sample_index++)
