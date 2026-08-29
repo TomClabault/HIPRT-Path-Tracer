@@ -10,7 +10,7 @@
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 

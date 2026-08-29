@@ -7,7 +7,7 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ACCUMULATE_LIGHT_CLUSTERING_TRAINING_SAMPLES_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #ifndef __KERNELCC__

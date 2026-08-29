@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_COMMON_KERNELS_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_COMMON_KERNELS_H
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_COMMON_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_COMMON_H
 
 #include "Device/includes/Hash.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"

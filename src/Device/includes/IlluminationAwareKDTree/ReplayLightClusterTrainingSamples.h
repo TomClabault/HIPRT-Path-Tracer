@@ -3,10 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
+#ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
+#define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
 
-#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"

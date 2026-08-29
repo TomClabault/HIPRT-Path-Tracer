@@ -7,9 +7,9 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_STATISTICS_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/CommonKernels.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
-#include "Device/kernels/IlluminationAwareKDTree/ReplayLightClusterTrainingSamples.h"
+#include "Device/includes/IlluminationAwareKDTree/ReplayLightClusterTrainingSamples.h"
 
 HIPRT_DEVICE void append_replayed_light_cluster_observation(IlluminationAwareKDTreeLightClusterStatistics& statistics, float observation)
 {
@@ -80,7 +80,7 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 	kd_tree.learning_to_cluster.light_cluster_sample_counts[clustering_index] = 0u;
 	for (slot = 0u; slot < cluster_data.cut_size; slot++)
 	{
-		unsigned int offset													   = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
+		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(clustering_index, slot);
 		IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.light_cluster_statistics[offset];
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 		{

@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_SIGNATURE_SOA_DEVICE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/KDTreeIlluminationSignature.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeIlluminationSignature.h"
 #include "HostDeviceCommon/AtomicType.h"
 
 struct IlluminationAwareKDTreeIlluminationSignatureSoADevice

@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SPATIAL_SAMPLE_MOMENTS_SOA_DEVICE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/IlluminationAwareKDTree/KDTreeSpatialSampleMoments.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSpatialSampleMoments.h"
 #include "HostDeviceCommon/AtomicType.h"
 
 struct IlluminationAwareKDTreeSpatialSampleMomentsSoADevice
