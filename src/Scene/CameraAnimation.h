@@ -48,4 +48,4 @@ private:
 	Camera* m_camera = nullptr;
 };
 
-#endif
+#endif // #ifndef CAMERA_ANIMATION_H

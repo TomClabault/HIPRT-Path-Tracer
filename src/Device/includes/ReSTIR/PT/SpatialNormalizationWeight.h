@@ -274,4 +274,4 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_NORMALIZATION_WEIGHT_H

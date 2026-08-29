@@ -24,4 +24,4 @@ ParallelPrefixScan_BlockIncrement(unsigned int* __restrict__ input, const unsign
 	input[tid] += block_sums[blockIdx.x];
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_BLOCK_INCREMENT_H

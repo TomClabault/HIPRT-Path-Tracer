@@ -47,7 +47,7 @@ __shared__ unsigned short int sorted_keys[GMoNThreadsPerBlock * GMoNMSetsCount];
 
 #define READ_KEY(key_index)			(keys[SCRATCH_MEMORY_INDEX(42, key_index)])
 #define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(42, key_index)] = value
-#endif
+#endif // #ifdef __KERNELCC__
 
 HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2_t render_resolution)
 {
@@ -59,9 +59,9 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 
 	unsigned int* keys			 = keys_vector.data();
 	unsigned int* scratch_memory = scratch_memory_vector.data();
-#else
+#else // #ifndef __KERNELCC__
 	bool input_buffer_index = false;
-#endif
+#endif // #ifndef __KERNELCC__
 
 	constexpr unsigned int number_of_keys = GMoNMSetsCount;
 
@@ -143,18 +143,18 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 #ifdef __KERNELCC__
 		// Swapping the buffer indices on the GPU
 		input_buffer_index = !input_buffer_index;
-#else
+#else // #ifdef __KERNELCC__
 		// On the CPU, input/output ping-ponging is just a swap of pointer
 		unsigned int* temp = keys;
 		keys			   = scratch_memory;
 		scratch_memory	   = temp;
-#endif
+#endif // #ifdef __KERNELCC__
 	}
 
 #ifndef __KERNELCC__
 	// The result is in keys for 32 digit keys
 	return std::make_pair<>(keys_vector, sorted_keys);
-#endif
+#endif // #ifndef __KERNELCC__
 }
 
-#endif
+#endif // #ifndef DEVICE_GMON_RADIX_SORT_H

@@ -146,4 +146,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H

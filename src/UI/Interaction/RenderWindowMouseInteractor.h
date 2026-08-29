@@ -56,4 +56,4 @@ private:
 	bool m_interacting_right_button = false;
 };
 
-#endif
+#endif // #ifndef RENDER_WINDOW_MOUSE_INTERACTOR_H

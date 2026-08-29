@@ -19,4 +19,4 @@ HIPRT_DEVICE static void get_blue_noise_texture_offset(unsigned int blue_noise_t
 	out_offset_y					= (int)(1.0f / (golden_ratio_2d * golden_ratio_2d) * (float)blue_noise_texture_height * zero_based_frame_number);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_SSBN_PERMUTATION_SSBNPERMUTATIONCOMMON_H

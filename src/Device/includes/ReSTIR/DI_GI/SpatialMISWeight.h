@@ -652,4 +652,4 @@ using ReSTIRDISpatialResamplingMISWeight = ReSTIRSpatialResamplingMISWeight<Bias
 template <int BiasCorrectionMode>
 using ReSTIRGISpatialResamplingMISWeight = ReSTIRSpatialResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_GI_SPATIAL_MIS_WEIGHT_H

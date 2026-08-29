@@ -30,6 +30,6 @@
  */
 #define SSBNPermutationDebugSeeds KERNEL_OPTION_FALSE
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_SSBN_PERMUTATION_OPTIONS_H

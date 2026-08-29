@@ -17,16 +17,16 @@ extern "C"
 }
 GLOBAL_KERNEL_SIGNATURE(void)
 ReSTIR_SPMIS_ResetBuffers()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_SPMIS_RENDER_DATA);
 
 	const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (index >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
 		return;
@@ -46,4 +46,4 @@ inline ReSTIR_SPMIS_ResetBuffers(HIPRTRenderData render_data, int index)
 	spmis_settings.cell_alive_list[index]				   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_SPMIS_RESET_BUFFERS_H

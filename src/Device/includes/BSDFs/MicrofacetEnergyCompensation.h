@@ -38,9 +38,9 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	const void* GGX_directional_albedo_texture_pointer = nullptr;
 #ifdef __KERNELCC__
 	GGX_directional_albedo_texture_pointer = &render_data.bsdfs_data.GGX_conductor_directional_albedo;
-#else
+#else // #ifdef __KERNELCC__
 	GGX_directional_albedo_texture_pointer = render_data.bsdfs_data.GGX_conductor_directional_albedo;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	// Reading the precomputed directional albedo from the texture
 	float2_t uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
@@ -57,10 +57,10 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
 	ColorRGB32F fresnel_compensation_term = F0;
-#else
+#else // #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
 	// 1.0f F so that the fresnel compensation has no effect
 	ColorRGB32F fresnel_compensation_term = ColorRGB32F(1.0f);
-#endif
+#endif // #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
 	// Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
 	// Eq. 9
 	return ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
@@ -710,7 +710,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 		// in the lerp such that we use less and less the energy compensation term as the roughness increases
 		compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * custom_roughness);
 	}
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 
 	return compensation_term;
 }
@@ -726,4 +726,4 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 	return get_GGX_energy_compensation_glass(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV);
 }
 
-#endif
+#endif // #ifndef DEVICE_BSDF_MICROFACET_ENERGY_COMPENSATION_H

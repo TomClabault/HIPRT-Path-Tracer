@@ -17,9 +17,9 @@ HIPRT_DEVICE float light_clustering_node_importance(const LightTreeSGDevice& lig
 {
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
-#else
+#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data;
-#endif
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 
 	return light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
 										 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
@@ -41,9 +41,9 @@ HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_t
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
-#else
+#else // #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.estimated_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
-#endif
+#endif // #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
 	statistics.mean		   = 0.0f;
 	statistics.M2		   = 0.0f;
 	statistics.visit_count = 0u;
@@ -52,10 +52,10 @@ HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_t
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
@@ -63,12 +63,12 @@ IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAw
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	unsigned int slot			= 0u;
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	unsigned int context_state								  = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states[lightcut_index];
@@ -84,7 +84,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAw
 		lightcut_data.Q0_initialized	 = true;
 		lightcut_data.lightcut_cdf_dirty = true;
 	}
-#else
+#else // #ifdef __KERNELCC__
 	if (should_initialize_Q0)
 	{
 		for (unsigned int lightcut_slot = 0; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
@@ -93,7 +93,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(IlluminationAw
 		lightcut_data.Q0_initialized	 = true;
 		lightcut_data.lightcut_cdf_dirty = true;
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_LIGHT_CLUSTER_Q0_H

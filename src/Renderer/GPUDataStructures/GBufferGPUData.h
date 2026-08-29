@@ -64,4 +64,4 @@ struct GBufferGPURenderer
 	OrochiBuffer<RayVolumeState> ray_volume_states;
 };
 
-#endif
+#endif // #ifndef G_BUFFER_GPU_RENDERER_H

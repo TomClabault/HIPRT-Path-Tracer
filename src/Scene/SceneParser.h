@@ -247,4 +247,4 @@ private:
 	static CPUMaterial offset_textures_indices(const CPUMaterial& renderer_material, int offset);
 };
 
-#endif
+#endif // #ifndef SCENE_PARSER_H

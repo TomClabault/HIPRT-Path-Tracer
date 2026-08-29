@@ -734,7 +734,7 @@ inline constexpr double4_t make_double4(double v)
 	return double4_t(v, v, v, v);
 }
 
-#else // __KERNELCC__
+#else // __KERNELCC__ // #ifndef __KERNELCC__
 
 #include "Device/includes/FixIntellisense.h"
 
@@ -848,6 +848,6 @@ HIPRT_DEVICE inline constexpr double4_t make_double4(double v)
 	return make_double4(v, v, v, v);
 }
 
-#endif // !__KERNELCC__
+#endif // !__KERNELCC__ // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_VEC_TYPES_H

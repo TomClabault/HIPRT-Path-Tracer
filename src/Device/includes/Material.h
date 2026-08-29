@@ -14,7 +14,7 @@
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
-#endif
+#endif // #ifndef __KERNELCC__
 
 template <typename T>
 HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, const float2_t& texcoords, int texture_index, bool is_srgb);
@@ -73,7 +73,7 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
 		if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
 			material.base_color = get_base_color(render_data, trash_alpha, texcoords, material.base_color_texture_index);
-#endif
+#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
 	}
 
 	// Reading some parameters from the textures
@@ -119,7 +119,7 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 	float specular_transmission = read_material_texture<float>(render_data, texcoords, material.specular_transmission_texture_index, false);
 	if (material.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
 		material.specular_transmission = specular_transmission;
-#endif
+#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
 
 	ColorRGB32F emission;
 	if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
@@ -237,4 +237,4 @@ HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, 
 	return read_data<T>(rgba);
 }
 
-#endif
+#endif // #ifndef DEVICE_MATERIAL_H

@@ -115,4 +115,4 @@ public:
 	unsigned int m_total_number_of_cells_secondary_hits = 0;
 };
 
-#endif
+#endif // #ifndef REGIR_HASH_GRID_STORAGE_H

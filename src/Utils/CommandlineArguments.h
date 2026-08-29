@@ -28,4 +28,4 @@ struct CommandlineArguments
 	bool only_compile_shaders = false;
 };
 
-#endif
+#endif // #ifndef COMMANDLINE_ARGUMENTS_H

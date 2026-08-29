@@ -192,7 +192,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
 		// If we have sampling, only taking envmap into account on camera ray miss
 		if (bounce == 0)
-#endif
+#endif // #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
 		{
 			// We're only getting the skysphere radiance for the first rays because the
 			// syksphere is importance sampled.
@@ -204,9 +204,9 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 			// Otherwise, if not bounce 2, we do want to take the scaling into
 			// account so this if will fail and the envmap color will never be unscaled
 			if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
-#else
+#else // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 			if (!render_data.world_settings.envmap_scale_background_intensity)
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 				// Un-scaling the envmap if the user doesn't want to scale the background
 				skysphere_color /= (render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
 		}
@@ -326,4 +326,4 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_PATH_TRACING_H

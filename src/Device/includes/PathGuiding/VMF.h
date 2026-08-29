@@ -47,4 +47,4 @@ struct VMF
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_VMF_H

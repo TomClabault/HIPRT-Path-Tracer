@@ -55,4 +55,4 @@ private:
 	bool m_init_done = false;
 };
 
-#endif
+#endif // #ifndef UI_IMGUI_IMGUI_CONVERGENCE_GRAPH_WIDGET_SCREENSHOTTER_H

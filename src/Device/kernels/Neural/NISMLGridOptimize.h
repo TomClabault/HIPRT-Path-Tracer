@@ -11,14 +11,14 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned int training_sample_count, unsigned int adam_step)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned int training_sample_count, unsigned int adam_step, unsigned int feature_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (training_sample_count == 0u || feature_index >= NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETER_COUNT)
 		return;
 
@@ -42,4 +42,4 @@ inline NISMLGridOptimize(NISMLPositionLearnableDenseGridDevice grid, unsigned in
 	grid.features_fp16[feature_index] = static_cast<fp16>(updated_feature);
 }
 
-#endif
+#endif // #ifndef KERNELS_NISML_GRID_OPTIMIZE_H

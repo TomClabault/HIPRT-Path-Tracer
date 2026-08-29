@@ -125,7 +125,7 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	return LTCLobe::DIFFUSE_LOBE;
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 
 	float cdf[3];
 	cdf[0] = lobe_probabilities.coat_proba;
@@ -151,7 +151,7 @@ HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabiliti
 		return 1.0f;
 	else
 		return 0.0f;
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	switch (lobe)
 	{
 	case COAT_LOBE:
@@ -171,4 +171,4 @@ HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabiliti
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTC_LOBE_UTILS_H

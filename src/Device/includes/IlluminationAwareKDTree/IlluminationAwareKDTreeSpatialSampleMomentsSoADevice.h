@@ -56,4 +56,4 @@ struct IlluminationAwareKDTreeSpatialSampleMomentsSoADevice
 	AtomicType<float>* position_squared_sum_z				 = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SPATIAL_SAMPLE_MOMENTS_SOA_DEVICE_H

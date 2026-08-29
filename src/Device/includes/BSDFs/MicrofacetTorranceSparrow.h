@@ -182,19 +182,19 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
 	return torrance_sparrow_GGX_eval_reflect<0>(render_data, material, material_roughness, material_anisotropy, incident_ior, do_energy_compensation, F,
 												local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf,
 												incident_light_direction_is_from_GGX_sample, rng);
-#else
+#else // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 	return torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(render_data, material, material_roughness, material_anisotropy, incident_ior, F,
 																		   local_view_direction, local_to_light_direction, rng, out_pdf,
 																		   incident_light_direction_is_from_GGX_sample);
-#endif
-#else
+#endif // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
+#else // #if PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
 	ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, do_energy_compensation, local_view_direction);
 	ColorRGB32F single_scattering	 = torrance_sparrow_GGX_eval_reflect<0>(render_data, material, material_roughness, material_anisotropy, incident_ior,
 																			do_energy_compensation, F, local_view_direction, local_to_light_direction,
 																			local_halfway_vector, out_pdf, incident_light_direction_is_from_GGX_sample, rng);
 
 	return single_scattering * ms_compensation_term;
-#endif
+#endif // #if PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
 }
 
 /**
@@ -396,4 +396,4 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedE
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDF_MICROFACET_TORRANCE_SPARROW_H

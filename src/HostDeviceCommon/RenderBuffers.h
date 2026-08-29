@@ -115,4 +115,4 @@ private:
 	unsigned int* updated_random_seeds = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RENDER_BUFFERS_H

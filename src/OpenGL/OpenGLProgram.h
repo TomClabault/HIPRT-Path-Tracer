@@ -38,4 +38,4 @@ private:
 	GLint m_compute_threads[3] = { 0, 0, 0 };
 };
 
-#endif
+#endif // #ifndef OPENGL_PROGRAM_H

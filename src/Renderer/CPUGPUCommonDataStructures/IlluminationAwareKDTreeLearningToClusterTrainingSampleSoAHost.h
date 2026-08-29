@@ -58,4 +58,4 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost
 	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostInternal<DataContainer> m_training_samples;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_TRAINING_SAMPLE_SOA_HOST_H

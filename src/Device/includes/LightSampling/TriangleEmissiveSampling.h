@@ -227,7 +227,7 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
 			// Invalid fallback strategy
 			invalid ReGIR light sampling fallback strategy
-#endif
+#endif // #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
 
 				// Fallback method as the point was outside of the ReGIR grid
 				light_point_samples =
@@ -239,4 +239,4 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 	return light_point_samples;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_EMISSIVE_SAMPLING_H

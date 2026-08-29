@@ -241,4 +241,4 @@ struct MLPFullyFusedDeviceCommon
 	float adam_learning_rate = 0.001f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_COMMON_H

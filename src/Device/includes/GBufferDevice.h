@@ -32,4 +32,4 @@ struct GBufferDevice
 	Octahedral24BitNormalPadded32b* geometric_normals = nullptr;
 };
 
-#endif
+#endif // #ifndef GBUFFER_DEVICE_H

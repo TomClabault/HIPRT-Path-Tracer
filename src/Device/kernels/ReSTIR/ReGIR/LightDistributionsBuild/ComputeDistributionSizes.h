@@ -61,4 +61,4 @@ inline ReGIR_LightDistributionsBuildComputeDistributionsSizes(const float* __res
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_RESTIR_REGIR_COMPUTE_DISTRIBUTIONS_SIZES_H

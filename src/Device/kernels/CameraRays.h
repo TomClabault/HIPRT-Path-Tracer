@@ -63,7 +63,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_global_offset_counter[0]					= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance[pixel_index]					= -1.0f;
-#endif
+#endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -127,16 +127,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char FILL_GBUFFER_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) CameraRays()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(FILL_GBUFFER_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -260,4 +260,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 }
 
-#endif
+#endif // #ifndef KERNELS_CAMERA_RAY_H

@@ -252,4 +252,4 @@ HIPRT_DEVICE float3_t fibonacci_sphere_direction(int i, int N)
 	return hippt::normalize(make_float3(x, y, z));
 }
 
-#endif
+#endif // #ifndef DEVICE_SAMPLING_H

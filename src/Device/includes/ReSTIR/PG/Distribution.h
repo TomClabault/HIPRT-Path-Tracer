@@ -63,4 +63,4 @@ struct ReSTIRPGDistribution
 	VMFMixtureComponent distribution_components[ReSTIRPGDistributionComponentCount];
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_H

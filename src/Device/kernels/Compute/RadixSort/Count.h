@@ -60,4 +60,4 @@ RadixSort_Count(unsigned int* __restrict__ keys,
 	}
 }
 
-#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_COUNT_H
+#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_COUNT_H // #ifndef DEVICE_KERNELS_COMPUTE_RADIX_SORT_COUNT_H

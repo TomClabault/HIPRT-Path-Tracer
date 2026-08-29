@@ -61,4 +61,4 @@
 
 #define ReSTIR_SpatialDirectionalReuseBitCount 64
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_OPTIONS_H

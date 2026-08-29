@@ -15,7 +15,7 @@
 
 #ifndef __KERNELCC__
 #include "omp.h"
-#endif
+#endif // #ifndef __KERNELCC__
 
 HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(HIPRTRenderData& render_data,
 																				bool primary_hit,
@@ -243,7 +243,7 @@ ReGIR_Spatial_Reuse(ReGIRHashGridSoADevice input_reservoirs_grid,
 					ReGIRHashCellDataSoADevice output_reservoirs_hash_cell_data,
 					unsigned int number_of_cells_alive,
 					bool primary_hit)
-#else
+#else // #ifdef __KERNELCC__
 template <bool accumulatePreIntegration>
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
@@ -253,11 +253,11 @@ inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
 						   unsigned int number_of_cells_alive,
 						   bool primary_hit,
 						   int thread_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
@@ -267,7 +267,7 @@ inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
 #ifdef __KERNELCC__
 	uint32_t thread_index		= blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t thread_count = gridDim.x * blockDim.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	while (thread_index < regir_settings.get_number_of_reservoirs_per_cell(primary_hit) * number_of_cells_alive)
 	{
@@ -334,21 +334,21 @@ inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
 		spatial_reuse_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(
 			render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell),
 			hash_grid_cell_index, primary_hit);
-#else
+#else // #ifdef __KERNELCC__
 		spatial_reuse_pre_integration_accumulation<accumulatePreIntegration>(
 			render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell),
 			hash_grid_cell_index, primary_hit);
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifndef __KERNELCC__
 		// We're dispatching exactly one thread per reservoir to compute on the CPU so no need
 		// for the work queue style of things that is only needed on the GPU, we can just exit here
 		break;
-#else
+#else // #ifndef __KERNELCC__
 		// We need to compute the next reservoir index for the next iteration
 		thread_index += thread_count;
-#endif
+#endif // #ifndef __KERNELCC__
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_SPATIAL_REUSE_H

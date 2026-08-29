@@ -116,4 +116,4 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	unsigned int m_maximum_lightcut_size = LearningToClusterMaximumLightCutSize;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DATA_HOST_H

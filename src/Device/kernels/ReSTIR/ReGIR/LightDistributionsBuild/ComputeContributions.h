@@ -52,7 +52,7 @@ HIPRT_DEVICE float compute_mesh_contribution(
 	return total_contribution_to_cell / (float)ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
 }
 
-#else // ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
+#else // ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE // #if ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE float compute_mesh_contribution(
 	HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
@@ -69,12 +69,12 @@ HIPRT_DEVICE float compute_mesh_contribution(
 		mesh_normal = -hippt::normalize(mesh_average_point - cell_surface.cell_point);
 	else
 		mesh_normal = mesh_average_normal;
-#else
+#else // #if ReGIR_GridFillCellDistributionsUseRepresentativeNormal == KERNEL_OPTION_TRUE
 	// If not using mesh representative normals, using the direction from the cell to the mesh average point instead
 	// such that the geometry term cosine term evaluates to 1 and the normal essentially
 	// isn't taken into account
 	mesh_normal = -hippt::normalize(mesh_average_point - cell_surface.cell_point);
-#endif
+#endif // #if ReGIR_GridFillCellDistributionsUseRepresentativeNormal == KERNEL_OPTION_TRUE
 
 	// Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
 	// just a float as argument
@@ -87,7 +87,7 @@ HIPRT_DEVICE float compute_mesh_contribution(
 																	 rng);
 }
 
-#endif // ReGIR_GridFillCellDistributionsIntegrateMesh
+#endif // ReGIR_GridFillCellDistributionsIntegrateMesh // #if ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
 /**
  * This kernel computes the contribution of all the meshes of the scene to each grid cell
@@ -107,7 +107,7 @@ ReGIR_LightDistributionsBuildComputeContributions(unsigned int* contributions_sc
 												  unsigned int* contributions_scratch_buffer_sort_values,
 												  unsigned int cell_index_offset,
 												  bool primary_hit)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_data,
 														 unsigned int* contributions_scratch_buffer_sort_keys,
@@ -115,11 +115,11 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 														 unsigned int cell_index_offset,
 														 bool primary_hit,
 														 unsigned int thread_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No initial candidates to sample since no lights
 		return;
@@ -128,7 +128,7 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 
 #ifdef __KERNELCC__
 	uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
 	// Cell index within the dispatch
@@ -161,4 +161,4 @@ inline ReGIR_LightDistributionsBuildComputeContributions(HIPRTRenderData render_
 	contributions_scratch_buffer_sort_values[thread_index] = mesh_index_for_grid_cell;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_BUILD_COMPUTE_CONTRIBUTIONS_H

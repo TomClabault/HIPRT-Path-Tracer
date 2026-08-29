@@ -17,4 +17,4 @@ struct NEEPlusPlusCachingPrepassParameters
 	unsigned int random_number = 42;
 };
 
-#endif
+#endif // #ifndef NEE_PLUS_PLUS_CACHING_PREPASS_KERNEL_PARAMETERS_H

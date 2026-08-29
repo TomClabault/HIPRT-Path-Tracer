@@ -8,4 +8,4 @@
 
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 
-#endif
+#endif // #ifndef HOST_DEVICE_RESTIR_PT_DEFAULT_SETTINGS_H

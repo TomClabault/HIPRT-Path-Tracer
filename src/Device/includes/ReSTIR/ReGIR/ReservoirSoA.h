@@ -11,7 +11,7 @@
 #ifndef __KERNELCC__
 template <template <typename> typename DataContainer>
 struct ReGIRHashGridSoAHost;
-#endif
+#endif // #ifndef __KERNELCC__
 
 struct ReGIRSampleSoADevice
 {
@@ -166,4 +166,4 @@ struct ReGIRReservoirSoADevice
 	unsigned int number_of_reservoirs_per_cell = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_RESERVOIR_SOA_H

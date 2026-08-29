@@ -35,4 +35,4 @@ struct DisplaySettings
 	bool white_furnace_display_use_high_threshold = true;
 };
 
-#endif
+#endif // #ifndef DISPLAY_SETTINGS_H

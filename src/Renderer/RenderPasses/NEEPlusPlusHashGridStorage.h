@@ -45,4 +45,4 @@ private:
 	unsigned int m_total_cells_alive_count_cpu = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_NEE_PLUS_PLUS_HASH_GRID_STORAGE_H

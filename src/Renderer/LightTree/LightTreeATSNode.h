@@ -34,4 +34,4 @@ struct LightTreeATSNode
 	unsigned int bit_trail = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_ATS_NODE_H

@@ -78,4 +78,4 @@ struct RayVolumeState
 	float sampled_wavelength = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_RAY_VOLUME_STATE_H

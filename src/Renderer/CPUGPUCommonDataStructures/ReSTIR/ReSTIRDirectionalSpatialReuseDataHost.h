@@ -79,4 +79,4 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 	ReSTIRDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H

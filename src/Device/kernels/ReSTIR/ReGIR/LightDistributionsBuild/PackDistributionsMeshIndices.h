@@ -72,4 +72,4 @@ inline ReGIR_LightDistributionsBuildPackDistributionsMeshIndices(
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_PACK_DISTRIBUTIONS_MESH_INDICES_H

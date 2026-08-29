@@ -79,4 +79,4 @@ struct NISMLMegaKernelDevice
 	unsigned int residual_stride = 0;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_NISML_MEGA_KERNEL_DATA_H

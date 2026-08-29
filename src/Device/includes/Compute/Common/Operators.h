@@ -45,4 +45,4 @@ struct OperatorMax
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_OPERATORS_H

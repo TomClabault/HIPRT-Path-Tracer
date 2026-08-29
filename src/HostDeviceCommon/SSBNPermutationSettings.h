@@ -23,4 +23,4 @@ struct SSBNPermutationSettings
 	uint3_t* screen_space_hash_grid = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_SSBN_PERMUTATION_SETTINGS_H

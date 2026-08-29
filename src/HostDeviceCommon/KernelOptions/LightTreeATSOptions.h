@@ -43,4 +43,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LIGHT_TREE_ATS_OPTIONS_H

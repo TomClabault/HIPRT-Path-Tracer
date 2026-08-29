@@ -80,4 +80,4 @@ private:
 	bool m_just_resized = false;
 };
 
-#endif
+#endif // #ifndef RENDERER_SSBN_PERMUTATION_RENDER_PASS_H

@@ -58,7 +58,7 @@ public:
 		ADD_ENV_VAR_ERROR_UNKNOWN		  // Unhandled error value
 	};
 	static AddEnvVarError windows_add_ENV_var_to_PATH(const wchar_t* env_var_name, std::wstring extra_string = L"");
-#endif
+#endif // #ifdef _WIN32
 };
 
 template <typename T>
@@ -77,4 +77,4 @@ void Utils::compute_prefix_sum(const std::vector<T>& input, std::vector<T>& out_
 	}
 }
 
-#endif
+#endif // #ifndef UTILS_H

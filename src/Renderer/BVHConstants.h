@@ -14,4 +14,4 @@ struct BVHConstants
 	static constexpr int MAX_TRIANGLES_PER_LEAF = 8;
 };
 
-#endif
+#endif // #ifndef BVH_CONSTANTS_H

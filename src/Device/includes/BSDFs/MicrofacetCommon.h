@@ -69,4 +69,4 @@ HIPRT_DEVICE static float G1_Smith(float alpha_x, float alpha_y, const float3_t&
 	return 1.0f / (1.0f + lambda);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDF_MICROFACET_COMMON_H

@@ -221,4 +221,4 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveM
 	return RGB_hue_shift(I, material.thin_film_hue_shift_degrees * 360.0f);
 }
 
-#endif
+#endif // #ifndef DEVICE_THIN_FILM_H

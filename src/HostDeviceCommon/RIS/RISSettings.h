@@ -15,4 +15,4 @@ struct RISSettings
 	int number_of_bsdf_candidates = 1;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RIS_SETTINGS_H

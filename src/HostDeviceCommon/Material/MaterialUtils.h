@@ -82,15 +82,15 @@ struct MaterialUtils
 	{
 #if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
 		return true;
-#elif PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE
+#elif PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE // #if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
 		// If we have BSDF regularization, everything can do light sampling now
 		return true;
-#endif
+#endif // #if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
 
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 		// We can always do light sampling on these BSDFs
 		return true;
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 
 		bool smooth_base_layer = MaterialUtils::is_perfectly_smooth(material_roughness, roughness_threshold) &&
 								 (material_metallic == 1.0f || material_specular_transmission == 1.0f);
@@ -148,4 +148,4 @@ struct MaterialUtils
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_UTILS_H

@@ -72,4 +72,4 @@ HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings
 	return do_russian_roulette(render_settings, bounce, ray_throughput, unused_throughput_scaling, current_weight, random_number_generator);
 }
 
-#endif
+#endif // #ifndef RUSSIAN_ROULETTE_H

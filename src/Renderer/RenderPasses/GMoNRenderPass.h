@@ -76,4 +76,4 @@ private:
 	int m_next_set_to_accumulate = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_GMON_RENDER_PASS_H

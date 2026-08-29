@@ -45,4 +45,4 @@ private:
 	oroTextureObject_t m_texture = nullptr;
 };
 
-#endif
+#endif // #ifndef OROCHI_TEXTURE_3D_H

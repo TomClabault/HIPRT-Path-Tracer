@@ -12,4 +12,4 @@ enum PathRussianRoulette
 	ARNOLD_2014
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_PATH_RUSSIAN_ROULETTE_H

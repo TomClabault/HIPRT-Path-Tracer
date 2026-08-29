@@ -42,11 +42,11 @@ struct NISMLTrainProfileRecord
 #if defined(__KERNELCC__) && NISML_HAS_WMMA && !defined(NISML_TRAIN_PROFILING_DISABLED)
 #if NISML_TRAIN_PROFILE_USE_CLOCK
 #define NISML_TRAIN_PROFILE_CLOCK() clock()
-#elif NISML_TRAIN_PROFILE_USE_CLOCK64
+#elif NISML_TRAIN_PROFILE_USE_CLOCK64 // #if NISML_TRAIN_PROFILE_USE_CLOCK
 #define NISML_TRAIN_PROFILE_CLOCK() clock64()
-#else
+#else // #if NISML_TRAIN_PROFILE_USE_CLOCK
 #define NISML_TRAIN_PROFILE_CLOCK() wall_clock64()
-#endif
+#endif // #if NISML_TRAIN_PROFILE_USE_CLOCK
 
 #define NISML_TRAIN_PROFILE_START(profile_record, start)                                                                                                       \
 	do                                                                                                                                                         \
@@ -74,7 +74,7 @@ struct NISMLTrainProfileRecord
 			(profile_record)->phase_durations[phase] += NISML_TRAIN_PROFILE_CLOCK() - (start);                                                                 \
 		__syncthreads();                                                                                                                                       \
 	} while (0)
-#else
+#else // #if defined(__KERNELCC__) && NISML_HAS_WMMA && !defined(NISML_TRAIN_PROFILING_DISABLED)
 #define NISML_TRAIN_PROFILE_START(profile_record, start)                                                                                                       \
 	do                                                                                                                                                         \
 	{                                                                                                                                                          \
@@ -89,8 +89,8 @@ struct NISMLTrainProfileRecord
 	do                                                                                                                                                         \
 	{                                                                                                                                                          \
 	} while (0)
-#endif
+#endif // #if defined(__KERNELCC__) && NISML_HAS_WMMA && !defined(NISML_TRAIN_PROFILING_DISABLED)
 
-#endif
+#endif // #ifdef PROFILING_ENABLED
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_NEURAL_NISML_TRAIN_PROFILING_H

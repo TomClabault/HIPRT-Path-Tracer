@@ -103,4 +103,4 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 	return target_function;
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_TARGET_FUNCTION_H

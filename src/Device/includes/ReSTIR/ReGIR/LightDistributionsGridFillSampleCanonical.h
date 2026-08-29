@@ -8,4 +8,4 @@
 
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_REGIR_LIGHT_DISTRIBUTIONS_GRID_FILL_SAMPLE_CANONICAL_H

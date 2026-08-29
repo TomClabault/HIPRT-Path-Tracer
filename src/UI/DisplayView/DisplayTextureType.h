@@ -94,4 +94,4 @@ private:
 	Value m_value;
 };
 
-#endif
+#endif // #ifndef DISPLAY_TEXTURE_TYPE_H

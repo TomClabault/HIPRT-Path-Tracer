@@ -59,4 +59,4 @@ struct RendererAnimationState
 	}
 };
 
-#endif
+#endif // #ifndef RENDERER_ANIMATION_STATE_H

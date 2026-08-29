@@ -74,7 +74,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 		bsdf_pdf_area_measure = solid_angle_to_area_pdf(
 			bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_point_sample.point_on_light - shading_point),
 			compute_cosine_term_at_light_source(light_point_sample.light_source_normal, hippt::normalize(shading_point - light_point_sample.point_on_light)));
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 		float canonical_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(
 			render_data, shading_point, view_direction, shading_normal, ray_payload.material, light_point_sample.point_on_light,
 			light_point_sample.light_source_normal, light_point_sample.emissive_triangle_global_index);
@@ -129,7 +129,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 				solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_point_sample.point_on_light - shading_point),
 										compute_cosine_term_at_light_source(light_point_sample.light_source_normal,
 																			hippt::normalize(shading_point - light_point_sample.point_on_light)));
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			unsigned int sampled_mesh_index =
 				render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_point_sample.emissive_triangle_global_index];
 			float cell_light_distributions_pdf =
@@ -166,10 +166,10 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 #if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
 		intersection_found =
 			evaluate_bsdf_light_sample_ray_simplified(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, rng);
-#else
+#else // #if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
 		intersection_found =
 			evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, rng);
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
 
 		float bsdf_sample_pdf_area_measure =
 			solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance,
@@ -216,9 +216,9 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 			sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
 		}
 	}
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 
 	return reservoir;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_SHADING_H

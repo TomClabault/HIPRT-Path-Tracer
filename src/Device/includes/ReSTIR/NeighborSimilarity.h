@@ -125,4 +125,4 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed;
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H

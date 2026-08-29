@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice kd_tree_device, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTreeDevice kd_tree_device)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int guiding_list_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int guiding_list_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int active_guiding_count = *kd_tree_device.core.active_guiding_node_count;
 	if (guiding_list_index >= active_guiding_count)
@@ -103,4 +103,4 @@ IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTree
 		*kd_tree_device.any_cell_needs_split = 1;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_MARK_GUIDING_CELLS_FOR_SPLITTING_H

@@ -85,10 +85,10 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
 	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
 												  random_number_generator, incident_light_info);
-#else
+#else // #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
 	restir_pg_sample_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator,
 							incident_light_info);
-#endif
+#endif // #if ReSTIRPGEnable == KERNEL_OPTION_FALSE
 
 	out_bsdf_pdf = bsdf_pdf;
 
@@ -107,7 +107,7 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
-#endif
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 	// Returning this bounce's unweighted throughput
 	return this_bounce_unweighted_throughput;
@@ -261,7 +261,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 		restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
 	}
-#endif
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 }
 
 HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
@@ -295,7 +295,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
 								  nee_deferred_MIS_context, random_number_generator);
-#endif
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PT_INITIAL_CANDIDATES_UTILS_H

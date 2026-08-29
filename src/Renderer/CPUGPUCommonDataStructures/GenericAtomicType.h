@@ -14,4 +14,4 @@
 template <typename T, template <typename> class Container>
 using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>, std::vector<T>>::value, AtomicType<T>, T>;
 
-#endif
+#endif // #ifndef RENDERER_GENERIC_ATOMIC_TYPE_H

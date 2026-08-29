@@ -18,4 +18,4 @@ struct GlossyDielectricDirectionalAlbedoSettings
 	int integration_sample_count = 131072;
 };
 
-#endif
+#endif // #ifndef DIELECTRIC_FRESNEL_DIRECTIONAL_ALBEDO_SETTINGS_H

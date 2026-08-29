@@ -28,4 +28,4 @@ HIPRT_DEVICE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution
 	return light_contribution;
 }
 
-#endif
+#endif // #ifndef DEVICE_LIGHT_UTILS_H

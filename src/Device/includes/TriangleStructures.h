@@ -42,4 +42,4 @@ HIPRT_DEVICE static TriangleTexcoords load_triangle_texcoords(float2_t* texcoord
 							  texcoords_buffer[triangle_vertex_indices.z] };
 }
 
-#endif
+#endif // #ifndef DEVICE_TRIANGLE_STRUCTURES_H

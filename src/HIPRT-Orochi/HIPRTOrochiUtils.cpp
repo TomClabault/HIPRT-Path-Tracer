@@ -16,11 +16,11 @@
 #include <cstdarg>
 #include <cstdio>
 #include <iostream>
-#else
+#else // #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
 #include "UI/ImGui/ImGuiLogger.h"
 
 extern ImGuiLogger g_imgui_logger;
-#endif
+#endif // #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
 
 #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
 static void log_error(const char* format, ...)
@@ -35,9 +35,9 @@ static void log_error(const char* format, ...)
 }
 
 #define HIPPT_OROCHI_LOG_ERROR(...) log_error(__VA_ARGS__)
-#else
+#else // #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
 #define HIPPT_OROCHI_LOG_ERROR(...) g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, __VA_ARGS__)
-#endif
+#endif // #ifdef GPU_KERNEL_COMPILER_WORKER_BUILD
 
 void orochi_check_error(oroError res, const char* file, uint32_t line)
 {

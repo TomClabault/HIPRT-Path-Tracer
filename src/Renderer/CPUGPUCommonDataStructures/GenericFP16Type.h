@@ -17,4 +17,4 @@ using GenericFP16Type = typename std::conditional_t<
     uint16_t   // GPU: 2-byte type matching __half size for correct GPU allocation
 >;
 
-#endif
+#endif // #ifndef RENDERER_GENERIC_FP16_TYPE_H

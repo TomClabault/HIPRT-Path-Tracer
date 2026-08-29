@@ -142,4 +142,4 @@ HIPRT_DEVICE inline void accumulate_nisml_position_grid_input_gradients(const NI
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_NISML_POSITION_LEARNABLE_DENSE_GRID_H

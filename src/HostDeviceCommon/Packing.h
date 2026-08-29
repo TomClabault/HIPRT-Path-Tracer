@@ -484,4 +484,4 @@ private:
 	unsigned int m_packed;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_PACKING_H

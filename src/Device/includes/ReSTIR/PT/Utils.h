@@ -90,4 +90,4 @@ HIPRT_DEVICE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRend
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_UTILS_H

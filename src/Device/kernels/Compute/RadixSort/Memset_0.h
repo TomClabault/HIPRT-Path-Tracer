@@ -28,4 +28,4 @@ RadixSort_Memset_0(unsigned int* __restrict__ global_count_table,
 		per_block_count_tables_scanned[global_thread_index] = 0;
 }
 
-#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_MEMSET_0_H
+#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_MEMSET_0_H // #ifndef DEVICE_KERNELS_COMPUTE_RADIX_SORT_MEMSET_0_H

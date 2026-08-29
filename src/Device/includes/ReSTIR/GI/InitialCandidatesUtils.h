@@ -97,10 +97,10 @@ HIPRT_HOST_DEVICE bool ReSTIR_GI_compute_next_indirect_bounce(HIPRTRenderData& r
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	restir_pg_sample_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator,
 							incident_light_info);
-#else
+#else // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
 												  random_number_generator, incident_light_info);
-#endif
+#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 
 	out_bsdf_pdf = bsdf_pdf;
 
@@ -118,4 +118,4 @@ HIPRT_HOST_DEVICE bool ReSTIR_GI_compute_next_indirect_bounce(HIPRTRenderData& r
 	return true;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_GI_INITIAL_CANDIDATES_UTILS_H

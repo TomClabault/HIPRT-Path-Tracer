@@ -112,7 +112,7 @@ bool GPUKernelCompilerWindowProcessCacheLock::acquired() const
 	return mutex_acquired;
 }
 
-#else
+#else // #ifdef _WIN32
 
 GPUKernelCompilerWindowProcessCacheLock::GPUKernelCompilerWindowProcessCacheLock(const GPUKernelCompilerWindowProcessCompilationRequest&) {}
 
@@ -123,4 +123,4 @@ bool GPUKernelCompilerWindowProcessCacheLock::acquired() const
 	return false;
 }
 
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32

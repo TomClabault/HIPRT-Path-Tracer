@@ -25,10 +25,10 @@ HIPRT_DEVICE void append_replayed_light_cluster_observation(IlluminationAwareKDT
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
@@ -36,12 +36,12 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	unsigned int slot			= 0u;
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	if (!lightcut_data.Q0_initialized)
@@ -76,7 +76,7 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 			hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_sample_counts + lightcut_index, 1u);
 		}
 	}
-#else
+#else // #ifdef __KERNELCC__
 	kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 	for (slot = 0u; slot < lightcut_data.lightcut_size; slot++)
 	{
@@ -97,7 +97,7 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 			kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index]++;
 		}
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_STATISTICS_H

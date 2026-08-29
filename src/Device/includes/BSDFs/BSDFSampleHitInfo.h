@@ -28,4 +28,4 @@ struct BSDFLightSampleRayHitInfo
 	ColorRGB32F hit_emission;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_BSDF_LIGHT_SAMPLE_RAY_HIT_INFO_H

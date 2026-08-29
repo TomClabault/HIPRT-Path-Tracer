@@ -13,14 +13,14 @@ uniform float u_threshold_val;
 
 #ifdef COMPUTE_SCREENSHOTER
 uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 in vec2 vs_tex_coords;
 out vec4 out_color;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 
 #ifdef COMPUTE_SCREENSHOTER
 layout(local_size_x = 8, local_size_y = 8) in;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 void main()
 {
 #ifdef COMPUTE_SCREENSHOTER																		
@@ -33,9 +33,9 @@ void main()
 	// the pixel isn't being sampled anymore (it has converged and has been 
 	// excluded by the adaptive sampling)
 	float scalar = texelFetch(u_texture, thread_id / u_resolution_scaling, 0).r;
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 	float scalar = texture(u_texture, vs_tex_coords / u_resolution_scaling).r;
-#endif
+#endif // #ifdef COMPUTE_SCREENSHOTER
 	
 	float final_color = 0.0f;
 	if (scalar < u_threshold_val && scalar != -1.0f)
@@ -52,7 +52,7 @@ void main()
 #ifdef COMPUTE_SCREENSHOTER
 	uvec4 ufinal_color = uvec4(uvec3(final_color) * 255.0f, 255);
 	imageStore(u_output_image, thread_id, ufinal_color);
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 	out_color = vec4(vec3(final_color), 1.0f);
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 };

@@ -98,4 +98,4 @@ HIPRT_DEVICE bool aabb_rasterize_pixel_is_on_aabb_edge(
 	return false;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_AABB_RASTERIZE_H

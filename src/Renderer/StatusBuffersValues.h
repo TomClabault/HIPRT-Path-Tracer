@@ -20,4 +20,4 @@ struct StatusBuffersValues
 	unsigned int pixel_converged_count = 0;
 };
 
-#endif
+#endif // #ifndef STATUS_BUFFERS_VALUES_H

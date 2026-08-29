@@ -15,4 +15,4 @@ HIPRT_DEVICE unsigned int generate_fresh_pixel_random_seed(const HIPRTRenderData
 	return wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ 0xdeadbeef);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RANDOM_H

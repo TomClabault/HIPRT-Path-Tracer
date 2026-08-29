@@ -84,4 +84,4 @@ struct LightTreeSGBuildResult
 	}
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_DEVICE_DATA_H

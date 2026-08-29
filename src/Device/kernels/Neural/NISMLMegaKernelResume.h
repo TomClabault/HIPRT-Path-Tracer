@@ -15,15 +15,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char NISML_MEGAKERNEL_RESUME_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) NISMLMegaKernelResume(unsigned int stage_index)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData render_data, unsigned int stage_index, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_MEGAKERNEL_RESUME_RENDER_DATA);
 	unsigned int x				 = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int y				 = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -129,4 +129,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 	render_data.nisml_mega_kernel.path_states[pixel_index]		   = NISMLMegaKernelPathState::READY_TO_RESUME;
 }
 
-#endif
+#endif // #ifndef KERNELS_NISML_MEGA_KERNEL_RESUME_H

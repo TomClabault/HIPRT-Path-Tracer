@@ -17,4 +17,4 @@
 // Number of possible radix values (256 for 8 bits)
 #define RADIX_SORT_RADIX_SIZE (1 << RADIX_SORT_RADIX_BITS)
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_RADIX_SORT_COUNT_H

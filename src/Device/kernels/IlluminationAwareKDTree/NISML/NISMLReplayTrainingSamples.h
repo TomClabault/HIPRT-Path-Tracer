@@ -13,7 +13,7 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_NISMLReplayTrainingSamples(HIPRTRenderData render_data, int x)
-#else
+#else // #ifndef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
@@ -21,14 +21,14 @@ extern "C"
 }
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_NISMLReplayTrainingSamples()
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data	   = *reinterpret_cast<HIPRTRenderData*>(ILLUMINATION_AWARE_KD_TREE_RENDER_DATA);
 	unsigned int training_record_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int training_record_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (render_data.nisml.training_records == nullptr || render_data.nisml.training_record_count == nullptr)
 		return;
@@ -49,4 +49,4 @@ IlluminationAwareKDTree_NISMLReplayTrainingSamples()
 													 training_record.alpha_x, training_record.alpha_y, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_NISML_TRAINING_SAMPLES_KERNEL_H

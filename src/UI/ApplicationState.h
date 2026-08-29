@@ -47,4 +47,4 @@ struct ApplicationState
 	uint64_t last_viewport_refresh_timestamp = 0;
 };
 
-#endif
+#endif // #ifndef APPLICATION_STATE_H

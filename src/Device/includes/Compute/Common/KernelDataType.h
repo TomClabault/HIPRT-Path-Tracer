@@ -10,6 +10,6 @@
 using InputDataType		  = unsigned int;
 using TransformedDataType = unsigned int;
 using OutputDataType	  = unsigned int;
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_KERNEL_DATA_TYPE_H

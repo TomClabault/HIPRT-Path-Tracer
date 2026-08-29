@@ -131,4 +131,4 @@ HIPRT_DEVICE void nisml_megakernel_finalize_path_with_context(HIPRTRenderData& r
 	path_tracing_accumulate_color(render_data, pixel_index, ray_payload.ray_color, debug_color);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NISML_MEGA_KERNEL_COMMON_H

@@ -32,4 +32,4 @@ struct DevicePackedMaterialSoACPUGPUCommonData
 	}
 };
 
-#endif
+#endif // #ifndef RENDERER_DEVICE_PACKED_MATERIAL_SOA_CPU_GPU_COMMON_DATA_H

@@ -39,4 +39,4 @@ HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd
 	return -1;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_COMMON_H

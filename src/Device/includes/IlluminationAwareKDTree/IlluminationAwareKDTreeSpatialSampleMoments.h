@@ -17,4 +17,4 @@ struct IlluminationAwareKDTreeSpatialSampleMoments
 	float3_t position_squared_sum = make_float3(0.0f, 0.0f, 0.0f);
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SPATIAL_SAMPLE_MOMENTS_H

@@ -20,15 +20,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_ResetHashGrid()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetHashGrid(HIPRTRenderData render_data, int x)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int cell_index = x;
 	if (cell_index >= render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells)
@@ -54,4 +54,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetHashGrid(HIPRTRenderData ren
 	soa_device.sample_count[cell_index] = 0u;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_RESTIR_PG_RESET_HASH_GRID_H

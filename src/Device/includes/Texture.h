@@ -14,7 +14,7 @@
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
-#endif
+#endif // #ifndef __KERNELCC__
 
 #ifdef __KERNELCC__
 // Dummy usings so that the GPU compiler doesn't complain that Image8Bit / Image32Bit don't exist.
@@ -22,7 +22,7 @@
 // purely for the compiler to be happy
 using Image8Bit	 = int;
 using Image32Bit = int;
-#endif
+#endif // #ifdef __KERNELCC__
 
 /**
  * Templated here so that the CPU can cast the texture_buffer into Image8Bit or Image32Bit
@@ -52,11 +52,11 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
 		return ColorRGBA32F(0.0f);
 
 	rgba = ColorRGBA32F(tex2D<float4_t>(texture, u, v));
-#else
+#else // #ifdef __KERNELCC__
 	const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
 
 	rgba = texture.sample_rgba32f(uv);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	// sRGB to linear conversion
 	// Doing the conversion manually instead of using the hardware
@@ -139,7 +139,7 @@ HIPRT_DEVICE static ColorRGBA32F internal_bilinear_sample_on_3D_texture(const or
 
 	return hippt::lerp(hippt::lerp(a, b, w.x), hippt::lerp(c, d, w.x), w.y);
 }
-#endif
+#endif // #ifdef __KERNELCC__
 
 /**
  * This function samples a 3D texture given in the 'texture' parameter
@@ -204,12 +204,12 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 
 		return ColorRGB32F(hippt::lerp(rgba0, rgba1, w));
 	}
-#else
+#else // #ifdef __KERNELCC__
 	const Image32Bit3D& image = *reinterpret_cast<const Image32Bit3D*>(texture);
 	ColorRGBA32F rgba		  = image.sample_rgba32f(uvw);
 
 	return ColorRGB32F(rgba);
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
 HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettings& world_settings, float2_t uv)
@@ -237,13 +237,13 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 	ColorRGB32F color_x1y1 = world_settings.envmap[index_x1y1].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
 
 	return hippt::lerp(hippt::lerp(color_x0y0, color_x1y0, x_frac), hippt::lerp(color_x0y1, color_x1y1, x_frac), y_frac);
-#else
+#else // #if EnvmapSamplingDoBilinearFiltering == KERNEL_OPTION_TRUE
 	int x	  = uv.x * (world_settings.envmap_width - 1);
 	int y	  = uv.y * (world_settings.envmap_height - 1);
 	int index = x + y * world_settings.envmap_width;
 
 	return world_settings.envmap[index].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;
-#endif
+#endif // #if EnvmapSamplingDoBilinearFiltering == KERNEL_OPTION_TRUE
 }
 
 /**
@@ -288,4 +288,4 @@ HIPRT_DEVICE static T uv_interpolate(int* vertex_indices, int primitive_index, T
 	return uv_interpolate(vertex_A_index, vertex_B_index, vertex_C_index, data, uv);
 }
 
-#endif
+#endif // #ifndef DEVICE_TEXTURE_H

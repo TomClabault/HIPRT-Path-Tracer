@@ -163,4 +163,4 @@ struct ReSTIRSPMISDataHost
 	ReSTIRSPMISDataHostInternal<DataContainer> m_spmis_data;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_SPMIS_DATA_HOST_H

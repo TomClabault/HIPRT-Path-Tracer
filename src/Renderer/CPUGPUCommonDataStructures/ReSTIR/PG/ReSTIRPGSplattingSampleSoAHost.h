@@ -65,4 +65,4 @@ struct ReSTIRPGSplattingSampleSoAHost
 	ReSTIRPGSplattingSampleSoAHostInternal<DataContainer> m_splatting_samples;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PG_SPLATTING_SAMPLE_SOA_HOST_H

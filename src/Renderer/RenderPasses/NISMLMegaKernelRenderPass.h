@@ -67,4 +67,4 @@ private:
 	OrochiBuffer<unsigned int> m_query_count_device;
 };
 
-#endif
+#endif // #ifndef RENDERER_NISML_MEGA_KERNEL_RENDER_PASS_H

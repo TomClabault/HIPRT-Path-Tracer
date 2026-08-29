@@ -227,4 +227,4 @@ HIPRT_DEVICE static void encode_spherical_harmonics_degree_4_wmma(
 	encoded_input[(output_offset + 15) * output_stride + thread_index] = static_cast<fp16>(0.5900435899266435f * x * (3.0f * y2 - x2));
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_INPUT_ENCODINGS_H

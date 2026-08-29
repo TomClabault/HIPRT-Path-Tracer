@@ -94,4 +94,4 @@ HIPRT_DEVICE LightSubtreeSample sample_light_tree_subtree(const LightTreeSGNodeD
 	return LightSubtreeSample{ node_index, conditional_probability };
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_COMMON_H

@@ -616,6 +616,6 @@ inline std::ostream& operator<<(std::ostream& os, const ColorRGBA32F& color)
 
 	return os;
 }
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_COLOR_H

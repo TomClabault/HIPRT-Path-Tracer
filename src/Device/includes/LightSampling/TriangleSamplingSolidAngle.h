@@ -56,7 +56,7 @@ struct solid_angle_triangle_t
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// LTC lobe sampled during the preparation of the solid angle triangle
 	LTCLobe ltc_lobe;
-#endif
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 };
 
 /*! Prepares all intermediate values to sample a triangle fan around vertex 0
@@ -107,7 +107,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 	polygon.vertex_dirs[1] = hippt::normalize(vertex_B_local);
 	polygon.vertex_dirs[2] = hippt::normalize(vertex_C_local);
 	polygon.ltc_lobe	   = ltc_lobe;
-#else
+#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float3_t vertex_A_local = vertex_A - shading_point;
 	float3_t vertex_B_local = vertex_B - shading_point;
 	float3_t vertex_C_local = vertex_C - shading_point;
@@ -116,7 +116,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 	polygon.vertex_dirs[0] = hippt::normalize(vertex_A_local);
 	polygon.vertex_dirs[1] = hippt::normalize(vertex_B_local);
 	polygon.vertex_dirs[2] = hippt::normalize(vertex_C_local);
-#endif
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	// Prepare a Householder transform that maps vertex 0 onto (+/-1, 0, 0). We
 	// only store the yz-components of that Householder vector and a factor of
@@ -179,11 +179,11 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const 
 
 	return prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material,
 														  ltc_lobe);
-#else
+#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	return prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material,
 														  // Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
 														  LTCLobe::DIFFUSE_LOBE);
-#endif
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 }
 
 HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRenderData& render_data,
@@ -215,9 +215,9 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 	pdf_solid_angle = 1.0f / solid_angle;
 	pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), sampled_dir_shading_space, material, ltc_lobe);
 	pdf_solid_angle *= ltc_lobe_pdf;
-#else
+#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float pdf_solid_angle = 1.0f / solid_angle;
-#endif
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	return pdf_solid_angle;
 }
@@ -356,12 +356,12 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_solid_angle_peters_2021(const HIP
 
 	float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_dir(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction,
 																				  shading_normal, sampled_dir_shading_space, ltc_lobe_probabilities, material);
-#else
+#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float3_t sampled_dir_world_space = sampled_direction;
 	float pdf_solid_angle			 = 1.0f / polygon.solid_angle;
-#endif
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_H

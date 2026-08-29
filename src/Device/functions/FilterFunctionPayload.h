@@ -22,4 +22,4 @@ struct FilterFunctionPayload
 										  // -- Self intersection avoidance payload --
 };
 
-#endif
+#endif // #ifndef DEVICE_FUNCTIONS_FILTER_FUNCTION_PAYLOAD_H

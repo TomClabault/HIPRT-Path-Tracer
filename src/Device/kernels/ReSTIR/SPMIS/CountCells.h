@@ -19,7 +19,7 @@ ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 						ReSTIRPTReservoir* reservoirs,
 						unsigned int size,
 						bool count_important)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 							   unsigned int* all_pixel_index_in_cell,
@@ -30,11 +30,11 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 							   unsigned int size,
 							   bool count_important,
 							   int linear_pixel_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t linear_pixel_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (linear_pixel_index >= size)
 		return;
@@ -59,4 +59,4 @@ inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_SPMIS_COUNT_CELLS_H

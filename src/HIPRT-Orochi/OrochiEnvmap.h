@@ -48,4 +48,4 @@ private:
 	OrochiBuffer<int> m_alias_table_alias;
 };
 
-#endif
+#endif // #ifndef OROCHI_ENVMAP_H

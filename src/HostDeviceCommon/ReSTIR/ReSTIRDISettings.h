@@ -107,4 +107,4 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	ReSTIRDIReservoir* restir_output_reservoirs = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_RESTIR_DI_SETTINGS_H

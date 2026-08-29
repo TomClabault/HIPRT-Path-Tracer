@@ -83,4 +83,4 @@ public:
 	}
 };
 
-#endif
+#endif // #ifndef GPU_RENDERER_RESTIR_RENDER_PASS_COMMON_H

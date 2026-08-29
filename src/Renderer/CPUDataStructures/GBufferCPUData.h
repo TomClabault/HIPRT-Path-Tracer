@@ -37,4 +37,4 @@ struct GBufferCPUData
 	std::vector<RayVolumeState> ray_volume_states;
 };
 
-#endif
+#endif // #ifndef G_BUFFER_CPU_RENDERER_H

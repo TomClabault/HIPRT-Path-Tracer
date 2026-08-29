@@ -81,4 +81,4 @@ struct ReSTIRPGSettings
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PG_SETTINGS_H

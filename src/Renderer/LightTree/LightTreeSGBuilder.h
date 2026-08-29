@@ -228,4 +228,4 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	render_data.light_tree_sg.bit_trails							  = device_data.m_bit_trails_buffer.data();
 }
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_H

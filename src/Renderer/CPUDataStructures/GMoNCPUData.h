@@ -36,4 +36,4 @@ struct GMoNCPUData : public GMoNCPUGPUCommonData
 	unsigned int number_of_sets = GMoNMSetsCount;
 };
 
-#endif
+#endif // #ifndef RENDERER_GMON_CPU_DATA_H

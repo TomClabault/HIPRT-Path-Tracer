@@ -235,4 +235,4 @@ private:
 	} m_light_distributions_build_kernels;
 };
 
-#endif
+#endif // #ifndef REGIR_RENDER_PASS_H

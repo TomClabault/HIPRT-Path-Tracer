@@ -148,7 +148,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
 						target_function *= visible;
 					}
-#endif
+#endif // #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
 
 					// Converting the PDF from area measure to solid angle measure
 					float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
@@ -304,7 +304,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 
 						target_function *= visible;
 					}
-#endif
+#endif // #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
 
 					// Converting the PDF from area measure to solid angle measure
 					float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
@@ -425,4 +425,4 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& re
 	return evaluate_RIS_reservoir_sample(render_data, ray_payload, closest_hit_info, view_direction, reservoir, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H

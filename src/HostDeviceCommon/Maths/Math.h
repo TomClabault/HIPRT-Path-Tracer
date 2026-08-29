@@ -8,12 +8,12 @@
 
 #if defined(__KERNELCC__)
 #include <hiprt/hiprt_device.h>
-#else
+#else // #if defined(__KERNELCC__)
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 // For hippt::debugbreak()
 #include "Utils/Debug.h"
-#endif
+#endif // #if defined(__KERNELCC__)
 
 #if !defined(__KERNELCC__) || defined(HIPRT_BITCODE_LINKING)
 // For std::atomic in hippt::
@@ -21,7 +21,7 @@
 // For std::bit_cast in hippt::
 #include <bit>
 #include <cmath>
-#endif
+#endif // #if !defined(__KERNELCC__) || defined(HIPRT_BITCODE_LINKING)
 
 #include "HostDeviceCommon/AtomicType.h"
 
@@ -995,9 +995,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return __shfl_sync(0xFFFFFFFF, var, src_lane, width);
-#else
+#else // #ifdef __CUDACC__
 		return __shfl(var, src_lane, width);
-#endif
+#endif // #ifdef __CUDACC__
 	}
 
 	/**
@@ -1026,9 +1026,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return warp_shfl_down_sync(0xFFFFFFFF, var, delta, width);
-#else
+#else // #ifdef __CUDACC__
 		return __shfl_down(var, delta, width);
-#endif
+#endif // #ifdef __CUDACC__
 	}
 
 	template <typename T>
@@ -1045,9 +1045,9 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		return warp_shfl_up_sync(0xFFFFFFFF, var, delta, width);
-#else
+#else // #ifdef __CUDACC__
 		return __shfl_up(var, delta, width);
-#endif
+#endif // #ifdef __CUDACC__
 	}
 
 	template <typename T>
@@ -1060,7 +1060,7 @@ namespace hippt
 	{
 #ifdef __CUDACC__
 		__syncwarp(mask);
-#endif
+#endif // #ifdef __CUDACC__
 	}
 
 	template <bool opsel = false>
@@ -1086,7 +1086,7 @@ namespace hippt
 		return *(&v.x + index);
 	}
 
-#else
+#else // #ifdef __KERNELCC__
 	constexpr float M_INV_FOUR_PI	 = 0.07957747154594766788f;	 // 1.0f / (4.0f * M_PI)
 	constexpr float M_INV_TWO_PI	 = 0.15915494309189533577f;	 // 1.0f / (2.0f * M_PI)
 	constexpr float M_INV_PI		 = 0.31830988618379067154f;	 // 1.0f / M_PI
@@ -1962,7 +1962,7 @@ namespace hippt
 	{
 		return *(&v.x + index);
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 } // namespace hippt
 
 #ifndef __KERNELCC__
@@ -1974,6 +1974,6 @@ static std::ostream& operator<<(std::ostream& os, float3_t uvw)
 	return os;
 }
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATH_H

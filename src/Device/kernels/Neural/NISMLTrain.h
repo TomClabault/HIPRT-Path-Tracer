@@ -65,14 +65,14 @@ inline NISMLTrain(
 	}
 }
 
-#else
+#else // #ifndef __KERNELCC__
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char NISML_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
-#endif
+#endif // #ifdef __KERNELCC__
 #if NISML_HAS_WMMA
 
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
@@ -232,7 +232,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_GRID_GRADIENTS, profile_start);
 }
 
-#else
+#else // #if NISML_HAS_WMMA
 
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
@@ -332,8 +332,8 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	}
 }
 
-#endif
+#endif // #if NISML_HAS_WMMA
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef KERNELS_NISML_TRAIN_H

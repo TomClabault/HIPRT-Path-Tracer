@@ -301,4 +301,4 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_UTILS_SPATIAL_H

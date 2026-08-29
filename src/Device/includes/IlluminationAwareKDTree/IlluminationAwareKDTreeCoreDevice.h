@@ -318,9 +318,9 @@ struct IlluminationAwareKDTreeCoreDevice
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return;
-#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return;
-#endif
+#endif // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 
 		// Invalid samples must not consume buffer space or affect b0.
 		if (!sample.valid_for_spatial_training)
@@ -519,4 +519,4 @@ struct IlluminationAwareKDTreeCoreDevice
 	IlluminationAwareKDTreeSpatialSampleMoments* history_spatial_moments = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_CORE_DEVICE_H

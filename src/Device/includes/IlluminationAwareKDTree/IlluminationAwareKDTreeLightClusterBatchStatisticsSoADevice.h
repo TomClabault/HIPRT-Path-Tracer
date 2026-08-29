@@ -44,4 +44,4 @@ struct IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice
 	AtomicType<unsigned int>* selected_count	= nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_LIGHT_CLUSTER_BATCH_STATISTICS_SOA_DEVICE_H

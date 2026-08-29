@@ -71,4 +71,4 @@ private:
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_SOA_DEVICE_H

@@ -80,4 +80,4 @@ private:
 	RenderWindow* m_render_window = nullptr;
 };
 
-#endif
+#endif // #ifndef IMGUI_RENDERER_H

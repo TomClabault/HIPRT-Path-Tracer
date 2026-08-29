@@ -15,7 +15,7 @@
 // For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex risltc_log_mutex;
-#endif
+#endif // #ifndef __KERNELCC__
 
 struct RISLTCSample
 {
@@ -98,9 +98,9 @@ struct RISLTCReservoir
 					  << std::endl;
 			Debug::debugbreak();
 		}
-#else
+#else // #ifndef __KERNELCC__
 		(void)pixel_coords;
-#endif
+#endif // #ifndef __KERNELCC__
 	}
 
 	// Additional data for RISLTC
@@ -112,4 +112,4 @@ struct RISLTCReservoir
 	RISLTCSample sample;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_RISLTC_RISLTC_RESERVOIR_H

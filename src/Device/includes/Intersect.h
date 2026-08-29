@@ -31,13 +31,13 @@
 	{                                                                                                                                                          \
 		SharedStackBVHTraversalSize, shared_stack_cache                                                                                                        \
 	}
-#else
+#else // #if SharedStackBVHTraversalSize > 0
 #define DECLARE_SHARED_STACK_BUFFER                                                                                                                            \
 	shared_stack_buffer                                                                                                                                        \
 	{                                                                                                                                                          \
 		0, nullptr                                                                                                                                             \
 	}
-#endif
+#endif // #if SharedStackBVHTraversalSize > 0
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
@@ -46,12 +46,12 @@
 #define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
 	hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload,   \
 																				  render_data.hiprt_function_table, 0)
-#else
+#else // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
 	hiprtGeomTraversalClosest traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
 	hiprtGeomTraversalAnyHit traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
+#endif // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 
 #define DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)                           \
 	/* Payload for the alpha testing filter function */                                                                                                        \
@@ -74,7 +74,7 @@
 	DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                              \
 	CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
 
-#endif
+#endif // #ifdef __KERNELCC__
 
 /* References:
  *
@@ -215,7 +215,7 @@ HIPRT_DEVICE hiprtHit intersect_scene_cpu(
 
 	return hiprtHit;
 }
-#endif
+#endif // #ifndef __KERNELCC__
 
 /**
  * Returns true if a hit was found, false otherwise
@@ -231,7 +231,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	hiprtHit hit;
 	bool skipping_volume_boundary = false;
@@ -241,9 +241,9 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal, render_data, render_data.GPU_BVH, ray, last_hit_primitive_index, random_number_generator);
 
 		hit = traversal.getNextHit();
-#else
+#else // #ifdef __KERNELCC__
 		hit = intersect_scene_cpu(render_data, render_data.cpu_only.bvh, ray, last_hit_primitive_index, random_number_generator);
-#endif
+#endif // #ifdef __KERNELCC__
 
 		if (!hit.hasHit())
 			return false;
@@ -316,7 +316,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -328,7 +328,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 		return false;
 
 	return true;
-#else
+#else // #ifdef __KERNELCC__
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
 	// (we may find multiple hits if we hit transparent texture
@@ -357,7 +357,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 
 	// If we found a hit and that it is close enough
 	return hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
-#endif // __KERNELCC__
+#endif // __KERNELCC__ // #ifdef __KERNELCC__
 }
 
 /**
@@ -404,7 +404,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	if (render_data.light_GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -442,7 +442,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	out_light_hit_info.hit_distance				  = shadow_ray_hit.t;
 
 	return true;
-#else
+#else // #ifdef __KERNELCC__
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
 	// (we may find multiple hits if we hit transparent texture
@@ -502,7 +502,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	}
 	else
 		return false;
-#endif // __KERNELCC__
+#endif // __KERNELCC__ // #ifdef __KERNELCC__
 }
 
 /**
@@ -521,7 +521,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	if (render_data.GPU_BVH == nullptr)
 		// Empty scene --> no intersection
 		return false;
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifdef __KERNELCC__
 	ray.maxT = t_max - 1.0e-4f;
@@ -533,7 +533,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 		return false;
 
 	float hit_distance = shadow_ray_hit.t;
-#else
+#else // #ifdef __KERNELCC__
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
 	// (we may find multiple hits if we hit transparent texture
@@ -567,7 +567,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 
 	float hit_distance = cumulative_t;
 
-#endif
+#endif // #ifdef __KERNELCC__
 
 	// If we're here, this means that we found a hit that is not
 	// alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
@@ -619,23 +619,23 @@ HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data,
 	// This if is necessary to avoid declaring 0 size arrays if the
 	// shared stack traversal sizes are 0
 	DECLARE_SHARED_STACK_BUFFER;
-#else
+#else // #if SharedStackBVHTraversalSize > 0
 	hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
+#endif // #if SharedStackBVHTraversalSize > 0
 	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
 	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload,
 																	 render_data.hiprt_function_table, 0);
-#else
+#else // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 	hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
+#endif // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 
 	hit = traversal.getNextHit();
-#else
+#else // #ifdef __KERNELCC__
 	hit = intersect_scene_cpu(render_data, render_data.cpu_only.bvh, ray, last_primitive_index, random_number_generator);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	return hit;
 }
 
-#endif
+#endif // #ifndef DEVICE_INTERSECT_H

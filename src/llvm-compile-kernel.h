@@ -60,4 +60,4 @@ int main()
 	ReSTIR_GI_SpatialReuse<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);*/
 }
 
-#endif
+#endif // #ifndef LLVM_COMPILE_KERNEL_H

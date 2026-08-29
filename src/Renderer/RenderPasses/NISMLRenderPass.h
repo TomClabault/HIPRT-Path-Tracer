@@ -102,4 +102,4 @@ private:
 	float m_adam_learning_rate			  = 0.03f;
 };
 
-#endif
+#endif // #ifndef RENDERER_NISML_RENDER_PASS_H

@@ -152,4 +152,4 @@ struct ReSTIRCommonSettings
 	float symmetric_ratio_mis_weights_beta_exponent = 2.0f;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H

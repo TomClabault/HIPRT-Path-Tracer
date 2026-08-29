@@ -50,4 +50,4 @@ using ReSTIRSampleType = typename ReSTIRTypeStruct<ReSTIRVariant>::SampleType;
 template <int ReSTIRVariant>
 using ReSTIRReservoirType = typename ReSTIRTypeStruct<ReSTIRVariant>::ReservoirType;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_GI_MIS_WEIGHTS_COMMON_H

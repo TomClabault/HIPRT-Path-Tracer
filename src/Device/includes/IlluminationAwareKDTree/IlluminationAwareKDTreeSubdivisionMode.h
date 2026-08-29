@@ -14,4 +14,4 @@ enum class IlluminationAwareKDTreeSubdivisionMode
 	FULL_MODEL			= 3
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SUBDIVISION_MODE_H

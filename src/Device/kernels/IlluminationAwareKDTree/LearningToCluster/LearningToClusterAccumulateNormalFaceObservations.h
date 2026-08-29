@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(IlluminationAwareKDTreeDevice kd_tree)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int sample_index = static_cast<unsigned int>(x);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int sample_count = *kd_tree.learning_to_cluster.training_sample_count;
 	if (sample_index >= sample_count)
@@ -45,4 +45,4 @@ IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(Illumi
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.normal_face_observation_counts + observation_offset, 1u);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ACCUMULATE_NORMAL_FACE_OBSERVATIONS_H

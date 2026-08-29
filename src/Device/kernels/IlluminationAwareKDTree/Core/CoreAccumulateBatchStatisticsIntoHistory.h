@@ -12,15 +12,15 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreAccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice kd_tree_device, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_CoreAccumulateBatchStatisticsIntoHistory(IlluminationAwareKDTreeDevice kd_tree_device)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t node_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	const uint32_t node_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	const uint32_t node_count = *kd_tree_device.core.node_count;
 
@@ -48,4 +48,4 @@ GLOBAL_KERNEL_SIGNATURE(void) IlluminationAwareKDTree_CoreAccumulateBatchStatist
 	history_spatial.position_squared_sum += batch_spatial.position_squared_sum;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_H

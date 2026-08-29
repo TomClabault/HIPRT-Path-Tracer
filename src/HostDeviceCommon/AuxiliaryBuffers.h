@@ -63,4 +63,4 @@ struct AuxiliaryBuffers
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_3 = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_AUXILIARY_BUFFERS_H

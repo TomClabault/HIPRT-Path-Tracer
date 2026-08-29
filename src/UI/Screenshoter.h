@@ -56,4 +56,4 @@ private:
 	int m_compute_output_image_height = -1;
 };
 
-#endif
+#endif // #ifndef SCREENSHOTER_H

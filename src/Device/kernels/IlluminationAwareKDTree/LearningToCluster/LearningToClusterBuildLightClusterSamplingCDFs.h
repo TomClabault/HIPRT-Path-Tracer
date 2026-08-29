@@ -84,7 +84,7 @@ inline IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(Il
 
 	build_light_cluster_sampling_cdf_cpu(kd_tree, light_tree_sg, lightcut_index);
 }
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
@@ -143,6 +143,6 @@ IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(Illuminat
 	if (slot == 0u)
 		lightcut_data.lightcut_cdf_dirty = false;
 }
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_H

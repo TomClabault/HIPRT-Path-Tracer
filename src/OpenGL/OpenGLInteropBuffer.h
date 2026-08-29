@@ -119,7 +119,7 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 	unsigned int count = 0;
 	std::vector<int> devices(16);
 	hipGLGetDevices(&count, devices.data(), 16, hipGLDeviceListAll);
-#endif
+#endif // #ifndef OROCHI_ENABLE_CUEW
 
 	oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone);
 
@@ -216,4 +216,4 @@ void OpenGLInteropBuffer<T>::free()
 	m_initialized	= false;
 }
 
-#endif
+#endif // #ifndef OPENGL_INTEROP_BUFFER_H

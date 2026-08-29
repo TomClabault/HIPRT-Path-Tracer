@@ -18,4 +18,4 @@ enum ImGuiRendererSettingsPreset
 	SETTINGS_PRESET_RESTIR_DI_GI
 };
 
-#endif
+#endif // #ifndef IMGUI_RENDERER_PERFORMANCE_PRESET_H

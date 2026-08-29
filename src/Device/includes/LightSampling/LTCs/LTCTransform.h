@@ -69,4 +69,4 @@ HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data,
 	return hippt::abs(determinant(ltc_matrix_inverse)) / hippt::pow_3(hippt::length(direction_cosine_space));
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LTCS_H

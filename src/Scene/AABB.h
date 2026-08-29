@@ -67,4 +67,4 @@ struct AABB
 	float3_t maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() };
 };
 
-#endif
+#endif // #ifndef SCENE_AABB_H

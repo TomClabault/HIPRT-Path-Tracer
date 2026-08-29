@@ -26,4 +26,4 @@ HIPRT_HOST bool HIPRTRenderSettings::use_prev_frame_g_buffer(GPURenderer* render
 
 	return need_g_buffer;
 }
-#endif
+#endif // #ifndef __KERNELCC__

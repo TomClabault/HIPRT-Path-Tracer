@@ -69,4 +69,4 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_UTILS_H

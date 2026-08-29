@@ -124,4 +124,4 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffec
 		return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
 }
 
-#endif
+#endif // #ifndef DEVICE_OREN_NAYAR_H

@@ -200,4 +200,4 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 
 using NEEDeferredMISContext = NEEDeferredMISContextSpecialized<DirectLightNEEEstimator>;
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_NEE_DEFERRED_MIS_CONTEXT_H

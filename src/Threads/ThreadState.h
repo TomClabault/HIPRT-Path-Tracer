@@ -18,4 +18,4 @@ struct TextureLoadingThreadState
 	const aiScene* assimp_scene = nullptr;
 };
 
-#endif
+#endif // #ifndef THREAD_STATE_H

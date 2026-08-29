@@ -63,7 +63,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	// So we're progressively disabling ms compensation on the glossy base as the thin-film
 	// is more and more pronounced
 	ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 
 	return ms_compensation;
 }
@@ -133,9 +133,9 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 	// So we're progressively disabling ms compensation on the glossy base as the thin-film
 	// is more and more pronounced
 	ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
 
 	return ms_compensation;
 }
 
-#endif
+#endif // #ifndef DEVICE_PRINCIPLED_ENERGY_COMPENSATION_H

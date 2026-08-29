@@ -156,4 +156,4 @@ HIPRT_DEVICE static float SG_clamped_cosine_product_integral_over_pi(const float
 	return 2.0f * hippt::lerp(lower_integral, upper_integral, lerp_factor);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_SPHERICAL_GAUSSIAN_UTILS_H

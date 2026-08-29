@@ -33,4 +33,4 @@ HIPRT_HOST_DEVICE static unsigned int pcg_hash(float seed)
 	return pcg_hash(hippt::float_as_uint(seed));
 }
 
-#endif
+#endif // #ifndef DEVICE_HASH_H

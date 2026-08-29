@@ -71,10 +71,10 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	compiler_options.push_back("-ggdb");
 	compiler_options.push_back("-Wno-constant-logical-operand");
 	compiler_options.push_back("-Wno-tautological-compare");
-#else
+#else // #ifndef OROCHI_ENABLE_CUEW
 	// Adding CUDA toolkit includes for device side includes such as cuda_fp16
 	compiler_options.push_back(std::string("-I") + CUDA_TOOLKIT_PATH + "/include");
-#endif
+#endif // #ifndef OROCHI_ENABLE_CUEW
 
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
 	// compiler_options.push_back("-g");
@@ -82,7 +82,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 
 #ifndef _WIN32
 	use_cache = false;
-#endif // _WIN32
+#endif // _WIN32 // #ifndef _WIN32
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -111,7 +111,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 			return nullptr;
 		}
 	}
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32
 
 	// The worker process performs the expensive compilation separately, so it can run in parallel with other worker processes.
 	// The worker process compiles the kernel and fills the HIPRT cache. The parent process must load the cached binary
@@ -119,10 +119,10 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	std::unique_lock<std::mutex> lock(m_compile_mutex, std::defer_lock);
 #ifndef _WIN32
 	lock.lock();
-#else
+#else // #ifndef _WIN32
 	if (!use_shader_cache)
 		lock.lock();
-#endif // _WIN32
+#endif // _WIN32 // #ifndef _WIN32
 	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
 																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
 																	 function_name_sets, additional_cache_key, &trace_module_out);

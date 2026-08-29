@@ -89,11 +89,11 @@ HIPRT_DEVICE void path_guiding_compute_sampled_lobe(HIPRTRenderData& render_data
 		else
 			out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE;
 	}
-#elif BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#elif BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-#endif
+#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 
 	ray_payload.accumulate_roughness(out_sampled_light_info);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_PATH_GUIDING_PATH_SAMPLING_H

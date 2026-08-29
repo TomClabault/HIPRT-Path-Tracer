@@ -21,4 +21,4 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	bool enable_lightcut_refinement = true;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_USER_SETTINGS_H

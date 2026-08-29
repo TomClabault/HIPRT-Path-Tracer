@@ -309,4 +309,4 @@ private:
 	std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>> m_custom_string_macro_map;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_OPTIONS_H

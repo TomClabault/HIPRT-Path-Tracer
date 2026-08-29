@@ -182,4 +182,4 @@ void LightTreeATSBuilder::to_device(HIPRTRenderData& render_data,
 	render_data.light_tree_ats.bit_trails	 = device_data.m_bit_trails_buffer.data();
 }
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_ATS_BUILDER_H

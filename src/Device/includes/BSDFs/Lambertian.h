@@ -68,4 +68,4 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffec
 		return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
 }
 
-#endif
+#endif // #ifndef DEVICE_LAMBERTIAN_H

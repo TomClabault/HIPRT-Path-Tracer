@@ -23,4 +23,4 @@ struct LightTreeSGSettings
 	bool debug_draw_second_tree_cut_boxes	= false;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LIGHT_TREE_SG_SETTINGS_H

@@ -73,16 +73,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_GI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_GI_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -230,4 +230,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_GI_SHADING_H

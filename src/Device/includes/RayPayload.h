@@ -109,4 +109,4 @@ struct RayPayload
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_RAY_PAYLOAD_H

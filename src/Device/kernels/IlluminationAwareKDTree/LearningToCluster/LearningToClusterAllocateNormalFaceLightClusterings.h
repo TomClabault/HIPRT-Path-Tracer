@@ -15,18 +15,18 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int slot							= threadIdx.x;
 	unsigned int active_guiding_node_face_index = blockIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int slot							= 0;
 	unsigned int active_guiding_node_face_index = static_cast<unsigned int>(x);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
 	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
@@ -68,7 +68,7 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 
 	if (slot == 0)
 		lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
-#else
+#else // #ifdef __KERNELCC__
 	if (lightcut_set.lightcut_indices[normal_face] != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
 		kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] < MinimumNormalFaceObservations)
 		return;
@@ -81,7 +81,7 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 		learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, lightcut_slot);
 
 	lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_H

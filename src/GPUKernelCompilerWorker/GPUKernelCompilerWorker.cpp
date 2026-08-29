@@ -20,9 +20,9 @@ bool GPUKernelCompilerWorker::initialize_worker_context(int device_index, hiprtC
 {
 #ifdef OROCHI_ENABLE_CUEW
 	int error_initialize = oroInitialize(static_cast<oroApi>(ORO_API_CUDA), 0);
-#else
+#else // #ifdef OROCHI_ENABLE_CUEW
 	int error_initialize = oroInitialize(static_cast<oroApi>(ORO_API_HIP), 0);
-#endif
+#endif // #ifdef OROCHI_ENABLE_CUEW
 	if (error_initialize != oroSuccess || oroInit(0) != oroSuccess)
 		return false;
 
@@ -144,4 +144,4 @@ int GPUKernelCompilerWorker::run(const std::filesystem::path& request_file_path)
 	}
 }
 
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32

@@ -12,4 +12,4 @@ enum CameraRotationType
 	DEGREES_PER_FRAME
 };
 
-#endif
+#endif // #ifndef CAMERA_ROTATION_TYPE_H

@@ -28,4 +28,4 @@ struct LightTreeSGBuilderOptions
 	int tree_cut_size_neural_many_lights = 64;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_OPTIONS_H

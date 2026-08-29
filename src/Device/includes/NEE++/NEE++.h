@@ -253,4 +253,4 @@ private:
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEE_PLUS_PLUS

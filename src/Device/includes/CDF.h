@@ -198,4 +198,4 @@ struct CDFDeviceU16
 	unsigned int size = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_CDF_H

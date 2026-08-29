@@ -43,12 +43,12 @@ HIPRT_DEVICE float2_t sample_uv_on_triangle_uniform_area(float triangle_area, Xo
 	float sqrt_r1 = sqrt(rand_1);
 	float u		  = 1.0f - sqrt_r1;
 	float v		  = (1.0f - rand_2) * sqrt_r1;
-#elif TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
+#elif TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019 // #if TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
 	float2_t remapped = square_to_triangle(rand_1, rand_2);
 
 	float u = remapped.x;
 	float v = remapped.y;
-#endif
+#endif // #if TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
 
 	out_uv_pdf = 1.0f / triangle_area;
 
@@ -139,13 +139,13 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 
 #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 	out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf, out_sample_point_uvs);
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 
 	out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(render_data, vertex_A, vertex_B, vertex_C, normal, shading_point, view_direction,
 																		shading_normal, triangle_emission, material, out_point_pdf, rng);
 
 	out_sample_point_uvs = compute_uvs_of_point_on_triangle(vertex_A, AB, AC, out_sample_point);
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 	float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
 
 	bool do_projected_solid_angle_sampling = solid_angle > render_data.render_settings.projected_solid_angle_sampling_threshold;
@@ -160,7 +160,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 	}
 	else
 		out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf, out_sample_point_uvs);
-#endif
+#endif // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 
 	return out_point_pdf != 0.0f;
 }
@@ -270,4 +270,4 @@ HIPRT_DEVICE LightSamplePointInformation sample_point_on_light_and_fill_light_sa
 	return light_sample;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_H

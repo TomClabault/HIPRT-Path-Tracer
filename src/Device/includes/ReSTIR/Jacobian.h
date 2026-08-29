@@ -41,4 +41,4 @@ HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3_t& r
 		return jacobian_determinant;
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_JACOBIAN_H

@@ -92,4 +92,4 @@ struct ReGIRReservoir
 	float UCW = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_RESERVOIR_H

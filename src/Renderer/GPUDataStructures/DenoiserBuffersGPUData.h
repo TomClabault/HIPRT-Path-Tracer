@@ -38,4 +38,4 @@ struct DenoiserBuffersGPUData
 	bool use_interop_AOVs = ApplicationSettings::DENOISER_USE_INTEROP_BUFFERS_DEFAULT;
 };
 
-#endif
+#endif // #ifndef GPU_RENDERER_DENOISER_BUFFERS_H

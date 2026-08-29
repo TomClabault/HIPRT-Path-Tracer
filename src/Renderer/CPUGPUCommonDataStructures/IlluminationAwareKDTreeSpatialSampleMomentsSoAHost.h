@@ -70,4 +70,4 @@ struct IlluminationAwareKDTreeSpatialSampleMomentsSoAHost
 	Data data;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_SPATIAL_SAMPLE_MOMENTS_SOA_HOST_H

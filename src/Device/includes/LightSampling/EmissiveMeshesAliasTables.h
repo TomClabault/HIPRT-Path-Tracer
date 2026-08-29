@@ -110,4 +110,4 @@ struct EmissiveMeshesAliasTablesDevice
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_EMISSIVE_MESHES_ALIAS_TABLES_H

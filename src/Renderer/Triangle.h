@@ -70,4 +70,4 @@ struct Triangle
 	float3_t m_a = { 0, 0, 0 }, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
 };
 
-#endif
+#endif // #ifndef TRIANGLE_H

@@ -31,4 +31,4 @@ void create_texture_from_array_cuda(void* m_texture_array, void* m_texture, void
 		Debug::debugbreak();
 }
 
-#endif
+#endif // #ifdef OROCHI_ENABLE_CUEW

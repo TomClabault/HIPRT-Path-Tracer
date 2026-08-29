@@ -29,4 +29,4 @@ private:
 	std::shared_ptr<GPURenderer> m_renderer;
 };
 
-#endif
+#endif // #ifndef IMGUI_ANIMATION_WINDOW_H

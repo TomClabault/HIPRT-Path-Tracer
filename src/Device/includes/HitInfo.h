@@ -35,4 +35,4 @@ struct HitInfo
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_HIT_INFO_H

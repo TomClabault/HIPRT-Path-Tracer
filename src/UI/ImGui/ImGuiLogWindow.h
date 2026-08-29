@@ -28,4 +28,4 @@ private:
 	ImVec2 m_current_size;
 };
 
-#endif
+#endif // #ifndef IMGUI_LOG_WINDOW_H

@@ -41,4 +41,4 @@ struct EmissiveMeshAliasTableDevice
 	unsigned int size = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_EMISSIVE_MESH_ALIAS_TABLE_H

@@ -65,4 +65,4 @@ HIPRT_DEVICE ColorRGB32F map_0_1_to_heatmap_color_by_index(float scalar_0_1)
 		return map_0_1_to_heatmap_color<HEATMAP_GRAYSCALE>(scalar_0_1);
 }
 
-#endif // DEVICE_INCLUDES_HEATMAP_H
+#endif // DEVICE_INCLUDES_HEATMAP_H // #ifndef DEVICE_INCLUDES_HEATMAP_H

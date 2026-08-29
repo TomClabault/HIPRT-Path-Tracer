@@ -59,4 +59,4 @@ private:
 	NEEPlusPlusHashGridStorage m_nee_plus_plus_storage;
 };
 
-#endif
+#endif // #ifndef NEE_PLUS_PLUS_RENDER_PASS_H

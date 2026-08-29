@@ -209,4 +209,4 @@ private:
 	std::pair<float, float> m_cursor_position;
 };
 
-#endif
+#endif // #ifndef RENDER_WINDOW_H

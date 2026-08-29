@@ -31,4 +31,4 @@ private:
 	std::vector<int> m_permuted_positions;
 };
 
-#endif
+#endif // #ifndef IMAGE_SSBN_PERMUTATION_SIMULATED_ANNEALING_H

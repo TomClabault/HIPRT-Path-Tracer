@@ -64,4 +64,4 @@ private:
 	std::unordered_map<std::string, std::multiset<double>> m_min_max_data;
 };
 
-#endif
+#endif // #ifndef PERFORMANCE_METRICS_COMPUTER

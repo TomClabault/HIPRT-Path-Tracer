@@ -18,4 +18,4 @@ struct GGXThinGlassDirectionalAlbedoSettings
 	int integration_sample_count = 65536;
 };
 
-#endif
+#endif // #ifndef GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_SETTINGS_H

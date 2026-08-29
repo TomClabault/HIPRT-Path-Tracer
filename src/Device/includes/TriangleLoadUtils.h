@@ -32,4 +32,4 @@ HIPRT_DEVICE ColorRGB32F triangle_load_emission(const HIPRTRenderData& render_da
 	return render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[triangle_index]);
 }
 
-#endif
+#endif // #ifndef DEVICE_TRIANGLE_UTILS_H

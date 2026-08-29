@@ -111,4 +111,4 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 	return ltc_amplitude * integrate_ltc_clipped_triangle(clipped_vertex_count, vertices_local_space);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTCSHADING_H

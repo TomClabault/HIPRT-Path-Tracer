@@ -54,4 +54,4 @@ inline ReGIR_LightDistributionsBuildPackedCDFsBuild(const unsigned short int* __
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_LIGHT_DISTRIBUTIONS_PACKED_CDFS_BUILD_H

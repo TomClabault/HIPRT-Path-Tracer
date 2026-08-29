@@ -101,7 +101,7 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 	ltc_diffuse = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE);
 
 	return ltc_diffuse;
-#else
+#else // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	if (material.coat > 0.0f)
 		ltc_coat = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::COAT_LOBE);
 
@@ -114,7 +114,7 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 	ltc_diffuse = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE);
 
 	return ltc_coat * material.coat + ltc_specular * material.specular + ltc_metallic * material.metallic + ltc_diffuse * material.base_color.luminance();
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 }
 
 HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRTRenderData& render_data,
@@ -253,4 +253,4 @@ HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
 	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, closest_hit_info, view_direction, reservoir, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_INLCUDES_LIGHT_SAMPLING_RISLTC_RISLTC_H

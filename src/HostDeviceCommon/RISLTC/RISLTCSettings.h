@@ -15,4 +15,4 @@ struct RISLTCSettings
 	int number_of_bsdf_candidates = 0;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RISLTC_SETTINGS_H

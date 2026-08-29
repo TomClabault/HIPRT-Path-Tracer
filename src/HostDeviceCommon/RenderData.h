@@ -25,7 +25,7 @@
 #ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
-#endif
+#endif // #ifdef __KERNELCC__
 
 /**
  * The CPU and GPU use the same kernel code but the CPU still need some specific data
@@ -115,8 +115,8 @@ struct HIPRTRenderData
 		// seeds and produces new random numbers and converges correctly. If we don't store the input seeds here, then the kernels of the next frame are going
 		// to read the same input seeds = produce the exact same frame and we will not have convergence
 		buffers.input_random_seeds[pixel_index] = seed;
-#endif
+#endif // #if SSBNPermutationEnabled == KERNEL_OPTION_FALSE
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RENDER_DATA_H

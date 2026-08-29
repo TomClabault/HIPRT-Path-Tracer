@@ -159,9 +159,9 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 #if DirectLightSamplingAllowBackfacingLights
 			cos_theta_prime = hippt::abs(cos_theta_prime);
-#else
+#else // #if DirectLightSamplingAllowBackfacingLights
 			cos_theta_prime = hippt::max(0.0f, cos_theta_prime);
-#endif
+#endif // #if DirectLightSamplingAllowBackfacingLights
 		}
 	}
 
@@ -601,7 +601,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	return cumulative_probability / current_node.triangle_count;
 }
 
-#else
+#else // #if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
@@ -722,6 +722,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	return cumulative_probability / current_node.triangle_count;
 }
 
-#endif
+#endif // #if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_ATS_SAMPLING_H

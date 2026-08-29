@@ -19,4 +19,4 @@ struct ReGIRHashGridSoADevice
 	unsigned int m_total_number_of_cells = 0;
 };
 
-#endif // DEVICE_INCLUDES_REGIR_HASH_GRID_SOA_DEVICE_H
+#endif // DEVICE_INCLUDES_REGIR_HASH_GRID_SOA_DEVICE_H // #ifndef DEVICE_INCLUDES_REGIR_HASH_GRID_SOA_DEVICE_H

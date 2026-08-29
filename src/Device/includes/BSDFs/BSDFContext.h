@@ -57,4 +57,4 @@ struct BSDFContext
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDF_CONTEXT_H

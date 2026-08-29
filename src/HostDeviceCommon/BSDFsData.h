@@ -89,4 +89,4 @@ struct BRDFsData
 	bool retroreflection = true;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_BSDFS_DATA_H

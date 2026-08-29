@@ -77,9 +77,9 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 		SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
-#else
+#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 		SGSpecularImportanceData specular_data;
-#endif
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 
 		for (unsigned int slot = 0; slot < initial_lightcut_size; slot++)
 		{
@@ -148,9 +148,9 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
-#else
+#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data;
-#endif
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 
 	while (nodes[current_node_index].triangle_count == 0)
 	{
@@ -209,4 +209,4 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_on
 	return sample;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LIGHT_TREE_LIGHT_TREE_SG_SAMPLING_LEARNING_TO_CLUSTER_H

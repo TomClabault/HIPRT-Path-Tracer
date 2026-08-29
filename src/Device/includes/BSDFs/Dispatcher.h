@@ -32,11 +32,11 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& rend
 		break;
 	}*/
 	return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
-#elif BSDFOverride == BSDF_LAMBERTIAN
+#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
-#elif BSDFOverride == BSDF_OREN_NAYAR
+#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
-#endif
+#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 }
 
 HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data, BSDFContext& bsdf_context)
@@ -50,11 +50,11 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
 		break;
 	}*/
 	return principled_bsdf_pdf(render_data, bsdf_context);
-#elif BSDFOverride == BSDF_LAMBERTIAN
+#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
-#elif BSDFOverride == BSDF_OREN_NAYAR
+#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return oren_nayar_brdf_pdf(bsdf_context.to_light_direction);
-#endif
+#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 }
 
 /**
@@ -78,14 +78,14 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(
 		break;
 	}*/
 	return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
-#elif BSDFOverride == BSDF_LAMBERTIAN
+#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.geometric_normal, bsdf_context.shading_normal, sampled_direction,
 													   pdf, random_number_generator, bsdf_context.incident_light_info);
-#elif BSDFOverride == BSDF_OREN_NAYAR
+#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.geometric_normal,
 													   bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
 													   bsdf_context.incident_light_info);
-#endif
+#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 }
 
-#endif
+#endif // #ifndef DEVICE_DISPATCHER_H

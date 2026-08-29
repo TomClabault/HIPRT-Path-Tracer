@@ -29,4 +29,4 @@ struct GPUKernelCompilerWindowProcessCompilationRequest
 	int device_index = 0;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WINDOW_PROCESS_COMPILATION_REQUEST_H

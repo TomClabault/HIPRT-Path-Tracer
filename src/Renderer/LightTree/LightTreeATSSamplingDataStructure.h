@@ -42,4 +42,4 @@ private:
 	GPURenderer* m_renderer = nullptr;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_ATS_SAMPLING_DATA_STRUCTURE_H

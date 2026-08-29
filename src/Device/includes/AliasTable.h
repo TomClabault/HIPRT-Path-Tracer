@@ -51,4 +51,4 @@ struct AliasTableDeviceU16Unorm
 	unsigned int size  = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_DEVICE_ALIAS_TABLE_H

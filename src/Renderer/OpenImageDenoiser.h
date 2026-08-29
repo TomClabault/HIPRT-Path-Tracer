@@ -96,4 +96,4 @@ private:
 	oidn::BufferRef m_denoised_buffer;
 };
 
-#endif
+#endif // #ifndef OPEN_IMAGE_DENOISER

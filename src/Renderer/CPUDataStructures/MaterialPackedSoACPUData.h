@@ -234,4 +234,4 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
 	size_t m_element_count = 0;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_PACKED_SOA_CPU_DATA_H

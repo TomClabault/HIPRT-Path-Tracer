@@ -35,4 +35,4 @@ HIPRT_HOST_DEVICE inline unsigned int illumination_aware_kd_tree_classify_surfac
 	return shading_normal.z >= 0.0f ? SurfaceNormalFace_PositiveZ : SurfaceNormalFace_NegativeZ;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SURFACE_NORMAL_FACE_H

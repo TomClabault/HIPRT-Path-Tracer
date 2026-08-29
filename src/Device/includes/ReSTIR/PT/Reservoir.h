@@ -18,7 +18,7 @@
 // For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex restir_pt_log_mutex;
-#endif
+#endif // #ifndef __KERNELCC__
 
 struct ReSTIRPTReservoirSample
 {
@@ -172,9 +172,9 @@ struct ReSTIRPTReservoir
 					  << std::endl;
 			Debug::debugbreak();
 		}
-#else
+#else // #ifndef __KERNELCC__
 		(void)pixel_coords;
-#endif
+#endif // #ifndef __KERNELCC__
 	}
 
 	ReSTIRPTReservoirSample sample;
@@ -186,4 +186,4 @@ struct ReSTIRPTReservoir
 	float UCW = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_RESERVOIR_H

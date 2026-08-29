@@ -99,4 +99,4 @@ std::shared_ptr<RenderPassType> RenderGraph::create_render_pass()
 	return pass;
 }
 
-#endif
+#endif // #ifndef RENDERER_RENDER_GRAPH_H

@@ -49,4 +49,4 @@ HIPRT_DEVICE static float3_t matrix_X_vec(const float4x4& m, const float3_t& u)
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
 }
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_FLOAT4X4_H

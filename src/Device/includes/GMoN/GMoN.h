@@ -24,7 +24,7 @@
 #define SORTED_MEANS_FETCH(mean_index) scratch_memory[SCRATCH_MEMORY_INDEX(0, (mean_index))]
 #define SORTED_INDEX_FETCH(set_index)  (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
 
-#else
+#else // #ifdef __KERNELCC__
 
 // Just a macro for the name of the sorted means std::vector
 #define SORTED_MEANS_VARIABLE				sorted_means
@@ -38,7 +38,7 @@
 #define SORTED_MEANS_FETCH(mean_index)		SORTED_MEANS_VARIABLE.first[(mean_index)]
 #define SORTED_INDEX_FETCH(set_index)		(SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
 
-#endif
+#endif // #ifdef __KERNELCC__
 
 HIPRT_HOST_DEVICE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
 {
@@ -156,4 +156,4 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
 	return ColorRGB32F(10000.0f, 0.0f, 0.0f);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_GMON_H

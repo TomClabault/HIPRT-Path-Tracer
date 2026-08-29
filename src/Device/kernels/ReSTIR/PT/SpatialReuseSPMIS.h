@@ -28,13 +28,13 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMIS()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	// Only compiling this whole kernel if we're using stochastic pairwise MIS
 #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
@@ -43,7 +43,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -162,7 +162,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		// First term of Eq. 18 in the paper (only for the defensive formulation)
 		float defensive_addition = center_pixel_reservoir.confidence / (center_pixel_reservoir.confidence + neighbors_confidence_sum);
 		mis_weight += defensive_addition;
-#endif
+#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 
 		constexpr float shift_mapping_jacobian = 1.0f;
 		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;
@@ -194,7 +194,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 
-#endif // ReSTIR_PT_MISWeightsType
+#endif // ReSTIR_PT_MISWeightsType // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_H

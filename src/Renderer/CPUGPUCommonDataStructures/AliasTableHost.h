@@ -59,4 +59,4 @@ struct AliasTableHost
 	unsigned int size  = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_ALIAS_TABLE_HOST_H

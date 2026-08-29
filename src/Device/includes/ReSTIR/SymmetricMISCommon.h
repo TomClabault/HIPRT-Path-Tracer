@@ -23,4 +23,4 @@ HIPRT_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_
 		return hippt::intrin_pow(ratio, exponent);
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_SYMMETRIC_MIS_WEIGHTS_COMMON_H

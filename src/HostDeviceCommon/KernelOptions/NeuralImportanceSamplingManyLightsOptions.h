@@ -153,7 +153,7 @@ static constexpr unsigned int NISML_POSITION_LEARNABLE_DENSE_GRID_TOTAL_PARAMETE
  * NISML_DEBUG_MODE_SG_IMPORTANCE_CACHES_OUTLINE draws outlines where that cache key changes between neighboring pixels.
  */
 #define NISMLDebugMode NISML_DEBUG_MODE_NO_DEBUG
-#endif
+#endif // #ifndef __KERNELCC__
 
 using NeuralImportanceSamplingMLPCPU = MLPFullyFusedDeviceCPU<NISML_INPUT_SIZE_ENCODED,
 															  NISML_HIDDEN_LAYER_COUNT,
@@ -175,8 +175,8 @@ using NeuralImportanceSamplingMLPGPU = MLPFullyFusedDeviceGPU<NISML_INPUT_SIZE_E
 
 #ifdef __KERNELCC__
 using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPGPU;
-#else
+#else // #ifdef __KERNELCC__
 using NeuralImportanceSamplingMLP = NeuralImportanceSamplingMLPCPU;
-#endif
+#endif // #ifdef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H

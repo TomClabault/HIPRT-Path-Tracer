@@ -52,17 +52,17 @@ struct ReGIRHashGrid
 				grid_cell_min_size /= res_increase_factor;
 			}
 		}
-#endif
+#endif // #if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
 
 #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
 		return grid_cell_min_size;
-#else
+#else // #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
 		float cell_size_step = hippt::length(world_position - current_camera.position) *
 							   tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
 		float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));
 
 		return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
-#endif
+#endif // #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
 	}
 
 	HIPRT_DEVICE unsigned int custom_regir_hash(float3_t world_position,
@@ -84,7 +84,7 @@ struct ReGIRHashGrid
 			// Jittering the normal a little bit in its tangent plane to help hide
 			// grid artifacts due to normal discretization a bit better
 			surface_normal = jitter_normal_in_tangent_plane(surface_normal, world_position, fuzzy_normals_strength);
-#endif
+#endif // #if ReGIR_HashGridHashFuzzyNormals == KERNEL_OPTION_TRUE
 
 #if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
 		float jitter_x = Xorshift32Generator(h2_xxhash32(world_position.x * 0xFFFFFFFF))() * cell_size * fuzzy_grid_cells_strength;
@@ -94,11 +94,11 @@ struct ReGIRHashGrid
 		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size + jitter_x));
 		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size + jitter_y));
 		unsigned int grid_coord_z = static_cast<int>(floorf(new_world_position.z / cell_size + jitter_z));
-#else
+#else // #if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
 		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size));
 		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size));
 		unsigned int grid_coord_z = static_cast<int>(floorf(new_world_position.z / cell_size));
-#endif
+#endif // #if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
 
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
@@ -109,10 +109,10 @@ struct ReGIRHashGrid
 			h2_xxhash32(quantized_normal + h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
 		unsigned int cell_hash =
 			h1_pcg(quantized_normal + h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x))))) % total_number_of_cells;
-#else
+#else // #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
 		unsigned int checksum  = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
 		unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % total_number_of_cells;
-#endif
+#endif // #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
 
 		out_checksum = checksum;
 		return cell_hash;
@@ -332,4 +332,4 @@ struct ReGIRHashGrid
 	float fuzzy_grid_cells_strength = 1.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_REGIR_HASH_GRID_H

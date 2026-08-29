@@ -235,4 +235,4 @@ struct HIPRTScene
 	OrochiBuffer<float2_t> texcoords_buffer;
 };
 
-#endif
+#endif // #ifndef HIPRT_SCENE_H

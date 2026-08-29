@@ -68,4 +68,4 @@ struct IlluminationAwareKDTreeIlluminationSignatureSoAHost
 	Data data;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_SIGNATURE_SOA_HOST_H

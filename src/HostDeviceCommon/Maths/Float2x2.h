@@ -133,4 +133,4 @@ HIPRT_DEVICE static float2x2 outer_product(const float2_t& a, const float2_t& b)
 	return out;
 }
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_FLOAT2X2_H

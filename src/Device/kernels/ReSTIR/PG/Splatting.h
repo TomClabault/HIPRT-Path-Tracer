@@ -69,7 +69,7 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 		hippt::atomic_fetch_add(&sufficient_statistics.responsibility_weights_sum[index], sum_responsibility);
 	}
 
-#else
+#else // #ifdef __KERNELCC__
 
 	// CPU
 	hippt::atomic_fetch_add(&sufficient_statistics.directions_sum_x[index], sample_direction.x * responsibility);
@@ -77,7 +77,7 @@ HIPRT_DEVICE void atomic_accumulate_sample(
 	hippt::atomic_fetch_add(&sufficient_statistics.directions_sum_z[index], sample_direction.z * responsibility);
 	hippt::atomic_fetch_add(&sufficient_statistics.responsibility_weights_sum[index], responsibility);
 
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
 // Dispatched as 1D render_resolution.x * render_resolution.y threads to facilitate mapping thread indices to proper warps for coalescing
@@ -88,15 +88,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Splatting()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_data, uint32_t index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
 
 	const uint32_t index = threadIdx.x + blockIdx.x * blockDim.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	const uint32_t x = index % render_data.render_settings.render_resolution.x;
 	const uint32_t y = index / render_data.render_settings.render_resolution.x;
@@ -114,15 +114,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		restir_reservoir_pixel_index = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		restir_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#else
+#else // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		restir_reservoir_pixel_index = -1;
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
-#endif
-#endif
+#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 	}
 	if (restir_reservoir_pixel_index == static_cast<unsigned int>(-1))
 		// That means potentially no spatial reuse / temporal so our reservoir didn't move
@@ -215,7 +215,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		// On the GPU, we're going to do some warp intrinsic stuff to accumulate samples so all threads need to go in there otherwise that's going to be UB. On
 		// the CPU though we only want to accumulate samples for actually valid sample so we do check for should_participate
 		if (should_participate)
-#endif
+#endif // #ifndef __KERNELCC__
 		{
 			for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)
 			{
@@ -230,4 +230,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	}
 }
 
-#endif // DEVICE_KERNELS_RESTIR_PG_SPLATTING_H
+#endif // DEVICE_KERNELS_RESTIR_PG_SPLATTING_H // #ifndef DEVICE_KERNELS_RESTIR_PG_SPLATTING_H

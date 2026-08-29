@@ -37,7 +37,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		// We already know that a selected sample isn't in shadow otherwise its target
 		// function would have been 0 and it would have never been selected
 		return selected_sample_radiance / light_sample.area_measure_pdf;
-#else
+#else // #if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
 		// ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
 		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
 		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
@@ -60,18 +60,18 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 			return selected_sample_radiance / light_sample.area_measure_pdf;
 		else
 			return ColorRGB32F(0.0f);
-#endif
+#endif // #if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
 	}
 	else
 	{
 #if ReGIRDebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
 		return ColorRGB32F(1.0e10f, 0.0f, 1.0e10f);
-#endif
+#endif // #if ReGIRDebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
 
 #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
 		// Invalid fallback strategy
 		invalid ReGIR light sampling fallback strategy
-#endif
+#endif // #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
 
 			// Fallback method as the point was outside of the ReGIR grid
 			ColorRGB32F light_source_radiance;
@@ -120,11 +120,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
+#else // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 					if (bsdf_pdf != 0.0f)
@@ -150,4 +150,4 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 	return ColorRGB32F(0.0f);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDE_REGIR_FINAL_SHADING_H

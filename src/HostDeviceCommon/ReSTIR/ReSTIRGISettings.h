@@ -138,4 +138,4 @@ private:
 	float jacobian_rejection_threshold;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_RESTIR_GI_SETTINGS_H

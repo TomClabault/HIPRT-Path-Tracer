@@ -234,7 +234,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 			variable_roughness_bounce = 4;
 		else
 			variable_roughness_bounce = 3;
-#endif
+#endif // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceVariableBounces == KERNEL_OPTION_TRUE
 
 		int bounce_count = hippt::min(variable_roughness_bounce, PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces);
 		for (int bounce = 1; bounce < bounce_count; ++bounce)
@@ -265,7 +265,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 				weight /= continuation_probability;
 			}
-#endif // PrincipledBSDFMultipleScatteringCuiDoRussianRoulette
+#endif // PrincipledBSDFMultipleScatteringCuiDoRussianRoulette // #if PrincipledBSDFMultipleScatteringCuiDoRussianRoulette == KERNEL_OPTION_TRUE
 
 			current_view_direction = -current_to_light_direction;
 			multiple_scattering_contribution +=
@@ -288,4 +288,4 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 	return multiple_scattering_contribution / local_to_light_direction.z;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDFS_MICROFACET_MULTIPLE_SCATTERING_CUI2023_H

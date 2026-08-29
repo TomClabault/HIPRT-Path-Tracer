@@ -90,4 +90,4 @@ ParallelPrefixScan_BlockScan(const unsigned int* const __restrict__ input,
 		output_blocks[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 1] = temp_smem[2 * tid + 1 + CONFLICT_FREE_OFFSET(2 * tid + 1)];
 }
 
-#endif // DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_BLOCK_SCAN_H
+#endif // DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_BLOCK_SCAN_H // #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_BLOCK_SCAN_H

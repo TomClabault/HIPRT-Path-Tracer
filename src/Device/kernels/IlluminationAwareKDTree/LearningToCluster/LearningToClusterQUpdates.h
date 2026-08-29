@@ -24,10 +24,10 @@ HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
@@ -35,12 +35,12 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	unsigned int slot			= 0u;
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	unsigned int replayed_sample_count						  = kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index];
@@ -80,7 +80,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 	__syncthreads();
 	if (slot != 0u)
 		return;
-#else
+#else // #ifdef __KERNELCC__
 	for (unsigned int lightcut_slot = 0; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
 	{
 		unsigned int offset										  = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, lightcut_slot);
@@ -105,7 +105,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 
 		apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, reward_sum, matching_record_count);
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (replayed_sample_count > 0u)
 	{
@@ -116,4 +116,4 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 	kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_Q_UPDATES_H

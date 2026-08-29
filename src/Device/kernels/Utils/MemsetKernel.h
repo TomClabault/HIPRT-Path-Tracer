@@ -12,7 +12,7 @@
 // Just so the compiler and intellisense are happy
 #define DATA_TYPE float
 #define VALUE 0.0f
-#endif
+#endif // #ifndef __KERNELCC__
 
 GLOBAL_KERNEL_SIGNATURE(void) Memset(DATA_TYPE* buffer, unsigned int size)
 {
@@ -23,4 +23,4 @@ GLOBAL_KERNEL_SIGNATURE(void) Memset(DATA_TYPE* buffer, unsigned int size)
 	buffer[idx] = static_cast<DATA_TYPE>(VALUE);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_UTILITY_MEMSET_KERNEL_H

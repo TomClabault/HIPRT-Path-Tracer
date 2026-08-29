@@ -46,16 +46,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_SpatialReuse()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_DI_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -146,17 +146,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.confidence);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.confidence);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.confidence);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
 																		 neighbor_reservoir.UCW, neighbor_reservoir.sample,
 
 																		 center_pixel_surface, neighbor_index, center_pixel_coords, random_number_generator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		bool update_mc = center_pixel_reservoir.confidence > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
@@ -167,7 +167,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_confidence_sum, update_mc,
 			/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		bool update_mc = center_pixel_reservoir.confidence > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(
@@ -178,9 +178,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_confidence_sum, update_mc,
 			/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
-#else
+#else // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #error "Unsupported mis weight type"
-#endif
+#endif // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 
 		// Combining as in Alg. 6 of the paper
 		float jacobian_determinant = 1.0f;
@@ -216,28 +216,29 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.weight_sum, center_pixel_surface, center_pixel_coords,
 											 normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.sample, spatial_reuse_output_reservoir.weight_sum,
 											 center_pixel_surface, center_pixel_coords, normalization_numerator, normalization_denominator,
 											 random_number_generator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir.sample, spatial_reuse_output_reservoir.weight_sum,
 											 center_pixel_surface, selected_neighbor, center_pixel_coords, normalization_numerator, normalization_denominator,
 											 random_number_generator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+// #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \
 	ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	// Stochastic pairwise MIS use their own custom spatial reuse kernel so this is just here so that everything compiles fine and we don't get the
 	// "unsupported mis weight type" error
 	float mis_weight = 1.0f;
-#else
+#else // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #error "Unsupported mis weight type"
-#endif
+#endif // #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 
 	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
@@ -294,7 +295,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || not_last_spatial_pass)
 		ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point,
 												 center_pixel_surface.primitive_index, random_number_generator);
-#endif
+#endif // #if (ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO) && ReSTIR_DI_MISWeightsUseVisibility == KERNEL_OPTION_TRUE && (ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE || (ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE && ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_TRUE))
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)
@@ -305,4 +306,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_SPATIAL_REUSE_H

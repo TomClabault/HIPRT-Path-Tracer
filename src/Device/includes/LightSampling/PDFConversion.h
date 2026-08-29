@@ -23,10 +23,10 @@ HIPRT_DEVICE static float compute_cosine_term_at_light_source(float3_t light_sou
 #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
 	// abs() to allow backfacing lights
 	return hippt::abs(hippt::dot(light_source_normal, minus_direction_to_light));
-#else
+#else // #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
 	// clamping to 0 to disallow backfacing lights
 	return hippt::max(0.0f, hippt::dot(light_source_normal, minus_direction_to_light));
-#endif
+#endif // #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
 }
 
 HIPRT_DEVICE static float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta_at_light_source)
@@ -45,4 +45,4 @@ HIPRT_DEVICE static float solid_angle_to_area_pdf(float solid_angle_pdf, float d
 	return solid_angle_pdf / hippt::square(distance) * cos_theta_at_light_source;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_PDF_CONVERSION_H

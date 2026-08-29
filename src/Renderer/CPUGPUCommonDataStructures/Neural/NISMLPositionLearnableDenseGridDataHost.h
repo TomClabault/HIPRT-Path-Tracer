@@ -114,4 +114,4 @@ struct NISMLPositionLearnableDenseGridDataHost
 	NISMLPositionLearnableDenseGridDataHostInternal<DataContainer> m_grid_data;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NISML_POSITION_LEARNABLE_DENSE_GRID_DATA_HOST_H

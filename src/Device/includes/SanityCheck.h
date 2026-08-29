@@ -16,7 +16,7 @@
 // up in the terminal because of multithreading
 #include <mutex>
 static std::mutex g_mutex;
-#endif
+#endif // #ifndef __KERNELCC__
 
 HIPRT_DEVICE static void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, ColorRGB32F final_color)
 {
@@ -43,7 +43,7 @@ HIPRT_DEVICE static bool check_for_negative_color(ColorRGB32F ray_color, int x, 
 	{
 #ifndef __KERNELCC__
 		std::cout << "Negative color at [" << x << ", " << y << "], sample " << sample << std::endl;
-#endif
+#endif // #ifndef __KERNELCC__
 
 		return true;
 	}
@@ -68,7 +68,7 @@ HIPRT_DEVICE static bool check_for_nan(ColorRGB32F ray_color, int x, int y, int 
 #ifndef __KERNELCC__
 		std::lock_guard<std::mutex> logging_lock(g_mutex);
 		std::cout << "NaN/INF at [" << x << ", " << y << "], sample" << sample << std::endl;
-#endif
+#endif // #ifndef __KERNELCC__
 		return true;
 	}
 
@@ -82,7 +82,7 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorR
 	{
 #ifdef __KERNELCC__
 		return true;
-#endif
+#endif // #ifdef __KERNELCC__
 	}
 
 	bool valid = true;
@@ -94,7 +94,7 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorR
 	{
 #ifndef __KERNELCC__
 		Debug::debugbreak();
-#endif
+#endif // #ifndef __KERNELCC__
 
 		if (render_data.render_settings.display_NaNs && x >= 0 && x < render_data.render_settings.render_resolution.x && y >= 0 &&
 			y < render_data.render_settings.render_resolution.y)
@@ -119,4 +119,4 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, float 
 	return sanity_check<CheckOnlyOnCPU>(render_data, ColorRGB32F(value), x, y);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_SANITY_CHECK_H

@@ -56,4 +56,4 @@ struct IlluminationAwareKDTreeNodeBounds
 	float3_t maximum;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NODE_DEVICE_H

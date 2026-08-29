@@ -157,4 +157,4 @@ struct HashGrid
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_HASH_GRID_H

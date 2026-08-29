@@ -84,4 +84,4 @@ struct ReGIRHashGridSoAHost
 	unsigned int m_reservoirs_per_cell	 = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_REGIR_HASH_GRID_SOA_CPU_GPU_H

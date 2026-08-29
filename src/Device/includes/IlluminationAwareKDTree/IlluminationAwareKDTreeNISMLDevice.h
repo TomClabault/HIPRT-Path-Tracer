@@ -198,4 +198,4 @@ struct IlluminationAwareKDTreeNISMLDevice
 	AtomicType<unsigned int>* nisml_pending_cell_count = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NISML_DEVICE_H

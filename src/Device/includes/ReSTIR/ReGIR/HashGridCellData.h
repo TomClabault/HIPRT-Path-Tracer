@@ -47,4 +47,4 @@ struct ReGIRHashCellDataSoADevice
 	AtomicType<unsigned int>* grid_cells_alive_count = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_HASH_GRID_CELL_DATA_H

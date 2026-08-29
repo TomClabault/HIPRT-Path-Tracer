@@ -35,7 +35,7 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 {
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
 	return;
-#endif
+#endif // #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
 
 	unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 	if (sample_index >= training_sample_capacity)
@@ -51,4 +51,4 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 	training_samples_soa.valid_for_lightcut[sample_index] = sample.valid_for_lightcut;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_TRAINING_SAMPLE_H

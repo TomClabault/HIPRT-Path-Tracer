@@ -371,4 +371,4 @@ namespace GenericSoAHelpers
 	}
 } // namespace GenericSoAHelpers
 
-#endif
+#endif // #ifndef RENDERER_GENERIC_SOA_H

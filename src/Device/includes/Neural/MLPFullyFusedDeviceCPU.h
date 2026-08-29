@@ -179,4 +179,4 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_MLP_FULLY_FUSED_DEVICE_CPU_H

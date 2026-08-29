@@ -41,7 +41,7 @@ public:
 
 	static std::string read_worker_output(void* output_read_handle);
 	static void print_worker_output(const std::string& output);
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32
 
 private:
 	static std::wstring get_current_executable_path();
@@ -49,4 +49,4 @@ private:
 	static std::filesystem::path make_request_file_path();
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WINDOW_PROCESS_H

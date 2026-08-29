@@ -120,4 +120,4 @@ private:
 	std::string m_status_text = "";
 };
 
-#endif
+#endif // #ifndef IMGUI_SETTINGS_WINDOW_H

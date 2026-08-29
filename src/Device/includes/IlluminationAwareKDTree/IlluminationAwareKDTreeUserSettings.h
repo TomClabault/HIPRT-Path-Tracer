@@ -20,4 +20,4 @@ struct IlluminationAwareKDTreeUserSettings
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_USER_SETTINGS_H

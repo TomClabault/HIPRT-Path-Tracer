@@ -96,4 +96,4 @@ private:
 	bool m_destroyed = false;
 };
 
-#endif
+#endif // #ifndef IMGUI_LOGGER_H

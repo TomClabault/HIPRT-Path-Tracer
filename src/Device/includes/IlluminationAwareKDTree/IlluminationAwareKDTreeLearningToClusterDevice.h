@@ -130,4 +130,4 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	AtomicType<unsigned int>* lightcut_representative_shading_context_states		  = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H

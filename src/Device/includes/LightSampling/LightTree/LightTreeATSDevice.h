@@ -49,4 +49,4 @@ struct LightTreeATSDevice
 	unsigned int* bit_trails	  = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_ATS_DEVICE_H

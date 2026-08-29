@@ -42,4 +42,4 @@ private:
 	std::shared_ptr<GPURenderer> m_renderer;
 };
 
-#endif
+#endif // #ifndef IMGUI_TOOLS_WINDOW_H

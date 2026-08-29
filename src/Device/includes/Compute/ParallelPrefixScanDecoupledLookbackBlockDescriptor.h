@@ -67,4 +67,4 @@ private:
 	unsigned long long int inclusive_sum_status = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_H

@@ -21,15 +21,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_ResetDistributions()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetDistributions(HIPRTRenderData render_data, int x)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int cell_index		 = x / ReSTIRPGDistributionComponentCount;
 	unsigned int component_index = x % ReSTIRPGDistributionComponentCount;
@@ -46,4 +46,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetDistributions(HIPRTRenderDat
 	render_data.render_settings.restir_pg_settings.hash_grid_distributions_soa.set_distribution_component_weight(cell_index, component_index, weight);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_RESTIR_PG_RESET_DISTRIBUTIONS_H

@@ -54,4 +54,4 @@ void orochi_check_error(oroError res, const char* file, uint32_t line);
 void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line);
 void hiprt_check_error(hiprtError res, const char* file, uint32_t line);
 
-#endif
+#endif // #ifndef HIPRTPT_OROCHI_UTILS_H

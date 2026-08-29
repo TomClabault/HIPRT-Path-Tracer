@@ -15,4 +15,4 @@ struct GPUKernelCompilerWindowProcessFunctionNameSet
 	std::optional<std::string> filter_function_name;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WINDOW_PROCESS_FUNCTION_NAME_SET_H

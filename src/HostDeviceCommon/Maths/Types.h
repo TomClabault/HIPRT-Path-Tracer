@@ -12,13 +12,13 @@
 
 using fp16 = half;
 
-#else // !__CUDACC__ = __HIPCC__
+#else // !__CUDACC__ = __HIPCC__ // #ifdef __CUDACC__
 
 using fp16 = __half;
 typedef _Float16 fp16x16 __attribute__((ext_vector_type(16)));
 
-#endif
-#else // !__KERNELCC__
+#endif // #ifdef __CUDACC__
+#else // !__KERNELCC__ // #ifdef __KERNELCC__
 
 using fp16 = float;
 
@@ -33,6 +33,6 @@ struct fp16x16_struct_
 };
 using fp16x16 = fp16x16_struct_;
 
-#endif // __KERNELCC__
+#endif // __KERNELCC__ // #ifdef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATHS_TYPES_H

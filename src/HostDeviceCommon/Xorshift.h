@@ -8,7 +8,7 @@
 
 #ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
-#endif
+#endif // #ifdef __KERNELCC__
 
 #include "HostDeviceCommon/Maths/Math.h"
 
@@ -67,4 +67,4 @@ struct Xorshift32Generator
 	Xorshift32State m_state;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_XORSHIFT_H

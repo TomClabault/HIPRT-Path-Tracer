@@ -101,4 +101,4 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	unsigned int last_recomputed_sample_count = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_GMON_GPU_DATA_H

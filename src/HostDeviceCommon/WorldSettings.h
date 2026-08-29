@@ -62,4 +62,4 @@ struct WorldSettings
 	float3x3 world_to_envmap_matrix = float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_WORLD_SETTINGS_H

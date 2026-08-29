@@ -27,15 +27,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char MEGAKERNEL_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) MegaKernel()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(MEGAKERNEL_RENDER_DATA);
 	const uint32_t x			 = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y			 = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -153,4 +153,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	path_tracing_accumulate_color(render_data, pixel_index, ray_payload.ray_color, debug_color);
 }
 
-#endif
+#endif // #ifndef KERNELS_MEGAKERNEL_H

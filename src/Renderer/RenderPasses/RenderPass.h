@@ -373,4 +373,4 @@ protected:
 	std::shared_ptr<GPUKernelCompilerOptions> m_compiler_options = nullptr;
 };
 
-#endif
+#endif // #ifndef RENDERER_RENDER_PASS_H

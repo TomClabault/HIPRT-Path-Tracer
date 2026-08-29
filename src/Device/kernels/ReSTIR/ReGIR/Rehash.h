@@ -27,7 +27,7 @@ ReGIR_Rehash(HIPRTCamera current_camera,
 			 unsigned int old_cell_count,
 
 			 bool primary_hit)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Rehash(HIPRTCamera current_camera,
 
@@ -42,11 +42,11 @@ inline ReGIR_Rehash(HIPRTCamera current_camera,
 					bool primary_hit,
 
 					unsigned int cell_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (cell_index >= old_cell_count)
 		return;
@@ -66,4 +66,4 @@ inline ReGIR_Rehash(HIPRTCamera current_camera,
 												primitive_index, primary_hit, material);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_REHASH_KERNEL_H

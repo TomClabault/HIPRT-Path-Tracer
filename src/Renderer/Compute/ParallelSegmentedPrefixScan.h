@@ -102,4 +102,4 @@ private:
 
 #include "Renderer/Compute/ParallelSegmentedPrefixScan.inl"
 
-#endif
+#endif // #ifndef RENDERER_COMPUTE_PARALLEL_SEGMENTED_PREFIX_SCAN_ONE_PASS_H

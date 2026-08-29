@@ -34,4 +34,4 @@ public:
 	Image32Bit3D m_GGX_thin_glass_directional_albedo;
 };
 
-#endif
+#endif // #ifndef RENDERER_BSDF_DATA_HOST_H

@@ -57,4 +57,4 @@ HIPRT_DEVICE inline bool bsdf_incident_light_info_transmission_lobe(BSDFIncident
 		   (incident_light_info & BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE) != 0;
 }
 
-#endif
+#endif // #ifndef DEVICE_BSDF_EVAL_INCIDENT_LIGHT_INFO_H

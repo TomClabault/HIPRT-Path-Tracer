@@ -189,4 +189,4 @@ struct MLPDataHost
 	MLPDataHostInternal<DataContainer> m_mlp_data;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_MLP_DATA_HOST_H

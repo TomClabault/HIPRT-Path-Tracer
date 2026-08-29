@@ -167,7 +167,7 @@ SSBNPermutationSortingPass(unsigned char* __restrict__ blue_noise_dither_texture
 						   unsigned int* __restrict__ in_seeds_to_sort,
 						   unsigned int* __restrict__ out_sorted_seeds_buffer,
 						   const int* __restrict__ in_hash_grid_cell_offsets_buffer)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 								  unsigned char* __restrict__ blue_noise_dither_texture_buffer,
@@ -176,11 +176,11 @@ inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 								  unsigned int* __restrict__ in_seeds_to_sort,
 								  unsigned int* __restrict__ out_sorted_seeds_buffer,
 								  const int* __restrict__ in_hash_grid_cell_offsets_buffer)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(SSBN_PERMUTATION_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 	int resolution_x = render_data.render_settings.render_resolution.x;
 	int resolution_y = render_data.render_settings.render_resolution.y;
 
@@ -301,4 +301,4 @@ inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	out_sorted_seeds_buffer[pixel_x + pixel_y * resolution_x] = sorted_seeds[thread_index_in_block];
 }
 
-#endif
+#endif // #ifndef KERNELS_SSBN_PERMUTATION_SORTING_PASS_H

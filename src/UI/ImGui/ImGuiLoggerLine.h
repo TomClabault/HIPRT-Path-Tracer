@@ -19,4 +19,4 @@ struct ImGuiLoggerLine
 	std::string string;
 };
 
-#endif
+#endif // #ifndef IMGUI_LOGGER_LINE_H

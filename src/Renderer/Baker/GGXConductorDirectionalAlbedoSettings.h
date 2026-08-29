@@ -17,4 +17,4 @@ struct GGXConductorDirectionalAlbedoSettings
 	int integration_sample_count = 262144;
 };
 
-#endif
+#endif // #ifndef GGX_CONDUCTOR_DIRECTIONAL_ALBEDO_SETTINGS_H

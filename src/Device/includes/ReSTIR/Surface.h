@@ -76,4 +76,4 @@ HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& rende
 		return get_pixel_surface(render_data, pixel_index, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_SURFACE_H

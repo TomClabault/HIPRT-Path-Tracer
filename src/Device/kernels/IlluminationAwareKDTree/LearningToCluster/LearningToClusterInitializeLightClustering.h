@@ -36,4 +36,4 @@ HIPRT_DEVICE void learning_to_cluster_initialize_light_clustering_from_initial_c
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_LIGHT_CLUSTERING_H

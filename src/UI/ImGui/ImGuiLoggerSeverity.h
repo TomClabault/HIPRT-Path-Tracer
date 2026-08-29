@@ -13,4 +13,4 @@ enum ImGuiLoggerSeverity
 	IMGUI_LOGGER_ERROR
 };
 
-#endif
+#endif // #ifndef IMGUI_LOGGER_SEVERITY_H

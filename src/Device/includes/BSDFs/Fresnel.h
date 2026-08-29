@@ -171,4 +171,4 @@ HIPRT_DEVICE static float fresnel_hemispherical_albedo_fit(float relative_eta)
 	return hippt::intrin_logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
 }
 
-#endif
+#endif // #ifndef DEVICE_FRESNEL_H

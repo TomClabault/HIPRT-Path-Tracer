@@ -16,16 +16,16 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 											 const float3_t scene_bounds_minimum,
 											 const float3_t scene_bounds_maximum,
 											 unsigned int reset_index)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
 											 const float3 scene_bounds_minimum,
 											 const float3 scene_bounds_maximum)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int reset_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int maximum_reset_count = illumination_aware_kd_tree.learning_to_cluster.lightcut_capacity;
 	if (illumination_aware_kd_tree.core.node_capacity > maximum_reset_count)
@@ -97,4 +97,4 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_NODE_H

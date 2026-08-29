@@ -29,4 +29,4 @@ private:
 	std::shared_ptr<OpenGLProgram> m_display_program = nullptr;
 };
 
-#endif
+#endif // #ifndef DISPLAY_VIEW_H

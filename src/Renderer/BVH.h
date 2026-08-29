@@ -263,4 +263,4 @@ public:
 	std::vector<Triangle>* m_triangles;
 };
 
-#endif
+#endif // #ifndef BVH_H

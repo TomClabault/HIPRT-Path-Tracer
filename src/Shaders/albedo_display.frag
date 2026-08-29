@@ -10,14 +10,14 @@ uniform int u_resolution_scaling;
 
 #ifdef COMPUTE_SCREENSHOTER
 uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 in vec2 vs_tex_coords;
 out vec4 out_color;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 
 #ifdef COMPUTE_SCREENSHOTER
 layout(local_size_x = 8, local_size_y = 8) in;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 
 void main()
 {
@@ -29,7 +29,7 @@ void main()
 
 	uvec4 ucolor = uvec4(texelFetch(u_texture, thread_id / u_resolution_scaling, 0) * 255);
 	imageStore(u_output_image, thread_id, ucolor);
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 	out_color = texture(u_texture, vs_tex_coords / u_resolution_scaling);
-#endif
+#endif // #ifdef COMPUTE_SCREENSHOTER
 };

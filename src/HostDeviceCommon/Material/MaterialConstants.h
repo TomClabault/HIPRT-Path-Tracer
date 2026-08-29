@@ -24,4 +24,4 @@ struct MaterialConstants
 	static constexpr float DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.99999f;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_CONSTANTS_H

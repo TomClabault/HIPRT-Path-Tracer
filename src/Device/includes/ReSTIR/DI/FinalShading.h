@@ -132,4 +132,4 @@ HIPRT_DEVICE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_da
 	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, closest_hit_info, view_direction, reservoir, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_FINAL_SHADING_H

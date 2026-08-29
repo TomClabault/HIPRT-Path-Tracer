@@ -54,4 +54,4 @@ struct ReSTIRPGSplattingSampleSoADevice
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_SPLATTING_SAMPLE_SOA_DEVICE_H

@@ -115,4 +115,4 @@ HIPRT_DEVICE T block_prefix_scan_exclusive(T val, int thread_idx = threadIdx.x)
 	return exclusive_scanned;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_WARP_BLOCK_SCAN_H

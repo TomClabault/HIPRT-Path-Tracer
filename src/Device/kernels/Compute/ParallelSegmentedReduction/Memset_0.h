@@ -19,4 +19,4 @@ ParallelSegmentedReduction_Memset_0(OutputDataType* __restrict__ buffer, unsigne
 		buffer[global_tid] = 0;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_MEMSET_0_H

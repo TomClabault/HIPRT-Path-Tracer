@@ -107,4 +107,4 @@ struct ReSTIRPTSPMISSettings
 	float* cell_variance = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_COMMON_SPMIS_SETTINGS_H

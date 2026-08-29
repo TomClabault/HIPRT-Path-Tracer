@@ -91,4 +91,4 @@ private:
 
 #include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.inl"
 
-#endif
+#endif // #ifndef RENDERER_COMPUTE_PARALLEL_PREFIX_SCAN_ONE_PASS_H

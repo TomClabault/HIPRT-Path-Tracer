@@ -18,4 +18,4 @@ struct GGXFresnelDirectionalAlbedoSettings
 	int integration_sample_count = 65536;
 };
 
-#endif
+#endif // #ifndef GGX_FRESNEL_DIRECTIONAL_ALBEDO_SETTINGS_H

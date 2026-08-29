@@ -232,4 +232,4 @@ struct EmissiveMeshesAliasTablesHost
 	DataContainer<int> m_global_triangle_index_to_emissive_mesh_index;
 };
 
-#endif
+#endif // #ifndef RENDERER_EMISSIVE_MESH_ALIAS_TABLE_GPU_DATA_H

@@ -241,7 +241,7 @@ struct ReGIRPairwiseMIS
 									 canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization +
 									 canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization +
 									 canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization);
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 	}
 
 	HIPRT_DEVICE float compute_MIS_weight_for_non_canonical_sample(const HIPRTRenderData& render_data,
@@ -303,18 +303,18 @@ struct ReGIRPairwiseMIS
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
 			float canonical_PDF = pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, sample_triangle_index) /
 								  triangle_load_area(render_data, sample_triangle_index);
-#else
+#else // #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
 			float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, primary_hit,
 																			 canonical_RIS_integral_center_grid_cell, sample_point_on_light,
 																			 sample_light_source_normal, sample_emission, random_number_generator);
-#endif
+#endif // #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			float bsdf_PDF = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, sample_point_on_light, sample_light_source_normal, sample_emission,
 																 view_direction, shading_point, shading_normal, geometric_normal,
 																 BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index);
-#else
+#else // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			float bsdf_PDF = 0.0f;
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			mis_weight = mis_weight_normalization *
 						 (non_canonical_sample_PDF / (non_canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization +
 													  canonical_PDF * mis_weight_normalization + bsdf_PDF * mis_weight_normalization));
@@ -350,7 +350,7 @@ struct ReGIRPairwiseMIS
 									 canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization +
 									 canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization +
 									 canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization);
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 
 		return mis_weight;
 	}
@@ -405,4 +405,4 @@ struct ReGIRPairwiseMIS
 	float m_sum_canonical_weight_3 = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_SHADING_PAIRWISE_MIS_H

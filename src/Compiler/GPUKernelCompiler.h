@@ -155,4 +155,4 @@ private:
 	ShaderCacheUsageOverride m_shader_cache_force_usage = ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_H

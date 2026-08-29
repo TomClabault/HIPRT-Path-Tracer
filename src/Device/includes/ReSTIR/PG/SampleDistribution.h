@@ -86,4 +86,4 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 		path_guiding_compute_sampled_lobe(render_data, bsdf_context, ray_payload, out_bounce_direction, out_sampled_light_info, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_SAMPLPE_DISTRIBUTION_H

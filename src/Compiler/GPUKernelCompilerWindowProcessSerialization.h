@@ -37,4 +37,4 @@ private:
 	static bool read_string_vector(std::ifstream& input, std::vector<std::string>& values);
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WINDOW_PROCESS_SERIALIZATION_H

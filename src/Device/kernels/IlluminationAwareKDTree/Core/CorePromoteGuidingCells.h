@@ -14,10 +14,10 @@ GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
 													   unsigned long long int original_guiding_node_count,
 													   int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice illumination_aware_kd_tree)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int guiding_list_index	  = blockIdx.x;
@@ -25,12 +25,12 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 	unsigned int active_guiding_count = *illumination_aware_kd_tree.core.active_guiding_node_count;
 	if (guiding_list_index >= active_guiding_count)
 		return;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int guiding_list_index = static_cast<unsigned int>(x);
 	unsigned int thread_slot		= 0;
 	if (guiding_list_index >= original_guiding_node_count)
 		return;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (illumination_aware_kd_tree.core.needs_split[guiding_list_index] == 0)
 		return;
@@ -206,7 +206,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 	__syncthreads();
 
-#else
+#else // #ifdef __KERNELCC__
 
 	unsigned int right_set_index			 = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_count, 1u);
 	unsigned int active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.core.active_guiding_node_count, 1u);
@@ -332,7 +332,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 			}
 		}
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifdef __KERNELCC__
 	// The promoted subtree starts a fresh illumination-signature-history.
@@ -360,7 +360,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 			}
 		}
 	}
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int stack[128];
 	unsigned int stack_size = 0;
 	stack[stack_size++]		= left_child_index;
@@ -380,7 +380,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 			}
 		}
 	}
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_PROMOTE_GUIDING_CELLS_H

@@ -99,4 +99,4 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_TARGET_FUNCTION_H

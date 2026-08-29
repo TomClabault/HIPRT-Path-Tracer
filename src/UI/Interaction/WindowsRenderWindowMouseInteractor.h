@@ -29,4 +29,4 @@ private:
 	std::pair<float, float> m_grab_cursor_position = { 0.0f, 0.0f };
 };
 
-#endif
+#endif // #ifndef WINDOWS_RENDER_WINDOW_MOUSE_INTERACTOR_H

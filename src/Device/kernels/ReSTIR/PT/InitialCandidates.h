@@ -244,16 +244,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_InitialCandidates()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -273,7 +273,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	// Resetting splatting samples
 	for (int bounce = 0; bounce < bounce_count; bounce++)
 		render_data.render_settings.restir_pg_settings.invalidate_splatting_sample(render_data.render_settings.render_resolution, x, y, bounce);
-#endif
+#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
@@ -397,7 +397,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						render_data.render_settings.restir_pg_settings.splatting_samples_soa.store_sample(sample, render_data.render_settings.render_resolution,
 																										  x, y, bounce);
 					}
-#endif
+#endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 				}
 				else
 					break;
@@ -425,7 +425,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	float3_t pixel_first_hit_point			  = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t pixel_first_hit_geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 	ReSTIR_spmis_insert_pixel_hash<ReSTIR_VARIANT_PT>(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
-#endif
+#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 
 	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_pt_initial_reservoir;
 
@@ -485,4 +485,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_PT_INITIAL_CANDIDATES_H

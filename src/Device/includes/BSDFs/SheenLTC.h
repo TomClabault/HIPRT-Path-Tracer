@@ -50,9 +50,9 @@ HIPRT_DEVICE static ColorRGB32F read_LTC_parameters(const HIPRTRenderData& rende
 	const void* ltc_parameters_texture_pointer;
 #ifdef __KERNELCC__
 	ltc_parameters_texture_pointer = &render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
-#else
+#else // #ifdef __KERNELCC__
 	ltc_parameters_texture_pointer = render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	float2_t parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, roughness));
 	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, parameters_uv, 0, false, false);
@@ -174,4 +174,4 @@ HIPRT_DEVICE static float3_t sheen_ltc_sample(const HIPRTRenderData& render_data
 	return rotate_vector(sampled_direction_ltc_space, make_float3(0.0f, 0.0f, 1.0f), get_phi(local_view_direction));
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDFS_SHEEN_LTC

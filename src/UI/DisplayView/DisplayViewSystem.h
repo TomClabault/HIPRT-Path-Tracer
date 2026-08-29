@@ -211,4 +211,4 @@ void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<Orochi
 								 display_texture.second);
 }
 
-#endif
+#endif // #ifndef DISPLAY_VIEW_SYSTEM_H

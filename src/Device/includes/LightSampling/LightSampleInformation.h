@@ -32,7 +32,7 @@ struct LightSamplePointInformation
 	// The light sample may come from BSDF sampling with ReGIR and so we may have
 	// information about the lobe that was sampled.
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#endif
+#endif // #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 };
 
 template <int size>
@@ -67,4 +67,4 @@ struct LightSampleArray
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LIGHT_SAMPLE_INFORMATION_H

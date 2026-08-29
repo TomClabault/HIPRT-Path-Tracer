@@ -63,4 +63,4 @@ struct Sphere
 	int primitive_index;
 };
 
-#endif
+#endif // #ifndef SPHERE_H

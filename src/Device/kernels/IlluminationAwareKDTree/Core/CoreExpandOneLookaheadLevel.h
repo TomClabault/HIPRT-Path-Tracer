@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int frontier_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int frontier_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int current_frontier_count = *kd_tree_device.core.current_frontier_count;
 	if (frontier_index >= current_frontier_count)
@@ -112,4 +112,4 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	kd_tree_device.core.append_child_pair_to_frontier(kd_tree_device.core.next_frontier, kd_tree_device.core.next_frontier_count, left_child, right_child);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_EXPAND_ONE_LOOKAHEAD_LEVEL_H

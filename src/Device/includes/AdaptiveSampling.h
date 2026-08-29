@@ -101,4 +101,4 @@ HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, i
 	return true;
 }
 
-#endif
+#endif // #ifndef DEVICE_ADAPTIVE_SAMPLING_H

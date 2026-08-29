@@ -36,4 +36,4 @@ struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_CUT_TRIANGLE_SAMPLE_H

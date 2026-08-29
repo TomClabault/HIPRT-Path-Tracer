@@ -19,7 +19,7 @@ struct NISMLDevice
 	{
 #if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
 		return;
-#endif
+#endif // #if DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS
 
 		if (!learning_enabled || training_record_probability <= 0.0f || random_number_generator() >= training_record_probability)
 			return;
@@ -63,4 +63,4 @@ struct NISMLDevice
 	float training_record_probability = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_NISML_DEVICE_H

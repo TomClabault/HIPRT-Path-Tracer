@@ -626,4 +626,4 @@ using ReSTIRDITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<Bi
 template <int BiasCorrectionMode>
 using ReSTIRGITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_MIS_WEIGHT_H

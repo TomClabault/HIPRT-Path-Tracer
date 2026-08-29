@@ -243,4 +243,4 @@ HIPRT_DEVICE static unsigned int screen_space_gbuffer_hash(int pixel_x,
 	return h1_pcg(grid_coord_x + h1_pcg(grid_coord_y + h1_pcg(hashed_normal)));
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_HASH_GRID_HASH_H

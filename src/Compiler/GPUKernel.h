@@ -239,4 +239,4 @@ private:
 	bool m_is_precompiled_kernel = false;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_H

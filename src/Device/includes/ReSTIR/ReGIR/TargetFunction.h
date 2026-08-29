@@ -59,11 +59,11 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal,
 											   surface.cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false,
 											   approximate_material, 0.0f, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
+#else // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal,
 											   surface.cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false,
 											   approximate_material, 0.0f, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
+#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 		ColorRGB32F bsdf_radiance = bsdf_dispatcher_eval(render_data, bsdf_context, out_pdf, rng);
 		target_function *= bsdf_radiance.luminance();
 	}
@@ -238,4 +238,4 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 	return target_function;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_REGIR_TARGET_FUNCTION_H

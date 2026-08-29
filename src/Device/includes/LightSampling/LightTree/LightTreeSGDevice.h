@@ -80,4 +80,4 @@ struct LightTreeSGDevice
 	unsigned int* bit_trails = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H

@@ -107,4 +107,4 @@ struct ReGIRHashCellDataSoAHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_grid_cells_alive_count;
 };
 
-#endif
+#endif // #ifndef RENDERER_REGIR_HASH_CELL_DATA_SOA_CPU_GPU_H

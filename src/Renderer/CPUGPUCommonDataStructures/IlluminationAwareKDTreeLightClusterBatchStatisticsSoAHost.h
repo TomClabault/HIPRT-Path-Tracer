@@ -58,4 +58,4 @@ struct IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost
 	Data data;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_LIGHT_CLUSTER_BATCH_STATISTICS_SOA_HOST_H

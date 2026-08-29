@@ -32,4 +32,4 @@ enum ReSTIRDISampleFlags
 	RESTIR_DI_FLAGS_UNOCCLUDED = 1 << 7
 };
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_SAMPLE_FLAGS_H

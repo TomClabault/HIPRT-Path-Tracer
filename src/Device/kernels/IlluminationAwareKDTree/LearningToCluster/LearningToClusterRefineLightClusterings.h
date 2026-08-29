@@ -76,9 +76,9 @@ HIPRT_DEVICE float light_clustering_node_importance_for_refinement(const LightTr
 {
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
-#else
+#else // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data;
-#endif
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 
 	// return light_tree_sg.nodes[cluster_node_index].get_total_power();
 	return hippt::max(1.0e-3f, light_tree_sg_node_importance(light_tree_sg.nodes[cluster_node_index], specular_data, context.position, context.view_direction,
@@ -247,16 +247,16 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 		lightcut_data.lightcut_cdf_dirty		= true;
 	}
 }
-#endif
+#endif // #ifndef __KERNELCC__
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else
+#else // #ifndef __KERNELCC__
 HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree,
 											  const LightTreeSGDevice& light_tree_sg,
 											  unsigned int active_guiding_node_face_index)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int slot				  = threadIdx.x;
@@ -375,9 +375,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 			lightcut_data.lightcut_cdf_dirty		= true;
 		}
 	}
-#else
+#else // #ifdef __KERNELCC__
 	refine_light_clustering_cpu(kd_tree, light_tree_sg, static_cast<unsigned int>(x));
-#endif
+#endif // #ifdef __KERNELCC__
 }
 
 #ifdef __KERNELCC__
@@ -386,6 +386,6 @@ IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwar
 {
 	refine_light_clustering_gpu(kd_tree, light_tree_sg, blockIdx.x);
 }
-#endif
+#endif // #ifdef __KERNELCC__
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHT_CLUSTERINGS_H

@@ -21,7 +21,7 @@ ReSTIR_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
 					   unsigned short int* cell_cdf_luts,
 					   unsigned int* cell_cdf_luts_offsets,
 					   unsigned int size)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
 							  unsigned int* cell_offsets,
@@ -34,7 +34,7 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 							  unsigned int* cell_cdf_luts_offsets,
 							  [[maybe_unused]] unsigned int size			 = 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
 							  [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifndef __KERNELCC__
 	// Completely different path for the CPU
@@ -79,11 +79,11 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 	}
 
 	return;
-#endif
+#endif // #ifndef __KERNELCC__
 
 #ifdef __KERNELCC__
 	const uint32_t cell_alive_index = blockIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int cell_index = cell_alive_list[cell_alive_index];
 	if (cell_index >= size)
@@ -161,4 +161,4 @@ inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_rese
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_SPMIS_BUILD_CDFS_H

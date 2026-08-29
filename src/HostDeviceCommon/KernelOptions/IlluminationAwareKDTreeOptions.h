@@ -53,4 +53,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_ILLUMINATION_AWARE_KD_TREE_OPTIONS_H

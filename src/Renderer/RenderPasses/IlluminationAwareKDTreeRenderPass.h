@@ -205,4 +205,4 @@ private:
 	bool m_promote_guiding_cells_debug_check_done = false;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_H

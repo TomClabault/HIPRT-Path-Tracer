@@ -181,4 +181,4 @@ struct ReGIRCellsLightDistributionsSoAHost
 	unsigned int m_emissive_mesh_count	   = 0;
 };
 
-#endif
+#endif // #ifndef REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_HOST_H

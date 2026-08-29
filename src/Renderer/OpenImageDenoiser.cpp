@@ -120,9 +120,9 @@ void OpenImageDenoiser::create_device()
 	// and the default stream
 #ifdef OROCHI_ENABLE_CUEW
 	m_device = oidn::newDevice(oidn::DeviceType::CUDA);
-#else
+#else // #ifdef OROCHI_ENABLE_CUEW
 	m_device = oidn::newDevice(oidn::DeviceType::HIP);
-#endif
+#endif // #ifdef OROCHI_ENABLE_CUEW
 
 	if (m_device.getError() == oidn::Error::UnsupportedHardware)
 	{

@@ -183,4 +183,4 @@ private:
 	bool m_exit_requested	   = false;
 };
 
-#endif
+#endif // #ifndef GPU_RENDERER_THREAD_H

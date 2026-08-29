@@ -105,4 +105,4 @@ HIPRT_DEVICE static float3_t world_to_local_frame_non_normalized(const float3_t&
 	return make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N));
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ONB_H

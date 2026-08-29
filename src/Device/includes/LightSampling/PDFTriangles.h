@@ -282,4 +282,4 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 																		   light_hit_info.hit_distance, to_light_direction);
 }
 
-#endif
+#endif // #ifndef DEVICE_LIGHT_SAMPLING_PDF_TRIANGLES_H

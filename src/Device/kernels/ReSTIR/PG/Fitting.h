@@ -19,15 +19,15 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Fitting()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_data, int x)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PG_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
 
@@ -110,4 +110,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 	restir_pg_settings.hash_grid_distributions_soa.set_distribution(hash_grid_cell_index, updated_distribution);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_RESTIR_PG_FITTING_H

@@ -160,7 +160,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 2
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 2 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1;
@@ -219,7 +219,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 3
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 3 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2;
@@ -294,7 +294,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 4
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 4 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3;
@@ -385,7 +385,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 5
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 5 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4;
@@ -492,7 +492,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 6
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 6 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5;
@@ -615,7 +615,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 7
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 7 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5, g6;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6;
@@ -754,7 +754,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 8
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 8 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5, g6, g7;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6, lambda_7;
@@ -909,7 +909,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 9
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 9 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6, lambda_7, lambda_8;
@@ -1080,7 +1080,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 10
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 10 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6, lambda_7, lambda_8, lambda_9;
@@ -1267,7 +1267,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 11
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 11 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G	   fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10;
 #define MS_CUI2023_DECLARE_LAMBDAS fp16 lambda_0, lambda_1, lambda_2, lambda_3, lambda_4, lambda_5, lambda_6, lambda_7, lambda_8, lambda_9, lambda_10;
@@ -1470,7 +1470,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 12
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 12 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11;
 #define MS_CUI2023_DECLARE_LAMBDAS                                                                                                                             \
@@ -1690,7 +1690,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 13
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 13 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12;
 #define MS_CUI2023_DECLARE_LAMBDAS                                                                                                                             \
@@ -1926,7 +1926,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 14
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 14 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13;
 #define MS_CUI2023_DECLARE_LAMBDAS                                                                                                                             \
@@ -2178,7 +2178,7 @@
 		break;                                                                                                                                                 \
 	}
 
-#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 15
+#elif PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 15 // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
 #define MS_CUI2023_DECLARE_G fp16 g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, g14;
 #define MS_CUI2023_DECLARE_LAMBDAS                                                                                                                             \
@@ -2447,8 +2447,8 @@
 		break;                                                                                                                                                 \
 	}
 
-#else
+#else // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 #error "Unsupported number of bounces for MicrofacetMultipleScatteringCui2023. Only 1 to 16 bounces are supported."
-#endif
+#endif // #if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces == 1
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDFS_MICROFACET_MULTIPLE_SCATTERING_CUI2023_MACROS_H

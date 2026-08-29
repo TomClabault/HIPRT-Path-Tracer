@@ -95,14 +95,14 @@ HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& l
 
 #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	// TODO
-#else
+#else // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 	// Not implemented
 	return make_float3(0.0f, 0.0f, 0.0f);
-#endif // PrincipledBSDFAnisotropicGGXSampleFunction
+#endif // PrincipledBSDFAnisotropicGGXSampleFunction // #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
 }
 
 /*
@@ -129,4 +129,4 @@ HIPRT_DEVICE static float3_t microfacet_GGX_sample_reflection(float roughness,
 	return hippt::normalize(sampled_direction);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_BSDF_MICROFACET_GGX_H

@@ -19,4 +19,4 @@ struct LightTreeATSBuilderOptions
 	int max_triangles_per_leaf = 1;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_ATS_BUILDER_OPTIONS_H

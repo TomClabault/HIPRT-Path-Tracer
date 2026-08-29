@@ -86,4 +86,4 @@ struct Camera
 	glm::quat m_rotation	= glm::quat(glm::vec3(0.0f));
 };
 
-#endif
+#endif // #ifndef CAMERA_H

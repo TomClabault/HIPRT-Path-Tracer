@@ -35,7 +35,7 @@ struct HIPRTOrochiCtx
 		// environment variable is not set correctly.
 		return Utils::windows_add_ENV_var_to_PATH(L"CUDA_PATH", L"\\bin;");
 	}
-#endif
+#endif // #ifdef _WIN32
 
 	void init(int device_index)
 	{
@@ -45,14 +45,14 @@ struct HIPRTOrochiCtx
 #ifdef OROCHI_ENABLE_CUEW
 #ifdef _WIN32
 		Utils::AddEnvVarError error = add_CUDA_PATH_to_PATH();
-#endif
-#endif
+#endif // #ifdef _WIN32
+#endif // #ifdef OROCHI_ENABLE_CUEW
 
 #ifdef OROCHI_ENABLE_CUEW
 		int error_initialize = oroInitialize((oroApi)(ORO_API_CUDA), 0);
-#else
+#else // #ifdef OROCHI_ENABLE_CUEW
 		int error_initialize = oroInitialize((oroApi)(ORO_API_HIP), 0);
-#endif
+#endif // #ifdef OROCHI_ENABLE_CUEW
 		if (error_initialize != oroSuccess)
 		{
 			switch (error_initialize)
@@ -128,4 +128,4 @@ struct HIPRTOrochiCtx
 	hiprtContext hiprt_ctx = nullptr;
 };
 
-#endif
+#endif // #ifndef HIPRT_OROCHI_CTX_H

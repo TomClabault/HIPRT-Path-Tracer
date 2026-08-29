@@ -32,4 +32,4 @@ struct ReSTIRPGDistributionSufficientStatisticsSoADevice
 	AtomicType<unsigned int>* sample_count = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_DISTRIBUTION_SUFFICIENT_STATISTICS_H

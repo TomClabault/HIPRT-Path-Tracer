@@ -36,4 +36,4 @@ private:
 	GPURenderer* m_renderer = nullptr;
 };
 
-#endif
+#endif // #ifndef RENDERER_POWER_SAMPLING_DATA_STRUCTURE_H

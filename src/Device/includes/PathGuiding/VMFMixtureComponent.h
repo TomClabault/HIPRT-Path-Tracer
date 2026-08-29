@@ -14,4 +14,4 @@ struct VMFMixtureComponent
 	float weight = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_VMF_MIXTURE_COMPONENT_H

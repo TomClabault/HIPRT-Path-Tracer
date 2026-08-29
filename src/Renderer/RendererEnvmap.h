@@ -108,4 +108,4 @@ private:
 	float m_luminance_total_sum = 0.0f;
 };
 
-#endif
+#endif // #ifndef RENDERER_ENVMAP_H

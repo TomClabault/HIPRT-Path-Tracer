@@ -90,4 +90,4 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	}
 }
 
-#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_REORDER_H
+#endif // DEVICE_KERNELS_COMPUTE_RADIX_SORT_REORDER_H // #ifndef DEVICE_KERNELS_COMPUTE_RADIX_SORT_REORDER_H

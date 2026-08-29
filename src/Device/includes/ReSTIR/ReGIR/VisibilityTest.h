@@ -40,4 +40,4 @@ HIPRT_DEVICE bool ReGIR_grid_cell_visibility_test(
 	return ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, point_on_light, rng);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_VISIBILITY_TEST_H

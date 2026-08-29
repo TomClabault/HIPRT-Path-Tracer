@@ -40,4 +40,4 @@ protected:
 	RenderWindow* m_render_window = nullptr;
 };
 
-#endif
+#endif // #ifndef RENDER_WINDOW_KEYBOARD_INTERACTOR_H

@@ -13,4 +13,4 @@ enum HardwareAccelerationSupport
 	NVIDIA_UNSUPPORTED
 };
 
-#endif
+#endif // #ifndef HARDWARE_ACCELERATION_SUPPORT_H

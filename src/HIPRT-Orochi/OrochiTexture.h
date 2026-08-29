@@ -43,4 +43,4 @@ private:
 	size_t m_byte_size = 0;
 };
 
-#endif
+#endif // #ifndef OROCHI_TEXTURE_H

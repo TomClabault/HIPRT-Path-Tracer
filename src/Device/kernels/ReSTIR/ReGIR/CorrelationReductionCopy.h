@@ -21,27 +21,27 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char REGIR_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Correlation_Reduction_Copy(ReGIRHashGridSoADevice input_reservoirs_to_copy)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(REGIR_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 #ifdef __KERNELCC__
 	const uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 #ifdef __KERNELCC__
 	if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count *
 							regir_settings.get_number_of_reservoirs_per_cell(true))
-#else
+#else // #ifdef __KERNELCC__
 	if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() *
 							regir_settings.get_number_of_reservoirs_per_cell(true))
-#endif
+#endif // #ifdef __KERNELCC__
 	{
 		return;
 	}
@@ -65,4 +65,4 @@ inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGr
 																			  reservoir_to_copy, reservoir_index_in_supersampling_grid);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_CORRELATION_REDUCTION_COPY_H

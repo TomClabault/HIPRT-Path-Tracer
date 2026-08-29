@@ -54,4 +54,4 @@ public:
 	static void read_envmap(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y);
 };
 
-#endif
+#endif // #ifndef THREAD_FUNCTIONS_H

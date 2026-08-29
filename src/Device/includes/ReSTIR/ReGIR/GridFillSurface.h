@@ -69,4 +69,4 @@ HIPRT_DEVICE ReGIRGridFillSurface ReGIR_get_cell_surface(const HIPRTRenderData& 
 	return surface;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_REGIR_GRID_FILL_SURFACE_H

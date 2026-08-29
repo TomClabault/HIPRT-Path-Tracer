@@ -201,7 +201,7 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
 		pdf = lambertian_brdf_pdf(local_to_light_direction.z);
-#endif
+#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 
 	return eval;
 }
@@ -233,10 +233,10 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 	else
 		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
 										 metal_delta_direction_sampled);
-#else
+#else // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
 									 metal_delta_direction_sampled);
-#endif
+#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 
 	return pdf;
 }
@@ -258,7 +258,7 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
 		return cosine_weighted_sample_z_up_frame(random_number_generator);
-#endif
+#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 
 	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true);
 }
@@ -285,9 +285,9 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffe
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_eval(material, local_to_light_direction.z, pdf);
-#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
-#endif
+#endif // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 }
 
 HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMaterial& material,
@@ -297,9 +297,9 @@ HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMa
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_pdf(local_to_light_direction.z);
-#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return oren_nayar_brdf_pdf(material, local_view_direction, local_to_light_direction);
-#endif
+#endif // #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 }
 
 /**
@@ -1947,7 +1947,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 {
 #if PrincipledBSDFSampleDiffuseLuminance == KERNEL_OPTION_TRUE
 	diffuse_weight *= material.base_color.luminance();
-#endif
+#endif // #if PrincipledBSDFSampleDiffuseLuminance == KERNEL_OPTION_TRUE
 
 #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
 	// Adjusting the probability of sampling the diffuse or specular lobe based on the
@@ -1964,7 +1964,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 		diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
 		diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
 	}
-#endif
+#endif // #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
 
 #if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
 	if (material.coat > 0.0f)
@@ -1984,7 +1984,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 		glass_weight *= 1.0f - coat_fresnel_sampling_weight;
 		diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
 	}
-#endif
+#endif // #if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
 
 	float normalize_factor = 1.0f / (coat_weight + sheen_weight + metal_1_weight + metal_2_weight + retro_reflection_weight + specular_weight + diffuse_weight +
 									 glass_weight + diffuse_transmission_weight);
@@ -2369,4 +2369,4 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
 }
 
-#endif
+#endif // #ifndef DEVICE_PRINCIPLED_H

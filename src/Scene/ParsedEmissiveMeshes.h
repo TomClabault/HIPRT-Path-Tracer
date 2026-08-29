@@ -49,4 +49,4 @@ struct ParsedEmissiveMeshes
 	std::vector<int> global_triangle_index_to_emissive_mesh_index;
 };
 
-#endif
+#endif // #ifndef SCENE_PARSED_EMISSIVE_MESHES_H

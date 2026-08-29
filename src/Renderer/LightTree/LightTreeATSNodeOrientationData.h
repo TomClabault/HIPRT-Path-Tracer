@@ -111,4 +111,4 @@ public:
 	float theta_e = 0.0f;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_ATS_NODE_ORIENTATION_DATA_H

@@ -75,7 +75,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 	if (global_tid < input_size)
 		hippt::atomic_fetch_add_gpu(&output[segment_id], ComputeDataTransforms::output_value_transform(thread_input_value, global_tid));
 
-#elif COMPUTE_VARIANT == SHARED_MEM_ATOMIC
+#elif COMPUTE_VARIANT == SHARED_MEM_ATOMIC // #if COMPUTE_VARIANT == NAIVE_ATOMIC
 
 	unsigned int segment_id_ = (global_tid < input_size) ? segment_ids[global_tid] : 0;
 
@@ -101,7 +101,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 		hippt::atomic_fetch_add_gpu(&output[segment_id_],
 									ComputeDataTransforms::output_value_transform(shared_mem_accumulations[segment_id_ - first_segment_id], global_tid));
 
-#elif COMPUTE_VARIANT == BLOCK_SEGMENTED_REDUCE
+#elif COMPUTE_VARIANT == BLOCK_SEGMENTED_REDUCE // #if COMPUTE_VARIANT == NAIVE_ATOMIC
 
 	unsigned int flag = load_flag(flags, global_tid, input_size, evenly_spaced_segment_size);
 
@@ -123,7 +123,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 		}
 	}
 
-#endif
+#endif // #if COMPUTE_VARIANT == NAIVE_ATOMIC
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_SCAN_H

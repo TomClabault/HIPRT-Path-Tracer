@@ -136,4 +136,4 @@ HIPRT_DEVICE T block_segmented_reduce(T thread_input_value, unsigned int flag, i
 	return warp_reduced;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_WARP_BLOCK_REDUCE_H

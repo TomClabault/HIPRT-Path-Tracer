@@ -40,11 +40,11 @@
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#else
+#else // #ifndef KERNEL_OPTION_TRUE
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#endif
-#endif
+#endif // #ifndef KERNEL_OPTION_FALSE
+#endif // #ifndef KERNEL_OPTION_TRUE
 
 /**
  * If the length of the normal is less than that, the triangle is going to be rejected
@@ -133,15 +133,15 @@
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
-#else
+#else // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER
-#endif
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                               \
 	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 #error                                                                                                                                                         \
 	"DirectLightNEEEstimator is set to LSS_LEARNING_TO_CLUSTER or LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
-#endif
+#endif // #if (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant
@@ -297,6 +297,6 @@ HIPRT_DEVICE constexpr int DirectLightIntegrationFactor()
 	(DirectLightNEEEstimator == LSS_BSDF || DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF || DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||              \
 	 DirectLightNEEEstimator == LSS_RISLTC)
 
-#endif
+#endif // #ifdef LightTreeATSDoSplitting
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H

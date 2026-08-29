@@ -23,4 +23,4 @@ struct LTCLobeSampleProbabilities
 	// float diffuse_proba;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTCS_LOBE_H

@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 	envmap_image.free();
 
 	render_window.run();
-#else
+#else // #if GPU_RENDER
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples,
 							cmd_arguments.bounces);
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 	cpu_renderer.tonemap(2.2f, 1.8f);
 
 	cpu_renderer.get_framebuffer().write_image_png("CPU_RT_output.png");
-#endif
+#endif // #if GPU_RENDER
 
 	return 0;
 }

@@ -24,14 +24,14 @@ uniform int u_do_tonemapping;
 
 #ifdef COMPUTE_SCREENSHOTER
 uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 in vec2 vs_tex_coords;
 out vec4 out_color;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 
 #ifdef COMPUTE_SCREENSHOTER
 layout(local_size_x = 8, local_size_y = 8) in;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 
 void main()
 {
@@ -43,10 +43,10 @@ void main()
 
 	vec4 hdr_color_1 = texelFetch(u_texture_1, thread_id / u_resolution_scaling, 0);
 	vec4 hdr_color_2 = texelFetch(u_texture_2, thread_id / u_resolution_scaling, 0);
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 	vec4 hdr_color_1 = texture(u_texture_1, vs_tex_coords / u_resolution_scaling);
 	vec4 hdr_color_2 = texture(u_texture_2, vs_tex_coords / u_resolution_scaling);
-#endif
+#endif // #ifdef COMPUTE_SCREENSHOTER
 
 	vec4 final_color_1 = hdr_color_1;
 	vec4 final_color_2 = hdr_color_2;
@@ -71,7 +71,7 @@ void main()
 #ifdef COMPUTE_SCREENSHOTER
 	uvec4 ublended_color = uvec4(blended_color * 255);
 	imageStore(u_output_image, thread_id, ublended_color);
-#else
+#else // #ifdef COMPUTE_SCREENSHOTER
 	out_color = blended_color;
-#endif // COMPUTE_SCREENSHOTER
+#endif // COMPUTE_SCREENSHOTER // #ifdef COMPUTE_SCREENSHOTER
 };

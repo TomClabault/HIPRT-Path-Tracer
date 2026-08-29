@@ -62,4 +62,4 @@ private:
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
-#endif
+#endif // #ifndef RENDERER_RENDER_PASSES_RESTIR_PG_RENDER_PASS_H

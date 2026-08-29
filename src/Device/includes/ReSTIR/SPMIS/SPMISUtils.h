@@ -44,4 +44,4 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 	spmis_settings.all_pixel_hashes[pixel_index] = hash_cell_index;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_SPMIS_SPMIS_UTILS_H

@@ -14,14 +14,14 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TraceTest(HIPRTRenderData render_data, int2_t res)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2_t res, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= res.x || y >= res.y)
 		return;
 
@@ -50,14 +50,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2
 	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
 	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault);
-#else
+#else // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 	hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault);
-#endif
+#endif // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 
 	hit = traversal.getNextHit();
-#endif
+#endif // #ifdef __KERNELCC__
 
 	render_data.g_buffer.first_hit_prim_index[pixel_index] = hit.hasHit() ? 1 : 0;
 }
 
-#endif
+#endif // #ifndef KERNELS_TRACE_TEST_H

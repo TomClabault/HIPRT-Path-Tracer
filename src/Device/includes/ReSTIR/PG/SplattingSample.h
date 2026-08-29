@@ -21,4 +21,4 @@ struct ReSTIRPGSplattingSample
 	}
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PG_SPLATTING_SAMPLE_H

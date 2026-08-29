@@ -119,7 +119,7 @@ struct DeviceUnpackedEffectiveMaterial
 	{
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 		return 1.0f;
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 
 		float coat_roughness_	   = coat > 0.0f ? coat_roughness : 1.0f;
 		float specular_roughness   = specular > 0.0f ? roughness : 1.0f;
@@ -351,9 +351,9 @@ struct DeviceUnpackedEffectiveMaterial
 		// These BSDFs do not support tranmission so every material
 		// should have the same priority
 		return 0;
-#else
+#else // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 		return dielectric_priority;
-#endif
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	}
 
 private:
@@ -390,4 +390,4 @@ struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
 	int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H

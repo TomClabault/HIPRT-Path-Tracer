@@ -321,4 +321,4 @@ private:
 	HIPRTRenderData m_render_data;
 };
 
-#endif
+#endif // #ifndef CPU_RENDERER_H

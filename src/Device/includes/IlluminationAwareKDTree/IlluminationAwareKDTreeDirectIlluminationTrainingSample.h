@@ -22,4 +22,4 @@ struct IlluminationAwareKDTreeDirectIlluminationTrainingSample
 	unsigned int valid_for_spatial_training = false;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DIRECT_ILLUMINATION_TRAINING_SAMPLE_H

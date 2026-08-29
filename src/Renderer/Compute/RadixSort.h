@@ -77,4 +77,4 @@ private:
 	Ordering m_ordering = Ordering::ASCENDING;
 };
 
-#endif
+#endif // #ifndef RENDERER_COMPUTE_RADIX_SORT_H

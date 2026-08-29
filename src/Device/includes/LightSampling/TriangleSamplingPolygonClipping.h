@@ -85,7 +85,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[1] = iz0(v[1], v[2]);
 		v[3] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 4
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 4
 	case 27:
 		vc	 = 4;
@@ -103,7 +103,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[2] = iz0(v[1], v[2]);
 		v[1] = iz0(v[0], v[1]);
 		break;
-#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 4
+#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 4 // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 4
 	case 27:
 		vc	 = 4;
 		v[3] = iz0(v[2], v[0]);
@@ -123,7 +123,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[1] = iz0(v[0], v[1]);
 		v[4] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 3 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 4
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 5
 	case 4:
 		vc = 0;
@@ -180,7 +180,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[2] = iz0(v[2], v[3]);
 		v[4] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 5
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 5
 	case 60:
 		vc	 = 5;
@@ -204,7 +204,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[3] = iz0(v[2], v[3]);
 		v[2] = iz0(v[1], v[2]);
 		break;
-#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 5
+#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 5 // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 5
 	case 60:
 		vc	 = 5;
 		v[4] = iz0(v[3], v[0]);
@@ -231,7 +231,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[2] = iz0(v[1], v[2]);
 		v[5] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 4 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 5
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 6
 	case 5:
 		vc = 0;
@@ -332,7 +332,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[3] = iz0(v[3], v[4]);
 		v[5] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 6
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 6
 	case 125:
 		vc	 = 6;
@@ -363,7 +363,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[4] = iz0(v[3], v[4]);
 		v[3] = iz0(v[2], v[3]);
 		break;
-#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 6
+#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 6 // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 6
 	case 125:
 		vc	 = 6;
 		v[5] = iz0(v[4], v[0]);
@@ -398,7 +398,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[3] = iz0(v[2], v[3]);
 		v[6] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 5 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 6
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 7
 	case 6:
 		vc = 0;
@@ -557,7 +557,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[4] = iz0(v[4], v[5]);
 		v[6] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 7
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 7
 	case 254:
 		vc	 = 7;
@@ -595,7 +595,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[5] = iz0(v[4], v[5]);
 		v[4] = iz0(v[3], v[4]);
 		break;
-#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 7
+#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 7 // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 7
 	case 254:
 		vc	 = 7;
 		v[6] = iz0(v[5], v[0]);
@@ -638,7 +638,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[4] = iz0(v[3], v[4]);
 		v[7] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 6 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 7
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 8
 	case 7:
 		vc = 0;
@@ -872,7 +872,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[5] = iz0(v[5], v[6]);
 		v[7] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 8
 #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 8
 	case 511:
 		vc	 = 8;
@@ -918,7 +918,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[6] = iz0(v[5], v[6]);
 		v[5] = iz0(v[4], v[5]);
 		break;
-#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 8
+#elif MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING > 8 // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 8
 	case 511:
 		vc	 = 8;
 		v[7] = iz0(v[6], v[0]);
@@ -970,7 +970,7 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 		v[5] = iz0(v[4], v[5]);
 		v[8] = v[0];
 		break;
-#endif
+#endif // #if MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING <= 7 && MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING == 8
 		// AUTOGENERATED PART END
 	default:
 		// This should never happen. Just pretend the polygon is below the
@@ -982,4 +982,4 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 	return vc;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_CLIPPING_H

@@ -346,4 +346,4 @@ private:
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_PACKED_SOA_GPU_DATA_H

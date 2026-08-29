@@ -21,7 +21,7 @@ ReSTIR_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
 								  ReSTIRPTReservoir* input_reservoirs,
 								  float* out_cell_variance,
 								  unsigned int size)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pixels_counters,
 										 unsigned int* cell_offsets,
@@ -32,7 +32,7 @@ inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pi
 										 float* out_cell_variance,
 										 [[maybe_unused]] unsigned int size				= 0,
 										 [[maybe_unused]] unsigned int cell_alive_index = 0)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifndef __KERNELCC__
 	// CPU path: iterate over all alive cells
@@ -72,11 +72,11 @@ inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pi
 	}
 
 	return;
-#endif
+#endif // #ifndef __KERNELCC__
 
 #ifdef __KERNELCC__
 	const uint32_t cell_alive_index = blockIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int cell_index = cell_alive_list[cell_alive_index];
 	if (cell_index >= size)
@@ -118,4 +118,4 @@ inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pi
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_SPMIS_COMPUTE_CELLS_VARIANCE_H

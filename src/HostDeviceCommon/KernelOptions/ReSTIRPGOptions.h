@@ -12,11 +12,11 @@
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#else
+#else // #ifndef KERNEL_OPTION_TRUE
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#endif
-#endif
+#endif // #ifndef KERNEL_OPTION_FALSE
+#endif // #ifndef KERNEL_OPTION_TRUE
 
 #define RESTIR_PG_NO_DEBUG								 0
 #define RESTIR_PG_DEBUG_GRID_CELLS						 1
@@ -39,6 +39,6 @@
 
 #define ReSTIRPGDebugMode RESTIR_PG_NO_DEBUG
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PG_OPTIONS_H

@@ -67,4 +67,4 @@ struct LightTreeSGNode
 	unsigned int triangle_count;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_SG_NODE_H

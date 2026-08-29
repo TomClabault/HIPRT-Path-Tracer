@@ -18,16 +18,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char NISML_MEGAKERNEL_INFERENCE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(NeuralImportanceSamplingMLP::BLOCK_SIZE) NISMLMegaKernelInference()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_MEGAKERNEL_INFERENCE_RENDER_DATA);
 	unsigned int query_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int query_index = static_cast<unsigned int>(x + y * render_data.render_settings.render_resolution.x);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int query_count = hippt::atomic_fetch_add(render_data.nisml_mega_kernel.query_count, 0u);
 	bool valid_query		 = query_index < query_count;
@@ -56,4 +56,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData re
 			static_cast<float>(activations_buffer[output_activation_offset + cluster_index][threadIdx.x]);
 }
 
-#endif
+#endif // #ifndef KERNELS_NISML_MEGA_KERNEL_INFERENCE_H

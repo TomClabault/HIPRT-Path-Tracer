@@ -69,4 +69,4 @@ private:
 	OrochiBuffer<unsigned char> m_device_cluster_node_depths_buffer;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_NISML_H

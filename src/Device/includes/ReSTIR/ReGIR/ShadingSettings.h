@@ -29,4 +29,4 @@ struct ReGIRShadingSettings
 	float jittering_radius_canonical_candidates = 0.25f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_REGIR_SHADING_SETTINGS_H

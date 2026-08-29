@@ -26,4 +26,4 @@ struct NISMLTrainingSample
 	float alpha_y			 = 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_NEURAL_NISML_TRAINING_SAMPLE_H

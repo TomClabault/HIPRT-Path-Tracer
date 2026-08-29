@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t node_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	const uint32_t node_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	const uint32_t node_count = *kd_tree_device.core.node_count;
 	if (node_index >= node_count)
@@ -35,4 +35,4 @@ IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTree
 	kd_tree_device.core.history_spatial_moments[node_index] = kd_tree_device.core.batch_spatial_moments[node_index];
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_CREATED_NODE_HISTORY_KERNEL_H

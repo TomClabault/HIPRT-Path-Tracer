@@ -61,4 +61,4 @@ struct ReGIRGridBufferSoAHost
 	ReGIRReservoirSoAHost<DataContainer> reservoirs;
 };
 
-#endif
+#endif // #ifndef RENDERER_REGIR_RESERVOIR_SOA_CPU_GPU_H

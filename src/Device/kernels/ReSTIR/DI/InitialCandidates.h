@@ -190,7 +190,7 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 				// We are now sure that if the sample survived, it is unoccluded
 				light_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
 			}
-#endif
+#endif // #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
 
 			reservoir.add_one_candidate(light_sample, candidate_weight, random_number_generator);
 			reservoir.sanity_check(make_int2(-1, -1));
@@ -362,7 +362,7 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
 	// With ReGIR, initial BSDF candidates are controlled by the ReGIR sampling, not by
 	// ReSTIR DI
 	initial_nb_bsdf_cand = 0;
-#endif
+#endif // #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 
 	int nb_light_candidates			   = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_light_cand) : initial_nb_light_cand;
 	int nb_bsdf_candidates			   = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_bsdf_cand) : initial_nb_bsdf_cand;
@@ -400,13 +400,13 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_InitialCandidates()
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int x, int y)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_DI_RENDER_DATA);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
 		// No initial candidates to sample since no lights
@@ -415,7 +415,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
+#endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
@@ -453,10 +453,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
 	ReSTIR_DI_visibility_test_kill_reservoir(render_data, initial_candidates_reservoir, hit_info.inter_point, hit_info.primitive_index,
 											 random_number_generator);
-#endif
+#endif // #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
 
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;
 	// render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 }
 
-#endif
+#endif // #ifndef KERNELS_RESTIR_DI_INITIAL_CANDIDATES_H

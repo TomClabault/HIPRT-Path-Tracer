@@ -153,4 +153,4 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_RADIX_SORT_BLOCK_H

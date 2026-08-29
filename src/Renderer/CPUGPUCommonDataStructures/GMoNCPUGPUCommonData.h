@@ -21,4 +21,4 @@ struct GMoNCPUGPUCommonData
 	unsigned int current_number_of_sets = GMoNMSetsCount;
 };
 
-#endif
+#endif // #ifndef RENDERER_GMON_CPU_GPU_COMMON_DATA_H

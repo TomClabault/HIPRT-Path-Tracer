@@ -57,4 +57,4 @@
 
 #endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LIGHT_TREE_SG_OPTIONS_H

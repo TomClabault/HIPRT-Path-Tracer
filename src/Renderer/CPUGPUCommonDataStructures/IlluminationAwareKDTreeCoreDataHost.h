@@ -127,4 +127,4 @@ struct IlluminationAwareKDTreeCoreDataHost
 	DataContainer<IlluminationAwareKDTreeSpatialSampleMoments> m_history_spatial_moments;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_CORE_DATA_HOST_H

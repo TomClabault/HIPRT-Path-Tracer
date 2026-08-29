@@ -28,4 +28,4 @@ struct IlluminationAwareKDTreeNISMLCache
 	float representative_alpha_y			= 0.0f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NISML_CACHE_H

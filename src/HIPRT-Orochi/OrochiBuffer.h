@@ -671,4 +671,4 @@ void OrochiBuffer<T>::free_no_error()
 	m_pinned_memory = false;
 }
 
-#endif
+#endif // #ifndef OROCHI_BUFFER_H

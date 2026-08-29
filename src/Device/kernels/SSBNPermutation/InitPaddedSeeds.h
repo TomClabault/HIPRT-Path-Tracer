@@ -29,4 +29,4 @@ SSBNPermutationInitPaddedSeeds(int resolution_x, int resolution_y, int padded_re
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_SSBN_PERMUTATION_INIT_PADDED_SEEDS_H

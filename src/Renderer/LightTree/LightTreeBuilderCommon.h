@@ -25,4 +25,4 @@ struct LightTreeBuilderTrianglesData
 	const std::vector<float3_t>& vertices_positions;
 };
 
-#endif
+#endif // #ifndef RENDERER_LIGHT_TREE_BUILDER_COMMON_H

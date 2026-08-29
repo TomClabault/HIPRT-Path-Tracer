@@ -54,7 +54,7 @@ struct GMoNRadixSortHistogram
 		case 2:
 			histogram2 += value << (bin_index * BITS_PER_HISTOGRAM_BIN);
 			break;
-#endif
+#endif // #if GMoNSortRadixSize >= 4
 		}
 	}
 
@@ -98,7 +98,7 @@ struct GMoNRadixSortHistogram
 
 		case 2:
 			return (histogram2 >> (bin_index * BITS_PER_HISTOGRAM_BIN)) & 31;
-#endif
+#endif // #if GMoNSortRadixSize >= 4
 
 		default:
 			return -1;
@@ -124,17 +124,17 @@ struct GMoNRadixSortHistogram
 		case 2:
 			histogram2 &= ~(31 << (bin_index * BITS_PER_HISTOGRAM_BIN));
 			break;
-#endif
+#endif // #if GMoNSortRadixSize >= 4
 		}
 	}
 
 #if GMoNSortRadixSize == 1
 	unsigned int histogram0 = 0;
-#elif GMoNSortRadixSize == 2
+#elif GMoNSortRadixSize == 2 // #if GMoNSortRadixSize == 1
 	unsigned int histogram0 = 0;
-#elif GMoNSortRadixSize == 4
+#elif GMoNSortRadixSize == 4 // #if GMoNSortRadixSize == 1
 	unsigned int histogram0 = 0, histogram1 = 0, histogram2 = 0;
-#endif
+#endif // #if GMoNSortRadixSize == 1
 };
 
-#endif
+#endif // #ifndef DEVICE_GMON_RADIX_SORT_HISTROGRAM_DECLARATION_H

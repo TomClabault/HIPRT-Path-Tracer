@@ -24,7 +24,7 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 {
 #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 	return;
-#endif
+#endif // #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 
 	if (primitive_index == -1)
 		return;
@@ -55,4 +55,4 @@ HIPRT_DEVICE void ReGIR_representative_points_update(HIPRTRenderData& render_dat
 									 closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_REGIR_REPRESENTATIVE_H

@@ -68,4 +68,4 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 	return true;
 }
 
-#endif
+#endif // #ifndef DEVICE_FUNCTIONS_FILTER_FUNCTION_H

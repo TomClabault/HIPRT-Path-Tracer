@@ -93,4 +93,4 @@ struct NISMLDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_training_record_count;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_NEURAL_NISML_DATA_HOST_H

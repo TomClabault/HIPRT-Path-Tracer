@@ -79,12 +79,12 @@ void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mod
 	texture_descriptor.sRGB		= false;
 
 	OROCHI_CHECK_ERROR(hipCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
-#else
+#else // #ifndef OROCHI_ENABLE_CUEW
 	// Using native CUDA here to access 'normalizedCoords' which isn't  exposed by Orochi
 	// Note that this function is defined in another compile unit because we need to include CUDA headers
 	// and they conflict with HIP headers (structures redefinition, float2_t, float4_t, ...) it seems so we need to separate them
 	create_texture_from_array_cuda(m_texture_array, &m_texture, &filtering_mode, &address_mode, read_mode_float_normalized);
-#endif
+#endif // #ifndef OROCHI_ENABLE_CUEW
 }
 
 void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)

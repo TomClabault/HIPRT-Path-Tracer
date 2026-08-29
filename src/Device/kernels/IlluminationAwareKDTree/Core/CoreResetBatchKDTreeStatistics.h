@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreResetBatchKDTreeStatistics(IlluminationAwareKDTreeDevice kd_tree_device, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreResetBatchKDTreeStatistics(IlluminationAwareKDTreeDevice kd_tree_device)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int reset_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int reset_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int node_count = *kd_tree_device.core.node_count;
 	if (reset_index == 0)
@@ -34,4 +34,4 @@ IlluminationAwareKDTree_CoreResetBatchKDTreeStatistics(IlluminationAwareKDTreeDe
 	kd_tree_device.core.batch_spatial_moments[reset_index] = {};
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_RESET_BATCH_KD_TREE_STATISTICS_H

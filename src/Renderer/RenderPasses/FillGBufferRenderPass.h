@@ -68,4 +68,4 @@ private:
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
-#endif
+#endif // #ifndef CAMERA_RAYS_RENDER_PASS_H

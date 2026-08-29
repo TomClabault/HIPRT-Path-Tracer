@@ -541,4 +541,4 @@ private:
 	// BSDFDataHost m_bsdf_data_cpu_data;
 };
 
-#endif
+#endif // #ifndef RENDERER_GPU_RENDERER_H

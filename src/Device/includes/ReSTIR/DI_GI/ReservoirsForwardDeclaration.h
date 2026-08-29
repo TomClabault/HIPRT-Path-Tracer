@@ -18,4 +18,4 @@ struct ReSTIRGIReservoirSample;
 struct ReSTIRPTReservoir;
 struct ReSTIRPTReservoirSample;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_GI_RESERVOIRS_FORWARD_DECLARATION_H

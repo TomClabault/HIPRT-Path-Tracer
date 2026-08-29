@@ -164,4 +164,4 @@ struct ReSTIRSettingsHelper
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_RESTI_SETTINGS_HELPER_H

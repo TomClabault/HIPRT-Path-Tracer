@@ -52,4 +52,4 @@ struct HIPRTCamera
 	}
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_HIPRT_CAMERA_H

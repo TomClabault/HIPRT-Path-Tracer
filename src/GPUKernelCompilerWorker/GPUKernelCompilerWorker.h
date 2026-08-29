@@ -24,4 +24,4 @@ private:
 	static bool compile_in_worker(const GPUKernelCompilerWindowProcessCompilationRequest& request);
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WORKER_H

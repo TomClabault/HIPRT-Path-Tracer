@@ -11,4 +11,4 @@ struct LightTreeATSSettings
 	float light_tree_ats_splitting_variance = 0.92f;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LIGHT_TREE_ATS_SETTINGS_H

@@ -155,4 +155,4 @@ struct IlluminationAwareKDTreeNISMLDataHost
 	unsigned int m_hash_normal_precision	 = 2;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_NISML_DATA_HOST_H

@@ -40,4 +40,4 @@ private:
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 };
 
-#endif
+#endif // #ifndef MEGAKERNEL_RENDER_PASS_H

@@ -105,4 +105,4 @@ struct ApplicationSettings
 	int pixel_stop_noise_threshold_min_sample_count = 64;
 };
 
-#endif
+#endif // #ifndef APPLICATION_SETTINGS_H

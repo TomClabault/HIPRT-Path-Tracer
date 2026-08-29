@@ -29,4 +29,4 @@ private:
 	bool m_is_hovered = false;
 };
 
-#endif
+#endif // #ifndef IMGUI_RENDER_WINDOW_H

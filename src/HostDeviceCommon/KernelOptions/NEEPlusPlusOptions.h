@@ -12,11 +12,11 @@
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#else
+#else // #ifndef KERNEL_OPTION_TRUE
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
-#endif
-#endif
+#endif // #ifndef KERNEL_OPTION_FALSE
+#endif // #ifndef KERNEL_OPTION_TRUE
 
 #define NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG	0
 #define NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS 1
@@ -60,6 +60,6 @@
 #define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 // #define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_NEE_PLUS_PLUS_OPTIONS_H

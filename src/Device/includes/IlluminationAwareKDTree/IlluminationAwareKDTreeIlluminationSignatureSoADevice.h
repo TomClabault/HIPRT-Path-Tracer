@@ -54,4 +54,4 @@ struct IlluminationAwareKDTreeIlluminationSignatureSoADevice
 	AtomicType<float>* weighted_direction_sum_z		  = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_SIGNATURE_SOA_DEVICE_H

@@ -8,7 +8,7 @@
 
 #ifndef __KERNELCC__
 #include <string>
-#endif
+#endif // #ifndef __KERNELCC__
 
 #include "HostDeviceCommon/BSDFsData.h"
 
@@ -109,7 +109,7 @@ struct GPUBakerConstants
 		return "inv_GGX_Glass_Ess_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" +
 			   std::to_string(texture_size_ior) + ".hdr";
 	}
-#endif
+#endif // #ifndef __KERNELCC__
 };
 
-#endif
+#endif // #ifndef GPU_BAKER_CONSTANTS_H

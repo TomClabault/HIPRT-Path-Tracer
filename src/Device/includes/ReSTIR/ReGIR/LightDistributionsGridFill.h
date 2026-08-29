@@ -125,4 +125,4 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
 		hippt::length(triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index) * 0.5f), light_sample.emission, mesh_index);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_REGIR_LIGHT_DISTRIBUTIONS_GRID_FILL_H

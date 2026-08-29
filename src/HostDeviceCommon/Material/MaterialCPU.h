@@ -347,4 +347,4 @@ struct CPUMaterial
 
 #endif // #ifndef  __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_CPU_H

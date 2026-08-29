@@ -22,4 +22,4 @@ enum DisplayViewType
 	UNDEFINED
 };
 
-#endif
+#endif // #ifndef DISPLAY_VIEW_ENUM_H

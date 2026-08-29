@@ -133,4 +133,4 @@ struct BoundingVolume
 	}
 };
 
-#endif
+#endif // #ifndef BOUNDING_VOLUME_H

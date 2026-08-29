@@ -98,4 +98,4 @@ private:
 
 #include "Renderer/Compute/ParallelSegmentedReduction.inl"
 
-#endif
+#endif // #ifndef RENDERER_COMPUTE_PARALLEL_SEGMENTED_REDUCTION_H

@@ -415,6 +415,6 @@ static const std::array<float3_t, 32 * 32> zeltner_2022_sheen_ltc_fit_parameters
 	make_float3(0.88915f, -0.00000f, 0.33929f), make_float3(0.89063f, -0.00000f, 0.33107f)
 };
 
-#endif // __KERNELCC__
+#endif // __KERNELCC__ // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef BSDFS_DATA_LTCS_ZELTNER_SHEEN_LTC_FIT_DATA_H

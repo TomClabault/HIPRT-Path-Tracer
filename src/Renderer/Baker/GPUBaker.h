@@ -56,4 +56,4 @@ private:
 	GPUBakerKernel m_ggx_thin_glass_directional_albedo_bake_kernel;
 };
 
-#endif
+#endif // #ifndef GPU_BAKER_H

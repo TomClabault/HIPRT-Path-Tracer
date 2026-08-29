@@ -38,4 +38,4 @@ struct GMoNDevice
 	unsigned int next_set_to_accumulate = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_GMON_DEVICE_H

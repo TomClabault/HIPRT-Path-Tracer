@@ -26,10 +26,10 @@ private:
 	static void update_request_hash(unsigned long long& request_hash, unsigned int value);
 	static void update_request_hash(unsigned long long& request_hash, bool value);
 	static unsigned long long get_request_hash(const GPUKernelCompilerWindowProcessCompilationRequest& request);
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32
 
 	void* mutex_handle	= nullptr;
 	bool mutex_acquired = false;
 };
 
-#endif
+#endif // #ifndef GPU_KERNEL_COMPILER_WINDOW_PROCESS_CACHE_LOCK_H

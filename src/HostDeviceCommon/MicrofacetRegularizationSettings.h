@@ -17,4 +17,4 @@ struct MicrofacetRegularizationSettings
 	float min_roughness = 0.0f;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MICROFACET_REGULARIZATION_SETTINGS_H

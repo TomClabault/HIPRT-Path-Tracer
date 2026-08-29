@@ -81,4 +81,4 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_GI_TARGET_FUNCTION_H

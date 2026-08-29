@@ -559,4 +559,4 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PA
 {
 };
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_MIS_WEIGHT_H

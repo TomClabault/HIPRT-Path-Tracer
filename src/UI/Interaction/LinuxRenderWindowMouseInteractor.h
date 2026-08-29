@@ -22,4 +22,4 @@ private:
 	bool render_window_hovered_on_click = false;
 };
 
-#endif
+#endif // #ifndef LINUX_RENDER_WINDOW_MOUSE_INTERACTOR_H

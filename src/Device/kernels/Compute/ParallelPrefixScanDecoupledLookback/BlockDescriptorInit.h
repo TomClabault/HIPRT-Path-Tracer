@@ -28,4 +28,4 @@ ParallelPrefixScanDecoupledLookback_BlockDescriptorInit(ParallelPrefixScanDecoup
 		g_global_block_index_counter[0] = 0;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_COMPUTE_PARALLEL_PREFIX_SCAN_DECOUPLED_LOOKBACK_BLOCK_DESCRIPTOR_INIT_H

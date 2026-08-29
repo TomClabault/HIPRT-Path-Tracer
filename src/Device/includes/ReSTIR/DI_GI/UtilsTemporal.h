@@ -85,4 +85,4 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 	return make_int3(temporal_neighbor_index, static_cast<int>(round(prev_pixel_float.x)), static_cast<int>(round(prev_pixel_float.y)));
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_UTILS_TEMPORAL_H

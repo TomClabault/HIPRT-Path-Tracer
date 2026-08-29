@@ -13,16 +13,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int slot = threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int slot = static_cast<unsigned int>(x);
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (slot >= LearningToClusterMaximumLightCutSize)
 		return;
@@ -38,4 +38,4 @@ IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(Illuminat
 		kd_tree.learning_to_cluster.normal_lightcut_sets[0].lightcut_indices[slot] = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHT_CLUSTERING_H

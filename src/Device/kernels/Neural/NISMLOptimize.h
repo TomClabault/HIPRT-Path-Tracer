@@ -11,13 +11,13 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) NISMLOptimize(NeuralImportanceSamplingMLP mlp, unsigned int adam_step)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline NISMLOptimize(NeuralImportanceSamplingMLP mlp, unsigned int adam_step, unsigned int thread_index)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 	unsigned int training_sample_count = hippt::atomic_load(mlp.last_training_sample_count);
 	if (training_sample_count == 0u)
 		return;
@@ -64,4 +64,4 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLOptimize(NeuralImportanceSamplingMLP m
 	}
 }
 
-#endif
+#endif // #ifndef KERNELS_NISML_OPTIMIZE_H

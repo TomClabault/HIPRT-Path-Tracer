@@ -26,4 +26,4 @@ struct NEEPlusPlusCPUData
 	AtomicType<unsigned int> total_cell_alive_count;
 };
 
-#endif
+#endif // #ifndef RENDERER_NEE_PLUS_PLUS_CPU_DATA_H

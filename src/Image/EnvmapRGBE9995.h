@@ -81,4 +81,4 @@ private:
 	std::vector<RGBE9995Packed> packed_data_CPU;
 };
 
-#endif
+#endif // #ifndef DEVICE_RGBE9995_ENVMAP_H

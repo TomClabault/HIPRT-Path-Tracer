@@ -105,4 +105,4 @@ private:
 	bool odd_frame						   = false;
 };
 
-#endif
+#endif // #ifndef RESTIR_DI_RENDER_PASS_H

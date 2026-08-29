@@ -83,7 +83,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 	envmap_pdf_solid_angle = 0.0f;
 
 	return ColorRGB32F();
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 
 	int x, y;
 	float env_map_total_sum = world_settings.envmap_total_sum;
@@ -91,12 +91,12 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 	// Importance sampling a texel of the envmap with a binary search on the CDF
 	envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
-#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
+#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 	int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
 
 	y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
 	x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 
 	// Converting to UV coordinates
 	float u = static_cast<float>(x) / world_settings.envmap_width;
@@ -127,7 +127,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 
 	// Account for the fact that the envmap texels have some area in the world
 	envmap_pdf_solid_angle *= world_settings.envmap_width * world_settings.envmap_height;
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 
 	// Converting the PDF from area measure on the envmap to solid angle measure
 	envmap_pdf_solid_angle /= (hippt::M_TWO_PI_SQUARED * sin_theta);
@@ -145,7 +145,7 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 	pdf = 0.0f;
 
 	return ColorRGB32F();
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 
 	const WorldSettings& world_settings = render_data.world_settings;
 
@@ -163,7 +163,7 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 
 	// Account for the fact that the envmap texels have some area in the world
 	pdf *= world_settings.envmap_width * world_settings.envmap_height;
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 
 	// Converting from "texel on envmap measure" to solid angle
 	pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
@@ -210,9 +210,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 
 #if EnvmapSamplingDoBSDFMIS
 				float mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
-#else
+#else // #if EnvmapSamplingDoBSDFMIS
 				float mis_weight = 1.0f;
-#endif
+#endif // #if EnvmapSamplingDoBSDFMIS
 
 				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
 			}
@@ -253,9 +253,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 	}
 
 	return bsdf_mis_contribution + envmap_mis_contribution;
-#else
+#else // #if EnvmapSamplingDoBSDFMIS
 	return envmap_mis_contribution;
-#endif
+#endif // #if EnvmapSamplingDoBSDFMIS
 }
 
 HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
@@ -280,9 +280,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	return ColorRGB32F(0.0f);
-#else
+#else // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 }
 
-#endif
+#endif // #ifndef DEVICE_ENVMAP_H

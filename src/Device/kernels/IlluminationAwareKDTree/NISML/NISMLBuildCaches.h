@@ -63,7 +63,7 @@ HIPRT_DEVICE bool normalize_nisml_baseline_distribution(float* log_importances, 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_device, HIPRTRenderData render_data, int x)
-#else
+#else // #ifndef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
@@ -71,14 +71,14 @@ extern "C"
 }
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_device)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(ILLUMINATION_AWARE_KD_TREE_RENDER_DATA);
 	unsigned int cache_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int cache_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	if (cache_index >= kd_tree_device.nisml.nisml_hash_table_capacity || kd_tree_device.nisml.nisml_hash_keys == nullptr ||
 		kd_tree_device.nisml.nisml_hash_entry_states == nullptr || kd_tree_device.nisml.nisml_cache == nullptr ||
@@ -152,4 +152,4 @@ IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_d
 	hippt::atomic_fetch_add(kd_tree_device.nisml.nisml_pending_cell_count, static_cast<unsigned int>(-1));
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_NISML_CACHES_H

@@ -245,4 +245,4 @@ HIPRT_DEVICE static float3x3 inverse(const float3x3& m)
 	return result;
 }
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_FLOAT3X3_H

@@ -50,4 +50,4 @@ private:
 	OrochiBuffer<float> m_bake_buffer;
 };
 
-#endif
+#endif // #ifndef GPU_BAKER_KERNEL_H

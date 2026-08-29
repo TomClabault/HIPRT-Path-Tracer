@@ -16,13 +16,13 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelAlignment(ColorRGB32F* __restrict__ buffer_a, const ColorRGB32F* __restrict__ buffer_b, size_t buffer_size)
-#else
+#else // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelAlignment(ColorRGB32F* __restrict__ buffer_a, const ColorRGB32F* __restrict__ buffer_b, size_t buffer_size, int x)
-#endif
+#endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
+#endif // #ifdef __KERNELCC__
 	uint32_t offset = 13;
 	uint32_t index	= x + offset;
 

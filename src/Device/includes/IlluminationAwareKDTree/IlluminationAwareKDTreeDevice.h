@@ -20,4 +20,4 @@ struct IlluminationAwareKDTreeDevice
 	unsigned char* any_cell_needs_split = nullptr;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_DEVICE_H

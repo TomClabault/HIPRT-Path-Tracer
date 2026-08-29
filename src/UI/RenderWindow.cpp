@@ -1015,9 +1015,9 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 
 #ifdef __unix__
 	m_mouse_interactor = std::make_shared<LinuxRenderWindowMouseInteractor>();
-#elif defined(_WIN32) || defined(WIN32)
+#elif defined(_WIN32) || defined(WIN32) // #ifdef __unix__
 	m_mouse_interactor = std::make_shared<WindowsRenderWindowMouseInteractor>();
-#endif
+#endif // #ifdef __unix__
 	m_keyboard_interactor.set_render_window(this);
 
 	const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());

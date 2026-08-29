@@ -31,4 +31,4 @@ struct LTCsData
 	float specular_ltc_maximum_roughness = 0.7f;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_LTCS_DATA_H

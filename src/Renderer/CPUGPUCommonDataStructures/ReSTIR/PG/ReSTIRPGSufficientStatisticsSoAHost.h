@@ -93,4 +93,4 @@ struct ReSTIRPGSufficientStatisticsSoAHost
 	unsigned int m_last_resize_number_of_cells = 0;
 };
 
-#endif
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PG_SUFFICIENT_STATISTICS_SOA_HOST_H

@@ -12,16 +12,16 @@
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
-#else
+#else // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
-#endif
+#endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
 	unsigned int sample_index = blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#else // #ifdef __KERNELCC__
 	unsigned int sample_index = x;
-#endif
+#endif // #ifdef __KERNELCC__
 
 	unsigned int sample_count = *kd_tree_device.core.training_sample_count;
 	if (sample_index >= sample_count)
@@ -51,4 +51,4 @@ IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice 
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_TRAINING_SAMPLES_KERNEL_H

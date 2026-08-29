@@ -129,7 +129,7 @@ void GPUKernelCompilerWindowProcess::print_worker_output(const std::string& outp
 	else
 		std::cout.flush();
 }
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32
 
 bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProcessCompilationRequest& request)
 {
@@ -224,8 +224,8 @@ bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProces
 	{
 		return false;
 	}
-#else
+#else // #ifdef _WIN32
 	(void)request;
 	return false;
-#endif // _WIN32
+#endif // _WIN32 // #ifdef _WIN32
 }

@@ -273,4 +273,4 @@ using ReSTIRDITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<Bi
 template <int BiasCorrectionMode>
 using ReSTIRGITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_GI_NORMALIZATION_WEIGHT_H

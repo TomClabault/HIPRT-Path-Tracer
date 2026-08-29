@@ -733,7 +733,7 @@ HIPRT_HOST_DEVICE ColorRGB32F wavelength_to_RGB_clamped(float wavelength)
 	return RGB / scale;
 }
 
-#endif
+#endif // #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_TABLES
 
 /**
  * Fitted curves for converting a wavelength to its RGB values.
@@ -777,9 +777,9 @@ HIPRT_HOST_DEVICE static ColorRGB32F wavelength_to_RGB(float wavelength)
 {
 #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
 	return wavelength_to_RGB_fit(wavelength);
-#elif WavelengthToRGBMethod == WAVELENGTH_TO_RGB_TABLES
+#elif WavelengthToRGBMethod == WAVELENGTH_TO_RGB_TABLES // #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
 	return wavelength_to_RGB_clamped(wavelength);
-#endif
+#endif // #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
 }
 
 HIPRT_HOST_DEVICE static float sample_wavelength_uniformly(Xorshift32Generator& random_number_generator)
@@ -919,6 +919,6 @@ static void write_rainbow_to_file()
 	rainbow.write_image_png("rainbow.png");
 }
 
-#endif
+#endif // #ifndef __KERNELCC__
 
-#endif
+#endif // #ifndef DEVICE_DISPERSION_H

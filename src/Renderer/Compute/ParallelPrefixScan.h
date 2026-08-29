@@ -62,4 +62,4 @@ private:
 	unsigned int m_size_non_padded;
 };
 
-#endif
+#endif // #ifndef RENDERER_COMPUTE_PARALLEL_PREFIX_SCAN_H

@@ -16,4 +16,4 @@ public:
 	static void debugbreak();
 };
 
-#endif
+#endif // #ifndef UTILS_DEBUG_H

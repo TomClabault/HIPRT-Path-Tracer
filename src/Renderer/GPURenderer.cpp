@@ -1061,11 +1061,11 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 
 									m_render_data.world_settings.alias_table_probas = nullptr;
 									m_render_data.world_settings.alias_table_alias	= nullptr;
-#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
+#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 		m_render_data.world_settings.envmap_cdf = nullptr;
 
 		m_envmap.get_alias_table_device_pointers(m_render_data.world_settings.envmap_alias_table.alias_table_probas, m_render_data.world_settings.envmap_alias_table.alias_table_alias);
-#endif
+#endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 								});
 }
 

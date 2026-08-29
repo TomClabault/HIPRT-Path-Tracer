@@ -566,7 +566,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
 			out.set_metallic_energy_compensation(this->get_do_metallic_energy_compensation(material_index));
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		if (MaterialUtils::use_anisotropy_texture(out.get_anisotropic_texture_index()))
@@ -593,7 +593,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 			out.set_specular_energy_compensation(this->get_do_specular_energy_compensation(material_index));
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		bool use_coat_texture = MaterialUtils::use_coat_texture(out.get_coat_texture_index());
@@ -625,7 +625,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
 			out.set_coat_energy_compensation(this->get_do_coat_energy_compensation(material_index));
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		bool use_sheen_texture = MaterialUtils::use_sheen_texture(out.get_sheen_texture_index());
@@ -653,7 +653,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 			out.set_glass_energy_compensation(this->get_do_glass_energy_compensation(material_index));
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || !use_specular_transmission_texture)
@@ -700,4 +700,4 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 	Uint2xPacked* specular_transmission_index = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_PACKED_SOA_H

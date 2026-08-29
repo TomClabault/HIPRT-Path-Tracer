@@ -9,11 +9,11 @@
 #ifdef __KERNELCC__
 template <typename T>
 using AtomicType = T;
-#else
+#else // #ifdef __KERNELCC__
 #include <atomic>
 
 template <typename T>
 using AtomicType = std::atomic<T>;
-#endif
+#endif // #ifdef __KERNELCC__
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_ATOMIC_TYPE_H

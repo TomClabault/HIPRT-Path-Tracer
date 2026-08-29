@@ -90,4 +90,4 @@ private:
 	bool m_temporal_buffer_clear_requested;
 };
 
-#endif
+#endif // #ifndef RESTIR_GI_RENDER_PASS_H

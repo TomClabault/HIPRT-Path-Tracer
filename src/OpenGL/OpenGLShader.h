@@ -55,4 +55,4 @@ private:
 	GLuint m_compiled_shader;
 };
 
-#endif
+#endif // #ifndef OPENGL_SHADER_H

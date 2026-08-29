@@ -288,4 +288,4 @@ using ReSTIRDISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<Bias
 template <int BiasCorrectionMode>
 using ReSTIRGISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H

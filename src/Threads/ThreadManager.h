@@ -290,4 +290,4 @@ private:
 	static std::unordered_map<std::string, std::unordered_set<std::string>> m_dependencies;
 };
 
-#endif
+#endif // #ifndef THREAD_MANAGER_H

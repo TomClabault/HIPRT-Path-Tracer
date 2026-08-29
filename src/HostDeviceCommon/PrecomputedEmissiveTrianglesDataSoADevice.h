@@ -13,4 +13,4 @@ struct PrecomputedEmissiveTrianglesDataSoADevice
 	float3_t* triangles_AC = nullptr;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_PRECOMPUTED_EMISSIVE_TRIANGLE_DATA_SOA_DEVICE_H

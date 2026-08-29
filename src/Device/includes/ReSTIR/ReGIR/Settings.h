@@ -453,9 +453,9 @@ struct ReGIRSettings
 					world_position, current_camera, roughness, primary_hit, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
 
 				jittered = jitter_world_position_tangent_plane(world_position, shading_normal, rng, grid_cell_size, jittering_radius);
-#else
+#else // #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
 				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, primary_hit, rng, jittering_radius);
-#endif
+#endif // #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
 			}
 			else
 				jittered = world_position;
@@ -821,4 +821,4 @@ struct ReGIRSettings
 	float debug_view_scale_factor = 0.05f;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_REGIR_SETTINGS_H

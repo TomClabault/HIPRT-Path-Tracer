@@ -34,10 +34,10 @@ HIPRT_DEVICE float positive_atan(float tangent)
 {
 #ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
 	return fast_positive_atan(tangent);
-#else
+#else // #ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
 	float offset = (tangent < 0.0f) ? hippt::M_Pi : 0.0f;
 	return atanf(tangent) + offset;
-#endif
+#endif // #ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
 }
 
 /**
@@ -92,4 +92,4 @@ HIPRT_DEVICE float3_t map_direction_to_triangle_point(
 	return point;
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_COMMON_H

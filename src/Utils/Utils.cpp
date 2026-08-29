@@ -23,7 +23,7 @@
 #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
 #include <Windows.h> // for is_file_on_SSD() and other functions
 #undef min
-#endif
+#endif // #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -169,7 +169,7 @@ void* Utils::get_volume_handle_for_file(const char* filePath)
 {
 #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__) // Only defining the code on Windows
 	return nullptr;
-#else
+#else // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 	char volume_path[MAX_PATH];
 	if (!GetVolumePathName(filePath, volume_path, ARRAYSIZE(volume_path)))
 		return nullptr;
@@ -183,7 +183,7 @@ void* Utils::get_volume_handle_for_file(const char* filePath)
 		volume_name[length - 1] = L'\0';
 
 	return CreateFile(volume_name, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-#endif
+#endif // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 }
 
 bool Utils::is_file_on_ssd(const char* file_path)
@@ -191,7 +191,7 @@ bool Utils::is_file_on_ssd(const char* file_path)
 #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 	// Not on Windows, haven't written the code to determine that on Linux yet
 	return false;
-#else
+#else // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 	bool is_ssd{ false };
 	HANDLE volume = get_volume_handle_for_file(file_path);
 	if (volume == INVALID_HANDLE_VALUE)
@@ -213,7 +213,7 @@ bool Utils::is_file_on_ssd(const char* file_path)
 	}
 	CloseHandle(volume);
 	return is_ssd;
-#endif
+#endif // #if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
 }
 
 #include "tinyfiledialogs.h"
@@ -532,4 +532,4 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 
 	return AddEnvVarError::ADD_ENV_VAR_ERROR_NONE;
 }
-#endif
+#endif // #ifdef _WIN32

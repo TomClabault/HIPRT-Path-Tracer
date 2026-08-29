@@ -999,7 +999,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
 			out.do_metallic_energy_compensation = this->get_do_metallic_energy_compensation();
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		out.anisotropy			= this->get_anisotropy();
@@ -1021,7 +1021,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 			out.do_specular_energy_compensation = this->get_do_specular_energy_compensation();
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		out.coat = this->get_coat();
@@ -1048,7 +1048,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
 			out.do_coat_energy_compensation = this->get_do_coat_energy_compensation();
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 
 		out.sheen = this->get_sheen(); // Sheen strength
@@ -1071,7 +1071,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 			out.do_glass_energy_compensation = this->get_do_glass_energy_compensation();
-#endif
+#endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 		}
 		if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f ||
 			!MaterialUtils::use_specular_transmission_texture(out.specular_transmission_texture_index))
@@ -1229,4 +1229,4 @@ private:
 	Uint2xPacked specular_transmission_index;
 };
 
-#endif
+#endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_PACKED_H

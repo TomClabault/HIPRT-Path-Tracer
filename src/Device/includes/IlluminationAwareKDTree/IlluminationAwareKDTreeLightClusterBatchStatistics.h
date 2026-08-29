@@ -16,4 +16,4 @@ struct IlluminationAwareKDTreeLightClusterBatchStatistics
 	unsigned int selected_count = 0;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_LIGHT_CLUSTER_BATCH_STATISTICS_H

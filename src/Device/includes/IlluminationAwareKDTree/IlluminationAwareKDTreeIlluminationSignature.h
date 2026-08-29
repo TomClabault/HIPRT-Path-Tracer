@@ -30,4 +30,4 @@ struct IlluminationAwareKDTreeIlluminationSignature
 	float3_t weighted_direction_sum;
 };
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_SIGNATURE_H

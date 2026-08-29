@@ -69,4 +69,4 @@ HIPRT_DEVICE int find_replayed_light_cluster_slot(const IlluminationAwareKDTreeD
 	return find_light_cluster_slot(kd_tree, lightcut_index, sample.selected_cluster_node_index);
 }
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H

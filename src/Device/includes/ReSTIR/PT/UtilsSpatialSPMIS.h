@@ -344,4 +344,4 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 	}
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_PT_UTILS_SPATIAL_SPMIS_H

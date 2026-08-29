@@ -20,7 +20,7 @@
 #define INPUT_ID_TRANSFORM_STRING	 STR(INPUT_ID_TRANSFORM(x, y))
 #define INPUT_DATA_TRANSFORM_STRING	 STR(INPUT_DATA_TRANSFORM(x, y))
 #define OUTPUT_DATA_TRANSFORM_STRING STR(OUTPUT_DATA_TRANSFORM(x, y))
-#endif
+#endif // #ifndef __KERNELCC__
 
 namespace ComputeDataTransforms
 {
@@ -40,4 +40,4 @@ namespace ComputeDataTransforms
 	}
 } // namespace ComputeDataTransforms
 
-#endif
+#endif // #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_DATA_TRANSFORM_H

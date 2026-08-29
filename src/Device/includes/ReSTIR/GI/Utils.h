@@ -73,4 +73,4 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	return false;
 }
 
-#endif
+#endif // #ifndef DEVICE_RESTIR_GI_UTILS_H

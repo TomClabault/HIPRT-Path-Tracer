@@ -82,4 +82,4 @@ struct IlluminationAwareKDTreeDataHost
 	DataContainer<unsigned char> m_any_cell_needs_split_host_pinned;
 };
 
-#endif
+#endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_DATA_HOST_H

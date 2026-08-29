@@ -171,4 +171,4 @@ private:
 	std::vector<Image32Bit> m_images;
 };
 
-#endif
+#endif // #ifndef IMAGE_H
