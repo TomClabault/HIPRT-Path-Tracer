@@ -84,7 +84,7 @@ inline IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(Il
 
 	build_light_cluster_sampling_cdf_cpu(kd_tree, light_tree_sg, lightcut_index);
 }
-#else // #ifndef __KERNELCC__
+#else  // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {

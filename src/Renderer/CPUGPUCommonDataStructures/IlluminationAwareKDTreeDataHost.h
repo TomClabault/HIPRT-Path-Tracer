@@ -41,6 +41,9 @@ struct IlluminationAwareKDTreeDataHost
 
 	bool free()
 	{
+		if (m_any_cell_needs_split.size() == 0)
+			return false;
+
 		bool core_data_freed				= m_kd_tree_data.free();
 		bool nisml_data_freed				= m_nisml_data.free();
 		bool learning_to_cluster_data_freed = m_learning_to_cluster_data.free();

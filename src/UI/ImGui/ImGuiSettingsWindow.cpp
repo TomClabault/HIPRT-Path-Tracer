@@ -4362,6 +4362,10 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 								 128))
 				m_render_window->set_render_dirty(true);
 
+			if (ImGui::SliderFloat("Refinement aggressiveness", &render_data.kd_tree_device.learning_to_cluster.user_settings.refinement_aggressiveness, 1.0,
+								   32.0f))
+				m_render_window->set_render_dirty(true);
+
 			if (ImGui::SliderFloat("Learning rate beta", &render_data.kd_tree_device.learning_to_cluster.user_settings.learning_rate_beta, 1.0f, 8.0f))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(

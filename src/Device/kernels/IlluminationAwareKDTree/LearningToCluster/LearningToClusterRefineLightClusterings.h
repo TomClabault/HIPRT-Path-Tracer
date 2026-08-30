@@ -10,12 +10,16 @@
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 
-HIPRT_DEVICE float compute_cluster_split_probability(
-	float cluster_variance, float total_lightcut_variance, unsigned int visit_count, unsigned int lightcut_size, unsigned int initial_lightcut_size)
+HIPRT_DEVICE float compute_cluster_split_probability(float cluster_variance,
+													 float total_lightcut_variance,
+													 unsigned int visit_count,
+													 unsigned int lightcut_size,
+													 unsigned int initial_lightcut_size,
+													 float refinement_aggressiveness)
 {
 	if (!(cluster_variance > 0.0f) || visit_count <= 1u)
 		return 0.0f;
@@ -25,7 +29,7 @@ HIPRT_DEVICE float compute_cluster_split_probability(
 	float relative_variance_factor = cluster_variance / (total_lightcut_variance + 1.0e-6f);
 	float visit_factor			   = 1.0f - 1.0f / static_cast<float>(visit_count);
 
-	return hippt::clamp(0.0f, 1.0f, complexity_factor * relative_variance_factor * visit_factor);
+	return hippt::clamp(0.0f, 1.0f, complexity_factor * relative_variance_factor * visit_factor * refinement_aggressiveness);
 }
 
 HIPRT_DEVICE float compute_refinement_random_value(unsigned int lightcut_index, unsigned int iteration, unsigned int node_index)
@@ -34,7 +38,7 @@ HIPRT_DEVICE float compute_refinement_random_value(unsigned int lightcut_index, 
 	hash			  = pcg_hash(hash ^ iteration);
 	hash			  = pcg_hash(hash ^ lightcut_index);
 
-	return static_cast<float>(hash & 0x00ffffffu) * (1.0f / 16777216.0f);
+	return Xorshift32Generator(hash)();
 }
 
 struct IlluminationAwareKDTreeSharedLightClusterStatistics
@@ -195,8 +199,9 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 		bool can_split					  = node.triangle_count == 0 && old_statistics[slot].visit_count > 1u;
 		float split_probability			  = 0.0f;
 		if (can_split)
-			split_probability = compute_cluster_split_probability(old_statistics[slot].get_refinement_variance(), total_variance,
-																  old_statistics[slot].visit_count, old_lightcut_size, settings.initial_lightcut_size);
+			split_probability =
+				compute_cluster_split_probability(old_statistics[slot].get_refinement_variance(), total_variance, old_statistics[slot].visit_count,
+												  old_lightcut_size, settings.initial_lightcut_size, settings.refinement_aggressiveness);
 
 		float random_value = compute_refinement_random_value(lightcut_index, lightcut_data.iteration, old_node_indices[slot]);
 		split_flags[slot]  = can_split && random_value < split_probability ? 1 : 0;
@@ -311,8 +316,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	bool can_split = slot < old_lightcut_size && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
 	float split_probability = 0.0f;
 	if (can_split)
-		split_probability = compute_cluster_split_probability(old_cluster_statistics.get_refinement_variance(), total_variance,
-															  old_cluster_statistics.visit_count, old_lightcut_size, settings.initial_lightcut_size);
+		split_probability =
+			compute_cluster_split_probability(old_cluster_statistics.get_refinement_variance(), total_variance, old_cluster_statistics.visit_count,
+											  old_lightcut_size, settings.initial_lightcut_size, settings.refinement_aggressiveness);
 
 	float random_value = 1.0f;
 	if (slot < old_lightcut_size)
@@ -375,7 +381,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 			lightcut_data.lightcut_cdf_dirty		= true;
 		}
 	}
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 	refine_light_clustering_cpu(kd_tree, light_tree_sg, static_cast<unsigned int>(x));
 #endif // #ifdef __KERNELCC__
 }
