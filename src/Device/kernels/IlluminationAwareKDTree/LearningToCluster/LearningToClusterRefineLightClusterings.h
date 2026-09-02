@@ -44,6 +44,9 @@ HIPRT_DEVICE float compute_refinement_random_value(unsigned int lightcut_index, 
 struct IlluminationAwareKDTreeSharedLightClusterStatistics
 {
 	float estimated_importance_Q;
+	float learned_importance_Q;
+	float prior_importance_Q;
+	unsigned int Q_observation_count;
 	float mean;
 	float M2;
 	unsigned int visit_count;
@@ -58,6 +61,9 @@ load_lightcut_statistics(const IlluminationAwareKDTreeSharedLightClusterStatisti
 {
 	IlluminationAwareKDTreeLightClusterStatistics statistics{};
 	statistics.estimated_importance_Q = shared_statistics.estimated_importance_Q;
+	statistics.learned_importance_Q	  = shared_statistics.learned_importance_Q;
+	statistics.prior_importance_Q	  = shared_statistics.prior_importance_Q;
+	statistics.Q_observation_count	  = shared_statistics.Q_observation_count;
 	statistics.mean					  = shared_statistics.mean;
 	statistics.M2					  = shared_statistics.M2;
 	statistics.visit_count			  = shared_statistics.visit_count;
@@ -69,6 +75,9 @@ HIPRT_DEVICE void store_lightcut_statistics(IlluminationAwareKDTreeSharedLightCl
 											const IlluminationAwareKDTreeLightClusterStatistics& statistics)
 {
 	shared_statistics.estimated_importance_Q = statistics.estimated_importance_Q;
+	shared_statistics.learned_importance_Q	 = statistics.learned_importance_Q;
+	shared_statistics.prior_importance_Q	 = statistics.prior_importance_Q;
+	shared_statistics.Q_observation_count	 = statistics.Q_observation_count;
 	shared_statistics.mean					 = statistics.mean;
 	shared_statistics.M2					 = statistics.M2;
 	shared_statistics.visit_count			 = statistics.visit_count;
@@ -104,10 +113,10 @@ initialize_child_statistics_from_parent_Q(const LightTreeSGDevice& light_tree_sg
 	IlluminationAwareKDTreeLightClusterStatistics child{};
 	// Q_x(c) estimates the aggregate contribution of a cut member. Partition the learned parent estimate between the children until they receive new
 	// observations.
-	child.estimated_importance_Q = parent.estimated_importance_Q * expected_child_visit_fraction;
-	child.mean					 = 0.0f;
-	child.M2					 = 0.0f;
-	child.visit_count			 = 0u;
+	child.initialize_importance_prior(parent.estimated_importance_Q * expected_child_visit_fraction);
+	child.mean		  = 0.0f;
+	child.M2		  = 0.0f;
+	child.visit_count = 0u;
 
 	return child;
 }
@@ -303,6 +312,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	{
 		old_node_indices[slot]						= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 		old_statistics[slot].estimated_importance_Q = 0.0f;
+		old_statistics[slot].learned_importance_Q	= 0.0f;
+		old_statistics[slot].prior_importance_Q		= 0.0f;
+		old_statistics[slot].Q_observation_count	= 0u;
 		old_statistics[slot].mean					= 0.0f;
 		old_statistics[slot].M2						= 0.0f;
 		old_statistics[slot].visit_count			= 0u;
@@ -366,6 +378,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 		IlluminationAwareKDTreeLightClusterStatistics& statistics		= kd_tree.learning_to_cluster.lightcut_statistics[offset];
 		IlluminationAwareKDTreeLightClusterStatistics output_statistics = load_lightcut_statistics(new_statistics[slot]);
 		statistics.estimated_importance_Q								= output_statistics.estimated_importance_Q;
+		statistics.learned_importance_Q									= output_statistics.learned_importance_Q;
+		statistics.prior_importance_Q									= output_statistics.prior_importance_Q;
+		statistics.Q_observation_count									= output_statistics.Q_observation_count;
 		statistics.mean													= output_statistics.mean;
 		statistics.M2													= output_statistics.M2;
 		statistics.visit_count											= output_statistics.visit_count;

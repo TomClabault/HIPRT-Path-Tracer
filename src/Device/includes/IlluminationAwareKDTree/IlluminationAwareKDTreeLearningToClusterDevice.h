@@ -19,6 +19,12 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 {
 	// Q_x(c): estimated contribution of this light cluster, light clusters of the cut are sampled proportionally to this value
 	float estimated_importance_Q = 0.0f;
+	// Fast EMA estimate before regularization by the inherited prior
+	float learned_importance_Q = 0.0f;
+	// Q estimate inherited at initialization, spatial promotion, or lightcut refinement
+	float prior_importance_Q = 0.0f;
+	// Number of real observations incorporated into learned_importance_Q
+	unsigned int Q_observation_count = 0u;
 
 	// Running mean of the selected-sample observations used by refinement
 	float mean = 0.0f;
@@ -28,6 +34,14 @@ struct IlluminationAwareKDTreeLightClusterStatistics
 
 	// n_c in Equations 7 and 8: how many times this cluster has actually been selected
 	unsigned int visit_count = 0;
+
+	HIPRT_DEVICE void initialize_importance_prior(float importance)
+	{
+		estimated_importance_Q = importance;
+		learned_importance_Q   = importance;
+		prior_importance_Q	   = importance;
+		Q_observation_count	   = 0u;
+	}
 
 	HIPRT_DEVICE float get_refinement_variance() const
 	{

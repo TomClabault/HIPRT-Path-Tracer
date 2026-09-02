@@ -9,14 +9,26 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 
-HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(
-	IlluminationAwareKDTreeLightClusterStatistics& statistics, float learning_rate, float history_weight, float reward_sum, unsigned int matching_record_count)
+HIPRT_DEVICE void apply_replayed_aggregated_light_cluster_q_update(IlluminationAwareKDTreeLightClusterStatistics& statistics,
+																   float learning_rate,
+																   float history_weight,
+																   float prior_strength,
+																   float reward_sum,
+																   unsigned int matching_record_count)
 {
 	if (matching_record_count == 0u)
 		return;
 
+	float batch_mean				= reward_sum / static_cast<float>(matching_record_count);
+	statistics.learned_importance_Q = history_weight * statistics.learned_importance_Q + learning_rate * batch_mean;
+	statistics.Q_observation_count += matching_record_count;
+
+	float observation_count		   = static_cast<float>(statistics.Q_observation_count);
+	float effective_prior_strength = hippt::max(0.0f, prior_strength);
+	float normalization			   = observation_count + effective_prior_strength;
+
 	statistics.estimated_importance_Q =
-		history_weight * statistics.estimated_importance_Q + learning_rate * reward_sum / static_cast<float>(matching_record_count);
+		(observation_count * statistics.learned_importance_Q + effective_prior_strength * statistics.prior_importance_Q) / normalization;
 }
 
 HIPRT_DEVICE void apply_replayed_light_cluster_batch_q_update(
@@ -26,8 +38,8 @@ HIPRT_DEVICE void apply_replayed_light_cluster_batch_q_update(
 	IlluminationAwareKDTreeLightClusterBatchStatistics batch_statistics = kd_tree.learning_to_cluster.lightcut_batch_statistics.read(offset);
 	IlluminationAwareKDTreeLightClusterStatistics& statistics			= kd_tree.learning_to_cluster.lightcut_statistics[offset];
 
-	apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, batch_statistics.contribution_sum,
-													 batch_statistics.selected_count);
+	apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, kd_tree.learning_to_cluster.user_settings.Q_prior_strength,
+													 batch_statistics.contribution_sum, batch_statistics.selected_count);
 }
 
 #ifndef __KERNELCC__

@@ -138,14 +138,14 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[source_offset];
 
-				// Only inheriting the estimated importance Q, not the other statistics, because we want to start learning fresh for both the new cells
+				// Inherit the estimated importance as the prior while starting fresh Q and refinement observations in both new cells.
 				float parent_estimated_importance_Q = illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset].estimated_importance_Q;
 
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset] = IlluminationAwareKDTreeLightClusterStatistics{};
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_offset]  = IlluminationAwareKDTreeLightClusterStatistics{};
 
-				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset].estimated_importance_Q = parent_estimated_importance_Q;
-				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_offset].estimated_importance_Q	 = parent_estimated_importance_Q;
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset].initialize_importance_prior(parent_estimated_importance_Q);
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_offset].initialize_importance_prior(parent_estimated_importance_Q);
 			}
 		}
 	}
@@ -257,17 +257,16 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_node_indices[source_offset];
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[right_offset] =
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[source_offset];
+
+				// Inherit the estimated importance as the prior while starting fresh Q and refinement observations in both new cells.
+				float parent_estimated_importance_Q = illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset].estimated_importance_Q;
+
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset] = IlluminationAwareKDTreeLightClusterStatistics{};
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_offset]  = IlluminationAwareKDTreeLightClusterStatistics{};
+
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[source_offset].initialize_importance_prior(parent_estimated_importance_Q);
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_offset].initialize_importance_prior(parent_estimated_importance_Q);
 			}
-
-			// Only inheriting the estimated importance Q, not the other statistics, because we want to start learning fresh for both the new cells
-			float parent_estimated_importance_Q =
-				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_lightcut_index].estimated_importance_Q;
-
-			illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_lightcut_index] = IlluminationAwareKDTreeLightClusterStatistics{};
-			illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[right_lightcut_index].estimated_importance_Q = parent_estimated_importance_Q;
-
-			illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_lightcut_index] = IlluminationAwareKDTreeLightClusterStatistics{};
-			illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_lightcut_index].estimated_importance_Q = parent_estimated_importance_Q;
 		}
 
 		illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[right_set_index] = right_set;

@@ -40,10 +40,11 @@ HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_t
 
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
-	statistics.estimated_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
+	float initial_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
 #else
-	statistics.estimated_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
+	float initial_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
 #endif
+	statistics.initialize_importance_prior(initial_importance_Q);
 	statistics.mean		   = 0.0f;
 	statistics.M2		   = 0.0f;
 	statistics.visit_count = 0u;

@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
 #define LearningToClusterTreeCutInitializationBlockSize 1024
-#define LearningToClusterInitialLightCutSize			8
+#define LearningToClusterInitialLightCutSize			16
 
 #define LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG					0
 #define LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP	1

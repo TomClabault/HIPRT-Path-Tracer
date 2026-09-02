@@ -4371,6 +4371,11 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			ImGuiRenderer::show_help_marker(
 				"Learning rate beta controls the overall magnitude of updates. With beta = 4, the first update has alpha = 0.25: 25 % new reward and 75 % "
 				"previous estimate.Increasing beta makes learning slower and more stable; decreasing it makes learning more reactive and noisier.");
+			if (ImGui::SliderFloat("Q prior strength", &render_data.kd_tree_device.learning_to_cluster.user_settings.Q_prior_strength, 0.0f, 32.0f))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Number of virtual observations assigned to Q0 or the inherited parent Q. Poorly observed lightcut slots stay close to the prior while "
+				"frequently observed slots use the learned estimate.");
 
 			if (ImGui::SliderFloat("Learning rate omega", &render_data.kd_tree_device.learning_to_cluster.user_settings.learning_rate_omega, 0.0f, 1.0f, "%.3f",
 								   ImGuiSliderFlags_AlwaysClamp))
