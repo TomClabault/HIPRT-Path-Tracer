@@ -12,12 +12,12 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 {
 	unsigned int initial_lightcut_size = LearningToClusterInitialLightCutSize;
 
-	float learning_rate_beta  = 1.0f;
+	float learning_rate_beta  = 2.0f;
 	float learning_rate_omega = 6.0f / 7.0f;
 
 	int initial_sampling_budget_n0 = 4;
 	// Direct multiplier to the probability of refinement of a node
-	float refinement_aggressiveness		   = 1.0f;
+	float refinement_aggressiveness		   = 4.0f;
 	unsigned int refinement_stopping_gamma = 128;
 
 	bool enable_lightcut_refinement = true;

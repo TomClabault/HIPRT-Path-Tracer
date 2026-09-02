@@ -25,6 +25,7 @@ HIPRT_DEVICE void apply_replayed_light_cluster_batch_q_update(
 	unsigned int offset													= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
 	IlluminationAwareKDTreeLightClusterBatchStatistics batch_statistics = kd_tree.learning_to_cluster.lightcut_batch_statistics.read(offset);
 	IlluminationAwareKDTreeLightClusterStatistics& statistics			= kd_tree.learning_to_cluster.lightcut_statistics[offset];
+
 	apply_replayed_aggregated_light_cluster_q_update(statistics, learning_rate, history_weight, batch_statistics.contribution_sum,
 													 batch_statistics.selected_count);
 }

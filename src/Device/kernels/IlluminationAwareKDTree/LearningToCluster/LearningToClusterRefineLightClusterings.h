@@ -227,8 +227,9 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 			const LightTreeSGNodeDevice& parent_node = light_tree_sg.nodes[old_node_indices[slot]];
 			unsigned int left_child_index			 = parent_node.left_child_index_or_first_triangle_index;
 			unsigned int right_child_index			 = left_child_index + 1u;
-			new_node_indices[output_slot]			 = left_child_index;
-			new_node_indices[output_slot + 1u]		 = right_child_index;
+
+			new_node_indices[output_slot]	   = left_child_index;
+			new_node_indices[output_slot + 1u] = right_child_index;
 			new_statistics[output_slot] =
 				initialize_child_statistics_from_parent_Q(light_tree_sg, left_child_index, right_child_index, representative_context, old_statistics[slot]);
 			new_statistics[output_slot + 1u] =
