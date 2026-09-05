@@ -58,21 +58,6 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 		return false;
 
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
-	if (kd_tree_device.core.nodes == nullptr || kd_tree_device.core.node_capacity == 0 || kd_tree_device.learning_to_cluster.normal_lightcut_sets == nullptr ||
-		kd_tree_device.learning_to_cluster.lightcut_data == nullptr)
-		return false;
-
-	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-	unsigned int guiding_cell_index = kd_tree_device.core.find_guiding_cell(primary_hit);
-	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_cell_index >= kd_tree_device.core.node_capacity)
-		return false;
-
-	const IlluminationAwareKDTreeNode& guiding_cell = kd_tree_device.core.nodes[guiding_cell_index];
-	unsigned int normal_set_index					= guiding_cell.lightcut_normal_set_index;
-	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
-		normal_set_index >= kd_tree_device.learning_to_cluster.normal_lightcut_set_capacity)
-		return false;
-
 	unsigned int lightcut_index;
 	if (!path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, static_cast<unsigned int>(pixel_index), lightcut_index))
 		return false;
@@ -97,21 +82,11 @@ HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_
 		kd_tree_device.learning_to_cluster.lightcut_data == nullptr)
 		return false;
 
-	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-	unsigned int guiding_cell_index = kd_tree_device.core.find_guiding_cell(primary_hit);
-	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_cell_index >= kd_tree_device.core.node_capacity)
-		return false;
-
-	const IlluminationAwareKDTreeNode& guiding_cell = kd_tree_device.core.nodes[guiding_cell_index];
-	unsigned int normal_set_index					= guiding_cell.lightcut_normal_set_index;
-	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
-		normal_set_index >= kd_tree_device.learning_to_cluster.normal_lightcut_set_capacity)
-		return false;
-
-	float3_t shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
-	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
-	unsigned int surface_id	 = render_data.buffers.global_triangle_index_to_mesh_index[render_data.g_buffer.first_hit_prim_index[pixel_index]];
-	out_lightcut_index		 = kd_tree_device.learning_to_cluster.resolve_lightcut(normal_set_index, normal_face, surface_id);
+	IlluminationAwareKDTreeSGShadingContext context{};
+	context.position	   = render_data.g_buffer.primary_hit_position[pixel_index];
+	context.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int mesh_id   = render_data.buffers.global_triangle_index_to_mesh_index[render_data.g_buffer.first_hit_prim_index[pixel_index]];
+	out_lightcut_index	   = kd_tree_device.resolve_lightcut(context, mesh_id);
 	if (out_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || out_lightcut_index >= kd_tree_device.learning_to_cluster.lightcut_capacity)
 		return false;
 

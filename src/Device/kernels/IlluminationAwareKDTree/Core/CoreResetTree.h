@@ -70,7 +70,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 
 	if (reset_index < illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_capacity)
 	{
-		IlluminationAwareKDTreeNormalClusteringSet& lightcut_set = illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[reset_index];
+		IlluminationAwareKDTreeLearningToClusterLightcutSet& lightcut_set = illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[reset_index];
 		lightcut_set.initialize_invalid();
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{

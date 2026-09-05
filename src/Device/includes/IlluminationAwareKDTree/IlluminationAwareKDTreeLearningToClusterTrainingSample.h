@@ -11,8 +11,8 @@
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 {
-	float3_t position		= float3_t(0.0f, 0.0f, 0.0f);
-	unsigned int surface_id = IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID;
+	float3_t position	 = float3_t(0.0f, 0.0f, 0.0f);
+	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 
 	IlluminationAwareKDTreeSGShadingContext shading_context{};
 
@@ -49,7 +49,7 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 	training_samples[sample_index]						  = sample;
 	training_samples_soa.positions[sample_index]		  = sample.position;
 	training_samples_soa.shading_normals[sample_index]	  = sample.shading_context.shading_normal;
-	training_samples_soa.surface_ids[sample_index]		  = sample.surface_id;
+	training_samples_soa.mesh_ids[sample_index]			  = sample.mesh_id;
 	training_samples_soa.valid_for_lightcut[sample_index] = sample.valid_for_lightcut;
 }
 

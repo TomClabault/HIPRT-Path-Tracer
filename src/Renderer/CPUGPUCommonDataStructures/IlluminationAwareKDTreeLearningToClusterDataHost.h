@@ -59,7 +59,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		bool learning_to_cluster_training_samples_soa_freed = m_learning_to_cluster_training_samples_soa.maximum_size() > 0;
 		m_learning_to_cluster_training_samples_soa.free();
 		m_initial_lightcut_node_indices		 = DataContainer<unsigned int>();
-		m_normal_lightcut_sets				 = DataContainer<IlluminationAwareKDTreeNormalClusteringSet>();
+		m_normal_lightcut_sets				 = DataContainer<IlluminationAwareKDTreeLearningToClusterLightcutSet>();
 		m_normal_face_observation_counts	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_lightcut_node_indices				 = DataContainer<unsigned int>();
 		m_lightcut_statistics				 = DataContainer<IlluminationAwareKDTreeLightClusterStatistics>();
@@ -112,7 +112,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_learning_to_cluster_training_sample_count;
 
 	DataContainer<unsigned int> m_initial_lightcut_node_indices;
-	DataContainer<IlluminationAwareKDTreeNormalClusteringSet> m_normal_lightcut_sets;
+	DataContainer<IlluminationAwareKDTreeLearningToClusterLightcutSet> m_normal_lightcut_sets;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_face_observation_counts;
 	DataContainer<unsigned int> m_lightcut_node_indices;
 	DataContainer<IlluminationAwareKDTreeLightClusterStatistics> m_lightcut_statistics;

@@ -50,22 +50,13 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cluster_from_light_cut(const HIPRTRenderData& render_data,
 																									 const IlluminationAwareKDTreeSGShadingContext& context,
-																									 unsigned int surface_id,
+																									 unsigned int mesh_id,
 																									 Xorshift32Generator& random_number_generator)
 {
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample result{};
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 
-	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(context.position);
-	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return result;
-
-	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(context.shading_normal);
-	unsigned int set_index	 = kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-		return result;
-
-	unsigned int lightcut_index = kd_tree.learning_to_cluster.resolve_lightcut(set_index, normal_face, surface_id);
+	unsigned int lightcut_index = kd_tree.resolve_lightcut(context, mesh_id);
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
 		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;
@@ -200,10 +191,10 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
 												 const IlluminationAwareKDTreeSGShadingContext& context,
-												 unsigned int surface_id,
+												 unsigned int mesh_id,
 												 Xorshift32Generator& random_number_generator)
 {
-	IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample = sample_cluster_from_light_cut(render_data, context, surface_id, random_number_generator);
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample = sample_cluster_from_light_cut(render_data, context, mesh_id, random_number_generator);
 	if (sample.cluster_probability <= 0.0f)
 		return {};
 

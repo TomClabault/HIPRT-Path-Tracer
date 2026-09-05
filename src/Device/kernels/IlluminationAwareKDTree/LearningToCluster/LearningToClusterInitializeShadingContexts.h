@@ -31,22 +31,10 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_lightcut[sample_index] == 0u)
 		return;
 
-	unsigned int guiding_node_index = kd_tree.core.find_guiding_cell(kd_tree.learning_to_cluster.training_samples_soa.positions[sample_index]);
-	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
-		return;
-
-	unsigned int normal_face =
-		illumination_aware_kd_tree_classify_surface_normal_face(kd_tree.learning_to_cluster.training_samples_soa.shading_normals[sample_index]);
-	unsigned int set_index = kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-		return;
-
-	unsigned int lightcut_index =
-		kd_tree.learning_to_cluster.resolve_lightcut(set_index, normal_face, kd_tree.learning_to_cluster.training_samples_soa.surface_ids[sample_index]);
+	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
+	unsigned int lightcut_index = kd_tree.resolve_lightcut(sample_shading_context, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index]);
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
-
-	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states + lightcut_index;
 	unsigned int previous_state =

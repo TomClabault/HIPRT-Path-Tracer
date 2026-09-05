@@ -6,8 +6,6 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
-#include <assert.h>
-
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
@@ -86,33 +84,36 @@ struct IlluminationAwareKDTreeSGShadingContext
 	float alpha_y;
 };
 
-struct IlluminationAwareKDTreeNormalClusteringSet
+struct IlluminationAwareKDTreeLearningToClusterLightcutSet
 {
-	static constexpr unsigned int INVALID_SURFACE_ID = 0xffffffffu;
+	static constexpr unsigned int PER_MESH_ID_LIGHTCUT_COUNT	 = 2u;
+	static constexpr unsigned int PER_FACE_NORMAL_LIGHTCUT_COUNT = PER_MESH_ID_LIGHTCUT_COUNT + 1u;
+	static constexpr unsigned int INVALID_MESH_ID				 = 0xffffffffu;
 
-	struct SurfaceSpecialist
+	struct PerSurfaceLightcut
 	{
-		unsigned int surface_id;
+		unsigned int mesh_id;
 		unsigned int lightcut_index;
 	};
 
-	struct NormalFaceLightcuts
+	struct PerNormalFaceLightcuts
 	{
 		unsigned int shared_lightcut_index;
-		SurfaceSpecialist specialists[2];
+		PerSurfaceLightcut per_mesh_id_lightcuts[PER_MESH_ID_LIGHTCUT_COUNT];
 	};
 
-	NormalFaceLightcuts face_lightcuts[SurfaceNormalFace_Count];
+	PerNormalFaceLightcuts face_lightcuts[SurfaceNormalFace_Count];
 
 	HIPRT_DEVICE void initialize_invalid()
 	{
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{
 			face_lightcuts[normal_face].shared_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-			for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+			for (unsigned int per_mesh_id_lightcut_slot = 0; per_mesh_id_lightcut_slot < PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 			{
-				face_lightcuts[normal_face].specialists[specialist_slot].surface_id		= INVALID_SURFACE_ID;
-				face_lightcuts[normal_face].specialists[specialist_slot].lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+				face_lightcuts[normal_face].per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id = INVALID_MESH_ID;
+				face_lightcuts[normal_face].per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].lightcut_index =
+					IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 			}
 		}
 	}
@@ -122,7 +123,7 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
 {
 	float3_t* positions						= nullptr;
 	float3_t* shading_normals				= nullptr;
-	unsigned int* surface_ids				= nullptr;
+	unsigned int* mesh_ids					= nullptr;
 	unsigned int* valid_for_lightcut		= nullptr;
 	unsigned int* replayed_lightcut_indices = nullptr;
 	unsigned int* replayed_lightcut_slots	= nullptr;
@@ -146,54 +147,41 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 		return set_index * SurfaceNormalFace_Count + normal_face;
 	}
 
-	HIPRT_DEVICE unsigned int resolve_lightcut(unsigned int set_index, unsigned int normal_face, unsigned int surface_id) const
+	HIPRT_DEVICE unsigned int resolve_lightcut_for_normal_face(unsigned int set_index, unsigned int normal_face, unsigned int mesh_id) const
 	{
-		const IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+		const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
 
-		if (face.specialists[0].surface_id == surface_id && face.specialists[0].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-			return face.specialists[0].lightcut_index;
-
-		if (face.specialists[1].surface_id == surface_id && face.specialists[1].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-			return face.specialists[1].lightcut_index;
+		for (unsigned int per_mesh_id_lightcut_slot = 0;
+			 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
+		{
+			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerSurfaceLightcut& per_mesh_id_lightcut =
+				face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot];
+			if (per_mesh_id_lightcut.mesh_id == mesh_id && per_mesh_id_lightcut.lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+				return per_mesh_id_lightcut.lightcut_index;
+		}
 
 		return face.shared_lightcut_index;
 	}
 
-	HIPRT_DEVICE void assert_surface_routes_to_lightcut(unsigned int set_index,
-														unsigned int normal_face,
-														unsigned int surface_id,
-														unsigned int lightcut_index) const
+	HIPRT_DEVICE unsigned int claim_per_mesh_id_lightcut(unsigned int set_index, unsigned int normal_face, unsigned int mesh_id) const
 	{
-		if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-			return;
-
-		const IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
-		for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
-		{
-			const IlluminationAwareKDTreeNormalClusteringSet::SurfaceSpecialist& specialist = face.specialists[specialist_slot];
-			if (specialist.lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX && specialist.lightcut_index == lightcut_index)
-				assert(specialist.surface_id == surface_id);
-		}
-	}
-
-	HIPRT_DEVICE unsigned int claim_surface_specialist(unsigned int set_index, unsigned int normal_face, unsigned int surface_id) const
-	{
-		if (surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID)
+		if (mesh_id == IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID)
 			return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-		IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
-		for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+		IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+		for (unsigned int per_mesh_id_lightcut_slot = 0;
+			 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 		{
 #ifdef __KERNELCC__
-			unsigned int previous_surface_id = hippt::atomic_compare_exchange(&face.specialists[specialist_slot].surface_id,
-																			  IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID, surface_id);
+			unsigned int previous_mesh_id = hippt::atomic_compare_exchange(&face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id,
+																		   IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID, mesh_id);
 #else
-			unsigned int previous_surface_id = face.specialists[specialist_slot].surface_id;
-			if (previous_surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID)
-				face.specialists[specialist_slot].surface_id = surface_id;
+			unsigned int previous_mesh_id = face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id;
+			if (previous_mesh_id == IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID)
+				face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id = mesh_id;
 #endif
-			if (previous_surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID || previous_surface_id == surface_id)
-				return specialist_slot;
+			if (previous_mesh_id == IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID || previous_mesh_id == mesh_id)
+				return per_mesh_id_lightcut_slot;
 		}
 
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
@@ -242,10 +230,10 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	AtomicType<unsigned int>* lightcut_count = nullptr;
 	unsigned int lightcut_capacity			 = 0;
 
-	IlluminationAwareKDTreeNormalClusteringSet* normal_lightcut_sets = nullptr;
-	AtomicType<unsigned int>* normal_lightcut_set_count				 = nullptr;
-	unsigned int normal_lightcut_set_capacity						 = 0;
-	AtomicType<unsigned int>* normal_face_observation_counts		 = nullptr;
+	IlluminationAwareKDTreeLearningToClusterLightcutSet* normal_lightcut_sets = nullptr;
+	AtomicType<unsigned int>* normal_lightcut_set_count						  = nullptr;
+	unsigned int normal_lightcut_set_capacity								  = 0;
+	AtomicType<unsigned int>* normal_face_observation_counts				  = nullptr;
 
 	unsigned int* initial_lightcut_node_indices	 = nullptr;
 	unsigned int effective_initial_lightcut_size = 0;

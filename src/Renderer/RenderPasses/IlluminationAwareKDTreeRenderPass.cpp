@@ -53,12 +53,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
 {
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
+
 	m_cached_current_node_count.resize_host_pinned_mem(1);
 	m_cached_current_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_guiding_node_count.resize_host_pinned_mem(1);
 	m_cached_current_guiding_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_lightcut_count.resize_host_pinned_mem(1);
 	m_cached_current_lightcut_count.get_host_pinned_pointer()[0] = 0;
+
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID);
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
@@ -534,6 +536,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		{
 			m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.download_data_async(
 				m_cached_current_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());
+
 			return;
 		}
 
@@ -544,7 +547,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int learning_to_cluster_lightcut_block_size =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
 		unsigned int maximum_lightcut_face_work_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * learning_to_cluster_lightcut_block_size;
-		unsigned int maximum_lightcut_work_count	  = maximum_lightcut_face_work_count * 3u;
+		unsigned int maximum_lightcut_work_count =
+			maximum_lightcut_face_work_count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
 			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_face_work_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
