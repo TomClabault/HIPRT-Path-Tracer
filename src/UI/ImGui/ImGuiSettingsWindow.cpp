@@ -4362,6 +4362,10 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			if (ImGui::Checkbox("Enable light-cut refinements", &render_data.kd_tree_device.learning_to_cluster.user_settings.enable_lightcut_refinement))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("Enable adaptive refinement of the light cut after its initial construction.");
+			if (ImGui::SliderInt("Refinement rounds per SPP", &illumination_aware_kd_tree_render_pass->get_lightcut_refinement_rounds_per_SPP(), 1, 8))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Number of light-cut refinement rounds per SPP. Additional rounds replay the same training samples so newly split children can be refined.");
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			if (ImGui::SliderInt("Per-cluster sampling budget", &render_data.kd_tree_device.learning_to_cluster.user_settings.initial_sampling_budget_n0, 4,

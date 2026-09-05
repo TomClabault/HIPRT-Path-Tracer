@@ -381,14 +381,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 		gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
 
 	m_gpu_packed_materials.upload_data(gpu_packed_materials);
-	m_render_data.buffers.materials_buffer_soa = m_gpu_packed_materials.get_device_SoA_struct();
-	m_render_data.buffers.material_indices	   = parsed_scene.material_indices.data();
-	m_render_data.buffers.has_vertex_normals   = parsed_scene.has_vertex_normals.data();
-	m_render_data.buffers.triangles_indices	   = parsed_scene.triangles_vertex_indices.data();
+	m_render_data.buffers.materials_buffer_soa				  = m_gpu_packed_materials.get_device_SoA_struct();
+	m_render_data.buffers.material_indices					  = parsed_scene.material_indices.data();
+	m_render_data.buffers.has_vertex_normals				  = parsed_scene.has_vertex_normals.data();
+	m_render_data.buffers.triangles_indices					  = parsed_scene.triangles_vertex_indices.data();
 	m_render_data.buffers.global_triangle_index_to_mesh_index = parsed_scene.global_triangle_index_to_mesh_index.data();
-	m_render_data.buffers.vertices_positions   = parsed_scene.vertices_positions.data();
-	m_render_data.buffers.vertex_normals	   = parsed_scene.vertex_normals.data();
-	m_render_data.buffers.texcoords			   = parsed_scene.texcoords.data();
+	m_render_data.buffers.vertices_positions				  = parsed_scene.vertices_positions.data();
+	m_render_data.buffers.vertex_normals					  = parsed_scene.vertex_normals.data();
+	m_render_data.buffers.texcoords							  = parsed_scene.texcoords.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
 	m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
@@ -744,7 +744,7 @@ void CPURenderer::render()
 		ReSTIR_GI_pass();
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		ReSTIR_PT_pass();
-#endif												  // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#endif																		  // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 		ReSTIR_PG_pass();
@@ -1020,11 +1020,31 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
 	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterReplayStatistics(kd_tree_device, light_tree_sg, static_cast<int>(sample_index));
+	IlluminationAwareKDTreeStatisticsUpdateMode statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::UPDATE_ALL;
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
-		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, static_cast<int>(lightcut_index));
-	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
-		 active_guiding_node_face_index++)
-		IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, statistics_update_mode, static_cast<int>(lightcut_index));
+
+	int lightcut_refinement_rounds_per_SPP = std::max(m_illumination_aware_kd_tree_state.lightcut_refinement_rounds_per_SPP, 1);
+	for (int refinement_round = 0; refinement_round < lightcut_refinement_rounds_per_SPP; refinement_round++)
+	{
+		for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
+			 active_guiding_node_face_index++)
+			IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+
+		if (refinement_round + 1 >= lightcut_refinement_rounds_per_SPP)
+			break;
+
+		reset_sample_counts = 1u;
+		for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+			IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
+		for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
+			IlluminationAwareKDTree_LearningToClusterReplayStatistics(kd_tree_device, light_tree_sg, static_cast<int>(sample_index));
+
+		statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::INITIALIZE_EMPTY_ONLY;
+		for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+			IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, statistics_update_mode, static_cast<int>(lightcut_index));
+	}
+
 	reset_sample_counts = 0u;
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));

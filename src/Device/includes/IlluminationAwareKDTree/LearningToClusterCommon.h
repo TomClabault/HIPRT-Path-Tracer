@@ -8,6 +8,7 @@
 
 #include "Device/includes/Hash.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
+#include "HostDeviceCommon/IlluminationAwareKDTreeLearningToClusterStatisticsUpdateMode.h"
 
 HIPRT_DEVICE unsigned int compute_refinement_sampling_budget(const IlluminationAwareKDTreeLightClusteringData& lightcut_data,
 															 const IlluminationAwareKDTreeLearningToClusterUserSettings& settings)

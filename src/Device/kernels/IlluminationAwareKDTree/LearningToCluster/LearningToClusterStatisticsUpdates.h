@@ -9,7 +9,10 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 
-HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int lightcut_index, unsigned int slot)
+HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const IlluminationAwareKDTreeDevice& kd_tree,
+																unsigned int lightcut_index,
+																unsigned int slot,
+																IlluminationAwareKDTreeStatisticsUpdateMode update_mode)
 {
 	unsigned int offset													= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
 	IlluminationAwareKDTreeLightClusterBatchStatistics batch_statistics = kd_tree.learning_to_cluster.lightcut_batch_statistics.read(offset);
@@ -20,6 +23,9 @@ HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const Illuminati
 	float batch_mean										  = batch_statistics.contribution_sum / static_cast<float>(batch_statistics.selected_count);
 	float batch_M2											  = batch_statistics.squared_contribution_sum - batch_statistics.contribution_sum * batch_mean;
 	unsigned int previous_count								  = statistics.visit_count;
+	if (update_mode == IlluminationAwareKDTreeStatisticsUpdateMode::INITIALIZE_EMPTY_ONLY && previous_count != 0u)
+		return;
+
 	if (previous_count == 0u)
 	{
 		statistics.mean		   = batch_mean;
@@ -38,10 +44,12 @@ HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const Illuminati
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, int x)
+inline IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree,
+																  IlluminationAwareKDTreeStatisticsUpdateMode update_mode,
+																  int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree)
+IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTreeDevice kd_tree, IlluminationAwareKDTreeStatisticsUpdateMode update_mode)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -62,10 +70,10 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 
 #ifdef __KERNELCC__
 	if (slot < lightcut_data.lightcut_size)
-		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, slot);
+		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, slot, update_mode);
 #else
 	for (unsigned int lightcut_slot = 0u; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
-		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, lightcut_slot);
+		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, lightcut_slot, update_mode);
 #endif // #ifdef __KERNELCC__
 }
 

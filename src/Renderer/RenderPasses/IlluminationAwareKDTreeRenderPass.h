@@ -147,6 +147,7 @@ public:
 
 	int& get_split_iterations_per_SPP();
 	bool& get_auto_split_iterations_per_SPP();
+	int& get_lightcut_refinement_rounds_per_SPP();
 	int& get_training_sample_buffer_capacity();
 
 	int& get_learning_to_cluster_learning_spp();
@@ -205,9 +206,11 @@ private:
 	// Higher number subdivide faster but is more expensive
 	int m_split_iterations_per_SPP = 3;
 	// If true, the number of split iterations per SPP will be automatically adjusted based on the current SPP for efficiency
-	bool m_auto_split_iterations_per_SPP  = true;
-	int m_nodes_buffer_capacity			  = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES;
-	int m_training_sample_buffer_capacity = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
+	bool m_auto_split_iterations_per_SPP = true;
+	// How many times the lightcut is refined per SPP. Additional rounds replay the same samples to initialize newly created children.
+	int m_lightcut_refinement_rounds_per_SPP = 3;
+	int m_nodes_buffer_capacity				 = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::MAXIMUM_NUMBER_OF_NODES;
+	int m_training_sample_buffer_capacity	 = IlluminationAwareKDTreeCoreDataHost<OrochiBuffer>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY;
 
 	int m_learning_to_cluster_learning_spp		= 128;
 	int m_learning_to_cluster_learning_seconds	= 0;

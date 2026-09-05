@@ -6,6 +6,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 
+#include "HostDeviceCommon/IlluminationAwareKDTreeLearningToClusterStatisticsUpdateMode.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
@@ -558,9 +559,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int maximum_lightcut_statistics_work_count = kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size;
 		LightTreeSGDevice light_tree_sg						= render_data.light_tree_sg;
 		void* lightcut_launch_args[]						= { &kd_tree_device, &light_tree_sg };
-		void* lightcut_statistics_launch_args[]				= { &kd_tree_device };
-		unsigned int reset_sample_counts					= 1u;
-		void* reset_batch_statistics_launch_args[]			= { &kd_tree_device, &reset_sample_counts };
+		IlluminationAwareKDTreeStatisticsUpdateMode statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::UPDATE_ALL;
+		void* lightcut_statistics_update_launch_args[]					   = { &kd_tree_device, &statistics_update_mode };
+		void* lightcut_statistics_launch_args[]							   = { &kd_tree_device };
+		unsigned int reset_sample_counts								   = 1u;
+		void* reset_batch_statistics_launch_args[]						   = { &kd_tree_device, &reset_sample_counts };
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_LIGHTCUT_Q0_KERNEL_ID]->launch_asynchronous(
 			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, lightcut_launch_args, m_renderer->get_main_stream());
 
@@ -572,11 +575,31 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, lightcut_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_STATISTICS_UPDATES_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, lightcut_statistics_launch_args,
+			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, lightcut_statistics_update_launch_args,
 			m_renderer->get_main_stream());
 
-		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_work_count, 1, lightcut_launch_args, m_renderer->get_main_stream());
+		int lightcut_refinement_rounds_per_SPP = std::max(m_lightcut_refinement_rounds_per_SPP, 1);
+		for (int refinement_round = 0; refinement_round < lightcut_refinement_rounds_per_SPP; refinement_round++)
+		{
+			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
+				learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_work_count, 1, lightcut_launch_args, m_renderer->get_main_stream());
+
+			if (refinement_round + 1 >= lightcut_refinement_rounds_per_SPP)
+				break;
+
+			reset_sample_counts = 1u;
+			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
+				learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, reset_batch_statistics_launch_args,
+				m_renderer->get_main_stream());
+
+			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REPLAY_STATISTICS_KERNEL_ID]->launch_asynchronous(
+				256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, lightcut_launch_args, m_renderer->get_main_stream());
+
+			statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::INITIALIZE_EMPTY_ONLY;
+			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_STATISTICS_UPDATES_KERNEL_ID]->launch_asynchronous(
+				learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, lightcut_statistics_update_launch_args,
+				m_renderer->get_main_stream());
+		}
 
 		reset_sample_counts = 0u;
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
@@ -736,6 +759,11 @@ int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
 {
 	return m_auto_split_iterations_per_SPP;
+}
+
+int& IlluminationAwareKDTreeRenderPass::get_lightcut_refinement_rounds_per_SPP()
+{
+	return m_lightcut_refinement_rounds_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
