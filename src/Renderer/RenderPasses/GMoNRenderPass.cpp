@@ -85,7 +85,7 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 
 bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!is_render_pass_used(compiler_options))
+	if (!is_render_pass_used_for_frame(render_data))
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -132,7 +132,7 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 
 void GMoNRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (is_render_pass_used(compiler_options))
+	if (is_render_pass_used_for_frame(render_data))
 	{
 		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		m_next_set_to_accumulate++;
@@ -232,8 +232,18 @@ bool GMoNRenderPass::buffers_allocated()
 
 bool GMoNRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	bool gmon_enabled		  = m_gmon.use_gmon;
-	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	bool gmon_enabled		  = render_data.buffers.gmon_estimator.use_gmon;
+	bool accumulation_enabled = render_data.render_settings.accumulate;
+
+	return gmon_enabled && accumulation_enabled;
+}
+
+bool GMoNRenderPass::is_render_pass_used_for_frame(const HIPRTRenderData& render_data) const
+{
+	bool gmon_enabled		  = render_data.buffers.gmon_estimator.use_gmon;
+	bool accumulation_enabled = render_data.render_settings.accumulate;
 
 	return gmon_enabled && accumulation_enabled;
 }

@@ -55,10 +55,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 
 	ColorRGB32F* map_result_framebuffer()
 	{
-		if (use_gmon)
-			return result_framebuffer->map();
-		else
-			return nullptr;
+		return result_framebuffer->map();
 	}
 
 	unsigned int get_VRAM_usage_bytes() const

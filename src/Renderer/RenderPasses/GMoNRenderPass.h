@@ -69,6 +69,8 @@ public:
 	unsigned int get_VRAM_usage_bytes() const;
 
 private:
+	bool is_render_pass_used_for_frame(const HIPRTRenderData& render_data) const;
+
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;

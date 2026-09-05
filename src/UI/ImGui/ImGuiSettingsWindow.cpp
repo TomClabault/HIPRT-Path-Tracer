@@ -778,7 +778,7 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 
 	case DisplayViewType::GMON_BLEND:
 		// Enabling GMoN
-		m_renderer->get_gmon_render_pass()->get_gmon_data().use_gmon = true;
+		m_renderer->get_render_data().buffers.gmon_estimator.use_gmon = true;
 		toggle_gmon();
 
 		return;
@@ -6125,7 +6125,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	{
 		ImGui::TreePush("GMoN tree post processing");
 
-		if (ImGui::Checkbox("Use GMoN", &gmon_data.use_gmon))
+		if (ImGui::Checkbox("Use GMoN", &render_data.buffers.gmon_estimator.use_gmon))
 			toggle_gmon();
 
 		ImGuiRenderer::show_help_marker(
@@ -6138,7 +6138,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			""
 			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
-		if (gmon_data.use_gmon)
+		if (render_data.buffers.gmon_estimator.use_gmon)
 		{
 			ImGui::Text("VRAM Usage: %.3fMB", gmon_render_pass->get_VRAM_usage_bytes() / 1000000.0f);
 
@@ -6389,7 +6389,7 @@ void ImGuiSettingsWindow::toggle_gmon()
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = std::dynamic_pointer_cast<GMoNRenderPass>(
 		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 
-	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().use_gmon;
+	bool gmon_now_enabled = m_renderer->get_render_data().buffers.gmon_estimator.use_gmon;
 	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);

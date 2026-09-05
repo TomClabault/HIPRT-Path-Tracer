@@ -16,6 +16,9 @@
  */
 struct GMoNDevice
 {
+	// Whether or not GMoN is enabled for this render-data snapshot
+	bool use_gmon = false;
+
 	enum GMoNMode
 	{
 		MEDIAN_OF_MEANS = 0,
