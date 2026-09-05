@@ -6,9 +6,9 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H
 
-#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 
 HIPRT_DEVICE unsigned int get_replayed_light_clustering_index(const IlluminationAwareKDTreeDevice& kd_tree,
@@ -53,11 +53,12 @@ HIPRT_DEVICE int find_replayed_light_cluster_slot(const IlluminationAwareKDTreeD
 												  unsigned int lightcut_index,
 												  const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample)
 {
-	int slot = find_replayed_light_cluster_slot_for_triangle(kd_tree, light_tree_sg, lightcut_index, sample.emissive_triangle_global_index);
+	int slot = find_light_cluster_slot(kd_tree, lightcut_index, sample.selected_cluster_node_index);
 	if (slot >= 0)
+		// Early out
 		return slot;
 
-	return find_light_cluster_slot(kd_tree, lightcut_index, sample.selected_cluster_node_index);
+	return find_replayed_light_cluster_slot_for_triangle(kd_tree, light_tree_sg, lightcut_index, sample.emissive_triangle_global_index);
 }
 
 #endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_TRAINING_SAMPLES_H

@@ -48,6 +48,7 @@ IlluminationAwareKDTree_LearningToClusterReplayQRewards(IlluminationAwareKDTreeD
 		return;
 
 	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index] = static_cast<unsigned int>(lightcut_slot);
+
 	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, static_cast<unsigned int>(lightcut_slot));
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_batch_statistics.contribution_sum + offset, sample.q_reward);
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_batch_statistics.selected_count + offset, 1u);
