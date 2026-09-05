@@ -402,18 +402,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 		return ColorRGB32F(0.0f);
 	}
 
-	LightSamplePointInformation light_sample =
-		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
-	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
-
-	if (!(light_sample.area_measure_pdf > 0.0f) || !isfinite(light_sample.area_measure_pdf))
-		return ColorRGB32F(0.0f);
-
-	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
-	spatial_training_sample.position				   = closest_hit_info.inter_point;
-	spatial_training_sample.valid_for_spatial_training = true;
-
 	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
 	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
 	learning_to_cluster_training_sample.mesh_id						   = mesh_id;
@@ -425,6 +413,23 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	learning_to_cluster_training_sample.selected_lightcut_slot		   = triangle_sample.lightcut_slot;
 	learning_to_cluster_training_sample.sampled_lightcut_size		   = triangle_sample.lightcut_size_at_sampling;
 	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
+
+	LightSamplePointInformation light_sample =
+		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
+	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
+
+	if (!(light_sample.area_measure_pdf > 0.0f) || !isfinite(light_sample.area_measure_pdf))
+	{
+		// Keep a failed point proposal observable to learning-to-cluster as a zero-reward observation without resampling from another proposal.
+		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+		return ColorRGB32F(0.0f);
+	}
+
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
+	spatial_training_sample.position				   = closest_hit_info.inter_point;
+	spatial_training_sample.valid_for_spatial_training = true;
 
 	ColorRGB32F light_source_radiance(0.0f);
 
