@@ -50,8 +50,6 @@ const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNE
 const std::string IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID	= "Replay NISML Training Samples";
 const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID				= "Build NISML Caches";
 
-static constexpr unsigned int LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_MAXIMUM_WORKER_BLOCK_COUNT = 4096u;
-
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
 {
@@ -583,10 +581,16 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		int lightcut_refinement_rounds_per_SPP = std::max(m_lightcut_refinement_rounds_per_SPP, 1);
 		if (m_lightcut_refinement_rounds_SPP_limit > 0 && render_data.render_settings.sample_number >= m_lightcut_refinement_rounds_SPP_limit)
 			lightcut_refinement_rounds_per_SPP = 1;
+		unsigned int maximum_active_refinement_blocks_per_multiprocessor = static_cast<unsigned int>(
+			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_KERNEL_ID]->get_max_active_blocks_per_multiprocessor(
+				static_cast<int>(learning_to_cluster_lightcut_block_size)));
+		unsigned int maximum_refinement_worker_block_count =
+			maximum_active_refinement_blocks_per_multiprocessor * static_cast<unsigned int>(m_renderer->get_device_properties().multiProcessorCount * 2);
+
 		for (int refinement_round = 0; refinement_round < lightcut_refinement_rounds_per_SPP; refinement_round++)
 		{
-			unsigned int refinement_worker_work_count = std::min(
-				maximum_lightcut_work_count, learning_to_cluster_lightcut_block_size * LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_MAXIMUM_WORKER_BLOCK_COUNT);
+			unsigned int refinement_worker_work_count =
+				std::min(maximum_lightcut_work_count, learning_to_cluster_lightcut_block_size * maximum_refinement_worker_block_count);
 			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REFINE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
 				learning_to_cluster_lightcut_block_size, 1, refinement_worker_work_count, 1, lightcut_launch_args, m_renderer->get_main_stream());
 

@@ -81,6 +81,7 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache, bool silent)
 {
 	m_module_globals_cache.clear();
+	m_max_active_blocks_per_multiprocessor_cache.clear();
 
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
@@ -156,6 +157,27 @@ int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute) const
 	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, attribute, m_kernel_function));
 
 	return numRegs;
+}
+
+int GPUKernel::get_max_active_blocks_per_multiprocessor(int block_size)
+{
+	std::unordered_map<int, int>::const_iterator cache_iterator = m_max_active_blocks_per_multiprocessor_cache.find(block_size);
+	if (cache_iterator != m_max_active_blocks_per_multiprocessor_cache.end())
+		return cache_iterator->second;
+
+	if (m_kernel_function == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to query occupancy for a kernel that wasn't compiled yet.");
+
+		return 0;
+	}
+
+	int active_blocks_per_multiprocessor = 0;
+	OROCHI_CHECK_ERROR(oroModuleOccupancyMaxActiveBlocksPerMultiprocessor(&active_blocks_per_multiprocessor, m_kernel_function, block_size, 0));
+
+	m_max_active_blocks_per_multiprocessor_cache.emplace(block_size, active_blocks_per_multiprocessor);
+
+	return active_blocks_per_multiprocessor;
 }
 
 GPUKernelCompilerOptions& GPUKernel::get_kernel_options()

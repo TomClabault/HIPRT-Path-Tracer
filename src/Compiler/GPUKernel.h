@@ -122,6 +122,14 @@ public:
 	static int get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute);
 
 	/**
+	 * Returns the maximum number of active blocks per multiprocessor for the given block size.
+	 * This function must be called after the kernel has
+	 * been compiled. The result is cached for
+	 * each block size until the kernel is compiled again.
+	 */
+	int get_max_active_blocks_per_multiprocessor(int block_size);
+
+	/**
 	 * Returns the compiler options of this kernel so that they can be modified
 	 */
 	GPUKernelCompilerOptions& get_kernel_options();
@@ -229,6 +237,7 @@ private:
 
 	oroFunction m_kernel_function = nullptr;
 	oroModule_t m_kernel_module	  = nullptr;
+	std::unordered_map<int, int> m_max_active_blocks_per_multiprocessor_cache;
 	std::unordered_map<std::string, ModuleGlobal> m_module_globals_cache;
 
 	// If true, this means that this kernel is only used for precompilation and will be
