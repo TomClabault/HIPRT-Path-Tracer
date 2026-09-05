@@ -833,6 +833,18 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.training_samples		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_samples.get_byte_size();
 	vram_usage.training_sample_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_training_sample_count.get_byte_size();
 
+	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
+	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();
+	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_spatial_moments.get_byte_size();
+	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_spatial_moments.get_byte_size();
+
+	return vram_usage;
+}
+
+IlluminationAwareKDTreeLearningToClusterVRAMUsage IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_vram_usage_breakdown() const
+{
+	IlluminationAwareKDTreeLearningToClusterVRAMUsage vram_usage;
+
 	vram_usage.lightcut_count			 = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.get_byte_size();
 	vram_usage.normal_lightcut_set_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_lightcut_set_count.get_byte_size();
 	vram_usage.learning_to_cluster_training_samples =
@@ -855,10 +867,12 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.lightcut_representative_shading_context_states =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_representative_shading_context_states.get_byte_size();
 
-	vram_usage.batch_signatures		   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_signatures.get_byte_size();
-	vram_usage.history_signatures	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_signatures.get_byte_size();
-	vram_usage.batch_spatial_moments   = m_illumination_aware_kd_tree.m_kd_tree_data.m_batch_spatial_moments.get_byte_size();
-	vram_usage.history_spatial_moments = m_illumination_aware_kd_tree.m_kd_tree_data.m_history_spatial_moments.get_byte_size();
+	return vram_usage;
+}
+
+IlluminationAwareKDTreeNISMLVRAMUsage IlluminationAwareKDTreeRenderPass::get_nisml_vram_usage_breakdown() const
+{
+	IlluminationAwareKDTreeNISMLVRAMUsage vram_usage;
 
 	vram_usage.nisml_cache							= m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
 	vram_usage.nisml_hash_keys						= m_illumination_aware_kd_tree.m_nisml_data.m_hash_keys.get_byte_size();

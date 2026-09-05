@@ -4259,14 +4259,9 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 		{
 			ImGui::TreePush("Learning to cluster many lights tree");
 
-			IlluminationAwareKDTreeVRAMUsage kd_tree_vram_usage = illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown();
-			std::size_t learning_to_cluster_vram_bytes =
-				kd_tree_vram_usage.lightcut_count + kd_tree_vram_usage.normal_lightcut_set_count + kd_tree_vram_usage.learning_to_cluster_training_samples +
-				kd_tree_vram_usage.learning_to_cluster_training_sample_soa + kd_tree_vram_usage.learning_to_cluster_training_sample_count +
-				kd_tree_vram_usage.initial_lightcut_node_indices + kd_tree_vram_usage.normal_lightcut_sets + kd_tree_vram_usage.normal_face_observation_counts +
-				kd_tree_vram_usage.lightcut_node_indices + kd_tree_vram_usage.lightcut_statistics + kd_tree_vram_usage.lightcut_cdfs +
-				kd_tree_vram_usage.lightcut_sample_counts + kd_tree_vram_usage.lightcut_data + kd_tree_vram_usage.lightcut_representative_shading_contexts +
-				kd_tree_vram_usage.lightcut_representative_shading_context_states;
+			IlluminationAwareKDTreeLearningToClusterVRAMUsage learning_to_cluster_vram_usage =
+				illumination_aware_kd_tree_render_pass->get_learning_to_cluster_vram_usage_breakdown();
+			std::size_t learning_to_cluster_vram_bytes = learning_to_cluster_vram_usage.get_total_bytes();
 
 			std::size_t lightcut_capacity	= illumination_aware_kd_tree_render_pass->get_lightcut_capacity();
 			unsigned int occupied_lightcuts = illumination_aware_kd_tree_render_pass->get_current_lightcut_count();
@@ -4300,23 +4295,29 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				"  Representative shading contexts: %.3fMB\n"
 				"    Contexts: %.3fMB\n"
 				"    Context states: %.3fMB",
-				(kd_tree_vram_usage.lightcut_count + kd_tree_vram_usage.normal_lightcut_set_count) / 1000000.0f, kd_tree_vram_usage.lightcut_count / 1000000.0f,
-				kd_tree_vram_usage.normal_lightcut_set_count / 1000000.0f,
-				(kd_tree_vram_usage.learning_to_cluster_training_samples + kd_tree_vram_usage.learning_to_cluster_training_sample_soa +
-				 kd_tree_vram_usage.learning_to_cluster_training_sample_count) /
+				(learning_to_cluster_vram_usage.lightcut_count + learning_to_cluster_vram_usage.normal_lightcut_set_count) / 1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_count / 1000000.0f, learning_to_cluster_vram_usage.normal_lightcut_set_count / 1000000.0f,
+				(learning_to_cluster_vram_usage.learning_to_cluster_training_samples + learning_to_cluster_vram_usage.learning_to_cluster_training_sample_soa +
+				 learning_to_cluster_vram_usage.learning_to_cluster_training_sample_count) /
 					1000000.0f,
-				kd_tree_vram_usage.learning_to_cluster_training_samples / 1000000.0f, kd_tree_vram_usage.learning_to_cluster_training_sample_soa / 1000000.0f,
-				kd_tree_vram_usage.learning_to_cluster_training_sample_count / 1000000.0f, kd_tree_vram_usage.initial_lightcut_node_indices / 1000000.0f,
-				kd_tree_vram_usage.initial_lightcut_node_indices / 1000000.0f,
-				(kd_tree_vram_usage.normal_lightcut_sets + kd_tree_vram_usage.normal_face_observation_counts) / 1000000.0f,
-				kd_tree_vram_usage.normal_lightcut_sets / 1000000.0f, kd_tree_vram_usage.normal_face_observation_counts / 1000000.0f,
-				(kd_tree_vram_usage.lightcut_node_indices + kd_tree_vram_usage.lightcut_statistics + kd_tree_vram_usage.lightcut_cdfs) / 1000000.0f,
-				kd_tree_vram_usage.lightcut_node_indices / 1000000.0f, kd_tree_vram_usage.lightcut_statistics / 1000000.0f,
-				kd_tree_vram_usage.lightcut_cdfs / 1000000.0f, kd_tree_vram_usage.lightcut_sample_counts / 1000000.0f,
-				kd_tree_vram_usage.lightcut_data / 1000000.0f,
-				(kd_tree_vram_usage.lightcut_representative_shading_contexts + kd_tree_vram_usage.lightcut_representative_shading_context_states) / 1000000.0f,
-				kd_tree_vram_usage.lightcut_representative_shading_contexts / 1000000.0f,
-				kd_tree_vram_usage.lightcut_representative_shading_context_states / 1000000.0f);
+				learning_to_cluster_vram_usage.learning_to_cluster_training_samples / 1000000.0f,
+				learning_to_cluster_vram_usage.learning_to_cluster_training_sample_soa / 1000000.0f,
+				learning_to_cluster_vram_usage.learning_to_cluster_training_sample_count / 1000000.0f,
+				learning_to_cluster_vram_usage.initial_lightcut_node_indices / 1000000.0f,
+				learning_to_cluster_vram_usage.initial_lightcut_node_indices / 1000000.0f,
+				(learning_to_cluster_vram_usage.normal_lightcut_sets + learning_to_cluster_vram_usage.normal_face_observation_counts) / 1000000.0f,
+				learning_to_cluster_vram_usage.normal_lightcut_sets / 1000000.0f, learning_to_cluster_vram_usage.normal_face_observation_counts / 1000000.0f,
+				(learning_to_cluster_vram_usage.lightcut_node_indices + learning_to_cluster_vram_usage.lightcut_statistics +
+				 learning_to_cluster_vram_usage.lightcut_cdfs) /
+					1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_node_indices / 1000000.0f, learning_to_cluster_vram_usage.lightcut_statistics / 1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_cdfs / 1000000.0f, learning_to_cluster_vram_usage.lightcut_sample_counts / 1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_data / 1000000.0f,
+				(learning_to_cluster_vram_usage.lightcut_representative_shading_contexts +
+				 learning_to_cluster_vram_usage.lightcut_representative_shading_context_states) /
+					1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_representative_shading_contexts / 1000000.0f,
+				learning_to_cluster_vram_usage.lightcut_representative_shading_context_states / 1000000.0f);
 			ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
 			static int training_sample_buffer_capacity = illumination_aware_kd_tree_render_pass->get_training_sample_buffer_capacity();
@@ -4505,60 +4506,56 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 			if (nisml_render_pass)
 			{
-				NISMLVRAMUsage nisml_vram_usage						= nisml_render_pass->get_vram_usage_breakdown();
-				IlluminationAwareKDTreeVRAMUsage kd_tree_vram_usage = illumination_aware_kd_tree_render_pass
-																		  ? illumination_aware_kd_tree_render_pass->get_vram_usage_breakdown()
-																		  : IlluminationAwareKDTreeVRAMUsage();
+				NISMLVRAMUsage nisml_vram_usage								 = nisml_render_pass->get_vram_usage_breakdown();
+				IlluminationAwareKDTreeNISMLVRAMUsage nisml_cache_vram_usage = illumination_aware_kd_tree_render_pass
+																				   ? illumination_aware_kd_tree_render_pass->get_nisml_vram_usage_breakdown()
+																				   : IlluminationAwareKDTreeNISMLVRAMUsage();
 
-				std::size_t nisml_cache_bytes = kd_tree_vram_usage.nisml_cache + kd_tree_vram_usage.nisml_hash_keys +
-												kd_tree_vram_usage.nisml_hash_entry_states + kd_tree_vram_usage.nisml_hash_occupied_entry_count +
-												kd_tree_vram_usage.nisml_representative_sample_counts +
-												kd_tree_vram_usage.nisml_representative_occupied_counts + kd_tree_vram_usage.nisml_representative_valid +
-												kd_tree_vram_usage.nisml_representative_write_locks + kd_tree_vram_usage.nisml_representative_dirty +
-												kd_tree_vram_usage.nisml_cache_ready + kd_tree_vram_usage.nisml_pending_cell_count;
+				std::size_t nisml_cache_bytes = nisml_cache_vram_usage.get_total_bytes();
 
 				ImGui::Text("NISML VRAM usage: %.3fMB", (nisml_vram_usage.get_total_bytes() + nisml_cache_bytes) / 1000000.0f);
 				ImGui::Text("VRAM Usage breakdown: ");
 
 				std::vector<char> vram_tooltip_buffer(4096);
-				snprintf(vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
-						 "  Neuron biases: %.3fMB\n"
-						 "  Gradient biases: %.3fMB\n"
-						 "  FP32 connection weights: %.3fMB\n"
-						 "  FP16 connection weights: %.3fMB\n"
-						 "  Gradient weights: %.3fMB\n"
-						 "  Adam weight means: %.3fMB\n"
-						 "  Adam weight variances: %.3fMB\n"
-						 "  Adam bias means: %.3fMB\n"
-						 "  Adam bias variances: %.3fMB\n"
-						 "  Training activations: %.3fMB\n"
-						 "  NEE training records: %.3fMB\n"
-						 "  Training sample counter: %.3fMB\n"
-						 "  Record counter: %.3fMB\n"
-						 "  NISML cache buffers: %.3fMB\n"
-						 "    Cache entries: %.3fMB\n"
-						 "    Hash keys: %.3fMB\n"
-						 "    Hash entry states: %.3fMB\n"
-						 "    Hash occupied-entry counter: %.3fMB\n"
-						 "    Representative sample counts: %.3fMB\n"
-						 "    Representative occupied counts: %.3fMB\n"
-						 "    Representative valid flags: %.3fMB\n"
-						 "    Representative write locks: %.3fMB\n"
-						 "    Representative dirty flags: %.3fMB\n"
-						 "    Cache ready flags: %.3fMB\n"
-						 "    Pending cell count: %.3fMB",
-						 nisml_vram_usage.neurons_biases / 1000000.0f, nisml_vram_usage.gradient_biases / 1000000.0f,
-						 nisml_vram_usage.connection_weights / 1000000.0f, nisml_vram_usage.connection_weights_fp16 / 1000000.0f,
-						 nisml_vram_usage.gradient_weights / 1000000.0f, nisml_vram_usage.adam_weights_means / 1000000.0f,
-						 nisml_vram_usage.adam_weights_variances / 1000000.0f, nisml_vram_usage.adam_biases_means / 1000000.0f,
-						 nisml_vram_usage.adam_biases_variances / 1000000.0f, nisml_vram_usage.train_activations / 1000000.0f,
-						 nisml_vram_usage.training_records / 1000000.0f, nisml_vram_usage.training_sample_count / 1000000.0f,
-						 nisml_vram_usage.training_record_count / 1000000.0f, nisml_cache_bytes / 1000000.0f, kd_tree_vram_usage.nisml_cache / 1000000.0f,
-						 kd_tree_vram_usage.nisml_hash_keys / 1000000.0f, kd_tree_vram_usage.nisml_hash_entry_states / 1000000.0f,
-						 kd_tree_vram_usage.nisml_hash_occupied_entry_count / 1000000.0f, kd_tree_vram_usage.nisml_representative_sample_counts / 1000000.0f,
-						 kd_tree_vram_usage.nisml_representative_occupied_counts / 1000000.0f, kd_tree_vram_usage.nisml_representative_valid / 1000000.0f,
-						 kd_tree_vram_usage.nisml_representative_write_locks / 1000000.0f, kd_tree_vram_usage.nisml_representative_dirty / 1000000.0f,
-						 kd_tree_vram_usage.nisml_cache_ready / 1000000.0f, kd_tree_vram_usage.nisml_pending_cell_count / 1000000.0f);
+				snprintf(
+					vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
+					"  Neuron biases: %.3fMB\n"
+					"  Gradient biases: %.3fMB\n"
+					"  FP32 connection weights: %.3fMB\n"
+					"  FP16 connection weights: %.3fMB\n"
+					"  Gradient weights: %.3fMB\n"
+					"  Adam weight means: %.3fMB\n"
+					"  Adam weight variances: %.3fMB\n"
+					"  Adam bias means: %.3fMB\n"
+					"  Adam bias variances: %.3fMB\n"
+					"  Training activations: %.3fMB\n"
+					"  NEE training records: %.3fMB\n"
+					"  Training sample counter: %.3fMB\n"
+					"  Record counter: %.3fMB\n"
+					"  NISML cache buffers: %.3fMB\n"
+					"    Cache entries: %.3fMB\n"
+					"    Hash keys: %.3fMB\n"
+					"    Hash entry states: %.3fMB\n"
+					"    Hash occupied-entry counter: %.3fMB\n"
+					"    Representative sample counts: %.3fMB\n"
+					"    Representative occupied counts: %.3fMB\n"
+					"    Representative valid flags: %.3fMB\n"
+					"    Representative write locks: %.3fMB\n"
+					"    Representative dirty flags: %.3fMB\n"
+					"    Cache ready flags: %.3fMB\n"
+					"    Pending cell count: %.3fMB",
+					nisml_vram_usage.neurons_biases / 1000000.0f, nisml_vram_usage.gradient_biases / 1000000.0f,
+					nisml_vram_usage.connection_weights / 1000000.0f, nisml_vram_usage.connection_weights_fp16 / 1000000.0f,
+					nisml_vram_usage.gradient_weights / 1000000.0f, nisml_vram_usage.adam_weights_means / 1000000.0f,
+					nisml_vram_usage.adam_weights_variances / 1000000.0f, nisml_vram_usage.adam_biases_means / 1000000.0f,
+					nisml_vram_usage.adam_biases_variances / 1000000.0f, nisml_vram_usage.train_activations / 1000000.0f,
+					nisml_vram_usage.training_records / 1000000.0f, nisml_vram_usage.training_sample_count / 1000000.0f,
+					nisml_vram_usage.training_record_count / 1000000.0f, nisml_cache_bytes / 1000000.0f, nisml_cache_vram_usage.nisml_cache / 1000000.0f,
+					nisml_cache_vram_usage.nisml_hash_keys / 1000000.0f, nisml_cache_vram_usage.nisml_hash_entry_states / 1000000.0f,
+					nisml_cache_vram_usage.nisml_hash_occupied_entry_count / 1000000.0f, nisml_cache_vram_usage.nisml_representative_sample_counts / 1000000.0f,
+					nisml_cache_vram_usage.nisml_representative_occupied_counts / 1000000.0f, nisml_cache_vram_usage.nisml_representative_valid / 1000000.0f,
+					nisml_cache_vram_usage.nisml_representative_write_locks / 1000000.0f, nisml_cache_vram_usage.nisml_representative_dirty / 1000000.0f,
+					nisml_cache_vram_usage.nisml_cache_ready / 1000000.0f, nisml_cache_vram_usage.nisml_pending_cell_count / 1000000.0f);
 				ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
 
 				unsigned int hash_table_capacity =

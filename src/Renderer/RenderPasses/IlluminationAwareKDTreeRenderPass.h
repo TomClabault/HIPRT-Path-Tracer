@@ -22,24 +22,36 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t active_guiding_nodes	  = 0;
 	std::size_t active_guiding_node_count = 0;
 	std::size_t needs_split				  = 0;
-	std::size_t lightcut_count			  = 0;
-	std::size_t normal_lightcut_set_count = 0;
 
 	std::size_t current_frontier	   = 0;
 	std::size_t current_frontier_count = 0;
 	std::size_t next_frontier		   = 0;
 	std::size_t next_frontier_count	   = 0;
 
-	std::size_t training_samples						  = 0;
-	std::size_t training_sample_count					  = 0;
-	std::size_t learning_to_cluster_training_samples	  = 0;
-	std::size_t learning_to_cluster_training_sample_soa	  = 0;
-	std::size_t learning_to_cluster_training_sample_count = 0;
+	std::size_t training_samples	  = 0;
+	std::size_t training_sample_count = 0;
 
 	std::size_t batch_signatures		= 0;
 	std::size_t history_signatures		= 0;
 	std::size_t batch_spatial_moments	= 0;
 	std::size_t history_spatial_moments = 0;
+
+	std::size_t get_total_bytes() const
+	{
+		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + current_frontier + current_frontier_count +
+			   next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures + history_signatures + batch_spatial_moments +
+			   history_spatial_moments;
+	}
+};
+
+struct IlluminationAwareKDTreeLearningToClusterVRAMUsage
+{
+	std::size_t lightcut_count			  = 0;
+	std::size_t normal_lightcut_set_count = 0;
+
+	std::size_t learning_to_cluster_training_samples	  = 0;
+	std::size_t learning_to_cluster_training_sample_soa	  = 0;
+	std::size_t learning_to_cluster_training_sample_count = 0;
 
 	std::size_t initial_lightcut_node_indices				   = 0;
 	std::size_t normal_lightcut_sets						   = 0;
@@ -52,6 +64,17 @@ struct IlluminationAwareKDTreeVRAMUsage
 	std::size_t lightcut_representative_shading_contexts	   = 0;
 	std::size_t lightcut_representative_shading_context_states = 0;
 
+	std::size_t get_total_bytes() const
+	{
+		return lightcut_count + normal_lightcut_set_count + learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa +
+			   learning_to_cluster_training_sample_count + initial_lightcut_node_indices + normal_lightcut_sets + normal_face_observation_counts +
+			   lightcut_node_indices + lightcut_statistics + lightcut_cdfs + lightcut_sample_counts + lightcut_data + lightcut_representative_shading_contexts +
+			   lightcut_representative_shading_context_states;
+	}
+};
+
+struct IlluminationAwareKDTreeNISMLVRAMUsage
+{
 	std::size_t nisml_cache							 = 0;
 	std::size_t nisml_hash_keys						 = 0;
 	std::size_t nisml_hash_entry_states				 = 0;
@@ -66,14 +89,9 @@ struct IlluminationAwareKDTreeVRAMUsage
 
 	std::size_t get_total_bytes() const
 	{
-		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + lightcut_count + normal_lightcut_set_count +
-			   current_frontier + current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count +
-			   learning_to_cluster_training_samples + learning_to_cluster_training_sample_soa + learning_to_cluster_training_sample_count + batch_signatures +
-			   history_signatures + batch_spatial_moments + history_spatial_moments + initial_lightcut_node_indices + normal_lightcut_sets +
-			   normal_face_observation_counts + lightcut_node_indices + lightcut_statistics + lightcut_cdfs + lightcut_sample_counts + lightcut_data +
-			   lightcut_representative_shading_contexts + lightcut_representative_shading_context_states + nisml_cache + nisml_hash_keys +
-			   nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts + nisml_representative_occupied_counts +
-			   nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty + nisml_cache_ready + nisml_pending_cell_count;
+		return nisml_cache + nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts +
+			   nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty +
+			   nisml_cache_ready + nisml_pending_cell_count;
 	}
 };
 
@@ -155,6 +173,8 @@ public:
 	 * the tooltip up to date
 	 */
 	IlluminationAwareKDTreeVRAMUsage get_vram_usage_breakdown() const;
+	IlluminationAwareKDTreeLearningToClusterVRAMUsage get_learning_to_cluster_vram_usage_breakdown() const;
+	IlluminationAwareKDTreeNISMLVRAMUsage get_nisml_vram_usage_breakdown() const;
 	std::size_t get_vram_usage_bytes() const;
 
 private:
