@@ -4268,7 +4268,12 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				kd_tree_vram_usage.lightcut_sample_counts + kd_tree_vram_usage.lightcut_data + kd_tree_vram_usage.lightcut_representative_shading_contexts +
 				kd_tree_vram_usage.lightcut_representative_shading_context_states;
 
+			std::size_t lightcut_capacity  = illumination_aware_kd_tree_render_pass->get_lightcut_capacity();
+			std::size_t occupied_lightcuts = illumination_aware_kd_tree_render_pass->get_current_lightcut_count();
+
 			ImGui::Text("Learning to cluster VRAM usage: %.3fMB", learning_to_cluster_vram_bytes / 1000000.0f);
+			ImGui::Text("  Occupied lightcuts: %zu / %zu (%.2f%%)", occupied_lightcuts, lightcut_capacity,
+						lightcut_capacity > 0 ? (occupied_lightcuts * 100.0 / lightcut_capacity) : 0.0);
 			ImGui::Text("VRAM Usage breakdown: ");
 
 			std::vector<char> vram_tooltip_buffer(4096);

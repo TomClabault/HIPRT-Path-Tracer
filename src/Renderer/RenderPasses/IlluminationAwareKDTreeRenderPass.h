@@ -143,6 +143,8 @@ public:
 	int& get_current_node_buffer_capacity();
 	std::size_t get_current_node_count() const;
 	std::size_t get_current_guiding_node_count() const;
+	std::size_t get_current_lightcut_count() const;
+	std::size_t get_lightcut_capacity() const;
 
 	void mark_buffers_need_reallocation();
 
@@ -198,6 +200,7 @@ private:
 
 	std::size_t m_cached_current_node_count			= 1;
 	std::size_t m_cached_current_guiding_node_count = 1;
+	std::size_t m_cached_current_lightcut_count		= 0;
 
 	bool m_lookahead_frontier_initialized	  = false;
 	bool m_current_frontier_uses_first_buffer = true;

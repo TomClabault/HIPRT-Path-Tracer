@@ -524,7 +524,11 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		bool learning_to_cluster_learning_time_budget_reached =
 			m_learning_to_cluster_elapsed_seconds >= m_learning_to_cluster_learning_seconds && m_learning_to_cluster_learning_seconds > 0;
 		if (learning_to_cluster_learning_spp_budget_reached || learning_to_cluster_learning_time_budget_reached)
+		{
+			m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.download_data_async(&m_cached_current_lightcut_count,
+																										 m_renderer->get_main_stream());
 			return;
+		}
 
 		void* learning_to_cluster_launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID]->launch_asynchronous(
@@ -577,6 +581,9 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_BUILD_LIGHTCUT_SAMPLING_CDFS_KERNEL_ID]->launch_asynchronous(
 			learning_to_cluster_lightcut_block_size, 1, kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size, 1,
 			lightcut_launch_args, m_renderer->get_main_stream());
+
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.download_data_async(&m_cached_current_lightcut_count,
+																									 m_renderer->get_main_stream());
 	}
 
 	if (is_using_nisml(compiler_options))
@@ -772,6 +779,16 @@ std::size_t IlluminationAwareKDTreeRenderPass::get_current_node_count() const
 std::size_t IlluminationAwareKDTreeRenderPass::get_current_guiding_node_count() const
 {
 	return m_cached_current_guiding_node_count;
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_current_lightcut_count() const
+{
+	return m_cached_current_lightcut_count;
+}
+
+std::size_t IlluminationAwareKDTreeRenderPass::get_lightcut_capacity() const
+{
+	return m_illumination_aware_kd_tree.m_learning_to_cluster_data.maximum_size();
 }
 
 void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()
