@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHT_CLUSTERING_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHT_CLUSTERING_H
+#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHTCUT_H
+#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHTCUT_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
@@ -12,10 +12,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterInitializeRootLightcut(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterInitializeRootLightcut(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -37,4 +37,4 @@ IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(Illuminat
 	}
 }
 
-#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHT_CLUSTERING_H
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_ROOT_LIGHTCUT_H

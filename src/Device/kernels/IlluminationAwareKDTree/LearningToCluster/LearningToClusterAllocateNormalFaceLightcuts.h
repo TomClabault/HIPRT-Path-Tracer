@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_H
+#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHTCUTS_H
+#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHTCUTS_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
@@ -14,10 +14,10 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree, int x)
+inline IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightcuts(IlluminationAwareKDTreeDevice kd_tree, int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(IlluminationAwareKDTreeDevice kd_tree)
+IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightcuts(IlluminationAwareKDTreeDevice kd_tree)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -154,4 +154,4 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 #endif // #ifdef __KERNELCC__
 }
 
-#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHT_CLUSTERINGS_H
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_ALLOCATE_NORMAL_FACE_LIGHTCUTS_H

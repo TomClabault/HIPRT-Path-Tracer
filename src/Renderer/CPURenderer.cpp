@@ -57,13 +57,13 @@
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreAccumulateBatchTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightClusterings.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightClusterSamplingCDFs.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightcuts.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightcutSamplingCDFs.h"
 #include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLBuildCaches.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreExpandOneLookaheadLevel.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreInitializeCreatedNodeHistory.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightClusterQ0.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeRootLightClustering.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightcutQ0.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeRootLightcut.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchLightcutStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterReplayQRewards.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterReplayStatistics.h"
@@ -71,10 +71,10 @@
 #include "Device/kernels/IlluminationAwareKDTree/Core/CorePromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightClusterings.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightcuts.h"
 #include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLReplayTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreReplayTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightClusteringStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightcutStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetBatchKDTreeStatistics.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetTree.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
@@ -717,7 +717,7 @@ void CPURenderer::render()
 	(DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
 	illumination_aware_kd_tree_reset();
 #endif
-	   // LSS_BASE_LIGHT_TREE_SG)
+	// LSS_BASE_LIGHT_TREE_SG)
 
 	// Using 'samples_per_frame' as the number of samples to render on the CPU
 	for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
@@ -744,7 +744,7 @@ void CPURenderer::render()
 		ReSTIR_GI_pass();
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		ReSTIR_PT_pass();
-#endif																		  // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 		ReSTIR_PG_pass();
@@ -781,7 +781,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 	unsigned int lightcut_count		= *kd_tree_device.learning_to_cluster.lightcut_count;
 	unsigned int reset_thread_count = std::max(node_count, lightcut_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
-		IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightClusteringStatistics(kd_tree_device, reset_index);
+		IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightcutStatistics(kd_tree_device, reset_index);
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
@@ -801,7 +801,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		{
 			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
-				IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(kd_tree_device, light_tree_sg, slot);
+				IlluminationAwareKDTree_LearningToClusterInitializeRootLightcut(kd_tree_device, light_tree_sg, slot);
 		}
 	}
 #else  // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
@@ -1005,7 +1005,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	unsigned int active_guiding_count = kd_tree_device.core.active_guiding_node_count->load();
 	for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 		 active_guiding_node_face_index++)
-		IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(kd_tree_device, active_guiding_node_face_index);
+		IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightcuts(kd_tree_device, active_guiding_node_face_index);
 
 	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(kd_tree_device, sample_index);
@@ -1014,7 +1014,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	active_guiding_count			= kd_tree_device.core.active_guiding_node_count->load();
 	LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
-		IlluminationAwareKDTree_LearningToClusterInitializeLightClusterQ0(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
+		IlluminationAwareKDTree_LearningToClusterInitializeLightcutQ0(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 	unsigned int reset_sample_counts = 1u;
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
@@ -1029,7 +1029,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	{
 		for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
 			 active_guiding_node_face_index++)
-			IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+			IlluminationAwareKDTree_LearningToClusterRefineLightcuts(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
 
 		if (refinement_round + 1 >= lightcut_refinement_rounds_per_SPP)
 			break;
@@ -1053,7 +1053,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterQUpdates(kd_tree_device, static_cast<int>(lightcut_index));
 	for (unsigned int lightcut_index = 0; lightcut_index < kd_tree_device.learning_to_cluster.lightcut_capacity; lightcut_index++)
-		IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
+		IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 #endif													 // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
 #endif // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
 }

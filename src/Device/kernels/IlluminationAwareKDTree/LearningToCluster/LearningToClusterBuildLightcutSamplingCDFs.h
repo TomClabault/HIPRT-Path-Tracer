@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_H
+#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHTCUT_SAMPLING_CDFS_H
+#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHTCUT_SAMPLING_CDFS_H
 
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/FixIntellisense.h"
@@ -76,7 +76,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 {
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
@@ -86,7 +86,7 @@ inline IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(Il
 }
 #else  // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
 	unsigned int lightcut_index = blockIdx.x;
 	unsigned int slot			= threadIdx.x;
@@ -145,4 +145,4 @@ IlluminationAwareKDTree_LearningToClusterBuildLightClusterSamplingCDFs(Illuminat
 }
 #endif // #ifndef __KERNELCC__
 
-#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHT_CLUSTER_SAMPLING_CDFS_H
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_BUILD_LIGHTCUT_SAMPLING_CDFS_H

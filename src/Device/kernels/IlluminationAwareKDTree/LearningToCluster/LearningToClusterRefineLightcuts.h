@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHT_CLUSTERINGS_H
-#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHT_CLUSTERINGS_H
+#ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHTCUTS_H
+#define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHTCUTS_H
 
 #include "Device/includes/Compute/Common/WarpBlockReduce.h"
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
@@ -270,7 +270,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
+inline IlluminationAwareKDTree_LearningToClusterRefineLightcuts(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
 HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree,
 											  const LightTreeSGDevice& light_tree_sg,
@@ -412,10 +412,10 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_LearningToClusterRefineLightClusterings(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
+IlluminationAwareKDTree_LearningToClusterRefineLightcuts(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
 	refine_light_clustering_gpu(kd_tree, light_tree_sg, blockIdx.x);
 }
 #endif // #ifdef __KERNELCC__
 
-#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHT_CLUSTERINGS_H
+#endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REFINE_LIGHTCUTS_H
