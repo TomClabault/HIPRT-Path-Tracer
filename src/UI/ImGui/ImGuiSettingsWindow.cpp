@@ -4264,18 +4264,18 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			std::size_t learning_to_cluster_vram_bytes = learning_to_cluster_vram_usage.get_total_bytes();
 
 			std::size_t lightcut_capacity	= illumination_aware_kd_tree_render_pass->get_lightcut_capacity();
-			unsigned int occupied_lightcuts = illumination_aware_kd_tree_render_pass->get_current_lightcut_count();
+			std::size_t allocated_lightcuts = illumination_aware_kd_tree_render_pass->get_current_allocated_lightcut_count();
 
 			ImGui::Text("Learning to cluster VRAM usage: %.3fMB", learning_to_cluster_vram_bytes / 1000000.0f);
-			ImGui::Text("  Occupied lightcuts: %u / %zu (%.2f%%)", occupied_lightcuts, lightcut_capacity,
-						lightcut_capacity > 0 ? (occupied_lightcuts * 100.0 / lightcut_capacity) : 0.0);
+			ImGui::Text("  Allocated lightcuts: %zu / %zu (%.2f%%)", allocated_lightcuts, lightcut_capacity,
+						lightcut_capacity > 0 ? (allocated_lightcuts * 100.0 / lightcut_capacity) : 0.0);
 			ImGui::Text("VRAM Usage breakdown: ");
 
 			std::vector<char> vram_tooltip_buffer(4096);
 			snprintf(
 				vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
 				"  Light-clustering counters: %.3fMB\n"
-				"    Light-clustering count: %.3fMB\n"
+				"    Light-clustering counters: %.3fMB\n"
 				"    Normal-clustering set count: %.3fMB\n"
 				"  Learning-to-cluster training buffers: %.3fMB\n"
 				"    Training samples: %.3fMB\n"

@@ -22,6 +22,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		m_maximum_lightcut_size = maximum_lightcut_size;
 
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_allocated_lightcut_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_normal_lightcut_set_count, 1);
 		GenericSoAHelpers::resize<DataContainer>(m_learning_to_cluster_training_samples, new_training_sample_capacity);
 		m_learning_to_cluster_training_samples_soa.resize(new_training_sample_capacity);
@@ -35,7 +36,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		// containing learning to cluster distributions. So we would think that this could be resized to much lower new_node_capacity. But because learning to
 		// cluster allocates distributions per face-normal * mesh_id, we need more allocation capacity than just the number of guiding nodes of the KD-tree so
 		// that's why we still allocate new node capacity here
-		std::size_t lightcut_capacity	   = static_cast<std::size_t>(new_node_capacity);
+		std::size_t lightcut_capacity	   = static_cast<std::size_t>(new_node_capacity * 1.25f);
 		std::size_t lightcut_slot_capacity = lightcut_capacity * maximum_lightcut_size;
 
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_node_indices, lightcut_slot_capacity);
@@ -53,6 +54,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		bool lightcut_data_freed = m_lightcut_count.size() > 0;
 
 		m_lightcut_count									= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_allocated_lightcut_count							= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_normal_lightcut_set_count							= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 		m_learning_to_cluster_training_samples				= DataContainer<IlluminationAwareKDTreeLearningToClusterTrainingSample>();
 		m_learning_to_cluster_training_sample_count			= DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
@@ -82,6 +84,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	void to_device(IlluminationAwareKDTreeDevice& kd_tree_device)
 	{
 		kd_tree_device.learning_to_cluster.lightcut_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_lightcut_count);
+		kd_tree_device.learning_to_cluster.allocated_lightcut_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_allocated_lightcut_count);
 		kd_tree_device.learning_to_cluster.lightcut_capacity			  = static_cast<unsigned int>(m_lightcut_data.size());
 		kd_tree_device.learning_to_cluster.normal_lightcut_sets			  = GenericSoAHelpers::get_buffer_data_ptr(m_normal_lightcut_sets);
 		kd_tree_device.learning_to_cluster.normal_lightcut_set_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_normal_lightcut_set_count);
@@ -106,6 +109,7 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 	}
 
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_lightcut_count;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_allocated_lightcut_count;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_normal_lightcut_set_count;
 	DataContainer<IlluminationAwareKDTreeLearningToClusterTrainingSample> m_learning_to_cluster_training_samples;
 	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost<DataContainer> m_learning_to_cluster_training_samples_soa;

@@ -227,8 +227,9 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	AtomicType<unsigned int>* training_sample_count = nullptr;
 	unsigned int training_sample_capacity			= 0;
 
-	AtomicType<unsigned int>* lightcut_count = nullptr;
-	unsigned int lightcut_capacity			 = 0;
+	AtomicType<unsigned int>* lightcut_count		   = nullptr;
+	AtomicType<unsigned int>* allocated_lightcut_count = nullptr;
+	unsigned int lightcut_capacity					   = 0;
 
 	IlluminationAwareKDTreeLearningToClusterLightcutSet* normal_lightcut_sets = nullptr;
 	AtomicType<unsigned int>* normal_lightcut_set_count						  = nullptr;

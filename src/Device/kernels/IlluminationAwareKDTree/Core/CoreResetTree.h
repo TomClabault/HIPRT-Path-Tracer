@@ -48,6 +48,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 
 			*illumination_aware_kd_tree.core.node_count								  = 1;
 			*illumination_aware_kd_tree.learning_to_cluster.lightcut_count			  = 0;
+			*illumination_aware_kd_tree.learning_to_cluster.allocated_lightcut_count  = 0;
 			*illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_count = 1;
 			*illumination_aware_kd_tree.core.active_guiding_node_count				  = 1;
 			illumination_aware_kd_tree.core.active_guiding_nodes[0]					  = 0;

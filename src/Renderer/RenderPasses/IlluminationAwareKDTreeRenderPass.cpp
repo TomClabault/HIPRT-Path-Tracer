@@ -58,8 +58,8 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_cached_current_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_guiding_node_count.resize_host_pinned_mem(1);
 	m_cached_current_guiding_node_count.get_host_pinned_pointer()[0] = 1;
-	m_cached_current_lightcut_count.resize_host_pinned_mem(1);
-	m_cached_current_lightcut_count.get_host_pinned_pointer()[0] = 0;
+	m_cached_current_allocated_lightcut_count.resize_host_pinned_mem(1);
+	m_cached_current_allocated_lightcut_count.get_host_pinned_pointer()[0] = 0;
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::RESET_TREE_KERNEL_ID);
@@ -534,8 +534,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			m_learning_to_cluster_elapsed_seconds >= m_learning_to_cluster_learning_seconds && m_learning_to_cluster_learning_seconds > 0;
 		if (learning_to_cluster_learning_spp_budget_reached || learning_to_cluster_learning_time_budget_reached)
 		{
-			m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.download_data_async(
-				m_cached_current_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());
+			m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.download_data_async(
+				m_cached_current_allocated_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());
 
 			return;
 		}
@@ -594,8 +594,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			learning_to_cluster_lightcut_block_size, 1, kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size, 1,
 			lightcut_launch_args, m_renderer->get_main_stream());
 
-		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.download_data_async(m_cached_current_lightcut_count.get_host_pinned_pointer(),
-																									 m_renderer->get_main_stream());
+		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.download_data_async(
+			m_cached_current_allocated_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());
 	}
 
 	if (is_using_nisml(compiler_options))
@@ -793,9 +793,9 @@ unsigned int IlluminationAwareKDTreeRenderPass::get_current_guiding_node_count()
 	return m_cached_current_guiding_node_count.get_host_pinned_pointer()[0];
 }
 
-unsigned int IlluminationAwareKDTreeRenderPass::get_current_lightcut_count() const
+unsigned int IlluminationAwareKDTreeRenderPass::get_current_allocated_lightcut_count() const
 {
-	return m_cached_current_lightcut_count.get_host_pinned_pointer()[0];
+	return m_cached_current_allocated_lightcut_count.get_host_pinned_pointer()[0];
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_lightcut_capacity() const
@@ -850,7 +850,8 @@ IlluminationAwareKDTreeLearningToClusterVRAMUsage IlluminationAwareKDTreeRenderP
 {
 	IlluminationAwareKDTreeLearningToClusterVRAMUsage vram_usage;
 
-	vram_usage.lightcut_count			 = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.get_byte_size();
+	vram_usage.lightcut_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.get_byte_size() +
+								m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.get_byte_size();
 	vram_usage.normal_lightcut_set_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_lightcut_set_count.get_byte_size();
 	vram_usage.learning_to_cluster_training_samples =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_samples.get_byte_size();

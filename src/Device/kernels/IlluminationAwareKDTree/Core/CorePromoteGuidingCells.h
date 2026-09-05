@@ -125,6 +125,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 						parent_face.per_mesh_id_lightcuts[lightcut_variant - 1u].mesh_id;
 					right_set.face_lightcuts[normal_face].per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index = right_lightcut_index;
 				}
+				hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
 			}
 		}
 	}
@@ -315,6 +316,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 			right_set.face_lightcuts[normal_face].shared_lightcut_index = right_lightcut_index;
 			// Inherit the estimated importance as the prior while starting fresh Q and refinement observations in both new cells.
 			illumination_aware_kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(parent_lightcut_index, right_lightcut_index);
+			hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
 		}
 
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
@@ -336,6 +338,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 					parent_face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id;
 				right_set.face_lightcuts[normal_face].per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].lightcut_index = right_lightcut_index;
 				illumination_aware_kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(parent_lightcut_index, right_lightcut_index);
+				hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
 			}
 		}
 

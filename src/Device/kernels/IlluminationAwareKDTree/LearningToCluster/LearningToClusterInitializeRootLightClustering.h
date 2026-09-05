@@ -31,6 +31,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeRootLightClustering(Illuminat
 	{
 		kd_tree.core.nodes[0].lightcut_normal_set_index		   = 0;
 		*kd_tree.learning_to_cluster.lightcut_count			   = 0;
+		*kd_tree.learning_to_cluster.allocated_lightcut_count  = 0;
 		*kd_tree.learning_to_cluster.normal_lightcut_set_count = 1;
 		kd_tree.learning_to_cluster.normal_lightcut_sets[0].initialize_invalid();
 	}

@@ -102,14 +102,20 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 	if (slot == 0)
 	{
 		if (allocation_valid[0])
+		{
 			face.shared_lightcut_index = new_lightcut_indices[0];
+			hippt::atomic_fetch_add(kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
+		}
 
 		for (unsigned int per_mesh_id_lightcut_slot = 0;
 			 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 		{
 			unsigned int lightcut_variant = per_mesh_id_lightcut_slot + 1u;
 			if (allocation_valid[lightcut_variant])
+			{
 				face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].lightcut_index = new_lightcut_indices[lightcut_variant];
+				hippt::atomic_fetch_add(kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
+			}
 		}
 	}
 #else  // #ifdef __KERNELCC__
@@ -123,6 +129,7 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 				learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, lightcut_slot);
 
 			face.shared_lightcut_index = new_lightcut_index;
+			hippt::atomic_fetch_add(kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
 		}
 	}
 
@@ -142,6 +149,7 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 
 		kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(face.shared_lightcut_index, new_lightcut_index);
 		face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].lightcut_index = new_lightcut_index;
+		hippt::atomic_fetch_add(kd_tree.learning_to_cluster.allocated_lightcut_count, 1u);
 	}
 #endif // #ifdef __KERNELCC__
 }
