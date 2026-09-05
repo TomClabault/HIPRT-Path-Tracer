@@ -29,9 +29,8 @@ IlluminationAwareKDTree_LearningToClusterReplayQRewards(IlluminationAwareKDTreeD
 	if (sample_index >= sample_count)
 		return;
 
-	unsigned int invalid_lightcut_index													   = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-	unsigned int invalid_lightcut_slot													   = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index] = invalid_lightcut_slot;
+	unsigned int invalid_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	unsigned int invalid_lightcut_slot	= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 	unsigned int lightcut_index = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index];
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
@@ -43,9 +42,20 @@ IlluminationAwareKDTree_LearningToClusterReplayQRewards(IlluminationAwareKDTreeD
 		return;
 
 	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
-	int lightcut_slot													 = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
-	if (lightcut_slot < 0)
-		return;
+	unsigned int lightcut_slot = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index];
+	unsigned int base_offset   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0u);
+
+	bool cached_slot_matches = lightcut_slot < lightcut_data.lightcut_size &&
+							   kd_tree.learning_to_cluster.lightcut_node_indices[base_offset + lightcut_slot] == sample.selected_cluster_node_index;
+	if (!cached_slot_matches)
+	{
+		// The cached slot in replayed_lightcut_slots is invalid or does not match the selected cluster node index, so we need to resolve it again.
+		int resolved_slot = find_replayed_light_cluster_slot(kd_tree, light_tree_sg, lightcut_index, sample);
+		if (resolved_slot < 0)
+			return;
+
+		lightcut_slot = static_cast<unsigned int>(resolved_slot);
+	}
 
 	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index] = static_cast<unsigned int>(lightcut_slot);
 
