@@ -278,12 +278,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	unsigned int slot				  = threadIdx.x;
-	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	unsigned int lightcut_variant	  = active_guiding_node_face_index % IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
+	unsigned int slot			  = threadIdx.x;
+	unsigned int lightcut_variant = active_guiding_node_face_index % IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
 	active_guiding_node_face_index /= IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
-		return;
 
 	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
 	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
@@ -414,7 +411,12 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterRefineLightcuts(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
-	refine_light_clustering_gpu(kd_tree, light_tree_sg, blockIdx.x);
+	unsigned int active_work_count =
+		*kd_tree.core.active_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
+
+	for (unsigned int active_guiding_node_face_index = blockIdx.x; active_guiding_node_face_index < active_work_count;
+		 active_guiding_node_face_index += gridDim.x)
+		refine_light_clustering_gpu(kd_tree, light_tree_sg, active_guiding_node_face_index);
 }
 #endif // #ifdef __KERNELCC__
 
