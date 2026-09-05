@@ -543,9 +543,10 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		unsigned int learning_to_cluster_lightcut_block_size =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
-		unsigned int maximum_lightcut_work_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * learning_to_cluster_lightcut_block_size;
+		unsigned int maximum_lightcut_face_work_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * learning_to_cluster_lightcut_block_size;
+		unsigned int maximum_lightcut_work_count	  = maximum_lightcut_face_work_count * 3u;
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_work_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_face_work_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());

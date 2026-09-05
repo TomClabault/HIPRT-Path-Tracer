@@ -212,6 +212,7 @@ struct HIPRTScene
 	OrochiBuffer<unsigned char> has_vertex_normals;
 	OrochiBuffer<float3_t> vertex_normals;
 	OrochiBuffer<int> material_indices;
+	OrochiBuffer<unsigned int> global_triangle_index_to_mesh_index;
 	DevicePackedTexturedMaterialSoAGPUData materials_buffer;
 
 	// This vector contains true for a material that has a fully opaque base color texture.

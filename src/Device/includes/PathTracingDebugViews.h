@@ -45,6 +45,10 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_nisml_hash_key_outline(const HIPRTRen
 	return false;
 }
 
+HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(const HIPRTRenderData& render_data,
+																							   unsigned int pixel_index,
+																							   unsigned int& out_lightcut_index);
+
 HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
 {
 #if LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
@@ -69,10 +73,8 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 		normal_set_index >= kd_tree_device.learning_to_cluster.normal_lightcut_set_capacity)
 		return false;
 
-	float3_t shading_normal		= render_data.g_buffer.shading_normals[pixel_index].unpack();
-	unsigned int normal_face	= illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
-	unsigned int lightcut_index = kd_tree_device.learning_to_cluster.normal_lightcut_sets[normal_set_index].lightcut_indices[normal_face];
-	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || lightcut_index >= kd_tree_device.learning_to_cluster.lightcut_capacity)
+	unsigned int lightcut_index;
+	if (!path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, static_cast<unsigned int>(pixel_index), lightcut_index))
 		return false;
 
 	unsigned int lightcut_size = kd_tree_device.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
@@ -80,6 +82,40 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 
 	return true;
 #endif // #if LearningToClusterDebugMode != LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+}
+
+HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(const HIPRTRenderData& render_data,
+																							   unsigned int pixel_index,
+																							   unsigned int& out_lightcut_index)
+{
+	out_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1 || render_data.buffers.global_triangle_index_to_mesh_index == nullptr)
+		return false;
+
+	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+	if (kd_tree_device.core.nodes == nullptr || kd_tree_device.core.node_capacity == 0 || kd_tree_device.learning_to_cluster.normal_lightcut_sets == nullptr ||
+		kd_tree_device.learning_to_cluster.lightcut_data == nullptr)
+		return false;
+
+	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	unsigned int guiding_cell_index = kd_tree_device.core.find_guiding_cell(primary_hit);
+	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_cell_index >= kd_tree_device.core.node_capacity)
+		return false;
+
+	const IlluminationAwareKDTreeNode& guiding_cell = kd_tree_device.core.nodes[guiding_cell_index];
+	unsigned int normal_set_index					= guiding_cell.lightcut_normal_set_index;
+	if (normal_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
+		normal_set_index >= kd_tree_device.learning_to_cluster.normal_lightcut_set_capacity)
+		return false;
+
+	float3_t shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
+	unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(shading_normal);
+	unsigned int surface_id	 = render_data.buffers.global_triangle_index_to_mesh_index[render_data.g_buffer.first_hit_prim_index[pixel_index]];
+	out_lightcut_index		 = kd_tree_device.learning_to_cluster.resolve_lightcut(normal_set_index, normal_face, surface_id);
+	if (out_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || out_lightcut_index >= kd_tree_device.learning_to_cluster.lightcut_capacity)
+		return false;
+
+	return true;
 }
 
 HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face(const HIPRTRenderData& render_data,
@@ -151,6 +187,50 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_
 		unsigned int neighbor_normal_face;
 		if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index + image_width, neighbor_guiding_cell_index, neighbor_normal_face) &&
 			(neighbor_guiding_cell_index != guiding_cell_index || neighbor_normal_face != normal_face))
+			return true;
+	}
+
+	return false;
+}
+
+HIPRT_DEVICE bool path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_mesh_id_outline(const HIPRTRenderData& render_data,
+																								unsigned int pixel_index,
+																								unsigned int lightcut_index)
+{
+	unsigned int image_width  = render_data.render_settings.render_resolution.x;
+	unsigned int image_height = render_data.render_settings.render_resolution.y;
+	unsigned int pixel_x	  = pixel_index % image_width;
+	unsigned int pixel_y	  = pixel_index / image_width;
+
+	if (pixel_x > 0u)
+	{
+		unsigned int neighbor_lightcut_index;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index - 1u, neighbor_lightcut_index) &&
+			neighbor_lightcut_index != lightcut_index)
+			return true;
+	}
+
+	if (pixel_x + 1u < image_width)
+	{
+		unsigned int neighbor_lightcut_index;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index + 1u, neighbor_lightcut_index) &&
+			neighbor_lightcut_index != lightcut_index)
+			return true;
+	}
+
+	if (pixel_y > 0u)
+	{
+		unsigned int neighbor_lightcut_index;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index - image_width, neighbor_lightcut_index) &&
+			neighbor_lightcut_index != lightcut_index)
+			return true;
+	}
+
+	if (pixel_y + 1u < image_height)
+	{
+		unsigned int neighbor_lightcut_index;
+		if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index + image_width, neighbor_lightcut_index) &&
+			neighbor_lightcut_index != lightcut_index)
 			return true;
 	}
 
@@ -497,7 +577,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 		out_debug_color = ColorRGB32F(average_contribution);
 	}
-#elif ReGIRDebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION	   // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -520,7 +600,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 		out_debug_color = ColorRGB32F(average_contribution);
 	}
-#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS							   // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
@@ -541,7 +621,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 		out_debug_color = ColorRGB32F(color);
 	}
-#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
+#elif ReGIRDebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS							   // #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
@@ -567,13 +647,27 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	if (path_tracing_compute_learning_to_cluster_cut_size_debug_value(render_data, pixel_index, learning_to_cluster_debug_value))
 		out_debug_color = map_0_1_to_heatmap_color_by_index<LearningToClusterDebugModeHeatmapIndex>(learning_to_cluster_debug_value) *
 						  (render_data.render_settings.sample_number + 1);
-#elif LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_SOLID // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+#elif LearningToClusterDebugMode ==                                                                                                                            \
+	LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_SOLID // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 	unsigned int guiding_cell_index;
 	unsigned int normal_face;
 	if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index, guiding_cell_index, normal_face))
 		out_debug_color = ColorRGB32F::random_color(path_tracing_get_learning_to_cluster_cell_normal_face_color_seed(guiding_cell_index, normal_face)) *
 						  (render_data.render_settings.sample_number + 1);
-#elif LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_OUTLINE // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
+#elif LearningToClusterDebugMode ==                                                                                                                            \
+	LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_MESH_ID_SOLID // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_SOLID
+	unsigned int lightcut_index;
+	if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index, lightcut_index))
+		out_debug_color = ColorRGB32F::random_color(lightcut_index) * (render_data.render_settings.sample_number + 1);
+#elif LearningToClusterDebugMode ==                                                                                                                            \
+	LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_MESH_ID_OUTLINE							// #if LearningToClusterDebugMode ==
+																							// LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_MESH_ID_SOLID
+	unsigned int lightcut_index;
+	if (path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, pixel_index, lightcut_index) &&
+		path_tracing_pixel_is_on_learning_to_cluster_cell_normal_face_mesh_id_outline(render_data, pixel_index, lightcut_index))
+		out_debug_color = ColorRGB32F::random_color(lightcut_index) * (render_data.render_settings.sample_number + 1);
+#elif LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_OUTLINE // #if LearningToClusterDebugMode ==
+																							// LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_MESH_ID_OUTLINE
 	unsigned int guiding_cell_index;
 	unsigned int normal_face;
 	if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index, guiding_cell_index, normal_face) &&
@@ -582,7 +676,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 						  (render_data.render_settings.sample_number + 1);
 #endif // LearningToClusterDebugMode // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 
-#elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG && ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy) // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif NISMLDebugMode != NISML_DEBUG_MODE_NO_DEBUG &&                                                                                                           \
+	ILLUMINATION_AWARE_KD_TREE_IS_NISML(DirectLightNEEEstimator, DirectLightSamplingStrategy) // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 #if NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS
 	ColorRGB32F nisml_latent_activation_color;
 	if (path_tracing_compute_nisml_latent_activation_color(render_data, pixel_index, nisml_latent_activation_color))
@@ -607,7 +702,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	unsigned int nisml_hash_key = path_tracing_compute_nisml_hash_key(render_data, pixel_index);
 	if (path_tracing_pixel_is_on_nisml_hash_key_outline(render_data, pixel_index, nisml_hash_key))
 		out_debug_color = ColorRGB32F::random_color(nisml_hash_key) * (render_data.render_settings.sample_number + 1);
-#endif // NISML debug mode // #if NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS
+#endif																  // NISML debug mode // #if NISMLDebugMode == NISML_DEBUG_MODE_LATENT_ACTIVATIONS
 
 // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 #elif IlluminationAwareKDTreeDebugMode != ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG &&                                                                    \
@@ -622,7 +717,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
-#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE // #if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
+#elif IlluminationAwareKDTreeDebugMode ==                                                                                                                      \
+	ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE // #if IlluminationAwareKDTreeDebugMode ==
+															   // ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
@@ -668,7 +765,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		if (is_cell_outline && guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
-#elif IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD // #if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
+#elif IlluminationAwareKDTreeDebugMode ==                                                                                                                      \
+	ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_OUTLINE_AND_LOOKAHEAD // #if IlluminationAwareKDTreeDebugMode ==
+																			 // ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// A cell outline is detected where a neighboring primary-hit pixel belongs to a different guiding cell.
@@ -737,12 +836,12 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 #endif // LightTreeSG debug mode // #if IlluminationAwareKDTreeDebugMode == ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_KD_TREE_LEAF_SOLID
 
-#elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif SSBNPermutationDebugHashGrid == KERNEL_OPTION_TRUE									  // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color = ColorRGB32F::random_color(render_data.ssbn_settings.screen_space_hash_grid[pixel_index].x);
 	color *= render_data.render_settings.sample_number + 1;
 
 	out_debug_color = ColorRGB32F(color);
-#elif SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif SSBNPermutationDebugSeeds == KERNEL_OPTION_TRUE										  // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color = ColorRGB32F(render_data.get_input_random_seed(pixel_index) / (float)((unsigned int)(-1)));
 	color *= render_data.render_settings.sample_number + 1;
 
@@ -765,7 +864,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		color = ColorRGB32F::random_color(cell_index);
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION && ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_DIRECTION &&                                                                                 \
+	ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color;
 
 	if (render_data.render_settings.sample_number == 0 || render_data.render_settings.nb_bounces == 0)
@@ -796,7 +896,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	}
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS && ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS &&                                                                                 \
+	ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color;
 
 	if (render_data.render_settings.sample_number == 0)
@@ -817,7 +918,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	color /= render_data.render_settings.restir_pg_settings.debug_normalization_factor;
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT && ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT &&                                                                                    \
+	ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color;
 
 	if (render_data.render_settings.sample_number == 0)
@@ -838,7 +940,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	color *= render_data.render_settings.restir_pg_settings.debug_normalization_factor;
 
 	out_debug_color = color * (render_data.render_settings.sample_number + 1);
-#endif // Switch on the debugging option // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#endif									 // Switch on the debugging option // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 
 	// Draw the SG tree cut bounding boxes last so they remain visible on top of any other debug view.
 	unsigned int box_index = -1;

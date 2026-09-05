@@ -191,6 +191,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 			parsed_scene.triangles_vertex_indices.push_back(index_1 + global_indices_offset);
 			parsed_scene.triangles_vertex_indices.push_back(index_2 + global_indices_offset);
 			parsed_scene.triangles_vertex_indices.push_back(index_3 + global_indices_offset);
+			parsed_scene.global_triangle_index_to_mesh_index.push_back(static_cast<unsigned int>(mesh_index));
 		}
 
 		// We're pushing the same material index for all the faces of this mesh

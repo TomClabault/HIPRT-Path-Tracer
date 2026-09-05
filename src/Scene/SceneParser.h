@@ -127,6 +127,7 @@ struct Scene
 	std::vector<Image8Bit> textures;
 
 	std::vector<int> triangles_vertex_indices;
+	std::vector<unsigned int> global_triangle_index_to_mesh_index;
 	std::vector<float3_t> vertices_positions;
 	std::vector<unsigned char> has_vertex_normals;
 	std::vector<float3_t> vertex_normals;

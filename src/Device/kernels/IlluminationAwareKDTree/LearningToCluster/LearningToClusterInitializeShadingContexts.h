@@ -41,7 +41,8 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	unsigned int lightcut_index = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	unsigned int lightcut_index =
+		kd_tree.learning_to_cluster.resolve_lightcut(set_index, normal_face, kd_tree.learning_to_cluster.training_samples_soa.surface_ids[sample_index]);
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 

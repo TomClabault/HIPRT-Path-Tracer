@@ -39,48 +39,105 @@ IlluminationAwareKDTree_LearningToClusterAllocateNormalFaceLightClusterings(Illu
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	IlluminationAwareKDTreeNormalClusteringSet& lightcut_set = kd_tree.learning_to_cluster.normal_lightcut_sets[set_index];
-	unsigned int observation_offset							 = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
+	IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face =
+		kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+	unsigned int observation_offset = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
 
 #ifdef __KERNELCC__
-	__shared__ unsigned int new_lightcut_index;
-	__shared__ bool allocation_valid;
+	__shared__ unsigned int new_lightcut_indices[3];
+	__shared__ bool allocation_valid[3];
+	__shared__ bool initialize_from_initial_cut[3];
+	__shared__ bool clone_from_shared_cut[3];
 
 	if (slot == 0)
 	{
-		new_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-		allocation_valid   = false;
+		for (unsigned int lightcut_variant = 0; lightcut_variant < 3; lightcut_variant++)
+		{
+			new_lightcut_indices[lightcut_variant]		  = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+			allocation_valid[lightcut_variant]			  = false;
+			initialize_from_initial_cut[lightcut_variant] = false;
+			clone_from_shared_cut[lightcut_variant]		  = false;
+		}
 
-		if (lightcut_set.lightcut_indices[normal_face] == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
+		new_lightcut_indices[0] = face.shared_lightcut_index;
+		if (face.shared_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
 			kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] >= MinimumNormalFaceObservations)
 		{
-			new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
-			allocation_valid   = new_lightcut_index < kd_tree.learning_to_cluster.lightcut_capacity;
+			new_lightcut_indices[0]		   = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+			allocation_valid[0]			   = new_lightcut_indices[0] < kd_tree.learning_to_cluster.lightcut_capacity;
+			initialize_from_initial_cut[0] = allocation_valid[0];
+		}
+
+		if (new_lightcut_indices[0] != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
+			new_lightcut_indices[0] < kd_tree.learning_to_cluster.lightcut_capacity)
+		{
+			for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+			{
+				unsigned int lightcut_variant = specialist_slot + 1u;
+				if (face.specialists[specialist_slot].surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID ||
+					face.specialists[specialist_slot].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+					continue;
+
+				new_lightcut_indices[lightcut_variant]	= hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+				allocation_valid[lightcut_variant]		= new_lightcut_indices[lightcut_variant] < kd_tree.learning_to_cluster.lightcut_capacity;
+				clone_from_shared_cut[lightcut_variant] = allocation_valid[lightcut_variant];
+			}
 		}
 	}
 
 	__syncthreads();
-	if (!allocation_valid)
-		return;
+	for (unsigned int lightcut_variant = 0; lightcut_variant < 3; lightcut_variant++)
+	{
+		if (initialize_from_initial_cut[lightcut_variant])
+			learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_indices[lightcut_variant], slot);
+		else if (clone_from_shared_cut[lightcut_variant] && slot == 0)
+			kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(new_lightcut_indices[0], new_lightcut_indices[lightcut_variant]);
 
-	learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, slot);
-	__syncthreads();
+		__syncthreads();
+	}
 
 	if (slot == 0)
-		lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
-#else // #ifdef __KERNELCC__
-	if (lightcut_set.lightcut_indices[normal_face] != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
-		kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] < MinimumNormalFaceObservations)
+	{
+		if (allocation_valid[0])
+			face.shared_lightcut_index = new_lightcut_indices[0];
+
+		for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+		{
+			unsigned int lightcut_variant = specialist_slot + 1u;
+			if (allocation_valid[lightcut_variant])
+				face.specialists[specialist_slot].lightcut_index = new_lightcut_indices[lightcut_variant];
+		}
+	}
+#else  // #ifdef __KERNELCC__
+	if (face.shared_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
+		kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] >= MinimumNormalFaceObservations)
+	{
+		unsigned int new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+		if (new_lightcut_index < kd_tree.learning_to_cluster.lightcut_capacity)
+		{
+			for (unsigned int lightcut_slot = 0; lightcut_slot < LearningToClusterMaximumLightCutSize; lightcut_slot++)
+				learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, lightcut_slot);
+
+			face.shared_lightcut_index = new_lightcut_index;
+		}
+	}
+
+	if (face.shared_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 
-	unsigned int new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
-	if (new_lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
-		return;
+	for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+	{
+		if (face.specialists[specialist_slot].surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID ||
+			face.specialists[specialist_slot].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+			continue;
 
-	for (unsigned int lightcut_slot = 0; lightcut_slot < LearningToClusterMaximumLightCutSize; lightcut_slot++)
-		learning_to_cluster_initialize_light_clustering_from_initial_cut(kd_tree, new_lightcut_index, lightcut_slot);
+		unsigned int new_lightcut_index = hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_count, 1u);
+		if (new_lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
+			continue;
 
-	lightcut_set.lightcut_indices[normal_face] = new_lightcut_index;
+		kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(face.shared_lightcut_index, new_lightcut_index);
+		face.specialists[specialist_slot].lightcut_index = new_lightcut_index;
+	}
 #endif // #ifdef __KERNELCC__
 }
 

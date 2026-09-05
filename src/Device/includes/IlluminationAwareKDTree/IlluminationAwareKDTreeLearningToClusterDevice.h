@@ -6,8 +6,11 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_DEVICE_H
 
+#include <assert.h>
+
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLightClusterBatchStatisticsSoADevice.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
@@ -85,13 +88,41 @@ struct IlluminationAwareKDTreeSGShadingContext
 
 struct IlluminationAwareKDTreeNormalClusteringSet
 {
-	unsigned int lightcut_indices[SurfaceNormalFace_Count];
+	static constexpr unsigned int INVALID_SURFACE_ID = 0xffffffffu;
+
+	struct SurfaceSpecialist
+	{
+		unsigned int surface_id;
+		unsigned int lightcut_index;
+	};
+
+	struct NormalFaceLightcuts
+	{
+		unsigned int shared_lightcut_index;
+		SurfaceSpecialist specialists[2];
+	};
+
+	NormalFaceLightcuts face_lightcuts[SurfaceNormalFace_Count];
+
+	HIPRT_DEVICE void initialize_invalid()
+	{
+		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
+		{
+			face_lightcuts[normal_face].shared_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+			for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+			{
+				face_lightcuts[normal_face].specialists[specialist_slot].surface_id		= INVALID_SURFACE_ID;
+				face_lightcuts[normal_face].specialists[specialist_slot].lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+			}
+		}
+	}
 };
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
 {
 	float3_t* positions						= nullptr;
 	float3_t* shading_normals				= nullptr;
+	unsigned int* surface_ids				= nullptr;
 	unsigned int* valid_for_lightcut		= nullptr;
 	unsigned int* replayed_lightcut_indices = nullptr;
 	unsigned int* replayed_lightcut_slots	= nullptr;
@@ -113,6 +144,92 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	HIPRT_DEVICE unsigned int get_normal_face_observation_offset(unsigned int set_index, unsigned int normal_face) const
 	{
 		return set_index * SurfaceNormalFace_Count + normal_face;
+	}
+
+	HIPRT_DEVICE unsigned int resolve_lightcut(unsigned int set_index, unsigned int normal_face, unsigned int surface_id) const
+	{
+		const IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+
+		if (face.specialists[0].surface_id == surface_id && face.specialists[0].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+			return face.specialists[0].lightcut_index;
+
+		if (face.specialists[1].surface_id == surface_id && face.specialists[1].lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+			return face.specialists[1].lightcut_index;
+
+		return face.shared_lightcut_index;
+	}
+
+	HIPRT_DEVICE void assert_surface_routes_to_lightcut(unsigned int set_index,
+														unsigned int normal_face,
+														unsigned int surface_id,
+														unsigned int lightcut_index) const
+	{
+		if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+			return;
+
+		const IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+		for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+		{
+			const IlluminationAwareKDTreeNormalClusteringSet::SurfaceSpecialist& specialist = face.specialists[specialist_slot];
+			if (specialist.lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX && specialist.lightcut_index == lightcut_index)
+				assert(specialist.surface_id == surface_id);
+		}
+	}
+
+	HIPRT_DEVICE unsigned int claim_surface_specialist(unsigned int set_index, unsigned int normal_face, unsigned int surface_id) const
+	{
+		if (surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID)
+			return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
+		IlluminationAwareKDTreeNormalClusteringSet::NormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+		for (unsigned int specialist_slot = 0; specialist_slot < 2; specialist_slot++)
+		{
+#ifdef __KERNELCC__
+			unsigned int previous_surface_id = hippt::atomic_compare_exchange(&face.specialists[specialist_slot].surface_id,
+																			  IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID, surface_id);
+#else
+			unsigned int previous_surface_id = face.specialists[specialist_slot].surface_id;
+			if (previous_surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID)
+				face.specialists[specialist_slot].surface_id = surface_id;
+#endif
+			if (previous_surface_id == IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID || previous_surface_id == surface_id)
+				return specialist_slot;
+		}
+
+		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	}
+
+	HIPRT_DEVICE void clone_lightcut_as_fresh_child(unsigned int shared_lightcut_index, unsigned int child_lightcut_index)
+	{
+		if (shared_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
+			child_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || child_lightcut_index >= lightcut_capacity)
+			return;
+
+		IlluminationAwareKDTreeLightClusteringData& shared_lightcut_data = lightcut_data[shared_lightcut_index];
+		IlluminationAwareKDTreeLightClusteringData& child_lightcut_data	 = lightcut_data[child_lightcut_index];
+		child_lightcut_data												 = shared_lightcut_data;
+		child_lightcut_data.iteration									 = 0u;
+		child_lightcut_data.last_refinement_iteration					 = 0u;
+		child_lightcut_data.refinement_stopped							 = false;
+
+		lightcut_sample_counts[child_lightcut_index]				   = 0u;
+		lightcut_representative_shading_contexts[child_lightcut_index] = lightcut_representative_shading_contexts[shared_lightcut_index];
+		lightcut_representative_shading_context_states[child_lightcut_index] =
+			hippt::atomic_load(&lightcut_representative_shading_context_states[shared_lightcut_index]);
+
+		for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
+		{
+			unsigned int shared_offset = get_light_cluster_offset(shared_lightcut_index, slot);
+			unsigned int child_offset  = get_light_cluster_offset(child_lightcut_index, slot);
+
+			lightcut_node_indices[child_offset] = lightcut_node_indices[shared_offset];
+			lightcut_cdfs[child_offset]			= lightcut_cdfs[shared_offset];
+
+			float shared_estimated_importance_Q = lightcut_statistics[shared_offset].estimated_importance_Q;
+			lightcut_statistics[child_offset]	= {};
+			lightcut_statistics[child_offset].initialize_importance_prior(shared_estimated_importance_Q);
+			lightcut_batch_statistics.reset(child_offset);
+		}
 	}
 
 	IlluminationAwareKDTreeLearningToClusterUserSettings user_settings;

@@ -9,8 +9,8 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
-#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost.h"
 
 template <template <typename> typename DataContainer>
 struct IlluminationAwareKDTreeLearningToClusterDataHost
@@ -31,7 +31,11 @@ struct IlluminationAwareKDTreeLearningToClusterDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_normal_lightcut_sets, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_normal_face_observation_counts, static_cast<std::size_t>(new_node_capacity) * SurfaceNormalFace_Count);
 
-		std::size_t lightcut_capacity	   = static_cast<std::size_t>(new_node_capacity) * 2;
+		// New node capacity is essentially the node capacity of the illumination aware KD-tree. Clearly not all nodes of the KD-tree become guiding nodes
+		// containing learning to cluster distributions. So we would think that this could be resized to much lower new_node_capacity. But because learning to
+		// cluster allocates distributions per face-normal * mesh_id, we need more allocation capacity than just the number of guiding nodes of the KD-tree so
+		// that's why we still allocate new node capacity here
+		std::size_t lightcut_capacity	   = static_cast<std::size_t>(new_node_capacity);
 		std::size_t lightcut_slot_capacity = lightcut_capacity * maximum_lightcut_size;
 
 		GenericSoAHelpers::resize<DataContainer>(m_lightcut_node_indices, lightcut_slot_capacity);

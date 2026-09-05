@@ -16,7 +16,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 											 const float3_t scene_bounds_minimum,
 											 const float3_t scene_bounds_maximum,
 											 unsigned int reset_index)
-#else // #ifndef __KERNELCC__
+#else  // #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illumination_aware_kd_tree,
 											 const float3 scene_bounds_minimum,
@@ -71,9 +71,9 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 	if (reset_index < illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_capacity)
 	{
 		IlluminationAwareKDTreeNormalClusteringSet& lightcut_set = illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[reset_index];
+		lightcut_set.initialize_invalid();
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{
-			lightcut_set.lightcut_indices[normal_face] = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 			unsigned int observation_offset = illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(reset_index, normal_face);
 			illumination_aware_kd_tree.learning_to_cluster.normal_face_observation_counts[observation_offset] = 0;
 		}

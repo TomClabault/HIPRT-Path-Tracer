@@ -31,6 +31,8 @@ struct RenderBuffers
 	// triangles_indices[0], triangles_indices[1] and triangles_indices[2]
 	// represent the indices of the vertices of the first triangle for example
 	int* triangles_indices = nullptr;
+	// A device pointer to the mesh index of each triangle, indexed by global triangle index
+	unsigned int* global_triangle_index_to_mesh_index = nullptr;
 	// A device pointer to the buffer of triangle vertices positions
 	float3_t* vertices_positions = nullptr;
 	// A device pointer to a buffer filled with 0s and 1s that

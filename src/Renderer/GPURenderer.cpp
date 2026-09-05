@@ -810,6 +810,7 @@ void GPURenderer::update_render_data()
 		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
 		m_render_data.buffers.triangles_indices	 = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
+		m_render_data.buffers.global_triangle_index_to_mesh_index = m_hiprt_scene.global_triangle_index_to_mesh_index.get_device_pointer();
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3_t*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals	 = m_hiprt_scene.vertex_normals.get_device_pointer();
@@ -892,6 +893,9 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
 	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
+
+	m_hiprt_scene.global_triangle_index_to_mesh_index.resize(scene.global_triangle_index_to_mesh_index.size());
+	m_hiprt_scene.global_triangle_index_to_mesh_index.upload_data(scene.global_triangle_index_to_mesh_index.data());
 
 	// Uploading the materials after the textures have been parsed because texture
 	// parsing can modify the materials (emission of constant textures are stored in the

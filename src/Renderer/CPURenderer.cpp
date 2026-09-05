@@ -385,6 +385,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.buffers.material_indices	   = parsed_scene.material_indices.data();
 	m_render_data.buffers.has_vertex_normals   = parsed_scene.has_vertex_normals.data();
 	m_render_data.buffers.triangles_indices	   = parsed_scene.triangles_vertex_indices.data();
+	m_render_data.buffers.global_triangle_index_to_mesh_index = parsed_scene.global_triangle_index_to_mesh_index.data();
 	m_render_data.buffers.vertices_positions   = parsed_scene.vertices_positions.data();
 	m_render_data.buffers.vertex_normals	   = parsed_scene.vertex_normals.data();
 	m_render_data.buffers.texcoords			   = parsed_scene.texcoords.data();

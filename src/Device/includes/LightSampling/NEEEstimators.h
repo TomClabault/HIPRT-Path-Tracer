@@ -353,9 +353,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_multi_sample(HIPRTRenderData& rend
 // A selected learned cluster can have no SG-valid descendant for the current shading context. Keep that failed choice observable to the
 // learning-to-cluster update as a zero-reward observation.
 HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData& render_data,
-																 const float3_t& position,
-																 const IlluminationAwareKDTreeSGShadingContext& shading_context,
-																 const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& triangle_sample)
+																			 const float3_t& position,
+																			 const IlluminationAwareKDTreeSGShadingContext& shading_context,
+																			 unsigned int surface_id,
+																			 const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& triangle_sample)
 {
 	if (triangle_sample.lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
 		triangle_sample.cluster_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || !(triangle_sample.cluster_probability > 0.0f))
@@ -363,6 +364,7 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSample training_sample{};
 	training_sample.position					= position;
+	training_sample.surface_id					= surface_id;
 	training_sample.shading_context				= shading_context;
 	training_sample.selected_cluster_node_index = triangle_sample.cluster_node_index;
 	training_sample.cluster_probability			= triangle_sample.cluster_probability;
@@ -386,13 +388,16 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+	unsigned int surface_id = IlluminationAwareKDTreeNormalClusteringSet::INVALID_SURFACE_ID;
+	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+		surface_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
 
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
-		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, random_number_generator);
+		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, surface_id, random_number_generator);
 
 	if (!triangle_sample.valid())
 	{
-		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, triangle_sample);
+		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, surface_id, triangle_sample);
 
 		return ColorRGB32F(0.0f);
 	}
@@ -411,6 +416,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 
 	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
 	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
+	learning_to_cluster_training_sample.surface_id					   = surface_id;
 	learning_to_cluster_training_sample.shading_context				   = shading_context;
 	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
 	learning_to_cluster_training_sample.emissive_triangle_global_index = triangle_sample.emissive_triangle_global_index;

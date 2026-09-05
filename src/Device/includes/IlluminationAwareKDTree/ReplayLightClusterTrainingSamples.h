@@ -26,7 +26,9 @@ HIPRT_DEVICE unsigned int get_replayed_light_clustering_index(const Illumination
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 
-	return kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].lightcut_indices[normal_face];
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.resolve_lightcut(set_index, normal_face, sample.surface_id);
+	kd_tree.learning_to_cluster.assert_surface_routes_to_lightcut(set_index, normal_face, sample.surface_id, lightcut_index);
+	return lightcut_index;
 }
 
 HIPRT_DEVICE int find_replayed_light_cluster_slot_for_triangle(const IlluminationAwareKDTreeDevice& kd_tree,

@@ -40,6 +40,7 @@ IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(Illumi
 
 	unsigned int normal_face =
 		illumination_aware_kd_tree_classify_surface_normal_face(kd_tree.learning_to_cluster.training_samples_soa.shading_normals[sample_index]);
+	kd_tree.learning_to_cluster.claim_surface_specialist(set_index, normal_face, kd_tree.learning_to_cluster.training_samples_soa.surface_ids[sample_index]);
 	unsigned int observation_offset = kd_tree.learning_to_cluster.get_normal_face_observation_offset(set_index, normal_face);
 
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.normal_face_observation_counts + observation_offset, 1u);
