@@ -26,14 +26,26 @@ HIPRT_DEVICE float compute_light_cluster_learning_rate(unsigned int iteration, c
 	return 1.0f / (settings.learning_rate_beta * hippt::intrin_pow(static_cast<float>(time_step), settings.learning_rate_omega));
 }
 
-HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree, unsigned int lightcut_index, unsigned int cluster_node_index)
+HIPRT_DEVICE int find_light_cluster_slot(const IlluminationAwareKDTreeDevice& kd_tree,
+										 unsigned int lightcut_index,
+										 unsigned int cluster_node_index,
+										 unsigned int lightcut_slot)
 {
 	const IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 
+	unsigned int base_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0u);
+
+	// Directly testing the slot of the sample itself first:
+	if (lightcut_slot < lightcut_data.lightcut_size && kd_tree.learning_to_cluster.lightcut_node_indices[base_offset + lightcut_slot] == cluster_node_index)
+		return static_cast<int>(lightcut_slot);
+
 	for (unsigned int slot = 0; slot < lightcut_data.lightcut_size; slot++)
 	{
-		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
-		if (kd_tree.learning_to_cluster.lightcut_node_indices[offset] == cluster_node_index)
+		if (slot == lightcut_slot)
+			// Already tested above
+			continue;
+
+		if (kd_tree.learning_to_cluster.lightcut_node_indices[base_offset + slot] == cluster_node_index)
 			return static_cast<int>(slot);
 	}
 

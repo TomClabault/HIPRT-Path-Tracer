@@ -34,7 +34,7 @@ HIPRT_DEVICE int find_replayed_light_cluster_slot_for_triangle(const Illuminatio
 
 	while (true)
 	{
-		int slot = find_light_cluster_slot(kd_tree, lightcut_index, current_node_index);
+		int slot = find_light_cluster_slot(kd_tree, lightcut_index, current_node_index, 0u);
 		if (slot >= 0)
 			return slot;
 
@@ -53,7 +53,7 @@ HIPRT_DEVICE int find_replayed_light_cluster_slot(const IlluminationAwareKDTreeD
 												  unsigned int lightcut_index,
 												  const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample)
 {
-	int slot = find_light_cluster_slot(kd_tree, lightcut_index, sample.selected_cluster_node_index);
+	int slot = find_light_cluster_slot(kd_tree, lightcut_index, sample.selected_cluster_node_index, sample.selected_lightcut_slot);
 	if (slot >= 0)
 		// Early out
 		return slot;
