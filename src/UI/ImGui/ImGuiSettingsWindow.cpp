@@ -4056,14 +4056,14 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 															  : IlluminationAwareKDTreeVRAMUsage();
 			std::size_t vram_usage_bytes				= vram_usage.get_total_bytes();
 			std::size_t node_capacity = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_buffer_capacity() : 0;
-			std::size_t occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
-			std::size_t guiding_node_count =
+			unsigned int occupied_nodes = illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_node_count() : 0;
+			unsigned int guiding_node_count =
 				illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_current_guiding_node_count() : 0;
 
 			ImGui::Text("VRAM Usage: %.3fMB", vram_usage_bytes / 1000000.0f);
-			ImGui::Text("  Occupied nodes: %zu / %zu (%.2f%%)", occupied_nodes, node_capacity,
+			ImGui::Text("  Occupied nodes: %u / %zu (%.2f%%)", occupied_nodes, node_capacity,
 						node_capacity > 0 ? (occupied_nodes * 100.0 / node_capacity) : 0.0);
-			ImGui::Text("  Guiding nodes count: %zu", guiding_node_count);
+			ImGui::Text("  Guiding nodes count: %u", guiding_node_count);
 			ImGui::Text("VRAM Usage breakdown:");
 
 			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
@@ -4268,11 +4268,11 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				kd_tree_vram_usage.lightcut_sample_counts + kd_tree_vram_usage.lightcut_data + kd_tree_vram_usage.lightcut_representative_shading_contexts +
 				kd_tree_vram_usage.lightcut_representative_shading_context_states;
 
-			std::size_t lightcut_capacity  = illumination_aware_kd_tree_render_pass->get_lightcut_capacity();
-			std::size_t occupied_lightcuts = illumination_aware_kd_tree_render_pass->get_current_lightcut_count();
+			std::size_t lightcut_capacity	= illumination_aware_kd_tree_render_pass->get_lightcut_capacity();
+			unsigned int occupied_lightcuts = illumination_aware_kd_tree_render_pass->get_current_lightcut_count();
 
 			ImGui::Text("Learning to cluster VRAM usage: %.3fMB", learning_to_cluster_vram_bytes / 1000000.0f);
-			ImGui::Text("  Occupied lightcuts: %zu / %zu (%.2f%%)", occupied_lightcuts, lightcut_capacity,
+			ImGui::Text("  Occupied lightcuts: %u / %zu (%.2f%%)", occupied_lightcuts, lightcut_capacity,
 						lightcut_capacity > 0 ? (occupied_lightcuts * 100.0 / lightcut_capacity) : 0.0);
 			ImGui::Text("VRAM Usage breakdown: ");
 

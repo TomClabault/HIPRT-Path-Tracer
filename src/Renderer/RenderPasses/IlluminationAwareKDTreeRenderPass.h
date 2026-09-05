@@ -141,9 +141,9 @@ public:
 	unsigned int get_nisml_hash_table_capacity() const;
 
 	int& get_current_node_buffer_capacity();
-	std::size_t get_current_node_count() const;
-	std::size_t get_current_guiding_node_count() const;
-	std::size_t get_current_lightcut_count() const;
+	unsigned int get_current_node_count() const;
+	unsigned int get_current_guiding_node_count() const;
+	unsigned int get_current_lightcut_count() const;
 	std::size_t get_lightcut_capacity() const;
 
 	void mark_buffers_need_reallocation();
@@ -198,9 +198,9 @@ private:
 	int m_nisml_hash_normal_precision			   = 3;
 	unsigned int m_nisml_hash_occupied_entry_count = 0;
 
-	std::size_t m_cached_current_node_count			= 1;
-	std::size_t m_cached_current_guiding_node_count = 1;
-	std::size_t m_cached_current_lightcut_count		= 0;
+	OrochiBuffer<unsigned int> m_cached_current_node_count;
+	OrochiBuffer<unsigned int> m_cached_current_guiding_node_count;
+	OrochiBuffer<unsigned int> m_cached_current_lightcut_count;
 
 	bool m_lookahead_frontier_initialized	  = false;
 	bool m_current_frontier_uses_first_buffer = true;
