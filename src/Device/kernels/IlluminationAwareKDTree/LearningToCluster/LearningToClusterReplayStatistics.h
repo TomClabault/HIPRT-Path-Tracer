@@ -29,19 +29,18 @@ IlluminationAwareKDTree_LearningToClusterReplayStatistics(IlluminationAwareKDTre
 	if (sample_index >= sample_count)
 		return;
 
-	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample					 = kd_tree.learning_to_cluster.training_samples[sample_index];
-	unsigned int invalid_lightcut_index														 = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-	unsigned int invalid_lightcut_slot														 = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index] = invalid_lightcut_index;
-	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index]	 = invalid_lightcut_slot;
+	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample				   = kd_tree.learning_to_cluster.training_samples[sample_index];
+	unsigned int invalid_lightcut_index													   = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	unsigned int invalid_lightcut_slot													   = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index] = invalid_lightcut_slot;
 
-	unsigned int lightcut_index = get_replayed_light_clustering_index(kd_tree, sample);
+	// The lightcut index was resolved by InitializeShadingContexts and remains valid while refinement changes the cut contents.
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index];
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index == invalid_lightcut_index || lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 
-	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index] = lightcut_index;
-	IlluminationAwareKDTreeLightClusteringData& lightcut_data								 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	if (!lightcut_data.Q0_initialized)
 		return;
 

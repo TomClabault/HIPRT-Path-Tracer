@@ -28,13 +28,19 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	if (sample_index >= sample_count)
 		return;
 
+	unsigned int invalid_lightcut_index														 = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index] = invalid_lightcut_index;
+
 	if (kd_tree.learning_to_cluster.training_samples_soa.valid_for_lightcut[sample_index] == 0u)
 		return;
 
 	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
 	unsigned int lightcut_index = kd_tree.resolve_lightcut(sample_shading_context, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index]);
-	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+	if (lightcut_index == invalid_lightcut_index)
 		return;
+
+	// Replay statistics reuses this resolution across the replay/refinement sequence; refinement changes the cut contents, not this mapping.
+	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index] = lightcut_index;
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states + lightcut_index;
 	unsigned int previous_state =
