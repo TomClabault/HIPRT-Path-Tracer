@@ -6,11 +6,6 @@
 #ifndef HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H
 #define HOST_DEVICE_COMMON_NEURAL_IMPORTANCE_SAMPLING_MANY_LIGHTS_OPTIONS_H
 
-// Temporary WMMA NISMLTrain profiling. Delete only after removing every profiling reference
-#define PROFILING_ENABLED
-// Uncomment to disable NISMLTrain profiling instrumentation while keeping the profiling declarations available.
-#define NISML_TRAIN_PROFILING_DISABLED
-
 #include "Device/includes/Neural/InputEncodings.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceCPU.h"
 #include "Device/includes/Neural/MLPFullyFusedDeviceGPU.h"

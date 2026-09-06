@@ -57,8 +57,6 @@ struct NISMLDevice
 	AtomicType<unsigned int>* training_record_count = nullptr;
 	unsigned int training_record_capacity			= 0;
 
-	NISMLTrainProfileRecord* train_profile_records = nullptr;
-
 	bool learning_enabled			  = false;
 	float training_record_probability = 0.0f;
 };

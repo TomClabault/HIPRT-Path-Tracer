@@ -100,13 +100,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	__shared__ fp16 training_buffer[ERROR_BUFFER_OFFSET + NeuralImportanceSamplingMLPGPU::ERROR_WIDTH * 2][NeuralImportanceSamplingMLPGPU::BLOCK_SIZE];
 	fp16(*activations_buffer)[NeuralImportanceSamplingMLPGPU::BLOCK_SIZE] = training_buffer;
 
-	NISMLTrainProfileRecord* profile_record = &render_data.nisml.train_profile_records[blockIdx.x];
-	unsigned long long int profile_start	= 0;
-	if (threadIdx.x == 0)
-		for (unsigned int phase = 0; phase < NISML_TRAIN_PROFILE_PHASE_COUNT; phase++)
-			profile_record->phase_durations[phase] = 0;
-	__syncthreads();
-
 	NISMLTrainingSample record;
 	if (valid_record)
 		record = render_data.nisml.training_records[record_index];
@@ -116,7 +109,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	// The float probability matrix occupies the first 128 fp16 rows, so place output errors in the non-overlapping second error bank.
 	unsigned int output_errors_offset = NeuralImportanceSamplingMLPGPU::ERROR_WIDTH;
 
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
 		load_nisml_input_wmma(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
 							  record.position, record.outgoing_direction, record.normal, &activations_buffer[0][0], threadIdx.x);
@@ -125,34 +117,20 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 			activations_buffer[input_index][threadIdx.x] = static_cast<fp16>(0.0f);
 
 	__syncthreads();
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_INPUT_ENCODING, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	unsigned int activation_block_base = blockIdx.x * NeuralImportanceSamplingMLPGPU::NEURON_COUNT * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE;
 	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLPGPU::INPUT_SIZE_PADDED_WMMA; neuron_index++)
 		train_activations[activation_block_base + neuron_index * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE + threadIdx.x] =
 			activations_buffer[neuron_index][threadIdx.x];
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_INPUT_ACTIVATION_STORE, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	mlp.forward_train_wmma(activations_buffer, train_activations, blockIdx.x * blockDim.x);
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_FORWARD, profile_start);
 
 	float input_gradients[NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE] = {};
 	bool valid_softmax														= false;
 	bool valid_weight														= false;
 	float weight															= 0.0f;
 
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_RESIDUALS, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
 		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
 										 record.alpha_x, record.alpha_y, output_probabilities_buffer, NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_BASELINE, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
 	{
 		constexpr unsigned int output_layer_offset = NeuralImportanceSamplingMLPGPU::get_neuron_data_index(NeuralImportanceSamplingMLPGPU::LAYER_COUNT - 1, 0);
@@ -165,9 +143,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 											   // Residual layout:
 											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
 	}
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_SOFTMAX, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
 	{
 		valid_weight = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
@@ -177,9 +152,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 																						  record.point_on_light_pdf_solid_angle)
 													   : 0.0f;
 	}
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_SAMPLE_WEIGHT, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_record)
 	{
 		if (valid_weight)
@@ -190,14 +162,10 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	// have some headroom when during backpropagation (the errors in the hidden layer may grow)
 	constexpr float TARGET_MAX_ERROR = 1024.0f;
 
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	float error_scale	 = 1.0f;
 	float maximum_weight = block_reduce<NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_ERROR_SCALE, profile_start);
-
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	for (unsigned int output_index = 0; output_index < NeuralImportanceSamplingMLPGPU::OUTPUT_SIZE_PADDED_WMMA; output_index++)
 	{
 		float output_gradient = 0.0f;
@@ -214,13 +182,9 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 		errors_buffer[output_index][threadIdx.x] = errors_buffer[output_errors_offset + output_index][threadIdx.x];
 	__syncthreads();
 
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_GRADIENT, profile_start);
-
 	mlp.backpropagation_wmma<NISML_POSITION_LEARNABLE_DENSE_GRID_ENCODED_SIZE>(train_activations, blockIdx.x * blockDim.x, activations_buffer, errors_buffer,
-																			   input_gradients, nullptr, error_scale, valid_training_sample, true,
-																			   profile_record);
+																			   input_gradients, nullptr, error_scale, valid_training_sample, true);
 
-	NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 	if (valid_training_sample)
 	{
 		float3_t normalized_position = make_float3(
@@ -229,7 +193,6 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 			(record.position.z - render_data.world_settings.scene_min.z) / (render_data.world_settings.scene_max.z - render_data.world_settings.scene_min.z));
 		accumulate_nisml_position_grid_input_gradients(render_data.nisml.position_learnable_dense_grid, normalized_position, input_gradients);
 	}
-	NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_GRID_GRADIENTS, profile_start);
 }
 
 #else // #if NISML_HAS_WMMA

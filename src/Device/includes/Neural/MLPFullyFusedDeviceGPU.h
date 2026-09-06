@@ -12,8 +12,6 @@
 #define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
 #endif
 
-#include "HostDeviceCommon/Neural/NISMLTrainProfiling.h"
-
 template <unsigned int InputSizeEncoded_,
 		  unsigned int HiddenLayerCount_,
 		  unsigned int HiddenLayerSize_,
@@ -269,12 +267,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 																const float* output_gradient,
 																bool count_training_sample,
 																float error_scale,
-																bool output_errors_initialized
-#if NISML_HAS_WMMA
-																,
-																NISMLTrainProfileRecord* profile_record
-#endif
-	) const
+																bool output_errors_initialized) const
 	{
 		static_assert(INPUT_SIZE_PADDED_WMMA % 16 == 0, "INPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize must be a multiple of 16 for WMMA");
@@ -290,15 +283,12 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		unsigned int lane_high	  = lane_id / 16;
 		unsigned int warp_count	  = BlockSize_ / 32;
 		// NISML scales errors before storing them in FP16; restore the scale when accumulating FP32 parameter gradients.
-		float inverse_error_scale			 = 1.0f / error_scale;
-		unsigned long long int profile_start = 0;
-
+		float inverse_error_scale					 = 1.0f / error_scale;
 		constexpr unsigned int errors_ping_pong_size = ERROR_WIDTH;
 		unsigned int output_layer_index				 = LAYER_COUNT - 1;
 		unsigned int output_layer_offset			 = get_neuron_data_index(output_layer_index, 0);
 		unsigned int output_errors_offset			 = (output_layer_index & 1) * errors_ping_pong_size;
 
-		NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 		if (!output_errors_initialized)
 		{
 			for (unsigned int linear_index = threadIdx.x; linear_index < OUTPUT_SIZE_PADDED_WMMA * BlockSize_; linear_index += BlockSize_)
@@ -314,8 +304,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			}
 		}
 		__syncthreads();
-		NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_OUTPUT_ERROR_INITIALIZATION, profile_start);
-
 		unsigned int activation_index_block_base = sample_offset * NEURON_COUNT;
 		for (unsigned int layer_index = output_layer_index; layer_index > 0; layer_index--)
 		{
@@ -332,7 +320,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			unsigned int previous_tile_count	 = previous_neurons_padded / 16;
 			unsigned int sample_tile_count		 = BlockSize_ / 16;
 
-			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 			constexpr unsigned int ITEMS_PER_THREAD = 32;
 
 			fp16* source	  = train_activations_global + activation_index_block_base + previous_layer_offset * BLOCK_SIZE;
@@ -358,9 +345,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			}
 
 			__syncthreads();
-			NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_ACTIVATION_RELOAD, profile_start);
-
-			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 			for (unsigned int current_tile = warp_id; current_tile < current_tile_count; current_tile += warp_count)
 			{
 				unsigned int current_neuron_base = current_tile * 16;
@@ -398,9 +382,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					}
 				}
 			}
-			NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_WEIGHT_GRADIENTS, profile_start);
-
-			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
 			if constexpr (USE_BIASES)
 			{
 				for (unsigned int neuron_index = threadIdx.x; neuron_index < current_neurons; neuron_index += BlockSize_)
@@ -412,14 +393,11 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					hippt::atomic_fetch_add(&gradient_biases[current_layer_offset + neuron_index], error_sum * inverse_error_scale);
 				}
 			}
-			NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_BIAS_GRADIENTS, profile_start);
 			__syncthreads();
 
 			bool propagate_input_gradients = layer_index == 1 && input_gradients != nullptr && input_gradient_count <= ERROR_WIDTH;
 			if (layer_index > 1 || propagate_input_gradients)
 			{
-				NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-
 				unsigned int propagated_previous_neuron_count = layer_index > 1 ? previous_neurons : input_gradient_count;
 				unsigned int propagated_previous_tile_count	  = PAD_SIZE_WMMA(propagated_previous_neuron_count) / 16;
 
@@ -470,8 +448,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 						}
 					}
 				}
-				NISML_TRAIN_PROFILE_STOP_ACCUMULATE(profile_record, NISML_TRAIN_PROFILE_ERROR_PROPAGATION, profile_start);
-
 				__syncthreads();
 
 				if (layer_index > 1)
@@ -494,14 +470,10 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 
 		if (input_gradients != nullptr)
 		{
-			NISML_TRAIN_PROFILE_START(profile_record, profile_start);
-
 			static_assert(input_gradient_count <= ERROR_WIDTH, "input_gradient_count must be less than or equal to ERROR_WIDTH");
 
 			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
 				input_gradients[input_index] = static_cast<float>(errors_buffer[input_index][threadIdx.x]) * inverse_error_scale;
-
-			NISML_TRAIN_PROFILE_STOP(profile_record, NISML_TRAIN_PROFILE_INPUT_GRADIENTS, profile_start);
 		}
 
 		if (count_training_sample)
@@ -518,21 +490,11 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 										   const float* output_gradient,
 										   float error_scale,
 										   bool count_training_sample,
-										   bool output_errors_initialized
-#if NISML_HAS_WMMA
-										   ,
-										   NISMLTrainProfileRecord* profile_record
-#endif
-	) const
+										   bool output_errors_initialized) const
 	{
 		backpropagation_wmma_from_output_gradient<input_gradient_count>(train_activations_global, sample_offset, activations_buffer, errors_buffer,
 																		input_gradients, output_gradient, count_training_sample, error_scale,
-																		output_errors_initialized
-#if NISML_HAS_WMMA
-																		,
-																		profile_record
-#endif
-		);
+																		output_errors_initialized);
 	}
 };
 
