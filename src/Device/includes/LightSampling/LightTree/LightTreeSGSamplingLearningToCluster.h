@@ -56,7 +56,9 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample result{};
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 
-	unsigned int lightcut_index = kd_tree.resolve_lightcut(context, mesh_id);
+	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int lightcut_index		= kd_tree.resolve_lightcut(context, mesh_id, &guiding_node_index);
+	result.guiding_node_index		= guiding_node_index;
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
 		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;

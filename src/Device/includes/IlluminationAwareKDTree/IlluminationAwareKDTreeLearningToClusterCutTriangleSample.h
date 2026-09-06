@@ -13,6 +13,8 @@ struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 {
 	int emissive_triangle_global_index = -1;
 
+	// Guiding cell resolved while selecting the lightcut; reused by spatial training.
+	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	unsigned int lightcut_index		= IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 	unsigned int lightcut_slot		= IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	unsigned int cluster_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;

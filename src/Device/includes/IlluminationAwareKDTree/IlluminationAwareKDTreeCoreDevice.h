@@ -339,8 +339,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		if (sample_index >= training_sample_capacity)
 			return;
 
-		training_samples[sample_index]							 = sample;
-		training_samples[sample_index].cached_guiding_node_index = UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX;
+		training_samples[sample_index] = sample;
 	}
 
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
@@ -380,9 +379,13 @@ struct IlluminationAwareKDTreeCoreDevice
 		float3_t incoming_direction	  = sample.incoming_direction;
 		float spatial_radiance_weight = sample.spatial_radiance_weight;
 
-		// First find the active guiding cell used at this position.
-		unsigned int node_index			 = find_guiding_cell(position);
-		sample.cached_guiding_node_index = node_index;
+		unsigned int node_index = sample.cached_guiding_node_index;
+		if (node_index == UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX)
+		{
+			// Samples from paths without a guiding-cell lookup resolve lazily here.
+			node_index						 = find_guiding_cell(position);
+			sample.cached_guiding_node_index = node_index;
+		}
 		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			return;
 

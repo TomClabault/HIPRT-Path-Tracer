@@ -430,6 +430,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
 	spatial_training_sample.position				   = closest_hit_info.inter_point;
 	spatial_training_sample.valid_for_spatial_training = true;
+	spatial_training_sample.cached_guiding_node_index  = triangle_sample.guiding_node_index;
 
 	ColorRGB32F light_source_radiance(0.0f);
 
