@@ -165,6 +165,8 @@ struct CDFDeviceWithLUT
 
 struct CDFDeviceU16
 {
+	// cdf_u16[0] is a reserved metadata slot, not a CDF boundary. sample() treats it as zero and never uses its stored value.
+	// Its meaning is producer-specific; for example, Learning-to-Cluster stores 65535 for a positive total sampling weight and 0 otherwise.
 	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
 		unsigned short int random_value = rng() * 65535.0f;
