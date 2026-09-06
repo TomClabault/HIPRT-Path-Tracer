@@ -90,7 +90,7 @@ struct IlluminationAwareKDTreeLearningToClusterLightcutSet
 	static constexpr unsigned int PER_FACE_NORMAL_LIGHTCUT_COUNT = PER_MESH_ID_LIGHTCUT_COUNT + 1u;
 	static constexpr unsigned int INVALID_MESH_ID				 = 0xffffffffu;
 
-	struct PerSurfaceLightcut
+	struct PerMeshIdLightcut
 	{
 		unsigned int mesh_id;
 		unsigned int lightcut_index;
@@ -99,7 +99,7 @@ struct IlluminationAwareKDTreeLearningToClusterLightcutSet
 	struct PerNormalFaceLightcuts
 	{
 		unsigned int shared_lightcut_index;
-		PerSurfaceLightcut per_mesh_id_lightcuts[PER_MESH_ID_LIGHTCUT_COUNT];
+		PerMeshIdLightcut per_mesh_id_lightcuts[PER_MESH_ID_LIGHTCUT_COUNT];
 	};
 
 	PerNormalFaceLightcuts face_lightcuts[SurfaceNormalFace_Count];
@@ -157,7 +157,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 		for (unsigned int per_mesh_id_lightcut_slot = 0;
 			 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 		{
-			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerSurfaceLightcut& per_mesh_id_lightcut =
+			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerMeshIdLightcut& per_mesh_id_lightcut =
 				face.per_mesh_id_lightcuts[per_mesh_id_lightcut_slot];
 			if (per_mesh_id_lightcut.mesh_id == mesh_id && per_mesh_id_lightcut.lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 				return per_mesh_id_lightcut.lightcut_index;
