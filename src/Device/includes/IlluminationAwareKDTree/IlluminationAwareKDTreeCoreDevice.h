@@ -370,8 +370,7 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
-		if (!sample.valid_for_spatial_training)
-			return;
+		// The append path filters invalid samples before storing them, so every sample in the counted prefix is valid here.
 
 		float3_t position			  = sample.position;
 		float3_t incoming_direction	  = sample.incoming_direction;
