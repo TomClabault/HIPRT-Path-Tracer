@@ -14,7 +14,7 @@
 
 template <template <typename> typename DataContainer>
 using IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostInternal =
-	GenericSoA<DataContainer, float3_t, float3_t, unsigned int, unsigned int, unsigned int, unsigned int>;
+	GenericSoA<DataContainer, float3_t, float3_t, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int>;
 
 enum IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostBuffers
 {
@@ -22,6 +22,9 @@ enum IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHostBuffers
 	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_SHADING_NORMALS,
 	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_MESH_IDS,
 	ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING,
+	ILLUMINATION_AWARE_KD_TREE_CACHED_GUIDING_NODE_INDICES,
+	ILLUMINATION_AWARE_KD_TREE_CACHED_NORMAL_FACES,
+	ILLUMINATION_AWARE_KD_TREE_CACHED_LIGHTCUT_SET_INDICES,
 	ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_INDICES,
 	ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_SLOTS
 };
@@ -59,6 +62,12 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoAHost
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_MESH_IDS>();
 		learning_to_cluster_device.training_samples_soa.valid_for_lightcut =
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_TRAINING_SAMPLE_VALID_FOR_LIGHT_CLUSTERING>();
+		learning_to_cluster_device.training_samples_soa.cached_guiding_node_indices =
+			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_CACHED_GUIDING_NODE_INDICES>();
+		learning_to_cluster_device.training_samples_soa.cached_normal_faces =
+			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_CACHED_NORMAL_FACES>();
+		learning_to_cluster_device.training_samples_soa.cached_lightcut_set_indices =
+			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_CACHED_LIGHTCUT_SET_INDICES>();
 		learning_to_cluster_device.training_samples_soa.replayed_lightcut_indices =
 			m_training_samples.template get_buffer_data_ptr<ILLUMINATION_AWARE_KD_TREE_REPLAYED_LIGHTCUT_INDICES>();
 		learning_to_cluster_device.training_samples_soa.replayed_lightcut_slots =

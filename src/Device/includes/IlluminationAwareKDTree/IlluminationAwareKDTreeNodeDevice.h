@@ -23,6 +23,10 @@ struct IlluminationAwareKDTreeNode
 	static constexpr uint32_t INVALID_NODE_INDEX   = 0xFFFFFFFFu;
 	static constexpr uint32_t INVALID_CREATION_TAG = 0xFFFFFFFFu;
 	static constexpr uint8_t INVALID_SPLIT_AXIS	   = 255;
+	// Index of the per-cell adaptive light clustering.
+	//
+	// Only an active guiding cell owns a valid light clustering.
+	static constexpr unsigned int INVALID_LIGHTCUT_INDEX = 0xFFFFFFFFu;
 
 	// Index of the left child.
 	//
@@ -30,11 +34,7 @@ struct IlluminationAwareKDTreeNode
 	// INVALID_NODE_INDEX means that this node currently has no children.
 	uint32_t left_child_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-	// Index of the per-cell adaptive light clustering.
-	//
-	// Only an active guiding cell owns a valid light clustering.
-	static constexpr unsigned int INVALID_LIGHTCUT_INDEX = 0xFFFFFFFFu;
-	unsigned int lightcut_normal_set_index				 = INVALID_LIGHTCUT_INDEX;
+	unsigned int lightcut_normal_set_index = INVALID_LIGHTCUT_INDEX;
 
 	// Identifies the lookahead-allocation pass that created this node.
 	//

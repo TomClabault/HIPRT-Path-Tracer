@@ -35,7 +35,16 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 		return;
 
 	const IlluminationAwareKDTreeSGShadingContext& sample_shading_context = kd_tree.learning_to_cluster.training_samples[sample_index].shading_context;
-	unsigned int lightcut_index = kd_tree.resolve_lightcut(sample_shading_context, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index]);
+	unsigned int guiding_node_index = kd_tree.learning_to_cluster.training_samples_soa.cached_guiding_node_indices[sample_index];
+	unsigned int normal_face		= kd_tree.learning_to_cluster.training_samples_soa.cached_normal_faces[sample_index];
+	unsigned int set_index			= kd_tree.learning_to_cluster.training_samples_soa.cached_lightcut_set_indices[sample_index];
+	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_node_index >= kd_tree.core.node_capacity ||
+		normal_face >= SurfaceNormalFace_Count || set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
+		set_index >= kd_tree.learning_to_cluster.normal_lightcut_set_capacity)
+		return;
+
+	unsigned int lightcut_index = kd_tree.learning_to_cluster.resolve_lightcut_for_normal_face(
+		set_index, normal_face, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index]);
 	if (lightcut_index == invalid_lightcut_index)
 		return;
 

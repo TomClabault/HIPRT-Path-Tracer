@@ -34,9 +34,16 @@ IlluminationAwareKDTree_LearningToClusterAccumulateNormalFaceObservations(Illumi
 	context.position	   = kd_tree.learning_to_cluster.training_samples_soa.positions[sample_index];
 	context.shading_normal = kd_tree.learning_to_cluster.training_samples_soa.shading_normals[sample_index];
 
+	unsigned int guiding_node_index;
 	unsigned int normal_face;
 	unsigned int set_index;
-	kd_tree.resolve_lightcut(context, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index], nullptr, &normal_face, &set_index);
+	kd_tree.resolve_lightcut(context, kd_tree.learning_to_cluster.training_samples_soa.mesh_ids[sample_index], &guiding_node_index, &normal_face, &set_index);
+
+	// Cache the resolution shared with InitializeShadingContexts. Lightcut allocation runs between these two kernels.
+	kd_tree.learning_to_cluster.training_samples_soa.cached_guiding_node_indices[sample_index] = guiding_node_index;
+	kd_tree.learning_to_cluster.training_samples_soa.cached_normal_faces[sample_index]		   = normal_face;
+	kd_tree.learning_to_cluster.training_samples_soa.cached_lightcut_set_indices[sample_index] = set_index;
+
 	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		return;
 

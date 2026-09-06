@@ -121,12 +121,15 @@ struct IlluminationAwareKDTreeLearningToClusterLightcutSet
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice
 {
-	float3_t* positions						= nullptr;
-	float3_t* shading_normals				= nullptr;
-	unsigned int* mesh_ids					= nullptr;
-	unsigned int* valid_for_lightcut		= nullptr;
-	unsigned int* replayed_lightcut_indices = nullptr;
-	unsigned int* replayed_lightcut_slots	= nullptr;
+	float3_t* positions						  = nullptr;
+	float3_t* shading_normals				  = nullptr;
+	unsigned int* mesh_ids					  = nullptr;
+	unsigned int* valid_for_lightcut		  = nullptr;
+	unsigned int* cached_guiding_node_indices = nullptr;
+	unsigned int* cached_normal_faces		  = nullptr;
+	unsigned int* cached_lightcut_set_indices = nullptr;
+	unsigned int* replayed_lightcut_indices	  = nullptr;
+	unsigned int* replayed_lightcut_slots	  = nullptr;
 };
 
 struct IlluminationAwareKDTreeLearningToClusterDevice

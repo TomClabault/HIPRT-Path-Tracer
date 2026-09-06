@@ -51,6 +51,11 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 	training_samples_soa.shading_normals[sample_index]	  = sample.shading_context.shading_normal;
 	training_samples_soa.mesh_ids[sample_index]			  = sample.mesh_id;
 	training_samples_soa.valid_for_lightcut[sample_index] = sample.valid_for_lightcut;
+
+	// The normal-face accumulation kernel resolves these fields before shading-context initialization consumes this sample.
+	training_samples_soa.cached_guiding_node_indices[sample_index] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	training_samples_soa.cached_normal_faces[sample_index]		   = 0u;
+	training_samples_soa.cached_lightcut_set_indices[sample_index] = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 }
 
 #endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_TRAINING_SAMPLE_H
