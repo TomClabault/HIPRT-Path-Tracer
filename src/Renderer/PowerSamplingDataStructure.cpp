@@ -22,7 +22,8 @@ void PowerSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPU
 		// Already computed
 		return;
 
-	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count, compiler_options))
+	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
+	if (!is_needed(hiprt_scene.emissive_triangles_primitive_indices.size(), compiler_options))
 	{
 		free();
 
@@ -30,8 +31,6 @@ void PowerSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPU
 	}
 
 	m_renderer->synchronize_all_kernels();
-
-	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
 
 	std::vector<int> emissive_triangle_indices					  = hiprt_scene.emissive_triangles_primitive_indices.download_data();
 	std::vector<float> triangles_average_emissive_power_luminance = hiprt_scene.triangle_average_emissive_power_luminance.download_data();

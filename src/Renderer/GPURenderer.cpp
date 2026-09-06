@@ -809,11 +809,11 @@ void GPURenderer::update_render_data()
 		m_render_data.render_settings.DEBUG_BUFFER_FLOAT   = m_DEBUG_BUFFER_FLOAT.get_atomic_device_pointer();
 		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
-		m_render_data.buffers.triangles_indices	 = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
+		m_render_data.buffers.triangles_indices					  = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
 		m_render_data.buffers.global_triangle_index_to_mesh_index = m_hiprt_scene.global_triangle_index_to_mesh_index.get_device_pointer();
-		m_render_data.buffers.vertices_positions = reinterpret_cast<float3_t*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
-		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
-		m_render_data.buffers.vertex_normals	 = m_hiprt_scene.vertex_normals.get_device_pointer();
+		m_render_data.buffers.vertices_positions				  = reinterpret_cast<float3_t*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
+		m_render_data.buffers.has_vertex_normals				  = m_hiprt_scene.has_vertex_normals.get_device_pointer();
+		m_render_data.buffers.vertex_normals					  = m_hiprt_scene.vertex_normals.get_device_pointer();
 
 		m_render_data.buffers.material_indices		   = m_hiprt_scene.material_indices.get_device_pointer();
 		m_render_data.buffers.materials_buffer_soa	   = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
@@ -1069,7 +1069,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 		m_render_data.world_settings.envmap_cdf = nullptr;
 
 		m_envmap.get_alias_table_device_pointers(m_render_data.world_settings.envmap_alias_table.alias_table_probas, m_render_data.world_settings.envmap_alias_table.alias_table_alias);
-#endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
+#endif											// #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 								});
 }
 
