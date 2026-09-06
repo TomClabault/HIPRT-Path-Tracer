@@ -55,8 +55,6 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 {
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
-	m_host_pinned_zero.resize_host_pinned_mem(1);
-	m_host_pinned_zero.get_host_pinned_pointer()[0] = 0;
 	m_cached_current_node_count.resize_host_pinned_mem(1);
 	m_cached_current_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_guiding_node_count.resize_host_pinned_mem(1);
@@ -668,12 +666,14 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		kd_tree_device.core.current_frontier_count = current_frontier_count;
 		kd_tree_device.core.next_frontier		   = next_frontier;
 		kd_tree_device.core.next_frontier_count	   = next_frontier_count;
-		if (next_frontier_uses_first_buffer)
-			m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.memset_whole_buffer_async(m_host_pinned_zero.get_host_pinned_pointer(), 1,
-																										   m_renderer->get_main_stream());
+
+		AtomicType<unsigned int>* frontier_count_to_clear;
+		if (level + 1 == max_lookahead_levels)
+			frontier_count_to_clear = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
+		else if (next_frontier_uses_first_buffer)
+			frontier_count_to_clear = m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.get_atomic_device_pointer();
 		else
-			m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.memset_whole_buffer_async(m_host_pinned_zero.get_host_pinned_pointer(), 1,
-																										m_renderer->get_main_stream());
+			frontier_count_to_clear = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
 
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &kd_tree_device, &creation_tag };
@@ -683,8 +683,9 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
 
+		void* initialization_launch_args[] = { &kd_tree_device, &creation_tag, &frontier_count_to_clear };
 		m_kernels[IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID]->launch_asynchronous(
-			256, 1, kd_tree_device.core.node_capacity, 1, expansion_launch_args, m_renderer->get_main_stream());
+			256, 1, kd_tree_device.core.node_capacity, 1, initialization_launch_args, m_renderer->get_main_stream());
 
 		current_frontier	   = next_frontier;
 		current_frontier_count = next_frontier_count;

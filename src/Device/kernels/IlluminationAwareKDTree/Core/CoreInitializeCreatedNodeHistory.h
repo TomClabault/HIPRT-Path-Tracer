@@ -11,10 +11,15 @@
 
 #ifndef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag, int x)
+inline IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device,
+																unsigned int creation_tag,
+																AtomicType<unsigned int>* frontier_count_to_clear,
+																int x)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device, unsigned int creation_tag)
+IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTreeDevice kd_tree_device,
+														 unsigned int creation_tag,
+														 AtomicType<unsigned int>* frontier_count_to_clear)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -24,15 +29,18 @@ IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTree
 #endif
 
 	const uint32_t node_count = *kd_tree_device.core.node_count;
-	if (node_index >= node_count)
-		return;
+	if (node_index < node_count && kd_tree_device.core.nodes[node_index].creation_tag == creation_tag)
+	{
+		// For newly created nodes, we initialize the history with the current batch values (batch values initialized from the sample replay kernel)
+		kd_tree_device.core.history_signatures[node_index]		= kd_tree_device.core.batch_signatures[node_index];
+		kd_tree_device.core.history_spatial_moments[node_index] = kd_tree_device.core.batch_spatial_moments[node_index];
+	}
 
-	if (kd_tree_device.core.nodes[node_index].creation_tag != creation_tag)
-		return;
-
-	// For newly created nodes, we initialize the history with the current batch values (batch values initialized from the sample replay kernel)
-	kd_tree_device.core.history_signatures[node_index]		= kd_tree_device.core.batch_signatures[node_index];
-	kd_tree_device.core.history_spatial_moments[node_index] = kd_tree_device.core.batch_spatial_moments[node_index];
+	if (node_index == 0)
+	{
+		// Keep the frontier produced by this iteration intact. Clear the alternate buffer for the next iteration instead.
+		*frontier_count_to_clear = 0;
+	}
 }
 
 #endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_CREATED_NODE_HISTORY_KERNEL_H

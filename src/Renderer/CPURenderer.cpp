@@ -948,7 +948,14 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 			kd_tree_device.core.current_frontier_count = current_frontier_count;
 			kd_tree_device.core.next_frontier		   = next_frontier;
 			kd_tree_device.core.next_frontier_count	   = next_frontier_count;
-			next_frontier_count->store(0u);
+
+			AtomicType<unsigned int>* frontier_count_to_clear;
+			if (depth + 1 == IlluminationAwareKDTreeMaximumLookaheadLevelCount)
+				frontier_count_to_clear = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
+			else if (next_frontier_uses_first_buffer)
+				frontier_count_to_clear = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.data();
+			else
+				frontier_count_to_clear = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
 
 			const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
 			const unsigned int current_frontier_count_value = current_frontier_count->load();
@@ -960,7 +967,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 			const unsigned int updated_node_count = *kd_tree_device.core.node_count;
 			for (unsigned int node_index = 0; node_index < updated_node_count; node_index++)
-				IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(kd_tree_device, creation_tag, node_index);
+				IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(kd_tree_device, creation_tag, frontier_count_to_clear, node_index);
 
 			const unsigned int next_frontier_count_value = next_frontier_count->load();
 			current_frontier							 = next_frontier;
