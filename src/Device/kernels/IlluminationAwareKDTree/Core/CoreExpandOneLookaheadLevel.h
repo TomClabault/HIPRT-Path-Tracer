@@ -88,10 +88,12 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	left_node.flags						   = IlluminationAwareKDTreeNodeFlag_Lookahead;
 	IlluminationAwareKDTreeNode right_node = left_node;
 
-	kd_tree_device.core.nodes[left_child]		 = left_node;
-	kd_tree_device.core.nodes[right_child]		 = right_node;
-	kd_tree_device.core.node_bounds[left_child]	 = left_bounds;
-	kd_tree_device.core.node_bounds[right_child] = right_bounds;
+	kd_tree_device.core.nodes[left_child]			= left_node;
+	kd_tree_device.core.nodes[right_child]			= right_node;
+	kd_tree_device.core.parent_indices[left_child]	= parent_index;
+	kd_tree_device.core.parent_indices[right_child] = parent_index;
+	kd_tree_device.core.node_bounds[left_child]		= left_bounds;
+	kd_tree_device.core.node_bounds[right_child]	= right_bounds;
 
 	kd_tree_device.core.batch_signatures[left_child]		 = {};
 	kd_tree_device.core.batch_signatures[right_child]		 = {};

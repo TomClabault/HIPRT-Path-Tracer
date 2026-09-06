@@ -55,6 +55,7 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreAccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreAccumulateBatchTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreReduceBatchStatisticsUpward.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightcuts.h"
@@ -931,7 +932,11 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 			IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples(kd_tree_device, sample_index);
 
-		const unsigned int node_count = *kd_tree_device.core.node_count;
+		unsigned int node_count = *kd_tree_device.core.node_count;
+		for (unsigned int reduction_level = IlluminationAwareKDTreeMaximumLookaheadLevelCount; reduction_level > 0; reduction_level--)
+			for (unsigned int node_index = 0; node_index < node_count; node_index++)
+				IlluminationAwareKDTree_CoreReduceBatchStatisticsUpward(kd_tree_device, reduction_level, node_index);
+
 		for (unsigned int node_index = 0; node_index < node_count; node_index++)
 			IlluminationAwareKDTree_CoreAccumulateBatchStatisticsIntoHistory(kd_tree_device, node_index);
 

@@ -4066,7 +4066,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 			ImGui::Text("  Guiding nodes count: %u", guiding_node_count);
 			ImGui::Text("VRAM Usage breakdown:");
 
-			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.node_count;
+			std::size_t node_structure_bytes		  = vram_usage.nodes + vram_usage.node_bounds + vram_usage.parent_indices + vram_usage.node_count;
 			std::size_t guiding_cell_management_bytes = vram_usage.active_guiding_nodes + vram_usage.active_guiding_node_count + vram_usage.needs_split +
 														vram_usage.current_frontier + vram_usage.current_frontier_count + vram_usage.next_frontier +
 														vram_usage.next_frontier_count;
@@ -4074,32 +4074,34 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 			std::size_t spatial_statistics_bytes =
 				vram_usage.batch_signatures + vram_usage.history_signatures + vram_usage.batch_spatial_moments + vram_usage.history_spatial_moments;
 
-			std::string illumination_aware_vram_tooltip = std::format(
-				"Breakdown:\n"
-				"  - KD-tree node structure: {:.3f}MB\n"
-				"    - Nodes: {:.3f}MB\n"
-				"    - Node bounds: {:.3f}MB\n"
-				"    - Node count: {:.3f}MB\n"
-				"  - Guiding-cell management: {:.3f}MB\n"
-				"    - Active guiding nodes: {:.3f}MB\n"
-				"    - Active guiding node count: {:.3f}MB\n"
-				"    - Needs-split flags: {:.3f}MB\n"
-				"    - Current frontier and count: {:.3f}MB\n"
-				"    - Next frontier and count: {:.3f}MB\n"
-				"  - Direct-illumination training buffers: {:.3f}MB\n"
-				"    - Training samples and count: {:.3f}MB\n"
-				"  - Spatial statistics: {:.3f}MB\n"
-				"    - Batch signatures: {:.3f}MB\n"
-				"    - History signatures: {:.3f}MB\n"
-				"    - Batch spatial moments: {:.3f}MB\n"
-				"    - History spatial moments: {:.3f}MB\n",
-				node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f, vram_usage.node_count / 1000000.0f,
-				guiding_cell_management_bytes / 1000000.0f, vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
-				vram_usage.needs_split / 1000000.0f, (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
-				(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
-				(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
-				vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
-				vram_usage.history_spatial_moments / 1000000.0f);
+			std::string illumination_aware_vram_tooltip =
+				std::format("Breakdown:\n"
+							"  - KD-tree node structure: {:.3f}MB\n"
+							"    - Nodes: {:.3f}MB\n"
+							"    - Node bounds: {:.3f}MB\n"
+							"    - Parent indices: {:.3f}MB\n"
+							"    - Node count: {:.3f}MB\n"
+							"  - Guiding-cell management: {:.3f}MB\n"
+							"    - Active guiding nodes: {:.3f}MB\n"
+							"    - Active guiding node count: {:.3f}MB\n"
+							"    - Needs-split flags: {:.3f}MB\n"
+							"    - Current frontier and count: {:.3f}MB\n"
+							"    - Next frontier and count: {:.3f}MB\n"
+							"  - Direct-illumination training buffers: {:.3f}MB\n"
+							"    - Training samples and count: {:.3f}MB\n"
+							"  - Spatial statistics: {:.3f}MB\n"
+							"    - Batch signatures: {:.3f}MB\n"
+							"    - History signatures: {:.3f}MB\n"
+							"    - Batch spatial moments: {:.3f}MB\n"
+							"    - History spatial moments: {:.3f}MB\n",
+							node_structure_bytes / 1000000.0f, vram_usage.nodes / 1000000.0f, vram_usage.node_bounds / 1000000.0f,
+							vram_usage.parent_indices / 1000000.0f, vram_usage.node_count / 1000000.0f, guiding_cell_management_bytes / 1000000.0f,
+							vram_usage.active_guiding_nodes / 1000000.0f, vram_usage.active_guiding_node_count / 1000000.0f,
+							vram_usage.needs_split / 1000000.0f, (vram_usage.current_frontier + vram_usage.current_frontier_count) / 1000000.0f,
+							(vram_usage.next_frontier + vram_usage.next_frontier_count) / 1000000.0f, direct_illumination_training_buffer_bytes / 1000000.0f,
+							(vram_usage.training_samples + vram_usage.training_sample_count) / 1000000.0f, spatial_statistics_bytes / 1000000.0f,
+							vram_usage.batch_signatures / 1000000.0f, vram_usage.history_signatures / 1000000.0f, vram_usage.batch_spatial_moments / 1000000.0f,
+							vram_usage.history_spatial_moments / 1000000.0f);
 
 			ImGuiRenderer::show_help_marker(illumination_aware_vram_tooltip.c_str());
 

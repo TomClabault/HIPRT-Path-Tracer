@@ -391,20 +391,12 @@ struct IlluminationAwareKDTreeCoreDevice
 
 		// Level zero is the guiding cell.
 		//
-		// Levels one through six are the lookahead cells along the sample's
+		// Levels one through the configured maximum are the lookahead cells along the sample's
 		// unique spatial path.
 		for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
 		{
-			atomic_add_illumination_signature(batch_signatures, node_index, spatial_radiance_weight, incoming_direction);
-
-			// Candidate k-d split placement uses only non-zero samples.
-			//
-			// Zero-radiance samples still contribute to the illumination
-			// signature above, but not to the spatial mean and variance.
-			if (spatial_radiance_weight > 0.0f)
-				atomic_add_spatial_moments(batch_spatial_moments, node_index, position);
-
-			// Level six is the deepest lookahead level.
+			// The sample is accumulated only at the deepest existing lookahead cell.
+			// An ordered reduction pass propagates it to its guiding ancestors.
 			if (level == IlluminationAwareKDTreeMaximumLookaheadLevelCount)
 				break;
 
@@ -425,6 +417,15 @@ struct IlluminationAwareKDTreeCoreDevice
 			else
 				node_index = right_child_index;
 		}
+
+		atomic_add_illumination_signature(batch_signatures, node_index, spatial_radiance_weight, incoming_direction);
+
+		// Candidate k-d split placement uses only non-zero samples.
+		//
+		// Zero-radiance samples still contribute to the illumination
+		// signature above, but not to the spatial mean and variance.
+		if (spatial_radiance_weight > 0.0f)
+			atomic_add_spatial_moments(batch_spatial_moments, node_index, position);
 	}
 
 	HIPRT_DEVICE void compute_split_axis_and_position(const IlluminationAwareKDTreeSpatialSampleMoments& moments,
@@ -502,6 +503,7 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	IlluminationAwareKDTreeNode* nodes			   = nullptr;
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;
+	unsigned int* parent_indices				   = nullptr;
 
 	AtomicType<unsigned int>* node_count = nullptr;
 	unsigned int node_capacity			 = 0;

@@ -15,9 +15,10 @@
 
 struct IlluminationAwareKDTreeVRAMUsage
 {
-	std::size_t nodes		= 0;
-	std::size_t node_bounds = 0;
-	std::size_t node_count	= 0;
+	std::size_t nodes		   = 0;
+	std::size_t node_bounds	   = 0;
+	std::size_t parent_indices = 0;
+	std::size_t node_count	   = 0;
 
 	std::size_t active_guiding_nodes	  = 0;
 	std::size_t active_guiding_node_count = 0;
@@ -38,9 +39,9 @@ struct IlluminationAwareKDTreeVRAMUsage
 
 	std::size_t get_total_bytes() const
 	{
-		return nodes + node_bounds + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + current_frontier + current_frontier_count +
-			   next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures + history_signatures + batch_spatial_moments +
-			   history_spatial_moments;
+		return nodes + node_bounds + parent_indices + node_count + active_guiding_nodes + active_guiding_node_count + needs_split + current_frontier +
+			   current_frontier_count + next_frontier + next_frontier_count + training_samples + training_sample_count + batch_signatures + history_signatures +
+			   batch_spatial_moments + history_spatial_moments;
 	}
 };
 
@@ -104,6 +105,7 @@ public:
 	static const std::string ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID;
 	static const std::string LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID;
 	static const std::string ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID;
+	static const std::string REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID;
 	static const std::string LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID;
 	static const std::string LEARNING_TO_CLUSTER_INITIALIZE_LIGHTCUT_Q0_KERNEL_ID;
 	static const std::string LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID;

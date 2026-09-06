@@ -43,6 +43,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 			root.lightcut_normal_set_index = 0;
 
 			illumination_aware_kd_tree.core.nodes[0]			   = root;
+			illumination_aware_kd_tree.core.parent_indices[0]	   = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 			illumination_aware_kd_tree.core.node_bounds[0].minimum = scene_bounds_minimum;
 			illumination_aware_kd_tree.core.node_bounds[0].maximum = scene_bounds_maximum;
 

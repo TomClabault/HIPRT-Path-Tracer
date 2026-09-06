@@ -29,6 +29,7 @@ const std::string IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIAL
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_NORMAL_FACE_OBSERVATIONS_KERNEL_ID				   = "Accumulate Normal Face Observations";
 const std::string IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID  = "Allocate Normal Face Lightcuts";
 const std::string IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID				   = "Accumulate Batch Training Samples";
+const std::string IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID					   = "Reduce Batch Statistics Upward";
 const std::string IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID	   = "Initialize Shading Contexts";
 const std::string IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_LIGHTCUT_Q0_KERNEL_ID		   = "Initialize Lightcut Q0";
 const std::string IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID = "Reset Batch Lightcut Statistics";
@@ -101,6 +102,14 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
 		"IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples");
 	m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
+
+	m_kernels[IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID);
+	m_kernels[IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID]->set_kernel_file_path(
+		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CoreReduceBatchStatisticsUpward.h");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID]->set_kernel_function_name(
+		"IlluminationAwareKDTree_CoreReduceBatchStatisticsUpward");
+	m_kernels[IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 
 	m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID);
@@ -337,7 +346,7 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
 	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-												   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
+									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
 
@@ -481,6 +490,15 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		void* launch_args[] = { &kd_tree_device };
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
+
+		unsigned int maximum_lookahead_level_count = static_cast<unsigned int>(
+			compiler_options.get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT));
+		for (unsigned int reduction_level = maximum_lookahead_level_count; reduction_level > 0; reduction_level--)
+		{
+			void* reduction_launch_args[] = { &kd_tree_device, &reduction_level };
+			m_kernels[IlluminationAwareKDTreeRenderPass::REDUCE_BATCH_STATISTICS_UPWARD_KERNEL_ID]->launch_asynchronous(
+				256, 1, kd_tree_device.core.node_capacity, 1, reduction_launch_args, m_renderer->get_main_stream());
+		}
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_STATISTICS_INTO_HISTORY_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.node_capacity, 1, launch_args, m_renderer->get_main_stream());
@@ -870,9 +888,10 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 {
 	IlluminationAwareKDTreeVRAMUsage vram_usage;
 
-	vram_usage.nodes	   = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.get_byte_size();
-	vram_usage.node_bounds = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_bounds.get_byte_size();
-	vram_usage.node_count  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.get_byte_size();
+	vram_usage.nodes		  = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.get_byte_size();
+	vram_usage.node_bounds	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_bounds.get_byte_size();
+	vram_usage.parent_indices = m_illumination_aware_kd_tree.m_kd_tree_data.m_parent_indices.get_byte_size();
+	vram_usage.node_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.get_byte_size();
 
 	vram_usage.active_guiding_nodes		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_nodes.get_byte_size();
 	vram_usage.active_guiding_node_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.get_byte_size();
@@ -898,8 +917,8 @@ IlluminationAwareKDTreeLearningToClusterVRAMUsage IlluminationAwareKDTreeRenderP
 {
 	IlluminationAwareKDTreeLearningToClusterVRAMUsage vram_usage;
 
-	vram_usage.lightcut_count			 = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.get_byte_size() +
-										   m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.get_byte_size();
+	vram_usage.lightcut_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_count.get_byte_size() +
+								m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.get_byte_size();
 	vram_usage.normal_lightcut_set_count = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_lightcut_set_count.get_byte_size();
 	vram_usage.learning_to_cluster_training_samples =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_learning_to_cluster_training_samples.get_byte_size();
@@ -912,10 +931,10 @@ IlluminationAwareKDTreeLearningToClusterVRAMUsage IlluminationAwareKDTreeRenderP
 	vram_usage.normal_face_observation_counts = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_normal_face_observation_counts.get_byte_size();
 	vram_usage.lightcut_node_indices		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_node_indices.get_byte_size();
 	vram_usage.lightcut_statistics			  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_statistics.get_byte_size() +
-												m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_batch_statistics.get_byte_size();
-	vram_usage.lightcut_cdfs				  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_cdfs.get_byte_size();
-	vram_usage.lightcut_sample_counts		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_sample_counts.get_byte_size();
-	vram_usage.lightcut_data				  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_data.get_byte_size();
+									 m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_batch_statistics.get_byte_size();
+	vram_usage.lightcut_cdfs		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_cdfs.get_byte_size();
+	vram_usage.lightcut_sample_counts = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_sample_counts.get_byte_size();
+	vram_usage.lightcut_data		  = m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_data.get_byte_size();
 	vram_usage.lightcut_representative_shading_contexts =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_representative_shading_contexts.get_byte_size();
 	vram_usage.lightcut_representative_shading_context_states =

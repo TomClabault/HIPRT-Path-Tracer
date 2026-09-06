@@ -20,6 +20,7 @@ struct IlluminationAwareKDTreeCoreDataHost
 	{
 		GenericSoAHelpers::resize<DataContainer>(m_nodes, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_node_bounds, new_node_capacity);
+		GenericSoAHelpers::resize<DataContainer>(m_parent_indices, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_node_count, 1);
 
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_nodes, new_node_capacity);
@@ -45,9 +46,10 @@ struct IlluminationAwareKDTreeCoreDataHost
 		if (maximum_size() == 0)
 			return false;
 
-		m_nodes		  = DataContainer<IlluminationAwareKDTreeNode>();
-		m_node_bounds = DataContainer<IlluminationAwareKDTreeNodeBounds>();
-		m_node_count  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nodes			 = DataContainer<IlluminationAwareKDTreeNode>();
+		m_node_bounds	 = DataContainer<IlluminationAwareKDTreeNodeBounds>();
+		m_parent_indices = DataContainer<unsigned int>();
+		m_node_count	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
@@ -79,9 +81,10 @@ struct IlluminationAwareKDTreeCoreDataHost
 	{
 		IlluminationAwareKDTreeDevice kd_tree_device;
 
-		kd_tree_device.core.nodes		  = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
-		kd_tree_device.core.node_bounds	  = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
-		kd_tree_device.core.node_capacity = static_cast<unsigned int>(maximum_size());
+		kd_tree_device.core.nodes		   = GenericSoAHelpers::get_buffer_data_ptr(m_nodes);
+		kd_tree_device.core.node_bounds	   = GenericSoAHelpers::get_buffer_data_ptr(m_node_bounds);
+		kd_tree_device.core.parent_indices = GenericSoAHelpers::get_buffer_data_ptr(m_parent_indices);
+		kd_tree_device.core.node_capacity  = static_cast<unsigned int>(maximum_size());
 
 		kd_tree_device.core.active_guiding_nodes = GenericSoAHelpers::get_buffer_data_ptr(m_active_guiding_nodes);
 		kd_tree_device.core.needs_split			 = GenericSoAHelpers::get_buffer_data_ptr(m_needs_split);
@@ -107,6 +110,7 @@ struct IlluminationAwareKDTreeCoreDataHost
 
 	DataContainer<IlluminationAwareKDTreeNode> m_nodes;
 	DataContainer<IlluminationAwareKDTreeNodeBounds> m_node_bounds;
+	DataContainer<unsigned int> m_parent_indices;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_node_count;
 
 	DataContainer<unsigned int> m_active_guiding_nodes;
