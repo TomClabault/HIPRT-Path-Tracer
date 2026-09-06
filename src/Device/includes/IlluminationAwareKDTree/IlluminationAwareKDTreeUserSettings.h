@@ -11,8 +11,8 @@
 
 struct IlluminationAwareKDTreeUserSettings
 {
-	int minimum_sample_count_for_lookahead_creation = 1000;
-	int minimum_sample_count_for_splitting			= 1000;
+	int minimum_sample_count_for_lookahead_creation = 250;
+	int minimum_sample_count_for_splitting			= 250;
 	float mean_radiance_split_threshold				= 0.15f;
 
 	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ? 32 : 6400;
