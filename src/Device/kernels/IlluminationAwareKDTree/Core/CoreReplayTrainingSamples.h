@@ -27,12 +27,28 @@ IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice 
 	if (sample_index >= sample_count)
 		return;
 
-	const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = kd_tree_device.core.training_samples[sample_index];
-	float3_t position													  = sample.position;
-	float3_t incoming_direction											  = sample.incoming_direction;
-	float spatial_radiance_weight										  = sample.spatial_radiance_weight;
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample = kd_tree_device.core.training_samples[sample_index];
+	float3_t position												= sample.position;
+	float3_t incoming_direction										= sample.incoming_direction;
+	float spatial_radiance_weight									= sample.spatial_radiance_weight;
 
-	unsigned int node_index = kd_tree_device.core.find_guiding_cell(position);
+	unsigned int node_index = sample.cached_guiding_node_index;
+	if (node_index == IlluminationAwareKDTreeCoreDevice::UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX)
+	{
+		node_index						 = kd_tree_device.core.find_guiding_cell(position);
+		sample.cached_guiding_node_index = node_index;
+	}
+	else if (node_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX &&
+			 !(kd_tree_device.core.nodes[node_index].flags & IlluminationAwareKDTreeNodeFlag_Guiding))
+	{
+		// A promotion can replace the cached guiding cell between split iterations in the same post-sample update.
+		node_index						 = kd_tree_device.core.find_guiding_cell(position);
+		sample.cached_guiding_node_index = node_index;
+	}
+
+	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+		return;
+
 	for (unsigned int level = 0; level <= IlluminationAwareKDTreeMaximumLookaheadLevelCount; level++)
 	{
 		const IlluminationAwareKDTreeNode& node = kd_tree_device.core.nodes[node_index];

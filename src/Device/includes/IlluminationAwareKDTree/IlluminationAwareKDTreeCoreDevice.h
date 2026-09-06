@@ -56,6 +56,9 @@ struct IlluminationAwareKDTreeCoreDevice
 	static constexpr float DIRECTION_LUT_MAX_U = 0.802656898f;
 	// phi^-1(1 - 1e-4) = 3.7190164854557084
 	static constexpr double Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190164854557084;
+	// Keep unresolved distinct from INVALID_NODE_INDEX so replay can resolve a sample lazily when needed.
+	static constexpr unsigned int UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX =
+		IlluminationAwareKDTreeDirectIlluminationTrainingSample::UNRESOLVED_GUIDING_NODE_INDEX;
 
 	HIPRT_DEVICE static IlluminationAwareKDTreeIlluminationSignatureDouble convert_signature_to_double(
 		const IlluminationAwareKDTreeIlluminationSignature& signature)
@@ -336,7 +339,8 @@ struct IlluminationAwareKDTreeCoreDevice
 		if (sample_index >= training_sample_capacity)
 			return;
 
-		training_samples[sample_index] = sample;
+		training_samples[sample_index]							 = sample;
+		training_samples[sample_index].cached_guiding_node_index = UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX;
 	}
 
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
@@ -368,7 +372,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.z, position.z * position.z);
 	}
 
-	HIPRT_DEVICE void accumulate_sample_into_existing_tree(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	HIPRT_DEVICE void accumulate_sample_into_existing_tree(IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
 		// The append path filters invalid samples before storing them, so every sample in the counted prefix is valid here.
 
@@ -377,7 +381,10 @@ struct IlluminationAwareKDTreeCoreDevice
 		float spatial_radiance_weight = sample.spatial_radiance_weight;
 
 		// First find the active guiding cell used at this position.
-		unsigned int node_index = find_guiding_cell(position);
+		unsigned int node_index			 = find_guiding_cell(position);
+		sample.cached_guiding_node_index = node_index;
+		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			return;
 
 		// Level zero is the guiding cell.
 		//
