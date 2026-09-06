@@ -276,9 +276,9 @@ struct IlluminationAwareKDTreeCoreDevice
 				// is not inside a guiding cell
 				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-			const float* position_components = &position.x;
+			float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
 
-			if (position_components[node.split_axis] < node.split_position)
+			if (position_component < node.split_position)
 				node_index = left_child_index;
 			else
 				node_index = right_child_index;
@@ -306,8 +306,8 @@ struct IlluminationAwareKDTreeCoreDevice
 				// position is not inside a lookahead cell
 				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-			const float* position_components = &position.x;
-			if (position_components[node.split_axis] < node.split_position)
+			float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
+			if (position_component < node.split_position)
 				node_index = left_child_index;
 			else
 				node_index = right_child_index;
@@ -405,13 +405,12 @@ struct IlluminationAwareKDTreeCoreDevice
 			if (!(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 				break;
 
-			unsigned int left_child_index	 = node.left_child_index;
-			unsigned int right_child_index	 = left_child_index + 1;
-			const float* position_components = &position.x;
-
+			unsigned int left_child_index  = node.left_child_index;
+			unsigned int right_child_index = left_child_index + 1;
 			// Follow exactly one child because the sample position belongs to
 			// exactly one k-d cell at this level.
-			if (position_components[node.split_axis] < node.split_position)
+			float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
+			if (position_component < node.split_position)
 				node_index = left_child_index;
 			else
 				node_index = right_child_index;

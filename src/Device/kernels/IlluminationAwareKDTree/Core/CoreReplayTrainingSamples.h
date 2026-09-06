@@ -48,10 +48,10 @@ IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice 
 		if (level == IlluminationAwareKDTreeMaximumLookaheadLevelCount || !(node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren))
 			break;
 
-		const float* position_components = &position.x;
-		unsigned int left_child_index	 = node.left_child_index;
+		unsigned int left_child_index = node.left_child_index;
 
-		node_index = position_components[node.split_axis] < node.split_position ? left_child_index : left_child_index + 1u;
+		float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
+		node_index				 = position_component < node.split_position ? left_child_index : left_child_index + 1u;
 	}
 }
 
