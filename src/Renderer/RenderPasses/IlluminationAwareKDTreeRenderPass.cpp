@@ -55,6 +55,8 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 {
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
+	m_host_pinned_zero.resize_host_pinned_mem(1);
+	m_host_pinned_zero.get_host_pinned_pointer()[0] = 0;
 	m_cached_current_node_count.resize_host_pinned_mem(1);
 	m_cached_current_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_guiding_node_count.resize_host_pinned_mem(1);
@@ -666,11 +668,12 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		kd_tree_device.core.current_frontier_count = current_frontier_count;
 		kd_tree_device.core.next_frontier		   = next_frontier;
 		kd_tree_device.core.next_frontier_count	   = next_frontier_count;
-		// TODO use async here
 		if (next_frontier_uses_first_buffer)
-			m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.memset_whole_buffer(0u);
+			m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.memset_whole_buffer_async(m_host_pinned_zero.get_host_pinned_pointer(), 1,
+																										   m_renderer->get_main_stream());
 		else
-			m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.memset_whole_buffer(0u);
+			m_illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier_count.memset_whole_buffer_async(m_host_pinned_zero.get_host_pinned_pointer(), 1,
+																										m_renderer->get_main_stream());
 
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &kd_tree_device, &creation_tag };

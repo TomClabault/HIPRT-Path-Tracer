@@ -224,6 +224,7 @@ private:
 	int m_nisml_hash_normal_precision			   = 3;
 	unsigned int m_nisml_hash_occupied_entry_count = 0;
 
+	OrochiBuffer<unsigned int> m_host_pinned_zero;
 	OrochiBuffer<unsigned int> m_cached_current_node_count;
 	OrochiBuffer<unsigned int> m_cached_current_guiding_node_count;
 	OrochiBuffer<unsigned int> m_cached_current_allocated_lightcut_count;
