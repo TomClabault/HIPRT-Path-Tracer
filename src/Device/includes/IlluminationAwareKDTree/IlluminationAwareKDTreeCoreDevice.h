@@ -53,132 +53,105 @@ HIPRT_DEVICE __constant__ inline float COSINE_MAX_ANGLE_DIRECTION_LUT[256] = {
 
 struct IlluminationAwareKDTreeCoreDevice
 {
-	static constexpr float DIRECTION_LUT_MAX_U = 0.802656898f;
-	// phi^-1(1 - 1e-4) = 3.7190164854557084
-	static constexpr double Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190164854557084;
+	static constexpr float DIRECTION_LUT_MAX_U		  = 0.802656898f;
+	static constexpr float Z_SCORE_1_MINUS_1E_MINUS_4 = 3.7190165f;
 	// Keep unresolved distinct from INVALID_NODE_INDEX so replay can resolve a sample lazily when needed.
 	static constexpr unsigned int UNRESOLVED_TRAINING_SAMPLE_GUIDING_NODE_INDEX =
 		IlluminationAwareKDTreeDirectIlluminationTrainingSample::UNRESOLVED_GUIDING_NODE_INDEX;
 
-	HIPRT_DEVICE static IlluminationAwareKDTreeIlluminationSignatureDouble convert_signature_to_double(
-		const IlluminationAwareKDTreeIlluminationSignature& signature)
-	{
-		return { static_cast<double>(signature.valid_observation_count), static_cast<double>(signature.scalar_radiance_sum),
-				 static_cast<double>(signature.squared_scalar_radiance_sum) };
-	}
+	static constexpr float FLOAT_RESULTANT_LENGTH_BELOW_ONE = 0.99999994f;
 
 	/**
-	 * Equation x_k = c_k * b1_k / b0_k of appendix A of the paper
+	 * Normal difference formula below "We decide to split if both cells have at least 1000 samples(Sec. 4.1) and..." in Appendix A.
 	 */
-	HIPRT_DEVICE static double scaled_mean(const IlluminationAwareKDTreeIlluminationSignatureDouble& moments, double coefficient)
+	HIPRT_DEVICE static bool normal_difference_exceeds_threshold_fp32(const IlluminationAwareKDTreeIlluminationSignature& first,
+																	  float first_coefficient,
+																	  const IlluminationAwareKDTreeIlluminationSignature& second,
+																	  float second_coefficient)
 	{
-		return coefficient * moments.scalar_radiance_sum / moments.valid_observation_count;
-	}
-
-	/**
-	 * Equation s^2_k = c_k^2 * (b0_k*b2_k - b1_k^2) / b0^3_k of appendix A of the paper
-	 */
-	HIPRT_DEVICE static double scaled_mean_variance(const IlluminationAwareKDTreeIlluminationSignatureDouble& moments, double coefficient)
-	{
-		double numerator = moments.valid_observation_count * moments.squared_scalar_radiance_sum - moments.scalar_radiance_sum * moments.scalar_radiance_sum;
-		numerator		 = numerator > 0.0 ? numerator : 0.0;
-
-		double denominator = moments.valid_observation_count * moments.valid_observation_count * moments.valid_observation_count;
-
-		return coefficient * coefficient * numerator / denominator;
-	}
-
-	/**
-	 * Normal difference formula below "We decide to split if both cells have at least 1000 samples(Sec. 4.1) and..." in Appendix A
-	 */
-	HIPRT_DEVICE static bool normal_difference_exceeds_threshold(const IlluminationAwareKDTreeIlluminationSignatureDouble& first,
-																 double first_coefficient,
-																 const IlluminationAwareKDTreeIlluminationSignatureDouble& second,
-																 double second_coefficient,
-																 double z_threshold)
-	{
-		double first_mean  = scaled_mean(first, first_coefficient);
-		double second_mean = scaled_mean(second, second_coefficient);
-		double difference  = first_mean - second_mean;
-		double variance	   = scaled_mean_variance(first, first_coefficient) + scaled_mean_variance(second, second_coefficient);
-
-		if (!(difference > 0.0))
+		float first_count  = static_cast<float>(first.valid_observation_count);
+		float second_count = static_cast<float>(second.valid_observation_count);
+		float first_mean   = first_coefficient * first.scalar_radiance_sum / first_count;
+		float second_mean  = second_coefficient * second.scalar_radiance_sum / second_count;
+		float difference   = first_mean - second_mean;
+		if (!hippt::is_finite(first_mean) || !hippt::is_finite(second_mean) || !hippt::is_finite(difference) || !(difference > 0.0f))
 			return false;
 
-		if (variance <= 1.0e-30)
+		float first_numerator	 = first_count * first.squared_scalar_radiance_sum - first.scalar_radiance_sum * first.scalar_radiance_sum;
+		float second_numerator	 = second_count * second.squared_scalar_radiance_sum - second.scalar_radiance_sum * second.scalar_radiance_sum;
+		first_numerator			 = first_numerator > 0.0f ? first_numerator : 0.0f;
+		second_numerator		 = second_numerator > 0.0f ? second_numerator : 0.0f;
+		float first_denominator	 = first_count * first_count * first_count;
+		float second_denominator = second_count * second_count * second_count;
+		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
+								   second_coefficient * second_coefficient * second_numerator / second_denominator;
+		if (!hippt::is_finite(variance))
+			return false;
+		if (variance <= 1.0e-30f)
 			return true;
 
-		double squared_difference		  = difference * difference;
-		double squared_threshold_variance = z_threshold * z_threshold * variance;
-		if (hippt::is_nan(squared_difference) || hippt::is_inf(squared_difference) || hippt::is_nan(squared_threshold_variance) ||
-			hippt::is_inf(squared_threshold_variance))
-			return difference / sqrt(variance) > z_threshold;
-
+		float squared_difference		 = difference * difference;
+		float squared_threshold_variance = Z_SCORE_1_MINUS_1E_MINUS_4 * Z_SCORE_1_MINUS_1E_MINUS_4 * variance;
+		if (!hippt::is_finite(squared_difference) || !hippt::is_finite(squared_threshold_variance))
+			return difference / hippt::sqrt(variance) > Z_SCORE_1_MINUS_1E_MINUS_4;
 		return squared_difference > squared_threshold_variance;
 	}
 
 	HIPRT_DEVICE bool should_split_samples(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float)
 	{
-		return guiding_signature_float.valid_observation_count >= static_cast<double>(user_settings.minimum_sample_count_for_splitting);
+		return guiding_signature_float.valid_observation_count >= static_cast<float>(user_settings.minimum_sample_count_for_splitting);
 	}
 
 	HIPRT_DEVICE bool should_split_mean_radiance(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float,
 												 const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature_float)
 	{
-		IlluminationAwareKDTreeIlluminationSignatureDouble guiding	 = convert_signature_to_double(guiding_signature_float);
-		IlluminationAwareKDTreeIlluminationSignatureDouble lookahead = convert_signature_to_double(lookahead_signature_float);
-
-		if (lookahead.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+		if (lookahead_signature_float.valid_observation_count < static_cast<float>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
-		IlluminationAwareKDTreeIlluminationSignatureDouble difference_cell;
-		difference_cell.valid_observation_count = guiding.valid_observation_count - lookahead.valid_observation_count > 0.0
-													  ? guiding.valid_observation_count - lookahead.valid_observation_count
-													  : 0.0;
-		difference_cell.scalar_radiance_sum =
-			guiding.scalar_radiance_sum - lookahead.scalar_radiance_sum > 0.0 ? guiding.scalar_radiance_sum - lookahead.scalar_radiance_sum : 0.0;
-		difference_cell.squared_scalar_radiance_sum = guiding.squared_scalar_radiance_sum - lookahead.squared_scalar_radiance_sum > 0.0
-														  ? guiding.squared_scalar_radiance_sum - lookahead.squared_scalar_radiance_sum
-														  : 0.0;
-
-		if (difference_cell.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+		IlluminationAwareKDTreeIlluminationSignature difference_cell{};
+		difference_cell.valid_observation_count = guiding_signature_float.valid_observation_count > lookahead_signature_float.valid_observation_count
+													  ? guiding_signature_float.valid_observation_count - lookahead_signature_float.valid_observation_count
+													  : 0u;
+		difference_cell.scalar_radiance_sum		= guiding_signature_float.scalar_radiance_sum - lookahead_signature_float.scalar_radiance_sum > 0.0f
+													  ? guiding_signature_float.scalar_radiance_sum - lookahead_signature_float.scalar_radiance_sum
+													  : 0.0f;
+		difference_cell.squared_scalar_radiance_sum =
+			guiding_signature_float.squared_scalar_radiance_sum - lookahead_signature_float.squared_scalar_radiance_sum > 0.0f
+				? guiding_signature_float.squared_scalar_radiance_sum - lookahead_signature_float.squared_scalar_radiance_sum
+				: 0.0f;
+		if (difference_cell.valid_observation_count < static_cast<float>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
-		double guiding_sample_count	  = guiding.valid_observation_count;
-		double lookahead_sample_count = lookahead.valid_observation_count;
-		double threshold			  = static_cast<double>(user_settings.mean_radiance_split_threshold);
+		float guiding_sample_count			  = static_cast<float>(guiding_signature_float.valid_observation_count);
+		float lookahead_sample_count		  = static_cast<float>(lookahead_signature_float.valid_observation_count);
+		float threshold						  = user_settings.mean_radiance_split_threshold;
+		float positive_difference_coefficient = (1.0f - threshold) * (guiding_sample_count - lookahead_sample_count);
+		float positive_lookahead_coefficient  = guiding_sample_count - (1.0f - threshold) * lookahead_sample_count;
+		if (normal_difference_exceeds_threshold_fp32(difference_cell, positive_difference_coefficient, lookahead_signature_float,
+													 positive_lookahead_coefficient))
+			return true;
 
-		double positive_difference_coefficient	 = (1.0 - threshold) * (guiding_sample_count - lookahead_sample_count);
-		double positive_lookahead_coefficient	 = guiding_sample_count - (1.0 - threshold) * lookahead_sample_count;
-		bool significantly_brighter_guiding_cell = normal_difference_exceeds_threshold(difference_cell, positive_difference_coefficient, lookahead,
-																					   positive_lookahead_coefficient, Z_SCORE_1_MINUS_1E_MINUS_4);
-
-		double negative_difference_coefficient = (1.0 + threshold) * (lookahead_sample_count - guiding_sample_count);
-		double negative_lookahead_coefficient  = (1.0 + threshold) * lookahead_sample_count - guiding_sample_count;
-		bool significantly_brighter_lookahead  = normal_difference_exceeds_threshold(difference_cell, negative_difference_coefficient, lookahead,
-																					 negative_lookahead_coefficient, Z_SCORE_1_MINUS_1E_MINUS_4);
-
-		return significantly_brighter_guiding_cell || significantly_brighter_lookahead;
+		float negative_difference_coefficient = (1.0f + threshold) * (lookahead_sample_count - guiding_sample_count);
+		float negative_lookahead_coefficient  = (1.0f + threshold) * lookahead_sample_count - guiding_sample_count;
+		return normal_difference_exceeds_threshold_fp32(difference_cell, negative_difference_coefficient, lookahead_signature_float,
+														negative_lookahead_coefficient);
 	}
 
-	HIPRT_DEVICE static double kappa_coth_kappa_minus_one(double kappa)
+	HIPRT_DEVICE static float kappa_coth_kappa_minus_one_fp32(float kappa)
 	{
-		if (kappa < 1.0e-3)
+		if (kappa < 1.0e-3f)
 		{
-			// Near zero, direct evaluation suffers catastrophic cancellation, using a Taylor expansion instead.
-			double kappa_squared = kappa * kappa;
-			double kappa_fourth	 = kappa_squared * kappa_squared;
-			double kappa_sixth	 = kappa_fourth * kappa_squared;
+			float kappa_squared = kappa * kappa;
+			float kappa_fourth	= kappa_squared * kappa_squared;
+			float kappa_sixth	= kappa_fourth * kappa_squared;
 
-			return kappa_squared / 3.0 - kappa_fourth / 45.0 + 2.0 * kappa_sixth / 945.0;
+			return kappa_squared / 3.0f - kappa_fourth / 45.0f + 2.0f * kappa_sixth / 945.0f;
 		}
 
-		// coth(kappa) is basically 1 for sufficiently large positive kappa
-		if (kappa > 20.0)
-			return kappa - 1.0;
+		if (kappa > 20.0f)
+			return kappa - 1.0f;
 
-		// coth(kappa) = cosh(kappa) / sinh(kappa) = 1/tanh(kappa)
-		return kappa / hippt::tanhd(kappa) - 1.0;
+		return kappa / hippt::tanhf(kappa) - 1.0f;
 	}
 
 	HIPRT_DEVICE static VMF estimate_mean_direction_model(const IlluminationAwareKDTreeIlluminationSignature& signature)
@@ -186,47 +159,62 @@ struct IlluminationAwareKDTreeCoreDevice
 		VMF result{};
 		result.sharpness = VMF::INVALID_SHARPNESS;
 
-		double b1 = static_cast<double>(signature.scalar_radiance_sum);
-		double b2 = static_cast<double>(signature.squared_scalar_radiance_sum);
-
-		// No positive radiance means that no directional information exists.
-		if (!(b1 > 0.0) || !(b2 > 0.0))
+		float b1 = signature.scalar_radiance_sum;
+		float b2 = signature.squared_scalar_radiance_sum;
+		if (!hippt::is_finite(b1) || !hippt::is_finite(b2) || !hippt::is_finite(signature.weighted_direction_sum.x) ||
+			!hippt::is_finite(signature.weighted_direction_sum.y) || !hippt::is_finite(signature.weighted_direction_sum.z) || !(b1 > 0.0f) || !(b2 > 0.0f))
 			return result;
 
-		double3_t direction_sum = make_double3(static_cast<double>(signature.weighted_direction_sum.x), static_cast<double>(signature.weighted_direction_sum.y),
-											   static_cast<double>(signature.weighted_direction_sum.z));
-		double direction_sum_length = hippt::length(direction_sum);
-
-		// Opposing or isotropically distributed directions may cancel almost completely, making the mean direction undefined.
-		if (!(direction_sum_length > 1.0e-20))
+		float3_t direction_sum	   = signature.weighted_direction_sum;
+		float direction_sum_length = hippt::length(direction_sum);
+		if (!hippt::is_finite(direction_sum_length) || !(direction_sum_length > 1.0e-20f))
 			return result;
 
-		double resultant_length = direction_sum_length / b1;
+		float resultant_length = direction_sum_length / b1;
+		if (!hippt::is_finite(resultant_length))
+			return result;
 
-		// The exact value lies in [0,1]. Clamp atomic-rounding violations and avoid division by zero at exactly one.
-		if (resultant_length < 0.0)
-			resultant_length = 0.0;
-		if (resultant_length > 1.0 - 1.0e-8)
-			resultant_length = 1.0 - 1.0e-8;
+		// The exact value lies in [0,1]. Keep the clamp below one representable in FP32 so the denominator remains positive.
+		if (resultant_length < 0.0f)
+			resultant_length = 0.0f;
+		if (resultant_length > FLOAT_RESULTANT_LENGTH_BELOW_ONE)
+			resultant_length = FLOAT_RESULTANT_LENGTH_BELOW_ONE;
 
-		double resultant_length_squared = resultant_length * resultant_length;
-		double underlying_concentration = resultant_length * (3.0 - resultant_length_squared) / (1.0 - resultant_length_squared);
-		double angular_term				= kappa_coth_kappa_minus_one(underlying_concentration);
+		float resultant_length_squared	   = resultant_length * resultant_length;
+		float resultant_length_denominator = 1.0f - resultant_length_squared;
+		if (!hippt::is_finite(resultant_length_denominator) || !(resultant_length_denominator > 0.0f))
+			return result;
+
+		float underlying_concentration = resultant_length * (3.0f - resultant_length_squared) / resultant_length_denominator;
+		if (!hippt::is_finite(underlying_concentration) || !(underlying_concentration >= 0.0f))
+			return result;
+
+		float angular_term = kappa_coth_kappa_minus_one_fp32(underlying_concentration);
+		if (!hippt::is_finite(angular_term))
+			return result;
 
 		// Eq. 4 of the paper
-		double y		   = (b1 * b1 / b2) * angular_term + 1.0;
-		double y_squared   = y * y;
-		double y_cubed	   = y_squared * y;
-		double numerator   = y_cubed + 1.69934861 * y_squared + 5.38753272 * y + 9.85021305;
-		double denominator = y_squared + 0.67453491 * y + 4.31180006;
+		float y			  = (b1 * b1 / b2) * angular_term + 1.0f;
+		float y_squared	  = y * y;
+		float y_cubed	  = y_squared * y;
+		float numerator	  = y_cubed + 1.69934861f * y_squared + 5.38753272f * y + 9.85021305f;
+		float denominator = y_squared + 0.67453491f * y + 4.31180006f;
+		if (!hippt::is_finite(y) || !hippt::is_finite(y_squared) || !hippt::is_finite(y_cubed) || !hippt::is_finite(numerator) ||
+			!hippt::is_finite(denominator) || !(denominator != 0.0f))
+			return result;
+
 		// Eq. 4 of the paper
-		double concentration = sqrt(((y - 1.0) * numerator / denominator) > 0.0 ? (y - 1.0) * numerator / denominator : 0.0);
+		float concentration_argument = (y - 1.0f) * numerator / denominator;
+		float concentration			 = hippt::sqrt(concentration_argument > 0.0f ? concentration_argument : 0.0f);
+		if (!hippt::is_finite(concentration))
+			return result;
 
 		direction_sum /= direction_sum_length;
+		if (!hippt::is_finite(direction_sum.x) || !hippt::is_finite(direction_sum.y) || !hippt::is_finite(direction_sum.z))
+			return result;
 
-		result.axis		 = make_float3(static_cast<float>(direction_sum.x), static_cast<float>(direction_sum.y), static_cast<float>(direction_sum.z));
+		result.axis		 = direction_sum;
 		result.sharpness = concentration;
-
 		return result;
 	}
 
@@ -236,28 +224,25 @@ struct IlluminationAwareKDTreeCoreDevice
 			return false;
 
 		// The guiding sample count is checked before its cached model is built; apply the same requirement to the lookahead.
-		if (lookahead_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+		if (lookahead_signature.valid_observation_count < static_cast<float>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
 		VMF lookahead_model = estimate_mean_direction_model(lookahead_signature);
-
-		// An undefined mean direction cannot justify an angular split.
 		if (lookahead_model.sharpness == VMF::INVALID_SHARPNESS)
 			return false;
 
-		double u = sqrt(1.0 / guiding_model.sharpness + 1.0 / lookahead_model.sharpness);
-
-		// Beyond the table's maximum uncertainty, no observed angle provides enough confidence for the requested alpha and angle threshold.
-		if (u >= DIRECTION_LUT_MAX_U)
+		float uncertainty = hippt::sqrt(1.0f / guiding_model.sharpness + 1.0f / lookahead_model.sharpness);
+		if (!hippt::is_finite(uncertainty) || uncertainty >= DIRECTION_LUT_MAX_U)
 			return false;
 
-		double table_position = u / DIRECTION_LUT_MAX_U * 255.0;
+		float table_position = uncertainty / DIRECTION_LUT_MAX_U * 255.0f;
+		if (!hippt::is_finite(table_position) || table_position < 0.0f || table_position > 255.0f)
+			return false;
 
-		uint32_t lower_index = hippt::min(static_cast<uint32_t>(table_position), 254u);
-		float interpolation	 = static_cast<float>(table_position - static_cast<double>(lower_index));
-
-		float threshold_cosine = hippt::lerp(COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index], COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index + 1], interpolation);
-		float measured_cosine  = hippt::dot(guiding_model.axis, lookahead_model.axis);
+		unsigned int lower_index = hippt::min(static_cast<unsigned int>(table_position), 254u);
+		float interpolation		 = table_position - static_cast<float>(lower_index);
+		float threshold_cosine	 = hippt::lerp(COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index], COSINE_MAX_ANGLE_DIRECTION_LUT[lower_index + 1], interpolation);
+		float measured_cosine	 = hippt::dot(guiding_model.axis, lookahead_model.axis);
 
 		// A smaller cosine means a greater observed angle which would be no good and we no to split that bad boy
 		return measured_cosine < threshold_cosine;
@@ -266,7 +251,7 @@ struct IlluminationAwareKDTreeCoreDevice
 	HIPRT_DEVICE bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
 												  const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
 	{
-		if (guiding_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+		if (guiding_signature.valid_observation_count < static_cast<float>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
 		VMF guiding_model = estimate_mean_direction_model(guiding_signature);

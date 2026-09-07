@@ -17,7 +17,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -491,8 +490,8 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_kernels[IlluminationAwareKDTreeRenderPass::ACCUMULATE_BATCH_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.core.training_sample_capacity, 1, launch_args, m_renderer->get_main_stream());
 
-		unsigned int maximum_lookahead_level_count = static_cast<unsigned int>(
-			compiler_options.get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT));
+		unsigned int maximum_lookahead_level_count =
+			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT));
 		for (unsigned int reduction_level = maximum_lookahead_level_count; reduction_level > 0; reduction_level--)
 		{
 			void* reduction_launch_args[] = { &kd_tree_device, &reduction_level };
