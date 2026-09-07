@@ -262,8 +262,9 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	lightcut_data.lightcut_size = new_lightcut_size;
 	if (accepted_split_count > 0u)
 	{
-		lightcut_data.last_refinement_iteration = lightcut_data.iteration;
-		lightcut_data.lightcut_cdf_dirty		= true;
+		lightcut_data.last_refinement_iteration	   = lightcut_data.iteration;
+		lightcut_data.lightcut_cdf_dirty		   = true;
+		lightcut_data.batch_statistics_valid_for_q = false;
 	}
 }
 #endif // #ifndef __KERNELCC__
@@ -398,8 +399,9 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 		lightcut_data.lightcut_size = new_lightcut_size;
 		if (accepted_split_count > 0u)
 		{
-			lightcut_data.last_refinement_iteration = lightcut_data.iteration;
-			lightcut_data.lightcut_cdf_dirty		= true;
+			lightcut_data.last_refinement_iteration	   = lightcut_data.iteration;
+			lightcut_data.lightcut_cdf_dirty		   = true;
+			lightcut_data.batch_statistics_valid_for_q = false;
 		}
 	}
 #else  // #ifdef __KERNELCC__

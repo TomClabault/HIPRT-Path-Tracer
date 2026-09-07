@@ -40,6 +40,8 @@ IlluminationAwareKDTree_LearningToClusterReplayQRewards(IlluminationAwareKDTreeD
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	if (!lightcut_data.Q0_initialized)
 		return;
+	if (lightcut_data.batch_statistics_valid_for_q != 0u)
+		return;
 
 	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample = kd_tree.learning_to_cluster.training_samples[sample_index];
 	unsigned int lightcut_slot = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_slots[sample_index];

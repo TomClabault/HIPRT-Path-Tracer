@@ -89,6 +89,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 	}
 
 	kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
+	lightcut_data.batch_statistics_valid_for_q						   = false;
 }
 
 #endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_REPLAY_LIGHT_CLUSTER_Q_UPDATES_H

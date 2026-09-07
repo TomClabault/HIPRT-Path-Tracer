@@ -69,6 +69,9 @@ struct IlluminationAwareKDTreeLightClusteringData
 
 	// Permanently set when the paper's Gamma stopping condition is reached
 	unsigned int refinement_stopped = false;
+
+	// Batch statistics contain the replay aggregates that can be reused by the Q update
+	unsigned int batch_statistics_valid_for_q = false;
 };
 
 struct IlluminationAwareKDTreeSGShadingContext
@@ -202,6 +205,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 		child_lightcut_data.iteration									 = 0u;
 		child_lightcut_data.last_refinement_iteration					 = 0u;
 		child_lightcut_data.refinement_stopped							 = false;
+		child_lightcut_data.batch_statistics_valid_for_q				 = false;
 
 		lightcut_sample_counts[child_lightcut_index]				   = 0u;
 		lightcut_representative_shading_contexts[child_lightcut_index] = lightcut_representative_shading_contexts[shared_lightcut_index];

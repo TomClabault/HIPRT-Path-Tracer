@@ -71,9 +71,13 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 #ifdef __KERNELCC__
 	if (slot < lightcut_data.lightcut_size)
 		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, slot, update_mode);
+
+	if (slot == 0u)
+		lightcut_data.batch_statistics_valid_for_q = true;
 #else
 	for (unsigned int lightcut_slot = 0u; lightcut_slot < lightcut_data.lightcut_size; lightcut_slot++)
 		merge_replayed_light_cluster_batch_statistics(kd_tree, lightcut_index, lightcut_slot, update_mode);
+	lightcut_data.batch_statistics_valid_for_q = true;
 #endif // #ifdef __KERNELCC__
 }
 

@@ -28,10 +28,18 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 		if (slot >= LearningToClusterMaximumLightCutSize)
 			continue;
 
+		IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+		bool preserve_batch_statistics							  = reset_sample_counts == 0u && lightcut_data.batch_statistics_valid_for_q != 0u;
+		if (preserve_batch_statistics)
+			continue;
+
 		if (reset_sample_counts != 0u && slot == 0u)
 			kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 
-		unsigned int lightcut_size = kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
+		if (slot == 0u)
+			lightcut_data.batch_statistics_valid_for_q = false;
+
+		unsigned int lightcut_size = lightcut_data.lightcut_size;
 		if (slot >= lightcut_size)
 			continue;
 
@@ -44,8 +52,13 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 
+	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
+	if (reset_sample_counts == 0u && lightcut_data.batch_statistics_valid_for_q != 0u)
+		return;
+
 	if (reset_sample_counts != 0u)
 		kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
+	lightcut_data.batch_statistics_valid_for_q = false;
 #endif // #ifdef __KERNELCC__
 
 #ifndef __KERNELCC__
