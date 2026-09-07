@@ -132,25 +132,54 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 	__syncthreads();
 
-	if (right_set_allocation_valid && parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX && thread_slot == 0)
+	if (right_set_allocation_valid && parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
-		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
+		unsigned int work_item_count = SurfaceNormalFace_Count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT *
+									   LearningToClusterMaximumLightCutSize;
+		unsigned int work_item_index = thread_slot;
+		unsigned int work_items_per_face =
+			IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT * LearningToClusterMaximumLightCutSize;
+
+		while (work_item_index < work_item_count)
 		{
+			unsigned int normal_face		  = work_item_index / work_items_per_face;
+			unsigned int face_work_item_index = work_item_index % work_items_per_face;
+			unsigned int lightcut_variant	  = face_work_item_index / LearningToClusterMaximumLightCutSize;
+			unsigned int slot				  = face_work_item_index % LearningToClusterMaximumLightCutSize;
+
 			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& parent_face =
 				illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face];
-			for (unsigned int lightcut_variant = 0; lightcut_variant < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-				 lightcut_variant++)
-			{
-				unsigned int parent_lightcut_index =
-					lightcut_variant == 0u ? parent_face.shared_lightcut_index : parent_face.per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
-				unsigned int right_lightcut_index = lightcut_variant == 0u
-														? right_set.face_lightcuts[normal_face].shared_lightcut_index
-														: right_set.face_lightcuts[normal_face].per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
+			unsigned int parent_lightcut_index =
+				lightcut_variant == 0u ? parent_face.shared_lightcut_index : parent_face.per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
+			unsigned int right_lightcut_index = lightcut_variant == 0u
+													? right_set.face_lightcuts[normal_face].shared_lightcut_index
+													: right_set.face_lightcuts[normal_face].per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
 
-				if (parent_lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX &&
-					right_lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-					illumination_aware_kd_tree.learning_to_cluster.clone_lightcut_as_fresh_child(parent_lightcut_index, right_lightcut_index);
+			if (parent_lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+			{
+				unsigned int parent_offset			= illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(parent_lightcut_index, slot);
+				float parent_estimated_importance_Q = illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset].estimated_importance_Q;
+
+				// Reset the retained left-child statistics while preserving the parent's learned importance as its prior.
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset] = {};
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset].initialize_importance_prior(parent_estimated_importance_Q);
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(parent_offset);
+
+				if (right_lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
+				{
+					unsigned int child_offset = illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(right_lightcut_index, slot);
+
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_node_indices[child_offset] =
+						illumination_aware_kd_tree.learning_to_cluster.lightcut_node_indices[parent_offset];
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[child_offset] =
+						illumination_aware_kd_tree.learning_to_cluster.lightcut_cdfs[parent_offset];
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[child_offset] = {};
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[child_offset].initialize_importance_prior(parent_estimated_importance_Q);
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(child_offset);
+				}
 			}
+
+			work_item_index += blockDim.x;
 		}
 	}
 
@@ -202,18 +231,6 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 					if (parent_variant_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 						continue;
 
-					for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
-					{
-						unsigned int parent_offset =
-							illumination_aware_kd_tree.learning_to_cluster.get_light_cluster_offset(parent_variant_lightcut_index, slot);
-						float parent_estimated_importance_Q =
-							illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset].estimated_importance_Q;
-						illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset] = {};
-						illumination_aware_kd_tree.learning_to_cluster.lightcut_statistics[parent_offset].initialize_importance_prior(
-							parent_estimated_importance_Q);
-						illumination_aware_kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(parent_offset);
-					}
-
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[parent_variant_lightcut_index].iteration				  = 0u;
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[parent_variant_lightcut_index].last_refinement_iteration = 0u;
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[parent_variant_lightcut_index].refinement_stopped		  = false;
@@ -224,6 +241,8 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_lightcut_index] =
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[parent_lightcut_index];
+				illumination_aware_kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[right_lightcut_index] =
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[parent_lightcut_index];
 
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_lightcut_index].iteration				 = 0;
 				illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_lightcut_index].last_refinement_iteration = 0;
@@ -253,6 +272,8 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_per_mesh_id_lightcut_index] =
 						illumination_aware_kd_tree.learning_to_cluster.lightcut_data[parent_per_mesh_id_lightcut_index];
+					illumination_aware_kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[right_per_mesh_id_lightcut_index] =
+						illumination_aware_kd_tree.learning_to_cluster.lightcut_representative_shading_contexts[parent_per_mesh_id_lightcut_index];
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_per_mesh_id_lightcut_index].iteration				 = 0u;
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_per_mesh_id_lightcut_index].last_refinement_iteration = 0u;
 					illumination_aware_kd_tree.learning_to_cluster.lightcut_data[right_per_mesh_id_lightcut_index].refinement_stopped		 = false;
