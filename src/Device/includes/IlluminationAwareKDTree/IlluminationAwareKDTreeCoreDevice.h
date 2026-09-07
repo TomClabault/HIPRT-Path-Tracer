@@ -7,10 +7,10 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeIlluminationSignature.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSpatialSampleMoments.h"
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeUserSettings.h"
 #include "Device/includes/PathGuiding/VMF.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -102,12 +102,19 @@ struct IlluminationAwareKDTreeCoreDevice
 		double difference  = first_mean - second_mean;
 		double variance	   = scaled_mean_variance(first, first_coefficient) + scaled_mean_variance(second, second_coefficient);
 
+		if (!(difference > 0.0))
+			return false;
+
 		if (variance <= 1.0e-30)
-			return difference > 0.0;
+			return true;
 
-		double z_score = difference / sqrt(variance);
+		double squared_difference		  = difference * difference;
+		double squared_threshold_variance = z_threshold * z_threshold * variance;
+		if (hippt::is_nan(squared_difference) || hippt::is_inf(squared_difference) || hippt::is_nan(squared_threshold_variance) ||
+			hippt::is_inf(squared_threshold_variance))
+			return difference / sqrt(variance) > z_threshold;
 
-		return z_score > z_threshold;
+		return squared_difference > squared_threshold_variance;
 	}
 
 	HIPRT_DEVICE bool should_split_samples(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature_float)
@@ -223,25 +230,22 @@ struct IlluminationAwareKDTreeCoreDevice
 		return result;
 	}
 
-	HIPRT_DEVICE bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
-												  const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
+	HIPRT_DEVICE bool should_split_mean_direction(const VMF& guiding_model, const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
 	{
-		// Use the same minimum sample requirement as mean radiance.
-		if (guiding_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting) ||
-			lookahead_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+		if (guiding_model.sharpness == VMF::INVALID_SHARPNESS)
 			return false;
 
-		VMF guiding_model	= estimate_mean_direction_model(guiding_signature);
+		// The guiding sample count is checked before its cached model is built; apply the same requirement to the lookahead.
+		if (lookahead_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+			return false;
+
 		VMF lookahead_model = estimate_mean_direction_model(lookahead_signature);
 
 		// An undefined mean direction cannot justify an angular split.
-		if (guiding_model.sharpness == VMF::INVALID_SHARPNESS || lookahead_model.sharpness == VMF::INVALID_SHARPNESS)
+		if (lookahead_model.sharpness == VMF::INVALID_SHARPNESS)
 			return false;
 
-		double denominator = guiding_model.sharpness + lookahead_model.sharpness;
-
-		double effective_concentration = guiding_model.sharpness * lookahead_model.sharpness / denominator;
-		double u					   = sqrt(1.0 / effective_concentration);
+		double u = sqrt(1.0 / guiding_model.sharpness + 1.0 / lookahead_model.sharpness);
 
 		// Beyond the table's maximum uncertainty, no observed angle provides enough confidence for the requested alpha and angle threshold.
 		if (u >= DIRECTION_LUT_MAX_U)
@@ -257,6 +261,17 @@ struct IlluminationAwareKDTreeCoreDevice
 
 		// A smaller cosine means a greater observed angle which would be no good and we no to split that bad boy
 		return measured_cosine < threshold_cosine;
+	}
+
+	HIPRT_DEVICE bool should_split_mean_direction(const IlluminationAwareKDTreeIlluminationSignature& guiding_signature,
+												  const IlluminationAwareKDTreeIlluminationSignature& lookahead_signature)
+	{
+		if (guiding_signature.valid_observation_count < static_cast<double>(user_settings.minimum_sample_count_for_splitting))
+			return false;
+
+		VMF guiding_model = estimate_mean_direction_model(guiding_signature);
+
+		return should_split_mean_direction(guiding_model, lookahead_signature);
 	}
 
 	HIPRT_DEVICE unsigned int find_guiding_cell(float3_t position) const
