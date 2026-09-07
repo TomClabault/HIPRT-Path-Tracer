@@ -159,27 +159,13 @@ HIPRT_DEVICE bool light_clustering_refinement_is_eligible(IlluminationAwareKDTre
 }
 
 #ifndef __KERNELCC__
-HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_tree,
-											  const LightTreeSGDevice& light_tree_sg,
-											  unsigned int active_guiding_node_face_index)
+HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_tree, const LightTreeSGDevice& light_tree_sg, unsigned int lightcut_index)
 {
-	unsigned int active_guiding_count = *kd_tree.core.active_guiding_node_count;
-	unsigned int lightcut_variant	  = active_guiding_node_face_index % IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-	active_guiding_node_face_index /= IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-	if (active_guiding_node_face_index >= active_guiding_count * SurfaceNormalFace_Count)
-		return;
-
-	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
-	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-		return;
-
-	const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& face =
-		kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].face_lightcuts[normal_face];
-	unsigned int lightcut_index = lightcut_variant == 0u ? face.shared_lightcut_index : face.per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
-	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
+	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+	if (lightcut_count > kd_tree.learning_to_cluster.lightcut_capacity)
+		lightcut_count = kd_tree.learning_to_cluster.lightcut_capacity;
+	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity ||
+		!light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data			 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
@@ -273,27 +259,12 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 GLOBAL_KERNEL_SIGNATURE(void)
 inline IlluminationAwareKDTree_LearningToClusterRefineLightcuts(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg, int x)
 #else
-HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree,
-											  const LightTreeSGDevice& light_tree_sg,
-											  unsigned int active_guiding_node_face_index)
+HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_tree, const LightTreeSGDevice& light_tree_sg, unsigned int lightcut_index)
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	unsigned int slot			  = threadIdx.x;
-	unsigned int lightcut_variant = active_guiding_node_face_index % IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-	active_guiding_node_face_index /= IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
-
-	unsigned int guiding_list_index = active_guiding_node_face_index / SurfaceNormalFace_Count;
-	unsigned int normal_face		= active_guiding_node_face_index % SurfaceNormalFace_Count;
-	unsigned int guiding_node_index = kd_tree.core.active_guiding_nodes[guiding_list_index];
-	unsigned int set_index			= kd_tree.core.nodes[guiding_node_index].lightcut_normal_set_index;
-	if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
-		return;
-
-	const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& face =
-		kd_tree.learning_to_cluster.normal_lightcut_sets[set_index].face_lightcuts[normal_face];
-	unsigned int lightcut_index = lightcut_variant == 0u ? face.shared_lightcut_index : face.per_mesh_id_lightcuts[lightcut_variant - 1u].lightcut_index;
-	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
+	unsigned int slot = threadIdx.x;
+	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data			 = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
@@ -413,12 +384,13 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 GLOBAL_KERNEL_SIGNATURE(void)
 IlluminationAwareKDTree_LearningToClusterRefineLightcuts(IlluminationAwareKDTreeDevice kd_tree, LightTreeSGDevice light_tree_sg)
 {
-	unsigned int active_work_count =
-		*kd_tree.core.active_guiding_node_count * SurfaceNormalFace_Count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
+	// Lightcut IDs are allocated monotonically, so lightcut_count is the live allocation prefix.
+	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+	if (lightcut_count > kd_tree.learning_to_cluster.lightcut_capacity)
+		lightcut_count = kd_tree.learning_to_cluster.lightcut_capacity;
 
-	for (unsigned int active_guiding_node_face_index = blockIdx.x; active_guiding_node_face_index < active_work_count;
-		 active_guiding_node_face_index += gridDim.x)
-		refine_light_clustering_gpu(kd_tree, light_tree_sg, active_guiding_node_face_index);
+	for (unsigned int lightcut_index = blockIdx.x; lightcut_index < lightcut_count; lightcut_index += gridDim.x)
+		refine_light_clustering_gpu(kd_tree, light_tree_sg, lightcut_index);
 }
 #endif // #ifdef __KERNELCC__
 

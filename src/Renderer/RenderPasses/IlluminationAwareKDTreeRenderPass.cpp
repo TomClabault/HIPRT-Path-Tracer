@@ -565,9 +565,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int learning_to_cluster_lightcut_block_size =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
 		unsigned int maximum_lightcut_face_block_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count;
-		unsigned int maximum_lightcut_face_work_count  = maximum_lightcut_face_block_count * learning_to_cluster_lightcut_block_size;
-		unsigned int maximum_lightcut_work_count =
-			maximum_lightcut_face_work_count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
+		unsigned int maximum_lightcut_work_count = kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size;
 		unsigned int maximum_active_allocation_blocks_per_multiprocessor =
 			static_cast<unsigned int>(m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]
 										  ->get_max_active_blocks_per_multiprocessor(static_cast<int>(learning_to_cluster_lightcut_block_size)));

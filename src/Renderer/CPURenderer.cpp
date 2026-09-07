@@ -1025,7 +1025,6 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 		IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(kd_tree_device, sample_index);
 
 	unsigned int lightcut_count		= kd_tree_device.learning_to_cluster.lightcut_count->load();
-	active_guiding_count			= kd_tree_device.core.active_guiding_node_count->load();
 	LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterInitializeLightcutQ0(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
@@ -1041,9 +1040,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 	int lightcut_refinement_rounds_per_SPP = std::max(m_illumination_aware_kd_tree_state.lightcut_refinement_rounds_per_SPP, 1);
 	for (int refinement_round = 0; refinement_round < lightcut_refinement_rounds_per_SPP; refinement_round++)
 	{
-		for (unsigned int active_guiding_node_face_index = 0; active_guiding_node_face_index < active_guiding_count * SurfaceNormalFace_Count;
-			 active_guiding_node_face_index++)
-			IlluminationAwareKDTree_LearningToClusterRefineLightcuts(kd_tree_device, light_tree_sg, active_guiding_node_face_index);
+		for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
+			IlluminationAwareKDTree_LearningToClusterRefineLightcuts(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 
 		if (refinement_round + 1 >= lightcut_refinement_rounds_per_SPP)
 			break;
