@@ -32,6 +32,7 @@ struct IlluminationAwareKDTreeDataHost
 
 		GenericSoAHelpers::resize<DataContainer>(m_any_cell_needs_split, 1);
 		GenericSoAHelpers::resize_host_pinned_mem(m_any_cell_needs_split_host_pinned, 1);
+		GenericSoAHelpers::resize_host_pinned_mem(m_node_count_before_expansion_host_pinned, 1);
 	}
 
 	void reset()
@@ -54,7 +55,11 @@ struct IlluminationAwareKDTreeDataHost
 		bool any_cell_needs_split_host_pinned_freed = m_any_cell_needs_split_host_pinned.size() > 0;
 		m_any_cell_needs_split_host_pinned			= DataContainer<unsigned char>();
 
-		return core_data_freed || nisml_data_freed || learning_to_cluster_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed;
+		bool node_count_before_expansion_host_pinned_freed = m_node_count_before_expansion_host_pinned.size() > 0;
+		m_node_count_before_expansion_host_pinned		   = DataContainer<unsigned int>();
+
+		return core_data_freed || nisml_data_freed || learning_to_cluster_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed ||
+			   node_count_before_expansion_host_pinned_freed;
 	}
 
 	std::size_t maximum_size() const
@@ -83,6 +88,7 @@ struct IlluminationAwareKDTreeDataHost
 
 	DataContainer<unsigned char> m_any_cell_needs_split;
 	DataContainer<unsigned char> m_any_cell_needs_split_host_pinned;
+	DataContainer<unsigned int> m_node_count_before_expansion_host_pinned;
 };
 
 #endif // #ifndef RENDERER_ILLUMINATION_AWARE_KD_TREE_DATA_HOST_H

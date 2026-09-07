@@ -23,23 +23,36 @@ IlluminationAwareKDTree_CoreInitializeCreatedNodeHistory(IlluminationAwareKDTree
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	const uint32_t node_index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int work_index = blockIdx.x * blockDim.x + threadIdx.x;
 #else
-	const uint32_t node_index = x;
+	unsigned int work_index = static_cast<unsigned int>(x);
 #endif
 
-	const uint32_t node_count = *kd_tree_device.core.node_count;
-	if (node_index < node_count && kd_tree_device.core.nodes[node_index].creation_tag == creation_tag)
+	unsigned int node_count_before_expansion = *kd_tree_device.core.node_count_before_expansion;
+	unsigned int node_count_after_expansion	 = *kd_tree_device.core.node_count;
+
+	if (work_index == 0)
+	{
+		// Keep the frontier produced by this iteration intact. Clear the alternate buffer for the next iteration instead.
+		*frontier_count_to_clear = 0;
+	}
+
+	if (node_count_before_expansion == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || node_count_before_expansion >= node_count_after_expansion)
+		return;
+
+#ifdef __KERNELCC__
+	unsigned int node_index = node_count_before_expansion + work_index;
+#else
+	unsigned int node_index = work_index;
+	if (node_index < node_count_before_expansion)
+		return;
+#endif
+
+	if (node_index < node_count_after_expansion && kd_tree_device.core.nodes[node_index].creation_tag == creation_tag)
 	{
 		// For newly created nodes, we initialize the history with the current batch values (batch values initialized from the sample replay kernel)
 		kd_tree_device.core.history_signatures[node_index]		= kd_tree_device.core.batch_signatures[node_index];
 		kd_tree_device.core.history_spatial_moments[node_index] = kd_tree_device.core.batch_spatial_moments[node_index];
-	}
-
-	if (node_index == 0)
-	{
-		// Keep the frontier produced by this iteration intact. Clear the alternate buffer for the next iteration instead.
-		*frontier_count_to_clear = 0;
 	}
 }
 

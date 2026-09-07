@@ -84,7 +84,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		float first_denominator	 = first_count * first_count * first_count;
 		float second_denominator = second_count * second_count * second_count;
 		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
-								   second_coefficient * second_coefficient * second_numerator / second_denominator;
+														   second_coefficient * second_coefficient * second_numerator / second_denominator;
 		if (!hippt::is_finite(variance))
 			return false;
 		if (variance <= 1.0e-30f)
@@ -466,6 +466,10 @@ struct IlluminationAwareKDTreeCoreDevice
 		// Read the current value without modifying it.
 		unsigned int current_count = hippt::atomic_fetch_add(node_count, 0u);
 
+		// Capture the first node index allocated during this expansion pass. The host resets this marker before each level.
+		if (node_count_before_expansion != nullptr)
+			hippt::atomic_compare_exchange(node_count_before_expansion, IlluminationAwareKDTreeNode::INVALID_NODE_INDEX, current_count);
+
 		// Another thread may modify node_count between our read and write,
 		// so retry until we either reserve the range or discover that the
 		// pool is full.
@@ -505,8 +509,9 @@ struct IlluminationAwareKDTreeCoreDevice
 	IlluminationAwareKDTreeNodeBounds* node_bounds = nullptr;
 	unsigned int* parent_indices				   = nullptr;
 
-	AtomicType<unsigned int>* node_count = nullptr;
-	unsigned int node_capacity			 = 0;
+	AtomicType<unsigned int>* node_count				  = nullptr;
+	AtomicType<unsigned int>* node_count_before_expansion = nullptr;
+	unsigned int node_capacity							  = 0;
 
 	unsigned int* active_guiding_nodes					= nullptr;
 	AtomicType<unsigned int>* active_guiding_node_count = nullptr;

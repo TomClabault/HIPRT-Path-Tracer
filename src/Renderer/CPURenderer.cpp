@@ -962,6 +962,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 			else
 				frontier_count_to_clear = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.data();
 
+			*kd_tree_device.core.node_count_before_expansion = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
 			const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
 			const unsigned int current_frontier_count_value = current_frontier_count->load();
 			for (unsigned int frontier_index = 0; frontier_index < current_frontier_count_value; frontier_index++)

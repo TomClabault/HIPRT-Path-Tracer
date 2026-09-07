@@ -692,6 +692,12 @@ void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRe
 		else
 			frontier_count_to_clear = m_illumination_aware_kd_tree.m_kd_tree_data.m_current_frontier_count.get_atomic_device_pointer();
 
+		unsigned int* node_count_before_expansion_host_pinned =
+			m_illumination_aware_kd_tree.m_node_count_before_expansion_host_pinned.get_host_pinned_pointer();
+		*node_count_before_expansion_host_pinned = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+		m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count_before_expansion.memset_whole_buffer_async(node_count_before_expansion_host_pinned, 1,
+																											m_renderer->get_main_stream());
+
 		unsigned int creation_tag	  = m_next_creation_tag++;
 		void* expansion_launch_args[] = { &kd_tree_device, &creation_tag };
 		m_kernels[IlluminationAwareKDTreeRenderPass::EXPAND_ONE_LOOKAHEAD_LEVEL_KERNEL_ID]->launch_asynchronous(
@@ -890,7 +896,8 @@ IlluminationAwareKDTreeVRAMUsage IlluminationAwareKDTreeRenderPass::get_vram_usa
 	vram_usage.nodes		  = m_illumination_aware_kd_tree.m_kd_tree_data.m_nodes.get_byte_size();
 	vram_usage.node_bounds	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_bounds.get_byte_size();
 	vram_usage.parent_indices = m_illumination_aware_kd_tree.m_kd_tree_data.m_parent_indices.get_byte_size();
-	vram_usage.node_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.get_byte_size();
+	vram_usage.node_count	  = m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count.get_byte_size() +
+							m_illumination_aware_kd_tree.m_kd_tree_data.m_node_count_before_expansion.get_byte_size();
 
 	vram_usage.active_guiding_nodes		 = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_nodes.get_byte_size();
 	vram_usage.active_guiding_node_count = m_illumination_aware_kd_tree.m_kd_tree_data.m_active_guiding_node_count.get_byte_size();

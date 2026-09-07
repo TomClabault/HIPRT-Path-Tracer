@@ -22,6 +22,7 @@ struct IlluminationAwareKDTreeCoreDataHost
 		GenericSoAHelpers::resize<DataContainer>(m_node_bounds, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_parent_indices, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_node_count, 1);
+		GenericSoAHelpers::resize<DataContainer>(m_node_count_before_expansion, 1);
 
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_nodes, new_node_capacity);
 		GenericSoAHelpers::resize<DataContainer>(m_active_guiding_node_count, 1);
@@ -46,10 +47,11 @@ struct IlluminationAwareKDTreeCoreDataHost
 		if (maximum_size() == 0)
 			return false;
 
-		m_nodes			 = DataContainer<IlluminationAwareKDTreeNode>();
-		m_node_bounds	 = DataContainer<IlluminationAwareKDTreeNodeBounds>();
-		m_parent_indices = DataContainer<unsigned int>();
-		m_node_count	 = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_nodes						  = DataContainer<IlluminationAwareKDTreeNode>();
+		m_node_bounds				  = DataContainer<IlluminationAwareKDTreeNodeBounds>();
+		m_parent_indices			  = DataContainer<unsigned int>();
+		m_node_count				  = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
+		m_node_count_before_expansion = DataContainer<GenericAtomicType<unsigned int, DataContainer>>();
 
 		m_active_guiding_nodes		= DataContainer<unsigned int>();
 		m_active_guiding_node_count = DataContainer<unsigned int>();
@@ -91,10 +93,11 @@ struct IlluminationAwareKDTreeCoreDataHost
 		kd_tree_device.core.current_frontier	 = GenericSoAHelpers::get_buffer_data_ptr(m_current_frontier);
 		kd_tree_device.core.next_frontier		 = GenericSoAHelpers::get_buffer_data_ptr(m_next_frontier);
 
-		kd_tree_device.core.active_guiding_node_count = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
-		kd_tree_device.core.node_count				  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
-		kd_tree_device.core.current_frontier_count	  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
-		kd_tree_device.core.next_frontier_count		  = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
+		kd_tree_device.core.active_guiding_node_count	= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_active_guiding_node_count);
+		kd_tree_device.core.node_count					= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count);
+		kd_tree_device.core.node_count_before_expansion = GenericSoAHelpers::get_buffer_data_atomic_ptr(m_node_count_before_expansion);
+		kd_tree_device.core.current_frontier_count		= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_current_frontier_count);
+		kd_tree_device.core.next_frontier_count			= GenericSoAHelpers::get_buffer_data_atomic_ptr(m_next_frontier_count);
 
 		kd_tree_device.core.training_samples		 = GenericSoAHelpers::get_buffer_data_ptr(m_training_samples);
 		kd_tree_device.core.training_sample_capacity = static_cast<unsigned int>(m_training_samples.size());
@@ -112,6 +115,7 @@ struct IlluminationAwareKDTreeCoreDataHost
 	DataContainer<IlluminationAwareKDTreeNodeBounds> m_node_bounds;
 	DataContainer<unsigned int> m_parent_indices;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_node_count;
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_node_count_before_expansion;
 
 	DataContainer<unsigned int> m_active_guiding_nodes;
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_active_guiding_node_count;

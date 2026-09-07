@@ -23,6 +23,11 @@ IlluminationAwareKDTree_CoreReplayTrainingSamples(IlluminationAwareKDTreeDevice 
 	unsigned int sample_index = x;
 #endif
 
+	unsigned int node_count_before_expansion = *kd_tree_device.core.node_count_before_expansion;
+	unsigned int node_count_after_expansion	 = *kd_tree_device.core.node_count;
+	if (node_count_before_expansion == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || node_count_before_expansion >= node_count_after_expansion)
+		return;
+
 	unsigned int sample_count = *kd_tree_device.core.training_sample_count;
 	if (sample_index >= sample_count)
 		return;
