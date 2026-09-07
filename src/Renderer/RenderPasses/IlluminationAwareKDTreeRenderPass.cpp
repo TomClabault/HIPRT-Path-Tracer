@@ -564,18 +564,34 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		unsigned int learning_to_cluster_lightcut_block_size =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
-		unsigned int maximum_lightcut_face_work_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count * learning_to_cluster_lightcut_block_size;
+		unsigned int maximum_lightcut_face_block_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count;
+		unsigned int maximum_lightcut_face_work_count  = maximum_lightcut_face_block_count * learning_to_cluster_lightcut_block_size;
 		unsigned int maximum_lightcut_work_count =
 			maximum_lightcut_face_work_count * IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
+		unsigned int maximum_active_allocation_blocks_per_multiprocessor =
+			static_cast<unsigned int>(m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]
+										  ->get_max_active_blocks_per_multiprocessor(static_cast<int>(learning_to_cluster_lightcut_block_size)));
+		unsigned int maximum_allocation_worker_block_count =
+			maximum_active_allocation_blocks_per_multiprocessor * static_cast<unsigned int>(m_renderer->get_device_properties().multiProcessorCount * 2);
+		unsigned int allocation_worker_block_count = std::min(maximum_lightcut_face_block_count, maximum_allocation_worker_block_count);
+		unsigned int allocation_worker_work_count  = allocation_worker_block_count * learning_to_cluster_lightcut_block_size;
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_face_work_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
+			learning_to_cluster_lightcut_block_size, 1, allocation_worker_work_count, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_INITIALIZE_SHADING_CONTEXTS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, learning_to_cluster_launch_args, m_renderer->get_main_stream());
 
-		unsigned int maximum_lightcut_statistics_work_count = kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size;
-		LightTreeSGDevice light_tree_sg						= render_data.light_tree_sg;
-		void* lightcut_launch_args[]						= { &kd_tree_device, &light_tree_sg };
+		unsigned int maximum_lightcut_statistics_block_count = kd_tree_device.learning_to_cluster.lightcut_capacity;
+		unsigned int maximum_lightcut_statistics_work_count	 = maximum_lightcut_statistics_block_count * learning_to_cluster_lightcut_block_size;
+		unsigned int maximum_active_reset_blocks_per_multiprocessor =
+			static_cast<unsigned int>(m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]
+										  ->get_max_active_blocks_per_multiprocessor(static_cast<int>(learning_to_cluster_lightcut_block_size)));
+		unsigned int maximum_reset_worker_block_count =
+			maximum_active_reset_blocks_per_multiprocessor * static_cast<unsigned int>(m_renderer->get_device_properties().multiProcessorCount * 2);
+		unsigned int reset_worker_block_count = std::min(maximum_lightcut_statistics_block_count, maximum_reset_worker_block_count);
+		unsigned int reset_worker_work_count  = reset_worker_block_count * learning_to_cluster_lightcut_block_size;
+		LightTreeSGDevice light_tree_sg		  = render_data.light_tree_sg;
+		void* lightcut_launch_args[]		  = { &kd_tree_device, &light_tree_sg };
 		IlluminationAwareKDTreeStatisticsUpdateMode statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::UPDATE_ALL;
 		void* lightcut_statistics_update_launch_args[]					   = { &kd_tree_device, &statistics_update_mode };
 		void* lightcut_statistics_launch_args[]							   = { &kd_tree_device };
@@ -585,8 +601,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, lightcut_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, reset_batch_statistics_launch_args,
-			m_renderer->get_main_stream());
+			learning_to_cluster_lightcut_block_size, 1, reset_worker_work_count, 1, reset_batch_statistics_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REPLAY_STATISTICS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, lightcut_launch_args, m_renderer->get_main_stream());
@@ -616,8 +631,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 			reset_sample_counts = 1u;
 			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
-				learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, reset_batch_statistics_launch_args,
-				m_renderer->get_main_stream());
+				learning_to_cluster_lightcut_block_size, 1, reset_worker_work_count, 1, reset_batch_statistics_launch_args, m_renderer->get_main_stream());
 
 			m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REPLAY_STATISTICS_KERNEL_ID]->launch_asynchronous(
 				256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, lightcut_launch_args, m_renderer->get_main_stream());
@@ -630,8 +644,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		reset_sample_counts = 0u;
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
-			learning_to_cluster_lightcut_block_size, 1, maximum_lightcut_statistics_work_count, 1, reset_batch_statistics_launch_args,
-			m_renderer->get_main_stream());
+			learning_to_cluster_lightcut_block_size, 1, reset_worker_work_count, 1, reset_batch_statistics_launch_args, m_renderer->get_main_stream());
 
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_REPLAY_Q_REWARDS_KERNEL_ID]->launch_asynchronous(
 			256, 1, kd_tree_device.learning_to_cluster.training_sample_capacity, 1, lightcut_launch_args, m_renderer->get_main_stream());

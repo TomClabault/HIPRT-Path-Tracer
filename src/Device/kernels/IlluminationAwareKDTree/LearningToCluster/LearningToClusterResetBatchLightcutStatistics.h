@@ -18,18 +18,26 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	unsigned int lightcut_index = blockIdx.x;
-	unsigned int slot			= threadIdx.x;
-	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
-	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity || slot >= LearningToClusterMaximumLightCutSize)
-		return;
+	unsigned int slot = threadIdx.x;
+	for (unsigned int lightcut_index = blockIdx.x;; lightcut_index += gridDim.x)
+	{
+		unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+		if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
+			break;
 
-	if (reset_sample_counts != 0u && slot == 0u)
-		kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
+		if (slot >= LearningToClusterMaximumLightCutSize)
+			continue;
 
-	unsigned int lightcut_size = kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
-	if (slot >= lightcut_size)
-		return;
+		if (reset_sample_counts != 0u && slot == 0u)
+			kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
+
+		unsigned int lightcut_size = kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
+		if (slot >= lightcut_size)
+			continue;
+
+		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+		kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(offset);
+	}
 #else  // #ifdef __KERNELCC__
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
@@ -40,19 +48,14 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 		kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index] = 0u;
 #endif // #ifdef __KERNELCC__
 
-#ifdef __KERNELCC__
-	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
-	kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(offset);
-
-#else // #ifdef __KERNELCC__
+#ifndef __KERNELCC__
 	unsigned int lightcut_size = kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
 	for (unsigned int lightcut_slot = 0u; lightcut_slot < lightcut_size; lightcut_slot++)
 	{
 		unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, lightcut_slot);
 		kd_tree.learning_to_cluster.lightcut_batch_statistics.reset(offset);
 	}
-
-#endif // #ifdef __KERNELCC__
+#endif // #ifndef __KERNELCC__
 }
 
 #endif // #ifndef DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_RESET_BATCH_LIGHTCUT_STATISTICS_H
