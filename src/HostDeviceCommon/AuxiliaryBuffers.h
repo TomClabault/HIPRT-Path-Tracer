@@ -31,6 +31,10 @@ struct AuxiliaryBuffers
 	// where each pixel can have a different number of sample
 	int* pixel_sample_count = nullptr;
 
+	// Per pixel sum of luminance of samples. Used for adaptive sampling
+	// This buffer should not be pre-divided by the number of samples
+	float* pixel_luminance = nullptr;
+
 	// Per pixel sum of squared luminance of samples. Used for adaptive sampling
 	// This buffer should not be pre-divided by the number of samples
 	float* pixel_squared_luminance = nullptr;

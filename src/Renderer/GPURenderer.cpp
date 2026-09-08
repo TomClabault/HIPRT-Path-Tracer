@@ -35,7 +35,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3_t>>();
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer  = std::make_shared<OrochiBuffer<ColorRGB32F>>();
-	m_pixels_converged_sample_count_buffer			   = std::make_shared<OrochiBuffer<int>>();
 
 	m_DEBUG_BUFFER_ULL_1.resize(1024);
 	m_DEBUG_BUFFER_ULL_2.resize(1024);
@@ -335,9 +334,32 @@ void GPURenderer::prepare_adaptive_sampling_buffers()
 {
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		m_pixels_converged_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
-		m_pixels_squared_luminance_buffer.resize(m_render_resolution.x * m_render_resolution.y);
-		m_pixels_sample_count_buffer.resize(m_render_resolution.x * m_render_resolution.y);
+		bool buffers_were_resized				   = false;
+		unsigned int adaptive_sampling_buffer_size = m_render_resolution.x * m_render_resolution.y;
+
+		if (m_pixels_converged_sample_count_buffer.size() == 0)
+		{
+			m_pixels_converged_sample_count_buffer.resize(adaptive_sampling_buffer_size);
+			buffers_were_resized = true;
+		}
+		if (m_pixels_luminance_buffer.size() == 0)
+		{
+			m_pixels_luminance_buffer.resize(adaptive_sampling_buffer_size);
+			buffers_were_resized = true;
+		}
+		if (m_pixels_squared_luminance_buffer.size() == 0)
+		{
+			m_pixels_squared_luminance_buffer.resize(adaptive_sampling_buffer_size);
+			buffers_were_resized = true;
+		}
+		if (m_pixels_sample_count_buffer.size() == 0)
+		{
+			m_pixels_sample_count_buffer.resize(adaptive_sampling_buffer_size);
+			buffers_were_resized = true;
+		}
+
+		if (buffers_were_resized)
+			m_render_data_buffers_invalidated = true;
 	}
 }
 
@@ -424,7 +446,8 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
+		m_pixels_converged_sample_count_buffer.resize(new_width * new_height);
+		m_pixels_luminance_buffer.resize(new_width * new_height);
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
 	}
@@ -504,8 +527,6 @@ void GPURenderer::map_buffers_for_render()
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo  = m_denoiser_buffers.map_albedo_buffer();
-	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->get_device_pointer();
 }
 
 void GPURenderer::unmap_buffers()
@@ -568,10 +589,6 @@ std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_
 	return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer;
 }
 
-std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer()
-{
-	return m_pixels_converged_sample_count_buffer;
-}
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
 {
 	return m_status_buffers_values;
@@ -859,8 +876,17 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.last_frame_ray_colors = m_last_frame_ray_colors.get_device_pointer();
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
-			m_render_data.aux_buffers.pixel_sample_count	  = m_pixels_sample_count_buffer.get_device_pointer();
-			m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
+			m_render_data.aux_buffers.pixel_sample_count		   = m_pixels_sample_count_buffer.get_device_pointer();
+			m_render_data.aux_buffers.pixel_luminance			   = m_pixels_luminance_buffer.get_device_pointer();
+			m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixels_squared_luminance_buffer.get_device_pointer();
+			m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer.get_device_pointer();
+		}
+		else
+		{
+			m_render_data.aux_buffers.pixel_sample_count		   = nullptr;
+			m_render_data.aux_buffers.pixel_luminance			   = nullptr;
+			m_render_data.aux_buffers.pixel_squared_luminance	   = nullptr;
+			m_render_data.aux_buffers.pixel_converged_sample_count = nullptr;
 		}
 
 		m_render_data.aux_buffers.pixel_active				   = m_pixel_active.get_device_pointer();

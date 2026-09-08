@@ -14,8 +14,7 @@ public:
 	enum Value
 	{
 		UNINITIALIZED,
-		FLOAT3,
-		INT
+		FLOAT3
 	};
 
 	constexpr DisplayTextureType() : m_value(Value::FLOAT3) {}
@@ -27,9 +26,6 @@ public:
 		{
 		case DisplayTextureType::FLOAT3:
 			return GL_RGB32F;
-
-		case DisplayTextureType::INT:
-			return GL_R32I;
 
 		default:
 			throw std::runtime_error("Invalid value of DisplayTextureType");
@@ -43,9 +39,6 @@ public:
 		case DisplayTextureType::FLOAT3:
 			return GL_RGB;
 
-		case DisplayTextureType::INT:
-			return GL_RED_INTEGER;
-
 		default:
 			throw std::runtime_error("Invalid value of DisplayTextureType");
 		}
@@ -58,9 +51,6 @@ public:
 		case DisplayTextureType::FLOAT3:
 			return GL_FLOAT;
 
-		case DisplayTextureType::INT:
-			return GL_INT;
-
 		default:
 			throw std::runtime_error("Invalid value of DisplayTextureType");
 		}
@@ -72,9 +62,6 @@ public:
 		{
 		case DisplayTextureType::FLOAT3:
 			return sizeof(float) * 3;
-
-		case DisplayTextureType::INT:
-			return sizeof(int);
 
 		default:
 			throw std::runtime_error("Invalid value of DisplayTextureType");

@@ -238,13 +238,19 @@ void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 
 	if (buffers_needed)
 	{
+		bool pixels_luminance_needs_resize				= m_renderer->m_pixels_luminance_buffer.size() == 0;
 		bool pixels_squared_luminance_needs_resize		= m_renderer->m_pixels_squared_luminance_buffer.size() == 0;
 		bool pixels_sample_count_needs_resize			= m_renderer->m_pixels_sample_count_buffer.size() == 0;
-		bool pixels_converged_sample_count_needs_resize = m_renderer->m_pixels_converged_sample_count_buffer->size() == 0;
+		bool pixels_converged_sample_count_needs_resize = m_renderer->m_pixels_converged_sample_count_buffer.size() == 0;
 
-		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize || pixels_converged_sample_count_needs_resize)
+		if (pixels_luminance_needs_resize || pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize ||
+			pixels_converged_sample_count_needs_resize)
 			// At least on buffer is going to be resized so buffers are invalidated
 			m_renderer->m_render_data_buffers_invalidated = true;
+
+		if (pixels_luminance_needs_resize)
+			// Only allocating if it isn't already
+			m_renderer->m_pixels_luminance_buffer.resize(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
 
 		if (pixels_squared_luminance_needs_resize)
 			// Only allocating if it isn't already
@@ -255,16 +261,17 @@ void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 			m_renderer->m_pixels_sample_count_buffer.resize(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
 
 		if (pixels_converged_sample_count_needs_resize)
-			m_renderer->m_pixels_converged_sample_count_buffer->resize(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
+			m_renderer->m_pixels_converged_sample_count_buffer.resize(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
 	}
 	else
 	{
-		if (m_renderer->m_pixels_squared_luminance_buffer.size() > 0 || m_renderer->m_pixels_sample_count_buffer.size() > 0 ||
-			m_renderer->m_pixels_converged_sample_count_buffer->size() > 0)
+		if (m_renderer->m_pixels_luminance_buffer.size() > 0 || m_renderer->m_pixels_squared_luminance_buffer.size() > 0 ||
+			m_renderer->m_pixels_sample_count_buffer.size() > 0 || m_renderer->m_pixels_converged_sample_count_buffer.size() > 0)
 		{
+			m_renderer->m_pixels_luminance_buffer.free();
 			m_renderer->m_pixels_squared_luminance_buffer.free();
 			m_renderer->m_pixels_sample_count_buffer.free();
-			m_renderer->m_pixels_converged_sample_count_buffer->free();
+			m_renderer->m_pixels_converged_sample_count_buffer.free();
 
 			m_renderer->m_render_data_buffers_invalidated = true;
 		}

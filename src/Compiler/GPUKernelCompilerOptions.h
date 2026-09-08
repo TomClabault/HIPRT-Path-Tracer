@@ -124,6 +124,9 @@ public:
 	static const std::string NISML_DEBUG_MODE;
 	static const std::string NISML_DEBUG_MODE_HEATMAP_INDEX;
 
+	static const std::string MEGAKERNEL_DEBUG_MODE;
+	static const std::string MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX;
+
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
 	static const std::string ENVMAP_SAMPLING_DO_BILINEAR_FILTERING;

@@ -11,6 +11,7 @@
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
+#include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"

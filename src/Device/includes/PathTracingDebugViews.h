@@ -9,6 +9,70 @@
 #include "Device/includes/PathTracing.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 
+HIPRT_DEVICE bool path_tracing_has_adaptive_sampling_debug_buffers(const HIPRTRenderData& render_data)
+{
+	return render_data.render_settings.enable_adaptive_sampling && render_data.render_settings.has_access_to_adaptive_sampling_buffers();
+}
+
+HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
+{
+	if (!path_tracing_has_adaptive_sampling_debug_buffers(render_data))
+		return false;
+
+	int minimum_sample_count = render_data.render_settings.adaptive_sampling_min_samples;
+	int maximum_sample_count = static_cast<int>(render_data.render_settings.sample_number + 1);
+	if (maximum_sample_count < minimum_sample_count)
+		maximum_sample_count = minimum_sample_count;
+
+	int pixel_converged_sample_count = render_data.aux_buffers.pixel_converged_sample_count[pixel_index];
+	if (pixel_converged_sample_count == -1)
+		pixel_converged_sample_count = maximum_sample_count;
+
+	if (maximum_sample_count == minimum_sample_count)
+	{
+		out_debug_value = 1.0f;
+		return true;
+	}
+
+	float clamped_sample_count =
+		hippt::clamp(static_cast<float>(minimum_sample_count), static_cast<float>(maximum_sample_count), static_cast<float>(pixel_converged_sample_count));
+	out_debug_value = (clamped_sample_count - static_cast<float>(minimum_sample_count)) /
+					  (static_cast<float>(maximum_sample_count) - static_cast<float>(minimum_sample_count));
+
+	return true;
+}
+
+HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_color(const HIPRTRenderData& render_data, int pixel_index, ColorRGB32F& out_debug_color)
+{
+	out_debug_color = DEFAULT_DEBUG_COLOR;
+
+#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+	float adaptive_sampling_debug_value;
+	if (path_tracing_compute_adaptive_sampling_debug_value(render_data, pixel_index, adaptive_sampling_debug_value))
+	{
+		out_debug_color =
+			map_0_1_to_heatmap_color_by_index<MegakernelDebugModeHeatmapIndex>(adaptive_sampling_debug_value) * (render_data.render_settings.sample_number + 1);
+		return true;
+	}
+#elif MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+	if (path_tracing_has_adaptive_sampling_debug_buffers(render_data))
+	{
+		out_debug_color = ColorRGB32F(0.0f) * (render_data.render_settings.sample_number + 1);
+
+		int pixel_converged_sample_count = render_data.aux_buffers.pixel_converged_sample_count[pixel_index];
+		// The buffer is initialized to -1 and is assigned a sample count exactly when the pixel converges.
+		if (pixel_converged_sample_count != -1)
+			out_debug_color = ColorRGB32F(1.0f) * (render_data.render_settings.sample_number + 1);
+
+		return true;
+	}
+#else																   // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+	return false;
+#endif																   // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+
+	return false;
+}
+
 HIPRT_DEVICE unsigned int path_tracing_compute_nisml_hash_key(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
@@ -496,7 +560,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 	// Modifying the ray color such that we display some debug color to the screen
 
-#if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
+	path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, out_debug_color);
+#elif NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
@@ -514,7 +580,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 		out_debug_color *= (render_data.render_settings.sample_number + 1);
 		out_debug_color *= hippt::dot(shading_normal, view_direction);
 	}
-#elif ReGIRDebugMode != REGIR_DEBUG_MODE_NO_DEBUG // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+#elif ReGIRDebugMode != REGIR_DEBUG_MODE_NO_DEBUG				// #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 #if ReGIRDebugMode == REGIR_DEBUG_MODE_GRID_CELLS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{

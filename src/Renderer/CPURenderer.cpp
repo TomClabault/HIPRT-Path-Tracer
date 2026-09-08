@@ -161,6 +161,7 @@ void CPURenderer::setup_buffers()
 	m_denoiser_normals.resize(width * height, float3_t{ 0.0f, 0.0f, 0.0f });
 	m_pixel_sample_count.resize(width * height, 0);
 	m_pixel_converged_sample_count.resize(width * height, 0);
+	m_pixel_luminance.resize(width * height, 0.0f);
 	m_pixel_squared_luminance.resize(width * height, 0.0f);
 
 	unsigned int new_cell_count_primary_hits   = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
@@ -474,6 +475,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.denoiser_normals			   = m_denoiser_normals.data();
 	m_render_data.aux_buffers.pixel_sample_count		   = m_pixel_sample_count.data();
 	m_render_data.aux_buffers.pixel_converged_sample_count = m_pixel_converged_sample_count.data();
+	m_render_data.aux_buffers.pixel_luminance			   = m_pixel_luminance.data();
 	m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixel_squared_luminance.data();
 	m_render_data.aux_buffers.still_one_ray_active		   = &m_still_one_ray_active;
 	m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;

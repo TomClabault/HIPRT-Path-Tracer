@@ -10,6 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/PathTracingDebugViews.h"
 #include "Device/includes/Random.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
@@ -63,13 +64,15 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_global_offset_counter[0]					= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance[pixel_index]					= -1.0f;
-#endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
+	   // RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
 		// These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
 		render_data.aux_buffers.pixel_sample_count[pixel_index]			  = 0;
+		render_data.aux_buffers.pixel_luminance[pixel_index]			  = 0;
 		render_data.aux_buffers.pixel_squared_luminance[pixel_index]	  = 0;
 		render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
 	}
@@ -127,7 +130,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char FILL_GBUFFER_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) CameraRays()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -191,6 +194,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		if (!sampling_needed)
 		{
 			rescale_samples_for_display(render_data, pixel_index);
+
+#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
+			ColorRGB32F debug_color;
+			if (path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, debug_color))
+				render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+#endif // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
 
 			render_data.aux_buffers.pixel_active[pixel_index] = false;
 

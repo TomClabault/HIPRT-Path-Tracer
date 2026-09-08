@@ -16,6 +16,7 @@
 #ifndef __KERNELCC__
 #define LearningToClusterDebugModeHeatmapIndex HEATMAP_INDEX_BLUE_GREEN_RED
 #define NISMLDebugModeHeatmapIndex			   HEATMAP_INDEX_BLUE_GREEN_RED
+#define MegakernelDebugModeHeatmapIndex		   HEATMAP_INDEX_BLUE_GREEN_RED
 #endif
 
 #endif // HOST_DEVICE_COMMON_KERNEL_OPTIONS_HEATMAP_OPTIONS_H // #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_HEATMAP_OPTIONS_H

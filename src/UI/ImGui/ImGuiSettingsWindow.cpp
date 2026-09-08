@@ -9,6 +9,7 @@
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
+#include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
@@ -649,8 +650,6 @@ void ImGuiSettingsWindow::display_view_selector()
 		{ "- Denoiser blend", DisplayViewType::DENOISED_BLEND },
 		{ "- Denoiser - Normals", DisplayViewType::DISPLAY_DENOISER_NORMALS },
 		{ "- Denoiser - Albedo", DisplayViewType::DISPLAY_DENOISER_ALBEDO },
-		{ "- Pixel convergence heatmap", DisplayViewType::PIXEL_CONVERGENCE_HEATMAP },
-		{ "- Converged pixels map", DisplayViewType::PIXEL_CONVERGED_MAP },
 		{ "- White Furnace Threshold", DisplayViewType::WHITE_FURNACE_THRESHOLD }
 	};
 
@@ -719,14 +718,8 @@ void ImGuiSettingsWindow::display_view_selector()
 
 bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_type)
 {
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
 	switch (display_view_type)
 	{
-	case DisplayViewType::PIXEL_CONVERGED_MAP:
-	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
-		return !render_settings.has_access_to_adaptive_sampling_buffers();
-
 	case DisplayViewType::GMON_BLEND:
 		return !m_renderer->gmon_used();
 
@@ -744,11 +737,6 @@ void ImGuiSettingsWindow::display_view_tooltip(DisplayViewType display_view_type
 {
 	switch (display_view_type)
 	{
-	case DisplayViewType::PIXEL_CONVERGED_MAP:
-	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
-		ImGuiRenderer::add_tooltip("This display view is unavailabe because adaptive sampling isn't in use. Click to enable adaptive sampling.");
-		return;
-
 	case DisplayViewType::GMON_BLEND:
 		ImGuiRenderer::add_tooltip("This display view is disabled because GMoN isn't in use. Click to enable GMoN.");
 		return;
@@ -764,18 +752,8 @@ void ImGuiSettingsWindow::display_view_tooltip(DisplayViewType display_view_type
 
 void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_view_type)
 {
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
 	switch (display_view_type)
 	{
-	case DisplayViewType::PIXEL_CONVERGED_MAP:
-	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
-		render_settings.enable_adaptive_sampling = true;
-
-		m_render_window->set_render_dirty(true);
-
-		return;
-
 	case DisplayViewType::GMON_BLEND:
 		// Enabling GMoN
 		m_renderer->get_render_data().buffers.gmon_estimator.use_gmon = true;
@@ -1258,7 +1236,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::BeginDisabled(!render_settings.accumulate);
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+			{
+				if (!render_settings.enable_adaptive_sampling &&
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE, MEGAKERNEL_DEBUG_MODE_NO_DEBUG);
+					m_renderer->recompile_kernels();
+				}
+
 				m_render_window->set_render_dirty(true);
+			}
 			if (!render_settings.accumulate)
 				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI ||
@@ -1273,7 +1260,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 										   "setup becomes inefficient.");
 			}
 
-			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Minimum samples", &render_settings.adaptive_sampling_min_samples))
 				m_render_window->set_render_dirty(true);
@@ -1288,6 +1274,49 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			// !Cannot use adaptive sampling without accumulation
+			ImGui::EndDisabled();
+
+			const char* adaptive_sampling_debug_view_items[]	= { "- No debug", "- Pixel convergence heatmap", "- Converged pixels map" };
+			const char* adaptive_sampling_debug_view_tooltips[] = {
+				"Disable the adaptive sampling debug view.",
+				"Displays the number of samples required for each pixel to converge. The selected heatmap maps lower sample counts to its first color and "
+				"higher "
+				"sample counts to its last color.",
+				"Displays pixels that have converged according to adaptive sampling or the pixel stop noise threshold."
+			};
+			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+			if (ImGuiRenderer::ComboWithTooltips(
+					"Debug view##adaptive-sampling", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE),
+					adaptive_sampling_debug_view_items, IM_ARRAYSIZE(adaptive_sampling_debug_view_items), adaptive_sampling_debug_view_tooltips))
+			{
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
+				{
+					if (!render_settings.enable_adaptive_sampling)
+						render_settings.enable_adaptive_sampling = true;
+
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE, NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE, REGIR_DEBUG_MODE_NO_DEBUG);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE, LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
+														   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
+				}
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP)
+			{
+				const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
+				if (ImGui::Combo("Debug view heatmap##adaptive-sampling",
+								 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX),
+								 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+			}
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2491,7 +2520,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2672,7 +2701,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+		 m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 
 	ImGui::BeginDisabled(!regir_render_pass);
 	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
@@ -3753,7 +3782,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4036,7 +4065,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4507,7 +4536,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -6119,7 +6148,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

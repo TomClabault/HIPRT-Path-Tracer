@@ -10,7 +10,8 @@
 
 HIPRT_DEVICE static float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
 {
-	float luminance	  = render_data.buffers.accumulated_ray_colors[pixel_index].luminance();
+	// The accumulated framebuffer can contain a debug view, so adaptive sampling keeps its luminance sum in a separate buffer.
+	float luminance	  = render_data.aux_buffers.pixel_luminance[pixel_index];
 	average_luminance = luminance / (pixel_sample_count + 1);
 
 	float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
@@ -83,10 +84,10 @@ HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, i
 
 		// The value of pixel_converged will be used outside of this function
 		pixel_converged =
-								// Converged enough
-								(confidence_interval <= render_settings.stop_pixel_noise_threshold * average_luminance)
-								// At least 2 samples because we can't evaluate the variance with only 1 sample
-								&& (render_settings.sample_number > 1);
+			// Converged enough
+			(confidence_interval <= render_settings.stop_pixel_noise_threshold * average_luminance)
+			// At least 2 samples because we can't evaluate the variance with only 1 sample
+			&& (render_settings.sample_number > 1);
 
 		int current_converged_count = aux_buffers.pixel_converged_sample_count[pixel_index];
 		if (pixel_converged && current_converged_count == -1)

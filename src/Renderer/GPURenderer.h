@@ -223,7 +223,6 @@ public:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_interop_buffer();
 	std::shared_ptr<OrochiBuffer<float3_t>> get_denoiser_normals_AOV_no_interop_buffer();
 	std::shared_ptr<OrochiBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_no_interop_buffer();
-	std::shared_ptr<OrochiBuffer<int>>& get_pixels_converged_sample_count_buffer();
 	/**
 	 * Returns a structure that contains the values of
 	 * various one-variable buffers of the renderer such
@@ -429,11 +428,13 @@ private:
 	DenoiserBuffersGPUData m_denoiser_buffers;
 
 	OrochiBuffer<ColorRGB32F> m_last_frame_ray_colors;
+	// Used to calculate the average luminance of each pixel for adaptive sampling
+	OrochiBuffer<float> m_pixels_luminance_buffer;
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;
 	// This buffer stores the number of samples accumulated *until* a pixel has converged
 	// ("converged" is according to adaptive sampling or pixel stop noise threshold)
-	std::shared_ptr<OrochiBuffer<int>> m_pixels_converged_sample_count_buffer;
+	OrochiBuffer<int> m_pixels_converged_sample_count_buffer;
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;

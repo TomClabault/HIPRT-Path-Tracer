@@ -153,6 +153,7 @@ private:
 
 	std::vector<int> m_pixel_sample_count;
 	std::vector<int> m_pixel_converged_sample_count;
+	std::vector<float> m_pixel_luminance;
 	std::vector<float> m_pixel_squared_luminance;
 	unsigned char m_still_one_ray_active = true;
 	AtomicType<unsigned int> m_stop_noise_threshold_count;

@@ -44,12 +44,6 @@ public:
 	bool update_selected_display_view();
 
 	/**
-	 * Returns true if the current display view needs the adaptive sampling buffers for
-	 * displaying
-	 */
-	bool current_display_view_needs_adaptive_sampling_buffers();
-
-	/**
 	 * Displays the currently active texture view onto the viewport
 	 */
 	void display();
@@ -98,21 +92,17 @@ private:
 	 * for the display view selected.
 	 *
 	 * For example, if the user decided to display normals in the viewport, we'll need
-	 * the display texture to be a float3_t (RGB32F) texture. If the user is displaying
-	 * the adaptive sampling heatmap, we'll only need an integer texture.
+	 * the display texture to be a float3_t (RGB32F) texture. All current display views
+	 * use this floating-point RGB texture format.
 	 *
 	 * This function deletes/recreates the texture everytime its required format changes
-	 * (i.e. when the current texture was a float3_t and we asked for an integer texture)
-	 because we don't want to keep every single possible texture in VRAM. This may cause
-	 * a (very) small stutter but that's probably expected since we're asking for a different view
-	 * to show up in the viewport
+	 * (i.e. when the current texture type differs from the requested texture type)
+	 because we don't want to keep every single possible texture in VRAM.
+	 * This may cause a (very) small stutter but that's probably expected since we're asking for a different view to show up in the viewport
 	 */
 	void internal_recreate_display_textures_from_display_view(DisplayViewType display_view);
-	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture,
-										   GLenum display_texture_unit,
-										   DisplayTextureType new_texture_type,
-										   int width,
-										   int height);
+	void internal_recreate_display_texture(
+		std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height);
 
 	/**
 	 * Automatically changes the display view used if some conditions are met (or not met).
@@ -132,10 +122,10 @@ private:
 	// If != UNDEFINED, then someone has requested a display view change and the display view change will be applied upon calling update().
 	// Why is this necessary and why not just change the DisplayView directly?
 	//		- Picture this scenario: we're currently displaying the default display view.
-	//		- The display view is immediately changed to the AdaptiveSamplingMap view.
+	//		- The display view is immediately changed to another display view.
 	//		- These two display views use different display texture types. The default display view
-	//			uses a float3_t texture type whereas the AdaptiveSamplingMap view uses a int texture type
-	//		- Changing the display view will thus trigger a display texture re-creation (to change the type of the texture)
+	//			uses the required texture type
+	//		- Changing the display view may trigger a display texture re-creation
 	//		- This texture re-creation means that the current texture (which has just been recreated) contains no data
 	//			and data needs to be uploaded to it. However, data is only uploaded when a kernel frame render is completed
 	//			(and not at every RenderWindow run() loop iteration).
@@ -150,11 +140,8 @@ private:
 	// Display textures & their display type
 	//
 	// The display type is the format of the texel of the texture used by the display program.
-	// This is useful because we have several types of programs using several
-	// types of textures. For example, displaying normals on the screen requires float3_t textures
-	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints).
-	// This means that, depending on the display view selected, we're going to have to use the proper
-	// OpenGL texture format type and that's what the DisplayTextureType is for.
+	// All current display views use float3_t textures; the UNINITIALIZED value is retained so
+	// unused texture slots can be released and recreated when a view needs them again.
 	//
 	// The textures should be the same resolution as the render resolution.
 	// They have nothing to do with the resolution of the viewport.

@@ -204,10 +204,10 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 			// Otherwise, if not bounce 2, we do want to take the scaling into
 			// account so this if will fail and the envmap color will never be unscaled
 			if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
-#else // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#else  // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 			if (!render_data.world_settings.envmap_scale_background_intensity)
 #endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-				// Un-scaling the envmap if the user doesn't want to scale the background
+	   // Un-scaling the envmap if the user doesn't want to scale the background
 				skysphere_color /= (render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
 		}
 	}
@@ -285,8 +285,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		{
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
-			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
-													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_sum = render_data.buffers.accumulated_ray_colors[pixel_index] /
+												 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);
@@ -305,10 +305,12 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 
 	if (sample_is_in_subset && render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		float squared_luminance_of_samples = ray_color.luminance() * ray_color.luminance();
+		float luminance_of_sample		   = ray_color.luminance();
+		float squared_luminance_of_samples = luminance_of_sample * luminance_of_sample;
 		// We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
 		// Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
 		render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
+		render_data.aux_buffers.pixel_luminance[pixel_index] += luminance_of_sample;
 	}
 
 	if (sample_is_in_subset && render_data.buffers.gmon_estimator.sets != nullptr)
