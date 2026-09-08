@@ -331,6 +331,16 @@ void GPURenderer::prepare_light_sampling_data_structures()
 	m_light_tree_sg_sampling_data_structure.recompute_if_needed_or_free(get_active_render_graph().get_compiler_options(), true);
 }
 
+void GPURenderer::prepare_adaptive_sampling_buffers()
+{
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		m_pixels_converged_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
+		m_pixels_squared_luminance_buffer.resize(m_render_resolution.x * m_render_resolution.y);
+		m_pixels_sample_count_buffer.resize(m_render_resolution.x * m_render_resolution.y);
+	}
+}
+
 void GPURenderer::download_status_buffers()
 {
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_status_buffers.still_one_ray_active_buffer.get_device_pointer(),
@@ -413,10 +423,8 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
-
-	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
+		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
 	}

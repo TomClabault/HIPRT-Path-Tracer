@@ -204,6 +204,7 @@ void GPURendererThread::pre_frame_render_update(float delta_time)
 {
 	m_renderer->step_animations(delta_time);
 	m_renderer->prepare_light_sampling_data_structures();
+	m_renderer->prepare_adaptive_sampling_buffers();
 
 	m_renderer->update_render_data();
 

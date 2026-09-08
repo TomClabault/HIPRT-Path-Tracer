@@ -134,6 +134,7 @@ public:
 	void step_animations(float delta_time);
 
 	void prepare_light_sampling_data_structures();
+	void prepare_adaptive_sampling_buffers();
 
 	/**
 	 * Blocking that waits for all the operations queued on
