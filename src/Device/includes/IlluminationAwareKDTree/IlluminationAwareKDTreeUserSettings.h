@@ -15,7 +15,7 @@ struct IlluminationAwareKDTreeUserSettings
 	int minimum_sample_count_for_splitting			= 250;
 	float mean_radiance_split_threshold				= 0.15f;
 
-	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ? 32 : (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER ? 32 : 64);
+	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ? 32 : (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER ? 8 : 64);
 
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 };
