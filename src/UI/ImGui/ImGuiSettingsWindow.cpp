@@ -1454,14 +1454,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
 				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 32;
+					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML;
 					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 				}
 				else if (nee_estimator == LSS_LEARNING_TO_CLUSTER)
 				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = 64;
+					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER;
 					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
