@@ -47,7 +47,7 @@
 /**
  * Maximum depth of physical lookahead nodes created below a guiding cell.
  */
-#define IlluminationAwareKDTreeMaximumLookaheadLevelCount 4
+#define IlluminationAwareKDTreeMaximumLookaheadLevelCount 5
 
 /**
  * Debug view for the illumination-aware KD-tree.
