@@ -810,16 +810,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		{
 			ImGui::Text("Capture done! Add it to the graph with a legend name");
 
-			float min_error = 10000.0f;
-			float max_error = 0.0f;
-			for (int i = 0; i < number_of_captures; i++)
-			{
-				min_error = std::min(min_error, current_recorded_ys.at(i));
-				max_error = std::max(max_error, current_recorded_ys.at(i));
-			}
-
-			ImGui::Text("Min / max error: %f / %f", min_error, max_error);
-
 			// Stop rendering to avoid burning the PC
 			m_render_window->get_application_settings()->max_sample_count = 1;
 		}
@@ -879,24 +869,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::EndDisabled();
 		}
 
-		for (int i = 0; i < recorded_legends.size(); i++)
-		{
-			float min_error = 100000.0f;
-			float max_error = 0.0f;
-
-			for (int j = 0; j < number_of_captures; j++)
-			{
-				min_error = std::min(min_error, recorded_ys_list.at(i).at(j));
-				max_error = std::max(max_error, recorded_ys_list.at(i).at(j));
-			}
-
-			ImGui::TreePush(std::string("Min max error tree ##" + std::to_string(i)).c_str());
-			ImGui::Text(" Min / max error: %f / %f", min_error, max_error);
-			ImGui::TreePop();
-		}
-		ImGui::TreePop();
-
-		ImGui::TreePop();
+		ImGui::TreePop(); // ImGui::TreePush("Recorded data tree");
+		ImGui::TreePop(); // ImGui::TreePush("Add capture data tree");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Current graph:");
@@ -905,6 +879,9 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::SliderInt("Plot width", &m_convergence_graph_widget.get_plot_width(), 1, 1000);
 		ImGui::SliderInt("Plot height", &m_convergence_graph_widget.get_plot_height(), 1, 1000);
 		ImGui::InputText("Plot title", &m_convergence_graph_widget.get_plot_title());
+		ImGui::Checkbox("Log X axis", &m_convergence_graph_widget.get_log_x_axis());
+		ImGui::SameLine();
+		ImGui::Checkbox("Log Y axis", &m_convergence_graph_widget.get_log_y_axis());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -919,6 +896,11 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
 		std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "Root MSE" : "Mean FLIP Error";
+
+		if (m_convergence_graph_widget.get_log_x_axis())
+			x_axis_name += " (logarithmic)";
+		if (m_convergence_graph_widget.get_log_y_axis())
+			y_axis_name += " (logarithmic)";
 
 		m_convergence_graph_widget.set_x_axis_name(x_axis_name);
 		m_convergence_graph_widget.set_y_axis_name(y_axis_name);

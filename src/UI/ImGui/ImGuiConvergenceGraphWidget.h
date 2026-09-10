@@ -29,6 +29,8 @@ public:
 	int& get_plot_height();
 	float& get_line_weight();
 	std::string& get_plot_title();
+	bool& get_log_x_axis();
+	bool& get_log_y_axis();
 	std::string& get_x_axis_name();
 	std::string& get_y_axis_name();
 
@@ -56,6 +58,8 @@ private:
 	int m_plot_height		  = 400;
 	float m_line_weight		  = 3.0f;
 	std::string m_plot_title  = "Convergence graph";
+	bool m_log_x_axis		  = false;
+	bool m_log_y_axis		  = false;
 	std::string m_x_axis_name = "Samples";
 	std::string m_y_axis_name = "Error (RMSE)";
 

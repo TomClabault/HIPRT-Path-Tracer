@@ -29,6 +29,8 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 	{
 		ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
 		ImPlot::SetupAxes(m_x_axis_name.c_str(), m_y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+		ImPlot::SetupAxisScale(ImAxis_X1, m_log_x_axis ? ImPlotScale_Log10 : ImPlotScale_Linear);
+		ImPlot::SetupAxisScale(ImAxis_Y1, m_log_y_axis ? ImPlotScale_Log10 : ImPlotScale_Linear);
 
 		for (size_t i = 0; i < m_recorded_legends.size(); i++)
 		{
@@ -68,6 +70,16 @@ float& ImGuiConvergenceGraphWidget::get_line_weight()
 std::string& ImGuiConvergenceGraphWidget::get_plot_title()
 {
 	return m_plot_title;
+}
+
+bool& ImGuiConvergenceGraphWidget::get_log_x_axis()
+{
+	return m_log_x_axis;
+}
+
+bool& ImGuiConvergenceGraphWidget::get_log_y_axis()
+{
+	return m_log_y_axis;
 }
 
 std::string& ImGuiConvergenceGraphWidget::get_x_axis_name()
