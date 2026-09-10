@@ -611,6 +611,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		std::vector<std::string>& recorded_legends		  = m_convergence_graph_widget.get_recorded_legends();
 		std::vector<std::vector<float>>& recorded_xs_list = m_convergence_graph_widget.get_recorded_xs_list();
 		std::vector<std::vector<float>>& recorded_ys_list = m_convergence_graph_widget.get_recorded_ys_list();
+		std::vector<int>& recorded_line_styles			  = m_convergence_graph_widget.get_recorded_line_styles();
 		if (ImGui::InputInt("Number of captures", &number_of_captures))
 		{
 			if (recorded_xs_list.size() > 0)
@@ -828,48 +829,9 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			recorded_legends.push_back(legend);
 			recorded_xs_list.push_back(current_recorded_xs);
 			recorded_ys_list.push_back(current_recorded_ys);
+			recorded_line_styles.push_back(0);
 		}
 		ImGui::EndDisabled();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		ImGui::SeparatorText("Recorded data");
-		ImGui::TreePush("Recorded data tree");
-		for (int i = 0; i < recorded_legends.size(); i++)
-		{
-			std::string& leg = recorded_legends.at(i);
-			ImGui::Text("- ");
-			ImGui::SameLine();
-			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg);
-			ImGui::SameLine();
-			if (ImGui::Button(std::string("Delete##" + std::to_string(i)).c_str()))
-			{
-				recorded_legends.erase(recorded_legends.begin() + i);
-				recorded_xs_list.erase(recorded_xs_list.begin() + i);
-				recorded_ys_list.erase(recorded_ys_list.begin() + i);
-			}
-
-			ImGui::BeginDisabled(i == 0);
-			ImGui::SameLine();
-			if (ImGui::ArrowButton(std::string("Up##" + std::to_string(i)).c_str(), ImGuiDir_Up))
-			{
-				std::swap(recorded_legends.at(i), recorded_legends.at(i - 1));
-				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i - 1));
-				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i - 1));
-			}
-			ImGui::EndDisabled();
-
-			ImGui::BeginDisabled(i == recorded_legends.size() - 1);
-			ImGui::SameLine();
-			if (ImGui::ArrowButton(std::string("Down##" + std::to_string(i)).c_str(), ImGuiDir_Down))
-			{
-				std::swap(recorded_legends.at(i), recorded_legends.at(i + 1));
-				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i + 1));
-				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i + 1));
-			}
-			ImGui::EndDisabled();
-		}
-
-		ImGui::TreePop(); // ImGui::TreePush("Recorded data tree");
 		ImGui::TreePop(); // ImGui::TreePush("Add capture data tree");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -884,6 +846,53 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Checkbox("Log Y axis", &m_convergence_graph_widget.get_log_y_axis());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Recorded data");
+		ImGui::TreePush("Recorded data tree");
+		for (int i = 0; i < recorded_legends.size(); i++)
+		{
+			std::string& leg = recorded_legends.at(i);
+			ImGui::Text("- ");
+			ImGui::SameLine();
+			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg);
+			ImGui::SameLine();
+			if (ImGui::Button(std::string("Delete##" + std::to_string(i)).c_str()))
+			{
+				recorded_legends.erase(recorded_legends.begin() + i);
+				recorded_xs_list.erase(recorded_xs_list.begin() + i);
+				recorded_ys_list.erase(recorded_ys_list.begin() + i);
+				recorded_line_styles.erase(recorded_line_styles.begin() + i);
+				continue;
+			}
+
+			ImGui::BeginDisabled(i == 0);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton(std::string("Up##" + std::to_string(i)).c_str(), ImGuiDir_Up))
+			{
+				std::swap(recorded_legends.at(i), recorded_legends.at(i - 1));
+				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i - 1));
+				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i - 1));
+				std::swap(recorded_line_styles.at(i), recorded_line_styles.at(i - 1));
+			}
+			ImGui::EndDisabled();
+
+			ImGui::BeginDisabled(i == recorded_legends.size() - 1);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton(std::string("Down##" + std::to_string(i)).c_str(), ImGuiDir_Down))
+			{
+				std::swap(recorded_legends.at(i), recorded_legends.at(i + 1));
+				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i + 1));
+				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i + 1));
+				std::swap(recorded_line_styles.at(i), recorded_line_styles.at(i + 1));
+			}
+			ImGui::EndDisabled();
+
+			ImGui::Text("Line style:");
+			ImGui::SameLine();
+			ImGui::RadioButton(std::string("Plain##" + std::to_string(i)).c_str(), &recorded_line_styles.at(i), 0);
+			ImGui::SameLine();
+			ImGui::RadioButton(std::string("Dashed##" + std::to_string(i)).c_str(), &recorded_line_styles.at(i), 1);
+		}
+		ImGui::TreePop(); // ImGui::TreePush("Recorded data tree");
 
 		if (ImGui::Button("Screenshot graph"))
 		{

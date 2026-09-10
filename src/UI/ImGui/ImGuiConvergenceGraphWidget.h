@@ -37,6 +37,7 @@ public:
 	std::vector<std::string>& get_recorded_legends();
 	std::vector<std::vector<float>>& get_recorded_xs_list();
 	std::vector<std::vector<float>>& get_recorded_ys_list();
+	std::vector<int>& get_recorded_line_styles();
 
 	bool screenshot_graph_to_file(const std::string_view filename);
 	void screenshot_graph_to_clipboard();
@@ -67,6 +68,7 @@ private:
 	// The final list of points that will be used for graphing
 	std::vector<std::vector<float>> m_recorded_xs_list;
 	std::vector<std::vector<float>> m_recorded_ys_list;
+	std::vector<int> m_recorded_line_styles;
 
 	ImGuiConvergenceGraphWidgetScreenshotter m_screenshoter;
 };
