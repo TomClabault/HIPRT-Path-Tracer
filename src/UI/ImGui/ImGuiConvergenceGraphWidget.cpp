@@ -98,26 +98,30 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 								ImVec4(176 / 255.0f, 122 / 255.0f, 161 / 255.0f, 1.0f), ImVec4(255 / 255.0f, 157 / 255.0f, 167 / 255.0f, 1.0f),
 								ImVec4(156 / 255.0f, 117 / 255.0f, 95 / 255.0f, 1.0f),	ImVec4(186 / 255.0f, 176 / 255.0f, 172 / 255.0f, 1.0f) };
 
-			if (i >= 10)
-				ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, m_line_weight);
+			int color_index = m_recorded_color_indices.at(i);
+			ImVec4 line_color;
+			if (color_index >= 0)
+				line_color = color_index < 10 ? colors[color_index] : ImPlot::GetColormapColor(color_index);
+			else if (i >= 10)
+				line_color = ImPlot::GetColormapColor((int)i);
 			else
-				ImPlot::SetNextLineStyle(colors[i], m_line_weight);
+				line_color = colors[i];
 
 			if (m_recorded_line_styles.at(i) == 1)
 			{
-				ImVec4 transparent_line_color = i >= 10 ? ImPlot::GetColormapColor((int)i) : colors[i];
+				ImVec4 transparent_line_color = line_color;
 				transparent_line_color.w	  = 0.0f;
 				ImPlot::SetNextLineStyle(transparent_line_color, m_line_weight);
 				std::string dashed_fit_label = "##dashed_fit_" + std::to_string(i);
 				ImPlot::PlotLine(dashed_fit_label.c_str(), m_recorded_xs_list.at(i).data(), m_recorded_ys_list.at(i).data(), m_recorded_xs_list.at(0).size());
 
-				ImVec4 line_color = i >= 10 ? ImPlot::GetColormapColor((int)i) : colors[i];
 				ImPlot::SetNextLineStyle(line_color, m_line_weight);
 				ImPlot::PlotDummy(m_recorded_legends.at(i).c_str());
 				draw_dashed_line(m_recorded_xs_list.at(i), m_recorded_ys_list.at(i), ImGui::ColorConvertFloat4ToU32(line_color), m_line_weight);
 			}
 			else
 			{
+				ImPlot::SetNextLineStyle(line_color, m_line_weight);
 				ImPlot::PlotLine(m_recorded_legends.at(i).c_str(), m_recorded_xs_list.at(i).data(), m_recorded_ys_list.at(i).data(),
 								 m_recorded_xs_list.at(0).size());
 			}
@@ -185,6 +189,11 @@ std::vector<std::vector<float>>& ImGuiConvergenceGraphWidget::get_recorded_ys_li
 std::vector<int>& ImGuiConvergenceGraphWidget::get_recorded_line_styles()
 {
 	return m_recorded_line_styles;
+}
+
+std::vector<int>& ImGuiConvergenceGraphWidget::get_recorded_color_indices()
+{
+	return m_recorded_color_indices;
 }
 
 bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const std::string_view filename)

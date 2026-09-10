@@ -612,6 +612,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		std::vector<std::vector<float>>& recorded_xs_list = m_convergence_graph_widget.get_recorded_xs_list();
 		std::vector<std::vector<float>>& recorded_ys_list = m_convergence_graph_widget.get_recorded_ys_list();
 		std::vector<int>& recorded_line_styles			  = m_convergence_graph_widget.get_recorded_line_styles();
+		std::vector<int>& recorded_color_indices		  = m_convergence_graph_widget.get_recorded_color_indices();
 		if (ImGui::InputInt("Number of captures", &number_of_captures))
 		{
 			if (recorded_xs_list.size() > 0)
@@ -830,6 +831,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			recorded_xs_list.push_back(current_recorded_xs);
 			recorded_ys_list.push_back(current_recorded_ys);
 			recorded_line_styles.push_back(0);
+			recorded_color_indices.push_back(-1);
 		}
 		ImGui::EndDisabled();
 		ImGui::TreePop(); // ImGui::TreePush("Add capture data tree");
@@ -861,6 +863,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				recorded_xs_list.erase(recorded_xs_list.begin() + i);
 				recorded_ys_list.erase(recorded_ys_list.begin() + i);
 				recorded_line_styles.erase(recorded_line_styles.begin() + i);
+				recorded_color_indices.erase(recorded_color_indices.begin() + i);
 				continue;
 			}
 
@@ -872,6 +875,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i - 1));
 				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i - 1));
 				std::swap(recorded_line_styles.at(i), recorded_line_styles.at(i - 1));
+				std::swap(recorded_color_indices.at(i), recorded_color_indices.at(i - 1));
 			}
 			ImGui::EndDisabled();
 
@@ -883,14 +887,22 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i + 1));
 				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i + 1));
 				std::swap(recorded_line_styles.at(i), recorded_line_styles.at(i + 1));
+				std::swap(recorded_color_indices.at(i), recorded_color_indices.at(i + 1));
 			}
 			ImGui::EndDisabled();
+
+			ImGui::TreePush(std::string("Line style tree##" + std::to_string(i)).c_str());
 
 			ImGui::Text("Line style:");
 			ImGui::SameLine();
 			ImGui::RadioButton(std::string("Plain##" + std::to_string(i)).c_str(), &recorded_line_styles.at(i), 0);
 			ImGui::SameLine();
 			ImGui::RadioButton(std::string("Dashed##" + std::to_string(i)).c_str(), &recorded_line_styles.at(i), 1);
+			ImGui::InputInt(std::string("Color index override##" + std::to_string(i)).c_str(), &recorded_color_indices.at(i));
+			if (recorded_color_indices.at(i) < -1)
+				recorded_color_indices.at(i) = -1;
+
+			ImGui::TreePop(); // ImGui::TreePush(std::string("Line style tree##" + std::to_string(i)).c_str());
 		}
 		ImGui::TreePop(); // ImGui::TreePush("Recorded data tree");
 
