@@ -11,15 +11,33 @@
 #include "Utils/Utils.h"
 
 #include "implot.h"
+#include "implot_internal.h"
 #include "stb_image_write.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 extern ImGuiLogger g_imgui_logger;
 
 namespace
 {
+	struct DashedLegendSwatch
+	{
+		ImGuiID item_id;
+		ImU32 color;
+	};
+
+	struct LegendLabelComparator
+	{
+		ImPlotItemGroup* items;
+
+		bool operator()(int left_index, int right_index) const
+		{
+			return std::strcmp(items->GetLegendLabel(left_index), items->GetLegendLabel(right_index)) < 0;
+		}
+	};
+
 	// Keep dash lengths visible and consistent when the plot data or axis scale changes.
 	void draw_dashed_line(const std::vector<float>& x_values, const std::vector<float>& y_values, ImU32 color, float line_weight)
 	{
@@ -71,6 +89,69 @@ namespace
 		}
 		ImPlot::PopPlotClipRect();
 	}
+
+	void draw_dashed_legend_swatches(ImPlotPlot& plot, const std::vector<DashedLegendSwatch>& dashed_legend_swatches, float line_weight)
+	{
+		if (dashed_legend_swatches.empty() || plot.Items.GetLegendCount() == 0)
+			return;
+
+		float text_height	  = ImGui::GetTextLineHeight();
+		float icon_size		  = text_height;
+		float icon_shrink	  = 2.0f;
+		float sum_label_width = 0.0f;
+		bool vertical		  = !ImHasFlag(plot.Items.Legend.Flags, ImPlotLegendFlags_Horizontal);
+		std::vector<int> legend_indices;
+
+		for (int legend_index = 0; legend_index < plot.Items.GetLegendCount(); legend_index++)
+			legend_indices.push_back(legend_index);
+
+		if (ImHasFlag(plot.Items.Legend.Flags, ImPlotLegendFlags_Sort))
+			std::sort(legend_indices.begin(), legend_indices.end(), LegendLabelComparator{ &plot.Items });
+
+		ImDrawList* draw_list = ImGui::GetWindowDrawList();
+		ImGui::PushClipRect(plot.Items.Legend.RectClamped.Min, plot.Items.Legend.RectClamped.Max, true);
+
+		for (int display_index = 0; display_index < (int)legend_indices.size(); display_index++)
+		{
+			int legend_index  = ImHasFlag(plot.Items.Legend.Flags, ImPlotLegendFlags_Reverse) ? (int)legend_indices.size() - 1 - display_index : display_index;
+			ImPlotItem* item  = plot.Items.GetLegendItem(legend_indices.at(legend_index));
+			const char* label = plot.Items.GetLegendLabel(legend_indices.at(legend_index));
+			float label_width = ImGui::CalcTextSize(label, nullptr, true).x;
+			float top_left_x  = plot.Items.Legend.Rect.Min.x + ImPlot::GetStyle().LegendInnerPadding.x;
+			float top_left_y  = plot.Items.Legend.Rect.Min.y + ImPlot::GetStyle().LegendInnerPadding.y;
+			if (vertical)
+				top_left_y += display_index * (text_height + ImPlot::GetStyle().LegendSpacing.y);
+			else
+				top_left_x += display_index * (icon_size + ImPlot::GetStyle().LegendSpacing.x) + sum_label_width;
+			ImVec2 top_left = ImVec2(top_left_x, top_left_y);
+			sum_label_width += label_width;
+
+			ImRect icon_bounds;
+			icon_bounds.Min = ImVec2(top_left.x + icon_shrink, top_left.y + icon_shrink);
+			icon_bounds.Max = ImVec2(top_left.x + icon_size - icon_shrink, top_left.y + icon_size - icon_shrink);
+
+			for (size_t swatch_index = 0; swatch_index < dashed_legend_swatches.size(); swatch_index++)
+			{
+				if (dashed_legend_swatches.at(swatch_index).item_id != item->ID)
+					continue;
+
+				float swatch_line_weight = std::max(1.0f, std::min(line_weight, icon_bounds.GetHeight()));
+				float line_y			 = (icon_bounds.Min.y + icon_bounds.Max.y) * 0.5f;
+				float dash_length		 = 3.0f;
+				float gap_length		 = 2.0f;
+				float line_start		 = icon_bounds.Min.x;
+				while (line_start < icon_bounds.Max.x)
+				{
+					float line_end = std::min(line_start + dash_length, icon_bounds.Max.x);
+					draw_list->AddLine(ImVec2(line_start, line_y), ImVec2(line_end, line_y), dashed_legend_swatches.at(swatch_index).color, swatch_line_weight);
+					line_start += dash_length + gap_length;
+				}
+				break;
+			}
+		}
+
+		ImGui::PopClipRect();
+	}
 } // namespace
 
 ImGuiConvergenceGraphWidget::ImGuiConvergenceGraphWidget() : m_screenshoter(this) {}
@@ -85,6 +166,9 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 	// TODO save the data to a file such that we can keep plotting accross sessions?
 	if (ImPlot::BeginPlot(m_plot_title.c_str(), ImVec2(plotSize.x, plotSize.y)))
 	{
+		ImPlotPlot* plot = GImPlot->CurrentPlot;
+		std::vector<DashedLegendSwatch> dashed_legend_swatches;
+
 		ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
 		ImPlot::SetupAxes(m_x_axis_name.c_str(), m_y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
 		ImPlot::SetupAxisScale(ImAxis_X1, m_log_x_axis ? ImPlotScale_Log10 : ImPlotScale_Linear);
@@ -115,8 +199,18 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 				std::string dashed_fit_label = "##dashed_fit_" + std::to_string(i);
 				ImPlot::PlotLine(dashed_fit_label.c_str(), m_recorded_xs_list.at(i).data(), m_recorded_ys_list.at(i).data(), m_recorded_xs_list.at(0).size());
 
-				ImPlot::SetNextLineStyle(line_color, m_line_weight);
+				ImVec4 transparent_legend_color = line_color;
+				transparent_legend_color.w		= 0.0f;
+				ImPlot::SetNextLineStyle(transparent_legend_color, m_line_weight);
 				ImPlot::PlotDummy(m_recorded_legends.at(i).c_str());
+				ImPlotItem* dashed_legend_item = plot->Items.GetItem(m_recorded_legends.at(i).c_str());
+				if (dashed_legend_item != nullptr)
+				{
+					DashedLegendSwatch dashed_legend_swatch;
+					dashed_legend_swatch.item_id = dashed_legend_item->ID;
+					dashed_legend_swatch.color	 = ImGui::ColorConvertFloat4ToU32(line_color);
+					dashed_legend_swatches.push_back(dashed_legend_swatch);
+				}
 				draw_dashed_line(m_recorded_xs_list.at(i), m_recorded_ys_list.at(i), ImGui::ColorConvertFloat4ToU32(line_color), m_line_weight);
 			}
 			else
@@ -128,6 +222,7 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 		}
 
 		ImPlot::EndPlot();
+		draw_dashed_legend_swatches(*plot, dashed_legend_swatches, m_line_weight);
 	}
 }
 

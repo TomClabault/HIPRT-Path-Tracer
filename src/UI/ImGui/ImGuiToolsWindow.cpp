@@ -903,6 +903,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				recorded_color_indices.at(i) = -1;
 
 			ImGui::TreePop(); // ImGui::TreePush(std::string("Line style tree##" + std::to_string(i)).c_str());
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 		ImGui::TreePop(); // ImGui::TreePush("Recorded data tree");
 
