@@ -6,6 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_TARGET_FUNCTION_H
 #define DEVICE_RESTIR_DI_TARGET_FUNCTION_H
 
+#include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -42,8 +43,7 @@ HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderDa
 	}
 	else
 	{
-		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
-		sample_emission	   = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+		sample_emission = get_triangle_emission_at_point(render_data, sample.emissive_triangle_global_index, sample.point_on_light_source);
 	}
 
 	return sample_emission;

@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_DI_FINAL_SHADING_H
 
 #include "Device/includes/LightSampling/Envmap.h"
+#include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
 #include "Device/includes/HitInfo.h"
@@ -84,8 +85,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
 			}
 			else
 			{
-				int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
-				sample_emission	   = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+				sample_emission = get_triangle_emission_at_point(render_data, sample.emissive_triangle_global_index, sample.point_on_light_source);
 			}
 
 			float area_measure_to_solid_angle_conversion;
