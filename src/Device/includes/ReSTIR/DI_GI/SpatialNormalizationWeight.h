@@ -172,21 +172,21 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 		out_normalization_nume	= 0.0f;
 
 		random_number_generator.m_state.seed =
-			ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, false>(render_data).spatial_neighbors_rng_seed;
+			ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data).spatial_neighbors_rng_seed;
 
-		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant, false>(render_data).reuse_neighbor_count + 1;
+		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data).reuse_neighbor_count + 1;
 			 neighbor++)
 		{
 			int neighbor_pixel_index =
-				get_spatial_neighbor_pixel_index<ReSTIRVariant, false>(render_data, neighbor, center_pixel_coords, random_number_generator);
+				get_spatial_neighbor_pixel_index<ReSTIRVariant>(render_data, neighbor, center_pixel_coords, random_number_generator);
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics<ReSTIRVariant, false>(
+			if (!check_neighbor_similarity_heuristics<ReSTIRVariant>(
 					render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIRVariant, false>(render_data, center_pixel_surface)))
+					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIRVariant>(render_data, center_pixel_surface)))
 				continue;
 
 			// Getting the surface data at the neighbor
@@ -213,9 +213,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 
 			if (target_function_at_neighbor > 0.0f)
 			{
-				int M = 1;
-				if (ReSTIRSettingsHelper::get_restir_settings<ReSTIRVariant, false>(render_data).use_confidence_weights)
-					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant, false>(render_data, neighbor_pixel_index);
+				int M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant>(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we

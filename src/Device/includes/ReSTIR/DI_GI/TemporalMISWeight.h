@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/SymmetricMISCommon.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
