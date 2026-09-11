@@ -9,6 +9,7 @@
 #include "Device/includes/BSDFs/BSDFSampleHitInfo.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearningToCluster.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -87,6 +88,37 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 
 		return 0.0f;
 	}
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(const HIPRTRenderData& render_data,
+																				const IlluminationAwareKDTreeSGShadingContext& context,
+																				unsigned int mesh_id,
+																				const DeviceUnpackedEffectiveMaterial& material,
+																				int emissive_triangle_global_index,
+																				const float3_t& point_on_light,
+																				const float3_t& light_normal)
+{
+	if (!material.can_do_light_sampling())
+		return 0.0f;
+
+	float triangle_probability = pdf_of_emissive_triangle_learning_to_cluster(render_data, context, mesh_id, emissive_triangle_global_index);
+	if (triangle_probability <= 0.0f)
+		return 0.0f;
+
+	float3_t light_direction = point_on_light - context.position;
+	float light_distance	 = hippt::length(light_direction);
+	if (light_distance <= 0.0f)
+		return 0.0f;
+
+	float cosine_light_source = compute_cosine_term_at_light_source(light_normal, -light_direction / light_distance);
+	if (cosine_light_source <= 0.0f)
+		return 0.0f;
+
+	float point_area_pdf = pdf_of_point_on_triangle_area_measure<TrianglePointSamplingStrategy>(
+		render_data, context.position, context.view_direction, context.shading_normal, material, point_on_light, light_normal, emissive_triangle_global_index,
+		triangle_load_area(render_data, emissive_triangle_global_index));
+
+	return area_to_solid_angle_pdf(triangle_probability * point_area_pdf, light_distance, cosine_light_source);
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>

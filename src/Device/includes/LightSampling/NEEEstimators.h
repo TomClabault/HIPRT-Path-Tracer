@@ -376,12 +376,13 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(training_sample);
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
-																			 RayPayload& ray_payload,
-																			 const HitInfo closest_hit_info,
-																			 const float3_t& view_direction,
-																			 Xorshift32Generator& random_number_generator,
-																			 int2_t pixel_coords)
+template <bool use_MIS>
+HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																	  RayPayload& ray_payload,
+																	  const HitInfo closest_hit_info,
+																	  const float3_t& view_direction,
+																	  Xorshift32Generator& random_number_generator,
+																	  int2_t pixel_coords)
 {
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
@@ -461,11 +462,14 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 			{
 				spatial_training_sample.spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
 
-				float bsdf_pdf							  = 0.0f;
-				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+				float bsdf_pdf													 = 0.0f;
+				BSDFIncidentLightInfo incident_light_info						 = BSDFIncidentLightInfo::NO_INFO;
+				MicrofacetRegularization::RegularizationMode regularization_mode = use_MIS
+																					   ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
+																					   : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
 				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
 										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+										 regularization_mode);
 				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 				if (bsdf_pdf != 0.0f)
@@ -473,11 +477,17 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 					float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
 					ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
 					ColorRGB32F estimator = numerator / solid_angle_pdf;
-					light_source_radiance += estimator;
+					float mis_weight	  = 1.0f;
+					if constexpr (use_MIS)
+						mis_weight = balance_heuristic(solid_angle_pdf, 1, bsdf_pdf, 1);
 
-					float full_estimator									 = estimator.luminance();
-					learning_to_cluster_training_sample.q_reward			 = full_estimator * triangle_sample.cluster_probability;
-					learning_to_cluster_training_sample.variance_observation = full_estimator * triangle_sample.cluster_probability;
+					ColorRGB32F mis_estimator = estimator * mis_weight;
+					light_source_radiance += mis_estimator;
+
+					// Cancel only cluster selection: Q learns the conditional contribution assigned to NEE by MIS.
+					float cluster_reward									 = mis_estimator.luminance() * triangle_sample.cluster_probability;
+					learning_to_cluster_training_sample.q_reward			 = cluster_reward;
+					learning_to_cluster_training_sample.variance_observation = cluster_reward;
 
 					// Just a CPU-only sanity check
 					sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -490,6 +500,69 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 
 	return light_source_radiance;
+}
+
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																			 RayPayload& ray_payload,
+																			 const HitInfo closest_hit_info,
+																			 const float3_t& view_direction,
+																			 Xorshift32Generator& random_number_generator,
+																			 int2_t pixel_coords)
+{
+	return sample_one_light_SG_tree_learning_to_cluster<false>(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator,
+															   pixel_coords);
+}
+
+HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																		  RayPayload& ray_payload,
+																		  const HitInfo closest_hit_info,
+																		  const float3_t& view_direction,
+																		  Xorshift32Generator& random_number_generator,
+																		  int2_t pixel_coords)
+{
+	return sample_one_light_SG_tree_learning_to_cluster<true>(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator,
+															  pixel_coords);
+}
+
+HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																			   RayPayload& ray_payload,
+																			   const HitInfo& closest_hit_info,
+																			   const float3_t& view_direction,
+																			   Xorshift32Generator& random_number_generator)
+{
+	float bsdf_pdf;
+	float3_t bsdf_direction;
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+							 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_direction, bsdf_pdf, random_number_generator);
+	if (bsdf_pdf <= 0.0f)
+		return ColorRGB32F(0.0f);
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin	 = closest_hit_info.inter_point;
+	shadow_ray.direction = bsdf_direction;
+	BSDFLightSampleRayHitInfo light_hit_info;
+	bool intersection_found =
+		evaluate_bsdf_light_sample_ray(render_data, shadow_ray, 1.0e35f, light_hit_info, closest_hit_info.primitive_index, random_number_generator);
+	if (!intersection_found || light_hit_info.hit_emission.is_black() ||
+		compute_cosine_term_at_light_source(light_hit_info.hit_geometric_normal, -bsdf_direction) <= 0.0f)
+		return ColorRGB32F(0.0f);
+
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
+
+	float light_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
+		render_data, shading_context, mesh_id, ray_payload.material, light_hit_info.hit_prim_index,
+		closest_hit_info.inter_point + light_hit_info.hit_distance * bsdf_direction, light_hit_info.hit_geometric_normal);
+	float mis_weight  = balance_heuristic(bsdf_pdf, 1, light_pdf, 1);
+	float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_direction));
+
+	return bsdf_color * cosine_term * light_hit_info.hit_emission * mis_weight / bsdf_pdf;
 }
 
 template <bool deferred_BSDF_MIS = true>
@@ -787,12 +860,12 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 #elif DirectLightNEEEstimator == LSS_BSDF
 	// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
 	// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF			 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	if constexpr (deferred_BSDF_MIS)
 		direct_light_contribution = sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 	else
 		direct_light_contribution = sample_one_light_MIS_multi_sample(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT	 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	if constexpr (deferred_BSDF_MIS)
 	{
 		RISReservoir reservoir =
@@ -802,16 +875,23 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	}
 	else
 		direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_RISLTC				 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_RISLTC					 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_LTC_SHADING		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_LTC_SHADING			 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS	 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER	 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution =
 		sample_one_light_no_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
-#endif													 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
+	direct_light_contribution =
+		sample_one_light_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
+	if constexpr (!deferred_BSDF_MIS)
+		// ReSTIR GI's final shading has no path continuation to supply the complementary sample.
+		direct_light_contribution +=
+			sample_one_light_bsdf_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif														 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 
 #endif // #if ReGIR
 
@@ -1110,7 +1190,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 
 	return nee_deferred_MIS_context.last_ray_throughput * ray_payload.material.get_emission() * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
-#elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF		// #if DirectLightNEEEstimator == LSS_BSDF
+#elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_BSDF
 	if (!ray_payload.material.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
 	else if (compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(),
@@ -1124,12 +1204,32 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	float hit_distance	   = hippt::length(ray_direction);
 	ray_direction /= hit_distance;
 
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+	float light_sampler_solid_angle_pdf = 0.0f;
+	if (nee_deferred_MIS_context.last_material.can_do_light_sampling())
+	{
+		IlluminationAwareKDTreeSGShadingContext shading_context =
+			build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
+												   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.last_material);
+		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
+			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
+
+		// Learning updates run after the megakernel, so this resolves the same cut and CDF used at the previous vertex.
+		light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
+			render_data, shading_context, mesh_id, nee_deferred_MIS_context.last_material, light_hit_info.primitive_index, light_hit_info.inter_point,
+			light_hit_info.original_geometric_normal());
+	}
+
+	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf, 1);
+#else													// #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
 		render_data, nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction, nee_deferred_MIS_context.last_shading_normal,
 		nee_deferred_MIS_context.last_material, light_hit_info.primitive_index, light_hit_info.original_geometric_normal(), hit_distance, ray_direction);
 
 	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf,
 													 DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+#endif													// #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
 	return nee_deferred_MIS_context.last_ray_throughput * hit_emission * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;

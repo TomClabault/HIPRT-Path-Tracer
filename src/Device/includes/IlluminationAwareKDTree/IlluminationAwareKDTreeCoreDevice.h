@@ -84,7 +84,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		float first_denominator	 = first_count * first_count * first_count;
 		float second_denominator = second_count * second_count * second_count;
 		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
-														   second_coefficient * second_coefficient * second_numerator / second_denominator;
+						 second_coefficient * second_coefficient * second_numerator / second_denominator;
 		if (!hippt::is_finite(variance))
 			return false;
 		if (variance <= 1.0e-30f)
@@ -321,7 +321,7 @@ struct IlluminationAwareKDTreeCoreDevice
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return;
-#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
+#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 		return;
 #endif
 

@@ -48,6 +48,18 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 	return context;
 }
 
+HIPRT_DEVICE float light_clustering_cluster_probability(const IlluminationAwareKDTreeDevice& kd_tree,
+														unsigned int lightcut_index,
+														unsigned int slot,
+														unsigned int lightcut_size)
+{
+	unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+	unsigned int cdf_start = slot == 0u ? 0u : kd_tree.learning_to_cluster.lightcut_cdfs[offset];
+	unsigned int cdf_end   = slot + 1u < lightcut_size ? kd_tree.learning_to_cluster.lightcut_cdfs[offset + 1u] : 65535u;
+
+	return static_cast<float>(cdf_end - cdf_start) / 65535.0f;
+}
+
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cluster_from_light_cut(const HIPRTRenderData& render_data,
 																									 const IlluminationAwareKDTreeSGShadingContext& context,
 																									 unsigned int mesh_id,
@@ -117,10 +129,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	unsigned int selected_slot	 = lightcut_cdf.sample(random_number_generator);
 	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, selected_slot);
 
-	unsigned short int selected_cdf_start = selected_slot == 0u ? 0u : kd_tree.learning_to_cluster.lightcut_cdfs[selected_offset];
-	unsigned short int selected_cdf_end	  = selected_slot + 1u < lightcut_size ? kd_tree.learning_to_cluster.lightcut_cdfs[selected_offset + 1u] : 65535u;
-	unsigned int selected_cdf_range		  = static_cast<unsigned int>(selected_cdf_end) - static_cast<unsigned int>(selected_cdf_start);
-	float selected_probability			  = static_cast<float>(selected_cdf_range) / 65535.0f;
+	float selected_probability = light_clustering_cluster_probability(kd_tree, lightcut_index, selected_slot, lightcut_size);
 
 	result.lightcut_index			 = lightcut_index;
 	result.lightcut_slot			 = selected_slot;
@@ -204,6 +213,112 @@ sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_d
 		return sample;
 
 	return sample;
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
+																const IlluminationAwareKDTreeSGShadingContext& context,
+																unsigned int mesh_id,
+																int emissive_triangle_global_index)
+{
+	if (emissive_triangle_global_index < 0 || render_data.buffers.emissive_triangles_count == 0)
+		return 0.0f;
+
+	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
+	unsigned int lightcut_index					 = kd_tree.resolve_lightcut(context, mesh_id);
+	bool initial_lightcut						 = lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	unsigned int lightcut_size					 = initial_lightcut ? kd_tree.learning_to_cluster.effective_initial_lightcut_size
+																	: kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
+	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
+		return 0.0f;
+
+	const unsigned int* cluster_node_indices =
+		initial_lightcut ? kd_tree.learning_to_cluster.initial_lightcut_node_indices
+						 : kd_tree.learning_to_cluster.lightcut_node_indices + kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0u);
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	unsigned int bit_trail			   = render_data.light_tree_sg.bit_trails[emissive_triangle_global_index];
+	unsigned int current_node_index	   = 0u;
+	unsigned int current_depth		   = 0u;
+	unsigned int selected_slot		   = lightcut_size;
+
+	// Follow the hit triangle's trail until reaching its cluster; ancestors above the cut are not sampled.
+	while (selected_slot == lightcut_size)
+	{
+		for (unsigned int slot = 0; slot < lightcut_size; slot++)
+		{
+			if (cluster_node_indices[slot] == current_node_index)
+			{
+				selected_slot = slot;
+				break;
+			}
+		}
+
+		if (selected_slot != lightcut_size)
+			break;
+
+		const LightTreeSGNodeDevice& current_node = nodes[current_node_index];
+		if (current_node.triangle_count != 0u || current_depth >= sizeof(unsigned int) * 8u)
+			return 0.0f;
+
+		unsigned int child_offset = (bit_trail & (1u << current_depth)) != 0u ? 1u : 0u;
+		current_node_index		  = current_node.left_child_index_or_first_triangle_index + child_offset;
+		current_depth++;
+	}
+
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
+#else
+	SGSpecularImportanceData specular_data;
+#endif
+
+	float cluster_probability;
+	if (initial_lightcut)
+	{
+		// Before a learned cut exists, sampling uses normalized SG importance, with uniform fallback for an all-zero cut.
+		float total_weight	  = 0.0f;
+		float selected_weight = 0.0f;
+		for (unsigned int slot = 0; slot < lightcut_size; slot++)
+		{
+			float weight = light_tree_sg_node_importance(nodes[cluster_node_indices[slot]], specular_data, context.position, context.view_direction,
+														 context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+			weight		 = hippt::max(weight, 0.0f);
+			total_weight += weight;
+			if (slot == selected_slot)
+				selected_weight = weight;
+		}
+
+		cluster_probability = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(lightcut_size);
+	}
+	else
+		cluster_probability = light_clustering_cluster_probability(kd_tree, lightcut_index, selected_slot, lightcut_size);
+
+	if (cluster_probability <= 0.0f)
+		return 0.0f;
+
+	// Replay the unsplit SG traversal inside the selected cluster, including uniform triangle selection at the leaf.
+	float conditional_probability = 1.0f;
+	while (nodes[current_node_index].triangle_count == 0u)
+	{
+		if (current_depth >= sizeof(unsigned int) * 8u)
+			return 0.0f;
+
+		unsigned int left_index = nodes[current_node_index].left_child_index_or_first_triangle_index;
+		float left_importance	= light_tree_sg_node_importance(nodes[left_index], specular_data, context.position, context.view_direction,
+																context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		float right_importance	= light_tree_sg_node_importance(nodes[left_index + 1u], specular_data, context.position, context.view_direction,
+																context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		float importance_sum	= left_importance + right_importance;
+		if (importance_sum <= 0.0f)
+			return 0.0f;
+
+		float left_probability	  = left_importance / importance_sum;
+		unsigned int child_offset = (bit_trail & (1u << current_depth)) != 0u ? 1u : 0u;
+		conditional_probability *= child_offset == 0u ? left_probability : 1.0f - left_probability;
+		current_node_index = left_index + child_offset;
+		current_depth++;
+	}
+
+	conditional_probability /= static_cast<float>(nodes[current_node_index].triangle_count);
+	return cluster_probability * conditional_probability;
 }
 
 #endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LIGHT_TREE_LIGHT_TREE_SG_SAMPLING_LEARNING_TO_CLUSTER_H

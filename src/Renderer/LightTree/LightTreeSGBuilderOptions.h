@@ -21,10 +21,10 @@ struct LightTreeSGBuilderOptions
 
 	int max_triangles_per_leaf = 1;
 
-	int spatial_lobe_count				 = (DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER)
-											   ? 1
-											   : LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT;
-	int tree_cut_size					 = 256;
+	int spatial_lobe_count = (DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator))
+								 ? 1
+								 : LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT;
+	int tree_cut_size	   = 256;
 	int tree_cut_size_neural_many_lights = 64;
 };
 

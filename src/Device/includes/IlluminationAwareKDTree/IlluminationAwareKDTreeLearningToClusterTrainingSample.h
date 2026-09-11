@@ -34,7 +34,7 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::append_learning_to_cluster_training_sample(
 	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample)
 {
-#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER
+#if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 	return;
 #endif
 

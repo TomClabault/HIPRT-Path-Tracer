@@ -15,10 +15,10 @@ struct IlluminationAwareKDTreeUserSettings
 	int minimum_sample_count_for_splitting			= 250;
 	float mean_radiance_split_threshold				= 0.15f;
 
-	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
-									  ? ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML
-									  : (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER ? ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER
-																							: ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT);
+	int stop_refining_after_SPP = DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS ? ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML
+																					: (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+																						   ? ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER
+																						   : ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT);
 
 	IlluminationAwareKDTreeSubdivisionMode subdivision_mode = IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 };

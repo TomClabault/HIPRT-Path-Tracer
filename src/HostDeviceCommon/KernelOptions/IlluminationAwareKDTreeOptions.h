@@ -26,7 +26,7 @@
 #define ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy)                                                                                  \
 	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_NEURAL_MANY_LIGHTS)
 #define ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(nee_estimator, sampling_strategy)                                                                    \
-	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_LEARNING_TO_CLUSTER)
+	((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 
 /**
  * Returns whether the given direct-lighting options use the illumination-aware KD-tree.
@@ -36,7 +36,7 @@
  */
 #define ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(nee_estimator, sampling_strategy)                                                                                \
 	(ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy) ||                                                                                  \
-	 ((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && (nee_estimator) == LSS_LEARNING_TO_CLUSTER))
+	 ((sampling_strategy) == LSS_BASE_LIGHT_TREE_SG && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator)))
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because the GPU compiler

@@ -22,6 +22,9 @@
 #define LSS_RESTIR_DI				 7
 #define LSS_NEURAL_MANY_LIGHTS		 8
 #define LSS_LEARNING_TO_CLUSTER		 9
+#define LSS_LEARNING_TO_CLUSTER_MIS	 10
+
+#define DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator) ((nee_estimator) == LSS_LEARNING_TO_CLUSTER || (nee_estimator) == LSS_LEARNING_TO_CLUSTER_MIS)
 
 #define LSS_BASE_UNIFORM		0
 #define LSS_BASE_POWER			1
@@ -129,18 +132,21 @@
  *	- LSS_LEARNING_TO_CLUSTER
  *		Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a lightcut
  *		(hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut
+ *
+ *	- LSS_LEARNING_TO_CLUSTER_MIS
+ *
+ *Combines learning-to-cluster light sampling with the deferred BSDF sample using MIS. Cluster rewards include the light sample's MIS weight.
  */
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER
+#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
-#if (DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                               \
+#if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \
 	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
-#error                                                                                                                                                         \
-	"DirectLightNEEEstimator is set to LSS_LEARNING_TO_CLUSTER or LSS_NEURAL_MANY_LIGHTS but DirectLightSamplingStrategy is not set to LSS_BASE_LIGHT_TREE_SG."
+#error "Learning-to-cluster and neural many-lights estimators require DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG."
 #endif
 
 /**
@@ -295,7 +301,7 @@ HIPRT_DEVICE constexpr int DirectLightIntegrationFactor()
 
 #define DirectLightNEEEstimatorHasBSDFSampling                                                                                                                 \
 	(DirectLightNEEEstimator == LSS_BSDF || DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF || DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||              \
-	 DirectLightNEEEstimator == LSS_RISLTC)
+	 DirectLightNEEEstimator == LSS_RISLTC || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 
 #endif // #ifdef LightTreeATSDoSplitting
 

@@ -93,6 +93,24 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 };
 
 template <int PathIntegrator>
+struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegrator> : NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
+{
+	// The previous surface's mesh selects the learned cut, independently of the light hit by the BSDF ray.
+	int last_primitive_index = -1;
+
+	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
+												const float3_t& view_direction,
+												const RayVolumeState& volume_state,
+												const DeviceUnpackedEffectiveMaterial& material,
+												const ColorRGB32F& ray_throughput)
+	{
+		NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>::fill_last_hit_information(closest_hit_info, view_direction, volume_state,
+																										material, ray_throughput);
+		last_primitive_index = closest_hit_info.primitive_index;
+	}
+};
+
+template <int PathIntegrator>
 struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PathIntegrator>
 {
 	float3_t last_view_direction;
