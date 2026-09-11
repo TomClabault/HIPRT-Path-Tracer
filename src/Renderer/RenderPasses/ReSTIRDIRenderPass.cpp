@@ -447,7 +447,11 @@ void ReSTIRDIRenderPass::configure_output_buffer(HIPRTRenderData& render_data)
 
 	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
 	// we're going to use as the input to the temporal reuse pass of the next frame
-	if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+	if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
+		// pass of next frame
+		restir_di_settings.restir_output_reservoirs = restir_di_settings.spatial_pass.output_reservoirs;
+	else if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 		// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
 		restir_di_settings.restir_output_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
 	else
