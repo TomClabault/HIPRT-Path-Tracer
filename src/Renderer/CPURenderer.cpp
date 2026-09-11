@@ -55,29 +55,29 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreAccumulateBatchStatisticsIntoHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreAccumulateBatchTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreExpandOneLookaheadLevel.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreInitializeCreatedNodeHistory.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreMarkGuidingCellsForSplitting.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CorePromoteGuidingCells.h"
 #include "Device/kernels/IlluminationAwareKDTree/Core/CoreReduceBatchStatisticsUpward.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreReplayTrainingSamples.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetBatchKDTreeStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetTree.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAccumulateNormalFaceObservations.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterAllocateNormalFaceLightcuts.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterBuildLightcutSamplingCDFs.h"
-#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLBuildCaches.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreExpandOneLookaheadLevel.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreInitializeCreatedNodeHistory.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeLightcutQ0.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeRootLightcut.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchLightcutStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterInitializeShadingContexts.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightcuts.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterReplayQRewards.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterReplayStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreMarkGuidingCellsForSplitting.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CorePromoteGuidingCells.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterQUpdates.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h"
-#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterRefineLightcuts.h"
-#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLReplayTrainingSamples.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreReplayTrainingSamples.h"
 #include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchKDTreeAndLightcutStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetBatchKDTreeStatistics.h"
-#include "Device/kernels/IlluminationAwareKDTree/Core/CoreResetTree.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterResetBatchLightcutStatistics.h"
+#include "Device/kernels/IlluminationAwareKDTree/LearningToCluster/LearningToClusterStatisticsUpdates.h"
+#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLBuildCaches.h"
+#include "Device/kernels/IlluminationAwareKDTree/NISML/NISMLReplayTrainingSamples.h"
 #include "Device/kernels/SSBNPermutation/SortingPass.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -211,8 +211,6 @@ void CPURenderer::setup_buffers()
 	m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
 	m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
 	m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-	m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
-	m_restir_di_state.per_pixel_spatial_reuse_radius.resize(width * height);
 #endif // #if DirectLightNEEEstimator == LSS_RESTIR_DI
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
@@ -517,12 +515,6 @@ void CPURenderer::update_render_data()
 #if DirectLightNEEEstimator == LSS_RESTIR_DI
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_di_settings.restir_output_reservoirs			  = m_restir_di_state.spatial_output_reservoirs_1.data();
-	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull =
-		m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.data();
-	m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius =
-		m_restir_di_state.per_pixel_spatial_reuse_radius.data();
-	m_render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_di_state.spatial_reuse_hit_rate_total;
-	m_render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits  = &m_restir_di_state.spatial_reuse_hit_rate_hits;
 #endif // #if DirectLightNEEEstimator == LSS_RESTIR_DI
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
