@@ -108,9 +108,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir =
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	if (temporal_neighbor_reservoir.confidence == 0)
+	if (temporal_neighbor_reservoir.confidence == 0 || temporal_neighbor_reservoir.UCW <= 0.0f)
 	{
-		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
+		// No usable temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] =
 			render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 
