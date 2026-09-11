@@ -123,12 +123,12 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIRV
 				nume = target_function_at_j * M;
 		}
 
+		random_number_generator.m_state.seed = backup_seed;
+
 		if (denom == 0.0f)
 			return 0.0f;
 		else
 			return nume / denom;
-
-		random_number_generator.m_state.seed = backup_seed;
 	}
 };
 

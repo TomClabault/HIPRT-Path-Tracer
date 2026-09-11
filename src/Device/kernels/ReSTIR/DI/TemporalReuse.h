@@ -102,6 +102,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// The output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] =
 			render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+		render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 
 		return;
 	}
@@ -113,6 +114,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// No usable temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] =
 			render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+		render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 
 		return;
 	}
@@ -126,6 +128,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Can't resample the temporal neighbor if it's emissive so output the initial candidates right away
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] =
 			render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+		render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
 
 		return;
 	}
