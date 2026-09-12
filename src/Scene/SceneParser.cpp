@@ -335,14 +335,14 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 			vertical_fov	 = 2.0f * std::atan(std::tan(camera->mHorizontalFOV * 0.5f) / fov_aspect);
 		}
 
-		parsed_scene.camera.vertical_fov	  = vertical_fov;
-		parsed_scene.camera.aspect			  = viewport_aspect;
-		parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, viewport_aspect, camera->mClipPlaneNear, camera->mClipPlaneFar);
-
 		// Custom clip planes distances are not supported by the renderer so hardcoding to 0.1f and 100.0f
 		// instead of reading from the camera properties
 		parsed_scene.camera.near_plane = 0.1f;	 // camera->mClipPlaneNear;
 		parsed_scene.camera.far_plane  = 100.0f; // camera->mClipPlaneFar;
+
+		parsed_scene.camera.vertical_fov	  = vertical_fov;
+		parsed_scene.camera.aspect			  = viewport_aspect;
+		parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, viewport_aspect, parsed_scene.camera.near_plane, parsed_scene.camera.far_plane);
 	}
 	else
 	{
