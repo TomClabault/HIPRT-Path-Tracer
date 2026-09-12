@@ -22,6 +22,7 @@
 #include "UI/ImGui/ImGuiRenderer.h"
 #include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/RenderWindow.h"
+#include "Utils/CommandlineArguments.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -1111,12 +1112,14 @@ void ImGuiSettingsWindow::draw_environment_panel()
 		ImGui::SameLine();
 		render_made_piggy |= ImGui::RadioButton("Use uniform lighting", ((int*)&world_settings.ambient_light_type), 1);
 		ImGui::SameLine();
-		ImGui::BeginDisabled(!has_envmap);
-		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&world_settings.ambient_light_type), 2);
+		bool use_envmap_lighting_clicked = ImGui::RadioButton("Use envmap lighting", ((int*)&world_settings.ambient_light_type), 2);
+		render_made_piggy |= use_envmap_lighting_clicked;
+		if (use_envmap_lighting_clicked && !has_envmap)
+			load_new_envmap(CommandlineArguments::DEFAULT_SKYSPHERE);
+
 		if (!has_envmap)
-			// Showing a tooltip for why the envmap button is disabled
-			ImGuiRenderer::show_help_marker("No envmap loaded.");
-		ImGui::EndDisabled();
+			// Showing a tooltip explaining that clicking the envmap button loads the default envmap
+			ImGuiRenderer::show_help_marker("No envmap loaded. Clicking \"Use envmap lighting\" loads the default envmap.");
 
 		if (world_settings.ambient_light_type == AmbientLightType::UNIFORM)
 		{
