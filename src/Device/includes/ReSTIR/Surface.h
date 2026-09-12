@@ -54,7 +54,7 @@ HIPRT_DEVICE static ReSTIRSurface get_pixel_surface_previous_frame(const HIPRTRe
 	surface.primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
 	surface.ray_volume_state.reconstruct_first_hit(surface.material, render_data.buffers.material_indices, surface.primitive_index, random_number_generator);
 
-	surface.view_direction	 = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);
+	surface.view_direction	 = render_data.g_buffer_prev_frame.get_view_direction(render_data.prev_camera.position, pixel_index);
 	surface.shading_normal	 = render_data.g_buffer_prev_frame.shading_normals[pixel_index].unpack();
 	surface.geometric_normal = render_data.g_buffer_prev_frame.geometric_normals[pixel_index].unpack();
 	surface.shading_point	 = render_data.g_buffer_prev_frame.primary_hit_position[pixel_index];

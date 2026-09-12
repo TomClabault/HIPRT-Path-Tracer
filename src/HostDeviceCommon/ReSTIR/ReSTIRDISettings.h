@@ -53,7 +53,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 		common_temporal_pass.temporal_buffer_clear_requested = false;
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index	 = 0;
 		common_spatial_pass.number_of_passes	 = 1;
@@ -77,7 +77,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		neighbor_similarity_settings.roughness_similarity_threshold		= 0.25f;
 
-		m_cap = 3;
+		m_cap = 50;
 	}
 
 	// Settings for the initial candidates generation pass
