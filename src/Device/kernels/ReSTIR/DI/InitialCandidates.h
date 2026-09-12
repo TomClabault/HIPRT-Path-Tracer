@@ -166,22 +166,22 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
 			if (!render_data.render_settings.do_render_low_resolution() && light_sample.target_function > 0.0f)
 			{
-				// Only doing visiblity if we're render at low resolution
-				// (meaning we're moving the camera) for better movement framerates
+				// Only doing visibility if we're not rendering at low resolution.
+				// A low-resolution render usually means the camera is moving, where this test would hurt interactivity.
 				// Also, only testing visibility if we got a valid sample
 
 				hiprtRay shadow_ray;
 				shadow_ray.origin	 = closest_hit_info.inter_point;
 				shadow_ray.direction = to_light_direction;
 
-				bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-															 /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+				bool visible =
+					!evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
 				if (!visible)
 				{
 					// Sample occluded, it is not going to be resampled anyways because it is
 					// going to have a 0 contribution so we just take it into account in the
 					// reservoir (because even if it has zero-contribution, this is still a resampled sample)
-					reservoir.M++;
+					reservoir.confidence++;
 
 					// And we go onto the next sample
 					continue;
@@ -397,10 +397,10 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
-	HIPRT_DEVICE __constant__ unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
+	HIPRT_DEVICE __constant__ GPU_CPU_ALIGN(16) unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_InitialCandidates()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {

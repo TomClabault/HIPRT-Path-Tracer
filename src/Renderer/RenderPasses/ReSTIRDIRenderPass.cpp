@@ -438,7 +438,8 @@ void ReSTIRDIRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 
 	std::string render_data_global_name =
 		kernel_id == ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID ? "RESTIR_DIRECTIONAL_REUSE_RENDER_DATA" : "RESTIR_DI_RENDER_DATA";
-	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData), m_renderer->get_main_stream());
+	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData),
+												  m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_output_buffer(HIPRTRenderData& render_data)

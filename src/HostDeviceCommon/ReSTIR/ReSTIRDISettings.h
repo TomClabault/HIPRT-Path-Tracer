@@ -46,7 +46,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRDISettings()
 	{
-		common_temporal_pass.do_temporal_reuse_pass = true;
+	common_temporal_pass.do_temporal_reuse_pass = true;
 
 		common_temporal_pass.max_neighbor_search_count = 8;
 		common_temporal_pass.neighbor_search_radius	   = 4;

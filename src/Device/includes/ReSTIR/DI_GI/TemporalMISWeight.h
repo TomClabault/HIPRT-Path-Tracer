@@ -9,9 +9,9 @@
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/MISWeightsCommon.h"
-#include "Device/includes/ReSTIR/SymmetricMISCommon.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
+#include "Device/includes/ReSTIR/SymmetricMISCommon.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
 // By convention, the temporal neighbor is the first one to be resampled in for loops

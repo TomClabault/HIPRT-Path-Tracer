@@ -21,6 +21,8 @@ CommandlineArguments CommandlineArguments::process_command_line_args(int argc, c
 			arguments.render_samples = std::atoi(string_argv.substr(10).c_str());
 		else if (string_argv.starts_with("--bounces="))
 			arguments.bounces = std::atoi(string_argv.substr(10).c_str());
+		else if (string_argv.starts_with("--output="))
+			arguments.output_filepath = string_argv.substr(9);
 		else if (string_argv.starts_with("--w="))
 			arguments.render_width = std::atoi(string_argv.substr(4).c_str());
 		else if (string_argv.starts_with("--width="))

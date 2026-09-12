@@ -1437,9 +1437,19 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 	return m_imgui_renderer;
 }
 
-void RenderWindow::run()
+void RenderWindow::run(const std::string& output_filepath, int render_samples)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	bool batch_output					 = !output_filepath.empty();
+
+	if (batch_output)
+	{
+		// Batch captures must contain exactly the requested number of noisy samples.
+		m_application_settings->max_sample_count	  = render_samples;
+		m_application_settings->auto_sample_per_frame = false;
+		m_application_settings->enable_denoising	  = false;
+		render_settings.samples_per_frame			  = 1;
+	}
 
 	uint64_t timer_frequency = glfwGetTimerFrequency();
 
@@ -1478,6 +1488,12 @@ void RenderWindow::run()
 		render();
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
+
+		if (batch_output && is_rendering_done())
+		{
+			m_screenshoter->write_to_png(output_filepath);
+			glfwSetWindowShouldClose(m_glfw_window, GLFW_TRUE);
+		}
 
 		// Measuring the CPU overhead before 'glfwSwapBuffers' because we do not want
 		// to count the VSync as CPU overhead

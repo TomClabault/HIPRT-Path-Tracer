@@ -116,7 +116,7 @@ void GPUKernel::upload_to_module_global(const char* global_name, const void* dat
 		module_global_iterator = m_module_globals_cache.emplace(global_name_string, module_global).first;
 	}
 
-	if (module_global_iterator->second.size != data_size)
+	if (module_global_iterator->second.size > data_size)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Module global '%s' has size %zu, but %zu bytes were provided.", global_name,
 								module_global_iterator->second.size, data_size);
@@ -124,7 +124,10 @@ void GPUKernel::upload_to_module_global(const char* global_name, const void* dat
 		return;
 	}
 
-	OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<void*>(module_global_iterator->second.device_pointer), data, data_size, oroMemcpyHostToDevice, stream));
+	// HIPRTC removes trailing bytes from raw constant globals when no instruction reads them. The prefix is still layout-compatible because the kernel
+	// reads it with the shared HIPRTRenderData definition. Copy only the declared module storage rather than rejecting this valid optimization.
+	OROCHI_CHECK_ERROR(oroMemcpyAsync(reinterpret_cast<void*>(module_global_iterator->second.device_pointer), data, module_global_iterator->second.size,
+									  oroMemcpyHostToDevice, stream));
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)

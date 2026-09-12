@@ -52,7 +52,7 @@
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
-	HIPRT_DEVICE __constant__ unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
+	HIPRT_DEVICE __constant__ GPU_CPU_ALIGN(16) unsigned char RESTIR_DI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_TemporalReuse()
 #else  // #ifdef __KERNELCC__

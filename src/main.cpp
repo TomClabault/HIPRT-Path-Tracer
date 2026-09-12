@@ -56,7 +56,8 @@ int main(int argc, char* argv[])
 
 	RenderWindow render_window(width, height, hiprt_orochi_ctx);
 
-	std::shared_ptr<GPURenderer> renderer = render_window.get_renderer();
+	std::shared_ptr<GPURenderer> renderer	   = render_window.get_renderer();
+	renderer->get_render_settings().nb_bounces = cmd_arguments.bounces;
 	renderer->set_envmap(envmap_image, cmd_arguments.skysphere_file_path);
 	renderer->set_camera(parsed_scene.camera);
 	renderer->set_scene(parsed_scene);
@@ -83,8 +84,8 @@ int main(int argc, char* argv[])
 	parsed_scene = Scene();
 	envmap_image.free();
 
-	render_window.run();
-#else // #if GPU_RENDER
+	render_window.run(cmd_arguments.output_filepath, cmd_arguments.render_samples);
+#else  // #if GPU_RENDER
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples,
 							cmd_arguments.bounces);

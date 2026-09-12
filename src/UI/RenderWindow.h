@@ -129,7 +129,7 @@ public:
 	 */
 	float get_UI_delta_time();
 
-	void run();
+	void run(const std::string& output_filepath = "", int render_samples = 0);
 	void render();
 	/**
 	 * Denoises the color framebuffer if necessary (according to ImGui

@@ -25,6 +25,9 @@ struct CommandlineArguments
 	int render_samples = 64;
 	int bounces		   = 8;
 
+	// When specified, render on the GPU until render_samples is reached, write this PNG, and exit.
+	std::string output_filepath = "";
+
 	bool only_compile_shaders = false;
 };
 
