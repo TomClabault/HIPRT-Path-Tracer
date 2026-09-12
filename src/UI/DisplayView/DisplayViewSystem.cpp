@@ -375,7 +375,11 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 	case DisplayViewType::DEFAULT:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 	default:
-		internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		if (m_renderer->is_adaptive_sampling_debug_view_enabled())
+			internal_upload_buffer_to_texture(m_renderer->get_adaptive_sampling_debug_interop_framebuffer(), m_display_texture_1,
+											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		else
+			internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 	}
 }

@@ -277,9 +277,7 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 
 	if (sample_is_in_subset)
 	{
-		if (debug_color != DEFAULT_DEBUG_COLOR)
-			render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
-		else if (number_of_samples_before_current == 0)
+		if (number_of_samples_before_current == 0)
 			render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (render_data.render_settings.sample_number + 1);
 		else
 		{
@@ -301,6 +299,14 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 			render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] /
 																	  static_cast<float>(render_data.render_settings.sample_number) *
 																	  (render_data.render_settings.sample_number + 1);
+	}
+
+	if (sample_is_in_subset && debug_color != DEFAULT_DEBUG_COLOR)
+	{
+		if (render_data.buffers.debug_ray_colors != nullptr)
+			render_data.buffers.debug_ray_colors[pixel_index] = debug_color;
+		else
+			render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
 	}
 
 	if (sample_is_in_subset && render_data.render_settings.has_access_to_adaptive_sampling_buffers())

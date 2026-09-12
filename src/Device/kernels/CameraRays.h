@@ -77,6 +77,9 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
 	}
 
+	if (render_data.buffers.debug_ray_colors != nullptr)
+		render_data.buffers.debug_ray_colors[pixel_index] = ColorRGB32F();
+
 	// Resetting the G-Buffer
 	render_data.g_buffer.first_hit_prim_index[pixel_index] = -1;
 	render_data.g_buffer.geometric_normals[pixel_index]	   = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
@@ -197,8 +200,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
 			ColorRGB32F debug_color;
-			if (path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, debug_color))
-				render_data.buffers.accumulated_ray_colors[pixel_index] = debug_color;
+			if (render_data.buffers.debug_ray_colors != nullptr && path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, debug_color))
+				render_data.buffers.debug_ray_colors[pixel_index] = debug_color;
 #endif // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
 
 			render_data.aux_buffers.pixel_active[pixel_index] = false;

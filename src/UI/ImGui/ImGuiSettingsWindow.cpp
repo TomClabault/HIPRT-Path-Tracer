@@ -1306,7 +1306,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 
 				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				m_render_window->set_force_viewport_refresh(true);
 			}
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP)
@@ -1317,7 +1317,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
 				{
 					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
+					m_render_window->set_force_viewport_refresh(true);
 				}
 			}
 			ImGui::EndDisabled();
