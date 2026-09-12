@@ -60,7 +60,7 @@ HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& rende
 	constexpr bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_MISWeightsUseVisibility : ReSTIR_DI_MISWeightsUseVisibility;
 	constexpr int mis_weights_type				  = IsReSTIRGI ? ReSTIR_GI_MISWeightsType : ReSTIR_DI_MISWeightsType;
 	include_target_function_visibility |=
-		bias_correction_use_visibility &&
+		!is_center_sample && bias_correction_use_visibility &&
 		(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
 		 mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
 
