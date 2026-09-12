@@ -1272,6 +1272,9 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 																NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+	if (ray_payload.next_ray_state == RayState::MISSED)
+		// The miss path has already gathered the envmap contribution, so there is no valid ray to retrace for deferred NEE MIS.
+		return ColorRGB32F(0.0f);
 
 #if DirectLightNEEEstimatorHasBSDFSampling
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
