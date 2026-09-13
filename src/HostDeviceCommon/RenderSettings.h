@@ -191,6 +191,20 @@ struct HIPRTRenderSettings
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.075f;
 
+	// Enables the hierarchical adaptive sampling hierarchy described by Jeffery (2019). The hierarchy
+	// classifies rectangular image regions and rebuilds from the full image periodically so that
+	// previously completed regions can become active again.
+	bool enable_hierarchical_adaptive_sampling = false;
+	// A region is complete when its mean relative 95% luminance confidence interval is below this value.
+	// This uses the same numerical scale as adaptive_sampling_noise_threshold.
+	float hierarchical_adaptive_sampling_target_error = 0.075f;
+	// Stops a split if either child would have no dimension at least this many pixels long.
+	float hierarchical_adaptive_sampling_minimum_cell_extent = 2.0f;
+	// Rebuilding periodically allows completed regions to become active again when their error estimate changes.
+	int hierarchical_adaptive_sampling_rebuild_interval = 2;
+	int hierarchical_adaptive_sampling_max_depth		= 20;
+	int hierarchical_adaptive_sampling_max_node_count	= 262144;
+
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
@@ -271,10 +285,22 @@ struct HIPRTRenderSettings
 
 		has_access |= (stop_pixel_noise_threshold > 0.0f && use_pixel_stop_noise_threshold);
 		has_access |= enable_adaptive_sampling;
+		has_access |= enable_hierarchical_adaptive_sampling;
 		// Cannot use adaptive sampling without accumulation
 		has_access &= accumulate;
 
 		return has_access;
+	}
+
+	HIPRT_HOST_DEVICE bool adaptive_sampling_enabled() const
+	{
+		return enable_adaptive_sampling || enable_hierarchical_adaptive_sampling;
+	}
+
+	HIPRT_HOST_DEVICE bool use_hierarchical_adaptive_sampling() const
+	{
+		// Sample subsets cannot be reconstructed correctly after a pixel is reactivated.
+		return enable_hierarchical_adaptive_sampling && accumulate && sample_subset_min == 0 && sample_subset_max == 0 && !do_render_low_resolution();
 	}
 
 	/**

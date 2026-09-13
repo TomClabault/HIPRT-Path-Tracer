@@ -152,21 +152,22 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 
 HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3_t shading_normal, ColorRGB32F base_color)
 {
-	if (render_data.render_settings.sample_number == 0)
+	unsigned int accumulation_count_before = render_data.render_settings.denoiser_AOV_accumulation_counter;
+	if (render_data.render_settings.use_hierarchical_adaptive_sampling())
+		accumulation_count_before = render_data.aux_buffers.pixel_sample_count[pixel_index] - 1;
+
+	if (accumulation_count_before == 0)
 		render_data.aux_buffers.denoiser_albedo[pixel_index] = base_color;
 	else
 		render_data.aux_buffers.denoiser_albedo[pixel_index] =
-			(render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + base_color) /
-			(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+			(render_data.aux_buffers.denoiser_albedo[pixel_index] * accumulation_count_before + base_color) / (accumulation_count_before + 1.0f);
 
-	if (render_data.render_settings.sample_number == 0)
+	if (accumulation_count_before == 0)
 		render_data.aux_buffers.denoiser_normals[pixel_index] = shading_normal;
 	else
 	{
-		float3_t accumulated_normal =
-			(render_data.aux_buffers.denoiser_normals[pixel_index] * static_cast<float>(render_data.render_settings.denoiser_AOV_accumulation_counter) +
-			 shading_normal) /
-			(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+		float3_t accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * static_cast<float>(accumulation_count_before) + shading_normal) /
+									  (accumulation_count_before + 1.0f);
 		float normal_length = hippt::length(accumulated_normal);
 		if (!hippt::is_zero(normal_length))
 			// Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
@@ -275,7 +276,24 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 	const unsigned int number_of_samples_in_subset		= path_tracing_number_of_samples_in_subset(render_data.render_settings);
 	const unsigned int number_of_samples_before_current = sample_is_in_subset ? number_of_samples_in_subset - 1 : number_of_samples_in_subset;
 
-	if (sample_is_in_subset)
+	if (render_data.render_settings.use_hierarchical_adaptive_sampling())
+	{
+		unsigned int local_sample_count_after  = render_data.aux_buffers.pixel_sample_count[pixel_index];
+		unsigned int local_sample_count_before = local_sample_count_after - 1;
+
+		ColorRGB32F accumulated_average;
+		if (local_sample_count_before == 0)
+			accumulated_average = ray_color;
+		else
+		{
+			ColorRGB32F previous_average =
+				render_data.buffers.accumulated_ray_colors[pixel_index] / static_cast<float>(render_data.render_settings.sample_number);
+			accumulated_average = (previous_average * static_cast<float>(local_sample_count_before) + ray_color) / static_cast<float>(local_sample_count_after);
+		}
+
+		render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_average * static_cast<float>(render_data.render_settings.sample_number + 1);
+	}
+	else if (sample_is_in_subset)
 	{
 		if (number_of_samples_before_current == 0)
 			render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (render_data.render_settings.sample_number + 1);

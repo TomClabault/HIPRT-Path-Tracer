@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/HierarchicalAdaptiveSampling.h"
 
 struct AuxiliaryBuffers
 {
@@ -44,6 +45,13 @@ struct AuxiliaryBuffers
 	//
 	// If the pixel hasn't converged yet, the buffer contains the -1 value for that pixel
 	int* pixel_converged_sample_count = nullptr;
+
+	// Per-pixel relative noise and its inclusive summed-area table. These are hierarchy scratch buffers.
+	float* hierarchical_adaptive_sampling_error							   = nullptr;
+	float* hierarchical_adaptive_sampling_summed_area					   = nullptr;
+	HierarchicalAdaptiveSamplingNode* hierarchical_adaptive_sampling_nodes = nullptr;
+	unsigned int* hierarchical_adaptive_sampling_node_count				   = nullptr;
+	unsigned int hierarchical_adaptive_sampling_node_capacity			   = 0;
 
 	// A single boolean (contained in a buffer, hence the pointer)
 	// to indicate whether at least one single ray is still active in the kernel.

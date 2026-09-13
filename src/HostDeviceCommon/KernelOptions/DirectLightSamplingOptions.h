@@ -141,7 +141,7 @@
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_RESTIR_DI
+#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \

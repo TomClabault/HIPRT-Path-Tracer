@@ -83,6 +83,12 @@
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/CPURenderer.h"
+
+#include "Device/kernels/HierarchicalAdaptiveSampling/BuildColumns.h"
+#include "Device/kernels/HierarchicalAdaptiveSampling/BuildHierarchy.h"
+#include "Device/kernels/HierarchicalAdaptiveSampling/BuildRows.h"
+#include "Device/kernels/HierarchicalAdaptiveSampling/ComputeError.h"
+#include "Device/kernels/HierarchicalAdaptiveSampling/ResolveMask.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
 
@@ -163,6 +169,12 @@ void CPURenderer::setup_buffers()
 	m_pixel_converged_sample_count.resize(width * height, 0);
 	m_pixel_luminance.resize(width * height, 0.0f);
 	m_pixel_squared_luminance.resize(width * height, 0.0f);
+	m_hierarchical_adaptive_sampling_error.resize(width * height, 0.0f);
+	m_hierarchical_adaptive_sampling_summed_area.resize(width * height, 0.0f);
+	unsigned int pixel_count			   = width * height;
+	unsigned int maximum_useful_node_count = pixel_count > 0 ? pixel_count * 2u - 1u : 1u;
+	unsigned int requested_node_count = static_cast<unsigned int>(std::max(1, m_render_data.render_settings.hierarchical_adaptive_sampling_max_node_count));
+	m_hierarchical_adaptive_sampling_nodes.resize(std::min(maximum_useful_node_count, requested_node_count));
 
 	unsigned int new_cell_count_primary_hits   = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
 	unsigned int new_cell_count_secondary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS;
@@ -466,17 +478,22 @@ void CPURenderer::update_render_data()
 {
 	bsdfs_data_to_device();
 
-	m_render_data.buffers.accumulated_ray_colors		   = m_framebuffer.get_data_as_ColorRGB32F();
-	m_render_data.buffers.last_frame_ray_colors			   = m_last_frame_ray_colors.data();
-	m_render_data.aux_buffers.pixel_active				   = m_pixel_active_buffer.data();
-	m_render_data.aux_buffers.denoiser_albedo			   = m_denoiser_albedo.data();
-	m_render_data.aux_buffers.denoiser_normals			   = m_denoiser_normals.data();
-	m_render_data.aux_buffers.pixel_sample_count		   = m_pixel_sample_count.data();
-	m_render_data.aux_buffers.pixel_converged_sample_count = m_pixel_converged_sample_count.data();
-	m_render_data.aux_buffers.pixel_luminance			   = m_pixel_luminance.data();
-	m_render_data.aux_buffers.pixel_squared_luminance	   = m_pixel_squared_luminance.data();
-	m_render_data.aux_buffers.still_one_ray_active		   = &m_still_one_ray_active;
-	m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
+	m_render_data.buffers.accumulated_ray_colors						   = m_framebuffer.get_data_as_ColorRGB32F();
+	m_render_data.buffers.last_frame_ray_colors							   = m_last_frame_ray_colors.data();
+	m_render_data.aux_buffers.pixel_active								   = m_pixel_active_buffer.data();
+	m_render_data.aux_buffers.denoiser_albedo							   = m_denoiser_albedo.data();
+	m_render_data.aux_buffers.denoiser_normals							   = m_denoiser_normals.data();
+	m_render_data.aux_buffers.pixel_sample_count						   = m_pixel_sample_count.data();
+	m_render_data.aux_buffers.pixel_converged_sample_count				   = m_pixel_converged_sample_count.data();
+	m_render_data.aux_buffers.pixel_luminance							   = m_pixel_luminance.data();
+	m_render_data.aux_buffers.pixel_squared_luminance					   = m_pixel_squared_luminance.data();
+	m_render_data.aux_buffers.hierarchical_adaptive_sampling_error		   = m_hierarchical_adaptive_sampling_error.data();
+	m_render_data.aux_buffers.hierarchical_adaptive_sampling_summed_area   = m_hierarchical_adaptive_sampling_summed_area.data();
+	m_render_data.aux_buffers.hierarchical_adaptive_sampling_nodes		   = m_hierarchical_adaptive_sampling_nodes.data();
+	m_render_data.aux_buffers.hierarchical_adaptive_sampling_node_count	   = &m_hierarchical_adaptive_sampling_node_count;
+	m_render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity = static_cast<unsigned int>(m_hierarchical_adaptive_sampling_nodes.size());
+	m_render_data.aux_buffers.still_one_ray_active						   = &m_still_one_ray_active;
+	m_render_data.aux_buffers.pixel_count_converged_so_far				   = &m_stop_noise_threshold_count;
 	m_render_data.buffers.set_input_random_seed_pointer(m_input_random_seeds.data());
 	m_render_data.buffers.set_updated_random_seed_pointer(m_updated_random_seeds.data());
 
@@ -744,6 +761,8 @@ void CPURenderer::render()
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 		ReSTIR_PG_pass();
 #endif
+
+		hierarchical_adaptive_sampling_pass();
 
 		post_sample_update(frame_number);
 
@@ -1153,6 +1172,38 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 void CPURenderer::camera_rays_pass()
 {
 	debug_render_pass([this](int x, int y) { CameraRays(m_render_data, x, y); });
+}
+
+void CPURenderer::hierarchical_adaptive_sampling_pass()
+{
+	HIPRTRenderSettings& render_settings = m_render_data.render_settings;
+	if (!render_settings.use_hierarchical_adaptive_sampling())
+		return;
+
+	unsigned int completed_sample_count = render_settings.sample_number + 1u;
+	unsigned int minimum_sample_count	= static_cast<unsigned int>(std::max(2, render_settings.adaptive_sampling_min_samples));
+	unsigned int rebuild_interval		= static_cast<unsigned int>(std::max(2, render_settings.hierarchical_adaptive_sampling_rebuild_interval));
+	if ((rebuild_interval & 1u) != 0u)
+		rebuild_interval++;
+
+	if (completed_sample_count < minimum_sample_count || completed_sample_count % rebuild_interval != 0u)
+		return;
+
+	for (int y = 0; y < m_resolution.y; y++)
+		for (int x = 0; x < m_resolution.x; x++)
+			HierarchicalAdaptiveSamplingComputeError(m_render_data, x, y);
+
+	for (int y = 0; y < m_resolution.y; y++)
+		HierarchicalAdaptiveSamplingBuildRows(m_render_data, y);
+
+	for (int x = 0; x < m_resolution.x; x++)
+		HierarchicalAdaptiveSamplingBuildColumns(m_render_data, x);
+
+	HierarchicalAdaptiveSamplingBuildHierarchy(m_render_data, 0);
+
+	for (int y = 0; y < m_resolution.y; y++)
+		for (int x = 0; x < m_resolution.x; x++)
+			HierarchicalAdaptiveSamplingResolveMask(m_render_data, x, y);
 }
 
 void CPURenderer::ReGIR_pass()

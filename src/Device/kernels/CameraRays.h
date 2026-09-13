@@ -180,7 +180,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 	bool sampling_needed = true;
 	bool pixel_converged = false;
-	sampling_needed		 = adaptive_sampling(render_data, pixel_index, pixel_converged);
+	if (render_data.render_settings.use_hierarchical_adaptive_sampling())
+	{
+		// The hierarchy pass writes the mask for the next sample. Always sample once after reset so
+		// stale mask contents from the previous accumulation cannot suppress initialization.
+		sampling_needed = render_data.render_settings.need_to_reset || render_data.aux_buffers.pixel_active[pixel_index] != 0;
+		pixel_converged = !sampling_needed;
+	}
+	else
+		sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);
 
 	if (pixel_converged || !sampling_needed)
 	{
@@ -198,11 +206,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		{
 			rescale_samples_for_display(render_data, pixel_index);
 
-#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
+#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||              \
+	MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP
 			ColorRGB32F debug_color;
 			if (render_data.buffers.debug_ray_colors != nullptr && path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, debug_color))
 				render_data.buffers.debug_ray_colors[pixel_index] = debug_color;
-#endif // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
+#endif // #if MegakernelDebugMode == adaptive sampling debug mode
 
 			render_data.aux_buffers.pixel_active[pixel_index] = false;
 

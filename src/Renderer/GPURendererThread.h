@@ -9,6 +9,7 @@
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "RenderPasses/FillGBufferRenderPass.h"
 #include "RenderPasses/GMoNRenderPass.h"
+#include "RenderPasses/HierarchicalAdaptiveSamplingRenderPass.h"
 #include "RenderPasses/IlluminationAwareKDTreeRenderPass.h"
 #include "RenderPasses/NEEPlusPlusRenderPass.h"
 #include "RenderPasses/NISMLMegaKernelRenderPass.h"

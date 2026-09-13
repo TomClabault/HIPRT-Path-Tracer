@@ -32,7 +32,7 @@ struct WorldSettings
 	unsigned int envmap_width = 0, envmap_height = 0;
 	// Simple scale multiplier on the envmap color read from the envmap texture
 	// in the shader
-	float envmap_intensity = 1.0f;
+	float envmap_intensity = 0.1f;
 	// This value may be different from 1.0f in case the original maximum texel intensity of the envmap exceeds the maximum representable value of the RGBE
 	// 9/9/9/5 format. In that case, the envmap is scaled down to fit in the RGBE 9/9/9/5 format and this scaling factor is stored here. This scaling factor is
 	// applied to the envmap texels when reading them in the shader.

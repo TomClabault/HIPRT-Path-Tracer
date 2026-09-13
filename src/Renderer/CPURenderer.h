@@ -79,6 +79,7 @@ public:
 
 	void nee_plus_plus_cache_visibility_pass();
 	void camera_rays_pass();
+	void hierarchical_adaptive_sampling_pass();
 	void ReGIR_pass();
 	void ReSTIR_DI_pass();
 	void ReSTIR_GI_pass();
@@ -155,7 +156,11 @@ private:
 	std::vector<int> m_pixel_converged_sample_count;
 	std::vector<float> m_pixel_luminance;
 	std::vector<float> m_pixel_squared_luminance;
-	unsigned char m_still_one_ray_active = true;
+	std::vector<float> m_hierarchical_adaptive_sampling_error;
+	std::vector<float> m_hierarchical_adaptive_sampling_summed_area;
+	std::vector<HierarchicalAdaptiveSamplingNode> m_hierarchical_adaptive_sampling_nodes;
+	unsigned int m_hierarchical_adaptive_sampling_node_count = 0;
+	unsigned char m_still_one_ray_active					 = true;
 	AtomicType<unsigned int> m_stop_noise_threshold_count;
 
 	RGBE9995Envmap<false> m_packed_envmap;

@@ -1235,9 +1235,9 @@ bool RenderWindow::is_rendering_done()
 	// stop noise threshold but only for the proportion stopping condition (we're not using the threshold of the pixel
 	// stop noise threshold feature) --> (enabled & adaptive sampling enabled)
 	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.use_pixel_stop_noise_threshold) ||
-											 (render_settings.use_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
+											 (render_settings.use_pixel_stop_noise_threshold && render_settings.adaptive_sampling_enabled());
 	bool minimum_sample_count_reached =
-		render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count || render_settings.enable_adaptive_sampling;
+		render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count || render_settings.adaptive_sampling_enabled();
 	rendering_done |=
 		proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition && minimum_sample_count_reached;
 

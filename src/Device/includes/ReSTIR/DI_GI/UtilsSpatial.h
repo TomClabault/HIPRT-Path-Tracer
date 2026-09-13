@@ -235,7 +235,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 			return -1;
 
 		neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
-		if (render_data.render_settings.enable_adaptive_sampling &&
+		if (render_data.render_settings.adaptive_sampling_enabled() &&
 			render_data.render_settings.sample_number >= render_data.render_settings.adaptive_sampling_min_samples)
 		{
 			if (render_data.aux_buffers.pixel_converged_sample_count[neighbor_pixel_index] != -1)

@@ -134,6 +134,13 @@ void GPURendererThread::setup_render_graphs()
 	ssbn_permutation_render_pass->add_dependency(restir_gi_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_pt_render_pass);
 
+	std::shared_ptr<HierarchicalAdaptiveSamplingRenderPass> hierarchical_adaptive_sampling_render_pass =
+		render_graph_full.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
+	hierarchical_adaptive_sampling_render_pass->add_dependency(megakernel_render_pass);
+	hierarchical_adaptive_sampling_render_pass->add_dependency(nisml_megakernel_render_pass);
+	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_gi_render_pass);
+	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_render_pass);
+
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
 	render_graph_full.add_render_pass(illumination_aware_kd_tree_render_pass);
@@ -147,6 +154,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
 	render_graph_full.add_render_pass(nisml_render_pass);
+	render_graph_full.add_render_pass(hierarchical_adaptive_sampling_render_pass);
 
 	render_graph_full.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
 
@@ -164,9 +172,13 @@ void GPURendererThread::setup_render_graphs()
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = render_graph_interactivity.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity	 = render_graph_interactivity.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass_interactivity->add_dependency(camera_rays_render_pass_interactivity);
+	std::shared_ptr<HierarchicalAdaptiveSamplingRenderPass> hierarchical_adaptive_sampling_render_pass_interactivity =
+		render_graph_interactivity.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
+	hierarchical_adaptive_sampling_render_pass_interactivity->add_dependency(megakernel_render_pass_interactivity);
 
 	render_graph_interactivity.add_render_pass(camera_rays_render_pass_interactivity);
 	render_graph_interactivity.add_render_pass(megakernel_render_pass_interactivity);
+	render_graph_interactivity.add_render_pass(hierarchical_adaptive_sampling_render_pass_interactivity);
 
 	render_graph_interactivity.set_render_window(m_render_window);
 	render_graph_interactivity.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);

@@ -11,7 +11,9 @@
 
 HIPRT_DEVICE bool path_tracing_has_adaptive_sampling_debug_buffers(const HIPRTRenderData& render_data)
 {
-	return render_data.render_settings.enable_adaptive_sampling && render_data.render_settings.has_access_to_adaptive_sampling_buffers();
+	bool adaptive_sampling_in_use = render_data.render_settings.enable_adaptive_sampling || render_data.render_settings.use_hierarchical_adaptive_sampling();
+
+	return adaptive_sampling_in_use && render_data.render_settings.has_access_to_adaptive_sampling_buffers();
 }
 
 HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
@@ -54,7 +56,7 @@ HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_color(const HIPRT
 			map_0_1_to_heatmap_color_by_index<MegakernelDebugModeHeatmapIndex>(adaptive_sampling_debug_value) * (render_data.render_settings.sample_number + 1);
 		return true;
 	}
-#elif MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+#elif MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP			 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	if (path_tracing_has_adaptive_sampling_debug_buffers(render_data))
 	{
 		out_debug_color = ColorRGB32F(0.0f) * (render_data.render_settings.sample_number + 1);
@@ -66,9 +68,18 @@ HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_color(const HIPRT
 
 		return true;
 	}
-#else																   // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+#elif MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+	if (render_data.render_settings.use_hierarchical_adaptive_sampling() && render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		bool region_active		 = render_data.aux_buffers.pixel_active[pixel_index] != 0;
+		ColorRGB32F region_color = region_active ? ColorRGB32F(1.0f, 0.0f, 0.0f) : ColorRGB32F(0.0f, 1.0f, 0.0f);
+
+		out_debug_color = region_color * (render_data.render_settings.sample_number + 1);
+		return true;
+	}
+#else																			 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	return false;
-#endif																   // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+#endif																			 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 
 	return false;
 }
@@ -560,7 +571,8 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 
 	// Modifying the ray color such that we display some debug color to the screen
 
-#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP
+#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||              \
+	MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP
 	path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, out_debug_color);
 #elif NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
