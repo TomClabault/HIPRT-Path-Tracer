@@ -276,7 +276,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 			if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(neighbor_reservoir.sample.incident_light_info_at_visible_point))
 				continue;
 
-			target_function *= cosine_term;
+			target_function *= hippt::abs(cosine_term);
 
 			float bsdf_pdf;
 			BSDFContext bsdf_context(center_surface.view_direction, center_surface.shading_normal, center_surface.geometric_normal, incident_light_direction,
