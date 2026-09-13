@@ -91,7 +91,7 @@ bool RenderGraph::pre_frame_render_update(float delta_time)
 void RenderGraph::pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	traverse_render_passes_in_dependency_order([&render_data, &compiler_options](RenderPass* render_pass)
-																					   { render_pass->pre_sample_update_async(render_data, compiler_options); });
+											   { render_pass->pre_sample_update_async(render_data, compiler_options); });
 }
 
 bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -229,6 +229,14 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 	}
 
 	m_render_passes[render_pass->get_name()] = render_pass;
+}
+
+void RenderGraph::add_render_pass_at_end(std::shared_ptr<RenderPass> render_pass)
+{
+	for (auto& name_to_render_pass : m_render_passes)
+		render_pass->add_dependency(name_to_render_pass.second);
+
+	add_render_pass(render_pass);
 }
 
 std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& render_pass_name)

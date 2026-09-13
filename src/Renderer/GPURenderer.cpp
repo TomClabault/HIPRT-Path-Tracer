@@ -30,6 +30,7 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 {
 	// Creating buffers
 	m_framebuffer									   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_display_post_process_framebuffer				   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_adaptive_sampling_debug_framebuffer			   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_denoised_framebuffer		   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_normals_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<float3_t>>();
@@ -441,6 +442,7 @@ void GPURenderer::resize(int new_width, int new_height)
 	unmap_buffers();
 
 	m_framebuffer->resize(new_width * new_height);
+	m_display_post_process_framebuffer->resize(new_width * new_height);
 	m_adaptive_sampling_debug_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
@@ -523,7 +525,8 @@ void GPURenderer::pre_frame_render_update(float delta_time)
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
+	m_render_data.buffers.accumulated_ray_colors		= m_framebuffer->map();
+	m_render_data.buffers.display_post_processed_colors = m_display_post_process_framebuffer->map();
 	if (is_adaptive_sampling_debug_view_enabled())
 		m_render_data.buffers.debug_ray_colors = m_adaptive_sampling_debug_framebuffer->map();
 	else
@@ -540,6 +543,7 @@ void GPURenderer::unmap_buffers()
 	// TODO we should only unmap buffers that need unmapping here
 
 	m_framebuffer->unmap();
+	m_display_post_process_framebuffer->unmap();
 	m_adaptive_sampling_debug_framebuffer->unmap();
 	if (get_gmon_render_pass())
 		get_gmon_render_pass()->unmap_result_framebuffer();
@@ -563,6 +567,11 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
 {
 	return m_framebuffer;
+}
+
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_display_post_process_interop_framebuffer()
+{
+	return m_display_post_process_framebuffer;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_adaptive_sampling_debug_interop_framebuffer()

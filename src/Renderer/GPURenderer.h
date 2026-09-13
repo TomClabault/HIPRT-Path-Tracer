@@ -218,6 +218,7 @@ public:
 	 */
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_default_interop_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_display_post_process_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_adaptive_sampling_debug_interop_framebuffer();
 	bool is_adaptive_sampling_debug_view_enabled() const;
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
@@ -424,6 +425,8 @@ private:
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_framebuffer;
+	// This buffer holds display-ready colors produced by the final render-graph pass.
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_display_post_process_framebuffer;
 	// This buffer contains adaptive-sampling debug colors and must not be used as render accumulation storage.
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_adaptive_sampling_debug_framebuffer;
 	// AOVs and buffers needed by the denoiser that are filled/manipulated by the renderer.

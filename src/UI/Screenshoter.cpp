@@ -10,6 +10,10 @@
 #include "UI/Screenshoter.h"
 #include "Utils/Utils.h"
 
+#include "OpenGL/OpenGLInteropBuffer.h"
+
+#include <algorithm>
+
 extern ImGuiLogger g_imgui_logger;
 
 Screenshoter::Screenshoter()
@@ -118,16 +122,19 @@ void Screenshoter::write_to_png(std::string filepath)
 
 Image8Bit Screenshoter::get_image(bool flip_y)
 {
-	int width  = m_renderer->m_render_resolution.x;
-	int height = m_renderer->m_render_resolution.y;
+	int width					 = m_renderer->m_render_resolution.x;
+	int height					 = m_renderer->m_render_resolution.y;
+	DisplayViewType display_view = m_render_window->get_display_view_system()->get_current_display_view_type();
 
-	// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same
-	// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel,
-	// we would have to write HIP kernels that would basically be copy-pasting of the OpenGL display shaders
-	// with just some syntax changes. That would basically mean duplicating code which would be annoying to
-	// maintain because we would have to update the HIP kernels everytime we changed the OpenGL display shader
-	// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time,
-	// to update the HIP kernels so that's why code duplication here is annoying)
+	if (display_view == DisplayViewType::DEFAULT)
+		return get_final_output_image(flip_y);
+
+	// Specialized display views still use their OpenGL compute shader because their post-processing is not part of
+	// the path tracer's final output pass. Reusing the fragment shader source here keeps those screenshots identical
+	// to their viewport presentation without duplicating their specialized transforms in HIP kernels. This keeps the
+	// screenshot and viewport paths in sync without having to copy the OpenGL display shaders into HIP kernels.
+	// The default display view is handled directly from the final render-graph framebuffer above, so it does not read
+	// back through OpenGL.
 
 	m_renderer->synchronize_all_kernels();
 	m_renderer->unmap_buffers();
@@ -135,7 +142,7 @@ Image8Bit Screenshoter::get_image(bool flip_y)
 	m_render_window->get_display_view_system()->upload_relevant_buffers_to_texture();
 
 	resize_output_image(width, height);
-	select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
+	select_compute_program(display_view);
 
 	GLint threads[3];
 	m_active_compute_program->get_compute_threads(threads);
@@ -153,6 +160,41 @@ Image8Bit Screenshoter::get_image(bool flip_y)
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
 	Image8Bit image(mapped_data, width, height, 4);
+	if (flip_y)
+		image.flip_vertically();
+
+	return image;
+}
+
+Image8Bit Screenshoter::get_final_output_image(bool flip_y)
+{
+	int width  = m_renderer->m_render_resolution.x;
+	int height = m_renderer->m_render_resolution.y;
+
+	m_renderer->synchronize_all_kernels();
+	m_renderer->unmap_buffers();
+
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> final_framebuffer = m_renderer->get_display_post_process_interop_framebuffer();
+	ColorRGB32F* final_framebuffer_device_pointer						= final_framebuffer->map();
+	std::vector<ColorRGB32F> final_colors =
+		OrochiBuffer<ColorRGB32F>::download_data(final_framebuffer_device_pointer, static_cast<size_t>(width) * static_cast<size_t>(height));
+	final_framebuffer->unmap();
+
+	std::vector<unsigned char> image_data(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
+	for (size_t pixel_index = 0; pixel_index < final_colors.size(); pixel_index++)
+	{
+		ColorRGB32F final_color = final_colors[pixel_index];
+		final_color.r			= std::clamp(final_color.r, 0.0f, 1.0f);
+		final_color.g			= std::clamp(final_color.g, 0.0f, 1.0f);
+		final_color.b			= std::clamp(final_color.b, 0.0f, 1.0f);
+
+		image_data[pixel_index * 4 + 0] = static_cast<unsigned char>(final_color.r * 255.0f);
+		image_data[pixel_index * 4 + 1] = static_cast<unsigned char>(final_color.g * 255.0f);
+		image_data[pixel_index * 4 + 2] = static_cast<unsigned char>(final_color.b * 255.0f);
+		image_data[pixel_index * 4 + 3] = 255;
+	}
+
+	Image8Bit image(image_data, width, height, 4);
 	if (flip_y)
 		image.flip_vertically();
 

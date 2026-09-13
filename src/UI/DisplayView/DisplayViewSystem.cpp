@@ -225,26 +225,8 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	{
 	case DisplayViewType::DEFAULT:
 	{
-		int sample_number;
-		if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
-			// If we have denoising enabled, the viewport may not be updated at each frame.
-			// This means that we may be displaying the same denoised buffer for multiple frame
-			// and that same denoised buffer is only going to have a given amount of samples accumulated
-			// in it so we must you that number of samples for displaying otherwise things are going
-			// to be too dark because we're going to be dividing the data of the denoised buffer by a
-			// sample count that doesn't match
-			sample_number = application_settings->last_denoised_sample_count;
-		else if (renderer->gmon_used())
-			sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
-		else
-			sample_number = render_settings.sample_number;
-
+		// Averaging, low-resolution expansion, and tone mapping are already baked into the final render-graph output.
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		program->set_uniform("u_sample_number", sample_number);
-		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
-		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
-		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
 
 		break;
 	}
@@ -373,6 +355,10 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 		break;
 
 	case DisplayViewType::DEFAULT:
+		internal_upload_buffer_to_texture(m_renderer->get_display_post_process_interop_framebuffer(), m_display_texture_1,
+										  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		break;
+
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 	default:
 		if (m_renderer->is_adaptive_sampling_debug_view_enabled())

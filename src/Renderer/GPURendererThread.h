@@ -7,6 +7,7 @@
 #define GPU_RENDERER_THREAD_H
 
 #include "Renderer/RenderPasses/RenderGraph.h"
+#include "RenderPasses/DisplayPostProcessRenderPass.h"
 #include "RenderPasses/FillGBufferRenderPass.h"
 #include "RenderPasses/GMoNRenderPass.h"
 #include "RenderPasses/HierarchicalAdaptiveSamplingRenderPass.h"

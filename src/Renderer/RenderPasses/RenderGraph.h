@@ -61,6 +61,10 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
 	void add_render_pass(std::shared_ptr<RenderPass> render_pass);
+	/**
+	 * Adds a render pass after all passes currently registered in the graph.
+	 */
+	void add_render_pass_at_end(std::shared_ptr<RenderPass> render_pass);
 	std::shared_ptr<RenderPass> get_render_pass(const std::string& render_pass_name);
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();
 

@@ -6,12 +6,6 @@
 #version 430
 
 uniform sampler2D u_texture;
-uniform int u_sample_number;
-uniform int u_resolution_scaling;
-
-uniform float u_gamma;
-uniform float u_exposure;
-uniform int u_do_tonemapping;
 
 #ifdef COMPUTE_SCREENSHOTER
 uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
@@ -32,21 +26,13 @@ void main()
 	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
 		return;
 
-	vec4 hdr_color = texelFetch(u_texture, thread_id / u_resolution_scaling, 0);
+	vec4 hdr_color = texelFetch(u_texture, thread_id, 0);
 #else // #ifdef COMPUTE_SCREENSHOTER
-	vec4 hdr_color = texture(u_texture, vs_tex_coords / u_resolution_scaling);
+	vec4 hdr_color = texture(u_texture, vs_tex_coords);
 #endif // #ifdef COMPUTE_SCREENSHOTER
 
 	vec4 final_color = hdr_color;
-	// Scaling by sample count
-	final_color = final_color / float(u_sample_number);
-	final_color = clamp(final_color, 0.0f, 1.0e35f);
-		
-	if (u_do_tonemapping == 1)
-	{
-		vec4 tone_mapped = 1.0f - exp(-final_color * u_exposure);
-		final_color = pow(tone_mapped, vec4(1.0f / u_gamma));
-	}
+	// Scaling by sample count and tone mapping are performed by the final render-graph pass.
 
 	final_color = vec4(final_color.rgb, 1.0f);
 

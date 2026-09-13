@@ -14,6 +14,7 @@
 #include "Device/includes/Neural/NISML/NISMLDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
+#include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/NISMLMegaKernelData.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
@@ -67,6 +68,7 @@ struct HIPRTRenderData
 	GBufferDevice g_buffer_prev_frame;
 
 	HIPRTRenderSettings render_settings;
+	DisplayPostProcessSettings display_post_process_settings;
 	WorldSettings world_settings;
 
 	// Data for NEE++

@@ -39,6 +39,8 @@ public:
 	Image8Bit get_image(bool flip_y = true);
 
 private:
+	Image8Bit get_final_output_image(bool flip_y);
+
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	RenderWindow* m_render_window			= nullptr;
 
