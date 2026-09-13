@@ -61,6 +61,14 @@ public:
 	ColorRGB32F* map_result_framebuffer();
 	void unmap_result_framebuffer();
 	/**
+	 * Ensures that the OpenGL interop result buffer has the requested size.
+	 *
+	 * This must be called from the thread that owns the OpenGL context.
+	 * The render thread only allocates the
+	 * device-side GMoN buffers in pre_frame_render_update().
+	 */
+	void ensure_result_framebuffer_size(unsigned int new_width, unsigned int new_height);
+	/**
 	 * Returns true or false depending on whether or not the GMoN buffers are allocated
 	 */
 	bool buffers_allocated();

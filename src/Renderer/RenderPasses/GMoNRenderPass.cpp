@@ -36,7 +36,6 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 		{
 			// Resizing the buffers because the resolution has changed
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
-			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
@@ -69,9 +68,11 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 	}
 	else
 	{
-		if (!m_gmon.is_freed())
+		if (m_gmon.sets.size() != 0)
 		{
-			m_gmon.free();
+			// The device-side buffer can be released here, but the OpenGL interop buffer must be released on the main
+			// thread. The latter is deferred to GPURenderer::map_buffers_for_render().
+			m_gmon.free_device_buffers();
 
 			// Returning true to indicate that the render data buffers have been invalidated
 			return true;
@@ -206,8 +207,6 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	if (is_render_pass_used(*m_compiler_options))
 	{
 		m_gmon.resize_sets(new_width, new_height, get_number_of_sets_used());
-
-		m_gmon.result_framebuffer->resize(new_width * new_height);
 	}
 }
 
@@ -221,8 +220,15 @@ ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 
 void GMoNRenderPass::unmap_result_framebuffer()
 {
-	if (is_render_pass_used(*m_compiler_options))
+	if (m_gmon.result_framebuffer != nullptr)
 		m_gmon.result_framebuffer->unmap();
+}
+
+void GMoNRenderPass::ensure_result_framebuffer_size(unsigned int new_width, unsigned int new_height)
+{
+	size_t requested_element_count = static_cast<size_t>(new_width) * static_cast<size_t>(new_height);
+	if (m_gmon.result_framebuffer->size() != requested_element_count)
+		m_gmon.resize_interop(new_width, new_height);
 }
 
 bool GMoNRenderPass::buffers_allocated()

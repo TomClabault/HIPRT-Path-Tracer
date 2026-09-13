@@ -527,8 +527,27 @@ void GPURenderer::map_buffers_for_render()
 	m_render_data.buffers.display_post_processed_colors = m_display_post_process_framebuffer->map();
 	m_render_data.buffers.denoised_ray_colors			= m_denoiser_buffers.m_denoised_framebuffer->map();
 	m_render_data.buffers.debug_ray_colors				= nullptr;
-	if (get_gmon_render_pass())
-		m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
+
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = get_gmon_render_pass();
+	if (gmon_render_pass)
+	{
+		if (gmon_render_pass->is_render_pass_used(*get_global_compiler_options()))
+		{
+			// OpenGL interop buffers must be created/resized on the main thread, which is the owner of the OpenGL context.
+			gmon_render_pass->ensure_result_framebuffer_size(m_render_resolution.x, m_render_resolution.y);
+			m_render_data.buffers.gmon_estimator.result_framebuffer = gmon_render_pass->map_result_framebuffer();
+		}
+		else
+		{
+			// The render thread only releases GMoN's device-side storage. Release the OpenGL resource here while the
+			// main thread owns the OpenGL context.
+			gmon_render_pass->unmap_result_framebuffer();
+			gmon_render_pass->get_gmon_data().free_result_framebuffer();
+			m_render_data.buffers.gmon_estimator.result_framebuffer = nullptr;
+		}
+	}
+	else
+		m_render_data.buffers.gmon_estimator.result_framebuffer = nullptr;
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo  = m_denoiser_buffers.map_albedo_buffer();
@@ -561,8 +580,13 @@ void GPURenderer::unmap_buffers()
 	m_framebuffer->unmap();
 	m_display_post_process_framebuffer->unmap();
 	m_denoiser_buffers.m_denoised_framebuffer->unmap();
-	if (get_gmon_render_pass())
-		get_gmon_render_pass()->unmap_result_framebuffer();
+
+	// GMoN exists only in the full render graph. Use that graph directly here because the active graph may be the
+	// interactivity graph, which does not contain GMoN, while its result buffer can still be mapped.
+	std::shared_ptr<GMoNRenderPass> full_graph_gmon_render_pass = std::dynamic_pointer_cast<GMoNRenderPass>(
+		m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+	if (full_graph_gmon_render_pass)
+		full_graph_gmon_render_pass->unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
 }

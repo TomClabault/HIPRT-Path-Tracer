@@ -42,10 +42,22 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 
 	void free()
 	{
-		sets.free();
-		result_framebuffer->free();
+		free_device_buffers();
+		free_result_framebuffer();
+	}
 
-		current_resolution = make_int2(0, 0);
+	void free_device_buffers()
+	{
+		sets.free();
+
+		current_resolution	   = make_int2(0, 0);
+		current_number_of_sets = 0;
+	}
+
+	void free_result_framebuffer()
+	{
+		if (result_framebuffer != nullptr && result_framebuffer->size() != 0)
+			result_framebuffer->free();
 	}
 
 	bool is_freed() const

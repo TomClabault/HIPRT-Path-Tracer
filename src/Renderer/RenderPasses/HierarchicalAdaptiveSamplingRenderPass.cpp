@@ -90,26 +90,30 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_frame_render_update(float delta
 		return had_buffers;
 	}
 
+	bool resized						   = false;
 	unsigned int pixel_count			   = render_settings.render_resolution.x * render_settings.render_resolution.y;
 	unsigned int requested_node_capacity   = static_cast<unsigned int>(std::max(1, render_settings.hierarchical_adaptive_sampling_max_node_count));
 	unsigned int maximum_useful_node_count = pixel_count > 0 ? pixel_count * 2u - 1u : 1u;
 	unsigned int node_capacity			   = std::min(requested_node_capacity, maximum_useful_node_count);
-	bool resized						   = false;
 	unsigned int maximum_depth			   = static_cast<unsigned int>(std::max(1, render_settings.hierarchical_adaptive_sampling_max_depth));
 	unsigned int build_command_count	   = maximum_depth * 2u + 4u;
 
 	if (m_build_depths_host_pinned.size() != build_command_count)
 	{
 		m_build_depths_host_pinned.resize_host_pinned_mem(build_command_count);
+
 		unsigned int* build_depths = m_build_depths_host_pinned.get_host_pinned_pointer();
 		build_depths[0]			   = static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::INITIALIZE);
+
 		for (unsigned int depth = 0; depth <= maximum_depth; depth++)
 		{
 			build_depths[depth * 2u + 1u] = static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::PREPARE_LEVEL);
 			build_depths[depth * 2u + 2u] = depth;
 		}
+
 		build_depths[build_command_count - 1u] = static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::FINALIZE);
-		resized								   = true;
+
+		resized = true;
 	}
 
 	if (m_error.size() != pixel_count)
@@ -119,16 +123,19 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_frame_render_update(float delta
 		m_summed_area.resize(pixel_count);
 		resized = true;
 	}
+
 	if (m_nodes.size() != node_capacity)
 	{
 		m_nodes.resize(node_capacity);
 		resized = true;
 	}
+
 	if (m_node_count.size() == 0)
 	{
 		m_node_count.resize(1);
 		resized = true;
 	}
+
 	if (m_level_node_count.size() == 0)
 	{
 		m_level_node_count.resize(1);
