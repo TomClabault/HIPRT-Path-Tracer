@@ -6,17 +6,6 @@
 #ifndef HOST_DEVICE_COMMON_MEGAKERNEL_OPTIONS_H
 #define HOST_DEVICE_COMMON_MEGAKERNEL_OPTIONS_H
 
-#define MEGAKERNEL_DEBUG_MODE_NO_DEBUG						0
-#define MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP		1
-#define MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP			2
-#define MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP 3
-#define MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE		4
-
-/**
- * Debug view for the megakernel.
- */
-#ifndef __KERNELCC__
-#define MegakernelDebugMode MEGAKERNEL_DEBUG_MODE_NO_DEBUG
-#endif // #ifndef __KERNELCC__
+// Adaptive sampling debug views are runtime display post-process settings.
 
 #endif // #ifndef HOST_DEVICE_COMMON_MEGAKERNEL_OPTIONS_H

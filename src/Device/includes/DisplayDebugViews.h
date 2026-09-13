@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_DISPLAY_DEBUG_VIEWS_H
 #define DEVICE_INCLUDES_DISPLAY_DEBUG_VIEWS_H
 
+#include "Device/includes/Heatmap.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -35,6 +36,110 @@ HIPRT_DEVICE ColorRGB32F display_view_apply_white_furnace_threshold(ColorRGB32F 
 		return ColorRGB32F(0.0f, 1.0f, 0.0f);
 
 	return color;
+}
+
+HIPRT_DEVICE bool display_view_compute_adaptive_sampling_debug_value(const HIPRTRenderData& render_data, int pixel_index, float& out_debug_value)
+{
+	if (!render_data.render_settings.has_access_to_adaptive_sampling_buffers() || render_data.aux_buffers.pixel_converged_sample_count == nullptr)
+		return false;
+
+	int minimum_sample_count = render_data.render_settings.adaptive_sampling_min_samples;
+	int maximum_sample_count = static_cast<int>(render_data.render_settings.sample_number + 1);
+	if (maximum_sample_count < minimum_sample_count)
+		maximum_sample_count = minimum_sample_count;
+
+	int pixel_converged_sample_count = render_data.aux_buffers.pixel_converged_sample_count[pixel_index];
+	if (pixel_converged_sample_count == -1)
+		pixel_converged_sample_count = maximum_sample_count;
+
+	if (maximum_sample_count == minimum_sample_count)
+	{
+		out_debug_value = 1.0f;
+		return true;
+	}
+
+	float clamped_sample_count =
+		hippt::clamp(static_cast<float>(minimum_sample_count), static_cast<float>(maximum_sample_count), static_cast<float>(pixel_converged_sample_count));
+	out_debug_value = (clamped_sample_count - static_cast<float>(minimum_sample_count)) /
+					  (static_cast<float>(maximum_sample_count) - static_cast<float>(minimum_sample_count));
+
+	return true;
+}
+
+HIPRT_DEVICE ColorRGB32F display_view_map_adaptive_sampling_heatmap(float scalar_0_1, int heatmap_index)
+{
+	switch (heatmap_index)
+	{
+	case HEATMAP_INDEX_MAGMA:
+		return map_0_1_to_heatmap_color_by_index<HEATMAP_INDEX_MAGMA>(scalar_0_1);
+	case HEATMAP_INDEX_INFERNO:
+		return map_0_1_to_heatmap_color_by_index<HEATMAP_INDEX_INFERNO>(scalar_0_1);
+	case HEATMAP_INDEX_VIRIDIS:
+		return map_0_1_to_heatmap_color_by_index<HEATMAP_INDEX_VIRIDIS>(scalar_0_1);
+	case HEATMAP_INDEX_GRAYSCALE:
+		return map_0_1_to_heatmap_color_by_index<HEATMAP_INDEX_GRAYSCALE>(scalar_0_1);
+	case HEATMAP_INDEX_BLUE_GREEN_RED:
+	default:
+		return map_0_1_to_heatmap_color_by_index<HEATMAP_INDEX_BLUE_GREEN_RED>(scalar_0_1);
+	}
+}
+
+HIPRT_DEVICE bool display_view_compute_adaptive_sampling_debug_color(
+	const HIPRTRenderData& render_data, int pixel_index, int adaptive_sampling_display_view, int heatmap_index, ColorRGB32F& out_debug_color)
+{
+	switch (adaptive_sampling_display_view)
+	{
+	case DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP:
+	{
+		if (!render_data.render_settings.enable_adaptive_sampling)
+			return false;
+
+		float adaptive_sampling_debug_value;
+		if (!display_view_compute_adaptive_sampling_debug_value(render_data, pixel_index, adaptive_sampling_debug_value))
+			return false;
+
+		out_debug_color = display_view_map_adaptive_sampling_heatmap(adaptive_sampling_debug_value, heatmap_index);
+		return true;
+	}
+
+	case DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGED_MAP:
+	{
+		if (!render_data.render_settings.enable_adaptive_sampling || !render_data.render_settings.has_access_to_adaptive_sampling_buffers() ||
+			render_data.aux_buffers.pixel_converged_sample_count == nullptr)
+			return false;
+
+		// The buffer is initialized to -1 and is assigned a sample count exactly when the pixel converges.
+		out_debug_color = render_data.aux_buffers.pixel_converged_sample_count[pixel_index] == -1 ? ColorRGB32F(0.0f) : ColorRGB32F(1.0f);
+		return true;
+	}
+
+	case DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_REGION_STATE_MAP:
+	{
+		if (!render_data.render_settings.use_hierarchical_adaptive_sampling() || !render_data.render_settings.has_access_to_adaptive_sampling_buffers() ||
+			render_data.aux_buffers.pixel_active == nullptr)
+			return false;
+
+		out_debug_color = render_data.aux_buffers.pixel_active[pixel_index] != 0 ? ColorRGB32F(1.0f, 0.0f, 0.0f) : ColorRGB32F(0.0f, 1.0f, 0.0f);
+		return true;
+	}
+
+	case DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_PIXEL_NOISE:
+	{
+		if (!render_data.render_settings.use_hierarchical_adaptive_sampling() || !render_data.render_settings.has_access_to_adaptive_sampling_buffers() ||
+			render_data.aux_buffers.hierarchical_adaptive_sampling_error == nullptr)
+			return false;
+
+		float relative_noise   = render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index];
+		float noise_threshold  = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
+		float normalized_noise = noise_threshold > 0.0f ? relative_noise / noise_threshold : (relative_noise > 0.0f ? 1.0f : 0.0f);
+		out_debug_color		   = display_view_map_adaptive_sampling_heatmap(hippt::clamp(0.0f, 1.0f, normalized_noise), heatmap_index);
+		return true;
+	}
+
+	case DISPLAY_ADAPTIVE_SAMPLING_NONE:
+	default:
+		return false;
+	}
 }
 
 #endif // #ifndef DEVICE_INCLUDES_DISPLAY_DEBUG_VIEWS_H

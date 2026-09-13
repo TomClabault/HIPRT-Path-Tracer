@@ -205,14 +205,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		if (!sampling_needed)
 		{
 			rescale_samples_for_display(render_data, pixel_index);
-
-#if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||              \
-	MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE
-			ColorRGB32F debug_color;
-			if (render_data.buffers.debug_ray_colors != nullptr && path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, debug_color))
-				render_data.buffers.debug_ray_colors[pixel_index] = debug_color;
-#endif // #if MegakernelDebugMode == adaptive sampling debug mode
-
 			render_data.aux_buffers.pixel_active[pixel_index] = false;
 
 			return;

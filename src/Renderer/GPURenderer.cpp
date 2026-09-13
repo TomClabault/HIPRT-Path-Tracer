@@ -31,7 +31,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	// Creating buffers
 	m_framebuffer									   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_display_post_process_framebuffer				   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_adaptive_sampling_debug_framebuffer			   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_denoised_framebuffer		   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_normals_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<float3_t>>();
 	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3_t>>();
@@ -443,7 +442,6 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_framebuffer->resize(new_width * new_height);
 	m_display_post_process_framebuffer->resize(new_width * new_height);
-	m_adaptive_sampling_debug_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
 	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
 	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
@@ -527,10 +525,7 @@ void GPURenderer::map_buffers_for_render()
 {
 	m_render_data.buffers.accumulated_ray_colors		= m_framebuffer->map();
 	m_render_data.buffers.display_post_processed_colors = m_display_post_process_framebuffer->map();
-	if (is_adaptive_sampling_debug_view_enabled())
-		m_render_data.buffers.debug_ray_colors = m_adaptive_sampling_debug_framebuffer->map();
-	else
-		m_render_data.buffers.debug_ray_colors = nullptr;
+	m_render_data.buffers.debug_ray_colors				= nullptr;
 	if (get_gmon_render_pass())
 		m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
 
@@ -564,7 +559,6 @@ void GPURenderer::unmap_buffers()
 
 	m_framebuffer->unmap();
 	m_display_post_process_framebuffer->unmap();
-	m_adaptive_sampling_debug_framebuffer->unmap();
 	if (get_gmon_render_pass())
 		get_gmon_render_pass()->unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
@@ -592,19 +586,6 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_inter
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_display_post_process_interop_framebuffer()
 {
 	return m_display_post_process_framebuffer;
-}
-
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_adaptive_sampling_debug_interop_framebuffer()
-{
-	return m_adaptive_sampling_debug_framebuffer;
-}
-
-bool GPURenderer::is_adaptive_sampling_debug_view_enabled() const
-{
-	int megakernel_debug_mode = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
-	return megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||
-		   megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP ||
-		   megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer()

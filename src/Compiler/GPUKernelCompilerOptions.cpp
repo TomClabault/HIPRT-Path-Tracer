@@ -129,9 +129,6 @@ const std::string GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CAC
 const std::string GPUKernelCompilerOptions::NISML_DEBUG_MODE = "NISMLDebugMode";
 const std::string GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX = "NISMLDebugModeHeatmapIndex";
 
-const std::string GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE = "MegakernelDebugMode";
-const std::string GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX = "MegakernelDebugModeHeatmapIndex";
-
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING = "EnvmapSamplingDoBilinearFiltering";
@@ -274,9 +271,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES,
 	GPUKernelCompilerOptions::NISML_DEBUG_MODE,
 	GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX,
-
-	GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE,
-	GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX,
 
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
@@ -429,10 +423,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES] = std::make_shared<int>(NISMLUseSGImportancesKDTreeCaches);
 	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE] = std::make_shared<int>(NISMLDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX] = std::make_shared<int>(NISMLDebugModeHeatmapIndex);
-
-	m_options_macro_map[GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE] = std::make_shared<int>(MegakernelDebugMode);
-	m_options_macro_map[GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX] =
-		std::make_shared<int>(MegakernelDebugModeHeatmapIndex);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);

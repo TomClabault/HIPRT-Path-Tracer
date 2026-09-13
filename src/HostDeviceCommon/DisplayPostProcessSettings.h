@@ -14,6 +14,15 @@ enum DisplayPostProcessView
 	DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD
 };
 
+enum DisplayAdaptiveSamplingView
+{
+	DISPLAY_ADAPTIVE_SAMPLING_NONE = 0,
+	DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP,
+	DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGED_MAP,
+	DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_REGION_STATE_MAP,
+	DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_PIXEL_NOISE
+};
+
 struct DisplayPostProcessSettings
 {
 	int do_tonemapping = 1;
@@ -24,6 +33,10 @@ struct DisplayPostProcessSettings
 	int white_furnace_use_low_threshold	 = 0;
 	int white_furnace_use_high_threshold = 1;
 	int white_furnace_sample_count		 = 1;
+
+	// Adaptive sampling debug views are evaluated by the final display post-process pass at runtime.
+	int adaptive_sampling_display_view	= DISPLAY_ADAPTIVE_SAMPLING_NONE;
+	int adaptive_sampling_heatmap_index = 0;
 };
 
 #endif // #ifndef DISPLAY_POST_PROCESS_SETTINGS_H

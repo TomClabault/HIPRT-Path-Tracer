@@ -56,11 +56,17 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 
 	case DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD:
 	{
-		ColorRGB32F* source_framebuffer =
-			render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
-		unsigned int sample_count = static_cast<unsigned int>(hippt::max(1, display_settings.white_furnace_sample_count));
-		final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
-		final_color				  = display_view_apply_white_furnace_threshold(final_color, display_settings);
+		bool has_adaptive_sampling_debug_color = display_view_compute_adaptive_sampling_debug_color(
+			render_data, static_cast<int>(source_pixel_index), display_settings.adaptive_sampling_display_view,
+			display_settings.adaptive_sampling_heatmap_index, final_color);
+		if (!has_adaptive_sampling_debug_color)
+		{
+			ColorRGB32F* source_framebuffer =
+				render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
+			unsigned int sample_count = static_cast<unsigned int>(hippt::max(1, display_settings.white_furnace_sample_count));
+			final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
+		}
+		final_color = display_view_apply_white_furnace_threshold(final_color, display_settings);
 
 		if (display_settings.do_tonemapping == 1)
 			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
@@ -70,13 +76,19 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 	case DISPLAY_POST_PROCESS_DEFAULT:
 	default:
 	{
-		ColorRGB32F* source_framebuffer =
-			render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
-		unsigned int sample_count = render_data.render_settings.sample_number + 1;
-		final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
-		final_color.r			  = hippt::clamp(0.0f, 1.0e35f, final_color.r);
-		final_color.g			  = hippt::clamp(0.0f, 1.0e35f, final_color.g);
-		final_color.b			  = hippt::clamp(0.0f, 1.0e35f, final_color.b);
+		bool has_adaptive_sampling_debug_color = display_view_compute_adaptive_sampling_debug_color(
+			render_data, static_cast<int>(source_pixel_index), display_settings.adaptive_sampling_display_view,
+			display_settings.adaptive_sampling_heatmap_index, final_color);
+		if (!has_adaptive_sampling_debug_color)
+		{
+			ColorRGB32F* source_framebuffer =
+				render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
+			unsigned int sample_count = render_data.render_settings.sample_number + 1;
+			final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
+			final_color.r			  = hippt::clamp(0.0f, 1.0e35f, final_color.r);
+			final_color.g			  = hippt::clamp(0.0f, 1.0e35f, final_color.g);
+			final_color.b			  = hippt::clamp(0.0f, 1.0e35f, final_color.b);
+		}
 
 		if (display_settings.do_tonemapping == 1)
 			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);

@@ -1246,23 +1246,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					if (render_settings.enable_adaptive_sampling)
 					{
-						render_settings.enable_hierarchical_adaptive_sampling = false;
-
-						int megakernel_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
-						if (megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP ||
-							megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE)
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE, MEGAKERNEL_DEBUG_MODE_NO_DEBUG);
-							m_renderer->recompile_kernels();
-						}
+						render_settings.enable_hierarchical_adaptive_sampling					 = false;
+						render_data.display_post_process_settings.adaptive_sampling_display_view = DISPLAY_ADAPTIVE_SAMPLING_NONE;
 					}
-
-					if (!render_settings.enable_adaptive_sampling &&
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE, MEGAKERNEL_DEBUG_MODE_NO_DEBUG);
-						m_renderer->recompile_kernels();
-					}
+					else if (render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP ||
+							 render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGED_MAP)
+						render_data.display_post_process_settings.adaptive_sampling_display_view = DISPLAY_ADAPTIVE_SAMPLING_NONE;
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -1307,36 +1296,19 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"Displays pixels that have converged according to adaptive sampling or the pixel stop noise threshold."
 				};
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-				if (ImGuiRenderer::ComboWithTooltips(
-						"Debug view##adaptive-sampling", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE),
-						adaptive_sampling_debug_view_items, IM_ARRAYSIZE(adaptive_sampling_debug_view_items), adaptive_sampling_debug_view_tooltips))
+				if (ImGuiRenderer::ComboWithTooltips("Debug view##adaptive-sampling", &render_data.display_post_process_settings.adaptive_sampling_display_view,
+													 adaptive_sampling_debug_view_items, IM_ARRAYSIZE(adaptive_sampling_debug_view_items),
+													 adaptive_sampling_debug_view_tooltips))
 				{
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
-					{
-						if (!render_settings.enable_adaptive_sampling)
-							render_settings.enable_adaptive_sampling = true;
-
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE, NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE, REGIR_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
-															   LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
-															   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
-					}
-
-					m_renderer->recompile_kernels();
 					m_render_window->set_force_viewport_refresh(true);
 				}
 
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP)
+				if (render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP)
 				{
 					const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
-					if (ImGui::Combo("Debug view heatmap##adaptive-sampling",
-									 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX),
+					if (ImGui::Combo("Debug view heatmap##adaptive-sampling", &render_data.display_post_process_settings.adaptive_sampling_heatmap_index,
 									 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
 					{
-						m_renderer->recompile_kernels();
 						m_render_window->set_force_viewport_refresh(true);
 					}
 				}
@@ -1359,13 +1331,17 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (ImGui::Checkbox("Enable hierarchical adaptive sampling", &render_settings.enable_hierarchical_adaptive_sampling))
 				{
 					if (render_settings.enable_hierarchical_adaptive_sampling)
-						render_settings.enable_adaptive_sampling = false;
-
-					if (!render_settings.enable_hierarchical_adaptive_sampling &&
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
 					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE, MEGAKERNEL_DEBUG_MODE_NO_DEBUG);
-						m_renderer->recompile_kernels();
+						render_settings.enable_adaptive_sampling								 = false;
+						render_data.display_post_process_settings.adaptive_sampling_display_view = DISPLAY_ADAPTIVE_SAMPLING_NONE;
+					}
+					else if (render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP ||
+							 render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGED_MAP ||
+							 render_data.display_post_process_settings.adaptive_sampling_display_view ==
+								 DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_REGION_STATE_MAP ||
+							 render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_PIXEL_NOISE)
+					{
+						render_data.display_post_process_settings.adaptive_sampling_display_view = DISPLAY_ADAPTIVE_SAMPLING_NONE;
 					}
 
 					m_render_window->set_render_dirty(true);
@@ -1451,37 +1427,21 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"zero noise and the last color represents noise at or above the hierarchical noise threshold."
 				};
 
-				if (ImGuiRenderer::ComboWithTooltips("Debug view##hierarchical-adaptive-sampling",
-													 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE),
-													 hierarchical_adaptive_sampling_debug_view_items,
-													 IM_ARRAYSIZE(hierarchical_adaptive_sampling_debug_view_items),
-													 hierarchical_adaptive_sampling_debug_view_tooltips))
+				if (ImGuiRenderer::ComboWithTooltips(
+						"Debug view##hierarchical-adaptive-sampling", &render_data.display_post_process_settings.adaptive_sampling_display_view,
+						hierarchical_adaptive_sampling_debug_view_items, IM_ARRAYSIZE(hierarchical_adaptive_sampling_debug_view_items),
+						hierarchical_adaptive_sampling_debug_view_tooltips))
 				{
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) != MEGAKERNEL_DEBUG_MODE_NO_DEBUG)
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE, NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE, REGIR_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
-															   LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
-															   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
-					}
-
-					m_renderer->recompile_kernels();
 					m_render_window->set_force_viewport_refresh(true);
 				}
 
-				int megakernel_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
-				if (megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP ||
-					megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE)
+				if (render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP ||
+					render_data.display_post_process_settings.adaptive_sampling_display_view == DISPLAY_ADAPTIVE_SAMPLING_HIERARCHICAL_PIXEL_NOISE)
 				{
 					const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
 					if (ImGui::Combo("Debug view heatmap##hierarchical-adaptive-sampling",
-									 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE_HEATMAP_INDEX),
-									 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
+									 &render_data.display_post_process_settings.adaptive_sampling_heatmap_index, heatmap_items, IM_ARRAYSIZE(heatmap_items)))
 					{
-						m_renderer->recompile_kernels();
 						m_render_window->set_force_viewport_refresh(true);
 					}
 				}
