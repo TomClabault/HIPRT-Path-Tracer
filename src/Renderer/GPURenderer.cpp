@@ -525,6 +525,7 @@ void GPURenderer::map_buffers_for_render()
 {
 	m_render_data.buffers.accumulated_ray_colors		= m_framebuffer->map();
 	m_render_data.buffers.display_post_processed_colors = m_display_post_process_framebuffer->map();
+	m_render_data.buffers.denoised_ray_colors			= m_denoiser_buffers.m_denoised_framebuffer->map();
 	m_render_data.buffers.debug_ray_colors				= nullptr;
 	if (get_gmon_render_pass())
 		m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
@@ -559,6 +560,7 @@ void GPURenderer::unmap_buffers()
 
 	m_framebuffer->unmap();
 	m_display_post_process_framebuffer->unmap();
+	m_denoiser_buffers.m_denoised_framebuffer->unmap();
 	if (get_gmon_render_pass())
 		get_gmon_render_pass()->unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();

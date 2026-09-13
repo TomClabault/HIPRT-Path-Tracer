@@ -7,8 +7,36 @@
 #define DEVICE_INCLUDES_DISPLAY_DEBUG_VIEWS_H
 
 #include "Device/includes/Heatmap.h"
+#include "Device/includes/Tonemapping.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/RenderData.h"
+
+HIPRT_DEVICE ColorRGB32F display_view_denoised_blend(const HIPRTRenderData& render_data, unsigned int pixel_index)
+{
+	ColorRGB32F noisy_color = render_data.buffers.accumulated_ray_colors[pixel_index];
+	if (render_data.buffers.gmon_estimator.result_framebuffer != nullptr)
+		noisy_color = render_data.buffers.gmon_estimator.result_framebuffer[pixel_index];
+
+	ColorRGB32F denoised_color = noisy_color;
+	if (render_data.buffers.denoised_ray_colors != nullptr)
+		denoised_color = render_data.buffers.denoised_ray_colors[pixel_index];
+
+	unsigned int noisy_sample_count	   = static_cast<unsigned int>(hippt::max(1, render_data.display_post_process_settings.denoised_blend_noisy_sample_count));
+	unsigned int denoised_sample_count = static_cast<unsigned int>(hippt::max(1, render_data.display_post_process_settings.denoised_blend_sample_count));
+	noisy_color						   = noisy_color / static_cast<float>(noisy_sample_count);
+	denoised_color					   = denoised_color / static_cast<float>(denoised_sample_count);
+
+	if (render_data.display_post_process_settings.do_tonemapping == 1)
+	{
+		float exposure = render_data.display_post_process_settings.exposure;
+		float gamma	   = render_data.display_post_process_settings.gamma;
+		noisy_color	   = tonemap_exponential(noisy_color, exposure, gamma);
+		denoised_color = tonemap_exponential(denoised_color, exposure, gamma);
+	}
+
+	float blend_factor = render_data.display_post_process_settings.denoised_blend_factor;
+	return noisy_color * (1.0f - blend_factor) + denoised_color * blend_factor;
+}
 
 HIPRT_DEVICE ColorRGB32F display_view_denoiser_albedo(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {

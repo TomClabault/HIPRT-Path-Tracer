@@ -36,11 +36,12 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	std::shared_ptr<OpenGLProgram> normal_display_program		   = default_display_program;
 	std::shared_ptr<OpenGLProgram> albedo_display_program		   = default_display_program;
 	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program = default_display_program;
+	std::shared_ptr<OpenGLProgram> denoised_blend_display_program  = default_display_program;
 
 	// Creating all the display views
 	DisplayView default_display_view		 = DisplayView(DisplayViewType::DEFAULT, default_display_program);
 	DisplayView gmon_blend_display_view		 = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
-	DisplayView denoise_blend_display_view	 = DisplayView(DisplayViewType::DENOISED_BLEND, blend_2_display_program);
+	DisplayView denoise_blend_display_view	 = DisplayView(DisplayViewType::DENOISED_BLEND, denoised_blend_display_program);
 	DisplayView normals_display_view		 = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
 	DisplayView albedo_display_view			 = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
 	DisplayView white_furnace_threshold_view = DisplayView(DisplayViewType::WHITE_FURNACE_THRESHOLD, white_furnace_threshold_program);
@@ -205,7 +206,7 @@ DisplaySettings& DisplayViewSystem::get_display_settings()
 void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem* display_view_system,
 														std::shared_ptr<OpenGLProgram> program,
 														std::shared_ptr<GPURenderer> renderer,
-														std::shared_ptr<ApplicationSettings> application_settings)
+														std::shared_ptr<ApplicationSettings>)
 {
 	const DisplayView* display_view			= display_view_system->get_current_display_view();
 	const DisplaySettings& display_settings = display_view_system->m_display_settings;
@@ -220,7 +221,8 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 	if (display_view->get_display_view_type() == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
 		display_view->get_display_view_type() == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
-		display_view->get_display_view_type() == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+		display_view->get_display_view_type() == DisplayViewType::WHITE_FURNACE_THRESHOLD ||
+		display_view->get_display_view_type() == DisplayViewType::DENOISED_BLEND)
 	{
 		// These views are already transformed into the final framebuffer by the device pass.
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
@@ -255,30 +257,6 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 	}
 
-	case DisplayViewType::DENOISED_BLEND:
-	{
-		int noisy_sample_number;
-		int denoised_sample_number;
-
-		noisy_sample_number	   = render_settings.sample_number;
-		denoised_sample_number = application_settings->last_denoised_sample_count;
-
-		if (display_settings.blend_override != -1.0f)
-			program->set_uniform("u_blend_factor", display_settings.blend_override);
-		else
-			program->set_uniform("u_blend_factor", display_settings.denoiser_blend);
-		program->set_uniform("u_texture_1", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		program->set_uniform("u_texture_2", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
-		program->set_uniform("u_sample_number_1", noisy_sample_number);
-		program->set_uniform("u_sample_number_2", denoised_sample_number);
-		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
-		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
-		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
-
-		break;
-	}
-
 	case DisplayViewType::UNDEFINED:
 		break;
 	}
@@ -293,7 +271,8 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 {
 	DisplayViewType current_display_view_type = get_current_display_view_type();
 	if (current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
-		current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS || current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+		current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS || current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD ||
+		current_display_view_type == DisplayViewType::DENOISED_BLEND)
 	{
 		internal_upload_buffer_to_texture(m_renderer->get_display_post_process_interop_framebuffer(), m_display_texture_1,
 										  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
@@ -305,11 +284,6 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 	case DisplayViewType::GMON_BLEND:
 		internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
-		break;
-
-	case DisplayViewType::DENOISED_BLEND:
-		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		internal_upload_buffer_to_texture(m_renderer->get_denoised_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		break;
 
 	default:
@@ -354,11 +328,11 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
 	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
+	case DisplayViewType::DENOISED_BLEND:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		break;
 
 	case DisplayViewType::GMON_BLEND:
-	case DisplayViewType::DENOISED_BLEND:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		texture_2_type_needed = DisplayTextureType::FLOAT3;
 		break;

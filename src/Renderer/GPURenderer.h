@@ -201,8 +201,7 @@ public:
 	void launch_display_post_process();
 
 	/**
-	 * Unmap the color framebuffer, the denoiser albedo and the
-	 * denoiser normals buffers so that OpenGL can use them
+	 * Unmap the color, denoised, denoiser albedo and denoiser normals buffers so that OpenGL can use them
 	 */
 	void unmap_buffers();
 

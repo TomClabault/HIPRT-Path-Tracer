@@ -45,6 +45,9 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 	if (!render_data.render_settings.do_update_status_buffers)
 		return false;
 
+	// launch_async() runs before the render thread increments sample_number for the sample just accumulated.
+	render_data.display_post_process_settings.denoised_blend_noisy_sample_count = render_data.render_settings.sample_number + 1;
+
 	return launch_kernel(render_data);
 }
 
@@ -59,6 +62,11 @@ void DisplayPostProcessRenderPass::update_display_post_process_settings()
 	post_process_settings.white_furnace_use_low_threshold  = display_settings.white_furnace_display_use_low_threshold;
 	post_process_settings.white_furnace_use_high_threshold = display_settings.white_furnace_display_use_high_threshold;
 
+	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
+	post_process_settings.denoised_blend_factor = display_settings.blend_override != -1.0f ? display_settings.blend_override : display_settings.denoiser_blend;
+	post_process_settings.denoised_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
+	post_process_settings.denoised_blend_sample_count		= std::max(1, application_settings->last_denoised_sample_count);
+
 	DisplayViewType display_view_type = m_render_window->get_display_view_system()->get_current_display_view_type();
 	switch (display_view_type)
 	{
@@ -71,14 +79,16 @@ void DisplayPostProcessRenderPass::update_display_post_process_settings()
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 		post_process_settings.display_view = DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD;
 		break;
+	case DisplayViewType::DENOISED_BLEND:
+		post_process_settings.display_view = DISPLAY_POST_PROCESS_DENOISED_BLEND;
+		break;
 	case DisplayViewType::DEFAULT:
 	default:
 		post_process_settings.display_view = DISPLAY_POST_PROCESS_DEFAULT;
 		break;
 	}
 
-	int white_furnace_sample_count							  = static_cast<int>(m_renderer->get_render_settings().sample_number);
-	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
+	int white_furnace_sample_count = static_cast<int>(m_renderer->get_render_settings().sample_number);
 	if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
 		white_furnace_sample_count = application_settings->last_denoised_sample_count;
 	post_process_settings.white_furnace_sample_count = std::max(1, white_furnace_sample_count);
@@ -88,6 +98,8 @@ bool DisplayPostProcessRenderPass::launch_display_only(HIPRTRenderData& render_d
 {
 	update_display_post_process_settings();
 	render_data.display_post_process_settings = m_renderer->get_render_data().display_post_process_settings;
+	render_data.display_post_process_settings.denoised_blend_noisy_sample_count =
+		std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
 	return launch_kernel(render_data);
 }
 

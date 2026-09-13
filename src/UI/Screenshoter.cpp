@@ -32,9 +32,8 @@ Screenshoter::Screenshoter()
 	blend_2_display_program->attach(blend_2_display_shader);
 	blend_2_display_program->link();
 
-	m_compute_programs[DisplayViewType::DEFAULT]		= default_display_program;
-	m_compute_programs[DisplayViewType::GMON_BLEND]		= blend_2_display_program;
-	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
+	m_compute_programs[DisplayViewType::DEFAULT]	= default_display_program;
+	m_compute_programs[DisplayViewType::GMON_BLEND] = blend_2_display_program;
 
 	select_compute_program(DisplayViewType::DEFAULT);
 }
@@ -108,8 +107,9 @@ Image8Bit Screenshoter::get_image(bool flip_y)
 	int height					 = m_renderer->m_render_resolution.y;
 	DisplayViewType display_view = m_render_window->get_display_view_system()->get_current_display_view_type();
 
-	if (display_view == DisplayViewType::DEFAULT || display_view == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
-		display_view == DisplayViewType::DISPLAY_DENOISER_NORMALS || display_view == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+	if (display_view == DisplayViewType::DEFAULT || display_view == DisplayViewType::DENOISED_BLEND ||
+		display_view == DisplayViewType::DISPLAY_DENOISER_ALBEDO || display_view == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
+		display_view == DisplayViewType::WHITE_FURNACE_THRESHOLD)
 		return get_final_output_image(flip_y);
 
 	m_renderer->synchronize_all_kernels();
@@ -147,7 +147,7 @@ Image8Bit Screenshoter::get_final_output_image(bool flip_y)
 	int width  = m_renderer->m_render_resolution.x;
 	int height = m_renderer->m_render_resolution.y;
 
-	// The device pass is the single source of truth for all non-blended display views.
+	// The device pass is the single source of truth for every display view except GMoN blend.
 	m_renderer->launch_display_post_process();
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> final_framebuffer = m_renderer->get_display_post_process_interop_framebuffer();

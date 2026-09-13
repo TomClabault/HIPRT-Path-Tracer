@@ -11,7 +11,8 @@ enum DisplayPostProcessView
 	DISPLAY_POST_PROCESS_DEFAULT = 0,
 	DISPLAY_POST_PROCESS_DENOISER_ALBEDO,
 	DISPLAY_POST_PROCESS_DENOISER_NORMALS,
-	DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD
+	DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD,
+	DISPLAY_POST_PROCESS_DENOISED_BLEND
 };
 
 enum DisplayAdaptiveSamplingView
@@ -33,6 +34,11 @@ struct DisplayPostProcessSettings
 	int white_furnace_use_low_threshold	 = 0;
 	int white_furnace_use_high_threshold = 1;
 	int white_furnace_sample_count		 = 1;
+
+	// Settings used when blending the noisy and denoised display buffers.
+	float denoised_blend_factor			  = 1.0f;
+	int denoised_blend_noisy_sample_count = 1;
+	int denoised_blend_sample_count		  = 1;
 
 	// Adaptive sampling debug views are evaluated by the final display post-process pass at runtime.
 	int adaptive_sampling_display_view	= DISPLAY_ADAPTIVE_SAMPLING_NONE;

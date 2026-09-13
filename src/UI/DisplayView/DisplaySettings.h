@@ -12,7 +12,7 @@ struct DisplaySettings
 	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
 	// Linearly interpoalted between the two for intermediate values
 	float denoiser_blend = 1.0f;
-	// Overrides the blending factor for the blend-2-textures display shader
+	// Overrides the blending factor for the denoised blend display view
 	// 0.0f displays 100% of texture 1.
 	// 1.0f gives 100% of texture 2.
 	// -1.0f disables the override

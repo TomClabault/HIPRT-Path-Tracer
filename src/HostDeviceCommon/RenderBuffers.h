@@ -23,6 +23,8 @@ struct RenderBuffers
 	ColorRGB32F* accumulated_ray_colors = nullptr;
 	// Fullscreen display-ready colors after sample averaging, low-resolution expansion, and tone mapping.
 	ColorRGB32F* display_post_processed_colors = nullptr;
+	// Fullscreen buffer containing the most recently copied denoiser output.
+	ColorRGB32F* denoised_ray_colors = nullptr;
 	// Fullscreen buffer that contains only the sample color of the last rendered frame (only 1 single sample) that got accumulated into accumulated_ray_colors
 	ColorRGB32F* last_frame_ray_colors = nullptr;
 	// Fullscreen buffer containing the most recently computed debug color for each pixel. This is kept separate from the render accumulation.
