@@ -6,11 +6,24 @@
 #ifndef DISPLAY_POST_PROCESS_SETTINGS_H
 #define DISPLAY_POST_PROCESS_SETTINGS_H
 
+enum DisplayPostProcessView
+{
+	DISPLAY_POST_PROCESS_DEFAULT = 0,
+	DISPLAY_POST_PROCESS_DENOISER_ALBEDO,
+	DISPLAY_POST_PROCESS_DENOISER_NORMALS,
+	DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD
+};
+
 struct DisplayPostProcessSettings
 {
 	int do_tonemapping = 1;
 	float gamma		   = 2.2f;
 	float exposure	   = 1.8f;
+
+	DisplayPostProcessView display_view	 = DISPLAY_POST_PROCESS_DEFAULT;
+	int white_furnace_use_low_threshold	 = 0;
+	int white_furnace_use_high_threshold = 1;
+	int white_furnace_sample_count		 = 1;
 };
 
 #endif // #ifndef DISPLAY_POST_PROCESS_SETTINGS_H

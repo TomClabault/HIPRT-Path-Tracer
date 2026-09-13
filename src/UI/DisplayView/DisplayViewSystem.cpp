@@ -28,17 +28,14 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	OpenGLShader fullscreen_quad_vertex_shader	 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
 	OpenGLShader default_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader blend_2_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader normal_display_fragment_shader	 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader albedo_display_fragment_shader	 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader white_furnace_threshold_shader	 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	// Making shared_ptr<OpenGLProgram>s here because multiple display views may share the same OpenGLProgram
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, default_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, blend_2_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> normal_display_program  = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> albedo_display_program  = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program =
-		std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, white_furnace_threshold_shader);
+	// The device display post-process pass owns the transforms for these views; they only need the trivial copy program here.
+	std::shared_ptr<OpenGLProgram> normal_display_program		   = default_display_program;
+	std::shared_ptr<OpenGLProgram> albedo_display_program		   = default_display_program;
+	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program = default_display_program;
 
 	// Creating all the display views
 	DisplayView default_display_view		 = DisplayView(DisplayViewType::DEFAULT, default_display_program);
@@ -221,32 +218,21 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 	program->use();
 
+	if (display_view->get_display_view_type() == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+		display_view->get_display_view_type() == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
+		display_view->get_display_view_type() == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+	{
+		// These views are already transformed into the final framebuffer by the device pass.
+		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		return;
+	}
+
 	switch (display_view->get_display_view_type())
 	{
 	case DisplayViewType::DEFAULT:
 	{
 		// Averaging, low-resolution expansion, and tone mapping are already baked into the final render-graph output.
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-
-		break;
-	}
-
-	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
-	{
-		int sample_number;
-		if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
-			sample_number = application_settings->last_denoised_sample_count;
-		else
-			sample_number = render_settings.sample_number;
-
-		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		program->set_uniform("u_sample_number", sample_number);
-		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
-		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
-		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
-		program->set_uniform("u_use_low_threshold", display_settings.white_furnace_display_use_low_threshold);
-		program->set_uniform("u_use_high_threshold", display_settings.white_furnace_display_use_high_threshold);
 
 		break;
 	}
@@ -293,21 +279,6 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 	}
 
-	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
-		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-
-		break;
-
-	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
-		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
-		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
-		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
-
-		break;
-
 	case DisplayViewType::UNDEFINED:
 		break;
 	}
@@ -321,6 +292,13 @@ void DisplayViewSystem::update_current_display_program_uniforms()
 void DisplayViewSystem::upload_relevant_buffers_to_texture()
 {
 	DisplayViewType current_display_view_type = get_current_display_view_type();
+	if (current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+		current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS || current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+	{
+		internal_upload_buffer_to_texture(m_renderer->get_display_post_process_interop_framebuffer(), m_display_texture_1,
+										  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		return;
+	}
 
 	switch (current_display_view_type)
 	{
@@ -334,38 +312,9 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 		internal_upload_buffer_to_texture(m_renderer->get_denoised_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		break;
 
-	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
-		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1,
-											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		else
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_no_interop_buffer(), m_display_texture_1,
-											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-
-		break;
-
-	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
-		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1,
-											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		else
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_no_interop_buffer(), m_display_texture_1,
-											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-
-		break;
-
-	case DisplayViewType::DEFAULT:
+	default:
 		internal_upload_buffer_to_texture(m_renderer->get_display_post_process_interop_framebuffer(), m_display_texture_1,
 										  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		break;
-
-	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
-	default:
-		if (m_renderer->is_adaptive_sampling_debug_view_enabled())
-			internal_upload_buffer_to_texture(m_renderer->get_adaptive_sampling_debug_interop_framebuffer(), m_display_texture_1,
-											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		else
-			internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 	}
 }

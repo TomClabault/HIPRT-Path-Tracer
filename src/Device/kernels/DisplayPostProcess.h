@@ -6,6 +6,7 @@
 #ifndef KERNELS_DISPLAY_POST_PROCESS_H
 #define KERNELS_DISPLAY_POST_PROCESS_H
 
+#include "Device/includes/DisplayDebugViews.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Tonemapping.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
@@ -40,17 +41,48 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 	unsigned int source_pixel_index = source_x + source_y * resolution_width;
 	unsigned int output_pixel_index = x + y * resolution_width;
 
-	ColorRGB32F* source_framebuffer =
-		render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
+	ColorRGB32F final_color;
+	switch (display_settings.display_view)
+	{
+	case DISPLAY_POST_PROCESS_DENOISER_ALBEDO:
+		final_color = display_view_denoiser_albedo(render_data, source_pixel_index);
+		break;
 
-	unsigned int sample_count = render_data.render_settings.sample_number + 1;
-	ColorRGB32F final_color	  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
-	final_color.r			  = hippt::clamp(0.0f, 1.0e35f, final_color.r);
-	final_color.g			  = hippt::clamp(0.0f, 1.0e35f, final_color.g);
-	final_color.b			  = hippt::clamp(0.0f, 1.0e35f, final_color.b);
+	case DISPLAY_POST_PROCESS_DENOISER_NORMALS:
+		final_color = display_view_denoiser_normals(render_data, source_pixel_index);
+		if (display_settings.do_tonemapping == 1)
+			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
+		break;
 
-	if (display_settings.do_tonemapping == 1)
-		final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
+	case DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD:
+	{
+		ColorRGB32F* source_framebuffer =
+			render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
+		unsigned int sample_count = static_cast<unsigned int>(hippt::max(1, display_settings.white_furnace_sample_count));
+		final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
+		final_color				  = display_view_apply_white_furnace_threshold(final_color, display_settings);
+
+		if (display_settings.do_tonemapping == 1)
+			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
+		break;
+	}
+
+	case DISPLAY_POST_PROCESS_DEFAULT:
+	default:
+	{
+		ColorRGB32F* source_framebuffer =
+			render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
+		unsigned int sample_count = render_data.render_settings.sample_number + 1;
+		final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
+		final_color.r			  = hippt::clamp(0.0f, 1.0e35f, final_color.r);
+		final_color.g			  = hippt::clamp(0.0f, 1.0e35f, final_color.g);
+		final_color.b			  = hippt::clamp(0.0f, 1.0e35f, final_color.b);
+
+		if (display_settings.do_tonemapping == 1)
+			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
+		break;
+	}
+	}
 
 	render_data.buffers.display_post_processed_colors[output_pixel_index] = final_color;
 }

@@ -538,6 +538,26 @@ void GPURenderer::map_buffers_for_render()
 	m_render_data.aux_buffers.denoiser_albedo  = m_denoiser_buffers.map_albedo_buffer();
 }
 
+void GPURenderer::launch_display_post_process()
+{
+	synchronize_all_kernels();
+	unmap_buffers();
+
+	std::shared_ptr<DisplayPostProcessRenderPass> display_post_process_render_pass =
+		std::dynamic_pointer_cast<DisplayPostProcessRenderPass>(get_active_render_graph().get_render_pass(DisplayPostProcessRenderPass::RENDER_PASS_NAME));
+	if (!display_post_process_render_pass)
+		return;
+
+	map_buffers_for_render();
+	HIPRTRenderData display_render_data								= m_render_data;
+	display_render_data.render_settings.wants_render_low_resolution = m_was_last_frame_low_resolution;
+	display_render_data.render_settings.do_update_status_buffers	= true;
+	display_post_process_render_pass->launch_display_only(display_render_data);
+
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
+	unmap_buffers();
+}
+
 void GPURenderer::unmap_buffers()
 {
 	// TODO we should only unmap buffers that need unmapping here

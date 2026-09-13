@@ -376,6 +376,8 @@ void GPURendererThread::render()
 void GPURendererThread::render_internal()
 {
 	m_frame_rendered = false;
+	// The display post-process pass uses this flag to run only after the final sample of a frame.
+	m_render_data_for_frame.render_settings.do_update_status_buffers = false;
 
 	// Updating the previous and current camera
 	m_render_data_for_frame.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
@@ -383,7 +385,12 @@ void GPURendererThread::render_internal()
 
 	for (int i = 1; i <= m_render_data_for_frame.render_settings.samples_per_frame; i++)
 	{
-		if (i == m_render_data_for_frame.render_settings.samples_per_frame)
+		bool last_sample_of_frame = i == m_render_data_for_frame.render_settings.samples_per_frame;
+		if (m_render_window->get_application_settings()->max_sample_count != 0 &&
+			m_render_data_for_frame.render_settings.sample_number + 1 >= m_render_window->get_application_settings()->max_sample_count)
+			last_sample_of_frame = true;
+
+		if (last_sample_of_frame)
 			// Last sample of the frame so we are going to enable the update
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)

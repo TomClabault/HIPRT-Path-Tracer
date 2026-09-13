@@ -196,6 +196,11 @@ public:
 	void map_buffers_for_render();
 
 	/**
+	 * Recomputes the final display framebuffer from the current render buffers without launching a new frame.
+	 */
+	void launch_display_post_process();
+
+	/**
 	 * Unmap the color framebuffer, the denoiser albedo and the
 	 * denoiser normals buffers so that OpenGL can use them
 	 */

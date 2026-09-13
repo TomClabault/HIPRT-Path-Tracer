@@ -1565,6 +1565,14 @@ void RenderWindow::render()
 				// Denoising to fill the buffers with denoised data (if denoising is enabled)
 				denoise();
 
+				DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
+				bool uses_device_display_post_process	  = current_display_view_type == DisplayViewType::DEFAULT ||
+														current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+														current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
+														current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD;
+				if (uses_device_display_post_process)
+					m_renderer->launch_display_post_process();
+
 				// We upload the data to the OpenGL textures for displaying
 				m_display_view_system->upload_relevant_buffers_to_texture();
 
@@ -1632,13 +1640,25 @@ void RenderWindow::render()
 		}
 		else // The rendering is done
 		{
-			buffer_upload_necessary |= m_display_view_system->update_selected_display_view();
+			bool display_view_changed = m_display_view_system->update_selected_display_view();
+			buffer_upload_necessary |= display_view_changed;
 
 			if (m_application_settings->enable_denoising)
 			{
 				// We may still want to denoise on the final frame
 				if (denoise())
 					buffer_upload_necessary = true;
+			}
+
+			DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
+			bool uses_device_display_post_process =
+				current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+				current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS || current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD;
+			bool display_post_process_refresh_needed = display_view_changed || m_application_state->force_viewport_refresh;
+			if (uses_device_display_post_process && display_post_process_refresh_needed)
+			{
+				m_renderer->launch_display_post_process();
+				buffer_upload_necessary = true;
 			}
 
 			if (buffer_upload_necessary)
@@ -1653,6 +1673,8 @@ void RenderWindow::render()
 			// Updating the uniforms if the user touches the post processing parameters
 			// or something else (denoiser blend, ...)
 			m_display_view_system->update_current_display_program_uniforms();
+			if (display_post_process_refresh_needed)
+				m_application_state->force_viewport_refresh = false;
 
 			RendererAnimationState& renderer_animation_state = m_renderer->get_animation_state();
 			if (renderer_animation_state.is_rendering_frame_sequence &&
