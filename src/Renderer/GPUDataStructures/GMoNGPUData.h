@@ -53,6 +53,15 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		return sets.size() == 0 && result_framebuffer->size() == 0;
 	}
 
+	bool buffers_allocated() const
+	{
+		if (result_framebuffer == nullptr || current_resolution.x <= 0 || current_resolution.y <= 0 || current_number_of_sets == 0)
+			return false;
+
+		size_t number_of_pixels = static_cast<size_t>(current_resolution.x) * static_cast<size_t>(current_resolution.y);
+		return sets.size() == number_of_pixels * current_number_of_sets && result_framebuffer->size() == number_of_pixels;
+	}
+
 	ColorRGB32F* map_result_framebuffer()
 	{
 		return result_framebuffer->map();

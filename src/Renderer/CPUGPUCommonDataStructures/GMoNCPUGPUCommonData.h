@@ -14,8 +14,10 @@ struct GMoNCPUGPUCommonData
 	float gmon_blend_factor		= 0.0f;
 	bool gmon_auto_blend_factor = true;
 
-	int2_t current_resolution			= make_int2(1280, 720);
-	unsigned int current_number_of_sets = GMoNMSetsCount;
+	// A zero resolution marks the buffers as not allocated yet. The renderer's default resolution must not
+	// be used as an allocation sentinel because GMoN can be enabled at that resolution before any resize event.
+	int2_t current_resolution			= make_int2(0, 0);
+	unsigned int current_number_of_sets = 0;
 };
 
 #endif // #ifndef RENDERER_GMON_CPU_GPU_COMMON_DATA_H

@@ -32,7 +32,7 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 	{
 		unsigned int number_of_sets =
 			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
-		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
+		if (!m_gmon.buffers_allocated() || m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
@@ -85,7 +85,7 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 
 bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	if (!is_render_pass_used_for_frame(render_data))
+	if (!is_render_pass_used_for_frame(render_data) || !m_gmon.buffers_allocated() || render_data.buffers.gmon_estimator.result_framebuffer == nullptr)
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -213,7 +213,7 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 {
-	if (is_render_pass_used(*m_compiler_options))
+	if (is_render_pass_used(*m_compiler_options) && m_gmon.buffers_allocated())
 		return m_gmon.map_result_framebuffer();
 
 	return nullptr;
@@ -227,7 +227,7 @@ void GMoNRenderPass::unmap_result_framebuffer()
 
 bool GMoNRenderPass::buffers_allocated()
 {
-	return m_gmon.sets.size() > 0;
+	return m_gmon.buffers_allocated();
 }
 
 bool GMoNRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
