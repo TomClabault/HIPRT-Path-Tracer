@@ -1248,8 +1248,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						render_settings.enable_hierarchical_adaptive_sampling = false;
 
-						if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) ==
-							MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP)
+						int megakernel_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
+						if (megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP ||
+							megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE)
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE, MEGAKERNEL_DEBUG_MODE_NO_DEBUG);
 							m_renderer->recompile_kernels();
@@ -1439,13 +1440,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				const char* hierarchical_adaptive_sampling_debug_view_items[]	 = { "- No debug", "- Pixel convergence heatmap", "- Converged pixels map",
-																					 "- Active/converged regions" };
+																					 "- Active/converged regions", "- Per-pixel relative noise" };
 				const char* hierarchical_adaptive_sampling_debug_view_tooltips[] = {
 					"Disable the hierarchical adaptive sampling debug view.",
 					"Displays the number of samples required for each pixel to converge. The selected heatmap maps lower sample counts to its first color "
 					"and higher sample counts to its last color.",
 					"Displays pixels in converged hierarchical regions in white and pixels in active regions in black.",
-					"Displays active hierarchical regions in red and converged regions in green."
+					"Displays active hierarchical regions in red and converged regions in green.",
+					"Displays each pixel's relative 95% luminance confidence interval before hierarchical region averaging. The first heatmap color represents "
+					"zero noise and the last color represents noise at or above the hierarchical noise threshold."
 				};
 
 				if (ImGuiRenderer::ComboWithTooltips("Debug view##hierarchical-adaptive-sampling",
@@ -1469,7 +1472,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_force_viewport_refresh(true);
 				}
 
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE) == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP)
+				int megakernel_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
+				if (megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP ||
+					megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE)
 				{
 					const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
 					if (ImGui::Combo("Debug view heatmap##hierarchical-adaptive-sampling",

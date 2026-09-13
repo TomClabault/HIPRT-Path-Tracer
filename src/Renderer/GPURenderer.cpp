@@ -574,7 +574,8 @@ bool GPURenderer::is_adaptive_sampling_debug_view_enabled() const
 {
 	int megakernel_debug_mode = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::MEGAKERNEL_DEBUG_MODE);
 	return megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||
-		   megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP;
+		   megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP ||
+		   megakernel_debug_mode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer()

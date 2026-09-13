@@ -115,6 +115,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_frame_render_update(float delta
 	if (m_error.size() != pixel_count)
 	{
 		m_error.resize(pixel_count);
+		m_error.memset_whole_buffer(0);
 		m_summed_area.resize(pixel_count);
 		resized = true;
 	}
@@ -232,6 +233,12 @@ void HierarchicalAdaptiveSamplingRenderPass::update_render_data()
 	render_data.aux_buffers.hierarchical_adaptive_sampling_node_count		= m_node_count.get_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_level_node_count = m_level_node_count.get_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity	= static_cast<unsigned int>(m_nodes.size());
+}
+
+void HierarchicalAdaptiveSamplingRenderPass::reset(bool reset_by_camera_movement)
+{
+	if (m_error.size() != 0)
+		m_error.memset_whole_buffer(0);
 }
 
 bool HierarchicalAdaptiveSamplingRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

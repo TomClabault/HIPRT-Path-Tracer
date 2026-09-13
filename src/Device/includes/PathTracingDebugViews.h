@@ -77,6 +77,17 @@ HIPRT_DEVICE bool path_tracing_compute_adaptive_sampling_debug_color(const HIPRT
 		out_debug_color = region_color * (render_data.render_settings.sample_number + 1);
 		return true;
 	}
+#elif MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE		 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
+	if (render_data.render_settings.use_hierarchical_adaptive_sampling() && render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		float relative_noise   = render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index];
+		float noise_threshold  = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
+		float normalized_noise = noise_threshold > 0.0f ? relative_noise / noise_threshold : (relative_noise > 0.0f ? 1.0f : 0.0f);
+
+		out_debug_color = map_0_1_to_heatmap_color_by_index<MegakernelDebugModeHeatmapIndex>(hippt::clamp(0.0f, 1.0f, normalized_noise)) *
+						  (render_data.render_settings.sample_number + 1);
+		return true;
+	}
 #else																			 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	return false;
 #endif																			 // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
@@ -572,7 +583,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 	// Modifying the ray color such that we display some debug color to the screen
 
 #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGED_MAP ||              \
-	MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP
+	MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_REGION_STATE_MAP || MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_HIERARCHICAL_PIXEL_NOISE
 	path_tracing_compute_adaptive_sampling_debug_color(render_data, pixel_index, out_debug_color);
 #elif NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG // #if MegakernelDebugMode == MEGAKERNEL_DEBUG_MODE_PIXEL_CONVERGENCE_HEATMAP
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
