@@ -105,13 +105,13 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 		oroGraphicsUnregisterResource(m_buffer_resource);
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_COPY);
 	}
 	else
 	{
 		glCreateBuffers(1, &m_buffer_name);
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_COPY);
 	}
 
 #ifndef OROCHI_ENABLE_CUEW
@@ -159,8 +159,8 @@ T* OpenGLInteropBuffer<T>::map()
 
 	size_t byte_size;
 	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
-	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size,
-														   reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
+	OROCHI_CHECK_ERROR(
+		oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 
 	m_mapped = true;
 	return m_mapped_pointer;
