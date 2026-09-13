@@ -6,6 +6,13 @@
 #ifndef HOST_DEVICE_COMMON_HIERARCHICAL_ADAPTIVE_SAMPLING_H
 #define HOST_DEVICE_COMMON_HIERARCHICAL_ADAPTIVE_SAMPLING_H
 
+enum class HierarchicalAdaptiveSamplingBuildCommand : unsigned int
+{
+	INITIALIZE	  = 0xffffffffu,
+	PREPARE_LEVEL = 0xfffffffeu,
+	FINALIZE	  = 0xfffffffdu
+};
+
 enum class HierarchicalAdaptiveSamplingNodeState : unsigned int
 {
 	ACTIVE	 = 0,

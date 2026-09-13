@@ -47,10 +47,12 @@ private:
 	int2_t m_render_resolution = make_int2(0, 0);
 
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
+	OrochiBuffer<unsigned int> m_build_depths_host_pinned;
 	OrochiBuffer<float> m_error;
 	OrochiBuffer<float> m_summed_area;
 	OrochiBuffer<HierarchicalAdaptiveSamplingNode> m_nodes;
 	OrochiBuffer<unsigned int> m_node_count;
+	OrochiBuffer<unsigned int> m_level_node_count;
 };
 
 #endif // #ifndef RENDERER_RENDER_PASSES_HIERARCHICAL_ADAPTIVE_SAMPLING_RENDER_PASS_H

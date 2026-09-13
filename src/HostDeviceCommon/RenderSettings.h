@@ -194,7 +194,7 @@ struct HIPRTRenderSettings
 	// Enables the hierarchical adaptive sampling hierarchy described by Jeffery (2019). The hierarchy
 	// classifies rectangular image regions and rebuilds from the full image periodically so that
 	// previously completed regions can become active again.
-	bool enable_hierarchical_adaptive_sampling = false;
+	bool enable_hierarchical_adaptive_sampling = true;
 	// A region is complete when its mean relative 95% luminance confidence interval is below this value.
 	// This uses the same numerical scale as adaptive_sampling_noise_threshold.
 	float hierarchical_adaptive_sampling_target_error = 0.075f;

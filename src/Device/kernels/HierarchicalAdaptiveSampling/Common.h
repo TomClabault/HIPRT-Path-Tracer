@@ -44,38 +44,57 @@ HIPRT_DEVICE unsigned int hierarchical_adaptive_sampling_ceil(float value)
 	return static_cast<float>(integer_value) < value ? integer_value + 1u : integer_value;
 }
 
+HIPRT_DEVICE float hierarchical_adaptive_sampling_split_prefix_sum(const HIPRTRenderData& render_data,
+																   const HierarchicalAdaptiveSamplingNode& node,
+																   bool split_x,
+																   unsigned int boundary)
+{
+	unsigned int minimum_x = hierarchical_adaptive_sampling_floor(node.minimum_x);
+	unsigned int minimum_y = hierarchical_adaptive_sampling_floor(node.minimum_y);
+	unsigned int maximum_x = hierarchical_adaptive_sampling_ceil(node.maximum_x);
+	unsigned int maximum_y = hierarchical_adaptive_sampling_ceil(node.maximum_y);
+
+	if (split_x)
+		return hierarchical_adaptive_sampling_region_sum(render_data, minimum_x, minimum_y, boundary, maximum_y);
+
+	return hierarchical_adaptive_sampling_region_sum(render_data, minimum_x, minimum_y, maximum_x, boundary);
+}
+
 HIPRT_DEVICE float hierarchical_adaptive_sampling_find_split(const HIPRTRenderData& render_data,
 															 const HierarchicalAdaptiveSamplingNode& node,
 															 bool split_x,
 															 float total_error)
 {
-	unsigned int minimum_x	= hierarchical_adaptive_sampling_floor(node.minimum_x);
-	unsigned int minimum_y	= hierarchical_adaptive_sampling_floor(node.minimum_y);
-	unsigned int maximum_x	= hierarchical_adaptive_sampling_ceil(node.maximum_x);
-	unsigned int maximum_y	= hierarchical_adaptive_sampling_ceil(node.maximum_y);
-	float target_error		= total_error * 0.5f;
-	float accumulated_error = 0.0f;
+	unsigned int minimum_x = hierarchical_adaptive_sampling_floor(node.minimum_x);
+	unsigned int minimum_y = hierarchical_adaptive_sampling_floor(node.minimum_y);
+	unsigned int maximum_x = hierarchical_adaptive_sampling_ceil(node.maximum_x);
+	unsigned int maximum_y = hierarchical_adaptive_sampling_ceil(node.maximum_y);
+	float target_error	   = total_error * 0.5f;
 
 	unsigned int first_coordinate = split_x ? minimum_x : minimum_y;
 	unsigned int last_coordinate  = split_x ? maximum_x : maximum_y;
-	for (unsigned int coordinate = first_coordinate; coordinate < last_coordinate; coordinate++)
+	unsigned int lower_boundary	  = first_coordinate + 1u;
+	unsigned int upper_boundary	  = last_coordinate;
+
+	// The summed-area table makes prefix error monotonic, so locate the slice containing half the error in logarithmic time.
+	while (lower_boundary < upper_boundary)
 	{
-		float slice_error;
-		if (split_x)
-			slice_error = hierarchical_adaptive_sampling_region_sum(render_data, coordinate, minimum_y, coordinate + 1u, maximum_y);
+		unsigned int middle_boundary = lower_boundary + (upper_boundary - lower_boundary) / 2u;
+		float prefix_error			 = hierarchical_adaptive_sampling_split_prefix_sum(render_data, node, split_x, middle_boundary);
+
+		if (prefix_error < target_error)
+			lower_boundary = middle_boundary + 1u;
 		else
-			slice_error = hierarchical_adaptive_sampling_region_sum(render_data, minimum_x, coordinate, maximum_x, coordinate + 1u);
-
-		if (accumulated_error + slice_error >= target_error)
-		{
-			float fraction = slice_error > 0.0f ? (target_error - accumulated_error) / slice_error : 0.5f;
-			return static_cast<float>(coordinate) + fraction;
-		}
-
-		accumulated_error += slice_error;
+			upper_boundary = middle_boundary;
 	}
 
-	return (split_x ? node.minimum_x + node.maximum_x : node.minimum_y + node.maximum_y) * 0.5f;
+	unsigned int split_coordinate = lower_boundary - 1u;
+	float accumulated_error =
+		split_coordinate > first_coordinate ? hierarchical_adaptive_sampling_split_prefix_sum(render_data, node, split_x, split_coordinate) : 0.0f;
+	float slice_error = hierarchical_adaptive_sampling_split_prefix_sum(render_data, node, split_x, split_coordinate + 1u) - accumulated_error;
+	float fraction	  = slice_error > 0.0f ? (target_error - accumulated_error) / slice_error : 0.5f;
+
+	return static_cast<float>(split_coordinate) + fraction;
 }
 
 #ifdef __KERNELCC__

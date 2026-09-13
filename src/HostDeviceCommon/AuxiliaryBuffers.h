@@ -51,6 +51,7 @@ struct AuxiliaryBuffers
 	float* hierarchical_adaptive_sampling_summed_area					   = nullptr;
 	HierarchicalAdaptiveSamplingNode* hierarchical_adaptive_sampling_nodes = nullptr;
 	unsigned int* hierarchical_adaptive_sampling_node_count				   = nullptr;
+	unsigned int* hierarchical_adaptive_sampling_level_node_count		   = nullptr;
 	unsigned int hierarchical_adaptive_sampling_node_capacity			   = 0;
 
 	// A single boolean (contained in a buffer, hence the pointer)
