@@ -7,6 +7,7 @@
 #define KERNELS_DISPLAY_POST_PROCESS_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Tonemapping.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -49,10 +50,7 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 	final_color.b			  = hippt::clamp(0.0f, 1.0e35f, final_color.b);
 
 	if (display_settings.do_tonemapping == 1)
-	{
-		ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - intrin_expf(-final_color * display_settings.exposure);
-		final_color				= intrin_pow(tone_mapped, 1.0f / display_settings.gamma);
-	}
+		final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
 
 	render_data.buffers.display_post_processed_colors[output_pixel_index] = final_color;
 }
