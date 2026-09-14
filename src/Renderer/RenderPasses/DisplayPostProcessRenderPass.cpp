@@ -47,6 +47,7 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 
 	// launch_async() runs before the render thread increments sample_number for the sample just accumulated.
 	render_data.display_post_process_settings.denoised_blend_noisy_sample_count = render_data.render_settings.sample_number + 1;
+	render_data.display_post_process_settings.gmon_blend_noisy_sample_count		= render_data.render_settings.sample_number + 1;
 
 	return launch_kernel(render_data);
 }
@@ -67,6 +68,16 @@ void DisplayPostProcessRenderPass::update_display_post_process_settings()
 	post_process_settings.denoised_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
 	post_process_settings.denoised_blend_sample_count		= std::max(1, application_settings->last_denoised_sample_count);
 
+	post_process_settings.gmon_blend_factor				= 0.0f;
+	post_process_settings.gmon_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
+	post_process_settings.gmon_blend_sample_count		= 1;
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass	= m_renderer->get_gmon_render_pass();
+	if (gmon_render_pass != nullptr)
+	{
+		post_process_settings.gmon_blend_factor		  = gmon_render_pass->get_gmon_data().gmon_blend_factor;
+		post_process_settings.gmon_blend_sample_count = std::max(1, static_cast<int>(gmon_render_pass->get_last_recomputed_sample_count()));
+	}
+
 	DisplayViewType display_view_type = m_render_window->get_display_view_system()->get_current_display_view_type();
 	switch (display_view_type)
 	{
@@ -81,6 +92,9 @@ void DisplayPostProcessRenderPass::update_display_post_process_settings()
 		break;
 	case DisplayViewType::DENOISED_BLEND:
 		post_process_settings.display_view = DISPLAY_POST_PROCESS_DENOISED_BLEND;
+		break;
+	case DisplayViewType::GMON_BLEND:
+		post_process_settings.display_view = DISPLAY_POST_PROCESS_GMON_BLEND;
 		break;
 	case DisplayViewType::DEFAULT:
 	default:
@@ -100,6 +114,7 @@ bool DisplayPostProcessRenderPass::launch_display_only(HIPRTRenderData& render_d
 	render_data.display_post_process_settings = m_renderer->get_render_data().display_post_process_settings;
 	render_data.display_post_process_settings.denoised_blend_noisy_sample_count =
 		std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
+	render_data.display_post_process_settings.gmon_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
 	return launch_kernel(render_data);
 }
 

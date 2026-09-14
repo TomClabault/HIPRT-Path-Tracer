@@ -11,6 +11,30 @@
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_DEVICE ColorRGB32F display_view_gmon_blend(const HIPRTRenderData& render_data, unsigned int pixel_index)
+{
+	ColorRGB32F noisy_color = render_data.buffers.accumulated_ray_colors[pixel_index];
+	ColorRGB32F gmon_color	= noisy_color;
+	if (render_data.buffers.gmon_estimator.result_framebuffer != nullptr)
+		gmon_color = render_data.buffers.gmon_estimator.result_framebuffer[pixel_index];
+
+	unsigned int noisy_sample_count = static_cast<unsigned int>(hippt::max(1, render_data.display_post_process_settings.gmon_blend_noisy_sample_count));
+	unsigned int gmon_sample_count	= static_cast<unsigned int>(hippt::max(1, render_data.display_post_process_settings.gmon_blend_sample_count));
+	noisy_color						= noisy_color / static_cast<float>(noisy_sample_count);
+	gmon_color						= gmon_color / static_cast<float>(gmon_sample_count);
+
+	if (render_data.display_post_process_settings.do_tonemapping == 1)
+	{
+		float exposure = render_data.display_post_process_settings.exposure;
+		float gamma	   = render_data.display_post_process_settings.gamma;
+		noisy_color	   = tonemap_exponential(noisy_color, exposure, gamma);
+		gmon_color	   = tonemap_exponential(gmon_color, exposure, gamma);
+	}
+
+	float blend_factor = render_data.display_post_process_settings.gmon_blend_factor;
+	return noisy_color * (1.0f - blend_factor) + gmon_color * blend_factor;
+}
+
 HIPRT_DEVICE ColorRGB32F display_view_denoised_blend(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {
 	ColorRGB32F noisy_color = render_data.buffers.accumulated_ray_colors[pixel_index];

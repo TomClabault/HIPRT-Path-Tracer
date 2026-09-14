@@ -18,10 +18,8 @@ class RenderWindow;
 class DisplayViewSystem
 {
 public:
-	// Default texture unit for displaying most of things
+	// Texture unit used for the final device-side display framebuffer.
 	static constexpr int DISPLAY_TEXTURE_UNIT_1 = 1;
-	// Second display texture used when we want to blend between two displays
-	static constexpr int DISPLAY_TEXTURE_UNIT_2 = 2;
 	// Texture unit reserved for the compute shader screenshoter
 	static constexpr int DISPLAY_COMPUTE_IMAGE_UNIT = 3;
 
@@ -63,7 +61,7 @@ public:
 	void resize(int new_render_width, int new_render_height);
 
 	/**
-	 * Updates the uniforms of an arbitrary input program given the state of the renderer and the applications settings given
+	 * Binds the final device-side display buffer to an arbitrary display program.
 	 */
 	static void update_display_program_uniforms(const DisplayViewSystem* display_view_system,
 												std::shared_ptr<OpenGLProgram> program,
@@ -144,16 +142,11 @@ private:
 	// unused texture slots can be released and recreated when a view needs them again.
 	//
 	// The textures should be the same resolution as the render resolution.
-	// They have nothing to do with the resolution of the viewport.
-	//
-	// The first texture is used by the display program to draw on the fullscreen quad.
-	// Also used as the first blending texture when a blending display view is selected
-	std::pair<GLuint, DisplayTextureType> m_display_texture_1 = { -1, DisplayTextureType::UNINITIALIZED };
-
-	// Second display texture.
-	// Used as the second texture for blending when a blending display view is selected
-	// (used by the denoiser blending for example)
-	std::pair<GLuint, DisplayTextureType> m_display_texture_2 = { -1, DisplayTextureType::UNINITIALIZED };
+        // They have nothing to do with the resolution of the viewport.
+        //
+        // The texture used by the display program to draw the final device-side post-process output on the fullscreen quad.
+        // Blending views no longer need a second texture because their transforms are evaluated by the device pass.
+        std::pair<GLuint, DisplayTextureType> m_display_texture_1 = { -1, DisplayTextureType::UNINITIALIZED };
 
 	// We don't need a VAO because we're hardcoding our fullscreen
 	// quad vertices in our vertex shader but we still need an empty/fake

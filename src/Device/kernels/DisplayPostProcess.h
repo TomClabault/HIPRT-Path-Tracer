@@ -58,6 +58,10 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 		final_color = display_view_denoised_blend(render_data, source_pixel_index);
 		break;
 
+	case DISPLAY_POST_PROCESS_GMON_BLEND:
+		final_color = display_view_gmon_blend(render_data, source_pixel_index);
+		break;
+
 	case DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD:
 	{
 		bool has_adaptive_sampling_debug_color = display_view_compute_adaptive_sampling_debug_color(

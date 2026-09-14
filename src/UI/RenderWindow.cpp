@@ -1566,11 +1566,11 @@ void RenderWindow::render()
 				denoise();
 
 				DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
-				bool uses_device_display_post_process	  = current_display_view_type == DisplayViewType::DEFAULT ||
-														current_display_view_type == DisplayViewType::DENOISED_BLEND ||
-														current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
-														current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
-														current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD;
+				bool uses_device_display_post_process =
+					current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::GMON_BLEND ||
+					current_display_view_type == DisplayViewType::DENOISED_BLEND || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+					current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
+					current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD;
 				if (uses_device_display_post_process)
 					m_renderer->launch_display_post_process();
 
@@ -1653,8 +1653,8 @@ void RenderWindow::render()
 
 			DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
 			bool uses_device_display_post_process =
-				current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::DENOISED_BLEND ||
-				current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
+				current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::GMON_BLEND ||
+				current_display_view_type == DisplayViewType::DENOISED_BLEND || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
 				current_display_view_type == DisplayViewType::DISPLAY_DENOISER_NORMALS || current_display_view_type == DisplayViewType::WHITE_FURNACE_THRESHOLD;
 			bool display_post_process_refresh_needed = display_view_changed || m_application_state->force_viewport_refresh;
 			if (uses_device_display_post_process && display_post_process_refresh_needed)
