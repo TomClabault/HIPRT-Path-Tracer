@@ -1167,6 +1167,11 @@ std::shared_ptr<DisplayViewSystem> RenderWindow::get_display_view_system()
 	return m_display_view_system;
 }
 
+DisplaySettings& RenderWindow::get_display_settings()
+{
+	return m_display_settings;
+}
+
 void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y, bool scale_translation)
 {
 	if (scale_translation)
@@ -1574,18 +1579,8 @@ void RenderWindow::render()
 				if (uses_device_display_post_process)
 					m_renderer->launch_display_post_process();
 
-				// We upload the data to the OpenGL textures for displaying
-				m_display_view_system->upload_relevant_buffers_to_texture();
-
-				// We want the next frame to be displayed with the same 'wants_render_low_resolution' setting
-				// as it was queued with. This is only useful for first frames when getting in low resolution
-				// (when we start moving the camera for example) or first frames when getting out of low resolution
-				// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is
-				// a "first frame" that was queued with the corresponding wants_render_low_resolution (getting in or out of low resolution).
-				// and so we want to display it the same way.
-				m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
-				// Updating the uniforms so that next time we display, we display correctly
-				m_display_view_system->update_current_display_program_uniforms();
+				// Upload the final device-side post-process result for the trivial OpenGL display program.
+				m_display_view_system->upload_final_display_buffer();
 
 				// We just displayed so let's reset the timer
 				m_application_state->last_viewport_refresh_timestamp = glfwGetTimerValue();
@@ -1666,15 +1661,11 @@ void RenderWindow::render()
 			if (buffer_upload_necessary)
 			{
 				// Re-uploading only if necessary
-				m_display_view_system->upload_relevant_buffers_to_texture();
+				m_display_view_system->upload_final_display_buffer();
 
 				buffer_upload_necessary = false;
 			}
 
-			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
-			// Updating the uniforms if the user touches the post processing parameters
-			// or something else (denoiser blend, ...)
-			m_display_view_system->update_current_display_program_uniforms();
 			if (display_post_process_refresh_needed)
 				m_application_state->force_viewport_refresh = false;
 
@@ -1709,7 +1700,7 @@ void RenderWindow::render()
 bool RenderWindow::denoise()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	DisplaySettings& display_settings	 = m_display_view_system->get_display_settings();
+	DisplaySettings& display_settings	 = get_display_settings();
 
 	display_settings.blend_override = -1.0f;
 

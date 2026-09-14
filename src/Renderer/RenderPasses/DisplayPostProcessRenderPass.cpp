@@ -54,7 +54,7 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 
 void DisplayPostProcessRenderPass::update_display_post_process_settings()
 {
-	DisplaySettings& display_settings				  = m_render_window->get_display_view_system()->get_display_settings();
+	DisplaySettings& display_settings				  = m_render_window->get_display_settings();
 	DisplayPostProcessSettings& post_process_settings = m_renderer->get_render_data().display_post_process_settings;
 
 	post_process_settings.do_tonemapping				   = display_settings.do_tonemapping;

@@ -242,5 +242,5 @@ void ImGuiConvergenceGraphWidgetScreenshotter::restore_viewport_texture_after_sc
 	// This is the lazy way out. For some reason screenshotting the convergence graph with the new "draw to separate FBO method" clear our texture for
 	// displaying the output of the renderer to the screen. Not sure why, too lazy to figure it out so we just re-upload the buffers to the texture
 	// instead if we screenshotted something
-	m_render_window->get_display_view_system()->upload_relevant_buffers_to_texture();
+	m_render_window->get_display_view_system()->upload_final_display_buffer();
 }

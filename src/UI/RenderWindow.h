@@ -12,7 +12,7 @@
 #include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/ApplicationState.h"
-#include "UI/DisplayView/DisplayTextureType.h"
+#include "UI/DisplayView/DisplaySettings.h"
 #include "UI/DisplayView/DisplayViewEnum.h"
 #include "UI/DisplayView/DisplayViewSystem.h"
 #include "UI/ImGui/ImGuiRenderer.h"
@@ -59,6 +59,7 @@ public:
 	std::shared_ptr<ImGuiRenderer> get_imgui_renderer();
 
 	std::shared_ptr<DisplayViewSystem> get_display_view_system();
+	DisplaySettings& get_display_settings();
 
 	/**
 	 * Translates the camera along its X and Y axis by translation_x and translation_y respectively.
@@ -199,6 +200,7 @@ private:
 
 	// Encapsulates the handling of display views
 	std::shared_ptr<DisplayViewSystem> m_display_view_system;
+	DisplaySettings m_display_settings;
 
 	GLFWwindow* m_glfw_window;
 	std::shared_ptr<ImGuiRenderer> m_imgui_renderer;

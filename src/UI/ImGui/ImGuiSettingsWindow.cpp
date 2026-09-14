@@ -692,7 +692,7 @@ void ImGuiSettingsWindow::display_view_selector()
 		ImGui::EndCombo();
 	}
 
-	DisplaySettings& display_settings		   = display_view_system->get_display_settings();
+	DisplaySettings& display_settings		   = m_render_window->get_display_settings();
 	DisplayViewType display_view_type_selected = static_cast<DisplayViewType>(display_view_selected_index);
 	// Adding some more UI elements for certain display views
 	switch (display_view_type_selected)
@@ -6239,7 +6239,7 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 	}
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
+	DisplaySettings& display_settings = m_render_window->get_display_settings();
 	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	if (!m_application_settings->denoise_when_rendering_done)
 	{
@@ -6273,7 +6273,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	{
 		ImGui::TreePush("Tonemapping post processing tree");
 
-		DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
+		DisplaySettings& display_settings = m_render_window->get_display_settings();
 
 		bool changed = false;
 		changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
