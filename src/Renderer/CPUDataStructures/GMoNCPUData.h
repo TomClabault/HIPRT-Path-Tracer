@@ -19,6 +19,7 @@ struct GMoNCPUData : public GMoNCPUGPUCommonData
 	void resize(unsigned int render_width, unsigned int render_height)
 	{
 		sets.resize(render_width * render_height * number_of_sets);
+		std::fill(sets.begin(), sets.end(), ColorRGB32F(0.0f));
 
 		result_framebuffer = Image32Bit(render_width, render_height, /* channels */ 3);
 	}
