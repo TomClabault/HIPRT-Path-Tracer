@@ -252,9 +252,14 @@ void ImGuiSettingsWindow::draw_header()
 			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count,
 						static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 
-			// Adding some information on what noise threshold is being used
+			// Adding some information on what convergence threshold is being used
 			std::string text = "Noise threshold: ";
-			if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
+			if (render_settings.enable_hierarchical_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
+			{
+				text = "Display error threshold: ";
+				text += std::format("{:.5f}", render_settings.hierarchical_adaptive_sampling_target_error) + " (hierarchical adaptive sampling)";
+			}
+			else if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
 			{
 				if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
 				{
@@ -1277,12 +1282,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"How many samples to wait before adaptive sampling activates.\n\n"
 					""
 					"The general rule is to keep this value as low as possible without getting conspicuous black/unconverged pixels.");
-				if (ImGui::InputFloat("Noise threshold", &render_settings.adaptive_sampling_noise_threshold))
+				if (ImGui::InputFloat("Display error threshold", &render_settings.adaptive_sampling_noise_threshold))
 				{
 					render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
 
 					m_render_window->set_render_dirty(true);
 				}
+				ImGuiRenderer::show_help_marker("Absolute display-space confidence interval threshold after exposure and tone mapping. "
+												"The default is two encoded display levels (2/255).");
 
 				// !Cannot use adaptive sampling without accumulation
 				ImGui::EndDisabled();
@@ -1371,14 +1378,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::InputFloat("Noise threshold##hierarchical-adaptive", &render_settings.hierarchical_adaptive_sampling_target_error))
+				if (ImGui::InputFloat("Display error threshold##hierarchical-adaptive", &render_settings.hierarchical_adaptive_sampling_target_error))
 				{
 					render_settings.hierarchical_adaptive_sampling_target_error = std::max(0.0f, render_settings.hierarchical_adaptive_sampling_target_error);
 
 					m_render_window->set_render_dirty(true);
 				}
-				ImGuiRenderer::show_help_marker("Uses the same relative 95% luminance confidence-interval scale as per-pixel adaptive sampling. "
-												"A hierarchical cell converges when the mean noise estimate of its pixels is at or below this threshold.");
+				ImGuiRenderer::show_help_marker("Uses the same absolute display-space 95% luminance confidence-interval scale as per-pixel adaptive sampling. "
+												"A hierarchical cell converges when the mean display error of its pixels is at or below this threshold.");
 
 				if (ImGui::InputFloat("Minimum cell extent", &render_settings.hierarchical_adaptive_sampling_minimum_cell_extent))
 				{
@@ -1416,15 +1423,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				const char* hierarchical_adaptive_sampling_debug_view_items[]	 = { "- No debug", "- Pixel convergence heatmap", "- Converged pixels map",
-																					 "- Active/converged regions", "- Per-pixel relative noise" };
+																					 "- Active/converged regions", "- Per-pixel display error" };
 				const char* hierarchical_adaptive_sampling_debug_view_tooltips[] = {
 					"Disable the hierarchical adaptive sampling debug view.",
 					"Displays the number of samples required for each pixel to converge. The selected heatmap maps lower sample counts to its first color "
 					"and higher sample counts to its last color.",
 					"Displays pixels in converged hierarchical regions in white and pixels in active regions in black.",
 					"Displays active hierarchical regions in red and converged regions in green.",
-					"Displays each pixel's relative 95% luminance confidence interval before hierarchical region averaging. The first heatmap color represents "
-					"zero noise and the last color represents noise at or above the hierarchical noise threshold."
+					"Displays each pixel's absolute display-space 95% luminance confidence interval before hierarchical region averaging. The first heatmap "
+					"color represents "
+					"zero error and the last color represents error at or above the hierarchical display-error threshold."
 				};
 
 				if (ImGuiRenderer::ComboWithTooltips(
@@ -6280,7 +6288,15 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		changed |= ImGui::SliderFloat("Gamma", &display_settings.tone_mapping_gamma, 1.0f, 2.4f);
 		changed |= ImGui::SliderFloat("Exposure", &display_settings.tone_mapping_exposure, 0.0f, 5.0f);
 		if (changed)
-			m_render_window->set_force_viewport_refresh(true);
+		{
+			if (render_data.render_settings.enable_hierarchical_adaptive_sampling)
+				m_render_window->set_render_dirty(true);
+			else
+				m_render_window->set_force_viewport_refresh(true);
+		}
+		if (render_data.render_settings.enable_hierarchical_adaptive_sampling)
+			ImGuiRenderer::add_warning(
+				"Changing tone mapping, exposure, or gamma resets the accumulated render because hierarchical adaptive sampling uses display-space error.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

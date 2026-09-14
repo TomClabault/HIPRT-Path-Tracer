@@ -30,20 +30,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline HierarchicalAdaptiveSamplingComputeError(HI
 	float average_luminance;
 	float confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
 
-	// Use the same dimensionless noise estimate as per-pixel adaptive sampling so both thresholds share a numerical scale.
-	// A finite sentinel keeps summed-area-table arithmetic usable when a non-zero confidence interval has no signal to normalize by.
-	float relative_noise = 0.0f;
-	if (confidence_interval > 0.0f)
-	{
-		relative_noise = 1.0e20f;
-		if (average_luminance > 0.0f)
-		{
-			float normalized_confidence_interval = confidence_interval / average_luminance;
-			relative_noise						 = normalized_confidence_interval < 1.0e20f ? normalized_confidence_interval : 1.0e20f;
-		}
-	}
-
-	render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index] = relative_noise;
+	// Use the same absolute display-space uncertainty as per-pixel adaptive sampling so both thresholds share a numerical scale.
+	render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index] =
+		compute_adaptive_sampling_display_error(average_luminance, confidence_interval, render_data.display_post_process_settings);
 }
 
 #endif // #ifndef KERNELS_HIERARCHICAL_ADAPTIVE_SAMPLING_COMPUTE_ERROR_H

@@ -188,16 +188,16 @@ struct HIPRTRenderSettings
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially
 	int adaptive_sampling_min_samples = 96;
-	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.075f;
+	// Adaptive sampling display-space confidence threshold. Values are in the final encoded display range [0, 1].
+	float adaptive_sampling_noise_threshold = 2.0f / 255.0f;
 
 	// Enables the hierarchical adaptive sampling hierarchy described by Jeffery (2019). The hierarchy
 	// classifies rectangular image regions and rebuilds from the full image periodically so that
 	// previously completed regions can become active again.
 	bool enable_hierarchical_adaptive_sampling = true;
-	// A region is complete when its mean relative 95% luminance confidence interval is below this value.
+	// A region is complete when its mean absolute display-space 95% luminance confidence interval is below this value.
 	// This uses the same numerical scale as adaptive_sampling_noise_threshold.
-	float hierarchical_adaptive_sampling_target_error = 0.075f;
+	float hierarchical_adaptive_sampling_target_error = 2.0f / 255.0f;
 	// Stops a split if either child would have no dimension at least this many pixels long.
 	float hierarchical_adaptive_sampling_minimum_cell_extent = 2.0f;
 	// Rebuilding periodically allows completed regions to become active again when their error estimate changes.

@@ -7,6 +7,32 @@
 #define DEVICE_ADAPTIVE_SAMPLING_H
 
 #include "HostDeviceCommon/RenderData.h"
+#include "Device/includes/Tonemapping.h"
+
+HIPRT_DEVICE static float compute_adaptive_sampling_display_luminance(float linear_luminance, const DisplayPostProcessSettings& display_settings)
+{
+	float clamped_luminance = hippt::clamp(0.0f, 1.0e35f, linear_luminance);
+	if (display_settings.do_tonemapping == 1)
+		return tonemap_exponential(ColorRGB32F(clamped_luminance), display_settings.exposure, display_settings.gamma).luminance();
+
+	return hippt::clamp(0.0f, 1.0f, clamped_luminance);
+}
+
+HIPRT_DEVICE static float compute_adaptive_sampling_display_error(float average_luminance,
+																  float confidence_interval,
+																  const DisplayPostProcessSettings& display_settings)
+{
+	float lower_luminance = hippt::max(0.0f, average_luminance - confidence_interval);
+	float upper_luminance = average_luminance + confidence_interval;
+
+	float displayed_average_luminance = compute_adaptive_sampling_display_luminance(average_luminance, display_settings);
+	float displayed_lower_luminance	  = compute_adaptive_sampling_display_luminance(lower_luminance, display_settings);
+	float displayed_upper_luminance	  = compute_adaptive_sampling_display_luminance(upper_luminance, display_settings);
+
+	float lower_display_error = displayed_average_luminance - displayed_lower_luminance;
+	float upper_display_error = displayed_upper_luminance - displayed_average_luminance;
+	return hippt::max(lower_display_error, upper_display_error);
+}
 
 HIPRT_DEVICE static float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
 {
@@ -53,8 +79,9 @@ HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, i
 		{
 			float average_luminance;
 			float confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+			float display_error = compute_adaptive_sampling_display_error(average_luminance, confidence_interval, render_data.display_post_process_settings);
 
-			bool pixel_needs_sampling = confidence_interval > render_settings.adaptive_sampling_noise_threshold * average_luminance;
+			bool pixel_needs_sampling = display_error > render_settings.adaptive_sampling_noise_threshold;
 			if (!pixel_needs_sampling)
 			{
 				if (aux_buffers.pixel_converged_sample_count[pixel_index] == -1)

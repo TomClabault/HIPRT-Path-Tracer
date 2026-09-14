@@ -181,10 +181,10 @@ HIPRT_DEVICE bool display_view_compute_adaptive_sampling_debug_color(
 			render_data.aux_buffers.hierarchical_adaptive_sampling_error == nullptr)
 			return false;
 
-		float relative_noise   = render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index];
-		float noise_threshold  = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
-		float normalized_noise = noise_threshold > 0.0f ? relative_noise / noise_threshold : (relative_noise > 0.0f ? 1.0f : 0.0f);
-		out_debug_color		   = display_view_map_adaptive_sampling_heatmap(hippt::clamp(0.0f, 1.0f, normalized_noise), heatmap_index);
+		float display_error	   = render_data.aux_buffers.hierarchical_adaptive_sampling_error[pixel_index];
+		float error_threshold  = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
+		float normalized_error = error_threshold > 0.0f ? display_error / error_threshold : (display_error > 0.0f ? 1.0f : 0.0f);
+		out_debug_color		   = display_view_map_adaptive_sampling_heatmap(hippt::clamp(0.0f, 1.0f, normalized_error), heatmap_index);
 		return true;
 	}
 
