@@ -1199,7 +1199,31 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 	for (int x = 0; x < m_resolution.x; x++)
 		HierarchicalAdaptiveSamplingBuildColumns(m_render_data, x);
 
-	HierarchicalAdaptiveSamplingBuildHierarchy(m_render_data, 0);
+	unsigned int level_node_count													  = 0;
+	HIPRTRenderData hierarchy_render_data											  = m_render_data;
+	hierarchy_render_data.aux_buffers.hierarchical_adaptive_sampling_level_node_count = &level_node_count;
+
+	unsigned int maximum_depth = static_cast<unsigned int>(std::max(1, render_settings.hierarchical_adaptive_sampling_max_depth));
+	HierarchicalAdaptiveSamplingBuildHierarchy(hierarchy_render_data, 0u, static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::INITIALIZE));
+
+	for (unsigned int build_depth = 0; build_depth <= maximum_depth; build_depth++)
+	{
+		HierarchicalAdaptiveSamplingBuildHierarchy(hierarchy_render_data, 0u,
+												   static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::PREPARE_LEVEL));
+
+		unsigned int maximum_thread_count = static_cast<unsigned int>(m_hierarchical_adaptive_sampling_nodes.size());
+		unsigned int thread_count		  = maximum_thread_count;
+		if (build_depth < 30u)
+		{
+			unsigned int maximum_nodes_through_depth = (1u << (build_depth + 1u)) - 1u;
+			thread_count							 = std::min(maximum_thread_count, maximum_nodes_through_depth);
+		}
+
+		for (unsigned int thread_index = 0; thread_index < thread_count; thread_index++)
+			HierarchicalAdaptiveSamplingBuildHierarchy(hierarchy_render_data, thread_index, build_depth);
+	}
+
+	HierarchicalAdaptiveSamplingBuildHierarchy(hierarchy_render_data, 0u, static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::FINALIZE));
 
 	for (int y = 0; y < m_resolution.y; y++)
 		for (int x = 0; x < m_resolution.x; x++)

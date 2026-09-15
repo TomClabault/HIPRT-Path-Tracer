@@ -159,8 +159,8 @@ private:
 	std::vector<float> m_hierarchical_adaptive_sampling_error;
 	std::vector<float> m_hierarchical_adaptive_sampling_summed_area;
 	std::vector<HierarchicalAdaptiveSamplingNode> m_hierarchical_adaptive_sampling_nodes;
-	unsigned int m_hierarchical_adaptive_sampling_node_count = 0;
-	unsigned char m_still_one_ray_active					 = true;
+	AtomicType<unsigned int> m_hierarchical_adaptive_sampling_node_count = 0;
+	unsigned char m_still_one_ray_active								 = true;
 	AtomicType<unsigned int> m_stop_noise_threshold_count;
 
 	RGBE9995Envmap<false> m_packed_envmap;

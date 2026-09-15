@@ -194,11 +194,9 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 	unsigned int* build_depths		 = m_build_depths_host_pinned.get_host_pinned_pointer();
 	for (unsigned int command_index = 0; command_index < build_command_count; command_index++)
 	{
-		m_kernels[BUILD_HIERARCHY_KERNEL]->upload_to_module_global("HIERARCHICAL_ADAPTIVE_SAMPLING_BUILD_DEPTH", &build_depths[command_index],
-																   sizeof(unsigned int), m_renderer->get_main_stream());
-
 		unsigned int build_depth  = build_depths[command_index];
 		unsigned int thread_count = 1u;
+		void* launch_args[]		  = { &build_depth };
 		if (build_depth <= maximum_depth)
 		{
 			unsigned int maximum_thread_count = static_cast<unsigned int>(m_nodes.size());
@@ -210,7 +208,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 			}
 		}
 
-		m_kernels[BUILD_HIERARCHY_KERNEL]->launch_asynchronous(64, 1, thread_count, 1, nullptr, m_renderer->get_main_stream());
+		m_kernels[BUILD_HIERARCHY_KERNEL]->launch_asynchronous(64, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
 	}
 
 	upload_render_data(RESOLVE_MASK_KERNEL, render_data);
@@ -237,7 +235,7 @@ void HierarchicalAdaptiveSamplingRenderPass::update_render_data()
 	render_data.aux_buffers.hierarchical_adaptive_sampling_error			= m_error.get_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_summed_area		= m_summed_area.get_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_nodes			= m_nodes.get_device_pointer();
-	render_data.aux_buffers.hierarchical_adaptive_sampling_node_count		= m_node_count.get_device_pointer();
+	render_data.aux_buffers.hierarchical_adaptive_sampling_node_count		= m_node_count.get_atomic_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_level_node_count = m_level_node_count.get_device_pointer();
 	render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity	= static_cast<unsigned int>(m_nodes.size());
 }

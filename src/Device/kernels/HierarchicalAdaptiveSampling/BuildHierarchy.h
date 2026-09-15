@@ -14,12 +14,13 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_initialize_hierarchy(const HIPR
 	int height								= render_data.render_settings.render_resolution.y;
 	HierarchicalAdaptiveSamplingNode* nodes = render_data.aux_buffers.hierarchical_adaptive_sampling_nodes;
 
-	nodes[0].minimum_x												   = 0.0f;
-	nodes[0].minimum_y												   = 0.0f;
-	nodes[0].maximum_x												   = static_cast<float>(width);
-	nodes[0].maximum_y												   = static_cast<float>(height);
-	nodes[0].depth													   = 0;
-	nodes[0].state													   = HierarchicalAdaptiveSamplingNodeState::ACTIVE;
+	nodes[0].minimum_x = 0.0f;
+	nodes[0].minimum_y = 0.0f;
+	nodes[0].maximum_x = static_cast<float>(width);
+	nodes[0].maximum_y = static_cast<float>(height);
+	nodes[0].depth	   = 0;
+	nodes[0].state	   = HierarchicalAdaptiveSamplingNodeState::ACTIVE;
+
 	*render_data.aux_buffers.hierarchical_adaptive_sampling_node_count = 1u;
 }
 
@@ -84,8 +85,7 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 	unsigned int usable_node_capacity = (node_capacity & 1u) == 0u ? node_capacity - 1u : node_capacity;
 	unsigned int left_child;
 
-#ifdef __KERNELCC__
-	left_child = hippt::atomic_fetch_add_gpu(render_data.aux_buffers.hierarchical_adaptive_sampling_node_count, 2u);
+	left_child = hippt::atomic_fetch_add(render_data.aux_buffers.hierarchical_adaptive_sampling_node_count, 2u);
 	if (left_child + 2u > usable_node_capacity)
 	{
 		// Exhausting the bounded tree must only cost performance, never samples, so keeping the node active
@@ -93,17 +93,6 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 
 		return;
 	}
-#else  // #ifdef __KERNELCC__
-	left_child = *render_data.aux_buffers.hierarchical_adaptive_sampling_node_count;
-	if (left_child + 2u > usable_node_capacity)
-	{
-		// Exhausting the bounded tree must only cost performance, never samples, so keeping the node active
-		node.state = HierarchicalAdaptiveSamplingNodeState::ACTIVE;
-
-		return;
-	}
-	*render_data.aux_buffers.hierarchical_adaptive_sampling_node_count += 2u;
-#endif // #ifdef __KERNELCC__
 
 	unsigned int right_child = left_child + 1u;
 	nodes[left_child]		 = node;
@@ -130,22 +119,8 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 	node.right_child	= right_child;
 }
 
-#ifdef __KERNELCC__
-extern "C"
+HIPRT_DEVICE void hierarchical_adaptive_sampling_build_hierarchy(const HIPRTRenderData& render_data, unsigned int thread_index, unsigned int build_depth)
 {
-	HIPRT_DEVICE __constant__ unsigned int HIERARCHICAL_ADAPTIVE_SAMPLING_BUILD_DEPTH;
-}
-
-GLOBAL_KERNEL_SIGNATURE(void) HierarchicalAdaptiveSamplingBuildHierarchy()
-#else  // #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline HierarchicalAdaptiveSamplingBuildHierarchy(HIPRTRenderData render_data, int thread_index)
-#endif // #ifdef __KERNELCC__
-{
-#ifdef __KERNELCC__
-	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(HIERARCHICAL_ADAPTIVE_SAMPLING_RENDER_DATA);
-	unsigned int thread_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int build_depth	 = HIERARCHICAL_ADAPTIVE_SAMPLING_BUILD_DEPTH;
-
 	if (build_depth == static_cast<unsigned int>(HierarchicalAdaptiveSamplingBuildCommand::INITIALIZE))
 	{
 		if (thread_index == 0)
@@ -195,19 +170,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline HierarchicalAdaptiveSamplingBuildHierarchy(
 		return;
 
 	hierarchical_adaptive_sampling_process_node(render_data, thread_index);
-#else  // #ifdef __KERNELCC__
-	if (thread_index != 0)
-		return;
+}
 
-	hierarchical_adaptive_sampling_initialize_hierarchy(render_data);
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) HierarchicalAdaptiveSamplingBuildHierarchy(unsigned int build_depth)
+#else
+GLOBAL_KERNEL_SIGNATURE(void)
+inline HierarchicalAdaptiveSamplingBuildHierarchy(HIPRTRenderData render_data, unsigned int thread_index, unsigned int build_depth)
+#endif
+{
+#ifdef __KERNELCC__
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(HIERARCHICAL_ADAPTIVE_SAMPLING_RENDER_DATA);
+	unsigned int thread_index	 = blockIdx.x * blockDim.x + threadIdx.x;
+#endif
 
-	unsigned int node_index = 0;
-	while (node_index < *render_data.aux_buffers.hierarchical_adaptive_sampling_node_count)
-	{
-		hierarchical_adaptive_sampling_process_node(render_data, node_index);
-		node_index++;
-	}
-#endif // #ifdef __KERNELCC__
+	hierarchical_adaptive_sampling_build_hierarchy(render_data, thread_index, build_depth);
 }
 
 #endif // #ifndef KERNELS_HIERARCHICAL_ADAPTIVE_SAMPLING_BUILD_HIERARCHY_H
