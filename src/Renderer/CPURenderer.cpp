@@ -1182,7 +1182,10 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 
 	unsigned int completed_sample_count = render_settings.sample_number + 1u;
 	unsigned int minimum_sample_count	= static_cast<unsigned int>(std::max(2, render_settings.adaptive_sampling_min_samples));
-	unsigned int rebuild_interval		= static_cast<unsigned int>(std::max(2, render_settings.hierarchical_adaptive_sampling_rebuild_interval));
+	// Rebuilding periodically allows completed regions to become active again when their error estimate changes. Rebuilding too often is wasteful, but
+	// rebuilding too infrequently can cause the adaptive sampling to miss regions that have changed. A rebuild interval of 2% of the total sample count is a
+	// reasonable compromise.
+	unsigned int rebuild_interval = 0.02f * m_render_data.render_settings.sample_number;
 	if ((rebuild_interval & 1u) != 0u)
 		rebuild_interval++;
 

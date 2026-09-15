@@ -200,10 +200,8 @@ struct HIPRTRenderSettings
 	float hierarchical_adaptive_sampling_target_error = 2.0f / 255.0f;
 	// Stops a split if either child would have no dimension at least this many pixels long.
 	float hierarchical_adaptive_sampling_minimum_cell_extent = 2.0f;
-	// Rebuilding periodically allows completed regions to become active again when their error estimate changes.
-	int hierarchical_adaptive_sampling_rebuild_interval = 2;
-	int hierarchical_adaptive_sampling_max_depth		= 20;
-	int hierarchical_adaptive_sampling_max_node_count	= 262144;
+	int hierarchical_adaptive_sampling_max_depth			 = 20;
+	int hierarchical_adaptive_sampling_max_node_count		 = 262144;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if

@@ -1404,15 +1404,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGuiRenderer::show_help_marker(
 					"Measured in pixels. Subdivision stops if either proposed child cell would have both extents smaller than this value.");
 
-				if (ImGui::InputInt("Rebuild interval", &render_settings.hierarchical_adaptive_sampling_rebuild_interval))
-				{
-					render_settings.hierarchical_adaptive_sampling_rebuild_interval =
-						std::max(2, render_settings.hierarchical_adaptive_sampling_rebuild_interval);
-
-					m_render_window->set_render_dirty(true);
-				}
-
-				ImGuiRenderer::show_help_marker("Number of completed samples between hierarchy rebuilds.");
 				if (ImGui::InputInt("Maximum hierarchy depth", &render_settings.hierarchical_adaptive_sampling_max_depth))
 				{
 					render_settings.hierarchical_adaptive_sampling_max_depth = std::max(1, render_settings.hierarchical_adaptive_sampling_max_depth);
