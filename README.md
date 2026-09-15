@@ -52,8 +52,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 			- Support for multiple spherical gaussian spatial lobes per tree node to improve importance estimates on multi-modal incoming radiance
 	- ReGIR (more details on what was implemented below)
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
-	- Implementation of the illumination aware spatial subdivisions KD-tree [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/)
-		- Use the illumination frequency aware spatial structure to learn lightcut nodes sampling probabilities with "Learning to Cluster for Rendering with Many Lights" [\[Wang et al., 2021\]](https://bulbaberry.xyz/publications/lcr-sa-2021/) 
+	- Learning to Cluster for Many Lights Rendering [\[Wang et al., 2021\]](https://kevincosner.github.io/publications/Wang2021LCR/index.html), piggybacking on an implementation of the illumination-aware KD-tree of [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/) and the spherical gaussian light tree
 	- Neural Importance Sampling of Many Lights [\[Figuereido et al., 2025\]](https://pedrovfigueiredo.github.io/projects/manylights/SIGGRAPH_2025_Importance_Sampling/index.html)
 	
 - Area light sampling strategies:
@@ -115,13 +114,14 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Distributing Monte Carlo Errors as a Blue Noise in Screen Space by Permuting Pixel Seeds Between Frames [\[Heitz and Belcour, 2019.\]](https://eheitzresearch.wordpress.com/772-2/)
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
+- Global Adaptive Sampling Hierarchies [\[Jeffery 2019\]](https://history.siggraph.org/wp-content/uploads/2022/09/2019-Talks-Jeffery_Global-Adaptive-Sampling-Hierarchies-in-Production-Ray.pdf)
+- Per-pixel variance based adaptive sampling
 - Texture alpha transparency support
 - Stochastic material opacity support
 - Normal mapping
 - Nested dielectrics support 
 	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
 - A Low-Distortion Map Between Triangle and Square [\[Heitz, 2019\]](https://hal.science/hal-02073696v2/document)
-- Per-pixel variance based adaptive sampling
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 ### UI
 - Interactive ImGui interface
