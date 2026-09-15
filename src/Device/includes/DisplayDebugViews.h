@@ -143,7 +143,7 @@ HIPRT_DEVICE bool display_view_compute_adaptive_sampling_debug_color(
 	{
 	case DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGENCE_HEATMAP:
 	{
-		if (!render_data.render_settings.enable_adaptive_sampling)
+		if (!render_data.render_settings.adaptive_sampling_enabled())
 			return false;
 
 		float adaptive_sampling_debug_value;
@@ -156,7 +156,7 @@ HIPRT_DEVICE bool display_view_compute_adaptive_sampling_debug_color(
 
 	case DISPLAY_ADAPTIVE_SAMPLING_PIXEL_CONVERGED_MAP:
 	{
-		if (!render_data.render_settings.enable_adaptive_sampling || !render_data.render_settings.has_access_to_adaptive_sampling_buffers() ||
+		if (!render_data.render_settings.adaptive_sampling_enabled() || !render_data.render_settings.has_access_to_adaptive_sampling_buffers() ||
 			render_data.aux_buffers.pixel_converged_sample_count == nullptr)
 			return false;
 
