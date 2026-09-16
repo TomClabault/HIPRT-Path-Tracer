@@ -76,6 +76,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			NEEPlusPlusContext nee_plus_plus_context;
 			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+			if (ray_payload.bounce == 0)
+				restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 															   nee_plus_plus_context, random_number_generator);
 
@@ -136,6 +138,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 		nee_plus_plus_context.envmap		 = true;
 		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
 		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+		if (ray_payload.bounce == 0)
+			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
 														   random_number_generator);
 
@@ -196,6 +200,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			new_ray.direction = sampled_bsdf_direction;
 
 			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+			if (ray_payload.bounce == 0)
+				restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 			bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
 																	 random_number_generator);
 
@@ -323,6 +329,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			{
 				if (bounce > 0)
 				{
+					if (bounce == 1)
+						restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 					intersection_found =
 						path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 

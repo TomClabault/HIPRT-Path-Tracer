@@ -61,7 +61,9 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	shadow_ray.origin	 = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, random_number_generator);
+	Xorshift32Generator random_number_generator_alpha_test(reservoir.sample.visible_to_sample_point_alpha_test_random_seed);
+	bool visible =
+		!evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, random_number_generator_alpha_test);
 
 	if (!visible)
 	{

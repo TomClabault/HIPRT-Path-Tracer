@@ -33,8 +33,10 @@ struct ReSTIRPTReservoirSample
 	float rc_vertex_texcoords_u = -1.0f;
 	float rc_vertex_texcoords_v = -1.0f;
 
-	float bsdf_throughput_luminance_at_sample_point = 1.0f;
-	float target_function							= 0.0f;
+	float bsdf_throughput_luminance_at_sample_point				= 1.0f;
+	float target_function										= 0.0f;
+	// Reuse the initial ray's alpha decisions when testing this sample from another pixel.
+	unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
 	// TODO all 'at visible' point variables should be replaced by 'rc_vertex' variables
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;

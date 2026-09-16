@@ -307,7 +307,7 @@ struct GenericSoA
 					// the reference, hence the use of std::decay_t
 					((buffer = std::decay_t<decltype(buffer)>{}), ...);
 				else
-					((buffer.free()), ...);
+					((buffer.free_no_error()), ...);
 			},
 			buffers);
 	}
