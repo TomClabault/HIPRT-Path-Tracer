@@ -176,7 +176,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 	// Rebuilding periodically allows completed regions to become active again when their error estimate changes. Rebuilding too often is wasteful, but
 	// rebuilding too infrequently can cause the adaptive sampling to miss regions that have changed. A rebuild interval of 2% of the total sample count is a
 	// reasonable compromise.
-	unsigned int rebuild_interval = 0.02f * render_data.render_settings.sample_number;
+	unsigned int rebuild_interval = std::ceil(0.02f * render_data.render_settings.sample_number);
 	if ((rebuild_interval & 1u) != 0u)
 		rebuild_interval++;
 
