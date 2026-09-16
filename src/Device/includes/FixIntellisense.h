@@ -33,6 +33,8 @@
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP		 UNROLL_PRAGMA(unroll)
 
+#define HIPRT_NOINLINE __attribute__((noinline))
+
 #ifndef __CUDACC__
 inline void __syncwarp(unsigned int mask) {}
 #endif
@@ -59,6 +61,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define HIPRT_DEVICE	  __device__
 #define HIPRT_HOST		  __host__
 #define HIPRT_INLINE	  inline
+#define HIPRT_NOINLINE
 
 #define UNROLL_LOOP
 

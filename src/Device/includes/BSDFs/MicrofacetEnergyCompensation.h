@@ -101,7 +101,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
  * instead of fixing the root of the issue which probably isn't what you should do if you're
  * reading this
  */
-HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
+HIPRT_DEVICE HIPRT_NOINLINE static float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
 {
 	if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
 		// No correction for these, returning the original 2.5f that is used in the LUT
