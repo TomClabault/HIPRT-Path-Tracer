@@ -481,21 +481,24 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 									   &cell_cdf_lut_offsets,
 									   &num_cells };
 
-	// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1, build_cdfs_launch_args,
-																							 m_renderer->get_main_stream());
-
-	// Variance is only needed for the first frame to seed the cached cell search radius;
-	// subsequent frames reuse the cached cell index and never read cell_variance.
-	if (render_data.render_settings.sample_number == 0)
+	if (cell_alive_count > 0)
 	{
-		float* cell_variance			  = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_VARIANCE>().get_device_pointer();
-		void* compute_noise_launch_args[] = { &cell_counters,	 &cell_offsets,	 &cell_alive_list, &pixel_indices_sorted,
-											  &input_reservoirs, &cell_variance, &num_cells };
+		// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
+		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1, build_cdfs_launch_args,
+																								 m_renderer->get_main_stream());
 
-		// Same dispatch as BuildCDFs: one block per alive cell, 1024 threads/block
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
-			1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
+		// Variance is only needed for the first frame to seed the cached cell search radius;
+		// subsequent frames reuse the cached cell index and never read cell_variance.
+		if (render_data.render_settings.sample_number == 0)
+		{
+			float* cell_variance = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_VARIANCE>().get_device_pointer();
+			void* compute_noise_launch_args[] = { &cell_counters,	 &cell_offsets,	 &cell_alive_list, &pixel_indices_sorted,
+												  &input_reservoirs, &cell_variance, &num_cells };
+
+			// Same dispatch as BuildCDFs: one block per alive cell, 1024 threads/block
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
+				1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
+		}
 	}
 }
 
@@ -695,7 +698,8 @@ void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID
 											  ? "RESTIR_SPMIS_RENDER_DATA"
 											  : "RESTIR_PT_RENDER_DATA";
-	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData), m_renderer->get_main_stream());
+	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData),
+												  m_renderer->get_main_stream());
 }
 
 void ReSTIRPTRenderPass::update_render_data()

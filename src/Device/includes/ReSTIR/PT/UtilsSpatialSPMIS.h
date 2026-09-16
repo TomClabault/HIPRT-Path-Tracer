@@ -48,16 +48,21 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 )
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
-	unsigned int cached_reuse_cell_pixel_index	= spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index];
+
+	unsigned int cached_reuse_cell_pixel_index = spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index];
 	if (cached_reuse_cell_pixel_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
-		// We're going to reuse from the cell at the cached reuse pixel index to avoid running the expensive cell search each frame when we already have a good
-		// cell chosen from previous frames
 		unsigned int reuse_cell_index = spmis_settings.all_pixel_hashes[cached_reuse_cell_pixel_index];
-		out_neighbors_confidence_sum  = spmis_settings.cell_confidence_sums[reuse_cell_index];
-		out_reuse_cell_pixel_count	  = spmis_settings.cell_pixels_counters[reuse_cell_index];
 
-		return reuse_cell_index;
+		if (reuse_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+		{
+			out_neighbors_confidence_sum = spmis_settings.cell_confidence_sums[reuse_cell_index];
+			out_reuse_cell_pixel_count	 = spmis_settings.cell_pixels_counters[reuse_cell_index];
+
+			return reuse_cell_index;
+		}
+
+		spmis_settings.all_pixels_reuse_cell_pixel_index[center_pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	}
 
 	// First, always WRSing the center cell
