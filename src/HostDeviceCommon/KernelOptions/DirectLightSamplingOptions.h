@@ -90,7 +90,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
 
 /**
  * What direct lighting sampling strategy to use.
@@ -141,7 +141,7 @@
 // ReSTIR PT is forcing RIS
 #define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
 #else
-#define DirectLightNEEEstimator LSS_ONE_LIGHT
+#define DirectLightNEEEstimator LSS_MIS_LIGHT_BSDF
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \

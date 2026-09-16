@@ -719,9 +719,11 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 																		   const DeviceUnpackedEffectiveMaterial& material,
 																		   LTCLobe ltc_lobe)
 {
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	float projected_solid_angle = prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 														  render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space, shading_point,
@@ -771,6 +773,10 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 																  const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
 																  const DeviceUnpackedEffectiveMaterial& material)
 {
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_FALSE
+	return projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, triangle_projected_solid_angle, NoL, view_direction, shading_normal,
+														   sampled_dir_shading_space, ltc_lobe_probabilities, material, LTCLobe::DIFFUSE_LOBE);
+#else
 	float out_pdf = 0.0f;
 
 	// For each lobe, if we already have the projected solid angle in cosine space,
@@ -812,6 +818,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 																		   ltc_lobe_probabilities, material, LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_FALSE
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
@@ -825,6 +832,11 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 																  const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
 																  const DeviceUnpackedEffectiveMaterial& material)
 {
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_FALSE
+	return projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+														   shading_point, view_direction, shading_normal, point_on_light, ltc_lobe_probabilities,
+														   material, LTCLobe::DIFFUSE_LOBE);
+#else
 	float out_pdf = 0.0f;
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
@@ -844,6 +856,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 																	   material, LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_FALSE
 }
 
 /*! \return A scalar multiple of rhs that is not too far from being normalized.
