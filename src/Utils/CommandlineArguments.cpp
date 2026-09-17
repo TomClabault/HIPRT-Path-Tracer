@@ -33,6 +33,8 @@ CommandlineArguments CommandlineArguments::process_command_line_args(int argc, c
 			arguments.render_height = std::atoi(string_argv.substr(9).c_str());
 		else if (string_argv.starts_with("--compile-shaders"))
 			arguments.only_compile_shaders = true;
+		else if (string_argv == "--no-shader-cache")
+			arguments.no_shader_cache = true;
 		else
 			// Assuming scene file path
 			arguments.scene_file_path = string_argv;

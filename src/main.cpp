@@ -4,6 +4,7 @@
  */
 
 #include "Image/Image.h"
+#include "Compiler/GPUKernelCompiler.h"
 #include "Renderer/BVH.h"
 #include "Renderer/Compute/RadixSort.h"
 #include "Renderer/CPURenderer.h"
@@ -21,12 +22,15 @@
 #include <random>
 
 extern ImGuiLogger g_imgui_logger;
+extern GPUKernelCompiler g_gpu_kernel_compiler;
 
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
 	CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
+	if (cmd_arguments.no_shader_cache)
+		g_gpu_kernel_compiler.set_shader_cache_usage_override(GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF);
 
 	int width  = cmd_arguments.render_width;
 	int height = cmd_arguments.render_height;

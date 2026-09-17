@@ -225,6 +225,12 @@ void GPUKernel::launch(int block_size_x, int block_size_y, int nb_threads_x, int
 void GPUKernel::launch_3D_block_size(
 	int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
 {
+	if (m_kernel_function == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot launch uncompiled kernel \"%s\".", get_kernel_name().c_str());
+		return;
+	}
+
 	unsigned int block_count_x = (nb_threads_x + block_size_x - 1) / block_size_x;
 	unsigned int block_count_y = (nb_threads_y + block_size_y - 1) / block_size_y;
 	unsigned int block_count_z = (nb_threads_z + block_size_z - 1) / block_size_z;
@@ -236,6 +242,12 @@ void GPUKernel::launch_3D_block_size(
 void GPUKernel::launch_asynchronous_3D_block_count(
 	int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream)
 {
+	if (m_kernel_function == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot launch uncompiled kernel \"%s\".", get_kernel_name().c_str());
+		return;
+	}
+
 	if (m_measure_execution_time)
 		record_execution_start(stream);
 

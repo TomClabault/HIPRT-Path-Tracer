@@ -29,6 +29,7 @@ struct CommandlineArguments
 	std::string output_filepath = "";
 
 	bool only_compile_shaders = false;
+	bool no_shader_cache	  = false;
 };
 
 #endif // #ifndef COMMANDLINE_ARGUMENTS_H
