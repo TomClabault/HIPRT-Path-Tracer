@@ -28,7 +28,8 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 												  int last_hit_primitive_index,
 												  Xorshift32Generator& random_number_generator)
 {
-	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
+	// A zero-contribution reservoir has no sample that needs a visibility ray.
+	if (reservoir.UCW <= 0.0f)
 		return false;
 
 	float distance_to_sample_point;

@@ -127,6 +127,11 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(
 		else if (neighbor_coords.y >= render_data.render_settings.render_resolution.y)
 			neighbor_coords.y = 2 * render_data.render_settings.render_resolution.y - neighbor_coords.y - 1;
 
+		// A single reflection can remain outside a small viewport when the search radius exceeds its dimensions.
+		if (neighbor_coords.x < 0 || neighbor_coords.x >= render_data.render_settings.render_resolution.x || neighbor_coords.y < 0 ||
+			neighbor_coords.y >= render_data.render_settings.render_resolution.y)
+			continue;
+
 		unsigned int neighbor_pixel_index = neighbor_coords.x + neighbor_coords.y * render_data.render_settings.render_resolution.x;
 		unsigned int neighbor_cell_index  = spmis_settings.all_pixel_hashes[neighbor_pixel_index];
 
