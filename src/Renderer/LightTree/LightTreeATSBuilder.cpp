@@ -97,6 +97,10 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	update_node_bounds(*m_current_node_index, triangles_data);
 	subdivide_node((*m_current_node_index)++, triangles_data, 0);
 
+	// Discard the unused tail from the worst-case node allocation. Every node in the remaining
+	// prefix was initialized by update_node_bounds() and can be sampled without a validity check.
+	m_nodes.resize(m_current_node_index->load());
+
 	auto stop = std::chrono::high_resolution_clock::now();
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "ATS Light tree construction time: %ldms",
 							std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());

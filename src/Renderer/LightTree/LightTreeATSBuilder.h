@@ -126,10 +126,12 @@ LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
-		if (hippt::is_nan(m_nodes[i].orientation_data.theta_o) || hippt::is_inf(m_nodes[i].orientation_data.theta_o) ||
-			hippt::is_nan(m_nodes[i].orientation_data.axis.x) || hippt::is_nan(m_nodes[i].orientation_data.axis.y) ||
-			hippt::is_nan(m_nodes[i].orientation_data.axis.z) || hippt::is_inf(m_nodes[i].orientation_data.axis.x) ||
-			hippt::is_inf(m_nodes[i].orientation_data.axis.y) || hippt::is_inf(m_nodes[i].orientation_data.axis.z))
+		// Device sampling assumes that every uploaded node has valid orientation data.
+		if (m_nodes[i].orientation_data.axis.x == LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS || hippt::is_nan(m_nodes[i].orientation_data.theta_o) ||
+			hippt::is_inf(m_nodes[i].orientation_data.theta_o) || hippt::is_nan(m_nodes[i].orientation_data.axis.x) ||
+			hippt::is_nan(m_nodes[i].orientation_data.axis.y) || hippt::is_nan(m_nodes[i].orientation_data.axis.z) ||
+			hippt::is_inf(m_nodes[i].orientation_data.axis.x) || hippt::is_inf(m_nodes[i].orientation_data.axis.y) ||
+			hippt::is_inf(m_nodes[i].orientation_data.axis.z))
 			Debug::debugbreak();
 
 		device_data_out.nodes_device[i].axis				  = m_nodes[i].orientation_data.axis;

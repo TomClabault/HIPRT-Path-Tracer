@@ -56,9 +56,6 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3_t aabb_m
 template <bool UseOrientation>
 HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& node, float3_t shading_point, float3_t shading_normal)
 {
-	if (node.is_invalid())
-		return 0.0f;
-
 	// If the whole node is behind the surface, quick exit (if even the corner that maximizes
 	// the dot product yields a dot product negative, then every corners are going to be behind
 	// the surface)
