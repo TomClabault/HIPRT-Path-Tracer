@@ -73,12 +73,16 @@ void GPURendererThread::setup_render_graphs()
 	regir_render_pass->add_dependency(camera_rays_render_pass);
 	regir_render_pass->add_dependency(nee_plus_plus_render_pass);
 
-	// Note that the megakernel pass will only be used if ReSTIR GI is not used.
+	// Note that the megakernel pass will only be used for classical BSDF path tracing.
 	// But we're still adding the render pass to the render graph in case the user
-	// switches from ReSTIR GI to classical path tracing at runtime
+	// switches back to the megakernel at runtime.
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = render_graph_full.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
 	megakernel_render_pass->add_dependency(regir_render_pass);
+
+	std::shared_ptr<WavefrontRenderPass> wavefront_render_pass = render_graph_full.create_render_pass<WavefrontRenderPass>();
+	wavefront_render_pass->add_dependency(camera_rays_render_pass);
+	wavefront_render_pass->add_dependency(regir_render_pass);
 
 	std::shared_ptr<NISMLMegaKernelRenderPass> nisml_megakernel_render_pass = render_graph_full.create_render_pass<NISMLMegaKernelRenderPass>();
 	nisml_megakernel_render_pass->add_dependency(camera_rays_render_pass);
@@ -102,6 +106,7 @@ void GPURendererThread::setup_render_graphs()
 	// because we want the values of the samples accumulated in the GMoN sets
 	// so far
 	gmon_render_pass->add_dependency(megakernel_render_pass);
+	gmon_render_pass->add_dependency(wavefront_render_pass);
 	gmon_render_pass->add_dependency(nisml_megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 	gmon_render_pass->add_dependency(restir_pt_render_pass);
@@ -109,12 +114,14 @@ void GPURendererThread::setup_render_graphs()
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
 		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
 	illumination_aware_kd_tree_render_pass->add_dependency(megakernel_render_pass);
+	illumination_aware_kd_tree_render_pass->add_dependency(wavefront_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(nisml_megakernel_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(restir_gi_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_render_pass);
 
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass = render_graph_full.create_render_pass<NISMLRenderPass>();
 	nisml_render_pass->add_dependency(megakernel_render_pass);
+	nisml_render_pass->add_dependency(wavefront_render_pass);
 	nisml_render_pass->add_dependency(nisml_megakernel_render_pass);
 	nisml_render_pass->add_dependency(restir_gi_render_pass);
 	nisml_render_pass->add_dependency(restir_pt_render_pass);
@@ -122,6 +129,7 @@ void GPURendererThread::setup_render_graphs()
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
 	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);
+	ssbn_permutation_render_pass->add_dependency(wavefront_render_pass);
 	ssbn_permutation_render_pass->add_dependency(nisml_megakernel_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_gi_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_pt_render_pass);
@@ -129,6 +137,7 @@ void GPURendererThread::setup_render_graphs()
 	std::shared_ptr<HierarchicalAdaptiveSamplingRenderPass> hierarchical_adaptive_sampling_render_pass =
 		render_graph_full.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
 	hierarchical_adaptive_sampling_render_pass->add_dependency(megakernel_render_pass);
+	hierarchical_adaptive_sampling_render_pass->add_dependency(wavefront_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(nisml_megakernel_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_gi_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_render_pass);
@@ -140,6 +149,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(illumination_aware_kd_tree_render_pass);
 	render_graph_full.add_render_pass(regir_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);
+	render_graph_full.add_render_pass(wavefront_render_pass);
 	render_graph_full.add_render_pass(nisml_megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_gi_render_pass);
 	render_graph_full.add_render_pass(restir_pt_render_pass);

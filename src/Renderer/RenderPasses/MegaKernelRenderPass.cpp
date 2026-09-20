@@ -111,8 +111,5 @@ bool MegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& c
 	if (nisml_enabled)
 		return false;
 
-	// Only active if we're not using ReSTIR GI/PT because if we are using ReSTIR, the path tracing is done in
-	// the initial candidates kernel
-	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_GI &&
-		   compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PATH_SAMPLING_RESTIR_PT;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF;
 }

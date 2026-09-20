@@ -1722,9 +1722,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Path sampling tree");
 
-			const char* items[]	   = { "- BSDF sampling", "- ReSTIR GI", "- ReSTIR PT", "- ReSTIR PG" };
+			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR GI", "- ReSTIR PT", "- ReSTIR PG" };
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
+				"Uses classical BSDF path tracing while processing paths one bounce at a time through compacted wavefront queues.",
 				"Uses ReSTIR GI to resample a path to shade for the pixel. Biased (although barely noticeable by design of resampling full path trees instead "
 				"of just paths as ReSTIR PT)",
 				"Uses ReSTIR PT to resample a path to shade for the pixel. The difference with ReSTIR GI is that is resamples paths and not full path trees, "
@@ -1749,6 +1750,17 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 					if (nee_estimator != LSS_RIS_BSDF_AND_LIGHT && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
+				}
+
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF_WAVEFRONT)
+				{
+					int nee_estimator	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+					int sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+					if (ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_MIS_LIGHT_BSDF);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_POWER);
+					}
 				}
 
 				m_renderer->recompile_kernels();

@@ -9,15 +9,16 @@
 #include "Device/includes/GBufferDevice.h"
 #include "Device/includes/NEE++/NEE++.h"
 
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "Device/includes/Neural/NISML/NISMLDevice.h"
+#include "Device/includes/Wavefront/WavefrontDataDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/NISMLMegaKernelData.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/SSBNPermutationSettings.h"
@@ -70,6 +71,8 @@ struct HIPRTRenderData
 	HIPRTRenderSettings render_settings;
 	DisplayPostProcessSettings display_post_process_settings;
 	WorldSettings world_settings;
+
+	WavefrontDataDevice wavefront_data;
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;

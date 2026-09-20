@@ -729,13 +729,13 @@ void CPURenderer::render()
 		ReGIR_pass();
 #endif
 
-#if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#if PathSamplingStrategy == PATH_SAMPLING_BSDF || PathSamplingStrategy == PATH_SAMPLING_BSDF_WAVEFRONT
 		tracing_pass();
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
 		ReSTIR_GI_pass();
 #elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		ReSTIR_PT_pass();
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_BSDF
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_BSDF || PathSamplingStrategy == PATH_SAMPLING_BSDF_WAVEFRONT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 		ReSTIR_PG_pass();

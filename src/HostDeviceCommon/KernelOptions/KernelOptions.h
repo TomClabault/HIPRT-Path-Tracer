@@ -59,12 +59,13 @@
 #define ESS_BINARY_SEARCH 1
 #define ESS_ALIAS_TABLE	  2
 
-#define PATH_SAMPLING_BSDF		0
-#define PATH_SAMPLING_RESTIR_GI 1
-#define PATH_SAMPLING_RESTIR_PT 2
+#define PATH_SAMPLING_BSDF			 0
+#define PATH_SAMPLING_BSDF_WAVEFRONT 1
+#define PATH_SAMPLING_RESTIR_GI		 2
+#define PATH_SAMPLING_RESTIR_PT		 3
 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR GI + ReSTIRPGEnable. ReSTIR PG is not its
 // own "path sampling" strategy, it has to be piggy backing on a ReSTIR path sampler
-#define PATH_SAMPLING_RESTIR_PG 3
+#define PATH_SAMPLING_RESTIR_PG 4
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -122,14 +123,16 @@
  *	- PATH_SAMPLING_BSDF
  *		The classical technique: importance samples the BSDF and bounces in that direction
  *
- *	- PATH_SAMPLING_RESTIR_GI
- *		Uses ReSTIR GI for resampling a path for the pixel.
+ *	- PATH_SAMPLING_BSDF_WAVEFRONT
  *
- *		The implementation is based on
- *		[ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
- *		but is adapted almost full unbiasedness (full unbiasedness while resampling full path trees as in ReSTIR GI paper isn't supported
- *		by the GRIS theory. Fully unbiased path resampling with the current RIS theory can only be achieved by resampling "paths" and not full "path trees" as
- *		proposed in the ReSTIR GI paper and as implemented here)
+ *	Uses the same BSDF path sampling estimator as PATH_SAMPLING_BSDF, with paths processed one bounce at a time through compacted queues.
+ *
+ *	-
+ * PATH_SAMPLING_RESTIR_GI
+ *		Uses ReSTIR GI for resampling a path for the pixel. The implementation is based on [ReSTIR GI: Path Resampling for Real-Time
+ *		Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing but is adapted almost full nbiasedness
+ * (full unbiasedness while resampling full path trees as in ReSTIR GI paper isn't supported by the GRIS theory. Fully unbiased path resampling with he current
+ * RIS theory can only be achieved by resampling "paths" and not full "path trees" as proposed in the ReSTIR GI paper and as implemented here)
  *
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  *
@@ -143,7 +146,7 @@
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT
+#define PathSamplingStrategy PATH_SAMPLING_BSDF_WAVEFRONT
 
 #endif // #ifndef __KERNELCC__
 

@@ -164,8 +164,7 @@ bool NISMLMegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptio
 	int sampling_strategy	   = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
 	int path_sampling_strategy = compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY);
 
-	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy) && path_sampling_strategy != PATH_SAMPLING_RESTIR_GI &&
-		   path_sampling_strategy != PATH_SAMPLING_RESTIR_PT;
+	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy) && path_sampling_strategy == PATH_SAMPLING_BSDF;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> NISMLMegaKernelRenderPass::get_tracing_kernels()

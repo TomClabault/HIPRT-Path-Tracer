@@ -20,6 +20,7 @@
 #include "RenderPasses/ReSTIRPGRenderPass.h"
 #include "RenderPasses/ReSTIRPTRenderPass.h"
 #include "RenderPasses/SSBNPermutationRenderPass.h"
+#include "RenderPasses/WavefrontRenderPass.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
