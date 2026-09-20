@@ -188,4 +188,50 @@ struct ReSTIRPTReservoir
 	float UCW = 0.0f;
 };
 
+/**
+ * Initial candidate generation does not read the selected sample while streaming. Keeping the sample in the final output slot prevents the complete sample from
+ * remaining live across path traversal and material evaluation. Only the running weight sum stays local to the kernel.
+ */
+struct ReSTIRPTInitialCandidatesReservoir
+{
+	HIPRT_DEVICE ReSTIRPTInitialCandidatesReservoir(ReSTIRPTReservoir* output_reservoir) : output_reservoir(output_reservoir) {}
+
+	HIPRT_DEVICE void add_one_candidate(const ReSTIRPTReservoirSample& new_sample, float weight, Xorshift32Generator& random_number_generator)
+	{
+		weight_sum += weight;
+
+		if (random_number_generator() < weight / weight_sum)
+			output_reservoir->sample = new_sample;
+	}
+
+	HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
+	{
+		output_reservoir->confidence = 1;
+		output_reservoir->weight_sum = weight_sum;
+
+		if (weight_sum == 0.0f)
+			// Preserve the default sample written by a local reservoir when no candidate was selected.
+			output_reservoir->sample = ReSTIRPTReservoirSample();
+
+		if (weight_sum == 0.0f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
+			output_reservoir->UCW = 0.0f;
+		else
+			output_reservoir->UCW = 1.0f / output_reservoir->sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
+	}
+
+	HIPRT_DEVICE void sanity_check(int2_t pixel_coords)
+	{
+#ifndef __KERNELCC__
+		ReSTIRPTReservoir validation_reservoir;
+		if (weight_sum > 0.0f)
+			validation_reservoir.sample = output_reservoir->sample;
+		validation_reservoir.weight_sum = weight_sum;
+		validation_reservoir.sanity_check(pixel_coords);
+#endif // #ifndef __KERNELCC__
+	}
+
+	ReSTIRPTReservoir* output_reservoir;
+	float weight_sum = 0.0f;
+};
+
 #endif // #ifndef DEVICE_RESTIR_PT_RESERVOIR_H

@@ -5,8 +5,8 @@
 
 #include "Compiler/GPUKernelCompiler.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
-#include "Compiler/GPUKernelCompilerWindowProcessCompilationRequest.h"
 #include "Compiler/GPUKernelCompilerWindowProcess.h"
+#include "Compiler/GPUKernelCompilerWindowProcessCompilationRequest.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
@@ -66,12 +66,14 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	std::vector<std::string> compiler_options				= kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 
 #ifndef OROCHI_ENABLE_CUEW
-	// compiler_options.push_back("-O0");
+	compiler_options.push_back("-O3");
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
+	compiler_options.push_back("-gdwarf-5");
+	compiler_options.push_back("-fstandalone-debug");
 	compiler_options.push_back("-Wno-constant-logical-operand");
 	compiler_options.push_back("-Wno-tautological-compare");
-#else // #ifndef OROCHI_ENABLE_CUEW
+#else  // #ifndef OROCHI_ENABLE_CUEW
 	// Adding CUDA toolkit includes for device side includes such as cuda_fp16
 	compiler_options.push_back(std::string("-I") + CUDA_TOOLKIT_PATH + "/include");
 #endif // #ifndef OROCHI_ENABLE_CUEW
