@@ -77,7 +77,7 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 		common_spatial_pass.debug_neighbor_location			  = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
-		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
+		common_spatial_pass.use_adaptive_directional_spatial_reuse = false;
 		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;
 
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
