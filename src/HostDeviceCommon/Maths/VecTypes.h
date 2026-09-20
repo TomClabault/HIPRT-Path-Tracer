@@ -16,7 +16,7 @@ struct math_vector
 };
 
 template <typename T>
-struct math_vector<T, 2>
+struct alignas(2 * sizeof(T)) math_vector<T, 2>
 {
 	math_vector() = default;
 	constexpr explicit math_vector<T, 2>(T v) : x(v), y(v) {}
@@ -133,7 +133,7 @@ struct math_vector<T, 3>
 };
 
 template <typename T>
-struct math_vector<T, 4>
+struct alignas(4 * sizeof(T)) math_vector<T, 4>
 {
 	math_vector() = default;
 	constexpr explicit math_vector<T, 4>(T v) : x(v), y(v), z(v), w(v) {}

@@ -114,7 +114,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	unsigned int output_queue_index = 1;
 	unsigned int queue_block_size	= KernelBlockWidthHeight * KernelBlockWidthHeight;
 
-	for (unsigned int stage_index = 0; stage_index <= bounce_count; stage_index++)
+	for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
 	{
 		m_wavefront_data.get_queue_count_buffer(output_queue_index).upload_data_async(zero, main_stream);
 
@@ -166,7 +166,7 @@ bool WavefrontRenderPass::resize_staging_buffers()
 	unsigned int path_capacity			   = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
 	std::size_t ray_volume_state_byte_size = m_renderer->get_render_data().ray_volume_state_byte_size;
 	if (ray_volume_state_byte_size == 0)
-		ray_volume_state_byte_size = sizeof(RayVolumeState);
+		Debug::debugbreak();
 
 	bool needs_resize = !m_staging_buffers_allocated || m_wavefront_data.path_capacity() != path_capacity ||
 						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size || m_render_data_host_pinned.size() != 1 ||
