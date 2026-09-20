@@ -255,7 +255,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 			// reuse passes: a given pixel may now hold a sample from another pixel and that means that the visibility
 			// doesn't match anymore.
 			//
-			// However, this ReSTIR DI implementation does a visibility reuse pass at the end of each spatial reuse pass
+			// However, this implementation does a visibility reuse pass at the end of each spatial reuse pass
 			// so that we know that the visibility is correct and thus we do not run into any issues and we can just
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled_target_function;

@@ -3,11 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_MIS_WEIGHT_H
-#define DEVICE_RESTIR_DI_MIS_WEIGHT_H
+#ifndef DEVICE_RESTIR_GI_MIS_WEIGHT_H
+#define DEVICE_RESTIR_GI_MIS_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
@@ -46,7 +44,7 @@ struct ReSTIRTemporalResamplingMISWeight
 template <int ReSTIRVariant>
 struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTIRVariant>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRReservoirType<ReSTIRVariant>& reservoir_being_resampled)
 	{
 		// 1/M MIS Weights are basically confidence weights only so we only need to return
 		// the confidence of the reservoir
@@ -58,7 +56,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, ReSTI
 template <int ReSTIRVariant>
 struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIRVariant>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRReservoirType<ReSTIRVariant>& reservoir_being_resampled)
 	{
 		// 1/Z MIS Weights are basically confidence weights only so we only need to return
 		// the confidence of the reservoir. The difference with 1/M weights is how we're going
@@ -71,7 +69,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 template <int ReSTIRVariant>
 struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIRVariant>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRReservoirType<ReSTIRVariant>& reservoir_being_resampled)
 	{
 		// MIS-like MIS weights with confidence weights are basically a mix of 1/Z
 		// and MIS like for the normalization so we're just returning the confidence here
@@ -89,7 +87,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR
 
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-													  const ReSTIRSampleType<IsReSTIRGI>& reservoir_being_resampled_sample,
+													  const ReSTIRSampleType<ReSTIRVariant>& reservoir_being_resampled_sample,
 													  float initial_candidates_reservoir_confidence,
 
 													  ReSTIRSurface& temporal_neighbor_surface,
@@ -113,8 +111,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR
 				target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 			else
-				// ReSTIR DI target function
-				target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
@@ -133,8 +131,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, ReSTIR
 			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
 																											  center_pixel_surface, random_number_generator);
 		else
-			// ReSTIR DI target function
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+			// ReSTIR GI target function
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
 																											  center_pixel_surface, random_number_generator);
 
 		int temporal_M					= temporal_neighbor_reservoir_confidence;
@@ -221,8 +219,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, R
 				}
 			}
 			else
-				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
@@ -325,8 +323,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DE
 				}
 			}
 			else
-				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
@@ -435,8 +433,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO
 				}
 			}
 			else
-				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
@@ -559,8 +557,8 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 				}
 			}
 			else
-				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float nume_mc, denom_mc;
@@ -622,9 +620,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIR
 };
 
 template <int BiasCorrectionMode>
-using ReSTIRDITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
-
-template <int BiasCorrectionMode>
 using ReSTIRGITemporalResamplingMISWeight = ReSTIRTemporalResamplingMISWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif // #ifndef DEVICE_RESTIR_DI_MIS_WEIGHT_H
+#endif // #ifndef DEVICE_RESTIR_GI_MIS_WEIGHT_H

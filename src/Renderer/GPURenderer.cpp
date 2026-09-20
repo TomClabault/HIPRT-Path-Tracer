@@ -274,11 +274,6 @@ std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
 	return m_render_thread.get_ReGIR_render_pass();
 }
 
-std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
-{
-	return m_render_thread.get_ReSTIR_DI_render_pass();
-}
-
 std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 {
 	return m_render_thread.get_ReSTIR_GI_render_pass();

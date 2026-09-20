@@ -102,7 +102,7 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 
 			int neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
-			// On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
+			// On the CPU, the template argument selects the ReSTIR GI or PT variant.
 			if (!check_neighbor_similarity_heuristics<RESTIR_VARIANT>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
 				continue;
 

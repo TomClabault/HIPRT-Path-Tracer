@@ -6,7 +6,6 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
-#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 
@@ -14,7 +13,6 @@
 #include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
@@ -248,8 +246,6 @@ struct HIPRTRenderSettings
 	RISSettings ris_settings;
 	RISLTCSettings risltc_settings;
 
-	// Settings for ReSTIR DI
-	ReSTIRDISettings restir_di_settings;
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
 	// Settings for ReSTIR PT
@@ -311,20 +307,12 @@ struct HIPRTRenderSettings
 	 * for use in the C++ CPU side code.
 	 *
 	 * This is because to determine whether or not we need the g-buffer of last
-	 * frame, we need to check if ReSTIR DI is being used or not. On the CPP side, this
-	 * can be done with the GPURenderer instance by checking the path tracer
-	 * options and check if the DirectLightNEEEstimator is equal to
-	 * LSS_RESTIR_DI. On the device however, we don't have access to the
-	 * GPURenderer instance but instead, we can check directly using the
-	 * DirectLightNEEEstimator macro (and we don't want the GPURenderer parameter
-	 * because that doesn't exist on the device).
+	 * frame, the CPU side needs access to the active render passes while the device
+	 * side can check the active path sampling strategy directly.
 	 */
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const
 	{
-		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
-		// (as far as the codebase goes at the time of writing this function anyways)
 		bool need_g_buffer = false;
-		need_g_buffer |= DirectLightNEEEstimator == LSS_RESTIR_DI && restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
 		need_g_buffer |= PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI && restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass;
 		need_g_buffer |= PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass;
 

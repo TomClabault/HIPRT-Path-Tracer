@@ -9,7 +9,6 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/DI_GI/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI_GI/UtilsTemporal.h"
@@ -33,7 +32,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_GI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -161,20 +160,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
-		float temporal_neighbor_resampling_mis_weight =
-			mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-																												center_pixel_surface, temporal_neighbor_reservoir.confidence,
-																												TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
+			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
+			temporal_neighbor_reservoir.confidence, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||                                                                                      \
+	ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#else // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#else																	 // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #error "Unsupported mis weight type"
 #endif // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 
@@ -195,21 +195,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
-	float initial_candidates_mis_weight =
-		mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface,
-																												center_pixel_surface, temporal_neighbor_reservoir.confidence,
-																												INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(
+		render_data, initial_candidates_reservoir, initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
+		temporal_neighbor_reservoir.confidence, INITIAL_CANDIDATES_ID, random_number_generator);
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||                                                                                      \
+	ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
 
 																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
 
 																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
-#else // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#else																	 // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #error "Unsupported mis weight type"
 #endif // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 
@@ -228,9 +229,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#else // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
+#else																	 // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 #error "Unsupported mis weight type"
 #endif // #if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 
@@ -240,7 +242,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
-		temporal_reuse_output_reservoir.confidence = hippt::min(temporal_reuse_output_reservoir.confidence, render_data.render_settings.restir_gi_settings.m_cap);
+		temporal_reuse_output_reservoir.confidence =
+			hippt::min(temporal_reuse_output_reservoir.confidence, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
 	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);

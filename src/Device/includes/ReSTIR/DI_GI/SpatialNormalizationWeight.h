@@ -3,10 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H
-#define DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H
+#ifndef DEVICE_RESTIR_GI_SPATIAL_NORMALIZATION_WEIGHT_H
+#define DEVICE_RESTIR_GI_SPATIAL_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI_GI/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
@@ -72,7 +71,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIR
 	static constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
 
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
+											 const ReSTIRSampleType<ReSTIRVariant>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 const ReSTIRSurface& center_pixel_surface,
 											 int2_t center_pixel_coords,
@@ -129,8 +128,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTIR
 															 render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			}
 			else
-				// ReSTIR DI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+				// ReSTIR GI target function
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																													neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
@@ -147,7 +146,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 	static constexpr bool IsReSTIRGI = ReSTIRVariant == ReSTIR_VARIANT_GI;
 
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
+											 const ReSTIRSampleType<ReSTIRVariant>& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 const ReSTIRSurface& center_pixel_surface,
 											 int selected_neighbor,
@@ -202,8 +201,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTIR
 								  neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
 			}
 			else
-				// ReSTIR DI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+				// ReSTIR GI target function
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																													neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
@@ -276,9 +275,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 };
 
 template <int BiasCorrectionMode>
-using ReSTIRDISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
-
 template <int BiasCorrectionMode>
 using ReSTIRGISpatialNormalizationWeight = ReSTIRSpatialNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif // #ifndef DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H
+#endif // #ifndef DEVICE_RESTIR_GI_SPATIAL_NORMALIZATION_WEIGHT_H

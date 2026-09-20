@@ -10,7 +10,6 @@
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
-#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "Utils/Utils.h"
 
 #include <cassert>
@@ -134,13 +133,6 @@ const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "Envma
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING = "EnvmapSamplingDoBilinearFiltering";
 
 const std::string GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY = "PathSamplingStrategy";
-
-const std::string GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_InitialTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_SpatialTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_DI_MISWeightsUseVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE = "ReSTIR_DI_MISWeightsType";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
 
 const std::string GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_GI_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_GI_MISWeightsUseVisibility";
@@ -277,13 +269,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING,
 
 	GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY,
-
-	GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
-	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE,
-	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
 
 	GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY,
@@ -429,13 +414,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING] = std::make_shared<int>(EnvmapSamplingDoBilinearFiltering);
 
 	m_options_macro_map[GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY] = std::make_shared<int>(PathSamplingStrategy);
-
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_InitialTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_SpatialTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReSTIR_DI_DoVisibilityReuse);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_MISWeightsUseVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_DI_MISWeightsType);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_GI_SpatialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_GI_MISWeightsUseVisibility);

@@ -78,10 +78,10 @@ struct ReSTIRGIReservoir
 	 * 'target_function' is the target function evaluated at the pixel that is doing the
 	 *      resampling with the sample from the reservoir that we're combining (which is 'other_reservoir')
 	 *
-	 * 'jacobian_determinant' is the determinant of the jacobian. In ReSTIR DI, it is used
-	 *      for converting the solid angle PDF (or UCW since the UCW is an estimate of the PDF)
-	 *      with respect to the shading point of the reservoir we're resampling to the solid
-	 *      angle PDF with respect to the shading point of 'this' reservoir
+	 * 'jacobian_determinant' is the determinant of the jacobian. It is used
+	 *      for converting the solid angle PDF (or UCW since the UCW is an estimate
+	 * of the PDF) with respect to the shading point of the reservoir we're resampling to the solid angle PDF with respect to the shading point of 'this'
+	 * reservoir
 	 *
 	 * 'random_number_generator' for generating the random number that will be used to stochastically
 	 *      select the sample from 'other_reservoir' or not
@@ -181,7 +181,7 @@ struct ReSTIRGIReservoir
 					  << std::endl;
 			Debug::debugbreak();
 		}
-#else // #ifndef __KERNELCC__
+#else  // #ifndef __KERNELCC__
 		(void)pixel_coords;
 #endif // #ifndef __KERNELCC__
 	}

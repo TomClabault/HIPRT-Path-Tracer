@@ -9,7 +9,6 @@
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
@@ -40,11 +39,10 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 template <int ReSTIRVariant>
 HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
-	constexpr bool IsReSTIRGI								= ReSTIRVariant == ReSTIR_VARIANT_GI;
 	const ReSTIRCommonSpatialPassSettings& spatial_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
 
 	// Only doing visibility if we want it at all
-	bool include_target_function_visibility = IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility;
+	bool include_target_function_visibility = ReSTIR_GI_SpatialTargetFunctionVisibility;
 
 	// We don't want visibility for the center pixel because we're going to reuse the
 	// target function stored in the reservoir anyways
@@ -57,8 +55,8 @@ HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& rende
 	// for the pairwise MIS PDFs.
 	// If we have visibility in the MIS weight, we want visibility in the PDF so we need visibility in
 	// the target function
-	constexpr bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_MISWeightsUseVisibility : ReSTIR_DI_MISWeightsUseVisibility;
-	constexpr int mis_weights_type				  = IsReSTIRGI ? ReSTIR_GI_MISWeightsType : ReSTIR_DI_MISWeightsType;
+	constexpr bool bias_correction_use_visibility = ReSTIR_GI_MISWeightsUseVisibility;
+	constexpr int mis_weights_type				  = ReSTIR_GI_MISWeightsType;
 	include_target_function_visibility |=
 		!is_center_sample && bias_correction_use_visibility &&
 		(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||

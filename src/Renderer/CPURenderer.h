@@ -81,7 +81,6 @@ public:
 	void camera_rays_pass();
 	void hierarchical_adaptive_sampling_pass();
 	void ReGIR_pass();
-	void ReSTIR_DI_pass();
 	void ReSTIR_GI_pass();
 	void ReSTIR_PT_pass();
 	void ReSTIR_PG_pass();
@@ -95,17 +94,6 @@ public:
 	void ReGIR_compute_cells_light_distributions();
 	void ReGIR_compute_cells_light_distributions_internal(bool primary_hit);
 	void ReGIR_compute_cell_light_compute_and_sort_internal(bool primary_hit, bool only_compute_sizes);
-
-	void configure_ReSTIR_DI_initial_pass();
-	void launch_ReSTIR_DI_initial_candidates_pass();
-
-	void compute_ReSTIR_DI_optimal_spatial_reuse_radii();
-	void configure_ReSTIR_DI_temporal_pass();
-	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
-	void configure_ReSTIR_DI_output_buffer();
-
-	void launch_ReSTIR_DI_temporal_reuse_pass();
-	void launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_index);
 
 	void tracing_pass();
 
@@ -197,20 +185,6 @@ private:
 
 	// Random number generator for given a random seed to the threads at each sample
 	Xorshift32Generator m_rng;
-
-	struct ReSTIRDIState
-	{
-		std::vector<ReSTIRDIReservoir> initial_candidates_reservoirs;
-		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
-		std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
-
-		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
-		ReSTIRSPMISDataHost<std::vector> spmis_data;
-
-		ReSTIRDIReservoir* output_reservoirs = nullptr;
-
-		bool odd_frame = false;
-	} m_restir_di_state;
 
 	struct ReSTIRGIState
 	{

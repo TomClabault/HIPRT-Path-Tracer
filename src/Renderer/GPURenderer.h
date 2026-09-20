@@ -29,7 +29,6 @@
 #include "Renderer/RenderPasses/NISMLRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
-#include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
@@ -112,7 +111,6 @@ public:
 	std::shared_ptr<SSBNPermutationRenderPass> get_ssbn_permutation_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
-	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 	std::shared_ptr<ReSTIRPTRenderPass> get_ReSTIR_PT_render_pass();
 	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
@@ -411,7 +409,7 @@ private:
 	// buffers -> invalidates the pointer -> we need to set them back on render_data
 	//
 	// Modifying the scene also invalidates the m_render_data buffers.
-	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
+	// Freeing / allocating ReSTIR/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
 	// Whether or not the renderer was updated (with pre_frame_render_update()) since the last render() call.
 	// This is only used as a security to avoid misusing the renderer class and calling render()

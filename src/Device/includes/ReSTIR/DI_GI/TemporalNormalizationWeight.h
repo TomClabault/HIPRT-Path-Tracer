@@ -3,10 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_GI_NORMALIZATION_WEIGHT_H
-#define DEVICE_RESTIR_DI_GI_NORMALIZATION_WEIGHT_H
+#ifndef DEVICE_RESTIR_GI_PT_NORMALIZATION_WEIGHT_H
+#define DEVICE_RESTIR_GI_PT_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/GI/Utils.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -111,8 +110,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																												 center_pixel_surface, random_number_generator);
 		else
-			// ReSTIR DI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+			// ReSTIR GI target function
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																												 center_pixel_surface, random_number_generator);
 
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
@@ -128,8 +127,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ReSTI
 				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
-				// ReSTIR DI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_confidence;
 		}
@@ -168,8 +167,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																												 center_pixel_surface, random_number_generator);
 		else
-			// ReSTIR DI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+			// ReSTIR GI target function
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
 																												 center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
@@ -184,8 +183,8 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, ReSTI
 				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
-				// ReSTIR DI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+				// ReSTIR GI target function
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
 					render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
@@ -268,9 +267,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 };
 
 template <int BiasCorrectionMode>
-using ReSTIRDITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_DI>;
-
 template <int BiasCorrectionMode>
 using ReSTIRGITemporalNormalizationWeight = ReSTIRTemporalNormalizationWeight<BiasCorrectionMode, ReSTIR_VARIANT_GI>;
 
-#endif // #ifndef DEVICE_RESTIR_DI_GI_NORMALIZATION_WEIGHT_H
+#endif // #ifndef DEVICE_RESTIR_GI_PT_NORMALIZATION_WEIGHT_H

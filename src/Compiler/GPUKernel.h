@@ -229,7 +229,7 @@ private:
 
 	// An additional map of macros to pass to the compiler for this kernel and their values.
 	//
-	// Example: { "ReSTIR_DI_InitialCandidatesKernel", 1 }
+	// Example: { "SomeKernelSpecificOption", 1 }
 	std::map<std::string, int> m_additional_compilation_macros;
 
 	// Options/macros used by the compiler when compiling this kernel

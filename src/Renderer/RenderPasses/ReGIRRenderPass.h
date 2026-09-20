@@ -147,7 +147,7 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 	/**
-	 * Returns the VRAM used by ReSTIR DI in MB
+	 * Returns the VRAM used by ReGIR in MB
 	 */
 	ReGIRVRAMUsage get_vram_usage_breakdown() const;
 	float get_VRAM_usage_bytes() const;

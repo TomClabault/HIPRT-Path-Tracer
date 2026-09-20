@@ -130,13 +130,6 @@ public:
 
 	static const std::string PATH_SAMPLING_STRATEGY;
 
-	static const std::string RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY;
-	static const std::string RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
-	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
-	static const std::string RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY;
-	static const std::string RESTIR_DI_MIS_WEIGHTS_TYPE;
-	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
-
 	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY;
 	static const std::string RESTIR_GI_MIS_WEIGHTS_TYPE;
@@ -194,9 +187,9 @@ public:
 	 * the macros that do not apply to the kernel given in parameter.
 	 *
 	 * For example, the camera rays kernel doesn't care about whether our direct lighting
-	 * strategy is MIS, RIS, ReSTIR DI, ... so if a camera ray kernel is given in parameter
-	 * the returned vector will not contain the macro for the direct lighting strategy.
-	 * Same logic for the other macros defined in KernelOptions.h
+	 * strategy is MIS, RIS, ReSTIR, ... so if a camera ray kernel is given in parameter
+	 * the returned vector will not contain the macro for the direct
+	 * lighting strategy. Same logic for the other macros defined in KernelOptions.h
 	 *
 	 * The returned vector always contain all the "custom" macros manually defined through
 	 * a call to 'set_macro_value()' (unless the macro changed through 'set_macro_value()' is an

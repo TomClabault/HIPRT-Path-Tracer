@@ -22,7 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Remove ReSTIR DI impl
+// - Review the ReSTIR implementation
 // - Remove ReSTIR GI impl
 // - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
@@ -188,7 +188,7 @@ extern ImGuiLogger g_imgui_logger;
 // give us lighting discontinuities as well, to not reuse accross lighting discontinuities
 // - For adaptive sampling + restir we can use that idea of keeping relevant neighbors in a screen space hash grid such that we reuse good neighbors directly
 // and never reuse stale neighbors
-// - Can we use visibility variance to guide restir DI vis reuse ?
+// - Can we use visibility variance to guide reservoir visibility reuse?
 // - Reduce spatial reuse radius the lower the roughness
 // - We shouldn't shoot a shadow ray in the light evaluation if the BSDF sample was chosen because this already has visibility
 // - What about replacing visibility reuse with NEE++?
@@ -210,14 +210,14 @@ extern ImGuiLogger g_imgui_logger;
 // VRAM saves
 // - Using the indirect index for the spatial output buffer, can we double buffer the initial candidates grid and run the spatial reuse of ReGIR async of the
 // path tracing too?
-// - There is bias in ReSTIR DI
+// - There is bias in ReSTIR
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
 //			For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - See how many pixels of ReSTIR GI end up with the initial candidate as the final sample --> we can reuse NEE at the first hit for those samples in the
 // shading pass instead of recomputing NEE
-// - BSDF MIS Reuse for ReSTIR DI
+// - BSDF MIS reuse for ReSTIR
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black
 // diffuse is still interesting. The albedo doesn't matter
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage
@@ -262,7 +262,7 @@ extern ImGuiLogger g_imgui_logger;
 // gaussian approximation is not needed anymore
 // - Can we extend the tail of the light distributions wxith clusters from the light tree?
 //		Careful about having lights in the head of the light distribution s as well as in clusters, that's doubling the lights
-// - What if we use ReSTIR DI for the first hit and only ReGIR for the secondary hits?
+// - What if we use ReSTIR GI for the first hit and only ReGIR for the secondary hits?
 // - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the
 // target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
@@ -296,7 +296,7 @@ extern ImGuiLogger g_imgui_logger;
 // - We should probably retry that idea if inning meshes into directional faves but maybe use something a bit more conservative to avoid the noise that we had
 // before
 //		Why did we have noise before?
-// - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
+// - Should we have a very light reservoir reuse pass on top of ReGIR to clean things up a bit / help with small details?
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of
 // adjacency list of grid cells that are merged into it
@@ -423,7 +423,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Limit the grid cell life length of NEE++ if it hasn't been hit in a long time
 // - Limit the grid cell life length of ReGIR if it hasn't been hit in a long time
 // - Multiple spatial reuse passes
-// - We can deallocate the emissive triangle index of the ReGIR reservoir if not using ReSTIR DI
+// - We can deallocate the emissive triangle index of the ReGIR reservoir if not using direct-light reuse
 // - Should we have something to limit the life length of an NEE++ grid cell? So that we can remove cells unused and keep the grid size in check
 // - Trry to disable canonical and see if it converges quicker
 //		- It does -----> We need to find some better MIS weights for the canonical sample
@@ -485,7 +485,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
 // - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
-// - Can we use ReSTIR DI and fill the ReGIR grid with the ReSTIR DI samples? ---> Doesn't work at later bounces though
+// - Can we use reservoir samples to fill the ReGIR grid? ---> Doesn't work at later bounces though
 // - Can we start another grid fill in parallel of the mega kernel after the spatial reuse such that we overlap some work and don't have to do the grid fill at
 // the next frame
 //		- We can even decouple the spatial reuse with the visibility pass of it and launch the grid fill during the visibility pass of teh spatial reuse
@@ -518,8 +518,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Pack stuff in LightSamplePointInformation
 // - Pass is_srgb as template parameter to texture sample function to avoid the register cost of the pow() call enclosed in a simple if()
 // - Remove all raw cos() and sin() calls (we've got some in microfacet.h)
-// - Cache we maybe have some kind of adaptive sampling for the lighting at the priamry hit? So like run ReSTIR DI or something until some variance is reached
-// for DI and then stop sampling DI and only sample DI
+// - Cache we maybe have some kind of adaptive sampling for the lighting at the primary hit? So like run reservoir reuse or something until some variance is
+// reached for DI and then stop sampling DI and only sample DI
 //		- For that we would need 2 buffers:
 //			A) 1 buffer that accumulates the NEE estimator at the primary hit
 //			B) 1 buffer that accumulates the GI (later hits NEE with the BSDF term at the primary hit

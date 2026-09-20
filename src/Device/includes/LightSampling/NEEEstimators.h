@@ -19,8 +19,6 @@
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/PathTracing.h"
-#include "Device/includes/ReSTIR/DI/FinalShading.h"
-#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
@@ -565,50 +563,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf_MIS_SG_tree_learning_to_cluster(H
 	return bsdf_color * cosine_term * light_hit_info.hit_emission * mis_weight / bsdf_pdf;
 }
 
-template <bool deferred_BSDF_MIS = true>
-HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data,
-													RayPayload& ray_payload,
-													const HitInfo closest_hit_info,
-													const float3_t& view_direction,
-													int2_t pixel_coords,
-													NEEDeferredMISContext& out_nee_mis_context,
-													Xorshift32Generator& random_number_generator)
-{
-	// ReSTIR DI doesn't support explicitely looping to sample
-	// multiple lights per shading point so that's why we don't
-	// have a loop for it
-
-	ColorRGB32F direct_light_contribution;
-	if (ray_payload.bounce == 0)
-		// Can only do ReSTIR DI on the first bounce
-		direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
-	else
-	{
-		// ReSTIR DI isn't used for the secondary/tertiary/... bounces
-		// so there we can take multiple light samples per path vertex
-#if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
-		direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
-		direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
-		direct_light_contribution = sample_one_light_MIS_deferred_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy ==                                                                                                                \
-	RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT // #if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
-		if constexpr (deferred_BSDF_MIS)
-		{
-			RISReservoir reservoir =
-				sample_lights_RIS_for_deferred_NEE_BSDF_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-
-			out_nee_mis_context.fill_ris_reservoir(reservoir);
-		}
-		else
-			direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#endif										   // #if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
-	}
-
-	return direct_light_contribution;
-}
-
 HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderData& render_data,
 																   RayPayload& ray_payload,
 																   const HitInfo closest_hit_info,
@@ -924,11 +878,9 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 												  NEEDeferredMISContext& out_nee_mis_context,
 												  Xorshift32Generator& random_number_generator)
 {
-	if (render_data.buffers.emissive_triangles_count == 0 &&
-		!(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightNEEEstimator == LSS_RESTIR_DI))
+	if (render_data.buffers.emissive_triangles_count == 0)
 		// No emissive geometry in the scene to sample
-		// And we're not sampling the envmap with ReSTIR DI which means
-		// that we're not sampling anything so return black
+		// so return black
 		return ColorRGB32F(0.0f);
 
 	if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
@@ -937,19 +889,12 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 	ColorRGB32F direct_light_contribution;
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING
 	direct_light_contribution = ColorRGB32F(0.0f);
-#else // A light sampling strategy is used
+#else  // A light sampling strategy is used
 
-#if DirectLightNEEEstimator != LSS_RESTIR_DI
-	// A light sampling strategy that is not ReSTIR DI
-	// meaning that we can sample more than 1 light per
-	// path vertex
+	// A light sampling strategy can sample more than one light per path vertex.
 	direct_light_contribution = sample_multiple_emissive_geometry<deferred_BSDF_MIS>(render_data, ray_payload, closest_hit_info, view_direction, pixel_coords,
 																					 out_nee_mis_context, random_number_generator);
-#elif DirectLightNEEEstimator == LSS_RESTIR_DI // #if DirectLightNEEEstimator != LSS_RESTIR_DI
-	direct_light_contribution = sample_one_light_ReSTIR_DI<deferred_BSDF_MIS>(render_data, ray_payload, closest_hit_info, view_direction, pixel_coords,
-																			  out_nee_mis_context, random_number_generator);
-#endif										   // #if DirectLightNEEEstimator != LSS_RESTIR_DI
-#endif										   // #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING
+#endif // #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING
 
 	return direct_light_contribution;
 }
@@ -960,8 +905,7 @@ HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lig
 }
 
 /**
- * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
- * They can be ignored if not using ReSTIR DI
+ * The x & y parameters are retained for the renderer's direct-lighting interface.
  */
 template <bool deferred_BSDF_MIS = true>
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
@@ -1043,8 +987,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 }
 
 /**
- * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
- * They can be ignored if not using ReSTIR DI
+ * The x & y parameters are retained for the renderer's direct-lighting interface.
  */
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data,
 															  RayPayload& ray_payload,
@@ -1061,8 +1004,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& r
 }
 
 /**
- * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
- * They can be ignored if not using ReSTIR DI
+ * The x & y parameters are retained for the renderer's direct-lighting interface.
  */
 template <bool deferred_BSDF_MIS = true>
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,

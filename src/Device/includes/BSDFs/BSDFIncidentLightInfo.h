@@ -28,7 +28,7 @@ enum BSDFIncidentLightInfo
 	//
 	// Same with all the other lobes that can be delta distributions
 	//
-	// Using bit shifts for the values here so that it can be used easily by ReSTIR DI
+	// Using bit shifts for the values here so that it can be used efficiently by reservoir reuse
 	LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE				   = 1 << 1,
 	LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE		   = 1 << 2,
 	LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE		   = 1 << 3,

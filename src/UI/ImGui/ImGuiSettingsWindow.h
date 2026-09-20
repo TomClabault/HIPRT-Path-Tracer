@@ -52,7 +52,6 @@ private:
 	void draw_material_settings_panel();
 	void draw_ris_settings_panel();
 	void draw_risltc_settings_panel();
-	void draw_ReSTIR_DI_settings_panel();
 	void draw_ReSTIR_PG_settings_panel();
 	void draw_ltc_settings_panel();
 	void draw_ReGIR_settings_panel();
@@ -79,7 +78,6 @@ private:
 	void draw_next_event_estimation_plus_plus_panel();
 	bool use_nee_plus_plus_checkbox(const std::string& text = "Use NEE++");
 	void draw_principled_bsdf_energy_conservation();
-	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 
 	void draw_denoiser_panel();
 	void draw_post_process_panel();

@@ -253,7 +253,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 	}
 
 	return bsdf_mis_contribution + envmap_mis_contribution;
-#else // #if EnvmapSamplingDoBSDFMIS
+#else  // #if EnvmapSamplingDoBSDFMIS
 	return envmap_mis_contribution;
 #endif // #if EnvmapSamplingDoBSDFMIS
 }
@@ -272,10 +272,6 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 
 	if (world_settings.envmap_intensity <= 0.0f)
 		// No need to sample the envmap if the user has set the intensity to 0
-		return ColorRGB32F(0.0f);
-
-	if (ray_payload.bounce == 0 && DirectLightNEEEstimator == LSS_RESTIR_DI)
-		// The envmap lighting is handled by ReSTIR DI on the first bounce
 		return ColorRGB32F(0.0f);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
