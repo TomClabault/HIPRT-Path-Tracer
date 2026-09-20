@@ -314,13 +314,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		ReSTIRPTReservoirSample restir_pt_initial_sample;
 		restir_pt_initial_sample.pixel_index = pixel_index;
 
-		bool reconnection_vertex_chosen = false;
 		// Bounce throughput from rc_vertex to the next vertex included
 		ColorRGB32F path_unweighted_throughput_up_to_rc_vertex = ColorRGB32F(1.0f);
 		ColorRGB32F path_unweighted_throughput_after_rc_vertex = ColorRGB32F(1.0f);
 
-		ColorRGB32F path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee = ColorRGB32F(1.0f);
-		ColorRGB32F path_unweighted_throughput_after_rc_vertex_for_deferred_nee = ColorRGB32F(1.0f);
+		// Keep the clamped continuation factor separate until deferred MIS has consumed the segment's starting throughputs.
+		ColorRGB32F pending_unweighted_throughput = ColorRGB32F(1.0f);
 
 		// + 1 to nb_bounces here because we want "0" bounces to still act as one
 		// hit and to return some color
@@ -340,13 +339,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					{
 						// We're checking for intersection found here because otherwise this would add envmap contribution but the envmap contribution on miss
 						// is already added by ReSTIR_PT_do_last_deferred_NEE_MIS
-						ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload,
-													  path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
-													  path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir,
-													  restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
+						ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+													  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+													  closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 
-						path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee = path_unweighted_throughput_up_to_rc_vertex;
-						path_unweighted_throughput_after_rc_vertex_for_deferred_nee = path_unweighted_throughput_after_rc_vertex;
+						// Hardcoded to bounce 2 for a simple reconnection shift at the first indirect vertex.
+						// The pending factor belongs to bounce - 1, so the first two factors belong to the prefix.
+						if (bounce > 2)
+							path_unweighted_throughput_after_rc_vertex *= pending_unweighted_throughput;
+						else
+							path_unweighted_throughput_up_to_rc_vertex *= pending_unweighted_throughput;
 					}
 				}
 
@@ -367,21 +369,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
-					ColorRGB32F this_bounce_unweighted_throughput =
+					pending_unweighted_throughput =
 						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator,
 															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
-					if (this_bounce_unweighted_throughput == ReSTIR_PT_invalid_throughput)
+					if (pending_unweighted_throughput == ReSTIR_PT_invalid_throughput)
 					{
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...
 						bounce++;
 						break;
 					}
-
-					if (reconnection_vertex_chosen)
-						path_unweighted_throughput_after_rc_vertex *= this_bounce_unweighted_throughput;
-					else
-						path_unweighted_throughput_up_to_rc_vertex *= this_bounce_unweighted_throughput;
 
 					if (bounce == 0)
 						restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
@@ -390,9 +387,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
 						// TODO remove this line
 						restir_pt_initial_sample.rc_vertex_incident_light_direction = ray.direction;
-
-						// Hardcoded to bounce 2 for a simple reconnection shift at the first indirect vertex
-						reconnection_vertex_chosen = true;
 					}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -414,9 +408,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			}
 		}
 
-		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex_for_deferred_nee,
-										   path_unweighted_throughput_after_rc_vertex_for_deferred_nee, restir_pt_initial_reservoir, restir_pt_initial_sample,
-										   closest_hit_info, nee_deferred_MIS_context, intersection_found, random_number_generator);
+		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+										   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
+										   nee_deferred_MIS_context, intersection_found, random_number_generator);
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);

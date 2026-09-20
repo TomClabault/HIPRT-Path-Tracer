@@ -165,8 +165,6 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 	float3_t last_view_direction;
 	float3_t last_shading_point;
 	float3_t last_shading_normal;
-	float3_t last_geometric_normal;
-	RayVolumeState last_volume_state;
 
 	int last_primitive_index;
 	float2_t last_texcoords;
@@ -179,22 +177,18 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 	float last_bsdf_sample_pdf;
 	BSDFIncidentLightInfo last_bsdf_incident_light_info;
 
-	RISReservoir ris_reservoir;
-
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
 												const RayVolumeState& volume_state,
 												const DeviceUnpackedEffectiveMaterial& material,
 												const ColorRGB32F& ray_throughput)
 	{
-		last_view_direction	  = view_direction;
-		last_shading_point	  = closest_hit_info.inter_point;
-		last_shading_normal	  = closest_hit_info.shading_normal;
-		last_geometric_normal = closest_hit_info.geometric_normal;
-		last_volume_state	  = volume_state;
-		last_primitive_index  = closest_hit_info.primitive_index;
-		last_texcoords		  = closest_hit_info.texcoords;
-		last_ray_throughput	  = ray_throughput;
+		last_view_direction	 = view_direction;
+		last_shading_point	 = closest_hit_info.inter_point;
+		last_shading_normal	 = closest_hit_info.shading_normal;
+		last_primitive_index = closest_hit_info.primitive_index;
+		last_texcoords		 = closest_hit_info.texcoords;
+		last_ray_throughput	 = ray_throughput;
 	}
 
 	HIPRT_DEVICE void fill_last_bsdf_information(ColorRGB32F bsdf_cos_theta, float bsdf_pdf)
@@ -203,10 +197,7 @@ struct NEEDeferredMISContextSpecialized<LSS_RIS_BSDF_AND_LIGHT, PATH_SAMPLING_RE
 		last_bsdf_sample_pdf  = bsdf_pdf;
 	}
 
-	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir)
-	{
-		ris_reservoir = reservoir;
-	}
+	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir) {}
 
 	HIPRT_DEVICE DeviceUnpackedEffectiveMaterial get_last_material(const HIPRTRenderData& render_data) const
 	{
