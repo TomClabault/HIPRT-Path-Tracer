@@ -55,8 +55,10 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes[pixel_index]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_index_in_cell[pixel_index]	  = 0;
-		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_reuse_cell_pixel_index[pixel_index] =
-			HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		for (unsigned int cache_slot = 0; cache_slot < RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE; cache_slot++)
+			render_data.render_settings.restir_pt_settings.spmis_settings
+				.all_pixels_reuse_cell_pixel_index[pixel_index * RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE + cache_slot] =
+				HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_indices_sorted[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_pixels_counters[pixel_index] = 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters[pixel_index] = 0;

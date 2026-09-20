@@ -6,6 +6,7 @@
 #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_SPMIS_DATA_HOST_H
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_SPMIS_DATA_HOST_H
 
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSPMISSettings.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
@@ -13,7 +14,7 @@ using ReSTIRSPMISDataHostInternal = GenericSoA<DataContainer,
 											   unsigned int,										 // All pixel hashes
 											   GenericAtomicType<unsigned int, DataContainer>,		 // All pixel hashes checksums
 											   unsigned int,										 // All pixel index in cell
-											   unsigned int,										 // All pixel reuse cell pixel index
+											   unsigned int,										 // All pixel reuse cell pixel indices
 											   unsigned int,										 // Important pixel indices sorting values
 											   GenericAtomicType<unsigned short int, DataContainer>, // Cell pixels counters
 											   GenericAtomicType<unsigned short int, DataContainer>, // Cells non-zero reservoir counters
@@ -56,6 +57,7 @@ struct ReSTIRSPMISDataHost
 	{
 		// RESTIR_SPMIS_CELL_CDF_LUTS is resized when creating spmis cells, not here
 		m_spmis_data.resize(width * height, { RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER, RESTIR_SPMIS_CELL_CDF_LUTS });
+		m_spmis_data.template get_buffer<RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>().resize(width * height * RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE);
 
 		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
 		m_spmis_data.template resize_one_buffer<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>(1);
@@ -71,6 +73,8 @@ struct ReSTIRSPMISDataHost
 		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_OCCUPIED>(0);
 		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>(0);
 		m_spmis_data.template memset_buffer<RESTIR_SPMIS_CELL_ALIVE_LIST>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
+		m_spmis_data.template memset_buffer<RESTIR_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 	}
 
 	bool free()

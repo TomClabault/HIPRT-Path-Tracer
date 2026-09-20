@@ -8,6 +8,8 @@
 
 #include "HostDeviceCommon/AtomicType.h"
 
+static constexpr unsigned int RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE = 4;
+
 struct ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings
 {
 	// If true, uses the heuristic from [Compatibility-Guided Neighbor Selection for ReSTIR, Junkins, 2026] to weight the selection of the neighboring cell.
@@ -62,8 +64,9 @@ struct ReSTIRPTSPMISSettings
 
 	// For each pixel, the index in its hash cell
 	unsigned int* all_pixels_index_in_cell = nullptr;
-	// For each pixel, the index of the pixel whose reuse cell to reuse from. This is precomputed to avoid having to do an expensive reuse cell search each
-	// frame
+	// For each pixel, the indices of pixels whose reuse cells can be reused from. These are precomputed to avoid having to do an expensive reuse cell search
+	// each frame.
+	// The buffer contains RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE entries per pixel.
 	unsigned int* all_pixels_reuse_cell_pixel_index = nullptr;
 	// A fullscreen buffer which contains, for each cell, the list of pixel indices that belongs to that cell. Pixel indices in each cell are sorted with
 	// important pixels (non-zero contribution reservoirs) first and non-important pixels after that. This buffer should be indexed as [cell_ffset +
