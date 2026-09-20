@@ -164,26 +164,15 @@ if (WIN32)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 	# For copying HIPRT's DLL
-	get_target_property(HIPRT_DLL_NAME hiprt03001 OUTPUT_NAME)
-
-	set(HIPRT_DLL_NAME_DEBUG ${HIPRT_DLL_NAME}d.dll)
-	# Appending .dll extension
-	set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}.dll)
-
-	add_custom_command(OUTPUT
-        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt03001>
-        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    DEPENDS hiprt03001)
-
-	add_custom_command(OUTPUT
-        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt03001>
-        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
-    DEPENDS hiprt03001)
-
-	# Create target which consume the command via DEPENDS.
-	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME} ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG})
+	# The .dll extension and configuration-specific suffix come from the actual target filename.
+	# Create a target which checks the copy every build, after HIPRT is built via DEPENDS.
+	add_custom_target(hiprtCopyDLL ALL
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"$<TARGET_FILE:hiprt03001>"
+			"${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:hiprt03001>"
+		DEPENDS hiprt03001
+		VERBATIM
+	)
 	add_dependencies(HIPRTPathTracer hiprtCopyDLL)
 	add_dependencies(GPUKernelCompilerWorker hiprtCopyDLL)
 
