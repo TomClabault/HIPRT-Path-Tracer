@@ -1,9 +1,11 @@
 [submodule "Orochi-Fork"]
 	path = thirdparties/Orochi-Fork
 	url = https://github.com/TomClabault/Orochi.git
+	branch = Fork-OrochiOpenGLUpdate
 [submodule "HIPRT-Fork"]
 	path = thirdparties/HIPRT-Fork
 	url = https://github.com/TomClabault/HIPRT.git
+	branch = 3.1.0.cb09c56-fork-additions
 [submodule "ASSIMP-Fork"]
 	path = thirdparties/ASSIMP-Fork
 	url = https://github.com/TomClabault/assimp.git
