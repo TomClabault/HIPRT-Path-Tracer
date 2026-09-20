@@ -46,10 +46,12 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 		return false;
 
 	// launch_async() runs before the render thread increments sample_number for the sample just accumulated.
-	render_data.display_post_process_settings.denoised_blend_noisy_sample_count = render_data.render_settings.sample_number + 1;
-	render_data.display_post_process_settings.gmon_blend_noisy_sample_count		= render_data.render_settings.sample_number + 1;
+	HIPRTRenderData display_render_data = render_data;
+	display_render_data.render_settings.sample_number++;
+	display_render_data.display_post_process_settings.denoised_blend_noisy_sample_count = display_render_data.render_settings.sample_number;
+	display_render_data.display_post_process_settings.gmon_blend_noisy_sample_count		= display_render_data.render_settings.sample_number;
 
-	return launch_kernel(render_data);
+	return launch_kernel(display_render_data);
 }
 
 void DisplayPostProcessRenderPass::update_display_post_process_settings()

@@ -91,7 +91,7 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 		{
 			ColorRGB32F* source_framebuffer =
 				render_data.buffers.debug_ray_colors != nullptr ? render_data.buffers.debug_ray_colors : render_data.buffers.accumulated_ray_colors;
-			unsigned int sample_count = render_data.render_settings.sample_number + 1;
+			unsigned int sample_count = hippt::max(1u, render_data.render_settings.sample_number);
 			final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
 			final_color.r			  = hippt::clamp(0.0f, 1.0e35f, final_color.r);
 			final_color.g			  = hippt::clamp(0.0f, 1.0e35f, final_color.g);

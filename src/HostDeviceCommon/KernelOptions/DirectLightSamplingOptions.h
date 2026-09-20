@@ -89,7 +89,7 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_POWER
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
 
 /**
  * What direct lighting sampling strategy to use.
@@ -119,6 +119,7 @@
  *	- LSS_LTC_SHADING
  *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
  *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
+ *
  *	- LSS_NEURAL_MANY_LIGHTS
  *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling
  *		probabilities on clusters of a lightcut in the spherical gaussian light tree
