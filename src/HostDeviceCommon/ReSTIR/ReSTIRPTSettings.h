@@ -15,8 +15,8 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	// How many path trees are resampled per pixel during the initial candidates generation pass.
 	int initial_path_trees_count = 1;
 
-	// ReSTIR PT uses RIS at each path vertex to sampel lights and BSDFs for the initial candidates generation pass. These parameters control how many
-	// candidates are generated for each type of sampling. Both candidate types are mixed with MIS
+	// ReSTIR PT samples light, envmap, and optionally BSDF candidates at each path vertex. These parameters control how many candidates are generated
+	// for each type of sampling. The learning-to-cluster MIS estimator mixes learned-light and BSDF candidates with MIS.
 	int nee_ris_number_of_light_candidates	= 1;
 	int nee_ris_number_of_envmap_candidates = 1;
 	int nee_ris_number_of_bsdf_candidates	= 1;

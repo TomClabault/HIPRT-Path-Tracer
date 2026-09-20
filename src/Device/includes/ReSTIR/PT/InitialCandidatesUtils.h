@@ -138,6 +138,36 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 	restir_pt_initial_sample.rc_vertex_primitive_index = closest_hit_info.primitive_index;
 }
 
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
+	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+HIPRT_DEVICE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
+																		const NEEDeferredMISContext& nee_deferred_MIS_context,
+																		const HitInfo& light_hit_info,
+																		const float3_t& view_direction,
+																		const float3_t& sampled_bsdf_direction)
+{
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
+											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
+	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
+		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
+
+	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, shading_context, mesh_id,
+																		nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index,
+																		light_hit_info.inter_point, light_hit_info.original_geometric_normal());
+#else
+	float hit_distance = hippt::length(light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
+	return pdf_of_emissive_triangle_hit_solid_angle(render_data, nee_deferred_MIS_context.last_shading_point, view_direction,
+													nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data),
+													light_hit_info.primitive_index, light_hit_info.original_geometric_normal(), hit_distance,
+													sampled_bsdf_direction);
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+}
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
+	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+
 HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												bool intersection_found,
 												float3_t sampled_bsdf_direction,
@@ -150,7 +180,8 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												NEEDeferredMISContext& nee_deferred_MIS_context,
 												Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
+	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 	int last_bounce = ray_payload.bounce - 1;
 	if (last_bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
@@ -244,13 +275,10 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		float nee_mis_weight = 1.0f;
 		if (nb_light_candidates > 0)
 		{
-			float hit_distance					= hippt::length(light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
-			float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle(
-				render_data, nee_deferred_MIS_context.last_shading_point, view_direction, nee_deferred_MIS_context.last_shading_normal,
-				nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index, light_hit_info.original_geometric_normal(),
-				hit_distance, sampled_bsdf_direction);
-			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
-											   nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+			float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info,
+																									   view_direction, sampled_bsdf_direction);
+			nee_mis_weight						= balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
+																	nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}
 		else
 			// Faster path for no light candidates, equivalent to balance heuristic (bsdf_pdf, nb_bsdf_candidates, ***, 0)
@@ -261,7 +289,8 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 		restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
 	}
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
+	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 }
 
 HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
@@ -276,7 +305,8 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 bool last_intersection_found,
 													 Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
+	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
 	// here
 	ray_payload.bounce--;
@@ -295,7 +325,8 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
 								  nee_deferred_MIS_context, random_number_generator);
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
+	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 }
 
 #endif // #ifndef DEVICE_INCLUDES_RESTIR_PT_INITIAL_CANDIDATES_UTILS_H

@@ -13,6 +13,8 @@
 template <int NEEEstimator, int PathIntegrator = PathSamplingStrategy>
 struct NEEDeferredMISContextSpecialized
 {
+	BSDFIncidentLightInfo last_bsdf_incident_light_info;
+
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
 												const RayVolumeState& volume_state,
@@ -69,6 +71,7 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 	// BSDF * cos_theta
 	ColorRGB32F last_bsdf_x_cos_theta;
 	float last_bsdf_sample_pdf;
+	BSDFIncidentLightInfo last_bsdf_incident_light_info;
 
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
@@ -107,6 +110,11 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 		NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>::fill_last_hit_information(closest_hit_info, view_direction, volume_state,
 																										material, ray_throughput);
 		last_primitive_index = closest_hit_info.primitive_index;
+	}
+
+	HIPRT_DEVICE DeviceUnpackedEffectiveMaterial get_last_material(const HIPRTRenderData&) const
+	{
+		return this->last_material;
 	}
 };
 

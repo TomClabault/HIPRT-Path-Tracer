@@ -1416,18 +1416,19 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 			static_assert(IM_ARRAYSIZE(items_nee_estimators) == IM_ARRAYSIZE(tooltips_nee_estimators));
 
-			const bool no_direct_light_sampling_disabled = false;
-			const bool uniform_one_light_disabled =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
-			const bool bsdf_sampling_disabled = false;
+			bool restir_pt = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+			bool no_direct_light_sampling_disabled = restir_pt;
+			bool uniform_one_light_disabled =
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR || restir_pt;
+			bool bsdf_sampling_disabled = restir_pt;
 
-			const bool regir		   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
-			const bool mis_disabled	   = regir;
-			const bool ris_disabled	   = false;
-			const bool risltc_disabled = regir;
-			const bool ltc_shading_disabled			= regir;
-			const bool neural_many_lights_disabled	= regir;
-			const bool learning_to_cluster_disabled = regir;
+			bool regir				  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+			bool mis_disabled		  = regir || restir_pt;
+			bool ris_disabled		  = regir;
+			bool risltc_disabled	  = regir || restir_pt;
+			bool ltc_shading_disabled = regir || restir_pt;
+			bool neural_many_lights_disabled  = regir || restir_pt;
+			bool learning_to_cluster_disabled = regir;
 
 			unsigned char disabled_nee_estimator_items[] = { no_direct_light_sampling_disabled,
 															 uniform_one_light_disabled,
@@ -1445,15 +1446,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
 			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_light_sampling_strategy));
 
-			bool nee_estimator_changed	= false;
-			bool nee_estimator_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
-			ImGui::BeginDisabled(nee_estimator_disabled);
 			if (ImGuiRenderer::ComboWithTooltips(
 					"NEE Estimator", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 					items_nee_estimators, IM_ARRAYSIZE(items_nee_estimators), tooltips_nee_estimators, disabled_nee_estimator_items))
 			{
-				nee_estimator_changed = true;
-
 				int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
 				{
@@ -1476,10 +1472,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			if (nee_estimator_disabled)
-				ImGuiRenderer::add_tooltip("The NEE estimator is controlled by ReSTIR PT.");
-			ImGui::EndDisabled(); // nee_estimator_disabled
-
 			if (disabled_nee_estimator_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
 			{
 				int preferred_base_strategy =
@@ -1753,8 +1745,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
-					// ReSTIR PT always uses RIS for NEE
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
+				{
+					int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+					if (nee_estimator != LSS_RIS_BSDF_AND_LIGHT && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
+				}
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -5221,15 +5216,15 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_light_sampling_panel()
 	{
 		ImGui::TreePush("ReSTIR PT - Light sampling tree");
 
-		if (ImGui::SliderInt("NEE RIS Light sample count",
+		if (ImGui::SliderInt("NEE Light sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 8))
 			m_render_window->set_render_dirty(true);
 
-		if (ImGui::SliderInt("NEE RIS Envmap sample count",
+		if (ImGui::SliderInt("NEE Envmap sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates, 0, 4))
 			m_render_window->set_render_dirty(true);
 
-		if (ImGui::SliderInt("NEE RIS BSDF sample count",
+		if (ImGui::SliderInt("NEE BSDF sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates, 0, 4))
 			m_render_window->set_render_dirty(true);
 

@@ -243,6 +243,357 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	}
 }
 
+#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+template <bool use_MIS>
+HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderData& render_data,
+																	float3_t view_direction,
+																	RayPayload& ray_payload,
+																	ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+																	ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+																	ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+																	ReSTIRPTReservoirSample& restir_pt_initial_sample,
+																	HitInfo& closest_hit_info,
+																	Xorshift32Generator& random_number_generator,
+																	int number_of_light_candidates,
+																	int number_of_bsdf_candidates,
+																	int x,
+																	int y)
+{
+	if (!ray_payload.material.can_do_light_sampling())
+		return;
+
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
+
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
+		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, mesh_id, random_number_generator);
+	if (!triangle_sample.valid())
+	{
+		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
+
+		return;
+	}
+
+	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
+	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
+	learning_to_cluster_training_sample.mesh_id						   = mesh_id;
+	learning_to_cluster_training_sample.shading_context				   = shading_context;
+	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
+	learning_to_cluster_training_sample.emissive_triangle_global_index = triangle_sample.emissive_triangle_global_index;
+	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
+	learning_to_cluster_training_sample.sampled_lightcut_index		   = triangle_sample.lightcut_index;
+	learning_to_cluster_training_sample.selected_lightcut_slot		   = triangle_sample.lightcut_slot;
+	learning_to_cluster_training_sample.sampled_lightcut_size		   = triangle_sample.lightcut_size_at_sampling;
+	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
+
+	LightSamplePointInformation light_sample =
+		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
+	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
+	if (!(light_sample.area_measure_pdf > 0.0f))
+	{
+		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+		return;
+	}
+
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
+	spatial_training_sample.position				   = closest_hit_info.inter_point;
+	spatial_training_sample.valid_for_spatial_training = true;
+	spatial_training_sample.cached_guiding_node_index  = triangle_sample.guiding_node_index;
+
+	float3_t shadow_direction = light_sample.point_on_light - closest_hit_info.inter_point;
+	float distance_to_light	  = hippt::length(shadow_direction);
+	if (!(distance_to_light > 0.0f))
+	{
+		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+		return;
+	}
+	shadow_direction /= distance_to_light;
+	spatial_training_sample.incoming_direction = shadow_direction;
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin		 = closest_hit_info.inter_point;
+	shadow_ray.direction	 = shadow_direction;
+	bool shadow_ray_occluded = true;
+
+	float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_direction);
+	if (dot_light_source > 0.0f)
+	{
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+		nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+
+		if (ray_payload.bounce == 0)
+			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+		shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+																nee_plus_plus_context, random_number_generator);
+
+		if (!shadow_ray_occluded)
+		{
+			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+			if (solid_angle_pdf > 0.0f)
+			{
+				spatial_training_sample.spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
+
+				float bsdf_pdf													 = 0.0f;
+				BSDFIncidentLightInfo incident_light_info						 = BSDFIncidentLightInfo::NO_INFO;
+				MicrofacetRegularization::RegularizationMode regularization_mode = use_MIS
+																					   ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
+																					   : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 regularization_mode);
+				ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+				ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
+
+				if (bsdf_pdf > 0.0f)
+				{
+					if (ray_payload.bounce == 0)
+						ReSTIR_PT_rc_di_vertex_fill_information(light_sample.point_on_light, light_sample.light_source_normal,
+																triangle_sample.emissive_triangle_global_index, BSDFIncidentLightInfo::NO_INFO,
+																restir_pt_initial_sample);
+					if (ray_payload.bounce == 1)
+					{
+						restir_pt_initial_sample.incident_light_info_at_sample_point	   = BSDFIncidentLightInfo::NO_INFO;
+						restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+					}
+					if (ray_payload.bounce <= 1)
+						restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_direction;
+					restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+					restir_pt_initial_sample.rc_vertex_incident_radiance = light_sample.emission * path_unweighted_throughput_after_rc_vertex;
+					if (ray_payload.bounce >= 2)
+						restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+					restir_pt_initial_sample.target_function =
+						(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_sample.emission)
+							.luminance();
+
+					float light_candidate_mis_weight;
+					if constexpr (use_MIS)
+						light_candidate_mis_weight = balance_heuristic(solid_angle_pdf, number_of_light_candidates, bsdf_pdf, number_of_bsdf_candidates);
+					else
+						light_candidate_mis_weight = 1.0f / number_of_light_candidates;
+
+					float weight =
+						light_candidate_mis_weight * (ray_payload.throughput * bsdf_throughput / solid_angle_pdf * light_sample.emission).luminance();
+					restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+					restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+
+					ColorRGB32F learning_estimator				 = light_sample.emission * bsdf_throughput / solid_angle_pdf * light_candidate_mis_weight;
+					learning_to_cluster_training_sample.q_reward = learning_estimator.luminance() * triangle_sample.cluster_probability;
+					learning_to_cluster_training_sample.variance_observation = learning_to_cluster_training_sample.q_reward;
+				}
+			}
+		}
+	}
+
+	render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+}
+
+template <bool use_MIS>
+HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& render_data,
+														   float3_t view_direction,
+														   RayPayload& ray_payload,
+														   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+														   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+														   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+														   ReSTIRPTReservoirSample& restir_pt_initial_sample,
+														   HitInfo& closest_hit_info,
+														   NEEDeferredMISContext& nee_deferred_MIS_context,
+														   Xorshift32Generator& random_number_generator,
+														   int x,
+														   int y)
+{
+	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
+		return;
+
+	int nb_light_candidates	 = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates;
+	int nb_envmap_candidates = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates;
+	int nb_bsdf_candidates	 = use_MIS ? render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates : 0;
+
+	if (render_data.buffers.emissive_triangles_count == 0)
+		nb_light_candidates = 0;
+
+	if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP || EnvmapSamplingStrategy == ESS_NO_SAMPLING)
+		nb_envmap_candidates = 0;
+
+	int number_of_light_candidates = nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
+	{
+		ReSTIR_PT_add_learning_to_cluster_light_candidate<use_MIS>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+																   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
+																   restir_pt_initial_sample, closest_hit_info, random_number_generator,
+																   number_of_light_candidates, nb_bsdf_candidates, x, y);
+	}
+
+	for (int envmap_candidate = 0; envmap_candidate < nb_envmap_candidates; envmap_candidate++)
+	{
+		float envmap_pdf_solid_angle;
+		float3_t envmap_sampled_direction;
+		ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
+
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction_normalized = envmap_sampled_direction;
+
+		hiprtRay shadow_ray;
+		shadow_ray.origin	 = shadow_ray_origin;
+		shadow_ray.direction = shadow_ray_direction_normalized;
+
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.envmap		 = true;
+		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
+		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+		if (ray_payload.bounce == 0)
+			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
+														   random_number_generator);
+
+		if (in_shadow)
+			continue;
+
+		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
+								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+								 use_MIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
+										 : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+
+		float bsdf_pdf;
+		ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
+
+		if (ray_payload.bounce == 0)
+			ReSTIR_PT_rc_di_vertex_fill_information(envmap_sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, BSDFIncidentLightInfo::NO_INFO,
+													restir_pt_initial_sample);
+		if (ray_payload.bounce == 1)
+		{
+			restir_pt_initial_sample.incident_light_info_at_sample_point	   = BSDFIncidentLightInfo::NO_INFO;
+			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+		}
+		if (ray_payload.bounce <= 1)
+			restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
+		restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+		restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission * path_unweighted_throughput_after_rc_vertex;
+		if (ray_payload.bounce >= 2)
+			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+		restir_pt_initial_sample.target_function =
+			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
+
+		float weight;
+		if constexpr (use_MIS)
+		{
+			float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, nb_envmap_candidates, bsdf_pdf, nb_bsdf_candidates);
+			weight				 = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
+		}
+		else
+			weight = 1.0f / nb_envmap_candidates * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
+
+		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+	}
+
+	if constexpr (use_MIS)
+	{
+		// NB BSDF candidates - 1 here because the main path supplies one deferred candidate.
+		for (int bsdf_candidate = 0; bsdf_candidate < nb_bsdf_candidates - 1; bsdf_candidate++)
+		{
+			float bsdf_sample_pdf;
+			float3_t sampled_bsdf_direction;
+			BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+
+			BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+									 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+									 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+			ColorRGB32F bsdf_color		= bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+			ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
+
+			if (bsdf_sample_pdf > 0.0f)
+			{
+				hiprtRay new_ray;
+				new_ray.origin	  = closest_hit_info.inter_point;
+				new_ray.direction = sampled_bsdf_direction;
+
+				BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+				if (ray_payload.bounce == 0)
+					restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+				bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info,
+																		 closest_hit_info.primitive_index, random_number_generator);
+
+				if (!intersection_found || shadow_light_ray_hit_info.hit_emission.is_black() ||
+					compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) <= 0.0f)
+					continue;
+
+				float3_t point_on_light = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+				if (ray_payload.bounce == 0)
+					ReSTIR_PT_rc_di_vertex_fill_information(point_on_light, shadow_light_ray_hit_info.hit_geometric_normal,
+															shadow_light_ray_hit_info.hit_prim_index, incident_light_info, restir_pt_initial_sample);
+				if (ray_payload.bounce == 1)
+				{
+					restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
+					restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+				}
+				if (ray_payload.bounce <= 1)
+					restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
+				restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
+				restir_pt_initial_sample.rc_vertex_incident_radiance = shadow_light_ray_hit_info.hit_emission * path_unweighted_throughput_after_rc_vertex;
+				if (ray_payload.bounce >= 2)
+					restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+				restir_pt_initial_sample.target_function = (path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex *
+															bsdf_throughput * shadow_light_ray_hit_info.hit_emission)
+															   .luminance();
+
+				IlluminationAwareKDTreeSGShadingContext shading_context =
+					build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+				unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+				if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+					mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
+				float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
+					render_data, shading_context, mesh_id, ray_payload.material, shadow_light_ray_hit_info.hit_prim_index, point_on_light,
+					shadow_light_ray_hit_info.hit_geometric_normal);
+				float nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf, number_of_light_candidates);
+				float weight =
+					nee_mis_weight * (ray_payload.throughput * bsdf_throughput / bsdf_sample_pdf * shadow_light_ray_hit_info.hit_emission).luminance();
+
+				restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+				restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+			}
+		}
+	}
+}
+#endif // #if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+
+HIPRT_DEVICE void ReSTIR_PT_stream_NEE_dispatch(HIPRTRenderData& render_data,
+												float3_t view_direction,
+												RayPayload& ray_payload,
+												ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+												ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+												ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+												ReSTIRPTReservoirSample& restir_pt_initial_sample,
+												HitInfo& closest_hit_info,
+												NEEDeferredMISContext& nee_deferred_MIS_context,
+												Xorshift32Generator& random_number_generator,
+												int x,
+												int y)
+{
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+	ReSTIR_PT_stream_NEE_learning_to_cluster<false>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+													path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+													closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
+#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+	ReSTIR_PT_stream_NEE_learning_to_cluster<true>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+												   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+												   closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
+#else														 // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+	ReSTIR_PT_stream_NEE(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
+						 restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
+#endif														 // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+}
+
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
@@ -363,9 +714,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 							ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 					}
 
-					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-										 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
-										 nee_deferred_MIS_context, random_number_generator, x, y);
+					ReSTIR_PT_stream_NEE_dispatch(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+												  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+												  closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
