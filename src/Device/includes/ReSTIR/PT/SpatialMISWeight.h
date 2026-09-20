@@ -606,10 +606,10 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 		// this implementation) neighbors, according to section 4.2 of "Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom
 		// et al. 2026"
 
-		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+		float3_t neighbor_pixel_shading_point = render_data.g_buffer.primary_hit_position[neighbor_pixel_index];
 
-		float target_function_center_sample_at_neighbor =
-			ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function_at_pixel<true>(
+			render_data, center_pixel_reservoir_sample, neighbor_pixel_index, neighbor_pixel_shading_point, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
 		// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -621,10 +621,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			{
 				// If this is an envmap path the jacobian is just 1 so this is not needed
 
-				float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.rc_vertex,
-																			 center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
-																			 neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
-																			 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+				float jacobian = get_jacobian_determinant_reconnection_shift(
+					center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(), neighbor_pixel_shading_point,
+					center_pixel_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 				if (jacobian == 0.0f)
 					// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 					// and has been rejected), the target function is set to 0
@@ -704,10 +703,10 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 		// this implementation) neighbors, according to section 4.2 of "Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom
 		// et al. 2026"
 
-		ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+		float3_t neighbor_pixel_shading_point = render_data.g_buffer.primary_hit_position[neighbor_pixel_index];
 
-		float target_function_center_sample_at_neighbor =
-			ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+		float target_function_center_sample_at_neighbor = ReSTIR_PT_evaluate_target_function_at_pixel<true>(
+			render_data, center_pixel_reservoir_sample, neighbor_pixel_index, neighbor_pixel_shading_point, random_number_generator);
 
 		// Because we're using the target function as a PDF here, we need to scale the PDF
 		// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -719,10 +718,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 			{
 				// If this is an envmap path the jacobian is just 1 so this is not needed
 
-				float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.rc_vertex,
-																			 center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
-																			 neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
-																			 render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
+				float jacobian = get_jacobian_determinant_reconnection_shift(
+					center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(), neighbor_pixel_shading_point,
+					center_pixel_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 				if (jacobian == 0.0f)
 					// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 					// and has been rejected), the target function is set to 0

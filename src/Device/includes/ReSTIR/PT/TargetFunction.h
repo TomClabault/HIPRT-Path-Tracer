@@ -14,6 +14,56 @@
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRenderData& render_data,
+																const ReSTIRPTReservoirSample& sample,
+																const float3_t& surface_shading_point,
+																const float3_t& surface_view_direction,
+																const float3_t& surface_shading_normal,
+																const float3_t& surface_geometric_normal,
+																int surface_primitive_index,
+																RayVolumeState& surface_ray_volume_state,
+																DeviceUnpackedEffectiveMaterial& surface_material,
+																const float3_t& incident_light_direction,
+																float cosine_term,
+																Xorshift32Generator& random_number_generator)
+{
+	float bsdf_pdf;
+	BSDFContext bsdf_context(surface_view_direction, surface_shading_normal, surface_geometric_normal, incident_light_direction,
+							 const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface_ray_volume_state, false, surface_material,
+							 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
+	ColorRGB32F visible_point_throughput = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator) * hippt::abs(cosine_term);
+
+	ColorRGB32F sample_point_throughput = ColorRGB32F(1.0f);
+
+	if (!sample.di_sample)
+	{
+		float3_t view_direction					 = hippt::normalize(surface_shading_point - sample.rc_vertex);
+		float3_t to_light_direction_sample_point = sample.rc_vertex_incident_light_direction;
+		float3_t shading_normal_sample_point	 = sample.rc_vertex_shading_normal.unpack();
+		float3_t geometric_normal_sample_point	 = sample.rc_vertex_geometric_normal.unpack();
+
+		RayVolumeState ray_volume_state_copy = surface_ray_volume_state;
+		// TODO reproduce roughness accumumlation
+		// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
+		ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, surface_material, sample.incident_light_info_at_visible_point,
+													   surface_primitive_index);
+
+		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
+		DeviceUnpackedEffectiveMaterial rc_vertex_material =
+			get_intersection_material(render_data, rc_vertex_material_index, make_float2(sample.rc_vertex_texcoords_u, sample.rc_vertex_texcoords_v));
+		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
+											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
+											   rc_vertex_material, 0.0f);
+
+		// TODO can we use a simple target function visible point only for perf? We can have a template parameter to do that only during spatial reuse
+		float trash_pdf;
+		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
+		sample_point_throughput				= sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+	}
+
+	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
+}
+
 template <bool withVisiblity>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& sample,
@@ -63,41 +113,74 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 			return 0.0f;
 	}
 
-	float bsdf_pdf;
-	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction,
-							 const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface.ray_volume_state, false, surface.material,
-							 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
-	ColorRGB32F visible_point_throughput = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator) * hippt::abs(cosine_term);
+	return ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface.shading_point, surface.view_direction, surface.shading_normal,
+												   surface.geometric_normal, surface.primitive_index, surface.ray_volume_state, surface.material,
+												   incident_light_direction, cosine_term, random_number_generator);
+}
 
-	ColorRGB32F sample_point_throughput = ColorRGB32F(1.0f);
-
-	if (!sample.di_sample)
+template <bool withVisiblity>
+HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
+																	const ReSTIRPTReservoirSample& sample,
+																	int surface_pixel_index,
+																	const float3_t& surface_shading_point,
+																	Xorshift32Generator& random_number_generator)
+{
+	float distance_to_sample_point;
+	float3_t incident_light_direction;
+	if (sample.is_envmap_path())
 	{
-		float3_t view_direction					 = hippt::normalize(surface.shading_point - sample.rc_vertex);
-		float3_t to_light_direction_sample_point = sample.rc_vertex_incident_light_direction;
-		float3_t shading_normal_sample_point	 = sample.rc_vertex_shading_normal.unpack();
-		float3_t geometric_normal_sample_point	 = sample.rc_vertex_geometric_normal.unpack();
+		// For envmap path, the direction is stored in the 'rc_vertex' value
+		incident_light_direction = sample.rc_vertex;
+		distance_to_sample_point = 1.0e35f;
+	}
+	else
+	{
+		// Not an envmap path, the direction is the difference between the current shading
+		// point and the reconnection point
+		incident_light_direction = sample.rc_vertex - surface_shading_point;
+		distance_to_sample_point = hippt::length(incident_light_direction);
+		if (distance_to_sample_point <= 1.0e-6f)
+			// To avoid numerical instabilities
+			return 0.0f;
 
-		RayVolumeState ray_volume_state_copy = surface.ray_volume_state;
-		// TODO reproduce roughness accumumlation
-		// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
-		ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, surface.material, sample.incident_light_info_at_visible_point,
-													   surface.primitive_index);
-
-		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
-		DeviceUnpackedEffectiveMaterial rc_vertex_material =
-			get_intersection_material(render_data, rc_vertex_material_index, make_float2(sample.rc_vertex_texcoords_u, sample.rc_vertex_texcoords_v));
-		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
-											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
-											   rc_vertex_material, 0.0f);
-
-		// TODO can we use a simple target function visible point only for perf? We can have a template parameter to do that only during spatial reuse
-		float trash_pdf;
-		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, secondary_hit_eval_context, trash_pdf, random_number_generator);
-		sample_point_throughput				= sample_point_bsdf_color * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
+		incident_light_direction /= distance_to_sample_point;
 	}
 
-	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
+	if (!sample.is_envmap_path() && sample.di_sample &&
+		compute_cosine_term_at_light_source(sample.rc_vertex_geometric_normal.unpack(), -incident_light_direction) <= 0.0f)
+		// Backfacing light
+		return 0.0f;
+
+	float3_t surface_shading_normal = render_data.g_buffer.shading_normals[surface_pixel_index].unpack();
+	float cosine_term				= hippt::dot(incident_light_direction, surface_shading_normal);
+	if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
+		return 0.0f;
+
+	int surface_primitive_index = render_data.g_buffer.first_hit_prim_index[surface_pixel_index];
+	if constexpr (withVisiblity)
+	{
+		hiprtRay visibility_ray;
+		visibility_ray.origin	 = surface_shading_point;
+		visibility_ray.direction = incident_light_direction;
+
+		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
+		bool sample_point_occluded =
+			evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface_primitive_index, random_number_generator_alpha_test);
+		if (sample_point_occluded)
+			return 0.0f;
+	}
+
+	// Keep the large material and volume state out of the geometric rejection and visibility phases.
+	DeviceUnpackedEffectiveMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
+	RayVolumeState surface_ray_volume_state;
+	surface_ray_volume_state.reconstruct_first_hit(surface_material, render_data.buffers.material_indices, surface_primitive_index, random_number_generator);
+
+	float3_t surface_view_direction	  = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
+	float3_t surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
+
+	return ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, surface_view_direction, surface_shading_normal,
+												   surface_geometric_normal, surface_primitive_index, surface_ray_volume_state, surface_material,
+												   incident_light_direction, cosine_term, random_number_generator);
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_TARGET_FUNCTION_H
