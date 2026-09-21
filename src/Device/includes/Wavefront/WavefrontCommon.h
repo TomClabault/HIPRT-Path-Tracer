@@ -74,24 +74,22 @@ HIPRT_DEVICE void wavefront_load_nee_deferred_mis_context(HIPRTRenderData& rende
 	nee_deferred_MIS_context		= contexts[path_index];
 }
 
-HIPRT_DEVICE bool wavefront_initialize_path(HIPRTRenderData& render_data, unsigned int path_index)
+HIPRT_DEVICE void wavefront_initialize_path(HIPRTRenderData& render_data,
+											unsigned int path_index,
+											RayPayload& ray_payload,
+											hiprtRay& ray,
+											HitInfo& closest_hit_info,
+											bool& intersection_found,
+											Xorshift32Generator& random_number_generator)
 {
-	if (!render_data.aux_buffers.pixel_active[path_index])
-		return false;
-
-	RayPayload ray_payload;
-
-	HitInfo closest_hit_info;
 	closest_hit_info.inter_point	  = render_data.g_buffer.primary_hit_position[path_index];
 	closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[path_index].unpack());
 	closest_hit_info.shading_normal	  = hippt::normalize(render_data.g_buffer.shading_normals[path_index].unpack());
 	closest_hit_info.primitive_index  = render_data.g_buffer.first_hit_prim_index[path_index];
 
-	hiprtRay ray;
-	ray.origin	  = render_data.current_camera.position;
+	ray.origin	  = closest_hit_info.inter_point;
 	ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, path_index));
 
-	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(path_index));
 	ray_payload.next_ray_state = RayState::BOUNCE;
 	ray_payload.material	   = render_data.g_buffer.materials[path_index].unpack();
 
@@ -103,11 +101,10 @@ HIPRT_DEVICE bool wavefront_initialize_path(HIPRTRenderData& render_data, unsign
 	ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices, closest_hit_info.primitive_index,
 												   random_number_generator);
 
-	bool intersection_found = closest_hit_info.primitive_index != -1;
-	wavefront_store_path(render_data, path_index, ray_payload, ray, closest_hit_info, intersection_found);
-	render_data.wavefront_data.path_rng_states[path_index] = random_number_generator.m_state.seed;
+	intersection_found = closest_hit_info.primitive_index != -1;
 
-	return true;
+	// Preserve the direction rounding of the former Initialize -> store -> Shade load boundary.
+	ray.direction = Octahedral24BitNormalPadded32b(ray.direction).unpack();
 }
 
 HIPRT_DEVICE void wavefront_enqueue_path(HIPRTRenderData& render_data, unsigned int queue_index, unsigned int path_index)

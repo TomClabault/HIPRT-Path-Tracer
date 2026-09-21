@@ -10,7 +10,7 @@
 #include <algorithm>
 
 const std::string WavefrontRenderPass::WAVEFRONT_RENDER_PASS_NAME			= "Wavefront Render Pass";
-const std::string WavefrontRenderPass::INITIALIZE_PATHS_KERNEL				= "Wavefront - Initialize Paths";
+const std::string WavefrontRenderPass::SHADE_PRIMARY_PATHS_KERNEL			= "Wavefront - Shade Primary Paths";
 const std::string WavefrontRenderPass::SHADE_PATHS_KERNEL					= "Wavefront - Shade Paths";
 const std::string WavefrontRenderPass::TRACE_PATHS_KERNEL					= "Wavefront - Trace Paths";
 const std::string WavefrontRenderPass::NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL = "Wavefront - NEE Deferred MIS Context Size";
@@ -18,9 +18,9 @@ const std::string WavefrontRenderPass::NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL = "W
 WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(WAVEFRONT_RENDER_PASS_NAME, renderer, options)
 {
-	m_kernels[INITIALIZE_PATHS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + INITIALIZE_PATHS_KERNEL);
-	m_kernels[INITIALIZE_PATHS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/InitializePaths.h");
-	m_kernels[INITIALIZE_PATHS_KERNEL]->set_kernel_function_name("WavefrontInitializePaths");
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + SHADE_PRIMARY_PATHS_KERNEL);
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ShadePrimaryPaths.h");
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->set_kernel_function_name("WavefrontShadePrimaryPaths");
 
 	m_kernels[SHADE_PATHS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + SHADE_PATHS_KERNEL);
 	m_kernels[SHADE_PATHS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ShadePaths.h");
@@ -37,6 +37,8 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	for (std::pair<const std::string, std::shared_ptr<GPUKernel>>& name_to_kernel : m_kernels)
 		name_to_kernel.second->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 	m_kernels[SHADE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[SHADE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 	m_kernels[TRACE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
@@ -114,17 +116,13 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
 	*host_pinned_render_data				 = render_data;
 
-	m_kernels[INITIALIZE_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_INITIALIZE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
-																main_stream);
+	m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_SHADE_PRIMARY_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																   main_stream);
 	m_kernels[SHADE_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_SHADE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
 	m_kernels[TRACE_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
 
 	unsigned int* zero = m_zero_host_pinned.get_host_pinned_pointer();
 	zero[0]			   = 0;
-	m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
-
-	m_kernels[INITIALIZE_PATHS_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y,
-															nullptr, main_stream);
 
 	unsigned int queue_block_size = KernelBlockWidthHeight * KernelBlockWidthHeight;
 
@@ -133,7 +131,11 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		m_wavefront_data.get_queue_count_buffer(1).upload_data_async(zero, main_stream);
 
 		void* shade_launch_args[] = { &bounce_count };
-		m_kernels[SHADE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, shade_launch_args, main_stream);
+		if (bounce_index == 0)
+			m_kernels[SHADE_PRIMARY_PATHS_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
+																	   m_render_resolution.y, shade_launch_args, main_stream);
+		else
+			m_kernels[SHADE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, shade_launch_args, main_stream);
 
 		if (bounce_index >= bounce_count)
 			continue;
@@ -200,7 +202,7 @@ std::size_t WavefrontRenderPass::get_nee_deferred_mis_context_byte_size()
 
 bool WavefrontRenderPass::kernels_ready() const
 {
-	return m_kernels.at(INITIALIZE_PATHS_KERNEL)->has_been_compiled() && m_kernels.at(SHADE_PATHS_KERNEL)->has_been_compiled() &&
+	return m_kernels.at(SHADE_PRIMARY_PATHS_KERNEL)->has_been_compiled() && m_kernels.at(SHADE_PATHS_KERNEL)->has_been_compiled() &&
 		   m_kernels.at(TRACE_PATHS_KERNEL)->has_been_compiled() && m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)->has_been_compiled() &&
 		   m_nee_deferred_mis_context_byte_size != 0;
 }

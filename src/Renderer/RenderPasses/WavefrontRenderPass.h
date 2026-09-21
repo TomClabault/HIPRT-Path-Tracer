@@ -18,7 +18,7 @@ class WavefrontRenderPass : public RenderPass
 {
 public:
 	static const std::string WAVEFRONT_RENDER_PASS_NAME;
-	static const std::string INITIALIZE_PATHS_KERNEL;
+	static const std::string SHADE_PRIMARY_PATHS_KERNEL;
 	static const std::string SHADE_PATHS_KERNEL;
 	static const std::string TRACE_PATHS_KERNEL;
 	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
