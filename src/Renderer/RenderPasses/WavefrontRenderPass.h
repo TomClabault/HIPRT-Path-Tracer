@@ -19,7 +19,9 @@ class WavefrontRenderPass : public RenderPass
 public:
 	static const std::string WAVEFRONT_RENDER_PASS_NAME;
 	static const std::string INITIALIZE_PATHS_KERNEL;
-	static const std::string ADVANCE_PATHS_KERNEL;
+	static const std::string SHADE_PATHS_KERNEL;
+	static const std::string TRACE_PATHS_KERNEL;
+	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
 
 	WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 	~WavefrontRenderPass() = default;
@@ -41,12 +43,17 @@ public:
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 
 private:
+	std::size_t get_nee_deferred_mis_context_byte_size();
+	bool kernels_ready() const;
 	bool resize_staging_buffers();
 	void free_staging_buffers();
 
-	int2_t m_render_resolution						   = make_int2(0, 0);
-	bool m_staging_buffers_allocated				   = false;
-	std::size_t m_allocated_ray_volume_state_byte_size = 0;
+	int2_t m_render_resolution								   = make_int2(0, 0);
+	bool m_staging_buffers_allocated						   = false;
+	std::size_t m_allocated_ray_volume_state_byte_size		   = 0;
+	std::size_t m_allocated_nee_deferred_mis_context_byte_size = 0;
+	std::size_t m_nee_deferred_mis_context_byte_size		   = 0;
+	bool m_nee_deferred_mis_context_byte_size_dirty			   = true;
 
 	WavefrontDataHost<OrochiBuffer> m_wavefront_data;
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;

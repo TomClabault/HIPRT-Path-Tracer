@@ -58,6 +58,22 @@ HIPRT_DEVICE void wavefront_store_path(HIPRTRenderData& render_data,
 	wavefront_data.path_intersections_found[path_index]		= intersection_found ? 1u : 0u;
 }
 
+HIPRT_DEVICE void wavefront_store_nee_deferred_mis_context(HIPRTRenderData& render_data,
+														   unsigned int path_index,
+														   const NEEDeferredMISContext& nee_deferred_MIS_context)
+{
+	NEEDeferredMISContext* contexts = reinterpret_cast<NEEDeferredMISContext*>(render_data.wavefront_data.path_nee_deferred_mis_contexts);
+	contexts[path_index]			= nee_deferred_MIS_context;
+}
+
+HIPRT_DEVICE void wavefront_load_nee_deferred_mis_context(HIPRTRenderData& render_data,
+														  unsigned int path_index,
+														  NEEDeferredMISContext& nee_deferred_MIS_context)
+{
+	NEEDeferredMISContext* contexts = reinterpret_cast<NEEDeferredMISContext*>(render_data.wavefront_data.path_nee_deferred_mis_contexts);
+	nee_deferred_MIS_context		= contexts[path_index];
+}
+
 HIPRT_DEVICE bool wavefront_initialize_path(HIPRTRenderData& render_data, unsigned int path_index)
 {
 	if (!render_data.aux_buffers.pixel_active[path_index])

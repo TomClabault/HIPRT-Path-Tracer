@@ -29,6 +29,7 @@ struct WavefrontDataDevice
 	unsigned int* path_intersections_found			= nullptr;
 	unsigned int* path_rng_states					= nullptr;
 	RayVolumeState* path_volume_states				= nullptr;
+	void* path_nee_deferred_mis_contexts			= nullptr;
 
 	unsigned int* path_queues[2]			  = { nullptr, nullptr };
 	AtomicType<unsigned int>* queue_counts[2] = { nullptr, nullptr };
