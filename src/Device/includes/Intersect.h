@@ -234,6 +234,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 #endif
 
 	hiprtHit hit;
+	int material_index;
 	bool skipping_volume_boundary = false;
 	do
 	{
@@ -248,37 +249,22 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		if (!hit.hasHit())
 			return false;
 
-		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, hit.primID);
-		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-
-		out_hit_info.inter_point	 = ray.origin + hit.t * ray.direction;
-		out_hit_info.primitive_index = hit.primID;
-		out_hit_info.texcoords		 = uv_interpolate(triangle_texcoords, hit.uv);
-		// TODO hit.normal is in object space, this simple approach will not work if using
-		// multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
-		out_hit_info.geometric_normal = hippt::normalize(hit.normal);
-		out_hit_info.shading_normal	  = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID,
-														   hit.uv, out_hit_info.texcoords);
-		out_hit_info.t				  = hit.t;
-
-		int material_index			= render_data.buffers.material_indices[hit.primID];
-		in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
+		material_index					  = render_data.buffers.material_indices[hit.primID];
+		unsigned char dielectric_priority = get_intersection_dielectric_priority(render_data, material_index);
 
 		skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-			material_index, in_out_ray_payload.material.get_dielectric_priority(), in_out_ray_payload.volume_state.incident_mat_index,
-			in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material);
+			material_index, dielectric_priority, in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
+			in_out_ray_payload.volume_state.inside_material);
 
 		if (in_out_ray_payload.volume_state.inside_material)
 			// If we're traveling inside a volume, accumulating the distance for Beer's law
 			in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
-		fix_backfacing_normals(out_hit_info, -ray.direction);
-
 		if (skipping_volume_boundary)
 		{
 			// If we're skipping, the boundary, the ray just keeps going on its way
-			ray.origin				 = out_hit_info.inter_point;
-			last_hit_primitive_index = out_hit_info.primitive_index;
+			ray.origin				 = ray.origin + hit.t * ray.direction;
+			last_hit_primitive_index = hit.primID;
 
 			// Don't forget to increment the distance traveled
 			// TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
@@ -290,6 +276,22 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		}
 
 	} while ((skipping_volume_boundary && hit.hasHit()));
+
+	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, hit.primID);
+	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+
+	out_hit_info.inter_point	 = ray.origin + hit.t * ray.direction;
+	out_hit_info.primitive_index = hit.primID;
+	out_hit_info.texcoords		 = uv_interpolate(triangle_texcoords, hit.uv);
+	// TODO hit.normal is in object space, this simple approach will not work if using
+	// multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
+	out_hit_info.geometric_normal = hippt::normalize(hit.normal);
+	out_hit_info.shading_normal =
+		get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
+	out_hit_info.t = hit.t;
+
+	in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
+	fix_backfacing_normals(out_hit_info, -ray.direction);
 
 	if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f &&
 		in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)

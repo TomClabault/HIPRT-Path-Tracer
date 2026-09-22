@@ -61,6 +61,15 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 	return get_hit_base_color_alpha(render_data, base_color_texture_index, hit.primID, hit.uv);
 }
 
+HIPRT_DEVICE static unsigned char get_intersection_dielectric_priority(const HIPRTRenderData& render_data, int material_index)
+{
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+	return 0;
+#else
+	return render_data.buffers.materials_buffer_soa.get_dielectric_priority(material_index);
+#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+}
+
 HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
 {
 	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer_soa.read_partial_material(material_index).unpack();
