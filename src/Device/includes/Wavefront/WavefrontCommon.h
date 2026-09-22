@@ -78,12 +78,11 @@ HIPRT_DEVICE void wavefront_store_trace_ray(
 }
 
 HIPRT_DEVICE void wavefront_load_trace_ray(
-	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info)
+	HIPRTRenderData& render_data, unsigned int path_index, WavefrontTracePayload& trace_payload, hiprtRay& ray, HitInfo& closest_hit_info)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
-	ray_payload.next_ray_state		 = RayState::BOUNCE;
-	ray_payload.volume_state		 = wavefront_data.path_volume_states[path_index];
+	trace_payload.volume_state		 = wavefront_data.path_volume_states[path_index];
 	closest_hit_info.inter_point	 = wavefront_data.path_closest_hit_infos[path_index].inter_point;
 	closest_hit_info.primitive_index = wavefront_data.path_closest_hit_infos[path_index].primitive_index;
 	ray.origin						 = closest_hit_info.inter_point;

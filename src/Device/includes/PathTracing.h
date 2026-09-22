@@ -27,6 +27,16 @@ HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
 	return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, random_number_generator);
 }
 
+HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data,
+																 hiprtRay ray,
+																 WavefrontTracePayload& out_trace_payload,
+																 HitInfo& out_closest_hit_info,
+																 Xorshift32Generator& random_number_generator)
+{
+	return trace_main_path_ray(render_data, ray, out_trace_payload.volume_state, out_closest_hit_info, out_closest_hit_info.primitive_index,
+							   random_number_generator);
+}
+
 /**
  * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
  * but without evaluating the contribution of the BSDF or the PDF.

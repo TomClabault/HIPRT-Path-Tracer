@@ -222,7 +222,7 @@ HIPRT_DEVICE hiprtHit intersect_scene_cpu(
  */
 HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 									  hiprtRay ray,
-									  RayPayload& in_out_ray_payload,
+									  RayVolumeState& in_out_volume_state,
 									  HitInfo& out_hit_info,
 									  int last_hit_primitive_index,
 									  Xorshift32Generator& random_number_generator)
@@ -252,13 +252,12 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		material_index					  = render_data.buffers.material_indices[hit.primID];
 		unsigned char dielectric_priority = get_intersection_dielectric_priority(render_data, material_index);
 
-		skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-			material_index, dielectric_priority, in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
-			in_out_ray_payload.volume_state.inside_material);
+		skipping_volume_boundary = in_out_volume_state.interior_stack.push(material_index, dielectric_priority, in_out_volume_state.incident_mat_index,
+																		   in_out_volume_state.outgoing_mat_index, in_out_volume_state.inside_material);
 
-		if (in_out_ray_payload.volume_state.inside_material)
+		if (in_out_volume_state.inside_material)
 			// If we're traveling inside a volume, accumulating the distance for Beer's law
-			in_out_ray_payload.volume_state.distance_in_volume += hit.t;
+			in_out_volume_state.distance_in_volume += hit.t;
 
 		if (skipping_volume_boundary)
 		{
@@ -268,11 +267,11 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 
 			// Don't forget to increment the distance traveled
 			// TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
-			in_out_ray_payload.volume_state.distance_in_volume += hit.t;
+			in_out_volume_state.distance_in_volume += hit.t;
 
-			if (in_out_ray_payload.volume_state.inside_material)
+			if (in_out_volume_state.inside_material)
 				// We're inside and we're skipping the boundary. This means that we're leaving a dielectric by skipping it, popping
-				in_out_ray_payload.volume_state.interior_stack.pop(true);
+				in_out_volume_state.interior_stack.pop(true);
 		}
 
 	} while ((skipping_volume_boundary && hit.hasHit()));
@@ -290,8 +289,25 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
 	out_hit_info.t = hit.t;
 
-	in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 	fix_backfacing_normals(out_hit_info, -ray.direction);
+
+	return hit.hasHit();
+}
+
+HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
+									  hiprtRay ray,
+									  RayPayload& in_out_ray_payload,
+									  HitInfo& out_hit_info,
+									  int last_hit_primitive_index,
+									  Xorshift32Generator& random_number_generator)
+{
+	bool intersection_found =
+		trace_main_path_ray(render_data, ray, in_out_ray_payload.volume_state, out_hit_info, last_hit_primitive_index, random_number_generator);
+	if (!intersection_found)
+		return false;
+
+	int material_index			= render_data.buffers.material_indices[out_hit_info.primitive_index];
+	in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
 	if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f &&
 		in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
@@ -304,7 +320,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 		// hasn't been applied yet (applied in principled_glass_eval())
 		in_out_ray_payload.volume_state.sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
 
-	return hit.hasHit();
+	return true;
 }
 
 /**
@@ -330,7 +346,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 		return false;
 
 	return true;
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
 	// (we may find multiple hits if we hit transparent texture
@@ -444,7 +460,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	out_light_hit_info.hit_distance				  = shadow_ray_hit.t;
 
 	return true;
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 	float alpha = 1.0f;
 	// The total distance of our ray. Incremented after each hit
 	// (we may find multiple hits if we hit transparent texture
@@ -628,12 +644,12 @@ HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data,
 
 	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload,
 																	 render_data.hiprt_function_table, 0);
-#else // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#else  // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 	hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 
 	hit = traversal.getNextHit();
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 	hit = intersect_scene_cpu(render_data, render_data.cpu_only.bvh, ray, last_primitive_index, random_number_generator);
 #endif // #ifdef __KERNELCC__
 

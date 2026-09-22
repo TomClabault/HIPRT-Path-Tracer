@@ -21,6 +21,10 @@ enum RayState
 
 struct RayPayload
 {
+	HIPRT_HOST_DEVICE RayPayload() = default;
+
+	HIPRT_HOST_DEVICE explicit RayPayload(const RayVolumeState& initial_volume_state) : volume_state(initial_volume_state) {}
+
 	// Energy left in the ray after it bounces around the scene
 	// Todo RGB9E5?
 	ColorRGB32F throughput = ColorRGB32F(1.0f);
@@ -107,6 +111,12 @@ struct RayPayload
 	{
 		return accumulated_roughness < 0.1f;
 	}
+};
+
+// State that must remain live while WavefrontTracePaths performs traversal.
+struct WavefrontTracePayload
+{
+	RayVolumeState volume_state;
 };
 
 #endif // #ifndef DEVICE_RAY_PAYLOAD_H

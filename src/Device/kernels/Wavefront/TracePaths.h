@@ -33,15 +33,33 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 	if (pixel_index >= render_data.wavefront_data.path_capacity)
 		return;
 
-	RayPayload ray_payload;
+	WavefrontTracePayload trace_payload;
 	hiprtRay ray;
 	HitInfo closest_hit_info;
-	wavefront_load_trace_ray(render_data, pixel_index, ray_payload, ray, closest_hit_info);
+	wavefront_load_trace_ray(render_data, pixel_index, trace_payload, ray, closest_hit_info);
 
 	Xorshift32Generator random_number_generator(render_data.wavefront_data.path_rng_states[pixel_index]);
-	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, trace_payload, closest_hit_info, random_number_generator);
 
+	RayPayload ray_payload(trace_payload.volume_state);
 	wavefront_load_trace_path_bookkeeping(render_data, pixel_index, ray_payload);
+	if (intersection_found)
+	{
+		int material_index	 = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+		ray_payload.material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
+
+		if (ray_payload.material.dispersion_scale > 0.0f && ray_payload.material.specular_transmission > 0.0f &&
+			ray_payload.volume_state.sampled_wavelength == 0.0f)
+			// If we hit a dispersive material, we sample the wavelength that will be used
+			// for computing the wavelength dependent IORs used for dispersion
+			//
+			// We're also not re-doing the sampling if a wavelength has already been sampled for that path
+			//
+			// Negating the wavelength to indicate that the throughput filter of the wavelength
+			// hasn't been applied yet (applied in principled_glass_eval())
+			ray_payload.volume_state.sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
+	}
+
 	NEEDeferredMISContext nee_deferred_MIS_context;
 	wavefront_load_nee_deferred_mis_context(render_data, pixel_index, nee_deferred_MIS_context);
 
