@@ -87,7 +87,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 	}
 
 	ray_payload.bounce++;
-	wavefront_store_path(render_data, pixel_index, ray_payload, ray, closest_hit_info, intersection_found);
+	wavefront_store_trace_ray(render_data, pixel_index, ray_payload, ray, closest_hit_info);
 	wavefront_store_nee_deferred_mis_context(render_data, pixel_index, nee_deferred_MIS_context);
 	render_data.wavefront_data.path_rng_states[pixel_index] = random_number_generator.m_state.seed;
 	wavefront_enqueue_path(render_data, 1, pixel_index);

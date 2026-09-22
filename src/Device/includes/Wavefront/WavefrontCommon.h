@@ -58,6 +58,50 @@ HIPRT_DEVICE void wavefront_store_path(HIPRTRenderData& render_data,
 	wavefront_data.path_intersections_found[path_index]		= intersection_found ? 1u : 0u;
 }
 
+// Queue 1 contains only continuing rays. Traversal replaces the material and hit attributes,
+// so only the origin and previous primitive are needed from the shaded surface. Previous
+// surface data needed by deferred MIS remains in its separately persisted context.
+HIPRT_DEVICE void wavefront_store_trace_ray(
+	HIPRTRenderData& render_data, unsigned int path_index, const RayPayload& ray_payload, const hiprtRay& ray, const HitInfo& closest_hit_info)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+
+	wavefront_data.path_throughputs[path_index]				= ray_payload.throughput;
+	wavefront_data.path_ray_colors[path_index]				= ray_payload.ray_color;
+	wavefront_data.path_bounces[path_index]					= ray_payload.bounce;
+	wavefront_data.path_accumulated_roughnesses[path_index] = ray_payload.accumulated_roughness;
+	wavefront_data.path_volume_states[path_index]			= ray_payload.volume_state;
+
+	wavefront_data.path_closest_hit_infos[path_index].inter_point	  = closest_hit_info.inter_point;
+	wavefront_data.path_closest_hit_infos[path_index].primitive_index = closest_hit_info.primitive_index;
+	wavefront_data.path_ray_directions[path_index]					  = Octahedral24BitNormalPadded32b(ray.direction);
+}
+
+HIPRT_DEVICE void wavefront_load_trace_ray(
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+
+	ray_payload.next_ray_state		 = RayState::BOUNCE;
+	ray_payload.volume_state		 = wavefront_data.path_volume_states[path_index];
+	closest_hit_info.inter_point	 = wavefront_data.path_closest_hit_infos[path_index].inter_point;
+	closest_hit_info.primitive_index = wavefront_data.path_closest_hit_infos[path_index].primitive_index;
+	ray.origin						 = closest_hit_info.inter_point;
+	ray.direction					 = wavefront_data.path_ray_directions[path_index].unpack();
+}
+
+// Restore contribution bookkeeping only after traversal, without overwriting its new material
+// or its volume-state updates (including skipped nested-dielectric boundaries).
+HIPRT_DEVICE void wavefront_load_trace_path_bookkeeping(HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+
+	ray_payload.throughput			  = wavefront_data.path_throughputs[path_index];
+	ray_payload.ray_color			  = wavefront_data.path_ray_colors[path_index];
+	ray_payload.bounce				  = wavefront_data.path_bounces[path_index];
+	ray_payload.accumulated_roughness = wavefront_data.path_accumulated_roughnesses[path_index];
+}
+
 HIPRT_DEVICE void wavefront_store_nee_deferred_mis_context(HIPRTRenderData& render_data,
 														   unsigned int path_index,
 														   const NEEDeferredMISContext& nee_deferred_MIS_context)
