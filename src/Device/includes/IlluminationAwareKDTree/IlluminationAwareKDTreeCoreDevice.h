@@ -84,7 +84,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		float first_denominator	 = first_count * first_count * first_count;
 		float second_denominator = second_count * second_count * second_count;
 		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
-						 second_coefficient * second_coefficient * second_numerator / second_denominator;
+								   second_coefficient * second_coefficient * second_numerator / second_denominator;
 		if (!hippt::is_finite(variance))
 			return false;
 		if (variance <= 1.0e-30f)
@@ -342,6 +342,17 @@ struct IlluminationAwareKDTreeCoreDevice
 		training_samples[sample_index] = sample;
 	}
 
+	HIPRT_DEVICE void atomic_add_training_statistic(float* address, float increment)
+	{
+#if defined(__KERNELCC__) && defined(__HIP_PLATFORM_AMD__)
+		// Using HIP atomic intrinsic to circumvent a bad HIP 7.2 codegen for float atomic add that generates a CAS loop that stalls heavily when the first
+		// training batch updates the single root or its first few lookahead children.
+		unsafeAtomicAdd(address, increment);
+#else
+		hippt::atomic_fetch_add_gpu(address, increment);
+#endif // #if defined(__KERNELCC__) && defined(__HIP_PLATFORM_AMD__)
+	}
+
 	HIPRT_DEVICE void atomic_add_illumination_signature(IlluminationAwareKDTreeIlluminationSignature* signatures,
 														unsigned int node_index,
 														float spatial_radiance_weight,
@@ -350,25 +361,25 @@ struct IlluminationAwareKDTreeCoreDevice
 		// b0 counts all valid samples, including samples with L == 0.
 		hippt::atomic_fetch_add_gpu(&signatures[node_index].valid_observation_count, 1u);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].scalar_radiance_sum, spatial_radiance_weight);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].squared_scalar_radiance_sum, spatial_radiance_weight * spatial_radiance_weight);
+		atomic_add_training_statistic(&signatures[node_index].scalar_radiance_sum, spatial_radiance_weight);
+		atomic_add_training_statistic(&signatures[node_index].squared_scalar_radiance_sum, spatial_radiance_weight * spatial_radiance_weight);
 
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.x, spatial_radiance_weight * incoming_direction.x);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.y, spatial_radiance_weight * incoming_direction.y);
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].weighted_direction_sum.z, spatial_radiance_weight * incoming_direction.z);
+		atomic_add_training_statistic(&signatures[node_index].weighted_direction_sum.x, spatial_radiance_weight * incoming_direction.x);
+		atomic_add_training_statistic(&signatures[node_index].weighted_direction_sum.y, spatial_radiance_weight * incoming_direction.y);
+		atomic_add_training_statistic(&signatures[node_index].weighted_direction_sum.z, spatial_radiance_weight * incoming_direction.z);
 	}
 
 	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, unsigned int node_index, float3_t position)
 	{
 		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1u);
 
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.x, position.x);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.y, position.y);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_sum.z, position.z);
+		atomic_add_training_statistic(&moments[node_index].position_sum.x, position.x);
+		atomic_add_training_statistic(&moments[node_index].position_sum.y, position.y);
+		atomic_add_training_statistic(&moments[node_index].position_sum.z, position.z);
 
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.x, position.x * position.x);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.y, position.y * position.y);
-		hippt::atomic_fetch_add_gpu(&moments[node_index].position_squared_sum.z, position.z * position.z);
+		atomic_add_training_statistic(&moments[node_index].position_squared_sum.x, position.x * position.x);
+		atomic_add_training_statistic(&moments[node_index].position_squared_sum.y, position.y * position.y);
+		atomic_add_training_statistic(&moments[node_index].position_squared_sum.z, position.z * position.z);
 	}
 
 	HIPRT_DEVICE void accumulate_sample_into_existing_tree(IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
