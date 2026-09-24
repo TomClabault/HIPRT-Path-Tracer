@@ -22,21 +22,12 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Review the ReSTIR implementation
 // - Remove ReSTIR GI impl
 // - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
 // - Remove ReGIR
 // - Remove RIS LTC estimator
 // - Rename tree cut to light cut everywhere
-// - Move the illumination aware estimator to a sampling technique in the UI, it's more explicit but just keep it as an estimator under the hood for easy code
-//		design
-//
-// IMMEDIATE TODOS:
-//	- Start investigating grid artifacts LTC
-//		----> Because of zero support for non 0 cluster nodes of the tree
-//		---> But now what to do to ensure support without massive high variance? Maybe multiple shading points + a small floor?
-//
 //
 // Ideas for neural importance sampling many lights:
 //	- Splitting in the subtree + RIS
@@ -115,11 +106,7 @@ extern ImGuiLogger g_imgui_logger;
 //
 //
 //
-// - Add a scene statistics panel in the UI, rename "Objects" as "Scene"
 // - Multithread app startup scene loading with kernel compilation
-// - Test MLP kernels with __restrict__ for all pointers, should be faster?
-// - Bugged DI in scandinavian studio? Some fireflies here and there, because of alpha testing?
-// - What if we select the reuse cell based on sum luminance * UCW instead of confidence?
 // - Brightening bias at > 32 neighbors pairwise MIS?
 // - Ray volume state reconstruction @ sample point
 // - Reduce number of NEE candidates (light tree splitting) based on bounce depth
@@ -224,334 +211,6 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the
 // reservoir?
 
-// TODO ReGIR
-// - Can we "compact" the hash grid into a perfect hash grid after a while when we stop adding new cells to the ReGIR grid?
-// - If we increase the grid resolution, can we get away with fewer reservoirs per cell and a larger jittering ardius to basically stay the same in terms of
-// correlations and memory usage and grid fill time but now we have better resolution?
-// - Jitter NEE++ to avoid grid artifacts a bit more?
-// - Increasing both NEE++ and ReGIR resolution looks quite good, but one without the other not so much
-// - For visibility variance in a grid, can we just count how many shadows rays we shoot are occluded? If we get a lot of occluded, that's because our
-// importance sampling is bad and so we need more grid precision there. But what abouts complete shadows though where it's fair to have a lot of occluded?
-// - Maybe something we can do to keep track of visibility variance is to accumulate in each cell of NEE++ a running variance of the visibility of the samples
-//		that fall into that cell, and then use that variance to decide whether or not we want to use visibility in the target function for the samples of that
-//		cell
-// - Cell light distributions don't have to be recomputed every time, they are not invalidated every time.
-// - How to reduce the 2x overhead of light distributions compaction?
-// - Lower resampling shading at later bounces because GI is the main source of variance so let's gain some efficiency there
-// - Can we somehow move the visibility in target function outside of the inner loop of ReGIR because of register pressure?
-// - Is it a big deal for variance / bias if we remove NEE++ from the PDFs of pairwise MIS at shading time?
-// - After NEE++ has accumulated a few samples, can we compress it into a perfect hash table?
-// - Maybe we can return 4 samples from ReGIR and shade them all outside of the resampling loop instead of inside, maybe this will lower register pressure?
-// - Should we keep the average surface normal in each ReGIR cell to help with sampling precision instead of one single surface normal?
-// - Can we accumulate the extent of each grid cell by the point that fall into it and do something useful with the extent?
-// - SG light tree splitting how? Using the same heuristic as K&C 2018 or the heuristic of 2024 RIS tree?
-// - Use cell light distributions not on emissive meshes but light tree nodes?
-// - Add some ui to graph rmse and other metrics over time / over spp and auto output a graph
-// - Can we count per regir grid cell how many shadow rays are occluded at shading time vs shot to get an idea of how bad we're sampling visibility here meaning
-// that we would need more Shadow rays
-// - Disabling light distributions at compile time and enabling them only at runtime is buggued
-// - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
-// - Do we need the whole prepare sampling method to get the PDFs of solid angle 1nd projected solid angle ?
-// - Auto correlation reduction if doing 1 or 2SPPs renders
-// - Autosubdivide NEE++ by having a buffer of 2 bits per cell that gives the subdivision level of NEE++ for that cell
-//		- Subdivide cells that have a high variance in their NEE++ estimate
-// - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that
-// - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for
-// everyone, resampled tree 2024 style
-// - Can we have something that disables the big spherical gaussian stuff when the nodes are small enough (in solid angle)? Because at some point, the spherical
-// gaussian approximation is not needed anymore
-// - Can we extend the tail of the light distributions wxith clusters from the light tree?
-//		Careful about having lights in the head of the light distribution s as well as in clusters, that's doubling the lights
-// - What if we use ReSTIR GI for the first hit and only ReGIR for the secondary hits?
-// - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the
-// target function being used
-// - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
-// - Jitter spatial reuse in tangent plane
-// - Can we re normalize the MIS weights instead of having multi pairwise MIS?
-// - We should be able to include NEE++ in the canonical candidates target function if NEE++ is clamped at > 0
-// - Can we do anthitetic sampling on the light distributions sampling?
-// - Use the light tree for the canonical sample of the light distribution grid fill instead of power sampling
-// - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
-//		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
-// - Find a better NEE++ pre population pass because it samples according to power and so that's bad for caching visibility, important lights are hardly going
-// to be sampled with that
-// - To have a good cell distribution at least for the primary hits (we can probably drop the secondary hits), what about using a screen space mask built with
-// that "good cache placement" paper? That mask could then be used and fetched by the hash function to know whether or not we should subdivide the cell or
-// something
-// - Estimate variance in world space and allocate more neighbor resampling in difficult places: ADDR / EARS?
-// - Let's add a feature to precompute cell distributions over triangles instead of meshes
-// - Should we use the standard canonical samples to defensively cover light distribution bias or should we stick to MIS during grid fill? Canonical samples are
-// probably much higher quality no?
-// - Try hardcoding a lot of constants instead of using RenderData to see if it helps with register & perf
-// - can we save a bunch of registers by using #if instead of rendersettings variable at the heart of ReGIR?
-// - if we want to do a more efficient multi shading, maybe we can do the multi shading using the visibility in target function and not include visibility in
-// bad candidates to save shadow rays (canonical sample + bsdf sample)
-// - visibility_proba = hippt::max(0.1f, visibility_proba); in ReGIR target function.h, should we remove that for canonical candidates because they bring quite
-// a lot of visibility noise when their target function is really high but turns out to be occluded.
-// - Debug with the sampling fallback debug mode because last time I tried I think there was quite a bit of falback even though there shouldn't be any (unless
-// we having missing cells in the grid because of collisions)
-// - Compare shading RIS with vis in target function vs shading all
-//		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function
-// since the cell distributions already have some guarantees?
-// - We should probably retry that idea if inning meshes into directional faves but maybe use something a bit more conservative to avoid the noise that we had
-// before
-//		Why did we have noise before?
-// - Should we have a very light reservoir reuse pass on top of ReGIR to clean things up a bit / help with small details?
-// - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
-//		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of
-// adjacency list of grid cells that are merged into it
-// - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time.
-//		Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that
-// lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision
-// - Can we have variable light distribution size per cell such that the distribution accounts for a max of 97% of the energy or whatever and save VRAM where
-// the light distributions don't have to be so large?
-//		- Can we compress the light distributions such that they hold less than 97% Maybe 95% is enough and doesn't add much variance
-// - Can we maybe have some heuristic on where to do multiple shading? Maybe count how many samples are occluded to detect where visibility is difficult
-// - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time
-// on multiple samples of the light distribution
-// - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
-// - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation
-// for higher triangle count meshes
-// - How to estimate where visibility is difficult in the scene to use visibility in the target function there but no elsewhere where it's not needed? MARS
-// paper maybe?
-// - We should allow jittering of canonical samples but jitter in the tangent plane of the surface to avoid the big variane increase which actually comes from
-// the missed jittered position rather than the jittering of canonical samples themselves
-// - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
-// - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?
-// - Remove the BSDF simple ray test by full ray test if we're shading all samples to avoid shooting 2 rays
-// - Don't store NEE++ entries for very low contribution lights?
-// - Should we separate non-canonical and canonical samples in two different dispatches for the grid fill because there is quite a bit of divergence
-// - Can we somehow incorporate light source normal in the mesh contribution of the cache cells?
-//		Average normal of the mesh at least? To reject totally backfacing lights
-//		What about spherical mesh though? How to sample only from the visible part?
-//			Maybe precompute some characteristics about meshes during scene parsing that gives us an indication of how many faces are facing a particular way
-//(discretize directions) and so we could then fetch that precomputed information during mesh contribution computation 			Should be cheap in memory too so
-// we could have some nice precision there? 			This is basically binning the emissive power of the mesh per each discretized direction, should work
-// well
-// and should fairly easily avoid sampling backfacing triangles
-//
-//			We're also going to need a way to importance sample a triangle on that selected mesh also accounting for backfacing triangles however.
-//			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin
-//(and thus the triangles isnide that bin) based on the shading point's normal
-// - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or
-// something and get a perfect hash table with no probing and no waster memory --> faster and less memory
-//		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash
-// table
-//		- We should probably stop expanding the grid after a few samples anyways, it's not that beneficial it seems for variance ---> run tests on that
-// - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at
-// shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
-// - Would we get good efficiency out of sampling directly from the cell light distributions at each sampling point instead of going through ReGIR? We wouldn't
-// have to go through the whole pairwise MIS stuff and we could just do proper RIS?
-// - How can we blur NEE++?
-// - Can we do something with the hash function that smoothly transitions between one cell to another on curve objects because of the normal? Some kind of
-// stochastic discretization of normal instead to have smooth transitions. Stochastic hash table maybe? --> add some random in the hash function?
-// - Can we compute the light distribution for each cell with like 256 large alias table and then run a visibility pass on those 256 best meshes to make sure
-// they are not occluded? If they are occluded, reject them and have another one take the place. We're basically doing visibility to compute the contributions
-// but only at a really reduced cost
-// - Can we maybe find a compromise in quality perf in cell distributions so that it doesn't take too long to compute by only building the distribution on the N
-// most powerful meshes only instead of all? So don't compute contributions for all the meshes of the scene but only the most important ones? What about small
-// lights very close to surfaces though :( Maybe handled okay by BSDF MIS?
-// - Can we do some warp wide reordering when sampling lights during the grid fill?
-//		If multiple threads of a warp sample the same lights, we would light these accesses to be coalesced, so we reorder / sort by light index before fetching
-// light data
-// - Can we cache some things in ReGIR to avoid repopulating / re integrating etc... if we can actually still keep the pre pop, pre int�gration etc... Results
-// of last time? Enabling/disabling GMoN for example resets the render but doesn't invalidate the pre-population / etc...
-// - Remove freeze random feature
-// - Remove debug kernel feature
-// - Can we refine the light distributions at each cell based on the sampling done at runtime?
-// - Can we do some sort of spatial reuse on the light distributions? We do 10 samples per mesh per cell and then share those samples somehow?
-// - Automatic cell resolution to reach a given cell count target and exploit more quality at the cost of some perf?
-// - Cache cells - Include the average mesh normal ion the computaion? could easily reject meshes that are totally backfacing us
-// - Should we always sample a few triangles on each mesh when computing the contributions? To get a better estimate of the mesh's contribtunio
-// - Rename random_number_generator into rng everywhere
-// - ReGIR rename per cell alias tables into per cell light distributions everywhere
-// - Remove RNG argument from bsdf_dispatcher_eval(), not needed anymore since we don't the on-the-fly monte carlo integration anymore
-// - NEE++ seems broken, worked better before
-// - Jitter NEE++ just a little bit to get rid of grid artifacts at the cost of some variance
-// - Jitter ReGIR for shading and spatial reuse only in the tangent plane of the surface instead of randomly
-// - Is NEE++ prepoluation actually useful? Because it just samples lights at random so it's really meh
-//		Should probably rearchitecture the thing to run after ReGIR has sampled lights so that we have a better idea of where the lights are and accumulate
-// visibility information for the relevant lights
-//
-//		We'd have to relaunch the regir grid fill after that though to benefit from the better visibility estimates
-// - Should we remove NEE++ from global light visibility caching and instead only have it for the best candidate lights of ReGIR light distributions?
-// - We should have a mean of updating the light distributions at each cell because NEE++ is going to get better with time so we want to update the
-// distributions
-// - Can we group light triangles by their meshes and pre-compute a CDF per each grid cell for which meshes are the best one for that grid cell.
-//		- We would then use that CDF during the grid fill to resample a good mesh and then resample a good triangle in that mesh
-//		- We'er going to have a similar "CDF per cell" situation as "Cache Points" from Disney some maybe there are going to be some ideas to pick from their
-// CDF blending / visibility integration etc...
-// - Store target function in reservoir to avoid recomputing it during pairwise MIS shading resampling?
-// - Stochastic light culling harada et al to improve base candidate sampling
-// - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006
-// - Can we have a lightweight light rejection (russian roulette) method in the grid fill? So even if we have 32 candidates per grid fill cell, if a light is
-// evidently too far away to contribute, we can reject it and not count that as a try from our 32 tries. The rejection test needs to be lightweight such that it
-// is significantly less expensive than doing a full candidate
-//		- To make the rejection lightweight, can we have a luminance of emission baked into our materials such that we can simply check the luminance of the
-// light (one float fetch) instead of the full RGB color which would be 3 float fetchtes. Maybe that would be faster
-// - Increased the number of shading retries?
-// - NEE++ compaction: we only need uchar per value, not uint
-// - Can we shade only the 4 non canonical neighbors + the final reservoir instead of shading everyone?
-//		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
-// - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting
-// because of the lack of pre integration information
-// - Can we use NEE++ visibility estimates to improve shading of multiple reservoirs? This may be biased but maybe not too bad?
-// - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
-// - Can we evaluate the ratio between the UCW and the final contribution? If the ratio is higher than a threshold then that's an outlier / Firefly and we may
-// want to skip it attenuate it
-// - Can we do many many more samples per each reservoir during the pre integration pass (and thus have less reservoirs per cell) to improve the quality of the
-// integral estimate with less reservoirs and less integration iterations?
-// - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for
-// good samples quality
-// - NEE++ maximum load factor to avoid the hash grid being totally filled and performance dying because of that
-// - Can we randomize the hash of grid cells to avoid correlations? Basically subdivide each grid cell into 2/3/4/... grid cells and randomly assign the space
-// of the main grid cell to either 1/2/3/... of the sub such that correlation aretifacts are basically randomized and do not look bad
-// - Can we compute the "gradient" of cell occupancy of the grid to adjust the factor by which we resize the grid every time? To avoid overshooting too much and
-// having a resized grid that is too large
-// - Can we just use the 32 reservoirs for shading as the input to the pre integration process? Is that enough for an accurate integral estimate?
-// - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor
-// - No need to read random reservoirs in the pre integration kernel, we can just read the reservoirs one by one of each grid cell and integrate them all.
-//		- Opens up possibilities for coalescing the reads of the reservoirs in the pre integration kernel
-// - Super large resolution on surfaces that do not allow light sampling for the hash grid since we do not need ReGIR here
-// - We need a special path for ReGIR, hard to use as a light sampling plug in, lots of opti to do with a special path
-// - Variable jitter radius basezd on cell size
-// - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
-// - Only need 1 bit per cell here for 'grid cells alive': whether or not a given grid cell is alive
-// - Quantize ahsh grid cell data .sum_points: we don't need the precision since this is just an average for getting an approximate center of cell
-// - Light to light grid cells should be cached in the same hash cell entry
-// - Reintroduce temporal reuse but maybe with a small M-cap, should be worth it on difficult scenes, the many lights bistro for example
-// - Limit the grid cell life length of NEE++ if it hasn't been hit in a long time
-// - Limit the grid cell life length of ReGIR if it hasn't been hit in a long time
-// - Multiple spatial reuse passes
-// - We can deallocate the emissive triangle index of the ReGIR reservoir if not using direct-light reuse
-// - Should we have something to limit the life length of an NEE++ grid cell? So that we can remove cells unused and keep the grid size in check
-// - Trry to disable canonical and see if it converges quicker
-//		- It does -----> We need to find some better MIS weights for the canonical sample
-//		- Try to downweigjt canonical MIS weight instead of 1 / M
-// - Interrupt target function evaluation in ReGIR if the cosine term drops to zero such that we don't fill the NEE hash grid if the light is back facing for
-// example
-// - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
-// - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
-//		- Maybe only that for primary hit reservoirs because those are the only one to be correlated hard?
-// - Have a variable radius when picking reservoirs for shading
-// - Issue with microfacet regularization x ReGIR?
-// - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
-// - Scalarization of the hash grid fetches for the camera rays?
-// - We can optimize the grid cell aliv ecounter atomic increment by incrementing by the number of threads in the wavefront instead of 1 per thread
-// - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
-// - To profile the hash grid, may be useful to, for example, store everything from the camera rays pass into some buffers and then run a separate hash grid
-// cell data fill kernel just to be able to profile that kernel in isolation
-// - For the spatial reuse output grid buffer, we don't have to store the rservoirs, we can just store the indices of the cell which we resample from so let's
-// save some VRAM there
-// - Can we store just the light index per each regir sample? And reconstruct, the normal and everything from that? Maybe that's not going to be much more
-// expensive that having to read everything from the Regir sample but this would save a lot of memory
-// - Directional spatial reuse to directly hit the right neighbors instead of having to retry multiple times (one memory access for each retry)
-// - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the
-// divergence
-// - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the
-// samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
-// - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more
-// - When computing the MIS weights by counting the neighbors, we actually don't need the full target function with the emission and everything, we just need
-// the cosine term and shadow ray probably
-// - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
-//		May be exclusive with the BSDF simplifications that can be done in the target function because then we wouldn't be evaluating the proper full BSDF in
-// the target function
-// - Can we have some kind of visibility percentage grid that we can use during the resampling to help with visibility noise?
-//		- We would have a voxel grid on top of the ReGIR grid.
-//		- That grid would contain as many floats per cell as there are reservoirs per cell in ReGIR
-//		- Each one of these floats would contain a percentage of visibility for the corresponding reservoir index of the cell
-//		- The visibility percentage would be computed by averaging the successful visibility rays traced during shading
-//			- The issue is that the reservoirs aren't persistent so any data accumulated will be discarded at the next frame when
-//			- the grid is rebuilt
-//
-//			- We would need a prepass at lower resolution, same as for radiance caching?
-//			- Maybe we can keep the grids of past frames to help with that?
-// - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must
-// be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
-//		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of
-// the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow
-// rays from onwards, that way we're always tracing from a valid surface in the grid cell
-//		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term
-// - For performance, at shading time when resampling the reservoirs, there may be only a few materials that benefit from the BSDF in the resampling target
-// function because lambertian doesn't care, mirrors don't care, specular don't care, really it's only materials at like 0.3 roughness ish
-// - Looking at the average contribution of cells seems to be giving some good metric on the performance of the sampling per cell no? What can we do with that
-// info? Adaptive sampling somehow?
-//		Maybe we can adaptively adapt the number of samples per grid cell during grid fill with that
-// - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
-// - NEE++ mix up to help with visibility sampling?
-// - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
-// - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without
-// destroying the L1 for the rest of the kernels?
-// - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
-// - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
-// - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
-// - Can we use reservoir samples to fill the ReGIR grid? ---> Doesn't work at later bounces though
-// - Can we start another grid fill in parallel of the mega kernel after the spatial reuse such that we overlap some work and don't have to do the grid fill at
-// the next frame
-//		- We can even decouple the spatial reuse with the visibility pass of it and launch the grid fill during the visibility pass of teh spatial reuse
-// - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
-// - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of
-// artifacts (which would be grid cell size otherwise)
-// - Is there something to do with a wavefront architecture when tracing shadow rays at the end of the spatial reuse or something? Do we want maybe to dispatch
-// kernels together for tracing from a given cell?
-// - Maybe we can do some double buffering on the grid to be able to spatially reuse WHILE generating the gri fill: we would run the grid fill and fill grid 1
-// while spatially reusing on grid 2 which was filled last frame
-//		The hope being that the computations can overlap a bit with the ray traversal
-//		We can just test that tehroretically and see if that helps performance at all
-// - Can we do something with the time per grid cell ray? To try and reduce this "long tails" effect
-//		- Maybe what we can do here is compact the hard threads together so that we are able to launch all the light rays together and avoid divergence between
-// light and heavy rays
-// - Gather some information of how many light samples are rejected because of visibility to get a feel for how much can be gained with NEE++
-//		- Also incorporate back facing lights info
-
-// TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
-// - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
-// - ReSTIR only load the rest of the reservoir if its UCW isn't 0
-
-// TODO performance improvements branch:
-// - FP16 wherever possible
-// - NEE++ shadow-ray visibility queries
-// - Use semi packed material in the shaders with unorm floats as uchar instead of full float, unpacing should be cheap and easy for those so we may gain
-// something
-// - Thread swizzling for loading/storing Gbuffer/screen space info because at the moment 8x8 blocks do not coalesce fully accross the 32-wide warps: we only
-// get coalescing on [8, 8, 8, 8] threads, 4x slower
-// - Pack stuff in LightSamplePointInformation
-// - Pass is_srgb as template parameter to texture sample function to avoid the register cost of the pow() call enclosed in a simple if()
-// - Remove all raw cos() and sin() calls (we've got some in microfacet.h)
-// - Cache we maybe have some kind of adaptive sampling for the lighting at the primary hit? So like run reservoir reuse or something until some variance is
-// reached for DI and then stop sampling DI and only sample DI
-//		- For that we would need 2 buffers:
-//			A) 1 buffer that accumulates the NEE estimator at the primary hit
-//			B) 1 buffer that accumulates the GI (later hits NEE with the BSDF term at the primary hit
-//				- The image that we display is A) + B)
-// - Vertex cache optimization buffer arrangement for better triangle pairing and better tracing performance?
-// - Thread is swizzling (reorder ray invocations)
-// https://github.com/BoyBaykiller/IDKEngine/blob/95a15c1db02f11bd2f47bb81bcfccf0943d3e703/IDKEngine/Resource/Shaders/PathTracing/FirstHit/compute.glsl#L206
-// - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance
-// - Have a look at reweghing fireflies for Monte Carlo instead of Gmon so we can remove fireflies unbiasedly without the darkening
-// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
-//		- Do that after wavefront because wavefront may solve the issue
-// - also reuse BSDF mis ray of envmap MIS
-// - We do not need the nested dielecttrics stack management in the camera rays kernel
-// - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a
-// single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...
-// - If hitting the same material as before, don't load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to
-// overweight everything else and the light sample is going to have a MIS weight of 0 anyways
-// - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
-// - texture compression
-// - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect
-// fetch?
-// - limit  number of bounces based on material type
-// - use material SoA in GBuffer and only load what's necessary (i.e. not the thin film and all of that if the material isn't using thin-film, ...)
-// - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
-// - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
-//
-// ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
-// - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
-// - merge camera rays and path tracer?
-// - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
-// ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 //
 // ------------------- DO AFTER WAVEFRONT -------------------
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
@@ -570,6 +229,9 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Stochastic vertex NEE: do NEE at only one vertex of the path but choose that vertex probalistically to avoid bias. The question is then how to choose the
+// vertex probability correctly? NEE-only radiance cache?
+// - Radiance cache somehow, have a look at what HouseOfCards is doing, looks pretty good
 // - Neural incident radiance cache
 // - Use the neural incident radiance cache to do specular reflections resampling with ReSTIR: when resampling a specular neighbor, estimate target function at
 // center with BSDF_center * incident_radiance_cache_direction_of_neighbor_same_random_seed
