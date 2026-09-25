@@ -21,6 +21,8 @@ struct RayVolumeState
 	 * would call the constructor and reinitialize the whole nested dielectrics stack.
 	 */
 	HIPRT_HOST_DEVICE RayVolumeState()
+		: distance_in_volume(0.0f), incident_mat_index(NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX),
+		  outgoing_mat_index(NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX), inside_material(false), sampled_wavelength(0.0f)
 	{
 		for (int i = 0; i < NestedDielectricsStackSize; i++)
 		{
@@ -31,6 +33,9 @@ struct RayVolumeState
 			interior_stack.stack_entries[i].set_material_index(NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX);
 		}
 	}
+
+	// The wavefront restoration path overwrites the complete state before using it.
+	HIPRT_HOST_DEVICE explicit RayVolumeState(NoInitTag) {}
 
 	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material,
 												 int* material_indices_buffer,
@@ -57,14 +62,14 @@ struct RayVolumeState
 	}
 
 	// How far has the ray traveled in the current volume.
-	float distance_in_volume = 0.0f;
+	float distance_in_volume;
 	// The stack of materials being traversed. Used for nested dielectrics handling
 	NestedDielectricsInteriorStack interior_stack;
 	// Indices of the material we were in before hitting the current dielectric surface
-	int incident_mat_index = NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX;
-	int outgoing_mat_index = NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX;
+	int incident_mat_index;
+	int outgoing_mat_index;
 	// Whether or not we're exiting a material
-	bool inside_material = false;
+	bool inside_material;
 
 	// For spectral dispersion. A random wavelength is sampled and replaces this value
 	// when a glass object is hit. This wavelength can then be used to determine the IOR
@@ -75,7 +80,7 @@ struct RayVolumeState
 	//
 	// If this value is negative, this is because the ray throughput filter hasn't been applied
 	// yet. If the value is positive, the filter has been applied
-	float sampled_wavelength = 0.0f;
+	float sampled_wavelength;
 };
 
 #endif // #ifndef DEVICE_RAY_VOLUME_STATE_H
