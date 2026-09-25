@@ -688,6 +688,156 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 		return out;
 	}
 
+	// Writes into a freshly default-constructed material so inactive-lobe parameters retain their defaults.
+	HIPRT_DEVICE void read_partial_effective_material(int material_index, DeviceUnpackedEffectiveMaterial& out_material) const
+	{
+		if (!this->get_emissive_texture_used(material_index))
+			out_material.set_raw_emission(this->get_emission(material_index));
+
+		out_material.set_emission_strength(this->get_emission_strength(material_index));
+
+		{
+			unsigned int base_color_texture_index = this->get_base_color_texture_index(material_index);
+			if (MaterialUtils::use_base_color_texture(base_color_texture_index))
+				out_material.base_color = this->get_base_color(material_index);
+		}
+
+		{
+			unsigned int roughness_texture_index		  = this->get_roughness_texture_index(material_index);
+			unsigned int roughness_metallic_texture_index = this->get_roughness_metallic_texture_index(material_index);
+			if (MaterialUtils::use_roughness_texture(roughness_texture_index, roughness_metallic_texture_index))
+				out_material.roughness = this->get_roughness(material_index);
+		}
+
+		out_material.oren_nayar_sigma = this->get_oren_nayar_sigma(material_index);
+
+		{
+			unsigned int metallic_texture_index			  = this->get_metallic_texture_index(material_index);
+			unsigned int roughness_metallic_texture_index = this->get_roughness_metallic_texture_index(material_index);
+			bool use_metallic_texture					  = MaterialUtils::use_metallic_texture(metallic_texture_index, roughness_metallic_texture_index);
+
+			if (use_metallic_texture)
+				out_material.metallic = this->get_metallic(material_index);
+
+			if (out_material.metallic > 0.0f || !use_metallic_texture)
+			{
+				out_material.metallic_F90_falloff_exponent = this->get_metallic_F90_falloff_exponent(material_index);
+				out_material.metallic_F82				   = this->get_metallic_F82(material_index);
+				out_material.metallic_F90				   = this->get_metallic_F90(material_index);
+
+				out_material.second_roughness_weight = this->get_second_roughness_weight(material_index);
+				out_material.second_roughness		 = this->get_second_roughness(material_index);
+				out_material.retro_reflection		 = this->get_retro_reflection(material_index);
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
+				out_material.do_metallic_energy_compensation = this->get_do_metallic_energy_compensation(material_index);
+#endif
+			}
+		}
+
+		{
+			unsigned int anisotropic_texture_index = this->get_anisotropic_texture_index(material_index);
+			if (MaterialUtils::use_anisotropy_texture(anisotropic_texture_index))
+				out_material.anisotropy = this->get_anisotropy(material_index);
+			out_material.anisotropy_rotation = this->get_anisotropy_rotation(material_index);
+		}
+
+		{
+			unsigned int specular_texture_index = this->get_specular_texture_index(material_index);
+			bool use_specular_texture			= MaterialUtils::use_specular_texture(specular_texture_index);
+
+			if (use_specular_texture)
+				out_material.specular = this->get_specular(material_index);
+			if (out_material.specular > 0.0f || !use_specular_texture)
+			{
+				out_material.specular_tint		= this->get_specular_tint(material_index);
+				out_material.specular_color		= this->get_specular_color(material_index);
+				out_material.specular_darkening = this->get_specular_darkening(material_index);
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
+				out_material.do_specular_energy_compensation = this->get_do_specular_energy_compensation(material_index);
+#endif
+			}
+		}
+
+		{
+			unsigned int coat_texture_index = this->get_coat_texture_index(material_index);
+			bool use_coat_texture			= MaterialUtils::use_coat_texture(coat_texture_index);
+
+			if (use_coat_texture)
+				out_material.coat = this->get_coat(material_index);
+			if (out_material.coat > 0.0f || !use_coat_texture)
+			{
+				out_material.coat_medium_absorption	  = this->get_coat_medium_absorption(material_index);
+				out_material.coat_medium_thickness	  = this->get_coat_medium_thickness(material_index);
+				out_material.coat_roughness			  = this->get_coat_roughness(material_index);
+				out_material.coat_roughening		  = this->get_coat_roughening(material_index);
+				out_material.coat_darkening			  = this->get_coat_darkening(material_index);
+				out_material.coat_anisotropy		  = this->get_coat_anisotropy(material_index);
+				out_material.coat_anisotropy_rotation = this->get_coat_anisotropy_rotation(material_index);
+				out_material.coat_ior				  = this->get_coat_ior(material_index);
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
+				out_material.do_coat_energy_compensation = this->get_do_coat_energy_compensation(material_index);
+#endif
+			}
+		}
+
+		{
+			unsigned int sheen_texture_index = this->get_sheen_texture_index(material_index);
+			bool use_sheen_texture			 = MaterialUtils::use_sheen_texture(sheen_texture_index);
+
+			if (use_sheen_texture)
+				out_material.sheen = this->get_sheen(material_index);
+			if (out_material.sheen > 0.0f || !use_sheen_texture)
+			{
+				out_material.sheen_roughness = this->get_sheen_roughness(material_index);
+				out_material.sheen_color	 = this->get_sheen_color(material_index);
+			}
+		}
+
+		out_material.ior				  = this->get_ior(material_index);
+		out_material.diffuse_transmission = this->get_diffuse_transmission(material_index);
+
+		{
+			unsigned int specular_transmission_texture_index = this->get_specular_transmission_texture_index(material_index);
+			bool use_specular_transmission_texture			 = MaterialUtils::use_specular_transmission_texture(specular_transmission_texture_index);
+
+			if (use_specular_transmission_texture)
+				out_material.specular_transmission = this->get_specular_transmission(material_index);
+			if (out_material.specular_transmission > 0.0f || !use_specular_transmission_texture)
+			{
+				out_material.dispersion_scale		= this->get_dispersion_scale(material_index);
+				out_material.dispersion_abbe_number = this->get_dispersion_abbe_number(material_index);
+				out_material.thin_walled			= this->get_thin_walled(material_index);
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
+				out_material.do_glass_energy_compensation = this->get_do_glass_energy_compensation(material_index);
+#endif
+			}
+
+			if (out_material.specular_transmission > 0.0f || out_material.diffuse_transmission > 0.0f || !use_specular_transmission_texture)
+			{
+				out_material.absorption_at_distance = this->get_absorption_at_distance(material_index);
+				out_material.absorption_color		= this->get_absorption_color(material_index);
+			}
+		}
+
+		out_material.thin_film = this->get_thin_film(material_index);
+		if (out_material.thin_film > 0.0f)
+		{
+			out_material.thin_film_ior				 = this->get_thin_film_ior(material_index);
+			out_material.thin_film_thickness		 = this->get_thin_film_thickness(material_index);
+			out_material.thin_film_kappa_3			 = this->get_thin_film_kappa_3(material_index);
+			out_material.thin_film_hue_shift_degrees = this->get_thin_film_hue_shift_degrees(material_index);
+			out_material.thin_film_base_ior_override = this->get_thin_film_base_ior_override(material_index);
+			out_material.thin_film_do_ior_override	 = this->get_thin_film_do_ior_override(material_index);
+		}
+
+		out_material.alpha_opacity = this->get_alpha_opacity(material_index);
+		out_material.set_dielectric_priority(this->get_dielectric_priority(material_index));
+	}
+
 	Uint2xPacked* normal_map_emission_index = nullptr;
 	// If the roughness_metallic texture index is not MaterialConstants::NO_TEXTURE,
 	// then there is only one texture for the metallic and the roughness parameters in which.

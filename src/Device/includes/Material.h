@@ -246,4 +246,115 @@ HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, 
 	return read_data<T>(rgba);
 }
 
+HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
+														int material_index,
+														float2_t texcoords,
+														DeviceUnpackedEffectiveMaterial& out_material)
+{
+	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+	materials_buffer_soa.read_partial_effective_material(material_index, out_material);
+
+	if (render_data.bsdfs_data.white_furnace_mode)
+		out_material.base_color = ColorRGB32F(1.0f);
+	else
+	{
+#if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
+		unsigned int base_color_texture_index = materials_buffer_soa.get_base_color_texture_index(material_index);
+		if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
+		{
+			float trash_alpha;
+			out_material.base_color = get_base_color(render_data, trash_alpha, texcoords, base_color_texture_index);
+		}
+#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
+	}
+
+	// Reading some parameters from the textures
+#if UseMaterialTextures == KERNEL_OPTION_TRUE
+	{
+		unsigned int roughness_metallic_texture_index = materials_buffer_soa.get_roughness_metallic_texture_index(material_index);
+		unsigned int roughness_texture_index		  = materials_buffer_soa.get_roughness_texture_index(material_index);
+		unsigned int metallic_texture_index			  = materials_buffer_soa.get_metallic_texture_index(material_index);
+
+		float2_t roughness_metallic =
+			get_metallic_roughness(render_data, texcoords, metallic_texture_index, roughness_texture_index, roughness_metallic_texture_index);
+		if (roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
+		{
+			// Merged roughness metallic texture
+			out_material.roughness = roughness_metallic.x;
+			out_material.metallic  = roughness_metallic.y;
+		}
+		else
+		{
+			// Separate roughness / metallic texture
+			if (roughness_texture_index != MaterialConstants::NO_TEXTURE)
+				out_material.roughness = roughness_metallic.x;
+
+			if (metallic_texture_index != MaterialConstants::NO_TEXTURE)
+				out_material.metallic = roughness_metallic.y;
+		}
+	}
+
+	{
+		unsigned int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+		if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
+			out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
+	}
+
+	{
+		unsigned int specular_texture_index = materials_buffer_soa.get_specular_texture_index(material_index);
+		if (specular_texture_index != MaterialConstants::NO_TEXTURE)
+			out_material.specular = read_material_texture<float>(render_data, texcoords, specular_texture_index, false);
+	}
+
+	{
+		unsigned int coat_texture_index = materials_buffer_soa.get_coat_texture_index(material_index);
+		if (coat_texture_index != MaterialConstants::NO_TEXTURE)
+			out_material.coat = read_material_texture<float>(render_data, texcoords, coat_texture_index, false);
+	}
+
+	{
+		unsigned int sheen_texture_index = materials_buffer_soa.get_sheen_texture_index(material_index);
+		if (sheen_texture_index != MaterialConstants::NO_TEXTURE)
+			out_material.sheen = read_material_texture<float>(render_data, texcoords, sheen_texture_index, false);
+	}
+
+	{
+		unsigned int specular_transmission_texture_index = materials_buffer_soa.get_specular_transmission_texture_index(material_index);
+		if (specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
+			out_material.specular_transmission = read_material_texture<float>(render_data, texcoords, specular_transmission_texture_index, false);
+	}
+#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
+
+	{
+		unsigned int emission_texture_index = materials_buffer_soa.get_emission_texture_index(material_index);
+		if (emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
+			out_material.set_raw_emission(read_material_texture<ColorRGB32F>(render_data, texcoords, emission_texture_index, false));
+	}
+
+	// Roughening of the base roughness and second metallic roughness based
+	// on the coat roughness. This should be precomputed instead of being done here
+	//
+	// Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
+	float coat_roughening = out_material.coat_roughening;
+	if (out_material.coat > 0.0f && coat_roughening > 0.0f)
+	{
+		float base_roughness = out_material.roughness;
+		float coat_roughness = out_material.coat_roughness;
+
+		// Roughening of the base roughness of the material based on the coat roughness
+		float target_base_roughness	   = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
+		float roughened_base_roughness = hippt::lerp(base_roughness, target_base_roughness, out_material.coat);
+		out_material.roughness		   = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
+
+		if (out_material.second_roughness_weight > 0.0f)
+		{
+			// Roughening of the second metallic roughness based on the coat roughness
+			float second_roughness				   = out_material.second_roughness;
+			float target_second_metal_roughness	   = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
+			float roughened_second_metal_roughness = hippt::lerp(second_roughness, target_second_metal_roughness, out_material.coat);
+			out_material.second_roughness		   = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
+		}
+	}
+}
+
 #endif // #ifndef DEVICE_MATERIAL_H

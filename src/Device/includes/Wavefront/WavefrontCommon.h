@@ -18,8 +18,24 @@
 #include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void wavefront_load_secondary_shade_path(
-	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info, bool& intersection_found)
+HIPRT_DEVICE void wavefront_load_secondary_material_state(
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, HitInfo& closest_hit_info, bool& intersection_found)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+
+	intersection_found		 = wavefront_data.path_intersections_found[path_index] != 0;
+	ray_payload.volume_state = wavefront_data.path_volume_states[path_index];
+
+	if (intersection_found)
+	{
+		HitInfo& stored_closest_hit_info = wavefront_data.path_closest_hit_infos[path_index];
+		closest_hit_info.primitive_index = stored_closest_hit_info.primitive_index;
+		closest_hit_info.texcoords		 = stored_closest_hit_info.texcoords;
+	}
+}
+
+HIPRT_DEVICE void wavefront_load_secondary_shading_state(
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
@@ -28,12 +44,15 @@ HIPRT_DEVICE void wavefront_load_secondary_shade_path(
 	ray_payload.next_ray_state		  = RayState::BOUNCE;
 	ray_payload.bounce				  = wavefront_data.path_bounces[path_index];
 	ray_payload.accumulated_roughness = wavefront_data.path_accumulated_roughnesses[path_index];
-	ray_payload.volume_state		  = wavefront_data.path_volume_states[path_index];
 
-	closest_hit_info   = wavefront_data.path_closest_hit_infos[path_index];
-	intersection_found = wavefront_data.path_intersections_found[path_index] != 0;
-	ray.origin		   = closest_hit_info.inter_point;
-	ray.direction	   = wavefront_data.path_ray_directions[path_index].unpack();
+	HitInfo& stored_closest_hit_info	 = wavefront_data.path_closest_hit_infos[path_index];
+	closest_hit_info.inter_point		 = stored_closest_hit_info.inter_point;
+	closest_hit_info.shading_normal		 = stored_closest_hit_info.shading_normal;
+	closest_hit_info.geometric_normal	 = stored_closest_hit_info.geometric_normal;
+	closest_hit_info.geometry_backfacing = stored_closest_hit_info.geometry_backfacing;
+
+	ray.origin	  = closest_hit_info.inter_point;
+	ray.direction = wavefront_data.path_ray_directions[path_index].unpack();
 }
 
 HIPRT_DEVICE void wavefront_store_trace_result(HIPRTRenderData& render_data,
