@@ -14,10 +14,8 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 ColorRGB32F,
 											 ColorRGB32F,
 											 Octahedral24BitNormalPadded32b,
-											 unsigned int,
 											 int,
 											 float,
-											 DeviceUnpackedEffectiveMaterial,
 											 HitInfo,
 											 unsigned int,
 											 unsigned int,
@@ -33,10 +31,8 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_PATH_THROUGHPUTS,
 	WAVEFRONT_PATH_RAY_COLORS,
 	WAVEFRONT_PATH_RAY_DIRECTIONS,
-	WAVEFRONT_PATH_NEXT_RAY_STATES,
 	WAVEFRONT_PATH_BOUNCES,
 	WAVEFRONT_PATH_ACCUMULATED_ROUGHNESSES,
-	WAVEFRONT_PATH_MATERIALS,
 	WAVEFRONT_PATH_CLOSEST_HIT_INFOS,
 	WAVEFRONT_PATH_INTERSECTIONS_FOUND,
 	WAVEFRONT_PATH_RNG_STATES,
@@ -89,10 +85,8 @@ struct WavefrontDataHost
 		wavefront_data_device.path_throughputs			   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_THROUGHPUTS>();
 		wavefront_data_device.path_ray_colors			   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RAY_COLORS>();
 		wavefront_data_device.path_ray_directions		   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RAY_DIRECTIONS>();
-		wavefront_data_device.path_next_ray_states		   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_NEXT_RAY_STATES>();
 		wavefront_data_device.path_bounces				   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_BOUNCES>();
 		wavefront_data_device.path_accumulated_roughnesses = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_ACCUMULATED_ROUGHNESSES>();
-		wavefront_data_device.path_materials			   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_MATERIALS>();
 		wavefront_data_device.path_closest_hit_infos	   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_CLOSEST_HIT_INFOS>();
 		wavefront_data_device.path_intersections_found	   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_INTERSECTIONS_FOUND>();
 		wavefront_data_device.path_rng_states			   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RNG_STATES>();

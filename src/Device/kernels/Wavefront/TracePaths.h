@@ -41,46 +41,8 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 	Xorshift32Generator random_number_generator(render_data.wavefront_data.path_rng_states[pixel_index]);
 	bool intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, trace_payload, closest_hit_info, random_number_generator);
 
-	RayPayload ray_payload(trace_payload.volume_state);
-	wavefront_load_trace_path_bookkeeping(render_data, pixel_index, ray_payload);
-	if (intersection_found)
-	{
-		int material_index	 = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-		ray_payload.material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
-
-		if (ray_payload.material.dispersion_scale > 0.0f && ray_payload.material.specular_transmission > 0.0f &&
-			ray_payload.volume_state.sampled_wavelength == 0.0f)
-			// If we hit a dispersive material, we sample the wavelength that will be used
-			// for computing the wavelength dependent IORs used for dispersion
-			//
-			// We're also not re-doing the sampling if a wavelength has already been sampled for that path
-			//
-			// Negating the wavelength to indicate that the throughput filter of the wavelength
-			// hasn't been applied yet (applied in principled_glass_eval())
-			ray_payload.volume_state.sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
-	}
-
-	NEEDeferredMISContext nee_deferred_MIS_context;
-	wavefront_load_nee_deferred_mis_context(render_data, pixel_index, nee_deferred_MIS_context);
-
-	ray_payload.ray_color +=
-		do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, nee_deferred_MIS_context, random_number_generator);
-
-	if (!intersection_found)
-	{
-		int x = static_cast<int>(pixel_index % render_data.render_settings.render_resolution.x);
-		int y = static_cast<int>(pixel_index / render_data.render_settings.render_resolution.x);
-
-		ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
-		ray_payload.next_ray_state = RayState::MISSED;
-
-		wavefront_finalize_path_with_context(render_data, pixel_index, x, y, ray_payload, ray, closest_hit_info, random_number_generator,
-											 nee_deferred_MIS_context, true);
-		return;
-	}
-
-	wavefront_store_path(render_data, pixel_index, ray_payload, ray, closest_hit_info, intersection_found);
-	render_data.wavefront_data.path_rng_states[pixel_index] = random_number_generator.m_state.seed;
+	wavefront_store_trace_result(render_data, pixel_index, trace_payload.volume_state, closest_hit_info, intersection_found,
+								 random_number_generator.m_state.seed);
 	wavefront_enqueue_path(render_data, 0, pixel_index);
 }
 

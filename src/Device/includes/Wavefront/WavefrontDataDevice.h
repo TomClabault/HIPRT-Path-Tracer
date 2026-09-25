@@ -20,16 +20,14 @@ struct WavefrontDataDevice
 	ColorRGB32F* path_ray_colors						= nullptr;
 	Octahedral24BitNormalPadded32b* path_ray_directions = nullptr;
 
-	unsigned int* path_next_ray_states	= nullptr;
 	int* path_bounces					= nullptr;
 	float* path_accumulated_roughnesses = nullptr;
 
-	DeviceUnpackedEffectiveMaterial* path_materials = nullptr;
-	HitInfo* path_closest_hit_infos					= nullptr;
-	unsigned int* path_intersections_found			= nullptr;
-	unsigned int* path_rng_states					= nullptr;
-	RayVolumeState* path_volume_states				= nullptr;
-	void* path_nee_deferred_mis_contexts			= nullptr;
+	HitInfo* path_closest_hit_infos		   = nullptr;
+	unsigned int* path_intersections_found = nullptr;
+	unsigned int* path_rng_states		   = nullptr;
+	RayVolumeState* path_volume_states	   = nullptr;
+	void* path_nee_deferred_mis_contexts   = nullptr;
 
 	unsigned int* path_queues[2]			  = { nullptr, nullptr };
 	AtomicType<unsigned int>* queue_counts[2] = { nullptr, nullptr };

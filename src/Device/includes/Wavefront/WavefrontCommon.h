@@ -18,17 +18,16 @@
 #include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void wavefront_load_path(
+HIPRT_DEVICE void wavefront_load_secondary_shade_path(
 	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info, bool& intersection_found)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
 	ray_payload.throughput			  = wavefront_data.path_throughputs[path_index];
 	ray_payload.ray_color			  = wavefront_data.path_ray_colors[path_index];
-	ray_payload.next_ray_state		  = static_cast<RayState>(wavefront_data.path_next_ray_states[path_index]);
+	ray_payload.next_ray_state		  = RayState::BOUNCE;
 	ray_payload.bounce				  = wavefront_data.path_bounces[path_index];
 	ray_payload.accumulated_roughness = wavefront_data.path_accumulated_roughnesses[path_index];
-	ray_payload.material			  = wavefront_data.path_materials[path_index];
 	ray_payload.volume_state		  = wavefront_data.path_volume_states[path_index];
 
 	closest_hit_info   = wavefront_data.path_closest_hit_infos[path_index];
@@ -37,25 +36,19 @@ HIPRT_DEVICE void wavefront_load_path(
 	ray.direction	   = wavefront_data.path_ray_directions[path_index].unpack();
 }
 
-HIPRT_DEVICE void wavefront_store_path(HIPRTRenderData& render_data,
-									   unsigned int path_index,
-									   const RayPayload& ray_payload,
-									   const hiprtRay& ray,
-									   const HitInfo& closest_hit_info,
-									   bool intersection_found)
+HIPRT_DEVICE void wavefront_store_trace_result(HIPRTRenderData& render_data,
+											   unsigned int path_index,
+											   const RayVolumeState& volume_state,
+											   const HitInfo& closest_hit_info,
+											   bool intersection_found,
+											   unsigned int rng_seed)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
-	wavefront_data.path_throughputs[path_index]				= ray_payload.throughput;
-	wavefront_data.path_ray_colors[path_index]				= ray_payload.ray_color;
-	wavefront_data.path_next_ray_states[path_index]			= static_cast<unsigned int>(ray_payload.next_ray_state);
-	wavefront_data.path_bounces[path_index]					= ray_payload.bounce;
-	wavefront_data.path_accumulated_roughnesses[path_index] = ray_payload.accumulated_roughness;
-	wavefront_data.path_materials[path_index]				= ray_payload.material;
-	wavefront_data.path_volume_states[path_index]			= ray_payload.volume_state;
-	wavefront_data.path_closest_hit_infos[path_index]		= closest_hit_info;
-	wavefront_data.path_ray_directions[path_index]			= Octahedral24BitNormalPadded32b(ray.direction);
-	wavefront_data.path_intersections_found[path_index]		= intersection_found ? 1u : 0u;
+	wavefront_data.path_volume_states[path_index]		= volume_state;
+	wavefront_data.path_closest_hit_infos[path_index]	= closest_hit_info;
+	wavefront_data.path_intersections_found[path_index] = intersection_found ? 1u : 0u;
+	wavefront_data.path_rng_states[path_index]			= rng_seed;
 }
 
 // Queue 1 contains only continuing rays. Traversal replaces the material and hit attributes,
@@ -91,16 +84,6 @@ HIPRT_DEVICE void wavefront_load_trace_ray(
 
 // Restore contribution bookkeeping only after traversal, without overwriting its new material
 // or its volume-state updates (including skipped nested-dielectric boundaries).
-HIPRT_DEVICE void wavefront_load_trace_path_bookkeeping(HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload)
-{
-	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
-
-	ray_payload.throughput			  = wavefront_data.path_throughputs[path_index];
-	ray_payload.ray_color			  = wavefront_data.path_ray_colors[path_index];
-	ray_payload.bounce				  = wavefront_data.path_bounces[path_index];
-	ray_payload.accumulated_roughness = wavefront_data.path_accumulated_roughnesses[path_index];
-}
-
 HIPRT_DEVICE void wavefront_store_nee_deferred_mis_context(HIPRTRenderData& render_data,
 														   unsigned int path_index,
 														   const NEEDeferredMISContext& nee_deferred_MIS_context)
