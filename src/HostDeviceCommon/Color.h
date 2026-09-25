@@ -9,6 +9,10 @@
 #include "Device/includes/Hash.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
+struct NoInitTag
+{
+};
+
 struct ColorRGBA32F
 {
 	HIPRT_DEVICE ColorRGBA32F()
@@ -298,6 +302,8 @@ HIPRT_DEVICE static ColorRGBA32F pow_2_2_fit(ColorRGBA32F x)
 
 struct ColorRGB32F
 {
+	HIPRT_HOST_DEVICE explicit ColorRGB32F(NoInitTag) {}
+
 	HIPRT_DEVICE ColorRGB32F()
 	{
 		r = 0.0f;

@@ -101,6 +101,33 @@
  */
 struct DeviceUnpackedEffectiveMaterial
 {
+	HIPRT_HOST_DEVICE DeviceUnpackedEffectiveMaterial()
+		: base_color(1.0f, 1.0f, 1.0f), roughness(0.3f), oren_nayar_sigma(0.34906585039886591538f), metallic(0.0f), metallic_F90_falloff_exponent(5.0f),
+		  metallic_F82(1.0f, 1.0f, 1.0f), metallic_F90(1.0f, 1.0f, 1.0f), anisotropy(0.0f), anisotropy_rotation(0.0f), second_roughness_weight(0.0f),
+		  second_roughness(0.5f), retro_reflection(0.0f), specular(1.0f), specular_tint(1.0f), specular_color(1.0f, 1.0f, 1.0f), specular_darkening(1.0f),
+		  coat(0.0f), coat_medium_absorption(1.0f, 1.0f, 1.0f), coat_medium_thickness(5.0f), coat_roughness(0.0f), coat_roughening(1.0f), coat_darkening(1.0f),
+		  coat_anisotropy(0.0f), coat_anisotropy_rotation(0.0f), coat_ior(1.5f), sheen(0.0f), sheen_roughness(0.5f), sheen_color(1.0f, 1.0f, 1.0f), ior(1.40f),
+		  specular_transmission(0.0f), diffuse_transmission(0.0f), absorption_at_distance(1.0f), absorption_color(1.0f, 1.0f, 1.0f), dispersion_scale(0.0f),
+		  dispersion_abbe_number(20.0f), thin_film(0.0f), thin_film_ior(1.3f), thin_film_thickness(500.0f), thin_film_kappa_3(0.0f),
+		  thin_film_hue_shift_degrees(0.0f), thin_film_base_ior_override(1.0f), alpha_opacity(1.0f), energy_preservation_monte_carlo_samples(12),
+		  do_metallic_energy_compensation(true), do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false),
+		  do_glass_energy_compensation(true), thin_film_do_ior_override(false), enforce_strong_energy_conservation(false), emission(0.0f, 0.0f, 0.0f),
+		  emission_strength(1.0f), emissive_texture_index(MaterialConstants::NO_TEXTURE), dielectric_priority(0)
+	{
+	}
+
+	// Common-query inputs are initialized; other inactive-lobe fields remain untouched and must stay guarded by lobe strength.
+	HIPRT_HOST_DEVICE explicit DeviceUnpackedEffectiveMaterial(NoInitTag)
+		: base_color(NoInitTag{}), metallic(0.0f), metallic_F82(NoInitTag{}), metallic_F90(NoInitTag{}), second_roughness_weight(0.0f), second_roughness(0.5f),
+		  retro_reflection(0.0f), specular(0.0f), specular_color(NoInitTag{}), coat(0.0f), coat_medium_absorption(NoInitTag{}), coat_roughness(0.0f),
+		  coat_roughening(1.0f), coat_anisotropy(0.0f), coat_ior(1.5f), sheen(0.0f), sheen_roughness(0.5f), sheen_color(1.0f, 1.0f, 1.0f),
+		  specular_transmission(0.0f), absorption_color(NoInitTag{}), dispersion_scale(0.0f), energy_preservation_monte_carlo_samples(12),
+		  do_metallic_energy_compensation(true), do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false),
+		  do_glass_energy_compensation(true), thin_film_do_ior_override(false), enforce_strong_energy_conservation(false), emission(0.0f, 0.0f, 0.0f),
+		  emissive_texture_index(MaterialConstants::NO_TEXTURE)
+	{
+	}
+
 	HIPRT_HOST_DEVICE bool can_do_light_sampling(float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD) const
 	{
 		return MaterialUtils::can_do_light_sampling(roughness, metallic, specular_transmission, coat, coat_roughness, second_roughness, second_roughness_weight,
@@ -230,81 +257,81 @@ struct DeviceUnpackedEffectiveMaterial
 		return emissive_texture_index != MaterialConstants::NO_TEXTURE && emissive_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 	}
 
-	ColorRGB32F base_color = ColorRGB32F(1.0f);
+	ColorRGB32F base_color;
 
-	float roughness		   = 0.3f;
-	float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
+	float roughness;
+	float oren_nayar_sigma; // 20 degrees standard deviation in radian
 
 	// Parameters for Adobe 2023 F82-tint model
-	float metallic						= 0.0f;
-	float metallic_F90_falloff_exponent = 5.0f;
+	float metallic;
+	float metallic_F90_falloff_exponent;
 	// F0 is not here as it uses the 'base_color' of the material
-	ColorRGB32F metallic_F82	  = ColorRGB32F(1.0f);
-	ColorRGB32F metallic_F90	  = ColorRGB32F(1.0f);
-	float anisotropy			  = 0.0f;
-	float anisotropy_rotation	  = 0.0f;
-	float second_roughness_weight = 0.0f;
-	float second_roughness		  = 0.5f;
+	ColorRGB32F metallic_F82;
+	ColorRGB32F metallic_F90;
+	float anisotropy;
+	float anisotropy_rotation;
+	float second_roughness_weight;
+	float second_roughness;
 
-	float retro_reflection = 0.0f;
+	float retro_reflection;
 
 	// Specular intensity
-	float specular = 1.0f;
+	float specular;
 	// Specular tint intensity.
 	// Specular will be white if 0.0f and will be 'specular_color' if 1.0f
-	float specular_tint		   = 1.0f;
-	ColorRGB32F specular_color = ColorRGB32F(1.0f);
+	float specular_tint;
+	ColorRGB32F specular_color;
 	// Same as coat darkening but for total internal reflection inside the specular layer
 	// that sits on top of the diffuse base
-	float specular_darkening = 1.0f;
+	float specular_darkening;
 
-	float coat						   = 0.0f;
-	ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
+	float coat;
+	ColorRGB32F coat_medium_absorption;
 	// The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
 	// that will happen inside the coat
-	float coat_medium_thickness = 5.0f;
-	float coat_roughness		= 0.0f;
+	float coat_medium_thickness;
+	float coat_roughness;
 	// Physical accuracy requires that a rough clearcoat also roughens what's underneath it
 	// i.e. the specular/metallic/transmission layers.
 	//
 	// The option is however given here to artistically disable
 	// that behavior by using coat roughening = 0.0f.
-	float coat_roughening = 1.0f;
+	float coat_roughening;
 	// Because of the total internal reflection that can happen inside the coat layer (i.e.
 	// light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
 	// clearcoat will appear will increased saturation.
-	float coat_darkening		   = 1.0f;
-	float coat_anisotropy		   = 0.0f;
-	float coat_anisotropy_rotation = 0.0f;
-	float coat_ior				   = 1.5f;
+	float coat_darkening;
+	float coat_anisotropy;
+	float coat_anisotropy_rotation;
+	float coat_ior;
 
-	float sheen				= 0.0f; // Sheen strength
-	float sheen_roughness	= 0.5f;
-	ColorRGB32F sheen_color = ColorRGB32F(1.0f);
+	float sheen; // Sheen strength
+	float sheen_roughness;
+	ColorRGB32F sheen_color;
 
-	float ior					= 1.40f;
-	float specular_transmission = 0.0f;
-	float diffuse_transmission	= 0.0f;
+	float ior;
+	float specular_transmission;
+	float diffuse_transmission;
 	// At what distance is the light absorbed to the given absorption_color
-	float absorption_at_distance = 1.0f;
+	float absorption_at_distance;
 	// Color of the light absorption when traveling through the medium
-	ColorRGB32F absorption_color = ColorRGB32F(1.0f);
-	float dispersion_scale		 = 0.0f;
-	float dispersion_abbe_number = 20.0f;
+	ColorRGB32F absorption_color;
+	float dispersion_scale;
+	float dispersion_abbe_number;
 
-	float thin_film					  = 0.0f;
-	float thin_film_ior				  = 1.3f;
-	float thin_film_thickness		  = 500.0f;
-	float thin_film_kappa_3			  = 0.0f;
-	float thin_film_hue_shift_degrees = 0.0f;
-	float thin_film_base_ior_override = 1.0f;
+	float thin_film;
+	float thin_film_ior;
+	float thin_film_thickness;
+	float thin_film_kappa_3;
+	float thin_film_hue_shift_degrees;
+	float thin_film_base_ior_override;
 
 	// 1.0f makes the material completely opaque
 	// 0.0f completely transparent (becomes invisible)
-	float alpha_opacity = 1.0f;
+	float alpha_opacity;
 
 	// TODO remove this, unused
-	unsigned char energy_preservation_monte_carlo_samples = 12;
+	unsigned char energy_preservation_monte_carlo_samples;
 
 	/**
 	 * The booleans are moved to the end of the structure to avoid too much structure packing
@@ -312,18 +339,18 @@ struct DeviceUnpackedEffectiveMaterial
 
 	// Whether or not to do energy compensation of the metallic layer
 	// for that material
-	bool do_metallic_energy_compensation = true;
+	bool do_metallic_energy_compensation;
 	// Whether or not to do energy compensation of the specular/diffuse layer
 	// for that material
-	bool do_specular_energy_compensation = true;
+	bool do_specular_energy_compensation;
 	// Whether or not to do energy compensation of the clearcoat layer
 	// for that material
-	bool do_coat_energy_compensation = true;
-	bool thin_walled				 = false;
+	bool do_coat_energy_compensation;
+	bool thin_walled;
 	// Whether or not to do energy compensation of the glass layer
 	// for that material
-	bool do_glass_energy_compensation = true;
-	bool thin_film_do_ior_override	  = false;
+	bool do_glass_energy_compensation;
+	bool thin_film_do_ior_override;
 
 	// If true, 'energy_preservation_monte_carlo_samples' will be used
 	// to compute the directional albedo of this material.
@@ -338,7 +365,7 @@ struct DeviceUnpackedEffectiveMaterial
 	// conservation/preservation with the precomputed LUTs [Turquin, 2019].
 	//
 	// See PrincipledBSDFDoEnergyCompensation in this codebase.
-	bool enforce_strong_energy_conservation = false;
+	bool enforce_strong_energy_conservation;
 
 	HIPRT_HOST_DEVICE void set_dielectric_priority(unsigned char priority)
 	{
@@ -358,16 +385,16 @@ struct DeviceUnpackedEffectiveMaterial
 
 private:
 	// Emission color of the material for non-textured emissive surfaces
-	ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+	ColorRGB32F emission;
 	// Multiplier on the emission and on the emission read from a potential emissive texture. Contains the scene-global 'global_emissive_factor' multiplier
-	float emission_strength = 1.0f;
+	float emission_strength;
 	// Index of the emissive texture for fetching the emission when hitting the material
-	unsigned short int emissive_texture_index = MaterialConstants::NO_TEXTURE;
+	unsigned short int emissive_texture_index;
 
 	// Nested dielectric parameter
 	// Private because this may be different depending on the BRDF override
 	// being used so we want to control this with getters/setters
-	unsigned char dielectric_priority = 0;
+	unsigned char dielectric_priority;
 };
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial

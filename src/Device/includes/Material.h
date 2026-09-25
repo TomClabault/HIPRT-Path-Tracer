@@ -246,13 +246,17 @@ HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, 
 	return read_data<T>(rgba);
 }
 
-HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
-														int material_index,
-														float2_t texcoords,
-														DeviceUnpackedEffectiveMaterial& out_material)
+template <bool initialize_material_defaults>
+HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderData& render_data,
+															 int material_index,
+															 float2_t texcoords,
+															 DeviceUnpackedEffectiveMaterial& out_material)
 {
 	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
-	materials_buffer_soa.read_partial_effective_material(material_index, out_material);
+	if constexpr (initialize_material_defaults)
+		materials_buffer_soa.read_partial_effective_material(material_index, out_material);
+	else
+		materials_buffer_soa.read_partial_effective_material_noinit(material_index, out_material);
 
 	if (render_data.bsdfs_data.white_furnace_mode)
 		out_material.base_color = ColorRGB32F(1.0f);
@@ -355,6 +359,22 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 			out_material.second_roughness		   = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
 		}
 	}
+}
+
+HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
+														int material_index,
+														float2_t texcoords,
+														DeviceUnpackedEffectiveMaterial& out_material)
+{
+	get_intersection_material_into_impl<true>(render_data, material_index, texcoords, out_material);
+}
+
+HIPRT_DEVICE static void get_intersection_material_into_noinit(const HIPRTRenderData& render_data,
+															   int material_index,
+															   float2_t texcoords,
+															   DeviceUnpackedEffectiveMaterial& out_material)
+{
+	get_intersection_material_into_impl<false>(render_data, material_index, texcoords, out_material);
 }
 
 #endif // #ifndef DEVICE_MATERIAL_H

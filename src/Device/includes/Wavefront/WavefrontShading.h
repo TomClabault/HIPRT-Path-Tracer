@@ -23,9 +23,18 @@ HIPRT_DEVICE void wavefront_initialize_secondary_hit_material(RayPayload& ray_pa
 }
 
 template <bool initialize_primary_path>
+HIPRT_DEVICE RayPayload wavefront_make_ray_payload()
+{
+	if constexpr (initialize_primary_path)
+		return RayPayload();
+	else
+		return RayPayload(NoInitTag{});
+}
+
+template <bool initialize_primary_path>
 HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned int bounce_count, unsigned int pixel_index)
 {
-	RayPayload ray_payload;
+	RayPayload ray_payload = wavefront_make_ray_payload<initialize_primary_path>();
 	hiprtRay ray;
 	HitInfo closest_hit_info;
 	bool intersection_found;
@@ -43,7 +52,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 		if (intersection_found)
 		{
 			int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-			get_intersection_material_into(render_data, material_index, closest_hit_info.texcoords, ray_payload.material);
+			get_intersection_material_into_noinit(render_data, material_index, closest_hit_info.texcoords, ray_payload.material);
 			wavefront_initialize_secondary_hit_material(ray_payload, random_number_generator);
 		}
 

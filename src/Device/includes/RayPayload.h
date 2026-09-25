@@ -23,6 +23,8 @@ struct RayPayload
 {
 	HIPRT_HOST_DEVICE RayPayload() = default;
 
+	HIPRT_HOST_DEVICE explicit RayPayload(NoInitTag) : material(NoInitTag{}) {}
+
 	HIPRT_HOST_DEVICE explicit RayPayload(const RayVolumeState& initial_volume_state) : volume_state(initial_volume_state) {}
 
 	// Energy left in the ray after it bounces around the scene
