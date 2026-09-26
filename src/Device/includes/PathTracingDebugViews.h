@@ -230,7 +230,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRend
 	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 
-	DeviceUnpackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index].unpack();
+	DeviceUnpackedPrincipledFullMaterial material = render_data.g_buffer.materials[pixel_index].unpack();
 	float sg_specular_weight;
 	float alpha_x;
 	float alpha_y;
@@ -296,7 +296,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_kl_divergence_debug_value(const HIP
 	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 
-	DeviceUnpackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index].unpack();
+	DeviceUnpackedPrincipledFullMaterial material = render_data.g_buffer.materials[pixel_index].unpack();
 	float sg_specular_weight;
 	float alpha_x;
 	float alpha_y;
@@ -490,7 +490,7 @@ HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRen
 }
 
 HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
-	const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
+	const HIPRTRenderData& render_data, RayPayloadCommon& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
 {
 	out_debug_color = DEFAULT_DEBUG_COLOR;
 

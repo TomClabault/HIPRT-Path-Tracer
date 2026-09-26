@@ -14,10 +14,11 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+template <typename MaterialType>
 HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shading_context(const float3_t& shading_point,
 																							const float3_t& view_direction,
 																							const float3_t& shading_normal,
-																							const DeviceUnpackedEffectiveMaterial& material)
+																							const MaterialType& material)
 {
 	IlluminationAwareKDTreeSGShadingContext context{};
 
@@ -25,26 +26,55 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 	context.view_direction = view_direction;
 	context.shading_normal = shading_normal;
 
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-
-	context.sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-
 	float sg_roughness	= MaterialConstants::ROUGHNESS_CLAMP;
 	float sg_anisotropy = 0.0f;
-	if (specular_lobes_sum > 0.0f)
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll && MaterialTraits<MaterialType>::is_principled)
 	{
-		sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness;
-		sg_roughness /= specular_lobes_sum;
+		float material_specular_weight =
+			(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
+		float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 
-		sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy;
-		sg_anisotropy /= specular_lobes_sum;
+		context.sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
+		if (specular_lobes_sum > 0.0f)
+		{
+			sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness;
+			sg_roughness /= specular_lobes_sum;
+
+			sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy;
+			sg_anisotropy /= specular_lobes_sum;
+		}
+	}
+	else if constexpr (MaterialTraits<MaterialType>::has_metallic)
+	{
+		context.sg_specular_weight = 1.0f;
+		sg_roughness			   = material.roughness;
+		sg_anisotropy			   = material.anisotropy;
+	}
+	else if constexpr (MaterialTraits<MaterialType>::has_specular)
+	{
+		context.sg_specular_weight = material.specular;
+		sg_roughness			   = material.roughness;
+		sg_anisotropy			   = material.anisotropy;
 	}
 
 	sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, sg_roughness);
 	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, context.alpha_x, context.alpha_y);
 
+	return context;
+}
+
+HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shading_context(const float3_t& shading_point,
+																							const float3_t& view_direction,
+																							const float3_t& shading_normal,
+																							const LightTreeSGProposalState& proposal_state)
+{
+	IlluminationAwareKDTreeSGShadingContext context{};
+	context.position		   = shading_point;
+	context.view_direction	   = view_direction;
+	context.shading_normal	   = shading_normal;
+	context.sg_specular_weight = proposal_state.sg_specular_weight;
+	context.alpha_x			   = proposal_state.alpha_x;
+	context.alpha_y			   = proposal_state.alpha_y;
 	return context;
 }
 
@@ -81,7 +111,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		float selected_weight	   = 0.0f;
 		unsigned int selected_slot = initial_lightcut_size - 1;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 		SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 		SGSpecularImportanceData specular_data;
@@ -149,7 +179,7 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 	unsigned int current_node_index	   = sample.cluster_node_index;
 	float cumulative_probability	   = 1.0f;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;
@@ -264,7 +294,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		current_depth++;
 	}
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;

@@ -9,10 +9,12 @@
 #include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/RayVolumeState.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
-struct BSDFContext
+template <typename MaterialType>
+struct BSDFContextT
 {
-	DeviceUnpackedEffectiveMaterial& material;
+	MaterialType& material;
 	RayVolumeState& volume_state;
 
 	float3_t view_direction		= make_float3(-1.0f, -1.0f, -1.0f);
@@ -39,22 +41,23 @@ struct BSDFContext
 	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the
 	 * information about what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
 	 */
-	HIPRT_HOST_DEVICE BSDFContext(
-							const float3_t& view_direction_,
-							const float3_t& shading_normal_,
-							const float3_t& geometric_normal_,
-							const float3_t& to_light_direction_,
-							BSDFIncidentLightInfo& incident_light_info_,
-							RayVolumeState& ray_volume_state_,
-							bool update_ray_volume_state_,
-							DeviceUnpackedEffectiveMaterial& material_,
-							float accumulated_path_roughness_,
-							MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION)
+	HIPRT_DEVICE BSDFContextT(const float3_t& view_direction_,
+							  const float3_t& shading_normal_,
+							  const float3_t& geometric_normal_,
+							  const float3_t& to_light_direction_,
+							  BSDFIncidentLightInfo& incident_light_info_,
+							  RayVolumeState& ray_volume_state_,
+							  bool update_ray_volume_state_,
+							  MaterialType& material_,
+							  float accumulated_path_roughness_,
+							  MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION)
 		: material(material_), volume_state(ray_volume_state_), view_direction(view_direction_), shading_normal(shading_normal_),
 		  geometric_normal(geometric_normal_), to_light_direction(to_light_direction_), incident_light_info(incident_light_info_),
 		  accumulated_path_roughness(accumulated_path_roughness_), update_ray_volume_state(update_ray_volume_state_), bsdf_regularization_mode(regularize_bsdf)
 	{
 	}
 };
+
+using BSDFContext = BSDFContextT<DeviceUnpackedPrincipledFullMaterial>;
 
 #endif // #ifndef DEVICE_INCLUDES_BSDF_CONTEXT_H

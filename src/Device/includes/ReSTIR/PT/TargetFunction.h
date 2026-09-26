@@ -22,7 +22,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRende
 																const float3_t& surface_geometric_normal,
 																int surface_primitive_index,
 																RayVolumeState& surface_ray_volume_state,
-																DeviceUnpackedEffectiveMaterial& surface_material,
+																DeviceUnpackedPrincipledFullMaterial& surface_material,
 																const float3_t& incident_light_direction,
 																float cosine_term,
 																Xorshift32Generator& random_number_generator)
@@ -49,7 +49,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRende
 													   surface_primitive_index);
 
 		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
-		DeviceUnpackedEffectiveMaterial rc_vertex_material =
+		DeviceUnpackedPrincipledFullMaterial rc_vertex_material =
 			get_intersection_material(render_data, rc_vertex_material_index, make_float2(sample.rc_vertex_texcoords_u, sample.rc_vertex_texcoords_v));
 		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,
 											   const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), ray_volume_state_copy, false,
@@ -171,7 +171,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 	}
 
 	// Keep the large material and volume state out of the geometric rejection and visibility phases.
-	DeviceUnpackedEffectiveMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
+	DeviceUnpackedPrincipledFullMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
 	RayVolumeState surface_ray_volume_state;
 	surface_ray_volume_state.reconstruct_first_hit(surface_material, render_data.buffers.material_indices, surface_primitive_index, random_number_generator);
 

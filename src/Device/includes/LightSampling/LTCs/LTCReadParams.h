@@ -21,7 +21,8 @@
  * The PDF should be taken into account in the sampling routine using these LTC parameters.
  * The PDF parameter can be passed nullptr if not needed
  */
-HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float cos_theta_v, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 
@@ -66,7 +67,8 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	return ltc_params;
 }
 
-HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 	switch (ltc_lobe)
@@ -102,7 +104,8 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float c
 	return sample_texture_rgba_32bits(texture_ptr, uv, 0, /* is_srgb */ false, /* flip UV-Y */ false).r;
 }
 
-HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 	switch (ltc_lobe)

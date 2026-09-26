@@ -633,8 +633,9 @@ HIPRT_DEVICE HIPRT_NOINLINE static float GGX_glass_energy_compensation_get_corre
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderData& render_data,
-															const DeviceUnpackedEffectiveMaterial& material,
+															const MaterialType& material,
 															float custom_roughness,
 															bool inside_object,
 															float eta_t,
@@ -646,6 +647,14 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 	if (!material.do_glass_energy_compensation || smooth_enough)
 		return 1.0f;
 
+	float thin_film	 = 0.0f;
+	bool thin_walled = false;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		thin_film	= material.thin_film;
+		thin_walled = material.thin_walled;
+	}
+
 	float compensation_term = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
@@ -654,11 +663,11 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 	//
 	// Also not doing compensation if we already have full compensation on the material
 	// because the energy compensation of the glass lobe here is then redundant
-	if (material.thin_film < 1.0f)
+	if (thin_film < 1.0f)
 	{
 		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction		  = 2.5f;
-		if (!material.thin_walled)
+		if (!thin_walled)
 			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(custom_roughness, relative_eta_for_correction);
 
 		// We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
@@ -675,7 +684,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 		float F0_remapped = hippt::sqrt(hippt::sqrt(F0));
 
 		float3_t uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
-		if (material.thin_walled)
+		if (thin_walled)
 		{
 			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;
 			int3_t dims	  = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
@@ -708,20 +717,16 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 		//
 		// Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
 		// in the lerp such that we use less and less the energy compensation term as the roughness increases
-		compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * custom_roughness);
+		compensation_term = hippt::lerp(compensation_term, 1.0f, thin_film * custom_roughness);
 	}
 #endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
 
 	return compensation_term;
 }
 
-HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderData& render_data,
-															const DeviceUnpackedEffectiveMaterial& material,
-															bool inside_object,
-															float eta_t,
-															float eta_i,
-															float relative_eta,
-															float NoV)
+template <typename MaterialType>
+HIPRT_DEVICE static float get_GGX_energy_compensation_glass(
+	const HIPRTRenderData& render_data, const MaterialType& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV)
 {
 	return get_GGX_energy_compensation_glass(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV);
 }

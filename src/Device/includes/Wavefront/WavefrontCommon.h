@@ -18,12 +18,62 @@
 #include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+HIPRT_DEVICE void wavefront_store_resolved_material_user_controls(HIPRTRenderData& render_data,
+																  unsigned int path_index,
+																  const ResolvedMaterialUserControlsCache& resolved_user_controls)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+	if (wavefront_data.path_resolved_material_control_validity_masks == nullptr)
+		return;
+
+	unsigned int validity_mask												 = resolved_user_controls.validity_mask;
+	wavefront_data.path_resolved_material_control_validity_masks[path_index] = validity_mask;
+	if (validity_mask & ResolvedMaterialUserControlRoughness)
+		wavefront_data.path_resolved_material_roughness[path_index] = resolved_user_controls.roughness;
+	if (validity_mask & ResolvedMaterialUserControlMetallic)
+		wavefront_data.path_resolved_material_metallic[path_index] = resolved_user_controls.metallic;
+	if (validity_mask & ResolvedMaterialUserControlSpecular)
+		wavefront_data.path_resolved_material_specular[path_index] = resolved_user_controls.specular;
+	if (validity_mask & ResolvedMaterialUserControlCoat)
+		wavefront_data.path_resolved_material_coat[path_index] = resolved_user_controls.coat;
+	if (validity_mask & ResolvedMaterialUserControlSheen)
+		wavefront_data.path_resolved_material_sheen[path_index] = resolved_user_controls.sheen;
+	if (validity_mask & ResolvedMaterialUserControlSpecularTransmission)
+		wavefront_data.path_resolved_material_specular_transmission[path_index] = resolved_user_controls.specular_transmission;
+}
+
+HIPRT_DEVICE ResolvedMaterialUserControlsCache wavefront_load_resolved_material_user_controls(const HIPRTRenderData& render_data,
+																							  unsigned int path_index,
+																							  const ResolvedMaterialUserControlsCache& fallback_user_controls)
+{
+	const WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+	if (wavefront_data.path_resolved_material_control_validity_masks == nullptr)
+		return fallback_user_controls;
+
+	ResolvedMaterialUserControlsCache resolved_user_controls;
+	resolved_user_controls.validity_mask = wavefront_data.path_resolved_material_control_validity_masks[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
+		resolved_user_controls.roughness = wavefront_data.path_resolved_material_roughness[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic)
+		resolved_user_controls.metallic = wavefront_data.path_resolved_material_metallic[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular)
+		resolved_user_controls.specular = wavefront_data.path_resolved_material_specular[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlCoat)
+		resolved_user_controls.coat = wavefront_data.path_resolved_material_coat[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSheen)
+		resolved_user_controls.sheen = wavefront_data.path_resolved_material_sheen[path_index];
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecularTransmission)
+		resolved_user_controls.specular_transmission = wavefront_data.path_resolved_material_specular_transmission[path_index];
+
+	return resolved_user_controls;
+}
+
 HIPRT_DEVICE void wavefront_load_secondary_material_state(
-	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, HitInfo& closest_hit_info, bool& intersection_found)
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayloadCommon& ray_payload, HitInfo& closest_hit_info, bool& intersection_found)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
-	intersection_found		 = wavefront_data.path_intersections_found[path_index] != 0;
+	intersection_found		 = (wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_INTERSECTION_FOUND) != 0;
 	ray_payload.volume_state = wavefront_data.path_volume_states[path_index];
 
 	if (intersection_found)
@@ -31,11 +81,12 @@ HIPRT_DEVICE void wavefront_load_secondary_material_state(
 		HitInfo& stored_closest_hit_info = wavefront_data.path_closest_hit_infos[path_index];
 		closest_hit_info.primitive_index = stored_closest_hit_info.primitive_index;
 		closest_hit_info.texcoords		 = stored_closest_hit_info.texcoords;
+		closest_hit_info.t				 = stored_closest_hit_info.t;
 	}
 }
 
 HIPRT_DEVICE void wavefront_load_secondary_shading_state(
-	HIPRTRenderData& render_data, unsigned int path_index, RayPayload& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info)
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayloadCommon& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
@@ -64,17 +115,23 @@ HIPRT_DEVICE void wavefront_store_trace_result(HIPRTRenderData& render_data,
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
-	wavefront_data.path_volume_states[path_index]		= volume_state;
-	wavefront_data.path_closest_hit_infos[path_index]	= closest_hit_info;
-	wavefront_data.path_intersections_found[path_index] = intersection_found ? 1u : 0u;
-	wavefront_data.path_rng_states[path_index]			= rng_seed;
+	wavefront_data.path_volume_states[path_index]	  = volume_state;
+	wavefront_data.path_closest_hit_infos[path_index] = closest_hit_info;
+	unsigned int terminal_flag						  = wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL;
+	wavefront_data.path_state_flags[path_index]		  = terminal_flag | (intersection_found ? WAVEFRONT_PATH_STATE_INTERSECTION_FOUND : 0u);
+	wavefront_data.path_rng_states[path_index]		  = rng_seed;
 }
 
-// Queue 1 contains only continuing rays. Traversal replaces the material and hit attributes,
-// so only the origin and previous primitive are needed from the shaded surface. Previous
-// surface data needed by deferred MIS remains in its separately persisted context.
-HIPRT_DEVICE void wavefront_store_trace_ray(
-	HIPRTRenderData& render_data, unsigned int path_index, const RayPayload& ray_payload, const hiprtRay& ray, const HitInfo& closest_hit_info)
+// Queue 1 contains rays that need traversal, including terminal rays retained for deferred
+// MIS completion. Traversal replaces the material and hit attributes, so only the origin and
+// previous primitive are needed from the shaded surface. Previous surface data needed by
+// deferred MIS remains in its separately persisted context.
+HIPRT_DEVICE void wavefront_store_trace_ray(HIPRTRenderData& render_data,
+											unsigned int path_index,
+											const RayPayloadCommon& ray_payload,
+											const hiprtRay& ray,
+											const HitInfo& closest_hit_info,
+											bool is_terminal_path)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
@@ -83,6 +140,7 @@ HIPRT_DEVICE void wavefront_store_trace_ray(
 	wavefront_data.path_bounces[path_index]					= ray_payload.bounce;
 	wavefront_data.path_accumulated_roughnesses[path_index] = ray_payload.accumulated_roughness;
 	wavefront_data.path_volume_states[path_index]			= ray_payload.volume_state;
+	wavefront_data.path_state_flags[path_index]				= is_terminal_path ? WAVEFRONT_PATH_STATE_TERMINAL : 0u;
 
 	wavefront_data.path_closest_hit_infos[path_index].inter_point	  = closest_hit_info.inter_point;
 	wavefront_data.path_closest_hit_infos[path_index].primitive_index = closest_hit_info.primitive_index;
@@ -119,13 +177,8 @@ HIPRT_DEVICE void wavefront_load_nee_deferred_mis_context(HIPRTRenderData& rende
 	nee_deferred_MIS_context		= contexts[path_index];
 }
 
-HIPRT_DEVICE void wavefront_initialize_path(HIPRTRenderData& render_data,
-											unsigned int path_index,
-											RayPayload& ray_payload,
-											hiprtRay& ray,
-											HitInfo& closest_hit_info,
-											bool& intersection_found,
-											Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void wavefront_initialize_path(
+	HIPRTRenderData& render_data, unsigned int path_index, RayPayloadCommon& ray_payload, hiprtRay& ray, HitInfo& closest_hit_info, bool& intersection_found)
 {
 	closest_hit_info.inter_point	  = render_data.g_buffer.primary_hit_position[path_index];
 	closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[path_index].unpack());
@@ -136,16 +189,11 @@ HIPRT_DEVICE void wavefront_initialize_path(HIPRTRenderData& render_data,
 	ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, path_index));
 
 	ray_payload.next_ray_state = RayState::BOUNCE;
-	ray_payload.material	   = render_data.g_buffer.materials[path_index].unpack();
 
 	// Because this is the camera hit (and assuming the camera isn't inside volumes for now),
 	// the ray volume state after the camera hit is just an empty interior stack but with
 	// the material index that we hit pushed onto the stack. That's it. Because it is that
 	// simple, we don't have the ray volume state in the GBuffer but rather we can
-	// reconstruct the ray volume state on the fly
-	ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices, closest_hit_info.primitive_index,
-												   random_number_generator);
-
 	intersection_found = closest_hit_info.primitive_index != -1;
 
 	// Preserve the direction rounding of the former Initialize -> store -> Shade load boundary.
@@ -161,22 +209,25 @@ HIPRT_DEVICE void wavefront_enqueue_path(HIPRTRenderData& render_data, unsigned 
 	render_data.wavefront_data.path_queues[queue_index][output_index] = path_index;
 }
 
-HIPRT_DEVICE void wavefront_finalize_path_with_context(HIPRTRenderData& render_data,
-													   unsigned int pixel_index,
-													   int x,
-													   int y,
-													   RayPayload& ray_payload,
-													   hiprtRay& ray,
-													   HitInfo& closest_hit_info,
-													   Xorshift32Generator& random_number_generator,
-													   NEEDeferredMISContext& nee_deferred_MIS_context,
-													   bool increment_bounce_before_last_deferred_nee)
+HIPRT_DEVICE void wavefront_queue_path_for_tracing(HIPRTRenderData& render_data,
+												   unsigned int path_index,
+												   const RayPayloadCommon& ray_payload,
+												   const hiprtRay& ray,
+												   const HitInfo& closest_hit_info,
+												   const NEEDeferredMISContext& nee_deferred_MIS_context,
+												   const Xorshift32Generator& random_number_generator,
+												   bool is_terminal_path)
 {
-	if (increment_bounce_before_last_deferred_nee)
-		ray_payload.bounce++;
+	wavefront_store_trace_ray(render_data, path_index, ray_payload, ray, closest_hit_info, is_terminal_path);
+	wavefront_store_nee_deferred_mis_context(render_data, path_index, nee_deferred_MIS_context);
+	render_data.wavefront_data.path_rng_states[path_index] = random_number_generator.m_state.seed;
+	wavefront_enqueue_path(render_data, 1, path_index);
+}
 
-	// We do one last intersection after the last bounce to get a BSDF sample for NEE MIS
-	ray_payload.ray_color += do_last_deferred_NEE_MIS(render_data, ray, ray_payload, closest_hit_info, random_number_generator, nee_deferred_MIS_context);
+HIPRT_DEVICE void wavefront_finalize_path(
+	HIPRTRenderData& render_data, unsigned int pixel_index, int x, int y, RayPayloadCommon& ray_payload, Xorshift32Generator& random_number_generator)
+{
+	render_data.wavefront_data.path_state_flags[pixel_index] |= WAVEFRONT_PATH_STATE_TERMINAL;
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 

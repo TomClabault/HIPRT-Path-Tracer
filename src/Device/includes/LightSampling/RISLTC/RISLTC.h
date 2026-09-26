@@ -14,13 +14,25 @@
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
+#include "HostDeviceCommon/Material/LightProposalState.h"
 #include "HostDeviceCommon/RenderData.h"
 
+typedef LightProposalStateFor<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, BSDFModel::Principled> RISLTCProposalState;
+
+HIPRT_HOST_DEVICE inline RISLTCProposalState make_RISLTC_proposal_state(const DeviceUnpackedPrincipledFullMaterial& material)
+{
+	LightProposalInputs proposal_inputs = make_light_proposal_inputs(material);
+	return make_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, BSDFModel::Principled>(proposal_inputs);
+}
+
+template <typename BsdfMaterialType, typename ProposalMaterialType>
 HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& render_data,
-														  RayPayload& ray_payload,
+														  RayPayloadT<BsdfMaterialType>& ray_payload,
+														  BsdfMaterialType& bsdf_material,
 														  const HitInfo& closest_hit_info,
 														  const float3_t& view_direction,
 														  const RISLTCReservoir& reservoir,
+														  const ProposalMaterialType& proposal_state,
 														  Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f)
@@ -31,7 +43,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 
 	LightSamplePointInformation light_sample_info =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																ray_payload.material, sample.light_index, random_number_generator);
+																proposal_state, sample.light_index, random_number_generator);
 	if (light_sample_info.area_measure_pdf == 0.0f)
 		return ColorRGB32F();
 
@@ -62,9 +74,9 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 	{
 		float bsdf_pdf;
 		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
-								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+		BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+													shadow_ray_direction_normalized, incident_light_info, ray_payload.volume_state, false, bsdf_material,
+													ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 		ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 		float point_pdf_solid_angle =
@@ -81,11 +93,37 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 	return final_color;
 }
 
+template <typename BsdfMaterialType>
+HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& render_data,
+														  RayPayload& ray_payload,
+														  BsdfMaterialType& bsdf_material,
+														  const HitInfo& closest_hit_info,
+														  const float3_t& view_direction,
+														  const RISLTCReservoir& reservoir,
+														  Xorshift32Generator& random_number_generator)
+{
+	RISLTCProposalState proposal_state = make_RISLTC_proposal_state(ray_payload.material);
+	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir, proposal_state,
+											random_number_generator);
+}
+
+HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& render_data,
+														  RayPayload& ray_payload,
+														  const HitInfo& closest_hit_info,
+														  const float3_t& view_direction,
+														  const RISLTCReservoir& reservoir,
+														  Xorshift32Generator& random_number_generator)
+{
+	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, ray_payload.material, closest_hit_info, view_direction, reservoir,
+											random_number_generator);
+}
+
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 									 float3_t shading_point,
 									 float3_t view_direction,
 									 float3_t shading_normal,
-									 DeviceUnpackedEffectiveMaterial& material,
+									 const ProposalMaterialType& material,
 									 int light_index)
 {
 	float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 0]];
@@ -97,7 +135,7 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 	float ltc_metallic = 0.0f;
 	float ltc_diffuse  = 0.0f;
 
-#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	ltc_diffuse = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE);
 
 	return ltc_diffuse;
@@ -113,14 +151,18 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 
 	ltc_diffuse = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE);
 
-	return ltc_coat * material.coat + ltc_specular * material.specular + ltc_metallic * material.metallic + ltc_diffuse * material.base_color.luminance();
-#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+	return ltc_coat * material.coat + ltc_specular * material.specular + ltc_metallic * material.metallic +
+		   ltc_diffuse * get_ltc_base_color_luminance(material);
+#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 }
 
+template <typename BsdfMaterialType, typename ProposalMaterialType>
 HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRTRenderData& render_data,
-																	 RayPayload& ray_payload,
+																	 RayPayloadT<BsdfMaterialType>& ray_payload,
+																	 BsdfMaterialType& bsdf_material,
 																	 const HitInfo& closest_hit_info,
 																	 const float3_t& view_direction,
+																	 const ProposalMaterialType& proposal_state,
 																	 Xorshift32Generator& random_number_generator)
 {
 	// If we're rendering at low resolution, only doing 1 candidate of each
@@ -129,7 +171,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 		render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.risltc_settings.number_of_light_candidates;
 	int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.risltc_settings.number_of_bsdf_candidates;
 
-	if (!ray_payload.material.can_do_light_sampling())
+	if (!bsdf_material.can_do_light_sampling())
 		nb_light_candidates = 0;
 
 	// Sampling candidates with weighted reservoir sampling
@@ -138,7 +180,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 	{
 		LightSampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
 			sample_one_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-							 closest_hit_info.primitive_index, ray_payload, random_number_generator);
+							 closest_hit_info.primitive_index, ray_payload, proposal_state, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 		{
@@ -149,7 +191,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 			ColorRGB32F triangle_emission = triangle_load_emission(render_data, light_sample_info.emissive_triangle_global_index);
 
 			float target_function_no_emission = compute_light_LTC(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																  ray_payload.material, light_sample_info.emissive_triangle_global_index);
+																  proposal_state, light_sample_info.emissive_triangle_global_index);
 			float target_function			  = target_function_no_emission * triangle_emission.luminance();
 
 			float bsdf_pdf_approximate = target_function_no_emission;
@@ -175,9 +217,9 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 		float3_t sampled_bsdf_direction;
 
 		BSDFIncidentLightInfo incident_light_info;
-		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+		BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+													make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, bsdf_material,
+													ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 		ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
 		if (bsdf_sample_pdf > 0.0f)
@@ -213,10 +255,10 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 				float target_function = (bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point).luminance();
 
 				float light_pdf		   = pdf_of_emissive_triangle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-																  ray_payload.material, shadow_light_ray_hit_info.hit_prim_index,
+																  proposal_state, shadow_light_ray_hit_info.hit_prim_index,
 																  triangle_load_area(render_data, shadow_light_ray_hit_info.hit_prim_index));
 				float bsdf_pdf_for_MIS = compute_light_LTC(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-														   ray_payload.material, shadow_light_ray_hit_info.hit_prim_index);
+														   proposal_state, shadow_light_ray_hit_info.hit_prim_index);
 				float mis_weight =
 					balance_heuristic(bsdf_pdf_for_MIS, 1, light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
@@ -239,18 +281,48 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 	return reservoir;
 }
 
+template <typename BsdfMaterialType>
+HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRTRenderData& render_data,
+																	 RayPayload& ray_payload,
+																	 BsdfMaterialType& bsdf_material,
+																	 const HitInfo& closest_hit_info,
+																	 const float3_t& view_direction,
+																	 Xorshift32Generator& random_number_generator)
+{
+	RISLTCProposalState proposal_state = make_RISLTC_proposal_state(ray_payload.material);
+	return sample_bsdf_and_lights_RISLTC_reservoir(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state,
+												   random_number_generator);
+}
+
+template <typename BsdfMaterialType, typename ProposalMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
-											  RayPayload& ray_payload,
+											  RayPayloadT<BsdfMaterialType>& ray_payload,
+											  BsdfMaterialType& bsdf_material,
 											  const HitInfo& closest_hit_info,
 											  const float3_t& view_direction,
+											  const ProposalMaterialType& proposal_state,
 											  Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return ColorRGB32F(0.0f);
 
-	RISLTCReservoir reservoir = sample_bsdf_and_lights_RISLTC_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	RISLTCReservoir reservoir = sample_bsdf_and_lights_RISLTC_reservoir(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
+																		proposal_state, random_number_generator);
 
-	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, closest_hit_info, view_direction, reservoir, random_number_generator);
+	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir, proposal_state,
+											random_number_generator);
+}
+
+template <typename BsdfMaterialType>
+HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
+											  RayPayload& ray_payload,
+											  BsdfMaterialType& bsdf_material,
+											  const HitInfo& closest_hit_info,
+											  const float3_t& view_direction,
+											  Xorshift32Generator& random_number_generator)
+{
+	RISLTCProposalState proposal_state = make_RISLTC_proposal_state(ray_payload.material);
+	return sample_lights_RISLTC(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator);
 }
 
 #endif // #ifndef DEVICE_INLCUDES_LIGHT_SAMPLING_RISLTC_RISLTC_H

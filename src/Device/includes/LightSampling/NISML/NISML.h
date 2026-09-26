@@ -166,7 +166,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 	}
 #endif // #if NISMLUseSGImportancesKDTreeCaches == KERNEL_OPTION_TRUE
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -374,7 +374,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 																							 const float3_t& shading_point,
 																							 const float3_t& view_direction,
 																							 const float3_t& shading_normal,
-																							 const DeviceUnpackedEffectiveMaterial& material,
+																							 const DeviceUnpackedPrincipledFullMaterial& material,
 																							 float sg_specular_weight,
 																							 float alpha_x,
 																							 float alpha_y,
@@ -392,7 +392,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
 		return sampled_light;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -434,7 +434,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 																			  const float3_t& shading_point,
 																			  const float3_t& view_direction,
 																			  const float3_t& shading_normal,
-																			  const DeviceUnpackedEffectiveMaterial& material,
+																			  const DeviceUnpackedPrincipledFullMaterial& material,
 																			  Xorshift32Generator& random_number_generator)
 {
 	NISMLLightSample sampled_light;
@@ -453,7 +453,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 	float alpha_y;
 	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -496,7 +496,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 												float3_t shading_point,
 												float3_t view_direction,
 												float3_t shading_normal,
-												const DeviceUnpackedEffectiveMaterial& material,
+												const DeviceUnpackedPrincipledFullMaterial& material,
 												int global_emissive_triangle_index)
 {
 	NISMLDevice neural_light_sampling	= render_data.nisml;
@@ -523,7 +523,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 	float alpha_y;
 	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;

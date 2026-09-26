@@ -10,7 +10,7 @@
 
 #include <Orochi/Orochi.h>
 
-using TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE = DeviceUnpackedEffectiveMaterial;
+using TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE = DeviceUnpackedPrincipledFullMaterial;
 
 struct TestCopyKernelSimpleInputData
 {

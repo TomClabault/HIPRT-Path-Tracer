@@ -817,7 +817,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			float3_t to_light_direction_sample_point = restir_pt_initial_reservoir_output->sample.rc_vertex_incident_light_direction;
 
 			int rc_vertex_material_index = render_data.buffers.material_indices[restir_pt_initial_reservoir_output->sample.rc_vertex_primitive_index];
-			DeviceUnpackedEffectiveMaterial rc_vertex_material =
+			DeviceUnpackedPrincipledFullMaterial rc_vertex_material =
 				get_intersection_material(render_data, rc_vertex_material_index,
 										  make_float2(restir_pt_initial_reservoir_output->sample.rc_vertex_texcoords_u,
 													  restir_pt_initial_reservoir_output->sample.rc_vertex_texcoords_v));

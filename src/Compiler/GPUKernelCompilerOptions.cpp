@@ -3,12 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "Utils/Utils.h"
 
@@ -26,7 +26,9 @@ const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "Us
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
 
-const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
+const std::string GPUKernelCompilerOptions::BSDF_MODEL = "BSDF_MODEL";
+const std::string GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION = "WavefrontMaterialSpecialization";
+const std::string GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION = "KERNEL_MATERIAL_SPECIALIZATION";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED = "PrincipledBSDFMetallicSampleCosineWeighted";
@@ -162,7 +164,9 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
 
-	GPUKernelCompilerOptions::BSDF_OVERRIDE,
+	GPUKernelCompilerOptions::BSDF_MODEL,
+	GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION,
+	GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED,
@@ -302,7 +306,10 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
 
-	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
+	m_options_macro_map[GPUKernelCompilerOptions::BSDF_MODEL] = std::make_shared<int>(BSDF_PRINCIPLED);
+	m_options_macro_map[GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION] = std::make_shared<int>(KERNEL_OPTION_TRUE);
+	m_options_macro_map[GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION] =
+		std::make_shared<int>(KernelMaterialSpecializationAll);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED] = std::make_shared<int>(PrincipledBSDFMetallicSampleCosineWeighted);
@@ -493,31 +500,6 @@ std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_
 	return macros;
 }
 
-std::vector<std::string> GPUKernelCompilerOptions::get_relevant_macros_as_std_vector_string(const GPUKernel* kernel) const
-{
-	std::vector<std::string> macros;
-
-	// Looping on all the options macros and checking if the kernel uses that option macro,
-	// only adding the macro to the returned vector if the kernel uses that option macro
-	for (auto macro_key_value : m_options_macro_map)
-		if (kernel->uses_macro(macro_key_value.first))
-			macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(*macro_key_value.second));
-
-	// Adding all the custom macros without conditions
-	for (auto macro_key_value : m_custom_macro_map)
-		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(*macro_key_value.second));
-
-	for (auto macro_key_value : m_custom_string_macro_map)
-		macros.push_back("-D " + macro_key_value.first + "=" + (macro_key_value.second.second ? "\"" : "") + (*macro_key_value.second.first) +
-						 (macro_key_value.second.second ? "\"" : ""));
-
-	std::vector<std::string> additional_macros = kernel->get_additional_compiler_macros();
-	for (const std::string& additional_macro : additional_macros)
-		macros.push_back(additional_macro);
-
-	return macros;
-}
-
 void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int value)
 {
 	if (ALL_MACROS_NAMES.find(name) != ALL_MACROS_NAMES.end())
@@ -539,6 +521,16 @@ void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int valu
 			// Creating it otherwise
 			m_custom_macro_map[name] = std::make_shared<int>(value);
 	}
+}
+
+void GPUKernelCompilerOptions::set_macro_value_independently(const std::string& name, int value)
+{
+	std::shared_ptr<int> independent_value = std::make_shared<int>(value);
+
+	if (ALL_MACROS_NAMES.find(name) != ALL_MACROS_NAMES.end())
+		m_options_macro_map[name] = independent_value;
+	else
+		m_custom_macro_map[name] = independent_value;
 }
 
 void GPUKernelCompilerOptions::set_string_macro_value(const std::string& name, const std::string& value, bool with_quotes)

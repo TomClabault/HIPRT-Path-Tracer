@@ -18,12 +18,13 @@
  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
  */
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data,
-													 BSDFContext& bsdf_context,
+													 BSDFContextT<MaterialType>& bsdf_context,
 													 float& pdf,
 													 Xorshift32Generator& random_number_generator)
 {
-#if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -31,17 +32,33 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& rend
 	default:
 		break;
 	}*/
-	return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
-#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
+	{
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+		return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
+#endif
+	}
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
+		return principled_compact_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
+		return principled_compact_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
+		return principled_compact_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
+	else
+		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
+#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
-#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
-#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 }
 
-HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data, BSDFContext& bsdf_context)
+template <typename MaterialType>
+HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
 {
-#if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -49,12 +66,27 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
 	default:
 		break;
 	}*/
-	return principled_bsdf_pdf(render_data, bsdf_context);
-#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
+	{
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+		return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		return oren_nayar_brdf_pdf(bsdf_context.to_light_direction);
+#endif
+	}
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
+		return principled_compact_glass_pdf(render_data, bsdf_context);
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
+		return principled_compact_metallic_pdf(render_data, bsdf_context);
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
+		return principled_compact_specular_diffuse_pdf(render_data, bsdf_context);
+	else
+		return principled_bsdf_pdf(render_data, bsdf_context);
+#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
-#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return oren_nayar_brdf_pdf(bsdf_context.to_light_direction);
-#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 }
 
 /**
@@ -65,11 +97,14 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
  * evaluating the contribution or the PDF of the BSDF. This function will then always return
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
-template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(
-	const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3_t& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+template <bool sampleDirectionOnly = false, typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data,
+													   BSDFContextT<MaterialType>& bsdf_context,
+													   float3_t& sampled_direction,
+													   float& pdf,
+													   Xorshift32Generator& random_number_generator)
 {
-#if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -77,15 +112,42 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(
 	default:
 		break;
 	}*/
-	return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
-#elif BSDFOverride == BSDF_LAMBERTIAN // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
+	{
+		// A single-lobe material does not need an RNG draw for lobe selection.
+
+		if (bsdf_context.update_ray_volume_state)
+			bsdf_context.volume_state.interior_stack.pop(false);
+
+		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
+		sampled_direction				 = principled_diffuse_sample(bsdf_context.shading_normal, random_number_generator);
+
+		if (hippt::dot(sampled_direction, bsdf_context.geometric_normal) < 0.0f)
+			return ColorRGB32F(0.0f);
+
+		bsdf_context.to_light_direction = sampled_direction;
+		if constexpr (sampleDirectionOnly)
+		{
+			pdf = 0.0f;
+			return ColorRGB32F(0.0f);
+		}
+		else
+			return bsdf_dispatcher_eval(render_data, bsdf_context, pdf, random_number_generator);
+	}
+	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass ||
+					   MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic ||
+					   MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
+		return principled_compact_family_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
+	else
+		return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
+#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.geometric_normal, bsdf_context.shading_normal, sampled_direction,
 													   pdf, random_number_generator, bsdf_context.incident_light_info);
-#elif BSDFOverride == BSDF_OREN_NAYAR // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.geometric_normal,
 													   bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
 													   bsdf_context.incident_light_info);
-#endif // #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 }
 
 #endif // #ifndef DEVICE_DISPATCHER_H

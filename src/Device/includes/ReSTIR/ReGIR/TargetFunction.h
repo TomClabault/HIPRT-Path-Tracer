@@ -50,7 +50,7 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 		RayVolumeState empty_volume_state;
 		BSDFIncidentLightInfo out_incident_light_info;
 
-		DeviceUnpackedEffectiveMaterial approximate_material;
+		DeviceUnpackedPrincipledFullMaterial approximate_material;
 		approximate_material.roughness = surface.cell_roughness;
 		approximate_material.metallic  = surface.cell_metallic;
 		approximate_material.specular  = surface.cell_specular;

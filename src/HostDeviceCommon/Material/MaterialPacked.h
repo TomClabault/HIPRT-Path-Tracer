@@ -78,12 +78,12 @@ struct DevicePackedEffectiveMaterial
 	 *
 	 * This is used in the shaders when a material is read after hitting some geometry:
 	 * the texture of the material will be evaluated, transforming a
-	 * DeviceUnpackedTexturedMaterial into a DeviceUnpackedEffectiveMaterial.
+	 * DeviceUnpackedTexturedMaterial into a DeviceUnpackedPrincipledFullMaterial.
 	 *
-	 * That DeviceUnpackedEffectiveMaterial will then be packed (using the pack() function below)
+	 * That DeviceUnpackedPrincipledFullMaterial will then be packed (using the pack() function below)
 	 * before being written to the G-buffer
 	 */
-	HIPRT_HOST_DEVICE static DevicePackedEffectiveMaterial pack(const DeviceUnpackedEffectiveMaterial& unpacked)
+	HIPRT_HOST_DEVICE static DevicePackedEffectiveMaterial pack(const DeviceUnpackedPrincipledFullMaterial& unpacked)
 	{
 		DevicePackedEffectiveMaterial packed;
 
@@ -154,9 +154,9 @@ struct DevicePackedEffectiveMaterial
 		return packed;
 	}
 
-	HIPRT_HOST_DEVICE DeviceUnpackedEffectiveMaterial unpack() const
+	HIPRT_HOST_DEVICE DeviceUnpackedPrincipledFullMaterial unpack() const
 	{
-		DeviceUnpackedEffectiveMaterial unpacked;
+		DeviceUnpackedPrincipledFullMaterial unpacked;
 
 		unpacked.set_raw_emission(this->get_raw_emission());
 		unpacked.set_emission_strength(this->get_emission_strength());

@@ -24,7 +24,8 @@ HIPRT_DEVICE static float microfacet_GGX_pdf_reflect(float material_roughness,
 													 SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
 													 bool zero_below_surface = true);
 
-HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const MaterialType& material,
 															float incident_ior,
 															float3_t local_to_light_direction,
 															float3_t local_half_vector);
@@ -128,7 +129,8 @@ HIPRT_DEVICE float G1_Smith_lambda_signed_2023(float alpha_x, float alpha_y, con
 	return (G1_Smith_lambda(alpha_x, alpha_y, local_direction) + (local_direction.z < 0.0f ? 1.0f : 0.0f)) * (local_direction.z > 0.0f ? 1.0f : -1.0f);
 }
 
-HIPRT_DEVICE ColorRGB32F Cui_2023_vertex_term(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE ColorRGB32F Cui_2023_vertex_term(const MaterialType& material,
 											  float incident_ior,
 											  float alpha_x,
 											  float alpha_y,
@@ -148,9 +150,10 @@ HIPRT_DEVICE ColorRGB32F Cui_2023_vertex_term(const DeviceUnpackedEffectiveMater
 /**
  * local_view_direction and local_to_light_direction should bot be pointing outward the surface here
  */
+template <typename MaterialType>
 HIPRT_DEVICE ColorRGB32F
 torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRenderData& render_data,
-																const DeviceUnpackedEffectiveMaterial& material,
+																const MaterialType& material,
 																float material_roughness,
 																float material_anisotropy,
 																float incident_ior,
@@ -216,7 +219,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 	ColorRGB32F weight = ColorRGB32F(1.0f);
 	ColorRGB32F multiple_scattering_contribution =
-							Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, local_view_direction, local_to_light_direction) * s.get_sk();
+		Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, local_view_direction, local_to_light_direction) * s.get_sk();
 	float3_t current_view_direction		= local_view_direction;
 	float3_t current_to_light_direction = local_to_light_direction;
 
@@ -269,8 +272,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 			current_view_direction = -current_to_light_direction;
 			multiple_scattering_contribution +=
-									Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, local_to_light_direction) * weight *
-									hippt::abs(g1v_accum) * s_k;
+				Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, local_to_light_direction) * weight *
+				hippt::abs(g1v_accum) * s_k;
 
 			g1v_accum *= lambda;
 		}

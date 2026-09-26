@@ -11,8 +11,10 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
+template <typename BsdfMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 												RayPayload& ray_payload,
+												BsdfMaterialType& bsdf_material,
 												const HitInfo closest_hit_info,
 												const float3_t& view_direction,
 												Xorshift32Generator& random_number_generator)
@@ -117,13 +119,15 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 
 					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+					BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+																shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
+																ray_payload.accumulated_roughness,
+																MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+					BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+																shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
+																ray_payload.accumulated_roughness,
+																MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 #endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 

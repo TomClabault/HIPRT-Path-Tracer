@@ -25,7 +25,7 @@ HIPRT_DEVICE float compute_mesh_contribution(
 	float total_contribution_to_cell			  = 0.0f;
 	for (int i = 0; i < ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount; i++)
 	{
-		DeviceUnpackedEffectiveMaterial approximate_material;
+		DeviceUnpackedPrincipledFullMaterial approximate_material;
 		approximate_material.roughness = cell_surface.cell_roughness;
 		approximate_material.metallic  = cell_surface.cell_metallic;
 		approximate_material.specular  = cell_surface.cell_specular;

@@ -21,6 +21,7 @@
 const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
+	GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION,
 };
 
 const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY	= "FullFrameTime";

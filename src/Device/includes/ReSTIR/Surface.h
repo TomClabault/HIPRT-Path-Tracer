@@ -11,7 +11,7 @@
 
 struct ReSTIRSurface
 {
-	DeviceUnpackedEffectiveMaterial material;
+	DeviceUnpackedPrincipledFullMaterial material;
 	RayVolumeState ray_volume_state;
 	int primitive_index = -1;
 

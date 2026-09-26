@@ -27,7 +27,7 @@ NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
-	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
+	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_MODEL);
 
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE);
@@ -35,7 +35,7 @@ NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_
 		NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(
 		NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE,
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL,
 																									   BSDF_LAMBERTIAN);
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 

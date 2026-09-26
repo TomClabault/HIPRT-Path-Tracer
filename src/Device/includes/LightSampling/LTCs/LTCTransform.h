@@ -10,11 +10,9 @@
 #include "Device/includes/LightSampling/LTCs/LTCReadParams.h"
 #include "Device/includes/Texture.h"
 
-HIPRT_DEVICE float3_t ltc_transform_cosine_to_shading(const HIPRTRenderData& render_data,
-													  float cos_theta_v,
-													  float3_t direction_or_position,
-													  const DeviceUnpackedEffectiveMaterial& material,
-													  LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float3_t ltc_transform_cosine_to_shading(
+	const HIPRTRenderData& render_data, float cos_theta_v, float3_t direction_or_position, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params, cos_theta_v, material, ltc_lobe);
 
@@ -29,11 +27,9 @@ HIPRT_DEVICE float3_t ltc_transform_shading_to_cosine(float3x3 matrix_inverse, f
 	return matrix_inverse * direction_or_position;
 }
 
-HIPRT_DEVICE float3x3 ltc_transform_shading_to_cosine_read_matrix(const HIPRTRenderData& render_data,
-																  float cos_theta_v,
-																  float3_t direction_or_position,
-																  const DeviceUnpackedEffectiveMaterial& material,
-																  LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float3x3 ltc_transform_shading_to_cosine_read_matrix(
+	const HIPRTRenderData& render_data, float cos_theta_v, float3_t direction_or_position, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params, cos_theta_v, material, ltc_lobe);
 
@@ -42,22 +38,18 @@ HIPRT_DEVICE float3x3 ltc_transform_shading_to_cosine_read_matrix(const HIPRTRen
 	return inverse(ltc_matrix);
 }
 
-HIPRT_DEVICE float3_t ltc_transform_shading_to_cosine(const HIPRTRenderData& render_data,
-													  float cos_theta_v,
-													  float3_t direction_or_position,
-													  const DeviceUnpackedEffectiveMaterial& material,
-													  LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float3_t ltc_transform_shading_to_cosine(
+	const HIPRTRenderData& render_data, float cos_theta_v, float3_t direction_or_position, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float3x3 ltc_matrix_inv = ltc_transform_shading_to_cosine_read_matrix(render_data, cos_theta_v, direction_or_position, material, ltc_lobe);
 
 	return ltc_transform_shading_to_cosine(ltc_matrix_inv, direction_or_position);
 }
 
-HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data,
-								float cos_theta_v,
-								float3_t sampled_direction_shading_space,
-								const DeviceUnpackedEffectiveMaterial& material,
-								LTCLobe ltc_lobe)
+template <typename ProposalMaterialType>
+HIPRT_DEVICE float ltc_jacobian(
+	const HIPRTRenderData& render_data, float cos_theta_v, float3_t sampled_direction_shading_space, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params, cos_theta_v, material, ltc_lobe);
 

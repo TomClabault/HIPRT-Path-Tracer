@@ -689,7 +689,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 	}
 
 	// Writes into a freshly default-constructed material so inactive-lobe parameters retain their defaults.
-	HIPRT_DEVICE void read_partial_effective_material(int material_index, DeviceUnpackedEffectiveMaterial& out_material) const
+	HIPRT_DEVICE void read_partial_effective_material(int material_index, DeviceUnpackedPrincipledFullMaterial& out_material) const
 	{
 		if (!this->get_emissive_texture_used(material_index))
 			out_material.set_raw_emission(this->get_emission(material_index));
@@ -839,7 +839,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 	}
 
 	// Requires an output constructed with NoInitTag; inactive-lobe-only fields may remain untouched until their lobe is enabled.
-	HIPRT_DEVICE void read_partial_effective_material_noinit(int material_index, DeviceUnpackedEffectiveMaterial& out_material) const
+	HIPRT_DEVICE void read_partial_effective_material_noinit(int material_index, DeviceUnpackedPrincipledFullMaterial& out_material) const
 	{
 		if (!this->get_emissive_texture_used(material_index))
 			out_material.set_raw_emission(this->get_emission(material_index));

@@ -10,10 +10,12 @@
 
 #include "HostDeviceCommon/Color.h"
 
-HIPRT_DEVICE static float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior);
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_specular_relative_ior(const MaterialType& material, float incident_medium_ior);
 
+template <typename MaterialType>
 HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data,
-																		 const DeviceUnpackedEffectiveMaterial& material,
+																		 const MaterialType& material,
 																		 float incident_medium_ior,
 																		 float NoV)
 {
@@ -49,7 +51,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	float3_t uvw						   = make_float3(view_dir_remapped, material.roughness, F0_remapped);
 	float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw,
 																		  render_data.bsdfs_data.use_hardware_tex_interpolation)
-																	 .r;
+												 .r;
 
 	// Applying the compensation term for energy preservation
 	// If material.specular == 1, then we want the full energy compensation
@@ -62,7 +64,10 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	//
 	// So we're progressively disabling ms compensation on the glossy base as the thin-film
 	// is more and more pronounced
-	ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
+	float thin_film = 0.0f;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		thin_film = material.thin_film;
+	ms_compensation = hippt::lerp(ms_compensation, 1.0f, thin_film);
 #endif // #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
 
 	return ms_compensation;
@@ -83,7 +88,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
  * would have to do otherwise (or full interlayer-multiple-scattering simulation)
  */
 HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data,
-																			const DeviceUnpackedEffectiveMaterial& material,
+																			const DeviceUnpackedPrincipledFullMaterial& material,
 																			float incident_medium_ior,
 																			float NoV)
 {
@@ -115,7 +120,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 	float3_t uvw						   = make_float3(view_dir_remapped, material.coat_roughness, F0_remapped);
 	float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw,
 																		  render_data.bsdfs_data.use_hardware_tex_interpolation)
-																	 .r;
+												 .r;
 
 	// Applying the compensation term for energy preservation
 	// If material.coat == 1, then we want the full energy compensation

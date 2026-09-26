@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTC_LOBE_UTILS_H
 
 #include "Device/includes/LightSampling/LTCs/LTCShading.h"
+#include "HostDeviceCommon/Material/LightProposalState.h"
 
 /**
  * Some dumb fit, not really precise, to approximate the average Fresnel term over the hemisphere over
@@ -32,6 +33,7 @@ HIPRT_DEVICE float average_fresnel_fit(float NoV, float roughness, float relativ
 	return F0 + (1.0f - F0) * hippt::intrin_pow((1 - cos_eff), p);
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 								  float3_t vertex_A_worldspace,
 								  float3_t vertex_B_worldspace,
@@ -40,7 +42,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 								  float3_t view_direction,
 								  float3_t shading_normal,
 								  ColorRGB32F triangle_emission,
-								  const DeviceUnpackedEffectiveMaterial& material,
+								  const ProposalMaterialType& material,
 								  float& out_coat_proba,
 								  float& out_metallic_proba,
 								  float& out_specular_proba)
@@ -71,7 +73,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 													   view_direction, shading_normal, material, LTCLobe::DIFFUSE_LOBE) *
 										  triangle_emission.luminance();
 
-	float diffuse_weight = material.base_color.luminance() *
+	float diffuse_weight = get_ltc_base_color_luminance(material) *
 						   (1.0f - average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior)) *
 						   diffuse_radiance_triangle_ltc;
 
@@ -95,6 +97,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 	out_specular_proba = specular_weight * proba_normalize;
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& render_data,
 														float3_t vertex_A_worldspace,
 														float3_t vertex_B_worldspace,
@@ -103,7 +106,7 @@ HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& r
 														float3_t view_direction,
 														float3_t shading_normal,
 														ColorRGB32F triangle_emission,
-														const DeviceUnpackedEffectiveMaterial& material)
+														const ProposalMaterialType& material)
 {
 	LTCLobeSampleProbabilities lobe_probabilities;
 
@@ -123,7 +126,7 @@ HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& r
  */
 HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng)
 {
-#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	return LTCLobe::DIFFUSE_LOBE;
 #endif
 
@@ -146,12 +149,12 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 
 HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabilities, LTCLobe lobe)
 {
-#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	if (lobe == LTCLobe::DIFFUSE_LOBE)
 		return 1.0f;
 	else
 		return 0.0f;
-#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	switch (lobe)
 	{
 	case COAT_LOBE:

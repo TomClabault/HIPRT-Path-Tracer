@@ -19,9 +19,9 @@ HIPRT_DEVICE float triangle_solid_angle(float3_t vertex_A_worldspace, float3_t v
 	float3_t vertex_B_local = hippt::normalize(vertex_B_worldspace - shading_point);
 	float3_t vertex_C_local = hippt::normalize(vertex_C_worldspace - shading_point);
 
-	float solid_angle = hippt::abs(2 * atan2f(hippt::dot(vertex_A_local, hippt::cross(vertex_B_local, vertex_C_local)),
-											  1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) +
-																	  hippt::dot(vertex_B_local, vertex_C_local)));
+	float solid_angle = hippt::abs(
+		2 * atan2f(hippt::dot(vertex_A_local, hippt::cross(vertex_B_local, vertex_C_local)),
+				   1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) + hippt::dot(vertex_B_local, vertex_C_local)));
 
 	return solid_angle;
 }
@@ -65,6 +65,7 @@ struct solid_angle_triangle_t
 	\param vertices List of vertex locations.
 	\param shading_point The location of the shading point.
 	\return Input for sample_point_on_triangle_solid_angle_peters_2021().*/
+template <typename ProposalMaterialType>
 HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_internal(const HIPRTRenderData& render_data,
 																				   float3_t vertex_A,
 																				   float3_t vertex_B,
@@ -72,7 +73,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 																				   float3_t shading_point,
 																				   float3_t view_direction,
 																				   float3_t shading_normal,
-																				   const DeviceUnpackedEffectiveMaterial& material,
+																				   const ProposalMaterialType& material,
 																				   LTCLobe ltc_lobe)
 {
 	solid_angle_triangle_t polygon;
@@ -107,7 +108,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 	polygon.vertex_dirs[1] = hippt::normalize(vertex_B_local);
 	polygon.vertex_dirs[2] = hippt::normalize(vertex_C_local);
 	polygon.ltc_lobe	   = ltc_lobe;
-#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#else  // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float3_t vertex_A_local = vertex_A - shading_point;
 	float3_t vertex_B_local = vertex_B - shading_point;
 	float3_t vertex_C_local = vertex_C - shading_point;
@@ -163,6 +164,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 	return polygon;
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const HIPRTRenderData& render_data,
 																		  float3_t vertex_A,
 																		  float3_t vertex_B,
@@ -171,7 +173,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const 
 																		  float3_t view_direction,
 																		  float3_t shading_normal,
 																		  const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
-																		  const DeviceUnpackedEffectiveMaterial& material,
+																		  const ProposalMaterialType& material,
 																		  Xorshift32Generator& rng)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
@@ -179,13 +181,14 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const 
 
 	return prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material,
 														  ltc_lobe);
-#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#else  // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	return prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, material,
 														  // Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
 														  LTCLobe::DIFFUSE_LOBE);
 #endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRenderData& render_data,
 																 float3_t vertex_A_world_space,
 																 float3_t vertex_B_world_space,
@@ -195,7 +198,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 																 float3_t shading_normal,
 																 float3_t sampled_dir_shading_space,
 																 const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
-																 const DeviceUnpackedEffectiveMaterial& material,
+																 const ProposalMaterialType& material,
 																 LTCLobe ltc_lobe)
 {
 	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
@@ -204,7 +207,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 
 	float solid_angle = prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 																	   shading_point, view_direction, shading_normal, material, ltc_lobe)
-												.solid_angle;
+							.solid_angle;
 
 	if (solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
@@ -215,13 +218,14 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 	pdf_solid_angle = 1.0f / solid_angle;
 	pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), sampled_dir_shading_space, material, ltc_lobe);
 	pdf_solid_angle *= ltc_lobe_pdf;
-#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#else  // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float pdf_solid_angle = 1.0f / solid_angle;
 #endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	return pdf_solid_angle;
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_dir(const HIPRTRenderData& render_data,
 																		 float3_t vertex_A_world_space,
 																		 float3_t vertex_B_world_space,
@@ -231,7 +235,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_dir(const H
 																		 float3_t shading_normal,
 																		 float3_t sampled_dir_shading_space,
 																		 const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
-																		 const DeviceUnpackedEffectiveMaterial& material)
+																		 const ProposalMaterialType& material)
 {
 	float out_pdf = 0.0f;
 
@@ -254,6 +258,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_dir(const H
 	return out_pdf;
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_point(const HIPRTRenderData& render_data,
 																		   float3_t vertex_A_world_space,
 																		   float3_t vertex_B_world_space,
@@ -263,7 +268,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_point(const
 																		   float3_t shading_normal,
 																		   float3_t point_on_light,
 																		   const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
-																		   const DeviceUnpackedEffectiveMaterial& material)
+																		   const ProposalMaterialType& material)
 {
 	float out_pdf = 0.0f;
 
@@ -296,6 +301,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_point(const
 	the original space (used for arguments of
 	prepare_solid_angle_triangle_sampling()). Samples are distributed in
 	proportion to solid angle assuming uniform inputs.*/
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float3_t sample_point_on_triangle_solid_angle_peters_2021(const HIPRTRenderData& render_data,
 																	   float3_t vertex_A,
 																	   float3_t vertex_B,
@@ -305,12 +311,15 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_solid_angle_peters_2021(const HIP
 																	   float3_t view_direction,
 																	   float3_t shading_normal,
 																	   ColorRGB32F triangle_emission,
-																	   const DeviceUnpackedEffectiveMaterial& material,
+																	   const ProposalMaterialType& material,
 																	   float& out_area_pdf,
 																	   Xorshift32Generator& rng)
 {
-	LTCLobeSampleProbabilities ltc_lobe_probabilities = ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction,
-																		shading_normal, triangle_emission, material);
+	LTCLobeSampleProbabilities ltc_lobe_probabilities{};
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+	ltc_lobe_probabilities =
+		ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material);
+#endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 
 	solid_angle_triangle_t polygon = prepare_solid_angle_triangle_sampling(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction,
 																		   shading_normal, ltc_lobe_probabilities, material, rng);
@@ -341,8 +350,8 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_solid_angle_peters_2021(const HIP
 
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// From cosine space to shading space
-	float3_t sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal),
-																						  sampled_direction, material, polygon.ltc_lobe));
+	float3_t sampled_dir_shading_space = hippt::normalize(
+		ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), sampled_direction, material, polygon.ltc_lobe));
 
 	float3_t T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
@@ -356,7 +365,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_solid_angle_peters_2021(const HIP
 
 	float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_dir(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction,
 																				  shading_normal, sampled_dir_shading_space, ltc_lobe_probabilities, material);
-#else // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+#else  // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float3_t sampled_dir_world_space = sampled_direction;
 	float pdf_solid_angle			 = 1.0f / polygon.solid_angle;
 #endif // #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE

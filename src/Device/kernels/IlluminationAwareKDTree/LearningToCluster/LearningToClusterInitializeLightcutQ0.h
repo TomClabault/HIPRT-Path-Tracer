@@ -15,7 +15,7 @@ HIPRT_DEVICE float light_clustering_node_importance(const LightTreeSGDevice& lig
 													unsigned int cluster_node_index,
 													const IlluminationAwareKDTreeSGShadingContext& context)
 {
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;

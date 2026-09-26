@@ -37,9 +37,11 @@ struct RayVolumeState
 	// The wavefront restoration path overwrites the complete state before using it.
 	HIPRT_HOST_DEVICE explicit RayVolumeState(NoInitTag) {}
 
-	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material,
-												 int* material_indices_buffer,
+	HIPRT_HOST_DEVICE void reconstruct_first_hit(int* material_indices_buffer,
 												 int primitive_index,
+												 unsigned char dielectric_priority,
+												 float dispersion_scale,
+												 float specular_transmission,
 												 Xorshift32Generator& random_number_generator)
 	{
 		if (primitive_index == -1)
@@ -48,9 +50,9 @@ struct RayVolumeState
 
 		int mat_index = material_indices_buffer[primitive_index];
 
-		interior_stack.push(mat_index, material.get_dielectric_priority(), incident_mat_index, outgoing_mat_index, inside_material);
+		interior_stack.push(mat_index, dielectric_priority, incident_mat_index, outgoing_mat_index, inside_material);
 
-		if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)
+		if (dispersion_scale > 0.0f && specular_transmission > 0.0f && sampled_wavelength == 0.0f)
 			// If we hit a dispersive material, we sample the wavelength that will be used
 			// for computing the wavelength dependent IORs used for dispersion
 			//
@@ -59,6 +61,15 @@ struct RayVolumeState
 			// Negating the wavelength to indicate that the throughput filter of the wavelength
 			// hasn't been applied yet (applied in principled_glass_eval())
 			sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
+	}
+
+	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedPrincipledFullMaterial& material,
+												 int* material_indices_buffer,
+												 int primitive_index,
+												 Xorshift32Generator& random_number_generator)
+	{
+		reconstruct_first_hit(material_indices_buffer, primitive_index, material.get_dielectric_priority(), material.dispersion_scale,
+							  material.specular_transmission, random_number_generator);
 	}
 
 	// How far has the ray traveled in the current volume.

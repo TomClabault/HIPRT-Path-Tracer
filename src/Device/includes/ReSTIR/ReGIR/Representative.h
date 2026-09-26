@@ -20,7 +20,7 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 												   const HIPRTCamera& current_camera,
 												   int primitive_index,
 												   bool primary_hit,
-												   const DeviceUnpackedEffectiveMaterial& material)
+												   const ReGIRMaterialInputs& material)
 {
 #if DirectLightSamplingStrategy != LSS_BASE_REGIR
 	return;
@@ -44,6 +44,21 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 	surface_normal = Octahedral24BitNormalPadded32b(surface_normal).unpack();
 
 	render_data.render_settings.regir_settings.insert_hash_cell_data(shading_point, surface_normal, current_camera, primary_hit, primitive_index, material);
+}
+
+HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
+												   float3_t shading_point,
+												   float3_t surface_normal,
+												   const HIPRTCamera& current_camera,
+												   int primitive_index,
+												   bool primary_hit,
+												   const DeviceUnpackedPrincipledFullMaterial& material)
+{
+	ReGIRMaterialInputs inputs;
+	inputs.roughness = material.roughness;
+	inputs.metallic	 = material.metallic;
+	inputs.specular	 = material.specular;
+	ReGIR_update_representative_data(render_data, shading_point, surface_normal, current_camera, primitive_index, primary_hit, inputs);
 }
 
 HIPRT_DEVICE void ReGIR_representative_points_update(HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info)

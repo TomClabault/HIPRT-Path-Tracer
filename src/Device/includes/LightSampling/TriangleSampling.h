@@ -102,11 +102,12 @@ HIPRT_DEVICE float2_t compute_uvs_of_point_on_triangle(float3_t vertex_A, float3
  *
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
  */
+template <typename MaterialType>
 HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render_data,
 												   float3_t shading_point,
 												   float3_t view_direction,
 												   float3_t shading_normal,
-												   const DeviceUnpackedEffectiveMaterial& material,
+												   const MaterialType& material,
 												   int global_triangle_index,
 												   ColorRGB32F triangle_emission,
 												   Xorshift32Generator& rng,
@@ -145,7 +146,8 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 																		shading_normal, triangle_emission, material, out_point_pdf, rng);
 
 	out_sample_point_uvs = compute_uvs_of_point_on_triangle(vertex_A, AB, AC, out_sample_point);
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+#elif TrianglePointSamplingStrategy ==                                                                                                                         \
+	TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 	float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
 
 	bool do_projected_solid_angle_sampling = solid_angle > render_data.render_settings.projected_solid_angle_sampling_threshold;
@@ -160,7 +162,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 	}
 	else
 		out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf, out_sample_point_uvs);
-#endif // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+#endif													   // #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
 
 	return out_point_pdf != 0.0f;
 }
@@ -218,12 +220,12 @@ HIPRT_DEVICE ColorRGB32F get_triangle_emission_at_point(const HIPRTRenderData& r
 	}
 }
 
-template <int trianglePointSamplingStrategy = TrianglePointSamplingStrategy>
+template <int trianglePointSamplingStrategy = TrianglePointSamplingStrategy, typename ProposalMaterialType>
 HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& render_data,
 														 float3_t shading_point,
 														 float3_t view_direction,
 														 float3_t shading_normal,
-														 const DeviceUnpackedEffectiveMaterial& material,
+														 const ProposalMaterialType& material,
 														 float3_t point_on_triangle,
 														 float3_t triangle_normal,
 														 int emissive_triangle_global_index,
@@ -236,11 +238,12 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
  * The PDF field of the LightSamplePointInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
+template <typename MaterialType>
 HIPRT_DEVICE LightSamplePointInformation sample_point_on_light_and_fill_light_sample_information(const HIPRTRenderData& render_data,
 																								 float3_t shading_point,
 																								 float3_t view_direction,
 																								 float3_t shading_normal,
-																								 const DeviceUnpackedEffectiveMaterial& material,
+																								 const MaterialType& material,
 																								 int global_triangle_index,
 																								 Xorshift32Generator& rng)
 {

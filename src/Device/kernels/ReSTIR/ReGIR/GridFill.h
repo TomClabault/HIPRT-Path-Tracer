@@ -75,7 +75,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 		}
 		else
 		{
-			DeviceUnpackedEffectiveMaterial material;
+			DeviceUnpackedPrincipledFullMaterial material;
 			material.roughness = surface.cell_roughness;
 			material.metallic  = surface.cell_metallic;
 			material.specular  = surface.cell_specular;

@@ -30,7 +30,7 @@ struct NISMLMegaKernelPathData
 	int bounce					= 0;
 	float accumulated_roughness = 0.0f;
 
-	DeviceUnpackedEffectiveMaterial material;
+	DeviceUnpackedPrincipledFullMaterial material;
 	HitInfo closest_hit_info;
 	float3_t ray_origin				= make_float3(0.0f, 0.0f, 0.0f);
 	float3_t ray_direction			= make_float3(0.0f, 0.0f, 0.0f);

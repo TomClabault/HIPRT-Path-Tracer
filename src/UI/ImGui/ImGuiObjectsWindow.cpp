@@ -5,6 +5,7 @@
 
 #include "UI/ImGui/ImGuiObjectsWindow.h"
 #include "UI/RenderWindow.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -263,12 +264,53 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 	ImGui::TreePush("Global material overrider tree");
 
-	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Principled BSDF" };
-	if (ImGui::Combo("Global BSDF override", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE),
-					 items.data(), items.size()))
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	int bsdf_model_index											= 2;
+	switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL))
 	{
+	case BSDF_LAMBERTIAN:
+		bsdf_model_index = 0;
+		break;
+	case BSDF_OREN_NAYAR:
+		bsdf_model_index = 1;
+		break;
+	case BSDF_PRINCIPLED:
+	default:
+		bsdf_model_index = 2;
+		break;
+	}
+
+	const char* bsdf_model_items[] = { "Lambertian", "Oren-Nayar", "Principled" };
+	if (ImGui::Combo("Global BSDF model", &bsdf_model_index, bsdf_model_items, IM_ARRAYSIZE(bsdf_model_items)))
+	{
+		int bsdf_model_value = BSDF_PRINCIPLED;
+		switch (bsdf_model_index)
+		{
+		case 0:
+			bsdf_model_value = BSDF_LAMBERTIAN;
+			break;
+		case 1:
+			bsdf_model_value = BSDF_OREN_NAYAR;
+			break;
+		case 2:
+		default:
+			bsdf_model_value = BSDF_PRINCIPLED;
+			break;
+		}
+
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL, bsdf_model_value);
 		m_renderer->recompile_kernels();
 
+		m_render_window->set_render_dirty(true);
+	}
+
+	bool wavefront_material_specialization =
+		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE;
+	if (ImGui::Checkbox("Wavefront material specialization", &wavefront_material_specialization))
+	{
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION,
+											   wavefront_material_specialization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+		m_renderer->recompile_kernels();
 		m_render_window->set_render_dirty(true);
 	}
 

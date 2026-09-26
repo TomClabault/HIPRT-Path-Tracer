@@ -16,11 +16,12 @@
 /**
  * The PDF is computed in area measure
  */
+template <typename MaterialType>
 HIPRT_DEVICE LightSampleInformation sample_one_light_uniform(const HIPRTRenderData& render_data,
 															 float3_t shading_point,
 															 float3_t view_direction,
 															 float3_t shading_normal,
-															 const DeviceUnpackedEffectiveMaterial& material,
+															 const MaterialType& material,
 															 Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -36,11 +37,12 @@ HIPRT_DEVICE LightSampleInformation sample_one_light_uniform(const HIPRTRenderDa
 	return triangle_sample_information;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_uniform(const HIPRTRenderData& render_data,
 																		   float3_t shading_point,
 																		   float3_t view_direction,
 																		   float3_t shading_normal,
-																		   const DeviceUnpackedEffectiveMaterial& material,
+																		   const MaterialType& material,
 																		   Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -58,11 +60,12 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_uniform(const
 	return light_sample;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE LightSampleInformation sample_one_light_power(const HIPRTRenderData& render_data,
 														   float3_t shading_point,
 														   float3_t view_direction,
 														   float3_t shading_normal,
-														   const DeviceUnpackedEffectiveMaterial& material,
+														   const MaterialType& material,
 														   Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -87,11 +90,12 @@ HIPRT_DEVICE LightSampleInformation sample_one_light_power(const HIPRTRenderData
  * This function has been faster than sampling the triangle first and then sampling the point on it so
  * that's why it's there
  */
+template <typename MaterialType>
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const HIPRTRenderData& render_data,
 																		 float3_t shading_point,
 																		 float3_t view_direction,
 																		 float3_t shading_normal,
-																		 const DeviceUnpackedEffectiveMaterial& material,
+																		 const MaterialType& material,
 																		 Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
@@ -114,14 +118,14 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
 	return light_sample;
 }
 
-template <int samplingStrategy = DirectLightSamplingStrategy>
+template <int samplingStrategy = DirectLightSamplingStrategy, typename MaterialType>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample_one_light(const HIPRTRenderData& render_data,
 																						   const float3_t& shading_point,
 																						   const float3_t& view_direction,
 																						   const float3_t& shading_normal,
 																						   const float3_t& geometric_normal,
 																						   int last_hit_primitive_index,
-																						   RayPayload& ray_payload,
+																						   RayPayloadT<MaterialType>& ray_payload,
 																						   Xorshift32Generator& random_number_generator)
 {
 	LightSampleArray<DirectLightSampleCount<samplingStrategy>()> light_samples;
@@ -148,6 +152,33 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 	return light_samples;
 }
 
+template <int samplingStrategy = DirectLightSamplingStrategy, typename MaterialType, typename ProposalMaterialType>
+HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample_one_light(const HIPRTRenderData& render_data,
+																						   const float3_t& shading_point,
+																						   const float3_t& view_direction,
+																						   const float3_t& shading_normal,
+																						   const float3_t& geometric_normal,
+																						   int last_hit_primitive_index,
+																						   RayPayloadT<MaterialType>& ray_payload,
+																						   const ProposalMaterialType& proposal_state,
+																						   Xorshift32Generator& random_number_generator)
+{
+	LightSampleArray<DirectLightSampleCount<samplingStrategy>()> light_samples;
+
+	if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
+		light_samples[0] = sample_one_light_uniform(render_data, shading_point, view_direction, shading_normal, ray_payload.material, random_number_generator);
+	else if constexpr (samplingStrategy == LSS_BASE_POWER)
+		light_samples[0] = sample_one_light_power(render_data, shading_point, view_direction, shading_normal, ray_payload.material, random_number_generator);
+	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
+		light_samples = sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal,
+																	last_hit_primitive_index, ray_payload, random_number_generator);
+	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+		light_samples = sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, proposal_state,
+																   last_hit_primitive_index, random_number_generator);
+
+	return light_samples;
+}
+
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const HIPRTRenderData& render_data,
 																		 const float3_t& shading_point,
 																		 const float3_t& view_direction,
@@ -158,14 +189,14 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const H
 																		 bool& out_need_fallback_sampling,
 																		 Xorshift32Generator& random_number_generator);
 
-template <int samplingStrategy = DirectLightSamplingStrategy>
+template <int samplingStrategy = DirectLightSamplingStrategy, typename MaterialType>
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
 																										 const float3_t& shading_point,
 																										 const float3_t& view_direction,
 																										 const float3_t& shading_normal,
 																										 const float3_t& geometric_normal,
 																										 int last_hit_primitive_index,
-																										 RayPayload& ray_payload,
+																										 RayPayloadT<MaterialType>& ray_payload,
 																										 Xorshift32Generator& random_number_generator)
 {
 	LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> light_point_samples;
@@ -237,6 +268,86 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 	}
 
 	return light_point_samples;
+}
+
+template <int samplingStrategy = DirectLightSamplingStrategy, typename MaterialType, typename ProposalMaterialType>
+HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
+																										 const float3_t& shading_point,
+																										 const float3_t& view_direction,
+																										 const float3_t& shading_normal,
+																										 const float3_t& geometric_normal,
+																										 int last_hit_primitive_index,
+																										 RayPayloadT<MaterialType>& ray_payload,
+																										 const ProposalMaterialType& proposal_state,
+																										 Xorshift32Generator& random_number_generator)
+{
+	LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> light_point_samples;
+
+	if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
+		light_point_samples[0] =
+			sample_one_point_on_light_uniform(render_data, shading_point, view_direction, shading_normal, proposal_state, random_number_generator);
+	else if constexpr (samplingStrategy == LSS_BASE_POWER)
+		light_point_samples[0] =
+			sample_one_point_on_light_power(render_data, shading_point, view_direction, shading_normal, proposal_state, random_number_generator);
+	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
+	{
+		LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples = sample_one_emissive_triangle_light_tree_ats(
+			render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+
+		for (int i = 0; i < DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>(); i++)
+		{
+			light_point_samples[i] =
+				sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, proposal_state,
+																		light_samples[i].emissive_triangle_global_index, random_number_generator);
+			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
+		}
+	}
+	else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+	{
+		LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_SG>()> light_samples = sample_one_emissive_triangle_light_tree_sg(
+			render_data, shading_point, view_direction, shading_normal, geometric_normal, proposal_state, last_hit_primitive_index, random_number_generator);
+
+		for (int i = 0; i < DirectLightSampleCount<LSS_BASE_LIGHT_TREE_SG>(); i++)
+		{
+			light_point_samples[i] =
+				sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, proposal_state,
+																		light_samples[i].emissive_triangle_global_index, random_number_generator);
+			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
+		}
+	}
+	else if constexpr (samplingStrategy == LSS_BASE_REGIR)
+	{
+		bool point_outside_grid = false;
+		light_point_samples[0]	= sample_one_point_on_light_regir(render_data, shading_point, view_direction, shading_normal, geometric_normal,
+																  last_hit_primitive_index, ray_payload, point_outside_grid, random_number_generator);
+
+		if (point_outside_grid)
+		{
+#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
+			// Invalid fallback strategy
+			invalid ReGIR light sampling fallback strategy
+#endif
+				light_point_samples = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
+																									 geometric_normal, last_hit_primitive_index, ray_payload,
+																									 proposal_state, random_number_generator);
+		}
+	}
+
+	return light_point_samples;
+}
+
+template <int samplingStrategy>
+HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
+																										 const float3_t& shading_point,
+																										 const float3_t& view_direction,
+																										 const float3_t& shading_normal,
+																										 const float3_t& geometric_normal,
+																										 int last_hit_primitive_index,
+																										 RayPayload& ray_payload,
+																										 Xorshift32Generator& random_number_generator)
+{
+	return sample_one_point_on_light<samplingStrategy, DeviceUnpackedPrincipledFullMaterial>(
+		render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
 }
 
 #endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_EMISSIVE_SAMPLING_H

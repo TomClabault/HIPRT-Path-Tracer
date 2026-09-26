@@ -87,7 +87,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 	render_data.g_buffer.geometric_normals[pixel_index]	   = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 	render_data.g_buffer.shading_normals[pixel_index]	   = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 	render_data.g_buffer.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
-	render_data.g_buffer.materials[pixel_index]			   = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
+	render_data.g_buffer.materials[pixel_index]			   = DevicePackedEffectiveMaterial::pack(DeviceUnpackedPrincipledFullMaterial());
 
 	// Resetting the previous frame G-Buffer if we have it
 	if (render_data.render_settings.use_prev_frame_g_buffer())
@@ -96,7 +96,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.g_buffer_prev_frame.geometric_normals[pixel_index]	  = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 		render_data.g_buffer_prev_frame.shading_normals[pixel_index]	  = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 		render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
-		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
+		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedPrincipledFullMaterial());
 	}
 
 	bool ssbn_force_no_reset_seeds = render_data.ssbn_settings.accumulate_blue_noise_1spp && SSBNPermutationEnabled == KERNEL_OPTION_TRUE;

@@ -89,7 +89,9 @@
  *
  *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
+#ifndef DirectLightSamplingStrategy
 #define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
+#endif // #ifndef DirectLightSamplingStrategy
 
 /**
  * What direct lighting sampling strategy to use.

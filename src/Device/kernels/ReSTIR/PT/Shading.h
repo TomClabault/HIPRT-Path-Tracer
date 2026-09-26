@@ -122,7 +122,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
 
 			int rc_vertex_material_index = render_data.buffers.material_indices[resampling_reservoir.sample.rc_vertex_primitive_index];
-			DeviceUnpackedEffectiveMaterial rc_vertex_material =
+			DeviceUnpackedPrincipledFullMaterial rc_vertex_material =
 				get_intersection_material(render_data, rc_vertex_material_index,
 										  make_float2(resampling_reservoir.sample.rc_vertex_texcoords_u, resampling_reservoir.sample.rc_vertex_texcoords_v));
 			BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,

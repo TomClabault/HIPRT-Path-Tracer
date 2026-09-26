@@ -11,6 +11,7 @@
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -19,9 +20,30 @@ class WavefrontRenderPass : public RenderPass
 public:
 	static const std::string WAVEFRONT_RENDER_PASS_NAME;
 	static const std::string SHADE_PRIMARY_PATHS_KERNEL;
+	static const std::string SHADE_PRIMARY_PATHS_DIFFUSE_KERNEL;
+	static const std::string SHADE_PRIMARY_PATHS_GLASS_KERNEL;
+	static const std::string SHADE_PRIMARY_PATHS_SINGLE_METALLIC_KERNEL;
+	static const std::string SHADE_PRIMARY_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	static const std::string SHADE_PATHS_KERNEL;
+	static const std::string SHADE_PATHS_DIFFUSE_KERNEL;
+	static const std::string SHADE_PATHS_GLASS_KERNEL;
+	static const std::string SHADE_PATHS_SINGLE_METALLIC_KERNEL;
+	static const std::string SHADE_PATHS_SPECULAR_DIFFUSE_KERNEL;
+	static const std::string COMPLETE_DEFERRED_PATHS_KERNEL;
+	static const std::string COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL;
+	static const std::string COMPLETE_DEFERRED_PATHS_GLASS_KERNEL;
+	static const std::string COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL;
+	static const std::string COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	static const std::string TRACE_PATHS_KERNEL;
 	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_RESET_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL;
+	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL;
 
 	WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 	~WavefrontRenderPass() = default;
@@ -41,8 +63,15 @@ public:
 	virtual void reset(bool reset_by_camera_movement) override;
 
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
 private:
+	bool uses_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
+	bool uses_deferred_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
+	const std::string& get_primary_shading_kernel_name(unsigned int family_index) const;
+	const std::string& get_secondary_shading_kernel_name(unsigned int family_index) const;
+	const std::string& get_deferred_completion_kernel_name(unsigned int family_index) const;
 	std::size_t get_nee_deferred_mis_context_byte_size();
 	bool kernels_ready() const;
 	bool resize_staging_buffers();

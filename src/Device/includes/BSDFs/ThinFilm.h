@@ -110,7 +110,7 @@ HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hu
  * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017]
  * https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
  */
-HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material, float ambient_IOR, float HoL)
+HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedPrincipledFullMaterial& material, float ambient_IOR, float HoL)
 {
 	if (material.thin_film == 0.0f)
 		// Quick exit

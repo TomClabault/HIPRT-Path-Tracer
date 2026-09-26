@@ -26,7 +26,7 @@ struct ReGIRHashGrid
 		int width  = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
 
-#if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
+#if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR)
 		if (primary_hit)
 		{
 			// Only increasing the resolution for the primary hit cells where
@@ -52,7 +52,7 @@ struct ReGIRHashGrid
 				grid_cell_min_size /= res_increase_factor;
 			}
 		}
-#endif // #if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
+#endif // #if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR)
 
 #if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
 		return grid_cell_min_size;

@@ -26,6 +26,8 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 	unsigned int queue_slot		 = blockIdx.x * blockDim.x + threadIdx.x;
 #endif // #ifdef __KERNELCC__
 	unsigned int input_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[1], 0u);
+	if (input_count > render_data.wavefront_data.path_capacity)
+		input_count = render_data.wavefront_data.path_capacity;
 	if (queue_slot >= input_count)
 		return;
 

@@ -47,6 +47,7 @@ HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, flo
 	return hippt::abs(result);
 }
 
+template <typename ProposalMaterialType>
 HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 								float3_t vertex_A_world_space,
 								float3_t vertex_B_world_space,
@@ -54,11 +55,11 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 								float3_t shading_point,
 								float3_t view_direction,
 								float3_t shading_normal,
-								const DeviceUnpackedEffectiveMaterial& material,
+								const ProposalMaterialType& material,
 								LTCLobe ltc_lobe)
 {
-	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params, hippt::dot(view_direction, shading_normal), material,
-											  ltc_lobe);
+	ColorRGBA32F ltc_params =
+		read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
 
 	float3x3 ltc_matrix_inverse = inverse(float3x3(ltc_params.r, 0.0f, ltc_params.g, 0.0f, ltc_params.b, 0.0f, ltc_params.a, 0.0f, 1.0f));
 
@@ -94,8 +95,8 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 		float R0		= F0_from_eta(ltc_lobe == LTCLobe::SPECULAR_LOBE ? material.ior : material.coat_ior, 1.0f);
 		float amplitude = read_ltc_amplitude(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data, hippt::dot(view_direction, shading_normal),
 											 material, ltc_lobe);
-		float fD = read_ltc_fresnel(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data, hippt::dot(view_direction, shading_normal), material,
-									ltc_lobe);
+		float fD =
+			read_ltc_fresnel(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
 
 		ltc_amplitude = R0 * amplitude + (1.0f - R0) * fD;
 	}

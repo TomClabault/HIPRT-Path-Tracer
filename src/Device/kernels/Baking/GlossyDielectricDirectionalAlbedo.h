@@ -122,7 +122,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 
 		// A material with the base color defined is the only thing needed for
 		// lambertian_brdf_eval()
-		DeviceUnpackedEffectiveMaterial mat;
+		DeviceUnpackedPrincipledFullMaterial mat;
 		mat.base_color = ColorRGB32F(1.0f);
 		float eval_pdf_diffuse;
 		float directional_albedo_diffuse = lambertian_brdf_eval(mat, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;

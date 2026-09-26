@@ -47,7 +47,8 @@ namespace HIPPTOrochiUtils
 								  hiprtFuncNameSet* func_name_set		  = nullptr,
 								  const std::string& additional_cache_key = "",
 								  hiprtApiModule* module_out			  = nullptr,
-								  bool load_kernel						  = true);
+								  bool load_kernel						  = true,
+								  const std::string& compiler_source_name = "");
 } // namespace HIPPTOrochiUtils
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);

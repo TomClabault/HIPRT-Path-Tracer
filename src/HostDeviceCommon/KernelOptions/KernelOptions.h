@@ -19,6 +19,10 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
+#ifndef WavefrontMaterialSpecialization
+#define WavefrontMaterialSpecialization KERNEL_OPTION_TRUE
+#endif
+
 #define DEBUG_PIXEL_X_KD_TREE 719
 #define DEBUG_PIXEL_Y_KD_TREE 393
 
@@ -48,10 +52,30 @@
  * Those are simple defines to give names to the option values.
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
-#define BSDF_NONE		0
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
+
+enum class BSDFModel : unsigned int
+{
+	Lambertian = BSDF_LAMBERTIAN,
+	OrenNayar  = BSDF_OREN_NAYAR,
+	Principled = BSDF_PRINCIPLED
+};
+
+enum KernelMaterialSpecialization : unsigned int
+{
+	KernelMaterialSpecializationAll				= 0,
+	KernelMaterialSpecializationDiffuse			= 1,
+	KernelMaterialSpecializationGlass			= 2,
+	KernelMaterialSpecializationSingleMetallic	= 3,
+	KernelMaterialSpecializationSpecularDiffuse = 4,
+	KernelMaterialSpecializationCount			= 5
+};
+
+#ifndef KERNEL_MATERIAL_SPECIALIZATION
+#define KERNEL_MATERIAL_SPECIALIZATION 0
+#endif
 
 #define NESTED_DIELECTRICS_STACK_SIZE 4
 

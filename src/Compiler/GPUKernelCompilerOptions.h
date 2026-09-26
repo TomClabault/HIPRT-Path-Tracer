@@ -22,7 +22,9 @@ public:
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE;
 
-	static const std::string BSDF_OVERRIDE;
+	static const std::string BSDF_MODEL;
+	static const std::string WAVEFRONT_MATERIAL_SPECIALIZATION;
+	static const std::string KERNEL_MATERIAL_SPECIALIZATION_OPTION;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
 	static const std::string PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION;
 	static const std::string PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED;
@@ -212,6 +214,16 @@ public:
 	 * The addition of the -D prefix will be added internally.
 	 */
 	void set_macro_value(const std::string& name, int value);
+	/**
+	 * Sets the value of a macro using a new, independently owned value pointer.
+	 *
+	 * Use this for compiler options that differ between kernel
+	 * variants. The regular setter updates an existing
+	 * shared value in place, which is useful for synchronized global options but would also change
+	 * every kernel
+	 * that shares that pointer.
+	 */
+	void set_macro_value_independently(const std::string& name, int value);
 	void set_string_macro_value(const std::string& name, const std::string& value, bool with_quotes = false);
 
 	/**

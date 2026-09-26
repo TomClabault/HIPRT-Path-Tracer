@@ -128,7 +128,7 @@ struct ReGIRCorrelationReductionSettings
 
 struct ReGIRSettings
 {
-	HIPRT_DEVICE bool compute_is_primary_hit(const RayPayload& ray_payload) const
+	HIPRT_DEVICE bool compute_is_primary_hit(const RayPayloadCommon& ray_payload) const
 	{
 		// We're going to assume that this is still a primary hit grid cell if the path spread is low enough.
 		// This is because a low number of reservoirs are usually used for secondary hit grid cells to lower the cost
@@ -141,7 +141,7 @@ struct ReGIRSettings
 		// cell (hit by the mirror bounce) is a first hit grid cell and by assuming that it is a primary hit grid cell,
 		// a higher number of reservoirs will be used for the grid fill and we'll avoid the artifacts.
 
-		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness_specular_path_spread();
+		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness < 0.1f;
 	}
 
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const
@@ -453,7 +453,7 @@ struct ReGIRSettings
 					world_position, current_camera, roughness, primary_hit, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
 
 				jittered = jitter_world_position_tangent_plane(world_position, shading_normal, rng, grid_cell_size, jittering_radius);
-#else // #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
+#else  // #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
 				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, primary_hit, rng, jittering_radius);
 #endif // #if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
 			}
@@ -686,7 +686,7 @@ struct ReGIRSettings
 												   float3_t world_position,
 												   float3_t shading_normal,
 												   int primitive_index,
-												   const DeviceUnpackedEffectiveMaterial& material)
+												   const ReGIRMaterialInputs& material)
 	{
 		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE,
 										   primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
@@ -719,7 +719,7 @@ struct ReGIRSettings
 														  const HIPRTCamera& current_camera,
 														  int primitive_index,
 														  bool primary_hit,
-														  const DeviceUnpackedEffectiveMaterial& material)
+														  const ReGIRMaterialInputs& material)
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit,
@@ -757,7 +757,7 @@ struct ReGIRSettings
 											const HIPRTCamera& current_camera,
 											bool primary_hit,
 											int primitive_index,
-											const DeviceUnpackedEffectiveMaterial& material)
+											const ReGIRMaterialInputs& material)
 	{
 		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position,
 													surface_normal, current_camera, primitive_index, primary_hit, material);

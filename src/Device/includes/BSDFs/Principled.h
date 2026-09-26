@@ -20,6 +20,7 @@
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
+#include "HostDeviceCommon/Material/PrincipledLobeWeights.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 /** References:
@@ -125,7 +126,7 @@ HIPRT_DEVICE static float3_t principled_coat_sample(const HIPRTRenderData& rende
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_sheen_eval(const HIPRTRenderData& render_data,
-													  const DeviceUnpackedEffectiveMaterial& material,
+													  const DeviceUnpackedPrincipledFullMaterial& material,
 													  const float3_t& local_view_direction,
 													  const float3_t& local_to_light_direction,
 													  float& pdf,
@@ -135,7 +136,7 @@ HIPRT_DEVICE static ColorRGB32F principled_sheen_eval(const HIPRTRenderData& ren
 }
 
 HIPRT_DEVICE static float principled_sheen_pdf(const HIPRTRenderData& render_data,
-											   const DeviceUnpackedEffectiveMaterial& material,
+											   const DeviceUnpackedPrincipledFullMaterial& material,
 											   const float3_t& local_view_direction,
 											   const float3_t& local_to_light_direction)
 {
@@ -143,7 +144,7 @@ HIPRT_DEVICE static float principled_sheen_pdf(const HIPRTRenderData& render_dat
 }
 
 HIPRT_DEVICE static float3_t principled_sheen_sample(const HIPRTRenderData& render_data,
-													 const DeviceUnpackedEffectiveMaterial& material,
+													 const DeviceUnpackedPrincipledFullMaterial& material,
 													 const float3_t& local_view_direction,
 													 const float3_t& shading_normal,
 													 Xorshift32Generator& random_number_generator)
@@ -151,7 +152,8 @@ HIPRT_DEVICE static float3_t principled_sheen_sample(const HIPRTRenderData& rend
 	return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
 
-HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const MaterialType& material,
 															float incident_ior,
 															float3_t local_to_light_or_view_direction,
 															float3_t local_half_vector)
@@ -160,13 +162,18 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpacked
 
 	ColorRGB32F F_metal =
 		adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
-	ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
-
-	return hippt::lerp(F_metal, F_thin_film, material.thin_film);
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
+		return hippt::lerp(F_metal, F_thin_film, material.thin_film);
+	}
+	else
+		return F_metal;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_data,
-														 BSDFContext& bsdf_context,
+														 BSDFContextT<MaterialType>& bsdf_context,
 														 float roughness,
 														 float anisotropy,
 														 float incident_ior,
@@ -193,10 +200,17 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 
 	ColorRGB32F F = principled_metallic_fresnel(bsdf_context.material, incident_ior, local_to_light_direction, local_half_vector);
 
-	ColorRGB32F eval = torrance_sparrow_GGX_eval_reflect < PrincipledBSDFDoEnergyCompensation &&
-					   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
-																	 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
-																	 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled, rng);
+	ColorRGB32F eval;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		eval = torrance_sparrow_GGX_eval_reflect < PrincipledBSDFDoEnergyCompensation &&
+			   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
+															 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
+															 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled, rng);
+	else
+		eval = torrance_sparrow_GGX_eval_reflect_typed < PrincipledBSDFDoEnergyCompensation &&
+			   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
+															 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
+															 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled, rng);
 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
@@ -206,8 +220,9 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 	return eval;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_data,
-												  BSDFContext& bsdf_context,
+												  BSDFContextT<MaterialType>& bsdf_context,
 												  float roughness,
 												  float anisotropy,
 												  const float3_t& local_view_direction,
@@ -233,7 +248,7 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 	else
 		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
 										 metal_delta_direction_sampled);
-#else // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+#else  // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
 									 metal_delta_direction_sampled);
 #endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
@@ -244,8 +259,9 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
+template <typename MaterialType>
 HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& render_data,
-														const BSDFContext& bsdf_context,
+														const BSDFContextT<MaterialType>& bsdf_context,
 														float roughness,
 														float anisotropy,
 														const float3_t& local_view_direction,
@@ -277,7 +293,8 @@ HIPRT_DEVICE static float3_t principled_retro_reflection_sample(const HIPRTRende
 	return principled_metallic_sample(render_data, bsdf_context, roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
-HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const MaterialType& material,
 														const float3_t& local_view_direction,
 														const float3_t& local_to_light_direction,
 														float& pdf)
@@ -290,15 +307,14 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffe
 #endif
 }
 
-HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMaterial& material,
-												 const float3_t& local_view_direction,
-												 const float3_t& local_to_light_direction)
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_diffuse_pdf(const MaterialType& material, const float3_t& local_view_direction, const float3_t& local_to_light_direction)
 {
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_pdf(local_to_light_direction.z);
 #elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-	return oren_nayar_brdf_pdf(material, local_view_direction, local_to_light_direction);
+	return oren_nayar_brdf_pdf(local_to_light_direction);
 #endif
 }
 
@@ -311,7 +327,8 @@ HIPRT_DEVICE static float3_t principled_diffuse_sample(const float3_t& world_spa
 	return cosine_weighted_sample_around_normal_world_space(world_space_surface_normal, random_number_generator);
 }
 
-HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const DeviceUnpackedEffectiveMaterial& material, float relative_specular_ior, float cos_theta_i)
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const MaterialType& material, float relative_specular_ior, float cos_theta_i)
 {
 	// We want the IOR of the layer we're coming from for the thin-film fresnel
 	//
@@ -327,15 +344,22 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const DeviceUnpacked
 	// non colored dielectric/dielectric fresnel.
 	//
 	// We're lerping between the two based on material.thin_film
-	float material_thin_film = material.thin_film;
+	float material_thin_film = 0.0f;
 	ColorRGB32F F_specular;
-	if (material_thin_film < 1.0f)
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		material_thin_film = material.thin_film;
+		if (material_thin_film < 1.0f)
+			F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
+
+		ColorRGB32F F_thin_film = thin_film_fresnel(material, layer_above_IOR, cos_theta_i);
+		ColorRGB32F F			= hippt::lerp(F_specular, F_thin_film, material_thin_film);
+		return F;
+	}
+	else
 		F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
 
-	ColorRGB32F F_thin_film = thin_film_fresnel(material, layer_above_IOR, cos_theta_i);
-	ColorRGB32F F			= hippt::lerp(F_specular, F_thin_film, material_thin_film);
-
-	return F;
+	return F_specular;
 }
 
 /**
@@ -345,16 +369,25 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const DeviceUnpacked
  *
  * 'incident_medium_ior' should be the IOR of the medium in which the object is (i.e. the air most likely)
  */
-HIPRT_DEVICE static float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior)
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_specular_relative_ior(const MaterialType& material, float incident_medium_ior)
 {
-	if (material.coat == 0.0f)
+	float coat_weight = 0.0f;
+	float coat_ior	  = material.ior;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		coat_weight = material.coat;
+		coat_ior	= material.coat_ior;
+	}
+
+	if (coat_weight == 0.0f)
 		return material.ior;
 
 	// When computing the specular layer, the incident IOR actually isn't always
 	// that of the incident medium because we may have the coat layer above us instead of the medium
 	// so the "proper" IOR to use here is actually the lerp between the medium and the coat
 	// IOR depending on the coat factor
-	float incident_layer_ior = hippt::lerp(incident_medium_ior, material.coat_ior, material.coat);
+	float incident_layer_ior = hippt::lerp(incident_medium_ior, coat_ior, coat_weight);
 	float relative_ior		 = material.ior / incident_layer_ior;
 	if (relative_ior < 1.0f)
 		// If the coat IOR (which we're coming from) is greater than the IOR
@@ -388,8 +421,9 @@ HIPRT_DEVICE static float principled_specular_relative_ior(const DeviceUnpackedE
  * 'relative_ior' is eta_t / eta_i with 'eta_t' the IOR of the glossy layer and
  * 'eta_i' the IOR of
  */
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& render_data,
-														 BSDFContext& bsdf_context,
+														 BSDFContextT<MaterialType>& bsdf_context,
 														 float incident_medium_ior,
 														 float relative_ior,
 														 const float3_t& local_view_direction,
@@ -413,15 +447,22 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& 
 	ColorRGB32F F = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
 	// No energy compensation on the specular layer because energy compensation is done on the whole diffuse + specular
 	// not just specular.
-	ColorRGB32F specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy,
-																incident_medium_ior, false, F, local_view_direction, local_to_light_direction,
-																local_half_vector, pdf, is_specular_delta_reflection_sampled, rng);
+	ColorRGB32F specular;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy,
+														incident_medium_ior, false, F, local_view_direction, local_to_light_direction, local_half_vector, pdf,
+														is_specular_delta_reflection_sampled, rng);
+	else
+		specular = torrance_sparrow_GGX_eval_reflect_single(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy,
+															incident_medium_ior, false, F, local_view_direction, local_to_light_direction, local_half_vector,
+															pdf, is_specular_delta_reflection_sampled, rng);
 
 	return specular;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float principled_specular_pdf(const HIPRTRenderData& render_data,
-												  BSDFContext& bsdf_context,
+												  BSDFContextT<MaterialType>& bsdf_context,
 												  float relative_ior,
 												  const float3_t& local_view_direction,
 												  const float3_t& local_to_light_direction,
@@ -437,8 +478,9 @@ HIPRT_DEVICE static float principled_specular_pdf(const HIPRTRenderData& render_
 									  local_half_vector, is_specular_delta_reflection_sampled);
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float3_t principled_specular_sample(const HIPRTRenderData& render_data,
-														BSDFContext& bsdf_context,
+														BSDFContextT<MaterialType>& bsdf_context,
 														float roughness,
 														float anisotropy,
 														const float3_t& local_view_direction,
@@ -478,8 +520,9 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
 	return ColorRGB32F(1.0f);
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data,
-													  BSDFContext& bsdf_context,
+													  BSDFContextT<MaterialType>& bsdf_context,
 													  const float3_t& local_view_direction,
 													  const float3_t& local_to_light_direction,
 													  float& pdf,
@@ -505,8 +548,13 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 					  ? 1.0f
 					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
-	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
-	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
+	float dispersion_abbe_number = 20.0f;
+	float dispersion_scale		 = 0.0f;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
+		dispersion_scale	   = bsdf_context.material.dispersion_scale;
+	}
 	eta_i = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_i, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 	eta_t = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_t, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 
@@ -535,7 +583,9 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
 		relative_eta = 1.0f + 1.0e-5f;
 
-	bool thin_walled	   = bsdf_context.material.thin_walled;
+	bool thin_walled = false;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		thin_walled = bsdf_context.material.thin_walled;
 	float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
 	float3_t local_half_vector;
@@ -591,10 +641,17 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		// hemisphere as the view dir or light dir
 		return ColorRGB32F(0.0f);
 
-	float thin_film			= bsdf_context.material.thin_film;
-	ColorRGB32F F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
-	ColorRGB32F F_no_thin_film;
-	if (thin_film < 1.0f)
+	float thin_film = 0.0f;
+	ColorRGB32F F_thin_film(0.0f);
+	ColorRGB32F F_no_thin_film(0.0f);
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		thin_film	= bsdf_context.material.thin_film;
+		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+		if (thin_film < 1.0f)
+			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
+	}
+	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
@@ -638,9 +695,14 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		SpecularDeltaReflectionSampled delta_glass_direction_sampled =
 			bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
-		color =
-			torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i, false, F,
-												 local_view_direction, local_to_light_direction, local_half_vector, pdf, delta_glass_direction_sampled, rng);
+		if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+			color = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i,
+														 false, F, local_view_direction, local_to_light_direction, local_half_vector, pdf,
+														 delta_glass_direction_sampled, rng);
+		else
+			color = torrance_sparrow_GGX_eval_reflect_single(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i,
+															 false, F, local_view_direction, local_to_light_direction, local_half_vector, pdf,
+															 delta_glass_direction_sampled, rng);
 
 		// Note: for specular (roughness 0.0f) glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
@@ -710,8 +772,9 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	return color;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_data,
-											   BSDFContext& bsdf_context,
+											   BSDFContextT<MaterialType>& bsdf_context,
 											   const float3_t& local_view_direction,
 											   const float3_t& local_to_light_direction)
 {
@@ -735,8 +798,13 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 					  ? 1.0f
 					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
-	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
-	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
+	float dispersion_abbe_number = 20.0f;
+	float dispersion_scale		 = 0.0f;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
+		dispersion_scale	   = bsdf_context.material.dispersion_scale;
+	}
 	eta_i = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_i, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 	eta_t = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_t, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 
@@ -765,7 +833,9 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 	if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
 		relative_eta = 1.0f + 1.0e-5f;
 
-	bool thin_walled	   = bsdf_context.material.thin_walled;
+	bool thin_walled = false;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		thin_walled = bsdf_context.material.thin_walled;
 	float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
 	float3_t local_half_vector;
@@ -821,10 +891,17 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 		// hemisphere as the view dir or light dir
 		return 0.0f;
 
-	float thin_film			= bsdf_context.material.thin_film;
-	ColorRGB32F F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
-	ColorRGB32F F_no_thin_film;
-	if (thin_film < 1.0f)
+	float thin_film = 0.0f;
+	ColorRGB32F F_thin_film(0.0f);
+	ColorRGB32F F_no_thin_film(0.0f);
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		thin_film	= bsdf_context.material.thin_film;
+		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+		if (thin_film < 1.0f)
+			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
+	}
+	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
@@ -895,8 +972,9 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
+template <typename MaterialType>
 HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& render_data,
-													 BSDFContext& bsdf_context,
+													 BSDFContextT<MaterialType>& bsdf_context,
 													 float3_t local_view_direction,
 													 Xorshift32Generator& random_number_generator)
 {
@@ -907,8 +985,13 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 					  ? 1.0f
 					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
-	float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
-	float dispersion_scale		 = bsdf_context.material.dispersion_scale;
+	float dispersion_abbe_number = 20.0f;
+	float dispersion_scale		 = 0.0f;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
+		dispersion_scale	   = bsdf_context.material.dispersion_scale;
+	}
 	eta_i = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_i, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 	eta_t = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_t, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
 
@@ -918,7 +1001,9 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 	if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
 		relative_eta = 1.0f + 1.0e-5f;
 
-	bool thin_walled				   = bsdf_context.material.thin_walled;
+	bool thin_walled = false;
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+		thin_walled = bsdf_context.material.thin_walled;
 	float thin_walled_scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
 	if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
@@ -936,11 +1021,17 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 		GGX_anisotropic_sample_microfacet(local_view_direction, thin_walled_scaled_roughness, bsdf_context.material.anisotropy, random_number_generator);
 
 	float HoV		= hippt::dot(local_view_direction, microfacet_normal);
-	float thin_film = bsdf_context.material.thin_film;
-
-	ColorRGB32F F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
-	ColorRGB32F F_no_thin_film;
-	if (thin_film < 1.0f)
+	float thin_film = 0.0f;
+	ColorRGB32F F_thin_film(0.0f);
+	ColorRGB32F F_no_thin_film(0.0f);
+	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		thin_film	= bsdf_context.material.thin_film;
+		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+		if (thin_film < 1.0f)
+			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
+	}
+	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
@@ -1005,7 +1096,7 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_diffuse_transmission_eval(const HIPRTRenderData& render_data,
-																	 const DeviceUnpackedEffectiveMaterial& material,
+																	 const DeviceUnpackedPrincipledFullMaterial& material,
 																	 RayVolumeState& ray_volume_state,
 																	 bool update_ray_volume_state,
 																	 const float3_t& local_view_direction,
@@ -1065,7 +1156,9 @@ HIPRT_DEVICE static float3_t principled_diffuse_transmission_sample(float3_t sur
  *
  * 'relative_eta' must be coat_ior / incident_medium_ior
  */
-HIPRT_DEVICE static ColorRGB32F principled_coat_compute_darkening(const DeviceUnpackedEffectiveMaterial& material, float relative_eta, float view_dir_fresnel)
+HIPRT_DEVICE static ColorRGB32F principled_coat_compute_darkening(const DeviceUnpackedPrincipledFullMaterial& material,
+																  float relative_eta,
+																  float view_dir_fresnel)
 {
 	if (material.coat_darkening == 0.0f)
 		return ColorRGB32F(1.0f);
@@ -1283,7 +1376,7 @@ HIPRT_DEVICE static float internal_pdf_coat_layer(const HIPRTRenderData& render_
 }
 
 HIPRT_DEVICE static ColorRGB32F internal_eval_sheen_layer(const HIPRTRenderData& render_data,
-														  const DeviceUnpackedEffectiveMaterial& material,
+														  const DeviceUnpackedPrincipledFullMaterial& material,
 														  const float3_t& local_view_direction,
 														  const float3_t& local_to_light_direction,
 														  bool refracting,
@@ -1315,7 +1408,7 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_sheen_layer(const HIPRTRenderData&
 }
 
 HIPRT_DEVICE static float internal_pdf_sheen_layer(const HIPRTRenderData& render_data,
-												   const DeviceUnpackedEffectiveMaterial& material,
+												   const DeviceUnpackedPrincipledFullMaterial& material,
 												   const float3_t& local_view_direction,
 												   const float3_t& local_to_light_direction,
 												   bool refracting,
@@ -1507,7 +1600,7 @@ HIPRT_DEVICE static float internal_pdf_glass_layer(const HIPRTRenderData& render
 }
 
 HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_transmission_layer(const HIPRTRenderData& render_data,
-																		 const DeviceUnpackedEffectiveMaterial& material,
+																		 const DeviceUnpackedPrincipledFullMaterial& material,
 																		 RayVolumeState& ray_volume_state,
 																		 bool update_ray_volume_state,
 																		 const float3_t& local_view_direction,
@@ -1567,9 +1660,8 @@ HIPRT_DEVICE static float internal_pdf_diffuse_transmission_layer(const float3_t
  * 'relative_eta' should be specular_ior / coat_ior (or divided by the incident
  * medium ior if there is no coating)
  */
-HIPRT_DEVICE static ColorRGB32F principled_specular_compute_darkening(const DeviceUnpackedEffectiveMaterial& material,
-																	  float relative_eta,
-																	  float view_dir_fresnel)
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_specular_compute_darkening(const MaterialType& material, float relative_eta, float view_dir_fresnel)
 {
 	if (material.specular_darkening == 0.0f)
 		return ColorRGB32F(1.0f);
@@ -1597,13 +1689,17 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_compute_darkening(const Devi
 	//      transmission lobe and the specular layer because the diffuse
 	//      transmission lobe is a BTDF only, it doesn't
 	//      reflect light --> no TIR --> no darkening
-	darkening = hippt::lerp(ColorRGB32F(1.0f), darkening, material.specular * material.specular_darkening * (1.0f - material.diffuse_transmission));
+	float diffuse_transmission = 0.0f;
+	if constexpr (MaterialTraits<MaterialType>::has_transmission)
+		diffuse_transmission = material.diffuse_transmission;
+	darkening = hippt::lerp(ColorRGB32F(1.0f), darkening, material.specular * material.specular_darkening * (1.0f - diffuse_transmission));
 
 	return darkening;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data,
-															 BSDFContext& bsdf_context,
+															 BSDFContextT<MaterialType>& bsdf_context,
 															 const float3_t& local_view_direction,
 															 const float3_t local_to_light_direction,
 															 const float3_t& local_half_vector,
@@ -1678,7 +1774,10 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderDa
 		// We're cancelling the light_dir_fresnel instead of the view_dir_fresnel (which is the one that models the TIR)
 		// though because otherwise it seems to break, not sure why. The handling of fresnel effects when light is coming
 		// from below the specular (or coat lobe) lobe isn't perfect yet
-		light_dir_fresnel *= (1.0f - bsdf_context.material.diffuse_transmission);
+		float diffuse_transmission = 0.0f;
+		if constexpr (MaterialTraits<MaterialType>::has_transmission)
+			diffuse_transmission = bsdf_context.material.diffuse_transmission;
+		light_dir_fresnel *= (1.0f - diffuse_transmission);
 		layer_below_attenuation *= ColorRGB32F(1.0f) - light_dir_fresnel;
 
 		// Also, when light reflects off of the layer below the specular layer, some of that reflected light
@@ -1714,8 +1813,9 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderDa
 	return ColorRGB32F(0.0f);
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float internal_pdf_specular_layer(const HIPRTRenderData& render_data,
-													  BSDFContext& bsdf_context,
+													  BSDFContextT<MaterialType>& bsdf_context,
 													  const float3_t& local_view_direction,
 													  const float3_t local_to_light_direction,
 													  const float3_t& local_half_vector,
@@ -1752,9 +1852,10 @@ HIPRT_DEVICE static float internal_pdf_specular_layer(const HIPRTRenderData& ren
 	return 0.0f;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_layer(const HIPRTRenderData& render_data,
 															float incident_ior,
-															const DeviceUnpackedEffectiveMaterial& material,
+															const MaterialType& material,
 															const float3_t& local_view_direction,
 															const float3_t local_to_light_direction,
 															float diffuse_weight,
@@ -1780,9 +1881,10 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_layer(const HIPRTRenderDat
 	return ColorRGB32F(0.0f);
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float internal_pdf_diffuse_layer(const HIPRTRenderData& render_data,
 													 float incident_ior,
-													 const DeviceUnpackedEffectiveMaterial& material,
+													 const MaterialType& material,
 													 const float3_t& local_view_direction,
 													 const float3_t local_to_light_direction,
 													 float diffuse_weight,
@@ -1802,8 +1904,9 @@ HIPRT_DEVICE static float internal_pdf_diffuse_layer(const HIPRTRenderData& rend
  * The "glossy base" is the combination of a specular GGX layer
  * on top of a diffuse BRDF.
  */
+template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData& render_data,
-														  BSDFContext& bsdf_context,
+														  BSDFContextT<MaterialType>& bsdf_context,
 														  const float3_t& local_view_direction,
 														  const float3_t local_to_light_direction,
 														  const float3_t& local_half_vector,
@@ -1836,8 +1939,9 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData&
 	return glossy_base_contribution / glossy_base_energy_compensation;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static float internal_pdf_glossy_base(const HIPRTRenderData& render_data,
-												   BSDFContext& bsdf_context,
+												   BSDFContextT<MaterialType>& bsdf_context,
 												   const float3_t& local_view_direction,
 												   const float3_t local_to_light_direction,
 												   const float3_t& local_half_vector,
@@ -1866,7 +1970,7 @@ HIPRT_DEVICE static float internal_pdf_glossy_base(const HIPRTRenderData& render
 /**
  * Computes the lobes weights for the principled BSDF
  */
-HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedEffectiveMaterial& material,
+HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedPrincipledFullMaterial& material,
 														   bool outside_object,
 														   float& out_coat_weight,
 														   float& out_sheen_weight,
@@ -1886,8 +1990,17 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedE
 	// The layering follows the one of the principled BSDF of blender:
 	// [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
 
-	out_coat_weight	 = material.coat * outside_object;
-	out_sheen_weight = material.sheen * outside_object;
+	PrincipledLobeUserWeights controls;
+	controls.coat					 = material.coat;
+	controls.sheen					 = material.sheen;
+	controls.metallic				 = material.metallic;
+	controls.second_roughness_weight = material.second_roughness_weight;
+	controls.retro_reflection		 = material.retro_reflection;
+	controls.specular				 = material.specular;
+	controls.specular_transmission	 = material.specular_transmission;
+	controls.diffuse_transmission	 = material.diffuse_transmission;
+
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, outside_object);
 
 	// Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
 	//
@@ -1896,32 +2009,20 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedE
 	//
 	// See [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017],
 	// "Double Specular" for more details
-	float metallic	   = material.metallic;
-	out_metal_1_weight = metallic * outside_object;
-	out_metal_2_weight = metallic * outside_object;
-
-	float second_roughness_weight = material.second_roughness_weight;
-	out_metal_1_weight			  = hippt::lerp(out_metal_1_weight, 0.0f, second_roughness_weight);
-	out_metal_2_weight			  = hippt::lerp(0.0f, out_metal_2_weight, second_roughness_weight);
-
-	// Retro-reflection on the conductor lobe as proposed in the OpenPBR Spec 2026
-	//
-	// [OpenPBR:Novel Features and Implementation Details, Portsmouth, Kutz, Hill]
-	float retro_reflection		= material.retro_reflection * metallic;
-	out_retro_reflection_weight = out_metal_1_weight * retro_reflection * outside_object;
-	out_metal_1_weight			= hippt::lerp(out_metal_1_weight, 0.0f, retro_reflection);
-
-	float specular_transmission = material.specular_transmission;
-	float diffuse_transmission	= material.diffuse_transmission;
-	out_glass_weight			= !outside_object ? (1.0f - diffuse_transmission) : (1.0f - metallic) * (1.0f - diffuse_transmission) * specular_transmission;
-	out_diffuse_transmission_weight = !outside_object ? diffuse_transmission : (1.0f - metallic) * diffuse_transmission;
-
-	out_specular_weight = (1.0f - metallic) * (1.0f - specular_transmission * (1.0f - diffuse_transmission)) * material.specular * outside_object;
-	out_diffuse_weight	= (1.0f - metallic) * (1.0f - specular_transmission) * (1.0f - diffuse_transmission) * outside_object;
+	out_coat_weight					= weights.coat;
+	out_sheen_weight				= weights.sheen;
+	out_metal_1_weight				= weights.metallic_first;
+	out_metal_2_weight				= weights.metallic_second;
+	out_retro_reflection_weight		= weights.retro_reflection;
+	out_specular_weight				= weights.specular;
+	out_diffuse_weight				= weights.diffuse;
+	out_glass_weight				= weights.glass;
+	out_diffuse_transmission_weight = weights.diffuse_transmission;
 }
 
+template <typename MaterialType>
 HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
-																  const DeviceUnpackedEffectiveMaterial& material,
+																  const MaterialType& material,
 																  float NoV,
 																  float incident_medium_ior,
 
@@ -1952,37 +2053,43 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
 	// Adjusting the probability of sampling the diffuse or specular lobe based on the
 	// fresnel of the specular lobe
-	if (material.specular > 0.0f)
+	if constexpr (MaterialTraits<MaterialType>::has_specular)
 	{
-		float specular_relative_ior			   = principled_specular_relative_ior(material, incident_medium_ior);
-		float specular_fresnel				   = full_fresnel_dielectric(NoV, specular_relative_ior);
-		float specular_fresnel_sampling_weight = specular_fresnel * material.specular;
+		if (material.specular > 0.0f)
+		{
+			float specular_relative_ior			   = principled_specular_relative_ior(material, incident_medium_ior);
+			float specular_fresnel				   = full_fresnel_dielectric(NoV, specular_relative_ior);
+			float specular_fresnel_sampling_weight = specular_fresnel * material.specular;
 
-		// The specular weight gets affected
-		specular_weight *= specular_fresnel_sampling_weight;
-		// And everything that is below the specular also gets affected
-		diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
-		diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
+			// The specular weight gets affected
+			specular_weight *= specular_fresnel_sampling_weight;
+			// And everything that is below the specular also gets affected
+			diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
+			diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
+		}
 	}
 #endif // #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
 
 #if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
-	if (material.coat > 0.0f)
+	if constexpr (MaterialTraits<MaterialType>::has_coat)
 	{
-		float coat_fresnel				   = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
-		float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
+		if (material.coat > 0.0f)
+		{
+			float coat_fresnel				   = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
+			float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
 
-		// The coat weight gets affected
-		coat_weight *= coat_fresnel_sampling_weight;
-		// And everything that is below the coat also gets affected
-		sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
-		metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
-		metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
-		retro_reflection_weight *= 1.0f - coat_fresnel_sampling_weight;
-		specular_weight *= 1.0f - coat_fresnel_sampling_weight;
-		diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
-		glass_weight *= 1.0f - coat_fresnel_sampling_weight;
-		diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
+			// The coat weight gets affected
+			coat_weight *= coat_fresnel_sampling_weight;
+			// And everything that is below the coat also gets affected
+			sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
+			metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
+			metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
+			retro_reflection_weight *= 1.0f - coat_fresnel_sampling_weight;
+			specular_weight *= 1.0f - coat_fresnel_sampling_weight;
+			diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
+			glass_weight *= 1.0f - coat_fresnel_sampling_weight;
+			diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
+		}
 	}
 #endif // #if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
 
@@ -2001,7 +2108,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 }
 
 HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
-																  const DeviceUnpackedEffectiveMaterial& material,
+																  const DeviceUnpackedPrincipledFullMaterial& material,
 																  float NoV,
 																  const RayVolumeState& volume_state,
 
@@ -2040,6 +2147,257 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 
 		out_coat_sampling_proba, out_sheen_sampling_proba, out_metal_1_sampling_proba, out_metal_2_sampling_proba, out_retro_reflection_sampling_proba,
 		out_specular_sampling_proba, out_diffuse_sampling_proba, out_glass_sampling_proba, out_diffuse_transmission_sampling_proba);
+}
+
+HIPRT_DEVICE static float principled_get_incident_medium_ior(const HIPRTRenderData& render_data, const RayVolumeState& volume_state)
+{
+	return volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
+			   ? 1.0f
+			   : render_data.buffers.materials_buffer_soa.get_ior(volume_state.incident_mat_index);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static void principled_specular_diffuse_lobe_weights(const MaterialType& material,
+																  bool outside_object,
+																  float& specular_weight,
+																  float& diffuse_weight)
+{
+	PrincipledLobeUserWeights controls;
+	controls.specular			  = material.specular;
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, outside_object);
+	specular_weight				  = weights.specular;
+	diffuse_weight				  = weights.diffuse;
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static void principled_specular_diffuse_sampling_probabilities(const HIPRTRenderData& render_data,
+																			const MaterialType& material,
+																			float NoV,
+																			const RayVolumeState& volume_state,
+																			float specular_weight,
+																			float diffuse_weight,
+																			float& specular_probability,
+																			float& diffuse_probability)
+{
+	float incident_medium_ior = principled_get_incident_medium_ior(render_data, volume_state);
+	float zero_weight		  = 0.0f;
+	float glass_probability;
+	float unused_probability;
+	principled_bsdf_get_lobes_sampling_proba(render_data, material, NoV, incident_medium_ior, zero_weight, zero_weight, zero_weight, zero_weight, zero_weight,
+											 specular_weight, diffuse_weight, zero_weight, zero_weight, unused_probability, unused_probability,
+											 unused_probability, unused_probability, unused_probability, specular_probability, diffuse_probability,
+											 glass_probability, unused_probability);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_compact_metallic_eval(const HIPRTRenderData& render_data,
+																 BSDFContextT<MaterialType>& bsdf_context,
+																 float& pdf,
+																 Xorshift32Generator& rng)
+{
+	float3_t tangent, bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
+	float incident_medium_ior		  = principled_get_incident_medium_ior(render_data, bsdf_context.volume_state);
+
+	float metallic_weight;
+	PrincipledLobeUserWeights controls;
+	controls.metallic			  = 1.0f;
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, !bsdf_context.volume_state.inside_material);
+	metallic_weight				  = weights.metallic_first;
+
+	ColorRGB32F contribution = principled_metallic_eval(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+														incident_medium_ior, local_view_direction, local_to_light_direction, local_half_vector, pdf, rng);
+	return contribution * metallic_weight;
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_compact_metallic_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+{
+	float3_t tangent, bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
+	float pdf = principled_metallic_pdf(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction,
+										local_to_light_direction, local_half_vector);
+	return pdf;
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_compact_glass_eval(const HIPRTRenderData& render_data,
+															  BSDFContextT<MaterialType>& bsdf_context,
+															  float& pdf,
+															  Xorshift32Generator& rng)
+{
+	float3_t tangent, bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	return principled_glass_eval(render_data, bsdf_context, local_view_direction, local_to_light_direction, pdf, rng);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_compact_glass_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+{
+	float3_t tangent, bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	return principled_glass_pdf(render_data, bsdf_context, local_view_direction, local_to_light_direction);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_compact_specular_diffuse_eval(const HIPRTRenderData& render_data,
+																		 BSDFContextT<MaterialType>& bsdf_context,
+																		 float& pdf,
+																		 Xorshift32Generator& rng)
+{
+	pdf = 0.0f;
+	float3_t tangent, bitangent;
+	build_ONB(bsdf_context.shading_normal, tangent, bitangent);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
+
+	float3_t rotated_tangent, rotated_bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, rotated_tangent, rotated_bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction_rotated = world_to_local_frame(rotated_tangent, rotated_bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction_rotated =
+		world_to_local_frame(rotated_tangent, rotated_bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
+	float incident_medium_ior		   = principled_get_incident_medium_ior(render_data, bsdf_context.volume_state);
+
+	float specular_weight;
+	float diffuse_weight;
+	principled_specular_diffuse_lobe_weights(bsdf_context.material, !bsdf_context.volume_state.inside_material, specular_weight, diffuse_weight);
+	float specular_probability, diffuse_probability;
+	principled_specular_diffuse_sampling_probabilities(render_data, bsdf_context.material, local_view_direction.z, bsdf_context.volume_state, specular_weight,
+													   diffuse_weight, specular_probability, diffuse_probability);
+
+	ColorRGB32F layers_throughput(1.0f);
+	return internal_eval_glossy_base(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, local_view_direction_rotated,
+									 local_to_light_direction_rotated, local_half_vector_rotated, bsdf_context.shading_normal, incident_medium_ior,
+									 diffuse_weight, specular_weight, false, diffuse_probability, specular_probability, layers_throughput, pdf, rng);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE static float principled_compact_specular_diffuse_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+{
+	float3_t tangent, bitangent;
+	build_ONB(bsdf_context.shading_normal, tangent, bitangent);
+	float3_t local_view_direction	  = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
+
+	float3_t rotated_tangent, rotated_bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, rotated_tangent, rotated_bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction_rotated = world_to_local_frame(rotated_tangent, rotated_bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_to_light_direction_rotated =
+		world_to_local_frame(rotated_tangent, rotated_bitangent, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	float3_t local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
+	float incident_medium_ior		   = principled_get_incident_medium_ior(render_data, bsdf_context.volume_state);
+
+	float specular_weight;
+	float diffuse_weight;
+	principled_specular_diffuse_lobe_weights(bsdf_context.material, !bsdf_context.volume_state.inside_material, specular_weight, diffuse_weight);
+	float specular_probability, diffuse_probability;
+	principled_specular_diffuse_sampling_probabilities(render_data, bsdf_context.material, local_view_direction.z, bsdf_context.volume_state, specular_weight,
+													   diffuse_weight, specular_probability, diffuse_probability);
+
+	return internal_pdf_glossy_base(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, local_view_direction_rotated,
+									local_to_light_direction_rotated, local_half_vector_rotated, bsdf_context.shading_normal, incident_medium_ior,
+									diffuse_weight, specular_weight, false, diffuse_probability, specular_probability);
+}
+
+template <bool sampleDirectionOnly, typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRenderData& render_data,
+																 BSDFContextT<MaterialType>& bsdf_context,
+																 float3_t& output_direction,
+																 float& pdf,
+																 Xorshift32Generator& random_number_generator)
+{
+	pdf											  = 0.0f;
+	constexpr KernelMaterialSpecialization family = MaterialTraits<MaterialType>::family;
+	float3_t tangent, bitangent;
+	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+	float3_t local_view_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
+
+	if constexpr (family == KernelMaterialSpecializationGlass)
+	{
+		// Preserve the All path's lobe-selection draw before the glass direction sample.
+		random_number_generator();
+		output_direction = local_to_world_frame(tangent, bitangent, bsdf_context.shading_normal,
+												principled_glass_sample(render_data, bsdf_context, local_view_direction, random_number_generator));
+		if constexpr (sampleDirectionOnly)
+		{
+			pdf = 0.0f;
+			return ColorRGB32F(0.0f);
+		}
+		bsdf_context.to_light_direction = output_direction;
+		return principled_compact_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
+	}
+	else if constexpr (family == KernelMaterialSpecializationSingleMetallic)
+	{
+		// Preserve the All path's lobe-selection draw before the metallic direction sample.
+		random_number_generator();
+		if (bsdf_context.update_ray_volume_state)
+			bsdf_context.volume_state.interior_stack.pop(false);
+		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE;
+		output_direction				 = local_to_world_frame(tangent, bitangent, bsdf_context.shading_normal,
+																principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness,
+																						   bsdf_context.material.anisotropy, local_view_direction, random_number_generator));
+	}
+	else if constexpr (family == KernelMaterialSpecializationSpecularDiffuse)
+	{
+		float specular_weight;
+		float diffuse_weight;
+		principled_specular_diffuse_lobe_weights(bsdf_context.material, !bsdf_context.volume_state.inside_material, specular_weight, diffuse_weight);
+		float specular_probability, diffuse_probability;
+		principled_specular_diffuse_sampling_probabilities(render_data, bsdf_context.material, local_view_direction.z, bsdf_context.volume_state,
+														   specular_weight, diffuse_weight, specular_probability, diffuse_probability);
+
+		float lobe_choice = random_number_generator();
+		if (bsdf_context.update_ray_volume_state)
+			bsdf_context.volume_state.interior_stack.pop(false);
+
+		if (lobe_choice < specular_probability)
+		{
+			bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE;
+			output_direction =
+				local_to_world_frame(tangent, bitangent, bsdf_context.shading_normal,
+									 principled_specular_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+																local_view_direction, random_number_generator));
+		}
+		else if (lobe_choice < specular_probability + diffuse_probability)
+		{
+			bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
+			output_direction				 = principled_diffuse_sample(bsdf_context.shading_normal, random_number_generator);
+		}
+		else
+			return ColorRGB32F(0.0f);
+	}
+	else
+		return ColorRGB32F(0.0f);
+
+	if (hippt::dot(output_direction, bsdf_context.geometric_normal) < 0.0f)
+		return ColorRGB32F(0.0f);
+
+	if constexpr (sampleDirectionOnly)
+	{
+		pdf = 0.0f;
+		return ColorRGB32F(0.0f);
+	}
+
+	bsdf_context.to_light_direction = output_direction;
+	if constexpr (family == KernelMaterialSpecializationSingleMetallic)
+		return principled_compact_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
+	else if constexpr (family == KernelMaterialSpecializationSpecularDiffuse)
+		return principled_compact_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
+	else
+		return ColorRGB32F(0.0f);
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& rng)

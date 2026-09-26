@@ -264,7 +264,7 @@
 //	}
 // }
 //
-// int fit_principled_BSDF(DeviceUnpackedEffectiveMaterial& material)
+// int fit_principled_BSDF(DeviceUnpackedPrincipledFullMaterial& material)
 //{
 //	// allocate data
 //	float3x3 * tab = new float3x3[N*N];

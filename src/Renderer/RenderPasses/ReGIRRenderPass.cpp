@@ -86,7 +86,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
-	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
+	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_MODEL);
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID);
@@ -98,7 +98,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	// Always using a Lambertian BRDF for filling the secondary hits of the grid fill pass because we don't
 	// want to use the BSDF of the surface for that since we don't have the proper view direction
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
-		GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
+		GPUKernelCompilerOptions::BSDF_MODEL, BSDF_LAMBERTIAN);
 	// Disabling cui microsurface multiple scattering because this is just too expensive for a grid fill and not worth it at all
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);
@@ -120,7 +120,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
-	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
+	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_MODEL);
 	options_not_synchronized.insert(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID);
@@ -131,7 +131,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	// Always using a Lambertian BRDF for filling the secondary hits of the grid fill pass/spatial reuse because we don't
 	// want to use the BSDF of the surface for that since we don't have the proper view direction
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE,
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL,
 																												   BSDF_LAMBERTIAN);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE, ENERGY_COMPENSATION_MODE_LUTS_TURQUIN);

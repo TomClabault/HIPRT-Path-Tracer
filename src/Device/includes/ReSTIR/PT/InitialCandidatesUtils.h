@@ -75,8 +75,8 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 																	 float& out_bsdf_pdf,
 																	 NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, ray_payload.material,
-													   ray_payload.throughput);
+	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, closest_hit_info.primitive_index,
+													   closest_hit_info.texcoords, NEE_DEFERRED_INVALID_PATH_INDEX, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;

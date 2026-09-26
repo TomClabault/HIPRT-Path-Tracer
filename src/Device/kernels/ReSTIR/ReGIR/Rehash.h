@@ -27,7 +27,7 @@ ReGIR_Rehash(HIPRTCamera current_camera,
 			 unsigned int old_cell_count,
 
 			 bool primary_hit)
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReGIR_Rehash(HIPRTCamera current_camera,
 
@@ -57,7 +57,7 @@ inline ReGIR_Rehash(HIPRTCamera current_camera,
 	float3_t shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
 	int primitive_index		= old_hash_cell_data.hit_primitive[cell_alive_index];
 
-	DeviceUnpackedEffectiveMaterial material;
+	ReGIRMaterialInputs material;
 	material.roughness = old_hash_cell_data.roughness[cell_alive_index] / 255.0f;
 	material.metallic  = old_hash_cell_data.metallic[cell_alive_index] / 255.0f;
 	material.specular  = old_hash_cell_data.specular[cell_alive_index] / 255.0f;

@@ -19,13 +19,13 @@ enum RayState
 	MISSED
 };
 
-struct RayPayload
+struct RayPayloadCommon
 {
-	HIPRT_HOST_DEVICE RayPayload() = default;
+	HIPRT_DEVICE RayPayloadCommon() = default;
 
-	HIPRT_HOST_DEVICE explicit RayPayload(NoInitTag) : material(NoInitTag{}), volume_state(NoInitTag{}) {}
+	HIPRT_DEVICE explicit RayPayloadCommon(NoInitTag) : volume_state(NoInitTag{}) {}
 
-	HIPRT_HOST_DEVICE explicit RayPayload(const RayVolumeState& initial_volume_state) : volume_state(initial_volume_state) {}
+	HIPRT_DEVICE explicit RayPayloadCommon(const RayVolumeState& initial_volume_state) : volume_state(initial_volume_state) {}
 
 	// Energy left in the ray after it bounces around the scene
 	// Todo RGB9E5?
@@ -55,12 +55,24 @@ struct RayPayload
 	// TODO unsigned char packed
 	float accumulated_roughness = 0.0f;
 
-	// Material of the current hit
-	DeviceUnpackedEffectiveMaterial material;
-
 	RayVolumeState volume_state;
+};
 
-	HIPRT_HOST_DEVICE void accumulate_roughness(BSDFIncidentLightInfo sampled_lobe)
+template <typename MaterialType>
+struct RayPayloadT : RayPayloadCommon
+{
+	using material_type = MaterialType;
+
+	HIPRT_DEVICE RayPayloadT() = default;
+
+	HIPRT_DEVICE explicit RayPayloadT(NoInitTag) : RayPayloadCommon(NoInitTag{}), material(NoInitTag{}) {}
+
+	HIPRT_DEVICE explicit RayPayloadT(const RayVolumeState& initial_volume_state) : RayPayloadCommon(initial_volume_state) {}
+
+	// Material of the current hit
+	MaterialType material;
+
+	HIPRT_DEVICE void accumulate_roughness(BSDFIncidentLightInfo sampled_lobe)
 	{
 		switch (sampled_lobe)
 		{
@@ -70,30 +82,29 @@ struct RayPayload
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE:
-			accumulated_roughness = hippt::max(material.coat_roughness, accumulated_roughness);
+			if constexpr (MaterialTraits<MaterialType>::has_coat)
+				accumulated_roughness = hippt::max(material.coat_roughness, accumulated_roughness);
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE:
-			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			if constexpr (MaterialTraits<MaterialType>::has_roughness)
+				accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE:
-			accumulated_roughness = hippt::max(material.second_roughness, accumulated_roughness);
+			if constexpr (MaterialTraits<MaterialType>::has_second_roughness)
+				accumulated_roughness = hippt::max(material.second_roughness, accumulated_roughness);
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE:
-			// The specular roughness is just material.roughness
-			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			if constexpr (MaterialTraits<MaterialType>::has_specular)
+				accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE:
-			// The glass roughness is just material.roughness
-			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-			break;
-
 		case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE:
-			// The glass roughness is just material.roughness
-			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			if constexpr (MaterialTraits<MaterialType>::has_glass)
+				accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
 			break;
 
 		case NO_INFO:
@@ -114,6 +125,8 @@ struct RayPayload
 		return accumulated_roughness < 0.1f;
 	}
 };
+
+using RayPayload = RayPayloadT<DeviceUnpackedPrincipledFullMaterial>;
 
 // State that must remain live while WavefrontTracePaths performs traversal.
 struct WavefrontTracePayload

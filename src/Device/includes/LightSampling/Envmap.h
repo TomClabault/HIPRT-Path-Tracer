@@ -171,8 +171,10 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 	return envmap_radiance;
 }
 
+template <typename BsdfMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data,
-														 RayPayload& ray_payload,
+														 RayPayloadCommon& ray_payload,
+														 BsdfMaterialType& bsdf_material,
 														 HitInfo& closest_hit_info,
 														 const float3_t& view_direction,
 														 Xorshift32Generator& random_number_generator)
@@ -182,7 +184,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 	ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf_solid_angle, random_number_generator);
 	ColorRGB32F envmap_mis_contribution;
 
-	if (ray_payload.material.can_do_light_sampling())
+	if (bsdf_material.can_do_light_sampling())
 	{
 		// Sampling the envmap with MIS
 		float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
@@ -202,10 +204,11 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 			{
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction,
-										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-										 EnvmapSamplingDoBSDFMIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
-																 : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+				BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+															sampled_direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
+															ray_payload.accumulated_roughness,
+															EnvmapSamplingDoBSDFMIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
+																					: MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
@@ -226,9 +229,9 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 	ColorRGB32F bsdf_mis_contribution;
 
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-							 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+	BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+												make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, bsdf_material,
+												ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 	bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 
 	// Sampling the BSDF with MIS
@@ -258,8 +261,10 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 #endif // #if EnvmapSamplingDoBSDFMIS
 }
 
+template <typename BsdfMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
-												RayPayload& ray_payload,
+												RayPayloadCommon& ray_payload,
+												BsdfMaterialType& bsdf_material,
 												HitInfo& closest_hit_info,
 												const float3_t& view_direction,
 												Xorshift32Generator& random_number_generator)
@@ -277,8 +282,26 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	return ColorRGB32F(0.0f);
 #else
-	return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	return sample_environment_map_with_mis(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, random_number_generator);
 #endif
+}
+
+HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data,
+														 RayPayload& ray_payload,
+														 HitInfo& closest_hit_info,
+														 const float3_t& view_direction,
+														 Xorshift32Generator& random_number_generator)
+{
+	return sample_environment_map_with_mis(render_data, ray_payload, ray_payload.material, closest_hit_info, view_direction, random_number_generator);
+}
+
+HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
+												RayPayload& ray_payload,
+												HitInfo& closest_hit_info,
+												const float3_t& view_direction,
+												Xorshift32Generator& random_number_generator)
+{
+	return sample_environment_map(render_data, ray_payload, ray_payload.material, closest_hit_info, view_direction, random_number_generator);
 }
 
 #endif // #ifndef DEVICE_ENVMAP_H

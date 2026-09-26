@@ -22,9 +22,10 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(
-	HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
+	HIPRTRenderData& render_data, hiprtRay ray, RayPayloadCommon& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
 {
-	return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, random_number_generator);
+	return trace_main_path_ray(render_data, ray, out_ray_payload.volume_state, out_closest_hit_info, out_closest_hit_info.primitive_index,
+							   random_number_generator);
 }
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data,
@@ -39,8 +40,21 @@ HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData
 
 /**
  * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
- * but without evaluating the contribution of the BSDF or the PDF.
+ * but without evaluating the contribution of the BSDF or the
+ * PDF.
  */
+template <bool sampleDirectionOnly = false, typename MaterialType>
+HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData& render_data,
+																RayPayloadT<MaterialType>& ray_payload,
+																MaterialType& bsdf_material,
+																const HitInfo& closest_hit_info,
+																const float3_t view_direction,
+																ColorRGB32F& out_bsdf_color,
+																float3_t& out_bounce_direction,
+																float& out_bsdf_pdf,
+																Xorshift32Generator& random_number_generator,
+																BSDFIncidentLightInfo& out_sampled_light_info);
+
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData& render_data,
 																RayPayload& ray_payload,
@@ -52,8 +66,25 @@ HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData&
 																Xorshift32Generator& random_number_generator,
 																BSDFIncidentLightInfo& out_sampled_light_info)
 {
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-							 out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.accumulated_roughness);
+	path_tracing_sample_bsdf_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, ray_payload.material, closest_hit_info, view_direction,
+																	   out_bsdf_color, out_bounce_direction, out_bsdf_pdf, random_number_generator,
+																	   out_sampled_light_info);
+}
+
+template <bool sampleDirectionOnly, typename MaterialType>
+HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData& render_data,
+																RayPayloadT<MaterialType>& ray_payload,
+																MaterialType& bsdf_material,
+																const HitInfo& closest_hit_info,
+																const float3_t view_direction,
+																ColorRGB32F& out_bsdf_color,
+																float3_t& out_bounce_direction,
+																float& out_bsdf_pdf,
+																Xorshift32Generator& random_number_generator,
+																BSDFIncidentLightInfo& out_sampled_light_info)
+{
+	BSDFContextT<MaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+											out_sampled_light_info, ray_payload.volume_state, true, bsdf_material, ray_payload.accumulated_roughness);
 
 	out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
 
@@ -63,6 +94,40 @@ HIPRT_DEVICE void path_tracing_sample_bsdf_next_indirect_bounce(HIPRTRenderData&
 /**
  * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
+template <typename MaterialType>
+HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data,
+															RayPayloadT<MaterialType>& ray_payload,
+															const HitInfo& closest_hit_info,
+															ColorRGB32F current_throughput,
+															float& rr_throughput_scaling,
+															ColorRGB32F bsdf_color_cos_theta,
+															float3_t bounce_direction,
+															float bsdf_pdf,
+															Xorshift32Generator& random_number_generator,
+															NEEDeferredMISContext& nee_deferred_MIS_context,
+															float dispersion_scale,
+															bool apply_russian_roulette = true)
+{
+	ColorRGB32F throughput_attenuation = bsdf_color_cos_theta / bsdf_pdf;
+
+	// Russian roulette
+	if (apply_russian_roulette && !do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, rr_throughput_scaling,
+													   throughput_attenuation, random_number_generator))
+		return ColorRGB32F(0.0f);
+
+	// Dispersion ray throughput filter
+	current_throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, dispersion_scale);
+	current_throughput *= throughput_attenuation;
+	// Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
+	// happen: with some material, the throughput can get so low that it becomes denormalized and
+	// this can cause issues in some parts of the renderer (most notably the NaN detection)
+	current_throughput.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
+
+	ray_payload.next_ray_state = RayState::BOUNCE;
+
+	return current_throughput;
+}
+
 HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data,
 															RayPayload& ray_payload,
 															const HitInfo& closest_hit_info,
@@ -75,31 +140,17 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 															NEEDeferredMISContext& nee_deferred_MIS_context,
 															bool apply_russian_roulette = true)
 {
-	ColorRGB32F throughput_attenuation = bsdf_color_cos_theta / bsdf_pdf;
-
-	// Russian roulette
-	if (apply_russian_roulette && !do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, rr_throughput_scaling,
-													   throughput_attenuation, random_number_generator))
-		return ColorRGB32F(0.0f);
-
-	// Dispersion ray throughput filter
-	current_throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
-	current_throughput *= throughput_attenuation;
-	// Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
-	// happen: with some material, the throughput can get so low that it becomes denormalized and
-	// this can cause issues in some parts of the renderer (most notably the NaN detection)
-	current_throughput.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
-
-	ray_payload.next_ray_state = RayState::BOUNCE;
-
-	return current_throughput;
+	return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, rr_throughput_scaling, bsdf_color_cos_theta,
+											  bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context,
+											  ray_payload.material.dispersion_scale, apply_russian_roulette);
 }
 
 /**
  * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
+template <typename MaterialType>
 HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data,
-															RayPayload& ray_payload,
+															RayPayloadT<MaterialType>& ray_payload,
 															const HitInfo& closest_hit_info,
 															ColorRGB32F current_throughput,
 															ColorRGB32F bsdf_color_cos_theta,
@@ -116,6 +167,25 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 											  apply_russian_roulette);
 }
 
+template <typename MaterialType>
+HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data,
+															RayPayloadT<MaterialType>& ray_payload,
+															const HitInfo& closest_hit_info,
+															ColorRGB32F current_throughput,
+															ColorRGB32F bsdf_color_cos_theta,
+															float3_t bounce_direction,
+															float bsdf_pdf,
+															Xorshift32Generator& random_number_generator,
+															NEEDeferredMISContext& nee_deferred_MIS_context,
+															float dispersion_scale,
+															bool apply_russian_roulette = true)
+{
+	float unused_rr_throughput_scaling;
+	return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling,
+											  bsdf_color_cos_theta, bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context,
+											  dispersion_scale, apply_russian_roulette);
+}
+
 /**
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
@@ -123,6 +193,19 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
  * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
  * but without evaluating the contribution of the BSDF or the PDF.
  */
+template <typename MaterialType>
+HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+															RayPayloadT<MaterialType>& ray_payload,
+															MaterialType& bsdf_material,
+															HitInfo& closest_hit_info,
+															float3_t view_direction,
+															hiprtRay& out_ray,
+															Xorshift32Generator& random_number_generator,
+															BSDFIncidentLightInfo& incident_light_info,
+															NEEDeferredMISContext& nee_deferred_MIS_context,
+															float dispersion_scale,
+															unsigned int wavefront_path_index = 0xFFFFFFFFu);
+
 HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 															RayPayload& ray_payload,
 															HitInfo& closest_hit_info,
@@ -132,14 +215,42 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 															BSDFIncidentLightInfo& incident_light_info,
 															NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, ray_payload.material,
-													   ray_payload.throughput);
+	return path_tracing_compute_next_indirect_bounce(render_data, ray_payload, ray_payload.material, closest_hit_info, view_direction, out_ray,
+													 random_number_generator, incident_light_info, nee_deferred_MIS_context,
+													 ray_payload.material.dispersion_scale);
+}
+
+template <typename MaterialType>
+HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+															RayPayloadT<MaterialType>& ray_payload,
+															MaterialType& bsdf_material,
+															HitInfo& closest_hit_info,
+															float3_t view_direction,
+															hiprtRay& out_ray,
+															Xorshift32Generator& random_number_generator,
+															BSDFIncidentLightInfo& incident_light_info,
+															NEEDeferredMISContext& nee_deferred_MIS_context,
+															float dispersion_scale,
+															unsigned int wavefront_path_index)
+{
+	unsigned int primary_gbuffer_path_index = 0xFFFFFFFFu;
+	if (wavefront_path_index != 0xFFFFFFFFu && ray_payload.bounce == 0)
+		primary_gbuffer_path_index = wavefront_path_index;
+
+	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, closest_hit_info.primitive_index,
+													   closest_hit_info.texcoords, primary_gbuffer_path_index, ray_payload.throughput);
+	if constexpr (MaterialTraits<MaterialType>::is_principled && MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
+	{
+		LightProposalInputs proposal_inputs			 = make_light_proposal_inputs(bsdf_material);
+		NEEDeferredLightProposalState proposal_state = make_nee_deferred_light_proposal_state(proposal_inputs);
+		nee_deferred_MIS_context.set_last_light_proposal_state(proposal_state, bsdf_material.can_do_light_sampling());
+	}
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
-	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
-												  random_number_generator, incident_light_info);
+	path_tracing_sample_bsdf_next_indirect_bounce(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, bsdf_color, bounce_direction,
+												  bsdf_pdf, random_number_generator, incident_light_info);
 	ColorRGB32F bsdf_color_cos_theta = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal));
 
 	nee_deferred_MIS_context.fill_last_bsdf_information(bsdf_color_cos_theta, bsdf_pdf);
@@ -151,8 +262,9 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color_cos_theta,
-																bounce_direction, bsdf_pdf, random_number_generator, nee_deferred_MIS_context);
+	ray_payload.throughput =
+		path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color_cos_theta, bounce_direction, bsdf_pdf,
+										   random_number_generator, nee_deferred_MIS_context, dispersion_scale);
 	if (ray_payload.throughput.is_black())
 		// Killed by russian roulette
 		return false;
@@ -241,7 +353,10 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 	return clamped_indirect_lighting_contribution;
 }
 
-HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3_t ray_direction, uint32_t pixel_index)
+HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data,
+														 RayPayloadCommon& ray_payload,
+														 float3_t ray_direction,
+														 uint32_t pixel_index)
 {
 	return path_tracing_miss_gather_envmap(render_data, ray_payload.throughput, ray_direction, ray_payload.bounce, pixel_index);
 }

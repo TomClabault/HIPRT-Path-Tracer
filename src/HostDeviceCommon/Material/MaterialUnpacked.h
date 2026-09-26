@@ -11,6 +11,8 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 
+#include <type_traits>
+
 /**
  * How to add a material property:
  *
@@ -65,7 +67,7 @@
  *      The function DevicePackedTexturedMaterial::unpack() needs to be completed (follow what is done for the other parameters).
  *      This is the function that will be called when unpacking the material from the materials buffer (when reading the material of the geometry a ray just
  *		hit). The unpacked textured material will then be used to read the textures of the material at the hit point and the whole will result in a
- *		DeviceUnpackedEffectiveMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
+ *		DeviceUnpackedPrincipledFullMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
  *
  * 4)   MaterialPackedSoA.h
  *
@@ -99,9 +101,9 @@
 /**
  * Unpacked material for use in the shaders
  */
-struct DeviceUnpackedEffectiveMaterial
+struct DeviceUnpackedPrincipledFullMaterial
 {
-	HIPRT_HOST_DEVICE DeviceUnpackedEffectiveMaterial()
+	HIPRT_HOST_DEVICE DeviceUnpackedPrincipledFullMaterial()
 		: base_color(1.0f, 1.0f, 1.0f), roughness(0.3f), oren_nayar_sigma(0.34906585039886591538f), metallic(0.0f), metallic_F90_falloff_exponent(5.0f),
 		  metallic_F82(1.0f, 1.0f, 1.0f), metallic_F90(1.0f, 1.0f, 1.0f), anisotropy(0.0f), anisotropy_rotation(0.0f), second_roughness_weight(0.0f),
 		  second_roughness(0.5f), retro_reflection(0.0f), specular(1.0f), specular_tint(1.0f), specular_color(1.0f, 1.0f, 1.0f), specular_darkening(1.0f),
@@ -117,7 +119,7 @@ struct DeviceUnpackedEffectiveMaterial
 	}
 
 	// Common-query inputs are initialized; other inactive-lobe fields remain untouched and must stay guarded by lobe strength.
-	HIPRT_HOST_DEVICE explicit DeviceUnpackedEffectiveMaterial(NoInitTag)
+	HIPRT_HOST_DEVICE explicit DeviceUnpackedPrincipledFullMaterial(NoInitTag)
 		: base_color(NoInitTag{}), metallic(0.0f), metallic_F82(NoInitTag{}), metallic_F90(NoInitTag{}), second_roughness_weight(0.0f), second_roughness(0.5f),
 		  retro_reflection(0.0f), specular(0.0f), specular_color(NoInitTag{}), coat(0.0f), coat_medium_absorption(NoInitTag{}), coat_roughness(0.0f),
 		  coat_roughening(1.0f), coat_anisotropy(0.0f), coat_ior(1.5f), sheen(0.0f), sheen_roughness(0.5f), sheen_color(1.0f, 1.0f, 1.0f),
@@ -144,7 +146,7 @@ struct DeviceUnpackedEffectiveMaterial
 	 */
 	HIPRT_HOST_DEVICE float minimum_roughness() const
 	{
-#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 		return 1.0f;
 #endif
 
@@ -374,13 +376,13 @@ struct DeviceUnpackedEffectiveMaterial
 
 	HIPRT_HOST_DEVICE unsigned char get_dielectric_priority() const
 	{
-#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 		// These BSDFs do not support tranmission so every material
 		// should have the same priority
 		return 0;
 #else
 		return dielectric_priority;
-#endif // #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	}
 
 private:
@@ -397,7 +399,7 @@ private:
 	unsigned char dielectric_priority;
 };
 
-struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
+struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedPrincipledFullMaterial
 {
 	int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
 
@@ -416,5 +418,409 @@ struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
 	int sheen_texture_index					= MaterialConstants::NO_TEXTURE;
 	int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 };
+
+enum EffectiveMaterialEmissionFlags : unsigned int
+{
+	EffectiveMaterialEmissionIsEmissive = 1u
+};
+
+struct EffectiveMaterialEmission
+{
+	ColorRGB32F emission;
+	unsigned int emission_flags;
+
+	HIPRT_DEVICE EffectiveMaterialEmission() : emission(0.0f, 0.0f, 0.0f), emission_flags(0u) {}
+
+	HIPRT_DEVICE explicit EffectiveMaterialEmission(NoInitTag) : emission(NoInitTag{}), emission_flags(0u) {}
+
+	HIPRT_DEVICE ColorRGB32F get_emission() const
+	{
+		return emission;
+	}
+
+	HIPRT_DEVICE bool is_emissive() const
+	{
+		return (emission_flags & EffectiveMaterialEmissionIsEmissive) != 0u || !hippt::is_zero(emission.r) || !hippt::is_zero(emission.g) ||
+			   !hippt::is_zero(emission.b);
+	}
+};
+
+struct ReGIRMaterialInputs
+{
+	float roughness;
+	float metallic;
+	float specular;
+};
+
+struct DeviceLambertianMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+
+	HIPRT_DEVICE DeviceLambertianMaterial() : base_color(1.0f, 1.0f, 1.0f) {}
+
+	HIPRT_DEVICE explicit DeviceLambertianMaterial(NoInitTag) : EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{}) {}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return true;
+	}
+};
+
+struct DeviceOrenNayarMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+	float oren_nayar_sigma;
+
+	HIPRT_DEVICE DeviceOrenNayarMaterial() : base_color(1.0f, 1.0f, 1.0f), oren_nayar_sigma(0.34906585039886591538f) {}
+
+	HIPRT_DEVICE explicit DeviceOrenNayarMaterial(NoInitTag) : EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{}), oren_nayar_sigma(0.0f) {}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return true;
+	}
+};
+
+struct DevicePrincipledDiffuseMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+	float oren_nayar_sigma;
+#endif
+
+	HIPRT_DEVICE DevicePrincipledDiffuseMaterial()
+		: base_color(1.0f, 1.0f, 1.0f)
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		  ,
+		  oren_nayar_sigma(0.34906585039886591538f)
+#endif
+	{
+	}
+
+	HIPRT_DEVICE explicit DevicePrincipledDiffuseMaterial(NoInitTag)
+		: EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{})
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		  ,
+		  oren_nayar_sigma(0.0f)
+#endif
+	{
+	}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return true;
+	}
+};
+
+struct DevicePrincipledGlassMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+	float roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+	float ior;
+	bool do_glass_energy_compensation;
+
+	HIPRT_DEVICE DevicePrincipledGlassMaterial()
+		: base_color(1.0f, 1.0f, 1.0f), roughness(0.3f), anisotropy(0.0f), anisotropy_rotation(0.0f), ior(1.40f), do_glass_energy_compensation(true)
+	{
+	}
+
+	HIPRT_DEVICE explicit DevicePrincipledGlassMaterial(NoInitTag)
+		: EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{}), roughness(0.0f), anisotropy(0.0f), anisotropy_rotation(0.0f), ior(1.40f),
+		  do_glass_energy_compensation(true)
+	{
+	}
+
+	HIPRT_HOST_DEVICE SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled(float delta_distribution_roughness,
+																						  float delta_distribution_anisotropy,
+																						  BSDFIncidentLightInfo incident_light_info) const
+	{
+		if (!MaterialUtils::is_perfectly_smooth(delta_distribution_roughness))
+			return SpecularDeltaReflectionSampled::NOT_SPECULAR;
+
+		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
+		bool sampled_from_glass	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE &&
+								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+		return sampled_from_glass ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
+	}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return MaterialUtils::can_do_light_sampling(roughness, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD);
+	}
+};
+
+struct DevicePrincipledSingleMetallicMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+	float roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+	ColorRGB32F metallic_F82;
+	ColorRGB32F metallic_F90;
+	float metallic_F90_falloff_exponent;
+	bool do_metallic_energy_compensation;
+
+	HIPRT_DEVICE DevicePrincipledSingleMetallicMaterial()
+		: base_color(1.0f, 1.0f, 1.0f), roughness(0.3f), anisotropy(0.0f), anisotropy_rotation(0.0f), metallic_F82(1.0f, 1.0f, 1.0f),
+		  metallic_F90(1.0f, 1.0f, 1.0f), metallic_F90_falloff_exponent(5.0f), do_metallic_energy_compensation(true)
+	{
+	}
+
+	HIPRT_DEVICE explicit DevicePrincipledSingleMetallicMaterial(NoInitTag)
+		: EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{}), roughness(0.0f), anisotropy(0.0f), anisotropy_rotation(0.0f),
+		  metallic_F82(NoInitTag{}), metallic_F90(NoInitTag{}), metallic_F90_falloff_exponent(5.0f), do_metallic_energy_compensation(true)
+	{
+	}
+
+	HIPRT_HOST_DEVICE SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled(float delta_distribution_roughness,
+																						  float delta_distribution_anisotropy,
+																						  BSDFIncidentLightInfo incident_light_info) const
+	{
+		if (!MaterialUtils::is_perfectly_smooth(delta_distribution_roughness))
+			return SpecularDeltaReflectionSampled::NOT_SPECULAR;
+
+		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
+		bool sampled_from_metal	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
+								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+		return sampled_from_metal ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
+	}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return MaterialUtils::can_do_light_sampling(roughness, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD);
+	}
+};
+
+struct DevicePrincipledSpecularDiffuseMaterial : EffectiveMaterialEmission
+{
+	ColorRGB32F base_color;
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+	float oren_nayar_sigma;
+#endif
+	float roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+	float ior;
+	float specular;
+	float specular_tint;
+	ColorRGB32F specular_color;
+	float specular_darkening;
+	bool do_specular_energy_compensation;
+
+	HIPRT_DEVICE DevicePrincipledSpecularDiffuseMaterial()
+		: base_color(1.0f, 1.0f, 1.0f)
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		  ,
+		  oren_nayar_sigma(0.34906585039886591538f)
+#endif
+		  ,
+		  roughness(0.3f), anisotropy(0.0f), anisotropy_rotation(0.0f), ior(1.40f), specular(1.0f), specular_tint(1.0f), specular_color(1.0f, 1.0f, 1.0f),
+		  specular_darkening(1.0f), do_specular_energy_compensation(true)
+	{
+	}
+
+	HIPRT_DEVICE explicit DevicePrincipledSpecularDiffuseMaterial(NoInitTag)
+		: EffectiveMaterialEmission(NoInitTag{}), base_color(NoInitTag{})
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		  ,
+		  oren_nayar_sigma(0.0f)
+#endif
+		  ,
+		  roughness(0.0f), anisotropy(0.0f), anisotropy_rotation(0.0f), ior(1.40f), specular(0.0f), specular_tint(0.0f), specular_color(NoInitTag{}),
+		  specular_darkening(1.0f), do_specular_energy_compensation(true)
+	{
+	}
+
+	HIPRT_HOST_DEVICE SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled(float delta_distribution_roughness,
+																						  float delta_distribution_anisotropy,
+																						  BSDFIncidentLightInfo incident_light_info) const
+	{
+		if (!MaterialUtils::is_perfectly_smooth(delta_distribution_roughness))
+			return SpecularDeltaReflectionSampled::NOT_SPECULAR;
+
+		bool matching_anisotropy   = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
+		bool sampled_from_specular = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE &&
+									 MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+		return sampled_from_specular ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
+	}
+
+	HIPRT_HOST_DEVICE bool can_do_light_sampling() const
+	{
+		return MaterialUtils::can_do_light_sampling(roughness, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD);
+	}
+};
+
+template <typename MaterialType>
+struct MaterialTraits;
+
+template <>
+struct MaterialTraits<DeviceUnpackedPrincipledFullMaterial>
+{
+	static constexpr bool is_principled		   = true;
+	static constexpr bool has_diffuse		   = true;
+	static constexpr bool has_glass			   = true;
+	static constexpr bool has_metallic		   = true;
+	static constexpr bool has_specular		   = true;
+	static constexpr bool has_coat			   = true;
+	static constexpr bool has_sheen			   = true;
+	static constexpr bool has_transmission	   = true;
+	static constexpr bool has_roughness		   = true;
+	static constexpr bool has_second_roughness = true;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationAll;
+};
+
+template <>
+struct MaterialTraits<DeviceLambertianMaterial>
+{
+	static constexpr bool is_principled		   = false;
+	static constexpr bool has_diffuse		   = true;
+	static constexpr bool has_glass			   = false;
+	static constexpr bool has_metallic		   = false;
+	static constexpr bool has_specular		   = false;
+	static constexpr bool has_coat			   = false;
+	static constexpr bool has_sheen			   = false;
+	static constexpr bool has_transmission	   = false;
+	static constexpr bool has_roughness		   = false;
+	static constexpr bool has_second_roughness = false;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationAll;
+};
+
+template <>
+struct MaterialTraits<DeviceOrenNayarMaterial> : MaterialTraits<DeviceLambertianMaterial>
+{
+};
+
+template <>
+struct MaterialTraits<DevicePrincipledDiffuseMaterial> : MaterialTraits<DeviceLambertianMaterial>
+{
+	static constexpr bool is_principled = true;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationDiffuse;
+};
+
+template <>
+struct MaterialTraits<DevicePrincipledGlassMaterial>
+{
+	static constexpr bool is_principled		   = true;
+	static constexpr bool has_diffuse		   = false;
+	static constexpr bool has_glass			   = true;
+	static constexpr bool has_metallic		   = false;
+	static constexpr bool has_specular		   = false;
+	static constexpr bool has_coat			   = false;
+	static constexpr bool has_sheen			   = false;
+	static constexpr bool has_transmission	   = true;
+	static constexpr bool has_roughness		   = true;
+	static constexpr bool has_second_roughness = false;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationGlass;
+};
+
+template <>
+struct MaterialTraits<DevicePrincipledSingleMetallicMaterial>
+{
+	static constexpr bool is_principled		   = true;
+	static constexpr bool has_diffuse		   = false;
+	static constexpr bool has_glass			   = false;
+	static constexpr bool has_metallic		   = true;
+	static constexpr bool has_specular		   = false;
+	static constexpr bool has_coat			   = false;
+	static constexpr bool has_sheen			   = false;
+	static constexpr bool has_transmission	   = false;
+	static constexpr bool has_roughness		   = true;
+	static constexpr bool has_second_roughness = false;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationSingleMetallic;
+};
+
+template <>
+struct MaterialTraits<DevicePrincipledSpecularDiffuseMaterial>
+{
+	static constexpr bool is_principled		   = true;
+	static constexpr bool has_diffuse		   = true;
+	static constexpr bool has_glass			   = false;
+	static constexpr bool has_metallic		   = false;
+	static constexpr bool has_specular		   = true;
+	static constexpr bool has_coat			   = false;
+	static constexpr bool has_sheen			   = false;
+	static constexpr bool has_transmission	   = false;
+	static constexpr bool has_roughness		   = true;
+	static constexpr bool has_second_roughness = false;
+
+	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationSpecularDiffuse;
+};
+
+template <BSDFModel model, KernelMaterialSpecialization specialization>
+struct EffectiveMaterialFor
+{
+	static_assert(model != model, "Unsupported BSDF model and material specialization combination");
+	using Type = void;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Lambertian, KernelMaterialSpecializationAll>
+{
+	using Type = DeviceLambertianMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::OrenNayar, KernelMaterialSpecializationAll>
+{
+	using Type = DeviceOrenNayarMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationDiffuse>
+{
+	using Type = DevicePrincipledDiffuseMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationGlass>
+{
+	using Type = DevicePrincipledGlassMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSingleMetallic>
+{
+	using Type = DevicePrincipledSingleMetallicMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSpecularDiffuse>
+{
+	using Type = DevicePrincipledSpecularDiffuseMaterial;
+};
+
+template <>
+struct EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationAll>
+{
+	using Type = DeviceUnpackedPrincipledFullMaterial;
+};
+
+// Compatibility for code that still refers to the original type-selection name.
+template <BSDFModel model, KernelMaterialSpecialization specialization>
+struct DeviceMaterialFor : EffectiveMaterialFor<model, specialization>
+{
+};
+
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Lambertian, KernelMaterialSpecializationAll>::Type, DeviceLambertianMaterial>);
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::OrenNayar, KernelMaterialSpecializationAll>::Type, DeviceOrenNayarMaterial>);
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationDiffuse>::Type, DevicePrincipledDiffuseMaterial>);
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationGlass>::Type, DevicePrincipledGlassMaterial>);
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSingleMetallic>::Type,
+							 DevicePrincipledSingleMetallicMaterial>);
+static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSpecularDiffuse>::Type,
+							 DevicePrincipledSpecularDiffuseMaterial>);
+static_assert(
+	std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationAll>::Type, DeviceUnpackedPrincipledFullMaterial>);
+static_assert(!std::is_convertible_v<DevicePrincipledDiffuseMaterial, DeviceUnpackedPrincipledFullMaterial>);
+static_assert(!std::is_convertible_v<DevicePrincipledGlassMaterial, DeviceUnpackedPrincipledFullMaterial>);
+static_assert(!std::is_convertible_v<DevicePrincipledSingleMetallicMaterial, DeviceUnpackedPrincipledFullMaterial>);
+static_assert(!std::is_convertible_v<DevicePrincipledSpecularDiffuseMaterial, DeviceUnpackedPrincipledFullMaterial>);
 
 #endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H

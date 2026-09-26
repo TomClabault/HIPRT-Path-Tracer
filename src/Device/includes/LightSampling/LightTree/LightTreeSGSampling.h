@@ -158,7 +158,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 	float diffuse_illumination = amplitude * SG_clamped_cosine_product_integral_over_pi(cosine, light_lobe.sharpness);
 
 	float specular_illumination = 0.0f;
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	if (specular)
 	{
 		float light_lobe_variance = 1.0f / light_lobe.sharpness;
@@ -195,7 +195,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 
 		specular_illumination = amplitude * visibility * pdf * SG_integral(light_lobe.sharpness);
 	}
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 
 	return emissive * (diffuse_illumination + specular * specular_illumination);
 }
@@ -509,18 +509,17 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 																											  float3_t view_direction,
 																											  float3_t shading_normal,
 																											  float3_t geometric_normal,
-																											  const DeviceUnpackedEffectiveMaterial& material,
+																											  const LightTreeSGProposalState& proposal_state,
 																											  int last_hit_primitive_index,
 																											  Xorshift32Generator& rng)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
-	float sg_specular_weight;
-	float alpha_x;
-	float alpha_y;
-	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
+	float sg_specular_weight = proposal_state.sg_specular_weight;
+	float alpha_x			 = proposal_state.alpha_x;
+	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -722,6 +721,22 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 #endif // #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
 }
 
+HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_emissive_triangle_light_tree_sg(
+	const HIPRTRenderData& render_data,
+	float3_t shading_point,
+	float3_t view_direction,
+	float3_t shading_normal,
+	float3_t geometric_normal,
+	const DeviceUnpackedPrincipledFullMaterial& material,
+	int last_hit_primitive_index,
+	Xorshift32Generator& rng)
+{
+	LightProposalInputs proposal_inputs		= make_light_proposal_inputs(material);
+	LightTreeSGProposalState proposal_state = make_light_tree_sg_proposal_state(proposal_inputs);
+	return sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, proposal_state,
+													  last_hit_primitive_index, rng);
+}
+
 HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 								   const LightTreeSGNodeDevice* nodes,
 								   const SGSpecularImportanceData& spec_data,
@@ -866,7 +881,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 														  float3_t shading_point,
 														  float3_t view_direction,
 														  float3_t shading_normal,
-														  const DeviceUnpackedEffectiveMaterial& material,
+														  const LightTreeSGProposalState& proposal_state,
 														  int global_emissive_triangle_index)
 {
 	if (global_emissive_triangle_index == -1)
@@ -875,12 +890,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 	LightTreeSGNodeDevice current_node = nodes[0];
 
-	float sg_specular_weight;
-	float alpha_x;
-	float alpha_y;
-	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
+	float sg_specular_weight = proposal_state.sg_specular_weight;
+	float alpha_x			 = proposal_state.alpha_x;
+	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -998,6 +1012,18 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	// Probability of going down the tree + probability of sampling that triangle in the node
 	return cumulative_probability / current_node.triangle_count;
 #endif // #if LightTreeSGUseNewSplittingModel == KERNEL_OPTION_TRUE
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
+														  float3_t shading_point,
+														  float3_t view_direction,
+														  float3_t shading_normal,
+														  const DeviceUnpackedPrincipledFullMaterial& material,
+														  int global_emissive_triangle_index)
+{
+	LightProposalInputs proposal_inputs		= make_light_proposal_inputs(material);
+	LightTreeSGProposalState proposal_state = make_light_tree_sg_proposal_state(proposal_inputs);
+	return pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, proposal_state, global_emissive_triangle_index);
 }
 
 #else // #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE
@@ -1192,7 +1218,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 																			float3_t view_direction,
 																			float3_t shading_normal,
 																			float3_t geometric_normal,
-																			const DeviceUnpackedEffectiveMaterial& material,
+																			const LightTreeSGProposalState& proposal_state,
 																			int last_hit_primitive_index,
 																			Xorshift32Generator& rng)
 {
@@ -1201,12 +1227,11 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	unsigned int current_node_index = 0;
 	unsigned int depth				= 0;
 
-	float sg_specular_weight;
-	float alpha_x;
-	float alpha_y;
-	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
+	float sg_specular_weight = proposal_state.sg_specular_weight;
+	float alpha_x			 = proposal_state.alpha_x;
+	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -1264,11 +1289,26 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	return LightSampleArray<1>{ light_sample };
 }
 
+HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
+																			float3_t shading_point,
+																			float3_t view_direction,
+																			float3_t shading_normal,
+																			float3_t geometric_normal,
+																			const DeviceUnpackedPrincipledFullMaterial& material,
+																			int last_hit_primitive_index,
+																			Xorshift32Generator& rng)
+{
+	LightProposalInputs proposal_inputs		= make_light_proposal_inputs(material);
+	LightTreeSGProposalState proposal_state = make_light_tree_sg_proposal_state(proposal_inputs);
+	return sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, proposal_state,
+													  last_hit_primitive_index, rng);
+}
+
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
 														  float3_t shading_point,
 														  float3_t view_direction,
 														  float3_t shading_normal,
-														  const DeviceUnpackedEffectiveMaterial& material,
+														  const LightTreeSGProposalState& proposal_state,
 														  int global_emissive_triangle_index)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
@@ -1276,12 +1316,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	LightTreeSGNodeDevice current_node = nodes[0];
 	unsigned int current_node_index	   = 0;
 
-	float sg_specular_weight;
-	float alpha_x;
-	float alpha_y;
-	get_sg_specular_importance_parameters(material, sg_specular_weight, alpha_x, alpha_y);
+	float sg_specular_weight = proposal_state.sg_specular_weight;
+	float alpha_x			 = proposal_state.alpha_x;
+	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -1339,6 +1378,18 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 	// Probability of going down the tree + probability of sampling that triangle in the node
 	return cumulative_probability * 1.0f / (current_node.triangle_count);
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
+														  float3_t shading_point,
+														  float3_t view_direction,
+														  float3_t shading_normal,
+														  const DeviceUnpackedPrincipledFullMaterial& material,
+														  int global_emissive_triangle_index)
+{
+	LightProposalInputs proposal_inputs		= make_light_proposal_inputs(material);
+	LightTreeSGProposalState proposal_state = make_light_tree_sg_proposal_state(proposal_inputs);
+	return pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, proposal_state, global_emissive_triangle_index);
 }
 
 #endif // #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE

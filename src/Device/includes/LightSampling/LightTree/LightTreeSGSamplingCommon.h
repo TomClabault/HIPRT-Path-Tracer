@@ -9,30 +9,20 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
+#include "HostDeviceCommon/Material/LightProposalState.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 struct SGSpecularImportanceData;
 
-HIPRT_DEVICE void get_sg_specular_importance_parameters(const DeviceUnpackedEffectiveMaterial& material,
+HIPRT_DEVICE void get_sg_specular_importance_parameters(const DeviceUnpackedPrincipledFullMaterial& material,
 														float& sg_specular_weight,
 														float& alpha_x,
 														float& alpha_y)
 {
-	float material_specular_weight =
-		(1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
-
-	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	sg_specular_weight		 = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	float sg_roughness = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, (material.coat * material.coat_roughness + material.metallic * material.roughness +
-																		 material_specular_weight * material.roughness) /
-																			specular_lobes_sum);
-	float sg_anisotropy =
-		(material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy) /
-		specular_lobes_sum;
-
-	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	LightProposalInputs proposal_inputs = make_light_proposal_inputs(material);
+	get_sg_specular_importance_parameters(proposal_inputs, sg_specular_weight, alpha_x, alpha_y);
 }
 
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,

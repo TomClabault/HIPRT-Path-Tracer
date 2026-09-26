@@ -33,7 +33,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_with_cell_
 																								   float3_t shading_point,
 																								   float3_t view_direction,
 																								   float3_t shading_normal,
-																								   const DeviceUnpackedEffectiveMaterial& material,
+																								   const DeviceUnpackedPrincipledFullMaterial& material,
 																								   unsigned int hash_grid_cell_index,
 																								   bool primary_hit,
 																								   Xorshift32Generator& rng)

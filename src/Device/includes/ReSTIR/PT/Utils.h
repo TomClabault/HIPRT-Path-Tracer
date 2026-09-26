@@ -78,7 +78,7 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 
 HIPRT_DEVICE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRenderData& render_data,
 																 RayVolumeState& volume_state,
-																 DeviceUnpackedEffectiveMaterial& material_at_visible_point,
+																 DeviceUnpackedPrincipledFullMaterial& material_at_visible_point,
 																 BSDFIncidentLightInfo incident_light_info_visible_point,
 																 int visible_point_primitive_index)
 {

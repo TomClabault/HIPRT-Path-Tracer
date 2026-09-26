@@ -11,7 +11,8 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
-HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const MaterialType& material, float NoL, float& pdf)
 {
 	pdf = 0.0f;
 
@@ -38,8 +39,8 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(float NoL)
  * evaluating the contribution or the PDF of the BSDF. This function will then always return
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
-template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
+template <bool sampleDirectionOnly = false, typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const MaterialType& material,
 													   const float3_t& geometric_normal,
 													   const float3_t& shading_normal,
 													   float3_t& sampled_direction,

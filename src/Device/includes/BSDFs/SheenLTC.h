@@ -71,14 +71,14 @@ HIPRT_DEVICE static float get_phi(const float3_t& direction)
 }
 
 HIPRT_DEVICE static float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data,
-													const DeviceUnpackedEffectiveMaterial& material,
+													const DeviceUnpackedPrincipledFullMaterial& material,
 													const float3_t& local_view_direction)
 {
 	return read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z).b;
 }
 
 HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data,
-											   const DeviceUnpackedEffectiveMaterial& material,
+											   const DeviceUnpackedPrincipledFullMaterial& material,
 											   const float3_t& local_to_light_direction,
 											   const float3_t& local_view_direction,
 											   float& out_pdf,
@@ -117,7 +117,7 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 }
 
 HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data,
-										const DeviceUnpackedEffectiveMaterial& material,
+										const DeviceUnpackedPrincipledFullMaterial& material,
 										const float3_t& local_to_light_direction,
 										const float3_t& local_view_direction)
 {
@@ -142,7 +142,7 @@ HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data,
 }
 
 HIPRT_DEVICE static float3_t sheen_ltc_sample(const HIPRTRenderData& render_data,
-											  const DeviceUnpackedEffectiveMaterial& material,
+											  const DeviceUnpackedPrincipledFullMaterial& material,
 											  const float3_t& local_view_direction,
 											  const float3_t& shading_normal,
 											  Xorshift32Generator& random_number_generator)

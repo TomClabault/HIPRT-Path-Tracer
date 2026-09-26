@@ -15,11 +15,16 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& material,
 													 const float3_t& local_view_direction,
 													 const float3_t& local_to_light_direction,
 													 float& pdf)
 {
+	pdf = 0.0f;
+	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
+		return ColorRGB32F(0.0f);
+
 	// sin(theta)^2 = 1.0 - cos(theta)^2
 	float sin_theta_i = hippt::sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
 	float sin_theta_o = hippt::sqrt(1.0f - local_view_direction.z * local_view_direction.z);
@@ -72,7 +77,8 @@ HIPRT_DEVICE static float oren_nayar_brdf_pdf(const float3_t& local_to_light_dir
 /**
  * Override of the eval function for world space directions
  */
-HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material,
+template <typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& material,
 													 const float3_t& world_space_view_direction,
 													 const float3_t& surface_normal,
 													 const float3_t& world_space_to_light_direction,
@@ -93,8 +99,8 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffecti
  * evaluating the contribution or the PDF of the BSDF. This function will then always return
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
-template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
+template <bool sampleDirectionOnly = false, typename MaterialType>
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const MaterialType& material,
 													   const float3_t& world_space_view_direction,
 													   const float3_t& geometric_normal,
 													   const float3_t& shading_normal,
