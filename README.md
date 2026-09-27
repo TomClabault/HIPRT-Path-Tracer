@@ -52,7 +52,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 			- Support for multiple spherical gaussian spatial lobes per tree node to improve importance estimates on multi-modal incoming radiance
 	- ReGIR (more details on what was implemented below)
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
-	- Learning to Cluster for Many Lights Rendering [\[Wang et al., 2021\]](https://kevincosner.github.io/publications/Wang2021LCR/index.html), piggybacking on an implementation of the illumination-aware KD-tree of [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/) and the spherical gaussian light tree
+	- Learning to Cluster for Many Lights Rendering [\[Wang et al., 2021\]](https://kevincosner.github.io/publications/Wang2021LCR/index.html), piggybacking on an implementation of the illumination-aware KD-tree of [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/) and the spherical gaussian light tree \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
 	- Neural Importance Sampling of Many Lights [\[Figuereido et al., 2025\]](https://pedrovfigueiredo.github.io/projects/manylights/SIGGRAPH_2025_Importance_Sampling/index.html)
 	
 - Area light sampling strategies:
