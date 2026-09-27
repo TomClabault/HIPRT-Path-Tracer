@@ -34,13 +34,13 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& rend
 		break;
 	}*/
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
-		return principled_compact_diffuse_eval(bsdf_context, pdf);
+		return principled_specialized_diffuse_eval(bsdf_context, pdf);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
-		return principled_compact_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
+		return principled_specialized_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
-		return principled_compact_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
+		return principled_specialized_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
-		return principled_compact_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
+		return principled_specialized_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
 	else
 		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
 #elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
@@ -62,13 +62,13 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
 		break;
 	}*/
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
-		return principled_compact_diffuse_pdf(bsdf_context);
+		return principled_specialized_diffuse_pdf(bsdf_context);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
-		return principled_compact_glass_pdf(render_data, bsdf_context);
+		return principled_specialized_glass_pdf(render_data, bsdf_context);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
-		return principled_compact_metallic_pdf(render_data, bsdf_context);
+		return principled_specialized_metallic_pdf(render_data, bsdf_context);
 	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
-		return principled_compact_specular_diffuse_pdf(render_data, bsdf_context);
+		return principled_specialized_specular_diffuse_pdf(render_data, bsdf_context);
 	else
 		return principled_bsdf_pdf(render_data, bsdf_context);
 #elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
@@ -105,7 +105,7 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 				  MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass ||
 				  MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic ||
 				  MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
-		return principled_compact_family_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
+		return principled_specialized_family_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 	else
 		return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 #elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED

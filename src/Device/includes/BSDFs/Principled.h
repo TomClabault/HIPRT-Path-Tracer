@@ -2191,7 +2191,7 @@ HIPRT_DEVICE static void principled_specular_diffuse_sampling_probabilities(cons
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_compact_metallic_eval(const HIPRTRenderData& render_data,
+HIPRT_DEVICE static ColorRGB32F principled_specialized_metallic_eval(const HIPRTRenderData& render_data,
 																 BSDFContextT<MaterialType>& bsdf_context,
 																 float& pdf,
 																 Xorshift32Generator& rng)
@@ -2217,7 +2217,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_metallic_eval(const HIPRTRend
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static float principled_compact_metallic_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+HIPRT_DEVICE static float principled_specialized_metallic_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
 {
 	float3_t tangent, bitangent;
 	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
@@ -2233,7 +2233,7 @@ HIPRT_DEVICE static float principled_compact_metallic_pdf(const HIPRTRenderData&
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_compact_glass_eval(const HIPRTRenderData& render_data,
+HIPRT_DEVICE static ColorRGB32F principled_specialized_glass_eval(const HIPRTRenderData& render_data,
 															  BSDFContextT<MaterialType>& bsdf_context,
 															  float& pdf,
 															  Xorshift32Generator& rng)
@@ -2248,7 +2248,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_glass_eval(const HIPRTRenderD
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static float principled_compact_glass_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+HIPRT_DEVICE static float principled_specialized_glass_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
 {
 	float3_t tangent, bitangent;
 	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
@@ -2260,7 +2260,7 @@ HIPRT_DEVICE static float principled_compact_glass_pdf(const HIPRTRenderData& re
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_compact_specular_diffuse_eval(const HIPRTRenderData& render_data,
+HIPRT_DEVICE static ColorRGB32F principled_specialized_specular_diffuse_eval(const HIPRTRenderData& render_data,
 																		 BSDFContextT<MaterialType>& bsdf_context,
 																		 float& pdf,
 																		 Xorshift32Generator& rng)
@@ -2299,7 +2299,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_specular_diffuse_eval(const H
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static float principled_compact_specular_diffuse_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
+HIPRT_DEVICE static float principled_specialized_specular_diffuse_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
 {
 	float3_t tangent, bitangent;
 	build_ONB(bsdf_context.shading_normal, tangent, bitangent);
@@ -2332,7 +2332,7 @@ HIPRT_DEVICE static float principled_compact_specular_diffuse_pdf(const HIPRTRen
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_compact_diffuse_eval(const BSDFContextT<MaterialType>& bsdf_context, float& pdf)
+HIPRT_DEVICE static ColorRGB32F principled_specialized_diffuse_eval(const BSDFContextT<MaterialType>& bsdf_context, float& pdf)
 {
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
@@ -2342,7 +2342,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_diffuse_eval(const BSDFContex
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static float principled_compact_diffuse_pdf(const BSDFContextT<MaterialType>& bsdf_context)
+HIPRT_DEVICE static float principled_specialized_diffuse_pdf(const BSDFContextT<MaterialType>& bsdf_context)
 {
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 	return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
@@ -2352,7 +2352,7 @@ HIPRT_DEVICE static float principled_compact_diffuse_pdf(const BSDFContextT<Mate
 }
 
 template <bool sampleDirectionOnly, typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRenderData& render_data,
+HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRTRenderData& render_data,
 																 BSDFContextT<MaterialType>& bsdf_context,
 																 float3_t& output_direction,
 																 float& pdf,
@@ -2382,7 +2382,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRend
 			return ColorRGB32F(0.0f);
 		}
 
-		return principled_compact_diffuse_eval(bsdf_context, pdf);
+		return principled_specialized_diffuse_eval(bsdf_context, pdf);
 	}
 	else
 	{
@@ -2403,7 +2403,7 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRend
 				return ColorRGB32F(0.0f);
 			}
 			bsdf_context.to_light_direction = output_direction;
-			return principled_compact_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
+			return principled_specialized_glass_eval(render_data, bsdf_context, pdf, random_number_generator);
 		}
 		else if constexpr (family == KernelMaterialSpecializationSingleMetallic)
 		{
@@ -2460,9 +2460,9 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRend
 
 		bsdf_context.to_light_direction = output_direction;
 		if constexpr (family == KernelMaterialSpecializationSingleMetallic)
-			return principled_compact_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
+			return principled_specialized_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
 		else if constexpr (family == KernelMaterialSpecializationSpecularDiffuse)
-			return principled_compact_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
+			return principled_specialized_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
 		else
 			return ColorRGB32F(0.0f);
 	}
