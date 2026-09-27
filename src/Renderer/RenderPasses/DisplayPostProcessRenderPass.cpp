@@ -43,6 +43,7 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 {
 	// The display post-process output is only needed once per frame, after the final path-tracing sample.
 	if (!render_data.render_settings.do_update_status_buffers)
+
 		return false;
 
 	// launch_async() runs before the render thread increments sample_number for the sample just accumulated.
@@ -117,6 +118,7 @@ bool DisplayPostProcessRenderPass::launch_display_only(HIPRTRenderData& render_d
 	render_data.display_post_process_settings.denoised_blend_noisy_sample_count =
 		std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
 	render_data.display_post_process_settings.gmon_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
+
 	return launch_kernel(render_data);
 }
 

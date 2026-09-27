@@ -556,6 +556,7 @@ void GPUKernelCompilerOptions::remove_macro(const std::string& name)
 
 bool GPUKernelCompilerOptions::has_macro(const std::string& name)
 {
+
 	// Only checking the custom macro map because we cannot remove the options-macro so it makes
 	// no sense to check whether this instance has the macro "InteriorStackStrategy"
 	// for example, it will always be yes
@@ -571,11 +572,14 @@ int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
 		// Wasn't found in the options-macro, trying in the custom macros
 		auto find_custom = m_custom_macro_map.find(name);
 		if (find_custom == m_custom_macro_map.end())
+
 			return std::numeric_limits<int>::min();
 		else
+
 			return *find_custom->second;
 	}
 	else
+
 		return *find->second;
 }
 
@@ -583,8 +587,10 @@ std::string GPUKernelCompilerOptions::get_string_macro_value(const std::string& 
 {
 	auto find = m_custom_string_macro_map.find(name);
 	if (find == m_custom_string_macro_map.end())
+
 		return "";
 	else
+
 		return *find->second.first;
 }
 
@@ -597,11 +603,14 @@ const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(
 		// Wasn't found in the options-macro, trying in the custom macros
 		auto find_custom = m_custom_macro_map.find(name);
 		if (find_custom == m_custom_macro_map.end())
+
 			return nullptr;
 		else
+
 			return find_custom->second;
 	}
 	else
+
 		return find->second;
 }
 
@@ -609,8 +618,10 @@ const std::shared_ptr<std::string> GPUKernelCompilerOptions::get_pointer_to_stri
 {
 	auto find = m_custom_string_macro_map.find(name);
 	if (find == m_custom_string_macro_map.end())
+
 		return nullptr;
 	else
+
 		return find->second.first;
 }
 
@@ -618,6 +629,7 @@ int* GPUKernelCompilerOptions::get_raw_pointer_to_macro_value(const std::string&
 {
 	std::shared_ptr<int> pointer = get_pointer_to_macro_value(name);
 	if (pointer != nullptr)
+
 		return pointer.get();
 
 	return nullptr;
@@ -627,7 +639,9 @@ std::string* GPUKernelCompilerOptions::get_raw_pointer_to_string_macro_value(con
 {
 	std::shared_ptr<std::string> pointer = get_pointer_to_string_macro_value(name);
 	if (pointer != nullptr)
+
 		return pointer.get();
+
 	return nullptr;
 }
 
@@ -650,16 +664,19 @@ void GPUKernelCompilerOptions::set_pointer_to_string_macro(const std::string& na
 
 const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_options_macro_map() const
 {
+
 	return m_options_macro_map;
 }
 
 const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_custom_macro_map() const
 {
+
 	return m_custom_macro_map;
 }
 
 const std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>>& GPUKernelCompilerOptions::get_custom_string_macro_map() const
 {
+
 	return m_custom_string_macro_map;
 }
 

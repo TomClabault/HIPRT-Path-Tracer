@@ -14,6 +14,7 @@ void ReGIRHashGridStorage::set_regir_render_pass(ReGIRRenderPass* regir_render_p
 
 std::size_t ReGIRHashGridStorage::get_byte_size() const
 {
+
 	return m_initial_reservoirs_primary_hits_grid.get_byte_size() + m_initial_reservoirs_secondary_hits_grid.get_byte_size() +
 
 		   m_spatial_output_primary_hits_grid.get_byte_size() + m_spatial_output_secondary_hits_grid.get_byte_size() +
@@ -43,12 +44,14 @@ bool ReGIRHashGridStorage::pre_frame_render_update(HIPRTRenderData& render_data)
 bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
 	if (!m_regir_render_pass->lights_in_scene(render_data))
+
 		// No lights in the scene, nothing for ReGIR to work on
 		return false;
 
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
 	{
+
 		// For the special case of 0 bounces in the scene, we can free the secondary hits cells because
 		// they are never going to be used
 		return free_internal(false);
@@ -401,6 +404,7 @@ void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors(bool primar
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
 	if (!m_regir_render_pass->lights_in_scene(render_data))
+
 		// Buffers are not going to be properly allocated if there are no emissives in the scene
 		// (nothing for ReGIR to work on)
 		return;
@@ -449,37 +453,45 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit)
 {
+
 	return primary_hit ? m_initial_reservoirs_primary_hits_grid : m_initial_reservoirs_secondary_hits_grid;
 }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit) const
 {
+
 	return primary_hit ? m_initial_reservoirs_primary_hits_grid : m_initial_reservoirs_secondary_hits_grid;
 }
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit)
 {
+
 	return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid;
 }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit) const
 {
+
 	return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid;
 }
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_correlation_reduction_buffer()
 {
+
 	return m_correlation_reduction_grid_primary_hits;
 }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_correlation_reduction_buffer() const
 {
+
 	return m_correlation_reduction_grid_primary_hits;
 }
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit)
 {
+
 	return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits;
 }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit) const
 {
+
 	return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits;
 }
 
@@ -497,65 +509,79 @@ ReGIRHashGridSoADevice ReGIRHashGridStorage::get_async_compute_staging_buffer_de
 
 ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit)
 {
+
 	return primary_hit ? m_hash_cell_data_primary_hits : m_hash_cell_data_secondary_hits;
 }
 const ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit) const
 {
+
 	return primary_hit ? m_hash_cell_data_primary_hits : m_hash_cell_data_secondary_hits;
 }
 
 ReGIRHashCellDataSoADevice& ReGIRHashGridStorage::get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit)
 {
+
 	return regir_settings.get_hash_cell_data_soa(primary_hit);
 }
 const ReGIRHashCellDataSoADevice& ReGIRHashGridStorage::get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit) const
 {
+
 	return regir_settings.get_hash_cell_data_soa(primary_hit);
 }
 
 OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primary_hit)
 {
+
 	return primary_hit ? m_non_canonical_pre_integration_factors_primary_hits : m_non_canonical_pre_integration_factors_secondary_hits;
 }
 const OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primary_hit) const
 {
+
 	return primary_hit ? m_non_canonical_pre_integration_factors_primary_hits : m_non_canonical_pre_integration_factors_secondary_hits;
 }
 
 OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit)
 {
+
 	return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits;
 }
 const OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit) const
 {
+
 	return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits;
 }
 
 ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit)
 {
+
 	return primary_hit ? m_cells_light_distributions_primary_hits : m_cells_light_distributions_secondary_hits;
 }
 const ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit) const
 {
+
 	return primary_hit ? m_cells_light_distributions_primary_hits : m_cells_light_distributions_secondary_hits;
 }
 
 unsigned int& ReGIRHashGridStorage::get_total_number_of_cells(bool primary_hit)
 {
+
 	return primary_hit ? m_total_number_of_cells_primary_hits : m_total_number_of_cells_secondary_hits;
 }
 
 unsigned int ReGIRHashGridStorage::get_total_number_of_cells(bool primary_hit) const
 {
+
 	return primary_hit ? m_total_number_of_cells_primary_hits : m_total_number_of_cells_secondary_hits;
 }
 
 unsigned int ReGIRHashGridStorage::get_correlation_reduction_current_frame() const
 {
+
 	return m_correlation_reduction_current_grid_offset;
 }
 
 unsigned int ReGIRHashGridStorage::get_correlation_reduction_frames_available() const
 {
+
 	return m_correlation_reduction_frames_available;
 }

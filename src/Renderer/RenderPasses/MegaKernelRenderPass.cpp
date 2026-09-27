@@ -36,6 +36,7 @@ bool MegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOro
 														bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -60,6 +61,7 @@ bool MegaKernelRenderPass::pre_frame_render_update(float delta_time)
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	// Resetting this flag as this is a new frame
@@ -74,6 +76,7 @@ bool MegaKernelRenderPass::pre_frame_render_update(float delta_time)
 bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
@@ -93,6 +96,7 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	if (render_data.render_settings.accumulate)
@@ -109,6 +113,7 @@ bool MegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& c
 	bool nisml_enabled = ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 	if (nisml_enabled)
+
 		return false;
 
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF;

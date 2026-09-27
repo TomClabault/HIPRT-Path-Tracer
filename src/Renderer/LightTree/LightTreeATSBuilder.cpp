@@ -10,6 +10,7 @@
 
 int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
 {
+
 	return m_triangle_indices[bvh_triangle_index];
 }
 
@@ -18,6 +19,7 @@ float3_t LightTreeATSBuilder::get_triangle_vertex(unsigned int linear_emissive_t
 												  const LightTreeBuilderTrianglesData& triangles_data) const
 {
 	int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
+
 	return triangles_data.vertices_positions
 		[triangles_data.triangle_vertex_indices[triangles_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + vertex_index]];
 }
@@ -241,6 +243,7 @@ float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientatio
 	float sin_theta_o = sinf(orientation_data.theta_o);
 	float cos_theta_o = cosf(orientation_data.theta_o);
 	float theta_w	  = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(hippt::M_Pi));
+
 	return 2.0f * hippt::M_Pi * (1.0f - cos_theta_o) +
 		   hippt::M_Pi * 0.5f *
 			   (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
@@ -252,6 +255,7 @@ float LightTreeATSBuilder::compute_split_position(
 	if (split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_MIDPOINT)
 	{
 		if (node.triangle_count <= 2)
+
 			return 1.0e30f;
 
 		float3_t extents = node.node_bounds.get_extents();
@@ -391,6 +395,7 @@ float LightTreeATSBuilder::compute_split_position(
 		return best_cost;
 	}
 	else
+
 		return 0.0f;
 }
 
@@ -472,25 +477,30 @@ void LightTreeATSBuilder::cleanup()
 
 const std::vector<LightTreeATSNode>& LightTreeATSBuilder::get_nodes() const
 {
+
 	return m_nodes;
 }
 
 const std::vector<LightTreeATSBuilder::PrefetchedTriangle>& LightTreeATSBuilder::get_prefetched_triangles() const
 {
+
 	return m_prefetched_triangles;
 }
 
 const std::vector<unsigned int>& LightTreeATSBuilder::get_bit_trails() const
 {
+
 	return m_bit_trails;
 }
 
 const std::vector<int>& LightTreeATSBuilder::get_triangle_indices() const
 {
+
 	return m_triangle_indices;
 }
 
 LightTreeATSBuilderOptions& LightTreeATSBuilder::get_build_options()
 {
+
 	return m_build_options;
 }

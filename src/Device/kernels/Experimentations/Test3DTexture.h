@@ -25,6 +25,7 @@ GLOBAL_KERNEL_SIGNATURE(void) Test3DTexture(oroTextureObject_t texture_3D, int t
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
 #endif
 	if (x >= tex_size || y >= tex_size || z >= tex_size)
+
 		return;
 
 	const uint32_t thread_index = (x + y * tex_size + z * tex_size * tex_size);

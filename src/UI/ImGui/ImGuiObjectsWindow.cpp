@@ -94,6 +94,7 @@ void ImGuiObjectsWindow::draw()
 void ImGuiObjectsWindow::draw_scene_statistics_panel()
 {
 	if (!ImGui::CollapsingHeader("Scene statistics"))
+
 		return;
 
 	auto format_memory_size = [](size_t byte_size)
@@ -260,6 +261,7 @@ bool draw_material_override_line(const std::string& text, bool& override_state_b
 void ImGuiObjectsWindow::draw_global_objects_panel()
 {
 	if (!ImGui::CollapsingHeader("Global material overrider"))
+
 		return;
 
 	ImGui::TreePush("Global material overrider tree");
@@ -967,6 +969,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 void ImGuiObjectsWindow::draw_objects_panel()
 {
 	if (!ImGui::CollapsingHeader("Per object settings"))
+
 		return;
 
 	ImGui::TreePush("Objects tree");
@@ -1482,6 +1485,7 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (!ImGui::CollapsingHeader("Material presets"))
+
 		return false;
 
 	ImGui::TreePush("Materials presets tree");

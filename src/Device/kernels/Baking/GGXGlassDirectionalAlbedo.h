@@ -46,6 +46,7 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior,
 	float NoL = local_to_light_direction.z;
 
 	if (hippt::abs(NoL) < 1.0e-8f)
+
 		// Check to avoid dividing by 0 later on
 		return 0.0f;
 
@@ -75,6 +76,7 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior,
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
 
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
+
 		// Backfacing microfacets when the microfacet normal isn't in the same
 		// hemisphere as the view dir or light dir
 		return 0.0f;
@@ -241,6 +243,7 @@ inline GGXGlassDirectionalAlbedoBakeEntering(
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+
 		return;
 
 	glass_directional_albedo_integration(kernel_iterations, current_iteration, x, y, z, pixel_index, bake_settings, out_buffer, false);
@@ -265,6 +268,7 @@ inline GGXGlassDirectionalAlbedoBakeExiting(
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+
 		return;
 
 	glass_directional_albedo_integration(kernel_iterations, current_iteration, x, y, z, pixel_index, bake_settings, out_buffer, true);

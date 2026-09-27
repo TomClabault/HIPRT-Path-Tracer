@@ -52,6 +52,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+
 		return;
 
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);

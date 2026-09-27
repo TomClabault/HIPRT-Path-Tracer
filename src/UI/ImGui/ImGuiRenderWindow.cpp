@@ -38,10 +38,12 @@ void ImGuiRenderWindow::draw()
 
 bool ImGuiRenderWindow::is_hovered() const
 {
+
 	return m_is_hovered;
 }
 
 ImVec2 ImGuiRenderWindow::get_size() const
 {
+
 	return m_current_size;
 }

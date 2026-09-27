@@ -72,6 +72,7 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
 	if (skip_if_already_computed && m_light_tree_sg_build_result.device_data.m_device_nodes_buffer.get_byte_size() > 0)
+
 		// Already computed
 		return;
 
@@ -127,21 +128,25 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, st
 
 size_t LightTreeSGSamplingDataStructure::get_VRAM_usage_bytes() const
 {
+
 	return m_light_tree_sg_build_result.get_VRAM_usage_bytes() + m_light_tree_builder_sg.get_nisml_data().get_VRAM_usage_bytes();
 }
 
 LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
 {
+
 	return m_light_tree_builder_sg;
 }
 
 LightTreeSGBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
 {
+
 	return m_light_tree_builder_sg.get_build_options();
 }
 
 int LightTreeSGSamplingDataStructure::get_spatial_lobe_count() const
 {
+
 	return m_light_tree_builder_sg.get_spatial_lobe_count();
 }
 
@@ -152,6 +157,7 @@ void LightTreeSGSamplingDataStructure::set_spatial_lobe_count(int spatial_lobe_c
 
 int LightTreeSGSamplingDataStructure::get_tree_cut_size() const
 {
+
 	return m_light_tree_builder_sg.get_tree_cut_size();
 }
 
@@ -162,6 +168,7 @@ void LightTreeSGSamplingDataStructure::set_tree_cut_size(int tree_cut_size)
 
 int LightTreeSGSamplingDataStructure::get_tree_cut_size_neural_many_lights() const
 {
+
 	return m_light_tree_builder_sg.get_tree_cut_size_neural_many_lights();
 }
 
@@ -172,6 +179,7 @@ void LightTreeSGSamplingDataStructure::set_tree_cut_size_neural_many_lights(int 
 
 int LightTreeSGSamplingDataStructure::get_second_tree_cut_size() const
 {
+
 	return m_light_tree_builder_sg.get_second_tree_cut_size();
 }
 
@@ -182,5 +190,6 @@ void LightTreeSGSamplingDataStructure::set_second_tree_cut_size(int second_tree_
 
 const LightTreeSGBuildResult<OrochiBuffer>& LightTreeSGSamplingDataStructure::get_build_result() const
 {
+
 	return m_light_tree_sg_build_result;
 }

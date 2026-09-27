@@ -127,6 +127,7 @@ void ImGuiRenderer::set_status_text(const std::string& new_status_text)
 
 std::string ImGuiRenderer::get_status_text() const
 {
+
 	return m_imgui_settings_window.get_status_text();
 }
 
@@ -256,15 +257,18 @@ void ImGuiRenderer::draw_log_window()
 
 ImGuiRenderWindow& ImGuiRenderer::get_imgui_render_window()
 {
+
 	return m_imgui_render_window;
 }
 
 ImGuiSettingsWindow& ImGuiRenderer::get_imgui_settings_window()
 {
+
 	return m_imgui_settings_window;
 }
 
 ImGuiToolsWindow& ImGuiRenderer::get_imgui_tools_window()
 {
+
 	return m_imgui_tools_window;
 }

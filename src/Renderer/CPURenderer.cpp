@@ -681,19 +681,23 @@ void CPURenderer::set_camera(Camera& camera)
 
 HIPRTRenderData& CPURenderer::get_render_data()
 {
+
 	return m_render_data;
 }
 
 HIPRTRenderSettings& CPURenderer::get_render_settings()
 {
+
 	return m_render_data.render_settings;
 }
 
 Image32Bit& CPURenderer::get_framebuffer()
 {
 	if (m_render_data.buffers.gmon_estimator.use_gmon)
+
 		return m_gmon.result_framebuffer;
 	else
+
 		return m_framebuffer;
 }
 
@@ -1157,6 +1161,7 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 {
 	HIPRTRenderSettings& render_settings = m_render_data.render_settings;
 	if (!render_settings.use_hierarchical_adaptive_sampling())
+
 		return;
 
 	unsigned int completed_sample_count = render_settings.sample_number + 1u;
@@ -1169,6 +1174,7 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 		rebuild_interval++;
 
 	if (completed_sample_count < minimum_sample_count || completed_sample_count % rebuild_interval != 0u)
+
 		return;
 
 	for (int y = 0; y < m_resolution.y; y++)
@@ -1249,6 +1255,7 @@ template <bool accumulatePreIntegration>
 ReGIRHashGridSoADevice CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 {
 	if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+
 		return ReGIRHashGridSoADevice();
 
 	ReGIRHashGridSoADevice input_reservoirs	 = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
@@ -1334,6 +1341,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 	unsigned int nb_cells_alive = primary_hit ? m_regir_state.hash_cell_data_primary_hit.m_grid_cells_alive_count.at(0)
 											  : m_regir_state.hash_cell_data_secondary_hit.m_grid_cells_alive_count.at(0);
 	if (nb_cells_alive == 0)
+
 		return;
 
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive;
@@ -1406,6 +1414,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 			std::sort(first, last,
 					  [&](unsigned int a, unsigned int b)
 					  {
+
 						  // Sorting in descendant order
 						  return get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + a) >
 								 get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + b);

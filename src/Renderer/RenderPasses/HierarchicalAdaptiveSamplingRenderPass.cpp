@@ -52,6 +52,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_render_compilation_check(std::s
 																		  bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -169,6 +170,7 @@ void HierarchicalAdaptiveSamplingRenderPass::upload_render_data(const std::strin
 bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options) || !render_data.render_settings.use_hierarchical_adaptive_sampling())
+
 		return false;
 
 	unsigned int completed_sample_count = render_data.render_settings.sample_number + 1u;
@@ -181,6 +183,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 		rebuild_interval++;
 
 	if (completed_sample_count < minimum_sample_count || completed_sample_count % rebuild_interval != 0u)
+
 		return false;
 
 	upload_render_data(COMPUTE_ERROR_KERNEL, render_data);
@@ -234,6 +237,7 @@ void HierarchicalAdaptiveSamplingRenderPass::update_render_data()
 		render_data.aux_buffers.hierarchical_adaptive_sampling_node_count		= nullptr;
 		render_data.aux_buffers.hierarchical_adaptive_sampling_level_node_count = nullptr;
 		render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity	= 0;
+
 		return;
 	}
 
@@ -253,5 +257,6 @@ void HierarchicalAdaptiveSamplingRenderPass::reset(bool reset_by_camera_movement
 
 bool HierarchicalAdaptiveSamplingRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return m_renderer != nullptr && m_renderer->get_render_data().render_settings.enable_hierarchical_adaptive_sampling;
 }

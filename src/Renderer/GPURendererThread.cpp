@@ -39,6 +39,7 @@ void GPURendererThread::render_thread_function()
 		std::unique_lock<std::mutex> lock(m_render_mutex);
 		m_render_condition_variable.wait(lock, [this] { return m_frame_requested || m_exit_requested; });
 		if (m_exit_requested)
+
 			return;
 
 		// Reset the render requested flag
@@ -449,67 +450,80 @@ void GPURendererThread::set_active_render_graph(RenderGraph* graph)
 
 RenderGraph& GPURendererThread::get_active_render_graph()
 {
+
 	return *m_active_render_graph;
 }
 
 std::unordered_map<std::string, RenderGraph>& GPURendererThread::get_render_graphs()
 {
+
 	return m_render_graphs;
 }
 
 const std::unordered_map<std::string, RenderGraph>& GPURendererThread::get_render_graphs() const
 {
+
 	return m_render_graphs;
 }
 
 std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass()
 {
+
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_active_render_graph->get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<GMoNRenderPass> GPURendererThread::get_gmon_render_pass() const
 {
+
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_active_render_graph->get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<SSBNPermutationRenderPass> GPURendererThread::get_ssbn_permutation_render_pass()
 {
+
 	return std::dynamic_pointer_cast<SSBNPermutationRenderPass>(
 		m_active_render_graph->get_render_pass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReGIRRenderPass> GPURendererThread::get_ReGIR_render_pass()
 {
+
 	return std::dynamic_pointer_cast<ReGIRRenderPass>(m_active_render_graph->get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass()
 {
+
 	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_active_render_graph->get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRPTRenderPass> GPURendererThread::get_ReSTIR_PT_render_pass()
 {
+
 	return std::dynamic_pointer_cast<ReSTIRPTRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRPGRenderPass> GPURendererThread::get_ReSTIR_PG_render_pass()
 {
+
 	return std::dynamic_pointer_cast<ReSTIRPGRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<IlluminationAwareKDTreeRenderPass> GPURendererThread::get_illumination_aware_kd_tree_render_pass()
 {
+
 	return std::dynamic_pointer_cast<IlluminationAwareKDTreeRenderPass>(
 		m_active_render_graph->get_render_pass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<NEEPlusPlusRenderPass> GPURendererThread::get_NEE_plus_plus_render_pass()
 {
+
 	return std::dynamic_pointer_cast<NEEPlusPlusRenderPass>(m_active_render_graph->get_render_pass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME));
 }
 
 bool GPURendererThread::frame_render_done()
 {
+
 	return m_frame_rendered;
 }

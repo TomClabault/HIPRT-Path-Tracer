@@ -34,6 +34,7 @@ namespace
 
 		bool operator()(int left_index, int right_index) const
 		{
+
 			return std::strcmp(items->GetLegendLabel(left_index), items->GetLegendLabel(right_index)) < 0;
 		}
 	};
@@ -93,6 +94,7 @@ namespace
 	void draw_dashed_legend_swatches(ImPlotPlot& plot, const std::vector<DashedLegendSwatch>& dashed_legend_swatches, float line_weight)
 	{
 		if (dashed_legend_swatches.empty() || plot.Items.GetLegendCount() == 0)
+
 			return;
 
 		float text_height	  = ImGui::GetTextLineHeight();
@@ -228,71 +230,85 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 
 int& ImGuiConvergenceGraphWidget::get_plot_width()
 {
+
 	return m_plot_width;
 }
 
 int& ImGuiConvergenceGraphWidget::get_plot_height()
 {
+
 	return m_plot_height;
 }
 
 float& ImGuiConvergenceGraphWidget::get_line_weight()
 {
+
 	return m_line_weight;
 }
 
 std::string& ImGuiConvergenceGraphWidget::get_plot_title()
 {
+
 	return m_plot_title;
 }
 
 bool& ImGuiConvergenceGraphWidget::get_log_x_axis()
 {
+
 	return m_log_x_axis;
 }
 
 bool& ImGuiConvergenceGraphWidget::get_log_y_axis()
 {
+
 	return m_log_y_axis;
 }
 
 std::string& ImGuiConvergenceGraphWidget::get_x_axis_name()
 {
+
 	return m_x_axis_name;
 }
 
 std::string& ImGuiConvergenceGraphWidget::get_y_axis_name()
 {
+
 	return m_y_axis_name;
 }
 
 std::vector<std::string>& ImGuiConvergenceGraphWidget::get_recorded_legends()
 {
+
 	return m_recorded_legends;
 }
 
 std::vector<std::vector<float>>& ImGuiConvergenceGraphWidget::get_recorded_xs_list()
 {
+
 	return m_recorded_xs_list;
 }
 
 std::vector<std::vector<float>>& ImGuiConvergenceGraphWidget::get_recorded_ys_list()
 {
+
 	return m_recorded_ys_list;
 }
 
 std::vector<int>& ImGuiConvergenceGraphWidget::get_recorded_line_styles()
 {
+
 	return m_recorded_line_styles;
 }
 
 std::vector<int>& ImGuiConvergenceGraphWidget::get_recorded_color_indices()
 {
+
 	return m_recorded_color_indices;
 }
 
 bool ImGuiConvergenceGraphWidget::screenshot_graph_to_file(const std::string_view filename)
 {
+
 	return m_screenshoter.screenshot_graph_to_file(m_plot_width, m_plot_height, filename.data());
 }
 

@@ -29,16 +29,19 @@ extern ImGuiLogger g_imgui_logger;
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure)
 {
+
 	return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<ColorRGB32F>& hdr_image, int sample_number, float gamma, float exposure)
 {
+
 	return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size() * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure)
 {
+
 	return tonemap_hdr_image(hdr_image.data(), hdr_image.size(), sample_number, gamma, exposure);
 }
 
@@ -64,6 +67,7 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 void Utils::compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias)
 {
 	if (input.size() == 0)
+
 		return;
 
 	// A vector of the luminance of all the pixels of the envmap
@@ -222,8 +226,10 @@ std::string Utils::open_file_dialog(const char* filter_patterns[], int filter_co
 {
 	const char* file = tinyfd_openFileDialog("let us read the password back", "", filter_count, filter_patterns, NULL, 0);
 	if (file)
+
 		return std::string(file);
 	else
+
 		return "";
 }
 
@@ -234,6 +240,7 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 	if (reference.width != subject.width || reference.height != subject.height)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot compute difference between images of different sizes.");
+
 		return mse;
 	}
 
@@ -256,6 +263,7 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 
 float Utils::compute_image_root_mse(const Image32Bit& reference, const Image32Bit& subject)
 {
+
 	return sqrtf(Utils::compute_image_mse(reference, subject));
 }
 
@@ -359,6 +367,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 				{
 					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 											"There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
+
 					return Image32Bit();
 				}
 				device.commit();
@@ -376,6 +385,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 									"There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
+
 			return Image32Bit();
 		}
 		device.commit();
@@ -386,6 +396,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 	if (!device_done)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot create any OIDN device, aborting denoising...");
+
 		return Image32Bit();
 	}
 

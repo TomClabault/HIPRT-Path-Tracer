@@ -42,6 +42,7 @@ inline GGXFresnelDirectionalAlbedoBake(
 							(x + y * bake_settings.texture_size_cos_theta + z * bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+
 		return;
 
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);

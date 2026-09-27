@@ -66,6 +66,7 @@ bool ReSTIRPGRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 													  bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -106,6 +107,7 @@ bool ReSTIRPGRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 void ReSTIRPGRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -205,6 +207,7 @@ bool ReSTIRPGRenderPass::pre_frame_render_update(float delta_time)
 bool ReSTIRPGRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	upload_render_data(ReSTIRPGRenderPass::RESTIR_PG_SPLATTING_KERNEL, render_data);
@@ -237,6 +240,7 @@ void ReSTIRPGRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 void ReSTIRPGRenderPass::update_render_data()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -267,6 +271,7 @@ bool ReSTIRPGRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& com
 
 float ReSTIRPGRenderPass::get_VRAM_usage() const
 {
+
 	return (m_splatting_samples_soa_buffer.get_byte_size() + m_hash_grid_distributions_soa_buffer.get_byte_size() +
 			m_hash_grid_checksums_buffer.get_byte_size() + m_grid_cell_alive_buffer.get_byte_size() + m_grid_cell_alive_count_buffer.get_byte_size() +
 			m_grid_cell_alive_list_buffer.get_byte_size() + m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_byte_size()) /
@@ -276,9 +281,11 @@ float ReSTIRPGRenderPass::get_VRAM_usage() const
 float ReSTIRPGRenderPass::get_hash_grid_load_factor() const
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return 0.0f;
 
 	if (m_grid_cell_alive_count_buffer.size() == 0)
+
 		// This can happen just after the PG render pass is enabled but pre_frame_render_update hasn't been called yet
 		return 0.0f;
 

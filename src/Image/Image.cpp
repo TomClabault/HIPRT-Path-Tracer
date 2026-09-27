@@ -41,6 +41,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+
 		return Image8Bit();
 	}
 
@@ -62,6 +63,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 	}
 
 	stbi_image_free(pixels);
+
 	return output_image;
 }
 
@@ -75,6 +77,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+
 		return Image8Bit();
 	}
 
@@ -94,12 +97,14 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 	}
 
 	stbi_image_free(pixels);
+
 	return Image8Bit(converted_data, width, height, output_channels);
 }
 
 bool Image8Bit::write_image_png(const std::string_view filename, const bool flipY) const
 {
 	if (byte_size() == 0)
+
 		return false;
 
 	std::vector<unsigned char> tmp(width * height * channels);
@@ -108,12 +113,14 @@ bool Image8Bit::write_image_png(const std::string_view filename, const bool flip
 			tmp[i * channels + j] = hippt::clamp(static_cast<unsigned char>(0), static_cast<unsigned char>(255), m_pixel_data[i * channels + j]);
 
 	stbi_flip_vertically_on_write(flipY);
+
 	return stbi_write_png(filename.data(), width, height, channels, tmp.data(), width * channels) != 0;
 }
 
 bool Image8Bit::write_image_hdr(const std::string_view filename, const bool flipY) const
 {
 	if (byte_size() == 0)
+
 		return false;
 
 	std::vector<float> tmp(width * height * channels);
@@ -122,6 +129,7 @@ bool Image8Bit::write_image_hdr(const std::string_view filename, const bool flip
 			tmp[i * channels + j] = m_pixel_data[i * channels + j] / 255.0f;
 
 	stbi_flip_vertically_on_write(flipY);
+
 	return stbi_write_hdr(filename.data(), width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
@@ -178,6 +186,7 @@ float Image8Bit::luminance_of_area(int start_x, int start_y, int stop_x, int sto
 
 float Image8Bit::luminance_of_area(const ImageBin& area) const
 {
+
 	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
 }
 
@@ -224,21 +233,25 @@ void Image8Bit::set_data(const std::vector<unsigned char>& data)
 
 const std::vector<unsigned char>& Image8Bit::data() const
 {
+
 	return m_pixel_data;
 }
 
 std::vector<unsigned char>& Image8Bit::data()
 {
+
 	return m_pixel_data;
 }
 
 const unsigned char& Image8Bit::operator[](int index) const
 {
+
 	return m_pixel_data[index];
 }
 
 unsigned char& Image8Bit::operator[](int index)
 {
+
 	return m_pixel_data[index];
 }
 
@@ -267,12 +280,14 @@ std::vector<float> Image8Bit::compute_cdf() const
 
 size_t Image8Bit::byte_size() const
 {
+
 	return width * height * sizeof(unsigned char);
 }
 
 bool Image8Bit::is_constant_color(int threshold) const
 {
 	if (width == 0 || height == 0)
+
 		// Incorrect image
 		return false;
 
@@ -286,6 +301,7 @@ bool Image8Bit::is_constant_color(int threshold) const
 		for (int x = 0; x < width; x++)
 			for (int i = 0; i < channels; i++)
 				if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+
 					return false;
 
 	return true;
@@ -294,10 +310,12 @@ bool Image8Bit::is_constant_color(int threshold) const
 bool Image8Bit::is_fully_opaque() const
 {
 	if (width == 0 || height == 0)
+
 		// Incorrect image
 		return false;
 
 	if (channels < 4)
+
 		// No alpha channel so this is fully opaque
 		return true;
 
@@ -311,6 +329,7 @@ bool Image8Bit::is_fully_opaque() const
 			// Assuming 4 channels if we're here
 			unsigned char alpha_channel = m_pixel_data[(y * width + x) * 4 + 3];
 			if (alpha_channel != 255)
+
 				return false;
 		}
 	}
@@ -371,6 +390,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+
 		return Image32Bit();
 	}
 
@@ -388,6 +408,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 	}
 
 	stbi_image_free(pixels);
+
 	return output_image;
 }
 
@@ -401,6 +422,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+
 		return Image32Bit();
 	}
 
@@ -418,6 +440,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 	}
 
 	stbi_image_free(pixels);
+
 	return Image32Bit(converted_data, width, height, output_channels);
 }
 
@@ -471,6 +494,7 @@ Image32Bit Image32Bit::read_image_exr(const std::string& filepath, bool flipY)
 			}
 
 			std::free(out); // release memory of image data
+
 			return Image32Bit(vector_data, width, height, 4);
 		}
 	}
@@ -479,6 +503,7 @@ Image32Bit Image32Bit::read_image_exr(const std::string& filepath, bool flipY)
 bool Image32Bit::write_image_png(const char* filename, const bool flipY) const
 {
 	if (byte_size() == 0)
+
 		return false;
 
 	std::vector<unsigned char> tmp(width * height * channels);
@@ -486,12 +511,14 @@ bool Image32Bit::write_image_png(const char* filename, const bool flipY) const
 		tmp[i] = hippt::clamp(0.0f, 255.0f, m_pixel_data[i] * 255.0f);
 
 	stbi_flip_vertically_on_write(flipY);
+
 	return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
 }
 
 bool Image32Bit::write_image_hdr(const char* filename, const bool flipY) const
 {
 	if (byte_size() == 0)
+
 		return false;
 
 	std::vector<float> tmp(width * height * channels);
@@ -500,6 +527,7 @@ bool Image32Bit::write_image_hdr(const char* filename, const bool flipY) const
 			tmp[i * channels + j] = m_pixel_data[i * channels + j];
 
 	stbi_flip_vertically_on_write(flipY);
+
 	return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
@@ -582,6 +610,7 @@ float Image32Bit::luminance_of_area(int start_x, int start_y, int stop_x, int st
 
 float Image32Bit::luminance_of_area(const ImageBin& area) const
 {
+
 	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
 }
 
@@ -667,21 +696,25 @@ void Image32Bit::set_data(const std::vector<float>& data)
 
 const std::vector<float>& Image32Bit::data() const
 {
+
 	return m_pixel_data;
 }
 
 std::vector<float>& Image32Bit::data()
 {
+
 	return m_pixel_data;
 }
 
 const float& Image32Bit::operator[](int index) const
 {
+
 	return m_pixel_data[index];
 }
 
 float& Image32Bit::operator[](int index)
 {
+
 	return m_pixel_data[index];
 }
 
@@ -747,12 +780,14 @@ float Image32Bit::compute_luminance_sum() const
 
 size_t Image32Bit::byte_size() const
 {
+
 	return width * height * sizeof(unsigned char);
 }
 
 bool Image32Bit::is_constant_color(float threshold) const
 {
 	if (width == 0 || height == 0)
+
 		// Incorrect image
 		return false;
 
@@ -768,6 +803,7 @@ bool Image32Bit::is_constant_color(float threshold) const
 		for (int x = 0; x < width; x++)
 			for (int i = 0; i < channels; i++)
 				if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+
 					return false;
 
 	return true;
@@ -775,21 +811,25 @@ bool Image32Bit::is_constant_color(float threshold) const
 
 ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F()
 {
+
 	return reinterpret_cast<ColorRGB32F*>(m_pixel_data.data());
 }
 
 ColorRGB32F Image32Bit::get_pixel_ColorRGB32F(int pixel_index) const
 {
+
 	return ColorRGB32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2]);
 }
 
 ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
 {
+
 	return reinterpret_cast<ColorRGBA32F*>(m_pixel_data.data());
 }
 
 ColorRGBA32F Image32Bit::get_pixel_ColorRGBA32F(int pixel_index) const
 {
+
 	return ColorRGBA32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2],
 						m_pixel_data[pixel_index * channels + 3]);
 }

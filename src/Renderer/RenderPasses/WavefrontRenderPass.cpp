@@ -225,6 +225,7 @@ bool WavefrontRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroc
 													   bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated													 = false;
@@ -258,6 +259,7 @@ bool WavefrontRenderPass::pre_frame_render_update(float delta_time)
 	{
 		bool had_buffers = m_staging_buffers_allocated;
 		free_staging_buffers();
+
 		return had_buffers;
 	}
 
@@ -275,8 +277,10 @@ bool WavefrontRenderPass::pre_frame_render_update(float delta_time)
 bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 	if (!kernels_ready() || !m_staging_buffers_allocated)
+
 		return false;
 
 	render_data.wavefront_data = m_wavefront_data.to_device();
@@ -439,6 +443,7 @@ void WavefrontRenderPass::reset(bool reset_by_camera_movement)
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	if (render_data.render_settings.accumulate)
@@ -464,6 +469,7 @@ bool WavefrontRenderPass::uses_material_family_routing(const GPUKernelCompilerOp
 		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE,
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
+
 	return configuration.route_shading_by_material_family;
 }
 
@@ -473,6 +479,7 @@ bool WavefrontRenderPass::uses_deferred_material_family_routing(const GPUKernelC
 		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE,
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
+
 	return configuration.route_deferred_completion_by_material_family;
 }
 
@@ -481,14 +488,19 @@ const std::string& WavefrontRenderPass::get_primary_shading_kernel_name(unsigned
 	switch (family_index)
 	{
 	case KernelMaterialSpecializationDiffuse:
+
 		return SHADE_PRIMARY_PATHS_DIFFUSE_KERNEL;
 	case KernelMaterialSpecializationGlass:
+
 		return SHADE_PRIMARY_PATHS_GLASS_KERNEL;
 	case KernelMaterialSpecializationSingleMetallic:
+
 		return SHADE_PRIMARY_PATHS_SINGLE_METALLIC_KERNEL;
 	case KernelMaterialSpecializationSpecularDiffuse:
+
 		return SHADE_PRIMARY_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	default:
+
 		return SHADE_PRIMARY_PATHS_KERNEL;
 	}
 }
@@ -498,14 +510,19 @@ const std::string& WavefrontRenderPass::get_secondary_shading_kernel_name(unsign
 	switch (family_index)
 	{
 	case KernelMaterialSpecializationDiffuse:
+
 		return SHADE_PATHS_DIFFUSE_KERNEL;
 	case KernelMaterialSpecializationGlass:
+
 		return SHADE_PATHS_GLASS_KERNEL;
 	case KernelMaterialSpecializationSingleMetallic:
+
 		return SHADE_PATHS_SINGLE_METALLIC_KERNEL;
 	case KernelMaterialSpecializationSpecularDiffuse:
+
 		return SHADE_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	default:
+
 		return SHADE_PATHS_KERNEL;
 	}
 }
@@ -515,14 +532,19 @@ const std::string& WavefrontRenderPass::get_deferred_completion_kernel_name(unsi
 	switch (family_index)
 	{
 	case KernelMaterialSpecializationDiffuse:
+
 		return COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL;
 	case KernelMaterialSpecializationGlass:
+
 		return COMPLETE_DEFERRED_PATHS_GLASS_KERNEL;
 	case KernelMaterialSpecializationSingleMetallic:
+
 		return COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL;
 	case KernelMaterialSpecializationSpecularDiffuse:
+
 		return COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	default:
+
 		return COMPLETE_DEFERRED_PATHS_KERNEL;
 	}
 }
@@ -530,6 +552,7 @@ const std::string& WavefrontRenderPass::get_deferred_completion_kernel_name(unsi
 std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return {};
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels;
@@ -565,12 +588,14 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 
 	active_kernels[TRACE_PATHS_KERNEL]					 = m_kernels.at(TRACE_PATHS_KERNEL);
 	active_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL] = m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL);
+
 	return active_kernels;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_tracing_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return {};
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> tracing_kernels;
@@ -589,16 +614,19 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_traci
 	}
 
 	tracing_kernels[TRACE_PATHS_KERNEL] = m_kernels.at(TRACE_PATHS_KERNEL);
+
 	return tracing_kernels;
 }
 
 std::size_t WavefrontRenderPass::get_nee_deferred_mis_context_byte_size()
 {
 	if (!m_nee_deferred_mis_context_byte_size_dirty)
+
 		return m_nee_deferred_mis_context_byte_size;
 
 	std::shared_ptr<GPUKernel> context_size_kernel = m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL];
 	if (!context_size_kernel->has_been_compiled())
+
 		return 0;
 
 	OrochiBuffer<std::size_t> out_size_buffer(1);
@@ -608,6 +636,7 @@ std::size_t WavefrontRenderPass::get_nee_deferred_mis_context_byte_size()
 
 	m_nee_deferred_mis_context_byte_size	   = out_size_buffer.download_data()[0];
 	m_nee_deferred_mis_context_byte_size_dirty = false;
+
 	return m_nee_deferred_mis_context_byte_size;
 }
 
@@ -615,14 +644,17 @@ bool WavefrontRenderPass::kernels_ready() const
 {
 	if (!m_kernels.at(TRACE_PATHS_KERNEL)->has_been_compiled() || !m_kernels.at(COMPLETE_DEFERRED_PATHS_KERNEL)->has_been_compiled() ||
 		!m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)->has_been_compiled() || m_nee_deferred_mis_context_byte_size == 0)
+
 		return false;
 	if (uses_deferred_material_family_routing(*m_compiler_options))
 	{
 		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 			if (!m_kernels.at(get_deferred_completion_kernel_name(family_index))->has_been_compiled())
+
 				return false;
 		if (!m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL)->has_been_compiled() ||
 			!m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL)->has_been_compiled())
+
 			return false;
 	}
 
@@ -631,6 +663,7 @@ bool WavefrontRenderPass::kernels_ready() const
 		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 			if (!m_kernels.at(get_primary_shading_kernel_name(family_index))->has_been_compiled() ||
 				!m_kernels.at(get_secondary_shading_kernel_name(family_index))->has_been_compiled())
+
 				return false;
 
 		return m_kernels.at(MATERIAL_FAMILY_ROUTING_RESET_KERNEL)->has_been_compiled() &&
@@ -657,6 +690,7 @@ bool WavefrontRenderPass::resize_staging_buffers()
 	{
 		bool had_buffers = m_staging_buffers_allocated;
 		free_staging_buffers();
+
 		return had_buffers;
 	}
 
@@ -667,6 +701,7 @@ bool WavefrontRenderPass::resize_staging_buffers()
 						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size || m_render_data_host_pinned.size() != 1 ||
 						m_zero_host_pinned.size() != 1;
 	if (!needs_resize)
+
 		return false;
 
 	free_staging_buffers();
@@ -679,6 +714,7 @@ bool WavefrontRenderPass::resize_staging_buffers()
 	m_allocated_ray_volume_state_byte_size		   = ray_volume_state_byte_size;
 	m_allocated_nee_deferred_mis_context_byte_size = nee_deferred_mis_context_byte_size;
 	m_staging_buffers_allocated					   = true;
+
 	return true;
 }
 

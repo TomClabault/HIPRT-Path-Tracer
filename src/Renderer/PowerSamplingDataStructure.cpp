@@ -19,6 +19,7 @@ void PowerSamplingDataStructure::compute_from_scene(const Scene& scene, std::sha
 void PowerSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
 	if (skip_if_already_computed && m_alias_table_aliases.get_byte_size() > 0)
+
 		// Already computed
 		return;
 

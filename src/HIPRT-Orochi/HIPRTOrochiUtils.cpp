@@ -137,6 +137,7 @@ namespace HIPPTOrochiUtils
 				f.read(&sourceCode[0], size);
 			}
 			f.close();
+
 			return true;
 		}
 		else
@@ -184,6 +185,7 @@ namespace HIPPTOrochiUtils
 
 		const char* func_name_cstr = function_name.c_str();
 		std::string source_name	   = compiler_source_name.empty() ? kernel_file_path : compiler_source_name;
+
 		return hiprtBuildTraceKernels(ctxt, 1, &func_name_cstr, kernel_source_code.c_str(), source_name.c_str(), 0, nullptr, nullptr,
 									  compiler_options_cstr.size(), compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr, num_geom_types,
 									  num_ray_types, func_name_set, load_kernel ? &kernel_function_out : nullptr, load_kernel ? module_out : nullptr,

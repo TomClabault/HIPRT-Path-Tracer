@@ -75,6 +75,7 @@ void LightTreeSGBuilderNISML::free()
 
 size_t LightTreeSGBuilderNISML::get_VRAM_usage_bytes() const
 {
+
 	return m_device_cluster_node_indices_buffer.get_byte_size() + m_device_triangle_to_cluster_buffer.get_byte_size() +
 		   m_device_cluster_node_depths_buffer.get_byte_size();
 }

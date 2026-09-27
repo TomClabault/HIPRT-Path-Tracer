@@ -133,6 +133,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 	unsigned int bid		= block_index;
 	unsigned int num_blocks = (input_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
 	if (bid >= num_blocks)
+
 		return;
 
 	// Input load

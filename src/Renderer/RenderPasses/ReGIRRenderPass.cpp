@@ -200,11 +200,13 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 	public:
 		virtual std::string emit_input_transform() const override
 		{
+
 			return std::string("unsigned int contribution_bits = ~(value & 0xFFFF); return hippt::fp16_bits_to_fp32(contribution_bits);");
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
+
 			return std::string("return value;");
 		}
 	};
@@ -247,6 +249,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 												   bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -369,6 +372,7 @@ void callback_reset_imgui_status_text(void* payload)
  */
 ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A, ReGIRHashGridSoADevice candidate_B, ReGIRHashGridSoADevice buffer)
 {
+
 	return buffer.reservoirs.UCW == candidate_A.reservoirs.UCW ? candidate_B : candidate_A;
 }
 
@@ -382,12 +386,15 @@ ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A,
 											ReGIRHashGridSoADevice buffer2)
 {
 	if (candidate_A.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_A.reservoirs.UCW != buffer2.reservoirs.UCW)
+
 		return candidate_A;
 
 	if (candidate_B.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_B.reservoirs.UCW != buffer2.reservoirs.UCW)
+
 		return candidate_B;
 
 	if (candidate_C.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_C.reservoirs.UCW != buffer2.reservoirs.UCW)
+
 		return candidate_C;
 
 	return ReGIRHashGridSoADevice();
@@ -396,8 +403,10 @@ ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A,
 bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 	else if (render_data.buffers.emissive_triangles_count == 0)
+
 		return false;
 
 	synchronize_async_compute();
@@ -531,10 +540,12 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool b
 void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+
 		// Disabling async compute if we do not have spatial reuse enabled just for implementation
 		// simplicity
 		return;
 	else if (!render_data.render_settings.regir_settings.do_asynchronous_compute)
+
 		// We don't want async compute
 		return;
 
@@ -669,6 +680,7 @@ void ReGIRRenderPass::launch_grid_fill(
 	unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell,
 										 (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	if (nb_threads == 0)
+
 		// No grid cell alive to fill
 		return;
 
@@ -709,6 +721,7 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 															 oroStream_t stream)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+
 		return first_input_reservoirs;
 
 	ReGIRHashCellDataSoADevice output_reservoirs_cell_data = render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit);
@@ -724,6 +737,7 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 		unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell,
 											 (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 		if (nb_threads == 0)
+
 			// No grid cell alive to spatially reuse
 			return ReGIRHashGridSoADevice();
 
@@ -769,6 +783,7 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
+
 		return;
 
 	// We're saving the random number and restoring it afterwards such that the random numbers that we generate in the for loop below only affect the
@@ -805,10 +820,12 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
 {
 	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
+
 		return;
 
 	unsigned int nb_threads = m_number_of_cells_alive_primary_hits * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
 	if (nb_threads == 0)
+
 		// No cell alive to copy
 		return;
 
@@ -886,6 +903,7 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 		hippt::min(nb_cells_alive, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 
 	if (nb_cells_alive == 0)
+
 		return;
 
 	for (int i = 0; i < render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
@@ -898,6 +916,7 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+
 		return false;
 
 	auto start = std::chrono::high_resolution_clock::now();
@@ -949,6 +968,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	if (nb_cells_alive == 0)
+
 		return false;
 
 	unsigned int emissive_mesh_count			  = render_data.buffers.emissive_meshes_data.alias_table_count;
@@ -1205,6 +1225,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 											  ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
 	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
+
 		// Rehashing for the secondary hits but we don't have secondary hit grid cells because the renderer is doing 0 bounces
 		return;
 
@@ -1233,6 +1254,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return;
 
 	launch_correlation_reduction_copy(render_data);
@@ -1269,6 +1291,7 @@ void ReGIRRenderPass::synchronize_async_compute()
 void ReGIRRenderPass::compute_render_times()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		// No times to compute if the render pass is disabled / not being used
 		return;
 
@@ -1311,6 +1334,7 @@ void ReGIRRenderPass::compute_render_times()
 void ReGIRRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		// No metrics to update if the render pass is disabled / not being used
 		return;
 
@@ -1378,11 +1402,13 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 bool ReGIRRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 }
 
 float ReGIRRenderPass::get_VRAM_usage_bytes() const
 {
+
 	return static_cast<float>(get_vram_usage_breakdown().get_total_bytes());
 }
 
@@ -1412,43 +1438,51 @@ ReGIRVRAMUsage ReGIRRenderPass::get_vram_usage_breakdown() const
 
 size_t ReGIRRenderPass::get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const
 {
+
 	return primary_hit ? get_vram_usage_breakdown().primary_hits.correlation_reduction : 0;
 }
 
 size_t ReGIRRenderPass::get_reservoirs_VRAM_usage_bytes(bool primary_hit) const
 {
 	ReGIRVRAMUsage vram_usage = get_vram_usage_breakdown();
+
 	return primary_hit ? vram_usage.primary_hits.get_reservoirs_bytes() : vram_usage.secondary_hits.get_reservoirs_bytes();
 }
 
 size_t ReGIRRenderPass::get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const
 {
 	ReGIRVRAMUsage vram_usage = get_vram_usage_breakdown();
+
 	return primary_hit ? vram_usage.primary_hits.light_distributions : vram_usage.secondary_hits.light_distributions;
 }
 
 float& ReGIRRenderPass::get_light_distribution_target_incoming_energy()
 {
+
 	return m_light_distribution_incoming_light_energy_target;
 }
 
 float ReGIRRenderPass::get_light_distributions_compaction_VRAM_savings(bool primary_hit) const
 {
+
 	return primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits : m_last_light_distribution_compaction_vram_saving_secondary_hits;
 }
 
 unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 {
+
 	return primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 }
 
 unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
 {
+
 	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
 }
 
 GPURenderer* ReGIRRenderPass::get_renderer()
 {
+
 	return m_renderer;
 }
 
@@ -1474,6 +1508,7 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 	unsigned int total_number_of_cells = m_hash_grid_storage.get_total_number_of_cells(primary_hit);
 
 	if (total_number_of_cells == 0)
+
 		return 0.0f;
 
 	return get_number_of_cells_alive(primary_hit) / static_cast<float>(total_number_of_cells);
@@ -1481,10 +1516,12 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 
 ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage()
 {
+
 	return m_hash_grid_storage;
 }
 
 bool ReGIRRenderPass::lights_in_scene(HIPRTRenderData& render_data) const
 {
+
 	return render_data.buffers.emissive_triangles_count > 0;
 }

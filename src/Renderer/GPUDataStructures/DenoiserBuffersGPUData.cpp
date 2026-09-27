@@ -9,8 +9,10 @@
 float3_t* DenoiserBuffersGPUData::map_normals_buffer()
 {
 	if (use_interop_AOVs)
+
 		return m_normals_AOV_interop_buffer->map();
 	else
+
 		return m_normals_AOV_no_interop_buffer->get_device_pointer();
 }
 
@@ -31,8 +33,10 @@ void DenoiserBuffersGPUData::unmap_normals_buffer()
 ColorRGB32F* DenoiserBuffersGPUData::map_albedo_buffer()
 {
 	if (use_interop_AOVs)
+
 		return m_albedo_AOV_interop_buffer->map();
 	else
+
 		return m_albedo_AOV_no_interop_buffer->get_device_pointer();
 }
 
@@ -53,6 +57,7 @@ void DenoiserBuffersGPUData::unmap_albedo_buffer()
 void DenoiserBuffersGPUData::set_use_interop_AOV_buffers(GPURenderer* renderer, bool use_interop)
 {
 	if (use_interop == use_interop_AOVs)
+
 		// Nothing to change
 		return;
 

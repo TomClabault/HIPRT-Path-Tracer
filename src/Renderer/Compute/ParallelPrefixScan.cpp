@@ -214,6 +214,7 @@ void ParallelPrefixScan::scan()
 
 OrochiBuffer<unsigned int>& ParallelPrefixScan::get_output_buffer()
 {
+
 	return m_output_buffer;
 }
 
@@ -268,6 +269,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block scan test %d, size = %u", i,
 									input_size_original);
+
 			return;
 		}
 
@@ -275,6 +277,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block sums test %d, size = %u", i,
 									input_size_original);
+
 			return;
 		}
 	}

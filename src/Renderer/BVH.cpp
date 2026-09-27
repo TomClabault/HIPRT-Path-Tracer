@@ -66,5 +66,6 @@ void BVH::build_bvh(int max_depth, int leaf_max_obj_count, float3_t min, float3_
 
 bool BVH::intersect(const hiprtRay& ray, hiprtHit& hit_info, void* filter_function_payload) const
 {
+
 	return m_root->intersect(*m_triangles, ray, hit_info, filter_function_payload);
 }

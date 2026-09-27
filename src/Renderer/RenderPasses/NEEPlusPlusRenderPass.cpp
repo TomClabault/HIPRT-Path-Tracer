@@ -48,6 +48,7 @@ bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOr
 														 bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool nee_plus_plus__grid_populate_compiled = m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->has_been_compiled();
@@ -60,6 +61,7 @@ bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOr
 bool NEEPlusPlusRenderPass::pre_frame_render_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return m_nee_plus_plus_storage.free();
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -75,6 +77,7 @@ void NEEPlusPlusRenderPass::update_render_data()
 bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting() && render_data.render_settings.accumulate)
@@ -139,6 +142,7 @@ float NEEPlusPlusRenderPass::get_full_frame_time()
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	m_nee_plus_plus_storage.reset();
@@ -146,6 +150,7 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
 bool NEEPlusPlusRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
@@ -153,20 +158,24 @@ bool NEEPlusPlusRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& 
 
 NEEPlusPlusHashGridStorage& NEEPlusPlusRenderPass::get_nee_plus_plus_storage()
 {
+
 	return m_nee_plus_plus_storage;
 }
 
 float& NEEPlusPlusRenderPass::get_max_vram_usage()
 {
+
 	return m_max_vram_usage_megabytes;
 }
 
 std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const
 {
+
 	return m_nee_plus_plus_storage.get_byte_size();
 }
 
 float NEEPlusPlusRenderPass::get_load_factor() const
 {
+
 	return m_nee_plus_plus_storage.get_load_factor();
 }

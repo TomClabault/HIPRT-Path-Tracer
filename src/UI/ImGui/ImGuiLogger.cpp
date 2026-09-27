@@ -36,6 +36,7 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 	if (!ImGui::Begin(title, p_open))
 	{
 		ImGui::End();
+
 		return;
 	}
 
@@ -160,6 +161,7 @@ void ImGuiLogger::update_line(const char* line_name, const char* fmt, ...)
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	if (m_destroyed)
+
 		return;
 
 	auto find = m_names_to_lines.find(line_name);
@@ -167,6 +169,7 @@ void ImGuiLogger::update_line(const char* line_name, const char* fmt, ...)
 	{
 		add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 				 "Cannot update line with name %s. There is no such line. Did you forget to call add_line(severity, LINE_NAME, ...)?", line_name);
+
 		return;
 	}
 
@@ -200,15 +203,19 @@ ImU32 ImGuiLogger::get_severity_color(ImGuiLoggerSeverity severity)
 	switch (severity)
 	{
 	case IMGUI_LOGGER_INFO:
+
 		return IM_COL32(255, 255, 255, 255);
 
 	case IMGUI_LOGGER_WARNING:
+
 		return IM_COL32(255, 255, 0, 255);
 
 	case IMGUI_LOGGER_ERROR:
+
 		return IM_COL32(255, 0, 0, 255);
 
 	default:
+
 		return IM_COL32(255, 0, 255, 255);
 	}
 }
@@ -218,15 +225,19 @@ std::string ImGuiLogger::get_severity_prefix(ImGuiLoggerSeverity severity)
 	switch (severity)
 	{
 	case IMGUI_LOGGER_INFO:
+
 		return "[INFO] ";
 
 	case IMGUI_LOGGER_WARNING:
+
 		return "[WARN] ";
 
 	case IMGUI_LOGGER_ERROR:
+
 		return "[ERR ] ";
 
 	default:
+
 		return "";
 	}
 }
@@ -311,6 +322,7 @@ std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> ImGuiLogger::get_
 {
 	const auto& find = m_index_to_line_cache.find(index);
 	if (find != m_index_to_line_cache.end())
+
 		return find->second;
 
 	int total = 0;

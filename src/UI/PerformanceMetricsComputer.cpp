@@ -10,6 +10,7 @@
 
 float PerformanceMetricsComputer::data_getter(void* data, int index)
 {
+
 	return static_cast<double*>(data)[index];
 }
 
@@ -38,11 +39,13 @@ std::vector<double>& PerformanceMetricsComputer::get_data(const std::string& key
 
 int PerformanceMetricsComputer::get_value_count(const std::string& key)
 {
+
 	return m_values_count[key];
 }
 
 int PerformanceMetricsComputer::get_data_index(const std::string& key)
 {
+
 	return m_data_indices[key];
 }
 
@@ -104,6 +107,7 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 double PerformanceMetricsComputer::get_current_value(const std::string& key)
 {
 	if (m_values_count[key] == 0)
+
 		return 0.0f;
 
 	// m_data_indices[key] is the index of the value that we're going to insert next
@@ -119,6 +123,7 @@ double PerformanceMetricsComputer::get_current_value(const std::string& key)
 double PerformanceMetricsComputer::get_average(const std::string& key)
 {
 	if (m_values_count[key] == 0)
+
 		return -1.0;
 
 	return m_values_sum[key] / m_values_count[key];
@@ -127,15 +132,18 @@ double PerformanceMetricsComputer::get_average(const std::string& key)
 double PerformanceMetricsComputer::get_variance(const std::string& key)
 {
 	if (m_values_count[key] == 0)
+
 		return -1.0;
 
 	double average = get_average(key);
+
 	return m_values_sum_of_squares[key] / m_values_count[key] - average * average;
 }
 
 double PerformanceMetricsComputer::get_standard_deviation(const std::string& key)
 {
 	if (m_values_count[key] == 0)
+
 		return -1.0;
 
 	return std::sqrt(get_variance(key));
@@ -144,6 +152,7 @@ double PerformanceMetricsComputer::get_standard_deviation(const std::string& key
 double PerformanceMetricsComputer::get_min(const std::string& key)
 {
 	if (m_min_max_data[key].size() == 0)
+
 		return -1.0;
 
 	return *m_min_max_data[key].begin();
@@ -152,6 +161,7 @@ double PerformanceMetricsComputer::get_min(const std::string& key)
 double PerformanceMetricsComputer::get_max(const std::string& key)
 {
 	if (m_min_max_data[key].size() == 0)
+
 		return -1.0;
 
 	// rbegin() is the last element
@@ -161,17 +171,20 @@ double PerformanceMetricsComputer::get_max(const std::string& key)
 
 int PerformanceMetricsComputer::get_window_size() const
 {
+
 	return m_window_size;
 }
 
 int& PerformanceMetricsComputer::get_window_size()
 {
+
 	return m_window_size;
 }
 
 void PerformanceMetricsComputer::resize_window(int new_size)
 {
 	if (m_window_size == new_size)
+
 		return;
 
 	resize_values_vectors(new_size);
@@ -196,6 +209,7 @@ void PerformanceMetricsComputer::recompute_data(int new_size)
 	// isn't expected to be called that often at all, let's keep it simple
 
 	if (new_size > m_window_size)
+
 		// Nothing to recompute, new elements will be added later
 		return;
 
