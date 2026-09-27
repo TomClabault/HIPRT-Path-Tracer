@@ -2164,7 +2164,8 @@ HIPRT_DEVICE static void principled_specular_diffuse_lobe_weights(const Material
 																  float& diffuse_weight)
 {
 	PrincipledLobeUserWeights user_weights;
-	user_weights.specular		  = material.specular;
+	user_weights.specular = material.specular;
+
 	PrincipledLobeWeights weights = compute_principled_lobe_weights(user_weights, outside_object);
 	specular_weight				  = weights.specular;
 	diffuse_weight				  = weights.diffuse;
@@ -2284,6 +2285,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 
 	// TODO compare CPU rendering with and without
 	sanity_check</* CPUOnly */ true>(render_data, final_color, 0, 0);
+
 	return final_color;
 }
 
@@ -2425,8 +2427,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 
 		// Giving some information about what the BSDF sampled to the caller
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-		output_direction				 = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
-																principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
+		output_direction = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
+												principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
 	}
 	else if (rand_1 < cdf1)
 	{
