@@ -206,8 +206,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 
 		if constexpr (family == KernelMaterialSpecializationGlass)
 		{
-			// Preserve the All path's lobe-selection draw before the glass direction sample.
-			random_number_generator();
+			// Specialized glass sampling skips the top-level lobe-selection draw.
 			output_direction = local_to_world_frame(tangent, bitangent, bsdf_context.shading_normal,
 													principled_glass_sample(render_data, bsdf_context, local_view_direction, random_number_generator));
 			if constexpr (sampleDirectionOnly)
@@ -220,8 +219,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 		}
 		else if constexpr (family == KernelMaterialSpecializationSingleMetallic)
 		{
-			// Preserve the All path's lobe-selection draw before the metallic direction sample.
-			random_number_generator();
+			// Specialized metallic sampling skips the top-level lobe-selection draw.
 			if (bsdf_context.update_ray_volume_state)
 				bsdf_context.volume_state.interior_stack.pop(false);
 			bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE;
