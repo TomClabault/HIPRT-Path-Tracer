@@ -34,8 +34,10 @@ HIPRT_DEVICE static void wavefront_classify_secondary_material_family(HIPRTRende
 		wavefront_store_current_material_classification(render_data, path_index, material_index, classification_inputs, resolved_user_controls);
 	}
 
-	wavefront_data.path_material_family_tags[path_index] = static_cast<unsigned int>(material_family);
-	hippt::atomic_fetch_add(wavefront_data.material_family_counts + material_family, 1u);
+	unsigned int material_family_index = static_cast<unsigned int>(material_family);
+	unsigned int family_queue_slot	   = hippt::atomic_fetch_add(wavefront_data.material_family_counts + material_family_index, 1u);
+	if (family_queue_slot < wavefront_data.path_capacity)
+		wavefront_data.material_family_indices[material_family_index * wavefront_data.path_capacity + family_queue_slot] = path_index;
 }
 
 #ifdef __KERNELCC__

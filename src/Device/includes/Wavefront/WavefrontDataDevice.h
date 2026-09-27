@@ -41,16 +41,14 @@ struct WavefrontDataDevice
 	int* path_bounces					= nullptr;
 	float* path_accumulated_roughnesses = nullptr;
 
-	HitInfo* path_closest_hit_infos												   = nullptr;
-	unsigned int* path_state_flags												   = nullptr;
-	unsigned int* path_rng_states												   = nullptr;
-	RayVolumeState* path_volume_states											   = nullptr;
-	void* path_nee_deferred_mis_contexts										   = nullptr;
-	unsigned int* path_material_family_tags										   = nullptr;
+	HitInfo* path_closest_hit_infos		 = nullptr;
+	unsigned int* path_state_flags		 = nullptr;
+	unsigned int* path_rng_states		 = nullptr;
+	RayVolumeState* path_volume_states	 = nullptr;
+	void* path_nee_deferred_mis_contexts = nullptr;
+	// Each material family owns a fixed-capacity segment in this queue buffer.
 	unsigned int* material_family_indices										   = nullptr;
 	AtomicType<unsigned int>* material_family_counts							   = nullptr;
-	unsigned int* material_family_offsets										   = nullptr;
-	AtomicType<unsigned int>* material_family_cursors							   = nullptr;
 	float* path_resolved_material_roughness										   = nullptr;
 	float* path_resolved_material_metallic										   = nullptr;
 	float* path_resolved_material_specular										   = nullptr;

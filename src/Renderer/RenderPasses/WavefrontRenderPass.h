@@ -38,12 +38,7 @@ public:
 	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_RESET_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL;
 
 	WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 	~WavefrontRenderPass() = default;

@@ -10,8 +10,7 @@
 
 HIPRT_DEVICE static void wavefront_classify_primary_material_family(HIPRTRenderData& render_data, unsigned int pixel_index)
 {
-	WavefrontDataDevice& wavefront_data					  = render_data.wavefront_data;
-	wavefront_data.path_material_family_tags[pixel_index] = KernelMaterialSpecializationCount;
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		return;
@@ -25,8 +24,10 @@ HIPRT_DEVICE static void wavefront_classify_primary_material_family(HIPRTRenderD
 		material_family = classify_principled_material(classification_inputs, true);
 	}
 
-	wavefront_data.path_material_family_tags[pixel_index] = static_cast<unsigned int>(material_family);
-	hippt::atomic_fetch_add(wavefront_data.material_family_counts + material_family, 1u);
+	unsigned int material_family_index = static_cast<unsigned int>(material_family);
+	unsigned int family_queue_slot	   = hippt::atomic_fetch_add(wavefront_data.material_family_counts + material_family_index, 1u);
+	if (family_queue_slot < wavefront_data.path_capacity)
+		wavefront_data.material_family_indices[material_family_index * wavefront_data.path_capacity + family_queue_slot] = pixel_index;
 }
 
 #ifdef __KERNELCC__

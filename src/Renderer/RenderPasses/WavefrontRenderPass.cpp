@@ -26,18 +26,13 @@ const std::string WavefrontRenderPass::TRACE_PATHS_KERNEL								 = "Wavefront -
 const std::string WavefrontRenderPass::NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL				 = "Wavefront - NEE Deferred MIS Context Size";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_RESET_KERNEL				 = "Wavefront - Reset Material Family Routing";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL			 = "Wavefront - Classify Primary Material Families";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL			 = "Wavefront - Build Material Family Offsets";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL			 = "Wavefront - Scatter Primary Material Families";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL = "Wavefront - Classify Secondary Material Families";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL	 = "Wavefront - Scatter Secondary Material Families";
 
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_KERNEL					= "Wavefront - Complete Terminated Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL			= "Wavefront - Complete Terminated Diffuse Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_GLASS_KERNEL				= "Wavefront - Complete Terminated Glass Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL	= "Wavefront - Complete Terminated Single Metallic Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL	= "Wavefront - Complete Terminated Specular Diffuse Paths";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL = "Wavefront - Classify Deferred Material Families";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL	= "Wavefront - Scatter Deferred Material Families";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_KERNEL				   = "Wavefront - Complete Terminated Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL		   = "Wavefront - Complete Terminated Diffuse Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_GLASS_KERNEL			   = "Wavefront - Complete Terminated Glass Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL  = "Wavefront - Complete Terminated Single Metallic Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL = "Wavefront - Complete Terminated Specular Diffuse Paths";
 
 WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(WAVEFRONT_RENDER_PASS_NAME, renderer, options)
@@ -98,24 +93,11 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ClassifyPrimaryMaterialFamilies.h");
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->set_kernel_function_name("ClassifyPrimaryMaterialFamilies");
 
-	m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/BuildMaterialFamilyOffsets.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->set_kernel_function_name("BuildMaterialFamilyOffsets");
-
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ScatterPrimaryMaterialFamilies.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL]->set_kernel_function_name("ScatterPrimaryMaterialFamilies");
-
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
 																					   "/Wavefront/ClassifySecondaryMaterialFamilies.h");
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->set_kernel_function_name("ClassifySecondaryMaterialFamilies");
-
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ScatterSecondaryMaterialFamilies.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL]->set_kernel_function_name("ScatterSecondaryMaterialFamilies");
 
 	m_kernels[COMPLETE_DEFERRED_PATHS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + COMPLETE_DEFERRED_PATHS_KERNEL);
 	m_kernels[COMPLETE_DEFERRED_PATHS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/CompleteDeferredPaths.h");
@@ -138,16 +120,6 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 		std::make_shared<GPUKernel>(this->get_name() + "::" + COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL);
 	m_kernels[COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/CompleteDeferredPaths.h");
 	m_kernels[COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL]->set_kernel_function_name("WavefrontCompleteDeferredPaths");
-
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ClassifyDeferredMaterialFamilies.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL]->set_kernel_function_name("ClassifyDeferredMaterialFamilies");
-
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ScatterDeferredMaterialFamilies.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL]->set_kernel_function_name("ScatterDeferredMaterialFamilies");
 
 	for (std::pair<const std::string, std::shared_ptr<GPUKernel>>& name_to_kernel : m_kernels)
 	{
@@ -318,21 +290,8 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 																				 sizeof(HIPRTRenderData), main_stream);
 		m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_PRIMARY_MATERIAL_FAMILIES_RENDER_DATA",
 																					host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->upload_to_module_global("WAVEFRONT_BUILD_MATERIAL_FAMILY_OFFSETS_RENDER_DATA",
-																				   host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL]->upload_to_module_global("WAVEFRONT_SCATTER_PRIMARY_MATERIAL_FAMILIES_RENDER_DATA",
-																				   host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
 		m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA",
 																							  host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL]->upload_to_module_global("WAVEFRONT_SCATTER_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA",
-																							 host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		if (route_deferred_by_material_family)
-		{
-			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_DEFERRED_MATERIAL_FAMILIES_RENDER_DATA",
-																								 host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL]->upload_to_module_global("WAVEFRONT_SCATTER_DEFERRED_MATERIAL_FAMILIES_RENDER_DATA",
-																								host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		}
 	}
 	else
 	{
@@ -366,8 +325,6 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		{
 			m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
 			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
 
 			route_by_family = true;
 			for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
@@ -384,9 +341,6 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 			m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
 			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
 																											 main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
-																											main_stream);
 
 			route_by_family = true;
 			for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
@@ -403,16 +357,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		m_wavefront_data.get_queue_count_buffer(WAVEFRONT_COMPLETION_QUEUE_INDEX).upload_data_async(zero, main_stream);
 		m_kernels[TRACE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, nullptr, main_stream);
 
-		if (route_deferred_by_material_family && path_capacity > 0)
-		{
-			m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
-																											main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
-																										   main_stream);
-		}
-
+		// Family-routed deferred completion reuses these queues and filters paths by terminal/miss state.
 		bool complete_by_family		 = route_deferred_by_material_family;
 		void* complete_launch_args[] = { &complete_by_family };
 		if (route_deferred_by_material_family)
@@ -567,10 +512,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 
 		active_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_RESET_KERNEL);
 		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL);
 		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL]  = m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL);
 	}
 	else
 	{
@@ -583,8 +525,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 	{
 		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 			active_kernels[get_deferred_completion_kernel_name(family_index)] = m_kernels.at(get_deferred_completion_kernel_name(family_index));
-		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL] = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL]	 = m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL);
 	}
 
 	active_kernels[TRACE_PATHS_KERNEL]					 = m_kernels.at(TRACE_PATHS_KERNEL);
@@ -653,10 +593,6 @@ bool WavefrontRenderPass::kernels_ready() const
 			if (!m_kernels.at(get_deferred_completion_kernel_name(family_index))->has_been_compiled())
 
 				return false;
-		if (!m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL)->has_been_compiled() ||
-			!m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL)->has_been_compiled())
-
-			return false;
 	}
 
 	if (uses_material_family_routing(*m_compiler_options))
@@ -669,10 +605,7 @@ bool WavefrontRenderPass::kernels_ready() const
 
 		return m_kernels.at(MATERIAL_FAMILY_ROUTING_RESET_KERNEL)->has_been_compiled() &&
 			   m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_OFFSETS_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL)->has_been_compiled();
+			   m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL)->has_been_compiled();
 	}
 
 	return m_kernels.at(SHADE_PRIMARY_PATHS_KERNEL)->has_been_compiled() && m_kernels.at(SHADE_PATHS_KERNEL)->has_been_compiled();

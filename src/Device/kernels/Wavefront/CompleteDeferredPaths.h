@@ -8,7 +8,7 @@
 
 #include "Device/includes/Wavefront/WavefrontCommon.h"
 
-// Continuing hits complete deferred lighting at the start of shading; this queue only finalizes terminal paths and misses.
+// Non-family completion uses the completion queue; family-routed completion scans the preceding shade queues and filters terminal paths and misses.
 template <typename PreviousBSDFMaterialType>
 HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& render_data, unsigned int path_index)
 {
@@ -85,26 +85,32 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__
 
-	unsigned int queue_start = 0;
-	unsigned int queue_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX], 0u);
+	unsigned int family_queue_base = 0;
+	unsigned int queue_count	   = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX], 0u);
 	if (route_by_family)
 	{
 		if (render_data.wavefront_data.material_family_routing_enabled == 0)
 			return;
 
 		unsigned int material_family = KERNEL_MATERIAL_SPECIALIZATION;
-		queue_start					 = render_data.wavefront_data.material_family_offsets[material_family];
 		queue_count					 = render_data.wavefront_data.material_family_counts[material_family];
+		family_queue_base			 = material_family * render_data.wavefront_data.path_capacity;
 	}
-	else if (queue_count > render_data.wavefront_data.path_capacity)
+	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 
 	for (; queue_slot < queue_count; queue_slot += queue_stride)
 	{
-		unsigned int path_index = route_by_family ? render_data.wavefront_data.material_family_indices[queue_start + queue_slot]
+		unsigned int path_index = route_by_family ? render_data.wavefront_data.material_family_indices[family_queue_base + queue_slot]
 												  : render_data.wavefront_data.path_queues[WAVEFRONT_COMPLETION_QUEUE_INDEX][queue_slot];
 		if (path_index >= render_data.wavefront_data.path_capacity)
 			continue;
+		if (route_by_family)
+		{
+			unsigned int path_flags = render_data.wavefront_data.path_state_flags[path_index];
+			if (!(path_flags & WAVEFRONT_PATH_STATE_TERMINAL) && (path_flags & WAVEFRONT_PATH_STATE_INTERSECTION_FOUND))
+				continue;
+		}
 
 		wavefront_complete_terminated_path<KernelMaterial>(render_data, path_index);
 	}

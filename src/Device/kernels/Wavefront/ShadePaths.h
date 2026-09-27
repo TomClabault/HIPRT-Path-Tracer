@@ -30,7 +30,6 @@ inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_coun
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__
 
-	unsigned int queue_start = 0;
 	unsigned int queue_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[0], 0u);
 	if (route_by_family)
 	{
@@ -38,17 +37,20 @@ inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_coun
 			return;
 
 		unsigned int material_family = KERNEL_MATERIAL_SPECIALIZATION;
-		queue_start					 = render_data.wavefront_data.material_family_offsets[material_family];
 		queue_count					 = render_data.wavefront_data.material_family_counts[material_family];
 	}
-	else if (queue_count > render_data.wavefront_data.path_capacity)
+	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 
 	for (; queue_slot < queue_count; queue_slot += queue_stride)
 	{
 		unsigned int path_index = queue_slot;
 		if (route_by_family)
-			path_index = render_data.wavefront_data.material_family_indices[queue_start + queue_slot];
+		{
+			unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
+			unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
+			path_index					   = render_data.wavefront_data.material_family_indices[family_queue_base + queue_slot];
+		}
 		else
 			path_index = render_data.wavefront_data.path_queues[0][queue_slot];
 

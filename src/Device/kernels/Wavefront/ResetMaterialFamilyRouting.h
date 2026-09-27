@@ -27,10 +27,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ResetMaterialFamilyRouting(HIPRTRenderData 
 		return;
 
 	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
-	{
-		render_data.wavefront_data.material_family_counts[family_index]	 = 0;
-		render_data.wavefront_data.material_family_cursors[family_index] = 0;
-	}
+		render_data.wavefront_data.material_family_counts[family_index] = 0;
 }
 
 #endif // #ifndef KERNELS_WAVEFRONT_RESET_MATERIAL_FAMILY_ROUTING_H
