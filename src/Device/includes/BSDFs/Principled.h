@@ -1991,17 +1991,17 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedP
 	// The layering follows the one of the principled BSDF of blender:
 	// [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
 
-	PrincipledLobeUserWeights controls;
-	controls.coat					 = material.coat;
-	controls.sheen					 = material.sheen;
-	controls.metallic				 = material.metallic;
-	controls.second_roughness_weight = material.second_roughness_weight;
-	controls.retro_reflection		 = material.retro_reflection;
-	controls.specular				 = material.specular;
-	controls.specular_transmission	 = material.specular_transmission;
-	controls.diffuse_transmission	 = material.diffuse_transmission;
+	PrincipledLobeUserWeights user_weights;
+	user_weights.coat					 = material.coat;
+	user_weights.sheen					 = material.sheen;
+	user_weights.metallic				 = material.metallic;
+	user_weights.second_roughness_weight = material.second_roughness_weight;
+	user_weights.retro_reflection		 = material.retro_reflection;
+	user_weights.specular				 = material.specular;
+	user_weights.specular_transmission	 = material.specular_transmission;
+	user_weights.diffuse_transmission	 = material.diffuse_transmission;
 
-	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, outside_object);
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(user_weights, outside_object);
 
 	// Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
 	//
@@ -2163,9 +2163,9 @@ HIPRT_DEVICE static void principled_specular_diffuse_lobe_weights(const Material
 																  float& specular_weight,
 																  float& diffuse_weight)
 {
-	PrincipledLobeUserWeights controls;
-	controls.specular			  = material.specular;
-	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, outside_object);
+	PrincipledLobeUserWeights user_weights;
+	user_weights.specular		  = material.specular;
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(user_weights, outside_object);
 	specular_weight				  = weights.specular;
 	diffuse_weight				  = weights.diffuse;
 }
