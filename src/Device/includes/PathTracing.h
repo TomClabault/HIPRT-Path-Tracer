@@ -19,6 +19,7 @@
 
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(

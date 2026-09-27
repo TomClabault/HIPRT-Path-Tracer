@@ -10,6 +10,7 @@
 #include "Device/includes/Texture.h"
 
 #include "Device/includes/SanityCheck.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/RenderData.h"
 // To be able to access GPUBakerConstants::GGX_DIRECTIONAL_ALBEDO_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE
 #include "Renderer/Baker/GPUBakerConstants.h"

@@ -19,6 +19,7 @@
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/Material/PrincipledLobeWeights.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -2319,10 +2320,13 @@ HIPRT_DEVICE static ColorRGB32F principled_compact_family_sample(const HIPRTRend
 																 float& pdf,
 																 Xorshift32Generator& random_number_generator)
 {
-	pdf											  = 0.0f;
+	pdf = 0.0f;
+
 	constexpr KernelMaterialSpecialization family = MaterialTraits<MaterialType>::family;
+
 	float3_t tangent, bitangent;
 	build_rotated_ONB(bsdf_context.shading_normal, tangent, bitangent, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+
 	float3_t local_view_direction = world_to_local_frame(tangent, bitangent, bsdf_context.shading_normal, bsdf_context.view_direction);
 
 	if constexpr (family == KernelMaterialSpecializationGlass)

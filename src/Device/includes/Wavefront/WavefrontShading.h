@@ -7,6 +7,7 @@
 #define DEVICE_WAVEFRONT_SHADING_H
 
 #include "Device/includes/Wavefront/WavefrontCommon.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/Material/PrincipledLobeClassification.h"
 
 HIPRT_DEVICE void wavefront_initialize_secondary_hit_material(RayPayloadCommon& ray_payload,

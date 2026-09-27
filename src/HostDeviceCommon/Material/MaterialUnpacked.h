@@ -187,16 +187,16 @@ struct DeviceUnpackedPrincipledFullMaterial
 		// and we need the glass lobe to be perfectly smooth
 		bool matching_base_substrate_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_glass					= incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE &&
-												  MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
+								  MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
 		if (sampled_from_glass)
 			// We can stop here
 			return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
 
 		// Same for the metal lobe (except that it's alawys a reflection, so it's easy there)
-		bool sampled_from_first_metal	   = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
-											 MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
-		bool sampled_from_second_metal	   = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE &&
-											 MaterialUtils::is_perfectly_smooth(second_roughness) && matching_base_substrate_anisotropy;
+		bool sampled_from_first_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
+										MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
+		bool sampled_from_second_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE &&
+										 MaterialUtils::is_perfectly_smooth(second_roughness) && matching_base_substrate_anisotropy;
 		bool sampled_from_retro_reflection = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE &&
 											 MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
 		if (sampled_from_first_metal || sampled_from_second_metal || sampled_from_retro_reflection)
@@ -206,7 +206,7 @@ struct DeviceUnpackedPrincipledFullMaterial
 		// Same for the coat
 		bool matching_coat_anisotropy = hippt::abs(delta_distribution_anisotropy - coat_anisotropy) < 1.0e-3f;
 		bool sampled_from_coat		  = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE && matching_coat_anisotropy &&
-										MaterialUtils::is_perfectly_smooth(coat_roughness);
+								 MaterialUtils::is_perfectly_smooth(coat_roughness);
 		if (sampled_from_coat)
 			// We can stop here
 			return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
@@ -541,7 +541,7 @@ struct DevicePrincipledGlassMaterial : EffectiveMaterialEmission
 
 		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_glass	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE &&
-								   MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
 		return sampled_from_glass ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
@@ -583,7 +583,7 @@ struct DevicePrincipledSingleMetallicMaterial : EffectiveMaterialEmission
 
 		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_metal	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
-								   MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
 		return sampled_from_metal ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
@@ -650,107 +650,6 @@ struct DevicePrincipledSpecularDiffuseMaterial : EffectiveMaterialEmission
 	{
 		return MaterialUtils::can_do_light_sampling(roughness, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD);
 	}
-};
-
-template <typename MaterialType>
-struct MaterialTraits;
-
-template <>
-struct MaterialTraits<DeviceUnpackedPrincipledFullMaterial>
-{
-	static constexpr bool is_principled		   = true;
-	static constexpr bool has_diffuse		   = true;
-	static constexpr bool has_glass			   = true;
-	static constexpr bool has_metallic		   = true;
-	static constexpr bool has_specular		   = true;
-	static constexpr bool has_coat			   = true;
-	static constexpr bool has_sheen			   = true;
-	static constexpr bool has_transmission	   = true;
-	static constexpr bool has_roughness		   = true;
-	static constexpr bool has_second_roughness = true;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationAll;
-};
-
-template <>
-struct MaterialTraits<DeviceLambertianMaterial>
-{
-	static constexpr bool is_principled		   = false;
-	static constexpr bool has_diffuse		   = true;
-	static constexpr bool has_glass			   = false;
-	static constexpr bool has_metallic		   = false;
-	static constexpr bool has_specular		   = false;
-	static constexpr bool has_coat			   = false;
-	static constexpr bool has_sheen			   = false;
-	static constexpr bool has_transmission	   = false;
-	static constexpr bool has_roughness		   = false;
-	static constexpr bool has_second_roughness = false;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationAll;
-};
-
-template <>
-struct MaterialTraits<DeviceOrenNayarMaterial> : MaterialTraits<DeviceLambertianMaterial>
-{
-};
-
-template <>
-struct MaterialTraits<DevicePrincipledDiffuseMaterial> : MaterialTraits<DeviceLambertianMaterial>
-{
-	static constexpr bool is_principled = true;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationDiffuse;
-};
-
-template <>
-struct MaterialTraits<DevicePrincipledGlassMaterial>
-{
-	static constexpr bool is_principled		   = true;
-	static constexpr bool has_diffuse		   = false;
-	static constexpr bool has_glass			   = true;
-	static constexpr bool has_metallic		   = false;
-	static constexpr bool has_specular		   = false;
-	static constexpr bool has_coat			   = false;
-	static constexpr bool has_sheen			   = false;
-	static constexpr bool has_transmission	   = true;
-	static constexpr bool has_roughness		   = true;
-	static constexpr bool has_second_roughness = false;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationGlass;
-};
-
-template <>
-struct MaterialTraits<DevicePrincipledSingleMetallicMaterial>
-{
-	static constexpr bool is_principled		   = true;
-	static constexpr bool has_diffuse		   = false;
-	static constexpr bool has_glass			   = false;
-	static constexpr bool has_metallic		   = true;
-	static constexpr bool has_specular		   = false;
-	static constexpr bool has_coat			   = false;
-	static constexpr bool has_sheen			   = false;
-	static constexpr bool has_transmission	   = false;
-	static constexpr bool has_roughness		   = true;
-	static constexpr bool has_second_roughness = false;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationSingleMetallic;
-};
-
-template <>
-struct MaterialTraits<DevicePrincipledSpecularDiffuseMaterial>
-{
-	static constexpr bool is_principled		   = true;
-	static constexpr bool has_diffuse		   = true;
-	static constexpr bool has_glass			   = false;
-	static constexpr bool has_metallic		   = false;
-	static constexpr bool has_specular		   = true;
-	static constexpr bool has_coat			   = false;
-	static constexpr bool has_sheen			   = false;
-	static constexpr bool has_transmission	   = false;
-	static constexpr bool has_roughness		   = true;
-	static constexpr bool has_second_roughness = false;
-
-	static constexpr KernelMaterialSpecialization family = KernelMaterialSpecializationSpecularDiffuse;
 };
 
 template <BSDFModel model, KernelMaterialSpecialization specialization>

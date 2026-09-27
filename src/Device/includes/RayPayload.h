@@ -11,6 +11,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 enum RayState

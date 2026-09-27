@@ -10,6 +10,7 @@
 #include "Device/includes/BSDFs/OrenNayar.h"
 #include "Device/includes/BSDFs/Principled.h"
 #include "Device/includes/RayPayload.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 
 /**
  * The 'random_number_generator' passed here is used only in case

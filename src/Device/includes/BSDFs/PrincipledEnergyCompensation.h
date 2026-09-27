@@ -9,6 +9,7 @@
 #include "Device/includes/BSDFs/BSDFContext.h"
 
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 
 template <typename MaterialType>
 HIPRT_DEVICE static float principled_specular_relative_ior(const MaterialType& material, float incident_medium_ior);

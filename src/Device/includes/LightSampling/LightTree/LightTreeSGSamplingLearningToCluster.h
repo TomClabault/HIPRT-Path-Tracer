@@ -11,6 +11,7 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 
+#include "HostDeviceCommon/Material/MaterialTraits.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
