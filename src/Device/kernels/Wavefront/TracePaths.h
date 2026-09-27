@@ -45,7 +45,10 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 
 	wavefront_store_trace_result(render_data, pixel_index, trace_payload.volume_state, closest_hit_info, intersection_found,
 								 random_number_generator.m_state.seed);
-	wavefront_enqueue_path(render_data, 0, pixel_index);
+
+	bool terminal_path				= (render_data.wavefront_data.path_state_flags[pixel_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
+	unsigned int output_queue_index = terminal_path || !intersection_found ? WAVEFRONT_COMPLETION_QUEUE_INDEX : 0u;
+	wavefront_enqueue_path(render_data, output_queue_index, pixel_index);
 }
 
 #endif // #ifndef KERNELS_WAVEFRONT_TRACE_PATHS_H

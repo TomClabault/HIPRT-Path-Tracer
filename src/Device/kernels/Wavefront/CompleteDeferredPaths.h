@@ -8,15 +8,20 @@
 
 #include "Device/includes/Wavefront/WavefrontCommon.h"
 
-// Traversal has already found the next hit; finish the previous vertex's deferred-light estimate before shading this hit.
+// Continuing hits complete deferred lighting at the start of shading; this queue only finalizes terminal paths and misses.
 template <typename PreviousBSDFMaterialType>
-HIPRT_DEVICE static void wavefront_complete_deferred_path(HIPRTRenderData& render_data, unsigned int path_index)
+HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& render_data, unsigned int path_index)
 {
 	RayPayloadCommon ray_payload(NoInitTag{});
 	hiprtRay ray;
 	HitInfo closest_hit_info;
 	bool intersection_found;
 	wavefront_load_secondary_material_state(render_data, path_index, ray_payload, closest_hit_info, intersection_found);
+
+	bool terminal_path = (render_data.wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
+	if (!terminal_path && intersection_found)
+		return;
+
 	wavefront_load_secondary_shading_state(render_data, path_index, ray_payload, ray, closest_hit_info);
 
 	Xorshift32Generator random_number_generator(render_data.wavefront_data.path_rng_states[path_index]);
@@ -46,25 +51,17 @@ HIPRT_DEVICE static void wavefront_complete_deferred_path(HIPRTRenderData& rende
 												 random_number_generator);
 #endif
 
-	int x			   = static_cast<int>(path_index % render_data.render_settings.render_resolution.x);
-	int y			   = static_cast<int>(path_index / render_data.render_settings.render_resolution.x);
-	bool terminal_path = (render_data.wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
+	int x = static_cast<int>(path_index % render_data.render_settings.render_resolution.x);
+	int y = static_cast<int>(path_index / render_data.render_settings.render_resolution.x);
 	if (terminal_path)
 	{
 		wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
 		return;
 	}
 
-	if (!intersection_found)
-	{
-		ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, path_index);
-		ray_payload.next_ray_state = RayState::MISSED;
-		wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
-		return;
-	}
-
-	render_data.wavefront_data.path_ray_colors[path_index] = ray_payload.ray_color;
-	render_data.wavefront_data.path_rng_states[path_index] = random_number_generator.m_state.seed;
+	ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, path_index);
+	ray_payload.next_ray_state = RayState::MISSED;
+	wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
 }
 
 #ifdef __KERNELCC__
@@ -89,7 +86,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 #endif // #ifdef __KERNELCC__
 
 	unsigned int queue_start = 0;
-	unsigned int queue_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[0], 0u);
+	unsigned int queue_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX], 0u);
 	if (route_by_family)
 	{
 		if (render_data.wavefront_data.material_family_routing_enabled == 0)
@@ -105,11 +102,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 	for (; queue_slot < queue_count; queue_slot += queue_stride)
 	{
 		unsigned int path_index = route_by_family ? render_data.wavefront_data.material_family_indices[queue_start + queue_slot]
-												  : render_data.wavefront_data.path_queues[0][queue_slot];
+												  : render_data.wavefront_data.path_queues[WAVEFRONT_COMPLETION_QUEUE_INDEX][queue_slot];
 		if (path_index >= render_data.wavefront_data.path_capacity)
 			continue;
 
-		wavefront_complete_deferred_path<KernelMaterial>(render_data, path_index);
+		wavefront_complete_terminated_path<KernelMaterial>(render_data, path_index);
 	}
 }
 

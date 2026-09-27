@@ -16,6 +16,7 @@
 
 static constexpr unsigned int WAVEFRONT_PATH_STATE_INTERSECTION_FOUND = 1u;
 static constexpr unsigned int WAVEFRONT_PATH_STATE_TERMINAL			  = 2u;
+static constexpr unsigned int WAVEFRONT_COMPLETION_QUEUE_INDEX		  = 2u;
 
 struct WavefrontDataDevice
 {
@@ -44,8 +45,8 @@ struct WavefrontDataDevice
 	float* path_resolved_material_specular_transmission			= nullptr;
 	unsigned int* path_resolved_material_control_validity_masks = nullptr;
 
-	unsigned int* path_queues[2]			  = { nullptr, nullptr };
-	AtomicType<unsigned int>* queue_counts[2] = { nullptr, nullptr };
+	unsigned int* path_queues[3]			  = { nullptr, nullptr, nullptr };
+	AtomicType<unsigned int>* queue_counts[3] = { nullptr, nullptr, nullptr };
 
 	unsigned int path_capacity					 = 0;
 	unsigned int material_family_routing_enabled = 0;

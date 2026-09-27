@@ -14,7 +14,7 @@ HIPRT_DEVICE static void wavefront_classify_deferred_material_family(HIPRTRender
 	if (queue_slot >= input_count)
 		return;
 
-	unsigned int path_index = wavefront_data.path_queues[0][queue_slot];
+	unsigned int path_index = wavefront_data.path_queues[WAVEFRONT_COMPLETION_QUEUE_INDEX][queue_slot];
 	if (path_index >= wavefront_data.path_capacity)
 		return;
 
@@ -46,7 +46,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ClassifyDeferredMaterialFamilies(HIPRTRende
 	if (render_data.wavefront_data.material_family_routing_enabled == 0)
 		return;
 
-	unsigned int input_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[0], 0u);
+	unsigned int input_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX], 0u);
 	if (input_count > render_data.wavefront_data.path_capacity)
 		input_count = render_data.wavefront_data.path_capacity;
 

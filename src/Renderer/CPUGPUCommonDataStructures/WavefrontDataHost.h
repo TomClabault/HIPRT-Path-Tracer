@@ -24,6 +24,8 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 unsigned char,
 											 unsigned int,
 											 unsigned int,
+											 unsigned int,
+											 GenericAtomicType<unsigned int, DataContainer>,
 											 GenericAtomicType<unsigned int, DataContainer>,
 											 GenericAtomicType<unsigned int, DataContainer>,
 											 unsigned int,
@@ -53,8 +55,10 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES,
 	WAVEFRONT_PATH_QUEUE_0,
 	WAVEFRONT_PATH_QUEUE_1,
+	WAVEFRONT_PATH_COMPLETION_QUEUE,
 	WAVEFRONT_QUEUE_COUNT_0,
 	WAVEFRONT_QUEUE_COUNT_1,
+	WAVEFRONT_COMPLETION_QUEUE_COUNT,
 	WAVEFRONT_PATH_MATERIAL_FAMILY_TAGS,
 	WAVEFRONT_MATERIAL_FAMILY_INDICES,
 	WAVEFRONT_MATERIAL_FAMILY_COUNTS,
@@ -80,15 +84,16 @@ struct WavefrontDataHost
 	{
 		m_wavefront_data.resize(path_capacity,
 								{ WAVEFRONT_PATH_VOLUME_STATE_BYTES, WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES, WAVEFRONT_QUEUE_COUNT_0,
-								  WAVEFRONT_QUEUE_COUNT_1, WAVEFRONT_MATERIAL_FAMILY_COUNTS, WAVEFRONT_MATERIAL_FAMILY_CURSORS,
-								  WAVEFRONT_PATH_MATERIAL_FAMILY_TAGS, WAVEFRONT_MATERIAL_FAMILY_INDICES, WAVEFRONT_MATERIAL_FAMILY_OFFSETS,
-								  WAVEFRONT_PATH_RESOLVED_MATERIAL_ROUGHNESS, WAVEFRONT_PATH_RESOLVED_MATERIAL_METALLIC,
+								  WAVEFRONT_QUEUE_COUNT_1, WAVEFRONT_COMPLETION_QUEUE_COUNT, WAVEFRONT_MATERIAL_FAMILY_COUNTS,
+								  WAVEFRONT_MATERIAL_FAMILY_CURSORS, WAVEFRONT_PATH_MATERIAL_FAMILY_TAGS, WAVEFRONT_MATERIAL_FAMILY_INDICES,
+								  WAVEFRONT_MATERIAL_FAMILY_OFFSETS, WAVEFRONT_PATH_RESOLVED_MATERIAL_ROUGHNESS, WAVEFRONT_PATH_RESOLVED_MATERIAL_METALLIC,
 								  WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR, WAVEFRONT_PATH_RESOLVED_MATERIAL_COAT, WAVEFRONT_PATH_RESOLVED_MATERIAL_SHEEN,
 								  WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION, WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS });
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_VOLUME_STATE_BYTES>(path_capacity * ray_volume_state_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES>(path_capacity * nee_deferred_mis_context_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_QUEUE_COUNT_0>(1);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_QUEUE_COUNT_1>(1);
+		m_wavefront_data.template resize_one_buffer<WAVEFRONT_COMPLETION_QUEUE_COUNT>(1);
 		std::size_t family_path_count = allocate_material_family_routing ? path_capacity : 0;
 		std::size_t family_count	  = allocate_material_family_routing ? KernelMaterialSpecializationCount : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_MATERIAL_FAMILY_TAGS>(family_path_count);
@@ -179,10 +184,13 @@ struct WavefrontDataHost
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>();
 		}
 
-		wavefront_data_device.path_queues[0]  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_0>();
-		wavefront_data_device.path_queues[1]  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_1>();
-		wavefront_data_device.queue_counts[0] = m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_QUEUE_COUNT_0>();
-		wavefront_data_device.queue_counts[1] = m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_QUEUE_COUNT_1>();
+		wavefront_data_device.path_queues[0]								= m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_0>();
+		wavefront_data_device.path_queues[1]								= m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_1>();
+		wavefront_data_device.path_queues[WAVEFRONT_COMPLETION_QUEUE_INDEX] = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_COMPLETION_QUEUE>();
+		wavefront_data_device.queue_counts[0]								= m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_QUEUE_COUNT_0>();
+		wavefront_data_device.queue_counts[1]								= m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_QUEUE_COUNT_1>();
+		wavefront_data_device.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX] =
+			m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_COMPLETION_QUEUE_COUNT>();
 
 		wavefront_data_device.path_capacity = static_cast<unsigned int>(path_capacity());
 		return wavefront_data_device;
@@ -192,6 +200,8 @@ struct WavefrontDataHost
 	{
 		if (queue_index == 0)
 			return m_wavefront_data.template get_buffer<WAVEFRONT_QUEUE_COUNT_0>();
+		if (queue_index == WAVEFRONT_COMPLETION_QUEUE_INDEX)
+			return m_wavefront_data.template get_buffer<WAVEFRONT_COMPLETION_QUEUE_COUNT>();
 
 		return m_wavefront_data.template get_buffer<WAVEFRONT_QUEUE_COUNT_1>();
 	}

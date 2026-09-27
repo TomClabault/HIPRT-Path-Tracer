@@ -31,11 +31,11 @@ const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_KERNEL			
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL = "Wavefront - Classify Secondary Material Families";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_SECONDARY_KERNEL	 = "Wavefront - Scatter Secondary Material Families";
 
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_KERNEL					= "Wavefront - Complete Deferred Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL			= "Wavefront - Complete Deferred Diffuse Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_GLASS_KERNEL				= "Wavefront - Complete Deferred Glass Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL	= "Wavefront - Complete Deferred Single Metallic Paths";
-const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL	= "Wavefront - Complete Deferred Specular Diffuse Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_KERNEL					= "Wavefront - Complete Terminated Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_DIFFUSE_KERNEL			= "Wavefront - Complete Terminated Diffuse Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_GLASS_KERNEL				= "Wavefront - Complete Terminated Glass Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL	= "Wavefront - Complete Terminated Single Metallic Paths";
+const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL	= "Wavefront - Complete Terminated Specular Diffuse Paths";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_DEFERRED_KERNEL = "Wavefront - Classify Deferred Material Families";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_SCATTER_DEFERRED_KERNEL	= "Wavefront - Scatter Deferred Material Families";
 
@@ -400,6 +400,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 			continue;
 
 		m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
+		m_wavefront_data.get_queue_count_buffer(WAVEFRONT_COMPLETION_QUEUE_INDEX).upload_data_async(zero, main_stream);
 		m_kernels[TRACE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, nullptr, main_stream);
 
 		if (route_deferred_by_material_family && path_capacity > 0)

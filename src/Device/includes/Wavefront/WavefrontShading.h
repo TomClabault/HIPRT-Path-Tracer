@@ -207,17 +207,39 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 
 	if constexpr (!initialize_primary_path)
 	{
-		if (intersection_found)
-		{
-			current_material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-			classification_inputs =
-				load_material_classification_inputs(render_data, current_material_index, closest_hit_info.texcoords, resolved_user_controls);
-			wavefront_store_resolved_material_user_controls(render_data, pixel_index, resolved_user_controls);
-			surface_transport_metadata = load_surface_transport_metadata(render_data, current_material_index, classification_inputs);
-			wavefront_initialize_secondary_hit_material(ray_payload, surface_transport_metadata, random_number_generator);
-		}
-
 		wavefront_load_secondary_shading_state(render_data, pixel_index, ray_payload, ray, closest_hit_info);
+
+		{
+			NEEDeferredMISContext previous_nee_deferred_MIS_context;
+			wavefront_load_nee_deferred_mis_context(render_data, pixel_index, previous_nee_deferred_MIS_context);
+
+			EffectiveMaterialEmission current_hit_emission;
+			current_hit_emission.emission		= ColorRGB32F(0.0f);
+			current_hit_emission.emission_flags = 0u;
+			if (intersection_found)
+			{
+				int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+				load_effective_emission(render_data, material_index, closest_hit_info.texcoords, current_hit_emission);
+			}
+
+#if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
+			using PreviousBSDFMaterial = typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), KernelMaterialSpecializationAll>::Type;
+
+			ResolvedMaterialUserControlsCache previous_resolved_user_controls;
+			previous_resolved_user_controls.validity_mask = 0;
+			// Stored light candidates are evaluated at the previous vertex even when the continuation ray misses or hits nonemissive geometry.
+			if (previous_nee_deferred_MIS_context.last_primary_gbuffer_path_index == NEE_DEFERRED_INVALID_PATH_INDEX)
+				previous_resolved_user_controls = wavefront_load_resolved_material_user_controls(render_data, pixel_index, previous_resolved_user_controls);
+
+			// This kernel is specialized for the current hit, while the deferred context belongs to the previous vertex and can use another family.
+			ray_payload.ray_color +=
+				do_deferred_NEE_MIS<PreviousBSDFMaterial>(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission,
+														  previous_nee_deferred_MIS_context, previous_resolved_user_controls, random_number_generator);
+#else
+			ray_payload.ray_color += do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission,
+														 previous_nee_deferred_MIS_context, random_number_generator);
+#endif
+		}
 
 		if (!intersection_found)
 		{
@@ -229,6 +251,12 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
 			return;
 		}
+
+		current_material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+		classification_inputs  = load_material_classification_inputs(render_data, current_material_index, closest_hit_info.texcoords, resolved_user_controls);
+		wavefront_store_resolved_material_user_controls(render_data, pixel_index, resolved_user_controls);
+		surface_transport_metadata = load_surface_transport_metadata(render_data, current_material_index, classification_inputs);
+		wavefront_initialize_secondary_hit_material(ray_payload, surface_transport_metadata, random_number_generator);
 	}
 	else if (intersection_found)
 	{
