@@ -131,6 +131,7 @@
  *		(hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut
  *
  *	- LSS_LEARNING_TO_CLUSTER_MIS
+ *		Same as LSS_LEARNING_TO_CLUSTER but with BSDF MIS
  *
  *Combines learning-to-cluster light sampling with the deferred BSDF sample using MIS. Cluster rewards include the light sample's MIS weight.
  */

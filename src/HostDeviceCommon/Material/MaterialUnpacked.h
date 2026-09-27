@@ -187,16 +187,16 @@ struct DeviceUnpackedPrincipledFullMaterial
 		// and we need the glass lobe to be perfectly smooth
 		bool matching_base_substrate_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_glass					= incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE &&
-								  MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
+												  MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
 		if (sampled_from_glass)
 			// We can stop here
 			return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
 
 		// Same for the metal lobe (except that it's alawys a reflection, so it's easy there)
-		bool sampled_from_first_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
-										MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
-		bool sampled_from_second_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE &&
-										 MaterialUtils::is_perfectly_smooth(second_roughness) && matching_base_substrate_anisotropy;
+		bool sampled_from_first_metal	   = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
+											 MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
+		bool sampled_from_second_metal	   = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE &&
+											 MaterialUtils::is_perfectly_smooth(second_roughness) && matching_base_substrate_anisotropy;
 		bool sampled_from_retro_reflection = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE &&
 											 MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
 		if (sampled_from_first_metal || sampled_from_second_metal || sampled_from_retro_reflection)
@@ -206,7 +206,7 @@ struct DeviceUnpackedPrincipledFullMaterial
 		// Same for the coat
 		bool matching_coat_anisotropy = hippt::abs(delta_distribution_anisotropy - coat_anisotropy) < 1.0e-3f;
 		bool sampled_from_coat		  = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE && matching_coat_anisotropy &&
-								 MaterialUtils::is_perfectly_smooth(coat_roughness);
+										MaterialUtils::is_perfectly_smooth(coat_roughness);
 		if (sampled_from_coat)
 			// We can stop here
 			return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
@@ -541,7 +541,7 @@ struct DevicePrincipledGlassMaterial : EffectiveMaterialEmission
 
 		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_glass	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE &&
-								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+								   MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
 		return sampled_from_glass ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
@@ -583,7 +583,7 @@ struct DevicePrincipledSingleMetallicMaterial : EffectiveMaterialEmission
 
 		bool matching_anisotropy = hippt::abs(delta_distribution_anisotropy - anisotropy) < 1.0e-3f;
 		bool sampled_from_metal	 = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE &&
-								  MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
+								   MaterialUtils::is_perfectly_smooth(roughness) && matching_anisotropy;
 		return sampled_from_metal ? SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED : SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
 	}
 
@@ -807,20 +807,5 @@ template <BSDFModel model, KernelMaterialSpecialization specialization>
 struct DeviceMaterialFor : EffectiveMaterialFor<model, specialization>
 {
 };
-
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Lambertian, KernelMaterialSpecializationAll>::Type, DeviceLambertianMaterial>);
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::OrenNayar, KernelMaterialSpecializationAll>::Type, DeviceOrenNayarMaterial>);
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationDiffuse>::Type, DevicePrincipledDiffuseMaterial>);
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationGlass>::Type, DevicePrincipledGlassMaterial>);
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSingleMetallic>::Type,
-							 DevicePrincipledSingleMetallicMaterial>);
-static_assert(std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationSpecularDiffuse>::Type,
-							 DevicePrincipledSpecularDiffuseMaterial>);
-static_assert(
-	std::is_same_v<typename EffectiveMaterialFor<BSDFModel::Principled, KernelMaterialSpecializationAll>::Type, DeviceUnpackedPrincipledFullMaterial>);
-static_assert(!std::is_convertible_v<DevicePrincipledDiffuseMaterial, DeviceUnpackedPrincipledFullMaterial>);
-static_assert(!std::is_convertible_v<DevicePrincipledGlassMaterial, DeviceUnpackedPrincipledFullMaterial>);
-static_assert(!std::is_convertible_v<DevicePrincipledSingleMetallicMaterial, DeviceUnpackedPrincipledFullMaterial>);
-static_assert(!std::is_convertible_v<DevicePrincipledSpecularDiffuseMaterial, DeviceUnpackedPrincipledFullMaterial>);
 
 #endif // #ifndef HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H

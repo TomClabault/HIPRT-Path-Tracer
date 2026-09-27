@@ -207,6 +207,18 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[TRACE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 }
 
+void WavefrontRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+									const std::vector<hiprtFuncNameSet>& func_name_sets,
+									bool silent,
+									bool use_cache)
+{
+	// Kernel options can change the NEE deferred MIS context layout. Query its newly compiled size
+	// before deciding whether the wavefront staging buffers need to be resized.
+	m_nee_deferred_mis_context_byte_size_dirty = true;
+
+	RenderPass::recompile(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
+}
+
 bool WavefrontRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
 													   const std::vector<hiprtFuncNameSet>& func_name_sets,
 													   bool silent,
