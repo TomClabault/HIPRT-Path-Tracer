@@ -252,6 +252,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<genIType>::is_integer, "'bitfieldRotateRight' accepts only integer values");
 
 		int const BitSize = static_cast<genIType>(sizeof(genIType) * 8);
+
 		return (In << static_cast<genIType>(Shift)) | (In >> static_cast<genIType>(BitSize - Shift));
 	}
 
@@ -261,6 +262,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_integer, "'bitfieldRotateRight' accepts only integer values");
 
 		int const BitSize = static_cast<int>(sizeof(T) * 8);
+
 		return (In << static_cast<T>(Shift)) | (In >> static_cast<T>(BitSize - Shift));
 	}
 
@@ -270,6 +272,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<genIType>::is_integer, "'bitfieldRotateLeft' accepts only integer values");
 
 		int const BitSize = static_cast<genIType>(sizeof(genIType) * 8);
+
 		return (In >> static_cast<genIType>(Shift)) | (In << static_cast<genIType>(BitSize - Shift));
 	}
 
@@ -279,30 +282,35 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_integer, "'bitfieldRotateLeft' accepts only integer values");
 
 		int const BitSize = static_cast<int>(sizeof(T) * 8);
+
 		return (In >> static_cast<T>(Shift)) | (In << static_cast<T>(BitSize - Shift));
 	}
 
 	template<typename genIUType>
 	GLM_FUNC_QUALIFIER genIUType bitfieldFillOne(genIUType Value, int FirstBit, int BitCount)
 	{
+
 		return Value | static_cast<genIUType>(mask(BitCount) << FirstBit);
 	}
 
 	template<length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, T, Q> bitfieldFillOne(vec<L, T, Q> const& Value, int FirstBit, int BitCount)
 	{
+
 		return Value | static_cast<T>(mask(BitCount) << FirstBit);
 	}
 
 	template<typename genIUType>
 	GLM_FUNC_QUALIFIER genIUType bitfieldFillZero(genIUType Value, int FirstBit, int BitCount)
 	{
+
 		return Value & static_cast<genIUType>(~(mask(BitCount) << FirstBit));
 	}
 
 	template<length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, T, Q> bitfieldFillZero(vec<L, T, Q> const& Value, int FirstBit, int BitCount)
 	{
+
 		return Value & static_cast<T>(~(mask(BitCount) << FirstBit));
 	}
 
@@ -329,11 +337,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint16 bitfieldInterleave(uint8 x, uint8 y)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint16>(x, y);
 	}
 
 	GLM_FUNC_QUALIFIER uint16 bitfieldInterleave(u8vec2 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint16>(v.x, v.y);
 	}
 
@@ -383,11 +393,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint32 bitfieldInterleave(uint16 x, uint16 y)
 	{
+
 		return detail::bitfieldInterleave<uint16, uint32>(x, y);
 	}
 
 	GLM_FUNC_QUALIFIER glm::uint32 bitfieldInterleave(u16vec2 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint16, uint32>(v.x, v.y);
 	}
 
@@ -437,11 +449,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(uint32 x, uint32 y)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(x, y);
 	}
 
 	GLM_FUNC_QUALIFIER glm::uint64 bitfieldInterleave(u32vec2 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(v.x, v.y);
 	}
 
@@ -495,11 +509,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint32 bitfieldInterleave(uint8 x, uint8 y, uint8 z)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint32>(x, y, z);
 	}
 
 	GLM_FUNC_QUALIFIER uint32 bitfieldInterleave(u8vec3 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint32>(v.x, v.y, v.z);
 	}
 
@@ -527,11 +543,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(uint16 x, uint16 y, uint16 z)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(x, y, z);
 	}
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(u16vec3 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(v.x, v.y, v.z);
 	}
 
@@ -559,11 +577,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(uint32 x, uint32 y, uint32 z)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(x, y, z);
 	}
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(u32vec3 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint32, uint64>(v.x, v.y, v.z);
 	}
 
@@ -592,11 +612,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint32 bitfieldInterleave(uint8 x, uint8 y, uint8 z, uint8 w)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint32>(x, y, z, w);
 	}
 
 	GLM_FUNC_QUALIFIER uint32 bitfieldInterleave(u8vec4 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint8, uint32>(v.x, v.y, v.z, v.w);
 	}
 
@@ -625,11 +647,13 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(uint16 x, uint16 y, uint16 z, uint16 w)
 	{
+
 		return detail::bitfieldInterleave<uint16, uint64>(x, y, z, w);
 	}
 
 	GLM_FUNC_QUALIFIER uint64 bitfieldInterleave(u16vec4 const& v)
 	{
+
 		return detail::bitfieldInterleave<uint16, uint64>(v.x, v.y, v.z, v.w);
 	}
 }//namespace glm

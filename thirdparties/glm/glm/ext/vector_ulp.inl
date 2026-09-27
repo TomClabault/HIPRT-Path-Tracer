@@ -6,6 +6,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = nextFloat(x[i]);
+
 		return Result;
 	}
 
@@ -15,6 +16,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = nextFloat(x[i], ULPs);
+
 		return Result;
 	}
 
@@ -24,6 +26,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = nextFloat(x[i], ULPs[i]);
+
 		return Result;
 	}
 
@@ -33,6 +36,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = prevFloat(x[i]);
+
 		return Result;
 	}
 
@@ -42,6 +46,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = prevFloat(x[i], ULPs);
+
 		return Result;
 	}
 
@@ -51,6 +56,7 @@ namespace glm
 		vec<L, T, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = prevFloat(x[i], ULPs[i]);
+
 		return Result;
 	}
 
@@ -60,6 +66,7 @@ namespace glm
 		vec<L, int, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = floatDistance(x[i], y[i]);
+
 		return Result;
 	}
 
@@ -69,6 +76,7 @@ namespace glm
 		vec<L, int64, Q> Result(0);
 		for(length_t i = 0, n = Result.length(); i < n; ++i)
 			Result[i] = floatDistance(x[i], y[i]);
+
 		return Result;
 	}
 }//namespace glm

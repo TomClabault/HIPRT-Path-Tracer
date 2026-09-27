@@ -12,6 +12,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& a, vec<L, T, Q> const& b)
 		{
+
 			return detail::functor2<vec, L, T, Q>::call(std::fmod, a, b);
 		}
 	};
@@ -21,6 +22,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& a, vec<L, T, Q> const& b)
 		{
+
 			return a % b;
 		}
 	};
@@ -96,30 +98,35 @@ namespace detail
 	template<typename genType>
 	GLM_FUNC_QUALIFIER genType fmod(genType x, genType y)
 	{
+
 		return fmod(vec<1, genType>(x), y).x;
 	}
 
 	template<length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, T, Q> fmod(vec<L, T, Q> const& x, T y)
 	{
+
 		return detail::compute_fmod<L, T, Q, std::numeric_limits<T>::is_iec559>::call(x, vec<L, T, Q>(y));
 	}
 
 	template<length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, T, Q> fmod(vec<L, T, Q> const& x, vec<L, T, Q> const& y)
 	{
+
 		return detail::compute_fmod<L, T, Q, std::numeric_limits<T>::is_iec559>::call(x, y);
 	}
 
 	template <length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, bool, Q> openBounded(vec<L, T, Q> const& Value, vec<L, T, Q> const& Min, vec<L, T, Q> const& Max)
 	{
+
 		return greaterThan(Value, Min) && lessThan(Value, Max);
 	}
 
 	template <length_t L, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, bool, Q> closeBounded(vec<L, T, Q> const& Value, vec<L, T, Q> const& Min, vec<L, T, Q> const& Max)
 	{
+
 		return greaterThanEqual(Value, Min) && lessThanEqual(Value, Max);
 	}
 }//namespace glm

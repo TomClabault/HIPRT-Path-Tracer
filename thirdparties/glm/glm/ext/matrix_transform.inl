@@ -3,6 +3,7 @@ namespace glm
 	template<typename genType>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR genType identity()
 	{
+
 		return detail::init_gentype<genType, detail::genTypeTrait<genType>::GENTYPE>::identity();
 	}
 
@@ -11,6 +12,7 @@ namespace glm
 	{
 		mat<4, 4, T, Q> Result(m);
 		Result[3] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2] + m[3];
+
 		return Result;
 	}
 
@@ -42,6 +44,7 @@ namespace glm
 		Result[1] = m[0] * Rotate[1][0] + m[1] * Rotate[1][1] + m[2] * Rotate[1][2];
 		Result[2] = m[0] * Rotate[2][0] + m[1] * Rotate[2][1] + m[2] * Rotate[2][2];
 		Result[3] = m[3];
+
 		return Result;
 	}
 
@@ -71,6 +74,7 @@ namespace glm
 		Result[2][3] = static_cast<T>(0);
 
 		Result[3] = vec<4, T, Q>(0, 0, 0, 1);
+
 		return m * Result;
 	}
 
@@ -82,6 +86,7 @@ namespace glm
 		Result[1] = m[1] * v[1];
 		Result[2] = m[2] * v[2];
 		Result[3] = m[3];
+
 		return Result;
 	}
 
@@ -92,6 +97,7 @@ namespace glm
 		Result[0][0] = v.x;
 		Result[1][1] = v.y;
 		Result[2][2] = v.z;
+
 		return m * Result;
 	}
 
@@ -121,6 +127,7 @@ namespace glm
         Result[1] = Shear[0] * m[1][0] + Shear[1] * m[1][1] + Shear[2] * m[1][2] + Shear[3] * m[1][3];
         Result[2] = Shear[0] * m[2][0] + Shear[1] * m[2][1] + Shear[2] * m[2][2] + Shear[3] * m[2][3];
         Result[3] = Shear[0] * m[3][0] + Shear[1] * m[3][1] + Shear[2] * m[3][2] + Shear[3] * m[3][3];
+
         return Result;
     }
 
@@ -146,6 +153,7 @@ namespace glm
             lambda_xz              , lambda_yz              , 1                      , 0,
             -point_lambda[0] * p[0], -point_lambda[1] * p[1], -point_lambda[2] * p[2], 1
         );
+
         return m * Shear;
     }
 
@@ -169,6 +177,7 @@ namespace glm
 		Result[3][0] =-dot(s, eye);
 		Result[3][1] =-dot(u, eye);
 		Result[3][2] = dot(f, eye);
+
 		return Result;
 	}
 
@@ -192,6 +201,7 @@ namespace glm
 		Result[3][0] = -dot(s, eye);
 		Result[3][1] = -dot(u, eye);
 		Result[3][2] = -dot(f, eye);
+
 		return Result;
 	}
 

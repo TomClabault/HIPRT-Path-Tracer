@@ -18,6 +18,7 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.WantCaptureKeyboard && !(action == GLFW_RELEASE) && !render_window_hovered)
+
 		// We always want to handle release key otherwise we could press a key while
 		// hovering the render window and then release the with our mouse over another window
 		// --> not hovering the render window --> the key won't be released and the camera
@@ -104,6 +105,7 @@ void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 		translation.second -= 1.0f;
 
 	if (!(m_z_pressed || m_q_pressed || m_s_pressed || m_d_pressed || m_space_pressed || m_lshift_pressed))
+
 		// Nothing to do
 		return;
 
@@ -113,5 +115,6 @@ void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 
 bool RenderWindowKeyboardInteractor::is_interacting()
 {
+
 	return m_z_pressed || m_q_pressed || m_s_pressed || m_d_pressed || m_space_pressed || m_lshift_pressed;
 }

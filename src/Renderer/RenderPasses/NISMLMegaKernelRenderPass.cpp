@@ -47,6 +47,7 @@ bool NISMLMegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIP
 															 bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -76,6 +77,7 @@ bool NISMLMegaKernelRenderPass::pre_frame_render_update(float delta_time)
 	{
 		bool had_buffers = m_staging_buffers_allocated;
 		free_staging_buffers();
+
 		return had_buffers;
 	}
 
@@ -93,6 +95,7 @@ bool NISMLMegaKernelRenderPass::pre_frame_render_update(float delta_time)
 bool NISMLMegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	render_data.nisml_mega_kernel = get_device_data();
@@ -148,6 +151,7 @@ void NISMLMegaKernelRenderPass::reset(bool reset_by_camera_movement)
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	if (render_data.render_settings.accumulate)
@@ -170,12 +174,14 @@ bool NISMLMegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptio
 std::map<std::string, std::shared_ptr<GPUKernel>> NISMLMegaKernelRenderPass::get_tracing_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return {};
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> tracing_kernels;
 	tracing_kernels[GENERATE_QUERIES_KERNEL] = m_kernels[GENERATE_QUERIES_KERNEL];
 	tracing_kernels[INFERENCE_KERNEL]		 = m_kernels[INFERENCE_KERNEL];
 	tracing_kernels[RESUME_KERNEL]			 = m_kernels[RESUME_KERNEL];
+
 	return tracing_kernels;
 }
 
@@ -192,6 +198,7 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 						m_query_count_device.size() != 1 || m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
 						m_render_data_host_pinned.size() != 1;
 	if (!needs_resize)
+
 		return false;
 
 	free_staging_buffers();
@@ -208,6 +215,7 @@ bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 
 	m_allocated_ray_volume_state_byte_size = ray_volume_state_byte_size;
 	m_staging_buffers_allocated			   = true;
+
 	return true;
 }
 
@@ -240,5 +248,6 @@ NISMLMegaKernelDevice NISMLMegaKernelRenderPass::get_device_data()
 	device_data.path_count		   = static_cast<unsigned int>(m_path_data.size());
 	device_data.query_capacity	   = static_cast<unsigned int>(m_queries.size());
 	device_data.residual_stride	   = NISML_MAX_CLUSTER_COUNT;
+
 	return device_data;
 }

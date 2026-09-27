@@ -269,6 +269,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_compilation_check(std::shared
 																	 bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated													 = false;
@@ -288,6 +289,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_compilation_check(std::shared
 std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderPass::get_all_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return {};
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
@@ -350,6 +352,7 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 		m_buffers_need_reallocation = true;
 
 	if (!m_buffers_need_reallocation)
+
 		return false;
 
 	m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
@@ -408,6 +411,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
@@ -418,6 +422,7 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 	{
 		m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_RESET_BATCH_KD_TREE_AND_LIGHTCUT_STATISTICS_KERNEL_ID]->launch_asynchronous(
 			1024, 1, node_reset_thread_count, 1, launch_args, m_renderer->get_main_stream());
+
 		return;
 	}
 
@@ -427,12 +432,14 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 
 bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
@@ -448,10 +455,12 @@ void IlluminationAwareKDTreeRenderPass::upload_render_data(const std::string& ke
 void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data)
 {
 	if (render_data.nisml.cluster_node_indices == nullptr || render_data.nisml.cluster_count == 0 || render_data.nisml.cluster_count > NISML_MAX_CLUSTER_COUNT)
+
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
 	if (kd_tree_device.nisml.nisml_hash_table_capacity == 0u)
+
 		return;
 
 	HIPRTRenderData cache_render_data = render_data;
@@ -466,6 +475,7 @@ void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	// Returning true because this pass is going to run in post sample update
@@ -475,6 +485,7 @@ bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_dat
 void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return;
 
 	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
@@ -662,6 +673,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 	if (is_using_nisml(compiler_options))
 	{
 		if (!render_data.nisml.learning_enabled)
+
 			return;
 
 		unsigned int training_record_capacity = render_data.nisml.training_record_capacity;
@@ -763,15 +775,18 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 	}
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	if (m_illumination_aware_kd_tree.maximum_size() == 0)
+
 		// Nothing to reset
 		return;
 
 	m_learning_to_cluster_elapsed_seconds = 0.0f;
 
 	if (m_frozen_tree)
+
 		// If the tree is frozen, we don't want to reset it even if the camera moves. Useful for debugging to see how the tree is subdivided over the scene by
 		// moving around
 		return;
@@ -796,92 +811,110 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 												 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 {
+
 	return m_split_iterations_per_SPP;
 }
 
 bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
 {
+
 	return m_auto_split_iterations_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_lightcut_refinement_rounds_per_SPP()
 {
+
 	return m_lightcut_refinement_rounds_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_lightcut_refinement_rounds_SPP_limit()
 {
+
 	return m_lightcut_refinement_rounds_SPP_limit;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
+
 	return m_training_sample_buffer_capacity;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_spp()
 {
+
 	return m_learning_to_cluster_learning_spp;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_seconds()
 {
+
 	return m_learning_to_cluster_learning_seconds;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
 {
+
 	return m_nisml_representative_capacity;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_size_mb()
 {
+
 	return m_nisml_hash_table_size_mb;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_normal_precision()
 {
+
 	return m_nisml_hash_normal_precision;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_occupied_entry_count() const
 {
+
 	return m_nisml_hash_occupied_entry_count;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_capacity() const
 {
+
 	return static_cast<unsigned int>(m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_capacity);
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity()
 {
+
 	return m_nodes_buffer_capacity;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_node_count() const
 {
+
 	return m_cached_current_node_count.get_host_pinned_pointer()[0];
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_guiding_node_count() const
 {
+
 	return m_cached_current_guiding_node_count.get_host_pinned_pointer()[0];
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_allocated_lightcut_count() const
 {
+
 	return m_cached_current_allocated_lightcut_count.get_host_pinned_pointer()[0];
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_lightcut_capacity() const
 {
+
 	return m_illumination_aware_kd_tree.m_learning_to_cluster_data.maximum_size();
 }
 
@@ -892,11 +925,13 @@ void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()
 
 bool& IlluminationAwareKDTreeRenderPass::get_frozen_tree()
 {
+
 	return m_frozen_tree;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_vram_usage_bytes() const
 {
+
 	return get_vram_usage_breakdown().get_total_bytes();
 }
 

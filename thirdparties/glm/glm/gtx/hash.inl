@@ -16,6 +16,7 @@ namespace std
 	GLM_FUNC_QUALIFIER size_t hash<glm::vec<1, T, Q> >::operator()(glm::vec<1, T, Q> const& v) const GLM_NOEXCEPT
 	{
 		hash<T> hasher;
+
 		return hasher(v.x);
 	}
 
@@ -26,6 +27,7 @@ namespace std
 		hash<T> hasher;
 		glm::detail::hash_combine(seed, hasher(v.x));
 		glm::detail::hash_combine(seed, hasher(v.y));
+
 		return seed;
 	}
 
@@ -37,6 +39,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(v.x));
 		glm::detail::hash_combine(seed, hasher(v.y));
 		glm::detail::hash_combine(seed, hasher(v.z));
+
 		return seed;
 	}
 
@@ -49,6 +52,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(v.y));
 		glm::detail::hash_combine(seed, hasher(v.z));
 		glm::detail::hash_combine(seed, hasher(v.w));
+
 		return seed;
 	}
 
@@ -61,6 +65,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(q.y));
 		glm::detail::hash_combine(seed, hasher(q.z));
 		glm::detail::hash_combine(seed, hasher(q.w));
+
 		return seed;
 	}
 
@@ -71,6 +76,7 @@ namespace std
 		hash<glm::qua<T, Q> > hasher;
 		glm::detail::hash_combine(seed, hasher(q.real));
 		glm::detail::hash_combine(seed, hasher(q.dual));
+
 		return seed;
 	}
 
@@ -81,6 +87,7 @@ namespace std
 		hash<glm::vec<2, T, Q> > hasher;
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
+
 		return seed;
 	}
 
@@ -91,6 +98,7 @@ namespace std
 		hash<glm::vec<3, T, Q> > hasher;
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
+
 		return seed;
 	}
 
@@ -101,6 +109,7 @@ namespace std
 		hash<glm::vec<4, T, Q> > hasher;
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
+
 		return seed;
 	}
 
@@ -112,6 +121,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
+
 		return seed;
 	}
 
@@ -123,6 +133,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
+
 		return seed;
 	}
 
@@ -134,6 +145,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[0]));
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
+
 		return seed;
 	}
 
@@ -146,6 +158,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
 		glm::detail::hash_combine(seed, hasher(m[3]));
+
 		return seed;
 	}
 
@@ -158,6 +171,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
 		glm::detail::hash_combine(seed, hasher(m[3]));
+
 		return seed;
 	}
 
@@ -170,6 +184,7 @@ namespace std
 		glm::detail::hash_combine(seed, hasher(m[1]));
 		glm::detail::hash_combine(seed, hasher(m[2]));
 		glm::detail::hash_combine(seed, hasher(m[3]));
+
 		return seed;
 	}
 }

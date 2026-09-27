@@ -8,6 +8,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v)
 		{
+
 			//Equivalent to return findMSB(vec); but save one function call in ASM with VC
 			//return findMSB(vec);
 			return vec<L, T, Q>(detail::compute_findMSB_vec<L, T, Q, sizeof(T) * 8>::call(v));

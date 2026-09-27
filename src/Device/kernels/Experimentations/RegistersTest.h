@@ -39,6 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 	seed = seed ^ (seed >> 4);
 	seed *= 0x27d4eb2d;
 	seed = seed ^ (seed >> 15);
+
 	return seed;
 }
 

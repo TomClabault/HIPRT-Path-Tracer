@@ -101,6 +101,7 @@ void RendererEnvmap::recompute_alias_table(const Image32Bit* image)
 
 RGBE9995Packed* RendererEnvmap::get_packed_data_pointer()
 {
+
 	return m_envmap_data.get_data_pointer();
 }
 
@@ -112,31 +113,37 @@ void RendererEnvmap::get_alias_table_device_pointers(float*& out_probas_pointer,
 
 float* RendererEnvmap::get_cdf_device_pointer()
 {
+
 	return m_cdf.get_device_pointer();
 }
 
 unsigned int RendererEnvmap::get_width() const
 {
+
 	return m_width;
 }
 
 unsigned int RendererEnvmap::get_height() const
 {
+
 	return m_height;
 }
 
 float RendererEnvmap::get_envmap_packed_scaling_factor() const
 {
+
 	return m_envmap_packed_scaling_factor;
 }
 
 const std::string& RendererEnvmap::get_envmap_filepath() const
 {
+
 	return m_envmap_filepath;
 }
 
 float RendererEnvmap::get_sampling_structure_VRAM_usage() const
 {
+
 	// Just return the sum of everything (both the CDF and alias table) because only one can be
 	// used at a given time so one of the two will be 0 bytes anyways
 	return (m_cdf.get_byte_size() + m_alias_table_probas.get_byte_size() + m_alias_table_alias.get_byte_size()) / 1000000.0f;

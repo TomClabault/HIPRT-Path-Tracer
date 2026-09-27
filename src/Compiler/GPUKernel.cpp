@@ -33,18 +33,22 @@ GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& ker
 std::string GPUKernel::get_kernel_name() const
 {
 	if (m_name != "")
+
 		return m_name;
 	else
+
 		return m_kernel_function_name;
 }
 
 std::string GPUKernel::get_kernel_file_path() const
 {
+
 	return m_kernel_file_path;
 }
 
 std::string GPUKernel::get_kernel_function_name() const
 {
+
 	return m_kernel_function_name;
 }
 
@@ -166,6 +170,7 @@ int GPUKernel::get_max_active_blocks_per_multiprocessor(int block_size)
 {
 	std::unordered_map<int, int>::const_iterator cache_iterator = m_max_active_blocks_per_multiprocessor_cache.find(block_size);
 	if (cache_iterator != m_max_active_blocks_per_multiprocessor_cache.end())
+
 		return cache_iterator->second;
 
 	if (m_kernel_function == nullptr)
@@ -185,11 +190,13 @@ int GPUKernel::get_max_active_blocks_per_multiprocessor(int block_size)
 
 GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
 {
+
 	return m_compiler_options;
 }
 
 const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
 {
+
 	return m_compiler_options;
 }
 
@@ -228,6 +235,7 @@ void GPUKernel::launch_3D_block_size(
 	if (m_kernel_function == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot launch uncompiled kernel \"%s\".", get_kernel_name().c_str());
+
 		return;
 	}
 
@@ -245,6 +253,7 @@ void GPUKernel::launch_asynchronous_3D_block_count(
 	if (m_kernel_function == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot launch uncompiled kernel \"%s\".", get_kernel_name().c_str());
+
 		return;
 	}
 
@@ -314,6 +323,7 @@ void GPUKernel::parse_option_macros_used()
 
 bool GPUKernel::uses_macro(const std::string& name) const
 {
+
 	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
@@ -345,6 +355,7 @@ float GPUKernel::compute_execution_time_and_reset_execution_count()
 float GPUKernel::get_last_execution_time() const
 {
 	if (!m_measure_execution_time)
+
 		return 0.0f;
 
 	return m_last_execution_time;
@@ -352,11 +363,13 @@ float GPUKernel::get_last_execution_time() const
 
 bool GPUKernel::has_been_compiled() const
 {
+
 	return m_kernel_function != nullptr;
 }
 
 bool GPUKernel::is_precompiled() const
 {
+
 	return m_is_precompiled_kernel;
 }
 
@@ -367,6 +380,7 @@ void GPUKernel::set_precompiled(bool precompiled)
 
 bool GPUKernel::is_measuring_execution_time() const
 {
+
 	return m_measure_execution_time;
 }
 

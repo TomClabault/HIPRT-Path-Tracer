@@ -6,11 +6,13 @@ namespace glm
 	GLM_FUNC_QUALIFIER int pow(int x, uint y)
 	{
 		if(y == 0)
+
 			return x >= 0 ? 1 : -1;
 
 		int result = x;
 		for(uint i = 1; i < y; ++i)
 			result *= x;
+
 		return result;
 	}
 
@@ -45,6 +47,7 @@ namespace detail
 		x = (((x >> 4) + x) & 0x0f0f0f0f);
 		x += (x >> 8);
 		x += (x >> 16);
+
 		return(x & 0x0000003f);
 	}
 }//namespace detail
@@ -65,6 +68,7 @@ namespace detail
 	// mod
 	GLM_FUNC_QUALIFIER int mod(int x, int y)
 	{
+
 		return ((x % y) + y) % y;
 	}
 
@@ -76,6 +80,7 @@ namespace detail
 		genType Result;
 		for(Result = 1; Temp > 1; --Temp)
 			Result *= Temp;
+
 		return Result;
 	}
 
@@ -83,6 +88,7 @@ namespace detail
 	GLM_FUNC_QUALIFIER vec<2, T, Q> factorial(
 		vec<2, T, Q> const& x)
 	{
+
 		return vec<2, T, Q>(
 			factorial(x.x),
 			factorial(x.y));
@@ -92,6 +98,7 @@ namespace detail
 	GLM_FUNC_QUALIFIER vec<3, T, Q> factorial(
 		vec<3, T, Q> const& x)
 	{
+
 		return vec<3, T, Q>(
 			factorial(x.x),
 			factorial(x.y),
@@ -102,6 +109,7 @@ namespace detail
 	GLM_FUNC_QUALIFIER vec<4, T, Q> factorial(
 		vec<4, T, Q> const& x)
 	{
+
 		return vec<4, T, Q>(
 			factorial(x.x),
 			factorial(x.y),
@@ -112,11 +120,13 @@ namespace detail
 	GLM_FUNC_QUALIFIER uint pow(uint x, uint y)
 	{
 		if (y == 0)
+
 			return 1u;
 
 		uint result = x;
 		for(uint i = 1; i < y; ++i)
 			result *= x;
+
 		return result;
 	}
 
@@ -138,6 +148,7 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint mod(uint x, uint y)
 	{
+
 		return x - y * (x / y);
 	}
 
@@ -145,6 +156,7 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER unsigned int nlz(unsigned int x)
 	{
+
 		return 31u - static_cast<unsigned int>(findMSB(x));
 	}
 /*

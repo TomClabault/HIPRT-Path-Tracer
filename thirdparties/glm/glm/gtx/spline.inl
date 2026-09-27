@@ -55,6 +55,7 @@ namespace glm
 		typename genType::value_type const& s
 	)
 	{
+
 		return ((v1 * s + v2) * s + v3) * s + v4;
 	}
 }//namespace glm

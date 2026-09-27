@@ -18,6 +18,7 @@ namespace glm
 			typename genType::value_type const tmp_intersectionDistance = 	glm::dot(planeOrig - orig, planeNormal) / d;
 			if (tmp_intersectionDistance > static_cast<typename genType::value_type>(0)) { // allow only intersections
 				intersectionDistance = tmp_intersectionDistance;
+
 				return true;
 			}
 		}
@@ -53,6 +54,7 @@ namespace glm
 			// calculate U parameter and test bounds
 			baryPosition.x = glm::dot(dist, p);
 			if(baryPosition.x < static_cast<T>(0) || baryPosition.x > det)
+
 				return false;
 
 			// prepare to test V parameter
@@ -61,6 +63,7 @@ namespace glm
 			// calculate V parameter and test bounds
 			baryPosition.y = glm::dot(dir, Perpendicular);
 			if((baryPosition.y < static_cast<T>(0)) || ((baryPosition.x + baryPosition.y) > det))
+
 				return false;
 		}
 		else if(det < static_cast<T>(0))
@@ -71,6 +74,7 @@ namespace glm
 			// calculate U parameter and test bounds
 			baryPosition.x = glm::dot(dist, p);
 			if((baryPosition.x > static_cast<T>(0)) || (baryPosition.x < det))
+
 				return false;
 
 			// prepare to test V parameter
@@ -79,9 +83,11 @@ namespace glm
 			// calculate V parameter and test bounds
 			baryPosition.y = glm::dot(dir, Perpendicular);
 			if((baryPosition.y > static_cast<T>(0)) || (baryPosition.x + baryPosition.y < det))
+
 				return false;
 		}
 		else
+
 			return false; // ray is parallel to the plane of the triangle
 
 		T inv_det = static_cast<T>(1) / det;
@@ -111,6 +117,7 @@ namespace glm
 		typename genType::value_type det = dot(edge1, Perpendicular);
 
 		if (det > -Epsilon && det < Epsilon)
+
 			return false;
 		typename genType::value_type inv_det = typename genType::value_type(1) / det;
 
@@ -118,12 +125,14 @@ namespace glm
 
 		position.y = dot(Tangent, Perpendicular) * inv_det;
 		if (position.y < typename genType::value_type(0) || position.y > typename genType::value_type(1))
+
 			return false;
 
 		genType Cotangent = cross(Tangent, edge1);
 
 		position.z = dot(dir, Cotangent) * inv_det;
 		if (position.z < typename genType::value_type(0) || position.y + position.z > typename genType::value_type(1))
+
 			return false;
 
 		position.x = dot(edge2, Cotangent) * inv_det;
@@ -145,10 +154,12 @@ namespace glm
 		typename genType::value_type dSquared = dot(diff, diff) - t0 * t0;
 		if( dSquared > sphereRadiusSquared )
 		{
+
 			return false;
 		}
 		typename genType::value_type t1 = sqrt( sphereRadiusSquared - dSquared );
 		intersectionDistance = t0 > t1 + Epsilon ? t0 - t1 : t0 + t1;
+
 		return intersectionDistance > Epsilon;
 	}
 
@@ -165,8 +176,10 @@ namespace glm
 		{
 			intersectionPosition = rayStarting + rayNormalizedDirection * distance;
 			intersectionNormal = (intersectionPosition - sphereCenter) / sphereRadius;
+
 			return true;
 		}
+
 		return false;
 	}
 
@@ -186,6 +199,7 @@ namespace glm
 		typename genType::value_type dSquared = dot(diff, diff) - t0 * t0;
 		if( dSquared > sphereRadius * sphereRadius )
 		{
+
 			return false;
 		}
 		typename genType::value_type t1 = sqrt( sphereRadius * sphereRadius - dSquared );
@@ -195,6 +209,7 @@ namespace glm
 		intersectionNormal1 = (intersectionPoint1 - sphereCenter) / sphereRadius;
 		intersectionPoint2 = point0 + dir * (t0 + t1);
 		intersectionNormal2 = (intersectionPoint2 - sphereCenter) / sphereRadius;
+
 		return true;
 	}
 }//namespace glm

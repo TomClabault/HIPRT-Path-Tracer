@@ -75,6 +75,7 @@ void ImGuiSettingsWindow::set_status_text(const std::string& new_status_text)
 
 std::string ImGuiSettingsWindow::get_status_text() const
 {
+
 	return m_status_text;
 }
 
@@ -315,6 +316,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	// ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
+
 		return;
 	ImGui::TreePush("Render settings tree");
 
@@ -722,9 +724,11 @@ bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_typ
 	switch (display_view_type)
 	{
 	case DisplayViewType::GMON_BLEND:
+
 		return !m_renderer->gmon_used();
 
 	case DisplayViewType::DENOISED_BLEND:
+
 		return !m_application_settings->enable_denoising;
 
 	default:
@@ -740,10 +744,12 @@ void ImGuiSettingsWindow::display_view_tooltip(DisplayViewType display_view_type
 	{
 	case DisplayViewType::GMON_BLEND:
 		ImGuiRenderer::add_tooltip("This display view is disabled because GMoN isn't in use. Click to enable GMoN.");
+
 		return;
 
 	case DisplayViewType::DENOISED_BLEND:
 		ImGuiRenderer::add_tooltip("This display view is disabled because the denoiser isn't enabled. Click to enable the denoiser.");
+
 		return;
 
 	default:
@@ -764,6 +770,7 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 
 	case DisplayViewType::DENOISED_BLEND:
 		ImGuiRenderer::add_tooltip("This display view is disabled because the denoiser isn't enabled. Click to enable the denoiser.");
+
 		return;
 
 	default:
@@ -4534,8 +4541,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	ReSTIRCommonSettings& common_settings = [&render_settings]
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+
 			return std::ref(render_settings.restir_gi_settings);
 		else
+
 			return std::ref(render_settings.restir_pt_settings);
 	}();
 
@@ -4773,8 +4782,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 	ReSTIRCommonSpatialPassSettings& restir_settings = [&render_settings]()
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+
 			return std::ref(render_settings.restir_gi_settings.common_spatial_pass);
 		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+
 			return std::ref(render_settings.restir_pt_settings.common_spatial_pass);
 	}();
 
@@ -4902,8 +4913,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 	ReSTIRCommonSettings& common_settings = [&render_settings]()
 	{
 		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
+
 			return std::ref(render_settings.restir_gi_settings);
 		else
+
 			return std::ref(render_settings.restir_pt_settings);
 	}();
 
@@ -5662,6 +5675,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 void ImGuiSettingsWindow::draw_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
+
 		return;
 
 	ImGui::TreePush("Denoiser tree");
@@ -5756,6 +5770,7 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 void ImGuiSettingsWindow::draw_post_process_panel()
 {
 	if (!ImGui::CollapsingHeader("Post-processing"))
+
 		return;
 	ImGui::TreePush("Post-processing tree");
 
@@ -6082,6 +6097,7 @@ void ImGuiSettingsWindow::toggle_gmon()
 void ImGuiSettingsWindow::draw_quality_panel()
 {
 	if (!ImGui::CollapsingHeader("Quality settings"))
+
 		return;
 
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
@@ -6322,6 +6338,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	if (!ImGui::CollapsingHeader("Performance Settings"))
+
 		return;
 
 	ImGui::TreePush("Performance settings tree");
@@ -6619,6 +6636,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	if (!ImGui::CollapsingHeader("Performance metrics"))
+
 		return;
 
 	ImGui::TreePush("Performance metrics tree");
@@ -6881,6 +6899,7 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 void ImGuiSettingsWindow::draw_debug_panel()
 {
 	if (!ImGui::CollapsingHeader("Debug"))
+
 		return;
 
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();

@@ -119,10 +119,12 @@ class GGXAniso:
     
     def D(self, alpha_x, alpha_y, N):
         value = math.pi * alpha_x * alpha_y * ((N[:, 0:1]/alpha_x)**2 + (N[:, 1:2]/alpha_y)**2 + N[:, 2:3]**2)**2
+
         return 1.0/value
     
     def Lambda(self, alpha_x, alpha_y, V):
         value = 0.5 * (-1 + torch.sqrt(1.0 + ((V[:, 0:1]*alpha_x)**2 + (V[:, 1:2]*alpha_y)**2)/(V[:, 2:3]**2)))
+
         return value
     
     def G1(self, alpha_x, alpha_y, V):

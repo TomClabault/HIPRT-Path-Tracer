@@ -9,6 +9,7 @@ namespace glm
 		Result[2][2] = - static_cast<T>(1);
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
+
 		return Result;
 	}
 
@@ -22,6 +23,7 @@ namespace glm
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
 		Result[3][2] = - zNear / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -35,6 +37,7 @@ namespace glm
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
 		Result[3][2] = - (zFar + zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -48,6 +51,7 @@ namespace glm
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
 		Result[3][2] = - zNear / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -61,6 +65,7 @@ namespace glm
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
 		Result[3][2] = - (zFar + zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -130,6 +135,7 @@ namespace glm
 		Result[2][2] = farVal / (farVal - nearVal);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+
 		return Result;
 	}
 
@@ -144,6 +150,7 @@ namespace glm
 		Result[2][2] = (farVal + nearVal) / (farVal - nearVal);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+
 		return Result;
 	}
 
@@ -158,6 +165,7 @@ namespace glm
 		Result[2][2] = farVal / (nearVal - farVal);
 		Result[2][3] = static_cast<T>(-1);
 		Result[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+
 		return Result;
 	}
 
@@ -172,6 +180,7 @@ namespace glm
 		Result[2][2] = - (farVal + nearVal) / (farVal - nearVal);
 		Result[2][3] = static_cast<T>(-1);
 		Result[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+
 		return Result;
 	}
 
@@ -242,6 +251,7 @@ namespace glm
 		Result[2][2] = zFar / (zNear - zFar);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -258,6 +268,7 @@ namespace glm
 		Result[2][2] = - (zFar + zNear) / (zFar - zNear);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -274,6 +285,7 @@ namespace glm
 		Result[2][2] = zFar / (zFar - zNear);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -290,6 +302,7 @@ namespace glm
 		Result[2][2] = (zFar + zNear) / (zFar - zNear);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -365,6 +378,7 @@ namespace glm
 		Result[2][2] = zFar / (zNear - zFar);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -385,6 +399,7 @@ namespace glm
 		Result[2][2] = - (zFar + zNear) / (zFar - zNear);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -405,6 +420,7 @@ namespace glm
 		Result[2][2] = zFar / (zFar - zNear);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -425,6 +441,7 @@ namespace glm
 		Result[2][2] = (zFar + zNear) / (zFar - zNear);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+
 		return Result;
 	}
 
@@ -497,6 +514,7 @@ namespace glm
 		Result[2][2] = - static_cast<T>(1);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = - static_cast<T>(2) * zNear;
+
 		return Result;
 	}
 	
@@ -515,6 +533,7 @@ namespace glm
 		Result[2][2] = - static_cast<T>(1);
 		Result[2][3] = - static_cast<T>(1);
 		Result[3][2] = - zNear;
+
 		return Result;
 	}
 
@@ -533,6 +552,7 @@ namespace glm
 		Result[2][2] = static_cast<T>(1);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = - static_cast<T>(2) * zNear;
+
 		return Result;
 	}
 
@@ -551,6 +571,7 @@ namespace glm
 		Result[2][2] = static_cast<T>(1);
 		Result[2][3] = static_cast<T>(1);
 		Result[3][2] = - zNear;
+
 		return Result;
 	}
 
@@ -584,12 +605,14 @@ namespace glm
 		Result[2][2] = ep - static_cast<T>(1);
 		Result[2][3] = static_cast<T>(-1);
 		Result[3][2] = (ep - static_cast<T>(2)) * zNear;
+
 		return Result;
 	}
 
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> tweakedInfinitePerspective(T fovy, T aspect, T zNear)
 	{
+
 		return tweakedInfinitePerspective(fovy, aspect, zNear, epsilon<T>());
 	}
 }//namespace glm

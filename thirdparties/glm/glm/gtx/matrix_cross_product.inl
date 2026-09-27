@@ -15,6 +15,7 @@ namespace glm
 		Result[2][0] = x.y;
 		Result[1][2] = x.x;
 		Result[2][1] = -x.x;
+
 		return Result;
 	}
 
@@ -31,6 +32,7 @@ namespace glm
 		Result[2][0] = x.y;
 		Result[1][2] = x.x;
 		Result[2][1] = -x.x;
+
 		return Result;
 	}
 

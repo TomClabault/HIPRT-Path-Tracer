@@ -109,6 +109,7 @@ namespace FLIP
     //  Pixels per degree (PPD).
     inline float calculatePPD(const float dist, const float resolutionX, const float monitorWidth)
     {
+
         return dist * (resolutionX / monitorWidth) * (float(FLIP::PI) / 180.0f);
     }
 
@@ -228,41 +229,49 @@ namespace FLIP
 
         HOST_DEVICE_FOR_CUDA bool operator==(const color3 c) const
         {
+
             return this->x == c.x && this->y == c.y && this->z == c.z;
         }
 
         HOST_DEVICE_FOR_CUDA bool operator!=(const color3 c) const
         {
+
             return !(*this == c);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator+(const color3 c) const
         {
+
             return color3(this->x + c.x, this->y + c.y, this->z + c.z);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator-(const color3 c) const
         {
+
             return color3(this->x - c.x, this->y - c.y, this->z - c.z);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator*(const float c) const
         {
+
             return color3(this->x * c, this->y * c, this->z * c);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator*(const color3 c) const
         {
+
             return color3(this->x * c.x, this->y * c.y, this->z * c.z);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator/(const float c) const
         {
+
             return color3(this->x / c, this->y / c, this->z / c);
         }
 
         HOST_DEVICE_FOR_CUDA color3 operator/(const color3 c) const
         {
+
             return color3(this->x / c.x, this->y / c.y, this->z / c.z);
         }
 
@@ -271,6 +280,7 @@ namespace FLIP
             this->x += c.x;
             this->y += c.y;
             this->z += c.z;
+
             return *this;
         }
 
@@ -279,6 +289,7 @@ namespace FLIP
             this->x *= c.x;
             this->y *= c.y;
             this->z *= c.z;
+
             return *this;
         }
 
@@ -287,6 +298,7 @@ namespace FLIP
             this->x /= c.x;
             this->y /= c.y;
             this->z /= c.z;
+
             return *this;
         }
 
@@ -299,31 +311,37 @@ namespace FLIP
 
         HOST_DEVICE_FOR_CUDA static inline color3 min(color3 v0, color3 v1)
         {
+
             return color3(Min(v0.x, v1.x), Min(v0.y, v1.y), Min(v0.z, v1.z));
         }
 
         HOST_DEVICE_FOR_CUDA static inline color3 max(color3 v0, color3 v1)
         {
+
             return color3(Max(v0.x, v1.x), Max(v0.y, v1.y), Max(v0.z, v1.z));
         }
 
         HOST_DEVICE_FOR_CUDA static inline color3 abs(color3 v)
         {
+
             return color3(std::abs(v.x), std::abs(v.y), std::abs(v.z));
         }
 
         HOST_DEVICE_FOR_CUDA static inline color3 sqrt(color3 v)
         {
+
             return color3(std::sqrt(v.x), std::sqrt(v.y), std::sqrt(v.z));
         }
 
         HOST_DEVICE_FOR_CUDA static inline color3 clamp(color3 v, float _min = 0.0f, float _max = 1.0f)
         {
+
             return color3(Min(Max(v.x, _min), _max), Min(Max(v.y, _min), _max), Min(Max(v.z, _min), _max));
         }
 
         HOST_DEVICE_FOR_CUDA static inline float linearRGBToLuminance(color3 linearRGB)
         {
+
             return 0.2126f * linearRGB.r + 0.7152f * linearRGB.g + 0.0722f * linearRGB.b;
         }
 
@@ -331,8 +349,10 @@ namespace FLIP
         {
             if (sC <= 0.04045f)
             {
+
                 return sC / 12.92f;
             }
+
             return powf((sC + 0.055f) / 1.055f, 2.4f);
         }
 
@@ -340,6 +360,7 @@ namespace FLIP
         {
             if (lC <= 0.0031308f)
             {
+
                 return lC * 12.92f;
             }
 
@@ -382,6 +403,7 @@ namespace FLIP
             XYZ.x = a11 * RGB.x + a12 * RGB.y + a13 * RGB.z;
             XYZ.y = a21 * RGB.x + a22 * RGB.y + a23 * RGB.z;
             XYZ.z = a31 * RGB.x + a32 * RGB.y + a33 * RGB.z;
+
             return XYZ;
         }
 
@@ -402,6 +424,7 @@ namespace FLIP
             RGB.x = a11 * XYZ.x + a12 * XYZ.y + a13 * XYZ.z;
             RGB.y = a21 * XYZ.x + a22 * XYZ.y + a23 * XYZ.z;
             RGB.z = a31 * XYZ.x + a32 * XYZ.y + a33 * XYZ.z;
+
             return RGB;
         }
 
@@ -421,6 +444,7 @@ namespace FLIP
             float L = 116.0f * XYZ.y - 16.0f;
             float a = 500.0f * (XYZ.x - XYZ.y);
             float b = 200.0f * (XYZ.y - XYZ.z);
+
             return color3(L, a, b);
         }
 
@@ -437,6 +461,7 @@ namespace FLIP
             X = (X > delta ? X * X * X : (X - term) * factor);
             Y = (Y > delta ? Y * Y * Y : (Y - term) * factor);
             Z = (Z > delta ? Z * Z * Z : (Z - term) * factor);
+
             return color3(X, Y, Z) * referenceIlluminant;
         }
 
@@ -447,6 +472,7 @@ namespace FLIP
             float Y = 116.0f * XYZ.y - 16.0f;
             float Cx = 500.0f * (XYZ.x - XYZ.y);
             float Cz = 200.0f * (XYZ.y - XYZ.z);
+
             return color3(Y, Cx, Cz);
         }
 
@@ -458,17 +484,20 @@ namespace FLIP
             const float Cz = YCxCz.z / 200.0f;
             float X = Y + Cx;
             float Z = Y - Cz;
+
             return color3(X, Y, Z) * referenceIlluminant;
         }
 
         HOST_DEVICE_FOR_CUDA static inline float YCxCzToGray(color3 YCxCz)
         {
+
             return (YCxCz.x + 16.0f) / 116.0f; // Make it [0,1].
         }
 
         // FLIP-specific functions below.
         HOST_DEVICE_FOR_CUDA static inline float Hunt(const float luminance, const float chrominance)
         {
+
             return 0.01f * luminance * chrominance;
         }
 
@@ -476,6 +505,7 @@ namespace FLIP
         {
             float cityBlockDistanceL = std::fabs(refPixel.x - testPixel.x);
             float euclideanDistanceAB = std::sqrt((refPixel.y - testPixel.y) * (refPixel.y - testPixel.y) + (refPixel.z - testPixel.z) * (refPixel.z - testPixel.z));
+
             return cityBlockDistanceL + euclideanDistanceAB;
         }
 
@@ -485,6 +515,7 @@ namespace FLIP
             color3 blueLab = color3::XYZToCIELab(color3::LinearRGBToXYZ(color3(0.0f, 0.0f, 1.0f)));
             color3 greenLabHunt = color3(greenLab.x, Hunt(greenLab.x, greenLab.y), Hunt(greenLab.x, greenLab.z));
             color3 blueLabHunt = color3(blueLab.x, Hunt(blueLab.x, blueLab.y), Hunt(blueLab.x, blueLab.z));
+
             return powf(HyAB(greenLabHunt, blueLabHunt), gqc);
         }
 
@@ -575,6 +606,7 @@ namespace FLIP
 
     static inline float Gaussian(const float x, const float sigma) // 1D Gaussian (without normalization factor).
     {
+
         return std::exp(-(x * x) / (2.0f * sigma * sigma));
     }
 
@@ -582,6 +614,7 @@ namespace FLIP
     {
         const float pi = float(PI);
         const float pi_sq = float(PI * PI);
+
         return a * std::sqrt(pi / b) * std::exp(-pi_sq * x2 / b);
     }
 
@@ -591,6 +624,7 @@ namespace FLIP
     {
         const float pi = float(PI);
         const float pi_sq = float(PI * PI);
+
         return std::sqrt(a * std::sqrt(pi / b)) * std::exp(-pi_sq * x2 / b);
     }
 
@@ -600,6 +634,7 @@ namespace FLIP
         if (a == 0.0f)
         {
             xMin = xMax = -c / b;
+
             return;
         }
 
@@ -1050,6 +1085,7 @@ namespace FLIP
 
             if (this->mvpHostData == nullptr)
             {
+
                 return false;
             }
 
@@ -1212,11 +1248,13 @@ namespace FLIP
 
         T* getHostData(void)
         {
+
             return this->mvpHostData;
         }
 
         inline int index(int x, int y = 0, int z = 0) const
         {
+
             return (z * this->mDim.y + y) * mDim.x + x;
         }
 
@@ -1268,21 +1306,25 @@ namespace FLIP
 
         int3 getDimensions(void) const
         {
+
             return this->mDim;
         }
 
         int getWidth(void) const
         {
+
             return this->mDim.x;
         }
 
         int getHeight(void) const
         {
+
             return this->mDim.y;
         }
 
         int getDepth(void) const
         {
+
             return this->mDim.z;
         }
 

@@ -105,6 +105,7 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return;
 
 	m_initial_candidates_buffer.resize(new_width * new_height);
@@ -122,6 +123,7 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool recompiled = false;
@@ -391,6 +393,7 @@ void ReSTIRGIRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 bool ReSTIRGIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 
 	compute_optimal_spatial_reuse_radii(render_data);
@@ -463,6 +466,7 @@ void ReSTIRGIRenderPass::reset(bool reset_by_camera_movement)
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
@@ -471,6 +475,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_ke
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracing_kernels()
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
 	return MegaKernelRenderPass::get_all_kernels();
@@ -478,6 +483,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracin
 
 bool ReSTIRGIRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI;
 }
 
@@ -488,6 +494,7 @@ void ReSTIRGIRenderPass::request_temporal_bufffers_clear()
 
 float ReSTIRGIRenderPass::get_VRAM_usage() const
 {
+
 	return (m_initial_candidates_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() + m_spatial_buffer.get_byte_size() +
 			m_directional_spatial_reuse_data.get_byte_size()) /
 		   1000000.0f;

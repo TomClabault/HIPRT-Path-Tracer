@@ -24,6 +24,7 @@ namespace detail
 	template<typename T>
 	GLM_FUNC_QUALIFIER T mask(T Bits)
 	{
+
 		return Bits >= static_cast<T>(sizeof(T) * 8) ? ~static_cast<T>(0) : (static_cast<T>(1) << Bits) - static_cast<T>(1);
 	}
 
@@ -32,6 +33,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T, T)
 		{
+
 			return v;
 		}
 	};
@@ -41,6 +43,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T Mask, T Shift)
 		{
+
 			return (v & Mask) << Shift | (v & (~Mask)) >> Shift;
 		}
 	};
@@ -50,6 +53,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T, T)
 		{
+
 			return v;
 		}
 	};
@@ -59,6 +63,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T Mask, T Shift)
 		{
+
 			return (v & Mask) + ((v >> Shift) & Mask);
 		}
 	};
@@ -69,6 +74,7 @@ namespace detail
 		GLM_FUNC_QUALIFIER static int call(genIUType Value)
 		{
 			if(Value == 0)
+
 				return -1;
 
 			return glm::bitCount(~Value & (Value - static_cast<genIUType>(1)));
@@ -106,6 +112,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& x, T Shift)
 		{
+
 			return x | (x >> Shift);
 		}
 	};
@@ -115,6 +122,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& x, T)
 		{
+
 			return x;
 		}
 	};
@@ -131,6 +139,7 @@ namespace detail
 			x = compute_findMSB_step_vec<L, T, Q, sizeof(T) * 8 >= 16>::call(x, static_cast<T>( 8));
 			x = compute_findMSB_step_vec<L, T, Q, sizeof(T) * 8 >= 32>::call(x, static_cast<T>(16));
 			x = compute_findMSB_step_vec<L, T, Q, sizeof(T) * 8 >= 64>::call(x, static_cast<T>(32));
+
 			return vec<L, int, Q>(sizeof(T) * 8 - 1) - glm::bitCount(~x);
 		}
 	};
@@ -180,6 +189,7 @@ namespace detail
 		detail::uint64 const Value64(static_cast<detail::uint64>(x) + static_cast<detail::uint64>(y));
 		detail::uint64 const Max32((static_cast<detail::uint64>(1) << static_cast<detail::uint64>(32)) - static_cast<detail::uint64>(1));
 		Carry = Value64 > Max32 ? 1u : 0u;
+
 		return static_cast<uint>(Value64 % (Max32 + static_cast<detail::uint64>(1)));
 	}
 
@@ -189,6 +199,7 @@ namespace detail
 		vec<L, detail::uint64, Q> Value64(vec<L, detail::uint64, Q>(x) + vec<L, detail::uint64, Q>(y));
 		vec<L, detail::uint64, Q> Max32((static_cast<detail::uint64>(1) << static_cast<detail::uint64>(32)) - static_cast<detail::uint64>(1));
 		Carry = mix(vec<L, uint, Q>(0), vec<L, uint, Q>(1), greaterThan(Value64, Max32));
+
 		return vec<L, uint, Q>(Value64 % (Max32 + static_cast<detail::uint64>(1)));
 	}
 
@@ -197,8 +208,10 @@ namespace detail
 	{
 		Borrow = x >= y ? static_cast<uint>(0) : static_cast<uint>(1);
 		if(y >= x)
+
 			return y - x;
 		else
+
 			return static_cast<uint>((static_cast<detail::int64>(1) << static_cast<detail::int64>(32)) + (static_cast<detail::int64>(y) - static_cast<detail::int64>(x)));
 	}
 
@@ -208,6 +221,7 @@ namespace detail
 		Borrow = mix(vec<L, uint, Q>(1), vec<L, uint, Q>(0), greaterThanEqual(x, y));
 		vec<L, uint, Q> const YgeX(y - x);
 		vec<L, uint, Q> const XgeY(vec<L, uint, Q>((static_cast<detail::int64>(1) << static_cast<detail::int64>(32)) + (vec<L, detail::int64, Q>(y) - vec<L, detail::int64, Q>(x))));
+
 		return mix(XgeY, YgeX, greaterThanEqual(y, x));
 	}
 
@@ -247,6 +261,7 @@ namespace detail
 	template<typename genIUType>
 	GLM_FUNC_QUALIFIER genIUType bitfieldExtract(genIUType Value, int Offset, int Bits)
 	{
+
 		return bitfieldExtract(vec<1, genIUType>(Value), Offset, Bits).x;
 	}
 
@@ -273,6 +288,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_integer, "'bitfieldInsert' only accept integer values");
 
 		T const Mask = detail::mask(static_cast<T>(Bits)) << Offset;
+
 		return (Base & ~Mask) | ((Insert << static_cast<T>(Offset)) & Mask);
 	}
 
@@ -302,6 +318,7 @@ namespace detail
 		x = detail::compute_bitfieldReverseStep<L, T, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 16>::call(x, static_cast<T>(0x00FF00FF00FF00FFull), static_cast<T>( 8));
 		x = detail::compute_bitfieldReverseStep<L, T, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 32>::call(x, static_cast<T>(0x0000FFFF0000FFFFull), static_cast<T>(16));
 		x = detail::compute_bitfieldReverseStep<L, T, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 64>::call(x, static_cast<T>(0x00000000FFFFFFFFull), static_cast<T>(32));
+
 		return x;
 	}
 
@@ -335,6 +352,7 @@ namespace detail
 		x = detail::compute_bitfieldBitCountStep<L, typename detail::make_unsigned<T>::type, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 16>::call(x, typename detail::make_unsigned<T>::type(0x00FF00FF00FF00FFull), typename detail::make_unsigned<T>::type( 8));
 		x = detail::compute_bitfieldBitCountStep<L, typename detail::make_unsigned<T>::type, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 32>::call(x, typename detail::make_unsigned<T>::type(0x0000FFFF0000FFFFull), typename detail::make_unsigned<T>::type(16));
 		x = detail::compute_bitfieldBitCountStep<L, typename detail::make_unsigned<T>::type, Q, detail::is_aligned<Q>::value, sizeof(T) * 8>= 64>::call(x, typename detail::make_unsigned<T>::type(0x00000000FFFFFFFFull), typename detail::make_unsigned<T>::type(32));
+
 		return vec<L, int, Q>(x);
 
 #		if GLM_COMPILER & GLM_COMPILER_VC

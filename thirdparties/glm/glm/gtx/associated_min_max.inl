@@ -6,6 +6,7 @@ namespace glm{
 template<typename T, typename U>
 GLM_FUNC_QUALIFIER U associatedMin(T x, U a, T y, U b)
 {
+
 	return x < y ? a : b;
 }
 
@@ -19,6 +20,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] < y[i] ? a[i] : b[i];
+
 	return Result;
 }
 
@@ -32,6 +34,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x < y ? a[i] : b[i];
+
 	return Result;
 }
 
@@ -45,6 +48,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] < y[i] ? a : b;
+
 	return Result;
 }
 
@@ -58,6 +62,7 @@ GLM_FUNC_QUALIFIER U associatedMin
 )
 {
 	U Result = x < y ? (x < z ? a : c) : (y < z ? b : c);
+
 	return Result;
 }
 
@@ -72,6 +77,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] < y[i] ? (x[i] < z[i] ? a[i] : c[i]) : (y[i] < z[i] ? b[i] : c[i]);
+
 	return Result;
 }
 
@@ -90,6 +96,7 @@ GLM_FUNC_QUALIFIER U associatedMin
 	U Result1 = x < y ? a : b;
 	U Result2 = z < w ? c : d;
 	U Result = Test1 < Test2 ? Result1 : Result2;
+
 	return Result;
 }
 
@@ -112,6 +119,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 		U Result2 = z[i] < w[i] ? c[i] : d[i];
 		Result[i] = Test1 < Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 
@@ -135,6 +143,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 		U Result2 = z < w ? c[i] : d[i];
 		Result[i] = Test1 < Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 
@@ -157,6 +166,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 		U Result2 = z[i] < w[i] ? c : d;
 		Result[i] = Test1 < Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 
@@ -164,6 +174,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMin
 template<typename T, typename U>
 GLM_FUNC_QUALIFIER U associatedMax(T x, U a, T y, U b)
 {
+
 	return x > y ? a : b;
 }
 
@@ -178,6 +189,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] > y[i] ? a[i] : b[i];
+
 	return Result;
 }
 
@@ -192,6 +204,7 @@ GLM_FUNC_QUALIFIER vec<L, T, Q> associatedMax
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x > y ? a[i] : b[i];
+
 	return Result;
 }
 
@@ -206,6 +219,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 	vec<L, T, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] > y[i] ? a : b;
+
 	return Result;
 }
 
@@ -219,6 +233,7 @@ GLM_FUNC_QUALIFIER U associatedMax
 )
 {
 	U Result = x > y ? (x > z ? a : c) : (y > z ? b : c);
+
 	return Result;
 }
 
@@ -234,6 +249,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] > y[i] ? (x[i] > z[i] ? a[i] : c[i]) : (y[i] > z[i] ? b[i] : c[i]);
+
 	return Result;
 }
 
@@ -249,6 +265,7 @@ GLM_FUNC_QUALIFIER vec<L, T, Q> associatedMax
 	vec<L, U, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x > y ? (x > z ? a[i] : c[i]) : (y > z ? b[i] : c[i]);
+
 	return Result;
 }
 
@@ -264,6 +281,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 	vec<L, T, Q> Result;
 	for(length_t i = 0, n = Result.length(); i < n; ++i)
 		Result[i] = x[i] > y[i] ? (x[i] > z[i] ? a : c) : (y[i] > z[i] ? b : c);
+
 	return Result;
 }
 
@@ -282,6 +300,7 @@ GLM_FUNC_QUALIFIER U associatedMax
 	U Result1 = x > y ? a : b;
 	U Result2 = z > w ? c : d;
 	U Result = Test1 > Test2 ? Result1 : Result2;
+
 	return Result;
 }
 
@@ -304,6 +323,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 		U Result2 = z[i] > w[i] ? c[i] : d[i];
 		Result[i] = Test1 > Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 
@@ -327,6 +347,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 		U Result2 = z > w ? c[i] : d[i];
 		Result[i] = Test1 > Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 
@@ -349,6 +370,7 @@ GLM_FUNC_QUALIFIER vec<L, U, Q> associatedMax
 		U Result2 = z[i] > w[i] ? c : d;
 		Result[i] = Test1 > Test2 ? Result1 : Result2;
 	}
+
 	return Result;
 }
 }//namespace glm

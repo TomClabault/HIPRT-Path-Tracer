@@ -177,10 +177,12 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 
 oroTextureObject_t OrochiTexture::get_device_texture()
 {
+
 	return m_texture;
 }
 
 size_t OrochiTexture::get_byte_size() const
 {
+
 	return m_byte_size;
 }

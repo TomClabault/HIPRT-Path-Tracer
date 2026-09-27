@@ -29,6 +29,7 @@ TestCopyKernelRestrict(float* __restrict__ buffer_a,
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 	if (x >= buffer_size)
+
 		return;
 
 	buffer_a[x] = buffer_a[x] + buffer_b[x];

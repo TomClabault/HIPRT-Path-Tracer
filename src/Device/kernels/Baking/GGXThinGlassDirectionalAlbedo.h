@@ -92,6 +92,7 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta,
 	float NoL = local_to_light_direction.z;
 
 	if (hippt::abs(NoL) < 1.0e-8f)
+
 		// Check to avoid dividing by 0 later on
 		return 0.0f;
 
@@ -142,6 +143,7 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta,
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
 
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
+
 		// Backfacing microfacets when the microfacet normal isn't in the same
 		// hemisphere as the view dir or light dir
 		return 0.0f;
@@ -224,6 +226,7 @@ inline GGXThinGlassDirectionalAlbedoBake(int kernel_iterations,
 								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+
 		return;
 
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);

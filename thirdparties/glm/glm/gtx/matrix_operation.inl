@@ -11,6 +11,7 @@ namespace glm
 		mat<2, 2, T, Q> Result(static_cast<T>(1));
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
+
 		return Result;
 	}
 
@@ -23,6 +24,7 @@ namespace glm
 		mat<2, 3, T, Q> Result(static_cast<T>(1));
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
+
 		return Result;
 	}
 
@@ -35,6 +37,7 @@ namespace glm
 		mat<2, 4, T, Q> Result(static_cast<T>(1));
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
+
 		return Result;
 	}
 
@@ -47,6 +50,7 @@ namespace glm
 		mat<3, 2, T, Q> Result(static_cast<T>(1));
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
+
 		return Result;
 	}
 
@@ -60,6 +64,7 @@ namespace glm
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
 		Result[2][2] = v[2];
+
 		return Result;
 	}
 
@@ -73,6 +78,7 @@ namespace glm
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
 		Result[2][2] = v[2];
+
 		return Result;
 	}
 
@@ -87,6 +93,7 @@ namespace glm
 		Result[1][1] = v[1];
 		Result[2][2] = v[2];
 		Result[3][3] = v[3];
+
 		return Result;
 	}
 
@@ -100,6 +107,7 @@ namespace glm
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
 		Result[2][2] = v[2];
+
 		return Result;
 	}
 
@@ -112,12 +120,14 @@ namespace glm
 		mat<4, 2, T, Q> Result(static_cast<T>(1));
 		Result[0][0] = v[0];
 		Result[1][1] = v[1];
+
 		return Result;
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<2, 2, T, Q> adjugate(mat<2, 2, T, Q> const& m)
 	{
+
 		return mat<2, 2, T, Q>(
 			+m[1][1], -m[0][1],
 			-m[1][0], +m[0][0]);

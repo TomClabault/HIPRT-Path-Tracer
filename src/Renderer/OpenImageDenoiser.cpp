@@ -37,6 +37,7 @@ void OpenImageDenoiser::set_denoise_albedo(bool denoise_albedo_or_not)
 void OpenImageDenoiser::resize(int new_width, int new_height)
 {
 	if (!check_valid_state())
+
 		return;
 
 	m_width	 = new_width;
@@ -54,6 +55,7 @@ void OpenImageDenoiser::initialize()
 void OpenImageDenoiser::finalize()
 {
 	if (!check_valid_state())
+
 		return;
 
 	m_beauty_filter = m_device.newFilter("RT");
@@ -137,6 +139,7 @@ void OpenImageDenoiser::create_device()
 									"There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. %s", errorMessage);
 
 			m_denoiser_invalid = true;
+
 			return;
 		}
 		else
@@ -152,9 +155,11 @@ void OpenImageDenoiser::create_device()
 bool OpenImageDenoiser::check_valid_state()
 {
 	if (m_denoiser_invalid)
+
 		// Returning false without error message, the error was already printed when we failed at creating the device
 		return false;
 	else if (!check_device())
+
 		// check_device prints the error
 		return false;
 
@@ -209,9 +214,11 @@ bool OpenImageDenoiser::check_buffer_sizes()
 void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, float3_t* normals_aov_device_pointer, ColorRGB32F* albedo_aov_device_pointer)
 {
 	if (!check_valid_state())
+
 		return;
 
 	if (!check_buffer_sizes())
+
 		return;
 
 	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
@@ -241,9 +248,11 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 								std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
+
 		return;
 
 	if (!check_buffer_sizes())
+
 		return;
 
 	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
@@ -269,9 +278,11 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 								std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
+
 		return;
 
 	if (!check_buffer_sizes())
+
 		return;
 
 	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;

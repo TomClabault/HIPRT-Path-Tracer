@@ -14,6 +14,7 @@ namespace glm
 		Result[1][0] = v1.y;
 		Result[0][1] = v2.x;
 		Result[1][1] = v2.y;
+
 		return Result;
 	}
 
@@ -26,6 +27,7 @@ namespace glm
 		Result[0][1] = m[1][0];
 		Result[1][0] = m[0][1];
 		Result[1][1] = m[1][1];
+
 		return Result;
 	}
 
@@ -45,6 +47,7 @@ namespace glm
 		Result[0][2] = v3.x;
 		Result[1][2] = v3.y;
 		Result[2][2] = v3.z;
+
 		return Result;
 	}
 
@@ -62,6 +65,7 @@ namespace glm
 		Result[2][0] = m[0][2];
 		Result[2][1] = m[1][2];
 		Result[2][2] = m[2][2];
+
 		return Result;
 	}
 
@@ -89,6 +93,7 @@ namespace glm
 		Result[1][3] = v4.y;
 		Result[2][3] = v4.z;
 		Result[3][3] = v4.w;
+
 		return Result;
 	}
 
@@ -113,6 +118,7 @@ namespace glm
 		Result[3][1] = m[1][3];
 		Result[3][2] = m[2][3];
 		Result[3][3] = m[3][3];
+
 		return Result;
 	}
 
@@ -121,6 +127,7 @@ namespace glm
 		const vec<2, T, Q>& v1,
 		const vec<2, T, Q>& v2)
 	{
+
 		return mat<2, 2, T, Q>(v1, v2);
 	}
 
@@ -128,6 +135,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER mat<2, 2, T, Q> colMajor2(
 		const mat<2, 2, T, Q>& m)
 	{
+
 		return mat<2, 2, T, Q>(m);
 	}
 
@@ -137,6 +145,7 @@ namespace glm
 		const vec<3, T, Q>& v2,
 		const vec<3, T, Q>& v3)
 	{
+
 		return mat<3, 3, T, Q>(v1, v2, v3);
 	}
 
@@ -144,6 +153,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER mat<3, 3, T, Q> colMajor3(
 		const mat<3, 3, T, Q>& m)
 	{
+
 		return mat<3, 3, T, Q>(m);
 	}
 
@@ -154,6 +164,7 @@ namespace glm
 		const vec<4, T, Q>& v3,
 		const vec<4, T, Q>& v4)
 	{
+
 		return mat<4, 4, T, Q>(v1, v2, v3, v4);
 	}
 
@@ -161,6 +172,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER mat<4, 4, T, Q> colMajor4(
 		const mat<4, 4, T, Q>& m)
 	{
+
 		return mat<4, 4, T, Q>(m);
 	}
 }//namespace glm

@@ -43,6 +43,7 @@ namespace detail
 			GLM_STATIC_ASSERT(
 				(!std::numeric_limits<genFIType>::is_signed && std::numeric_limits<genFIType>::is_integer),
 				"'abs' only accept floating-point and integer scalar or vector inputs");
+
 			return x;
 		}
 	};

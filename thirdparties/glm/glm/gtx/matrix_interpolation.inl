@@ -29,6 +29,7 @@ namespace glm
 				angle = static_cast<T>(0.0);
 				axis = vec<3, T, Q>(
 				    static_cast<T>(1.0), static_cast<T>(0.0), static_cast<T>(0.0));
+
 				return;
 			}
 			angle = pi<T>();
@@ -83,6 +84,7 @@ namespace glm
 					axis.y = yz / axis.z;
 				}
 			}
+
 			return;
 		}
 
@@ -122,6 +124,7 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, Q> extractMatrixRotation(mat<4, 4, T, Q> const& m)
 	{
+
 		return mat<4, 4, T, Q>(
 			m[0][0], m[0][1], m[0][2], static_cast<T>(0.0),
 			m[1][0], m[1][1], m[1][2], static_cast<T>(0.0),
@@ -141,6 +144,7 @@ namespace glm
 		out[3][0] = m1[3][0] + delta * (m2[3][0] - m1[3][0]);
 		out[3][1] = m1[3][1] + delta * (m2[3][1] - m1[3][1]);
 		out[3][2] = m1[3][2] + delta * (m2[3][2] - m1[3][2]);
+
 		return out;
 	}
 }//namespace glm

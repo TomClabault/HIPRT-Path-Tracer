@@ -222,81 +222,97 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 
 LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()
 {
+
 	return m_light_tree_ats_sampling_data_structure.get_builder_options();
 }
 
 LightTreeSGBuilder& GPURenderer::light_tree_sg_builder()
 {
+
 	return m_light_tree_sg_sampling_data_structure.get_builder();
 }
 
 LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()
 {
+
 	return m_light_tree_ats_sampling_data_structure;
 }
 
 LightTreeSGBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
 {
+
 	return m_light_tree_sg_sampling_data_structure.get_builder_options();
 }
 
 LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure()
 {
+
 	return m_light_tree_sg_sampling_data_structure;
 }
 
 bool GPURenderer::gmon_used() const
 {
+
 	return get_gmon_render_pass() && get_gmon_render_pass()->is_render_pass_used(*get_global_compiler_options());
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
+
 	return m_render_thread.get_gmon_render_pass();
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass() const
 {
+
 	return m_render_thread.get_gmon_render_pass();
 }
 
 std::shared_ptr<SSBNPermutationRenderPass> GPURenderer::get_ssbn_permutation_render_pass()
 {
+
 	return m_render_thread.get_ssbn_permutation_render_pass();
 }
 
 std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass()
 {
+
 	return m_render_thread.get_NEE_plus_plus_render_pass();
 }
 
 std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
 {
+
 	return m_render_thread.get_ReGIR_render_pass();
 }
 
 std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 {
+
 	return m_render_thread.get_ReSTIR_GI_render_pass();
 }
 
 std::shared_ptr<ReSTIRPTRenderPass> GPURenderer::get_ReSTIR_PT_render_pass()
 {
+
 	return m_render_thread.get_ReSTIR_PT_render_pass();
 }
 
 std::shared_ptr<ReSTIRPGRenderPass> GPURenderer::get_ReSTIR_PG_render_pass()
 {
+
 	return m_render_thread.get_ReSTIR_PG_render_pass();
 }
 
 std::shared_ptr<IlluminationAwareKDTreeRenderPass> GPURenderer::get_illumination_aware_kd_tree_render_pass()
 {
+
 	return m_render_thread.get_illumination_aware_kd_tree_render_pass();
 }
 
 NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage()
 {
+
 	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage();
 }
 
@@ -383,6 +399,7 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 			name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
 
 		if (global_stack_buffer_needed)
+
 			return true;
 	}
 
@@ -409,6 +426,7 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 void GPURenderer::synchronize_all_kernels()
 {
 	if (m_main_stream == nullptr)
+
 		return;
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
@@ -418,11 +436,13 @@ void GPURenderer::synchronize_all_kernels()
 
 bool GPURenderer::was_last_frame_low_resolution()
 {
+
 	return m_was_last_frame_low_resolution;
 }
 
 bool GPURenderer::frame_render_done()
 {
+
 	return m_render_thread.frame_render_done();
 }
 
@@ -475,6 +495,7 @@ void GPURenderer::reload_ssbn_permutation_blue_noise_texture(unsigned int new_wi
 {
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = get_ssbn_permutation_render_pass();
 	if (!ssbn_permutation_render_pass)
+
 		return;
 
 	ssbn_permutation_render_pass->reload_blue_noise_texture_and_retargeting_data(new_width, new_height);
@@ -557,6 +578,7 @@ void GPURenderer::launch_display_post_process()
 	std::shared_ptr<DisplayPostProcessRenderPass> display_post_process_render_pass =
 		std::dynamic_pointer_cast<DisplayPostProcessRenderPass>(get_active_render_graph().get_render_pass(DisplayPostProcessRenderPass::RENDER_PASS_NAME));
 	if (!display_post_process_render_pass)
+
 		return;
 
 	map_buffers_for_render();
@@ -595,28 +617,34 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop)
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer()
 {
 	if (gmon_used() && get_gmon_render_pass()->buffers_allocated())
+
 		return get_gmon_render_pass()->get_result_framebuffer();
 	else
+
 		return m_framebuffer;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
 {
+
 	return m_framebuffer;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_display_post_process_interop_framebuffer()
 {
+
 	return m_display_post_process_framebuffer;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer()
 {
+
 	return m_denoiser_buffers.m_denoised_framebuffer;
 }
 std::shared_ptr<OpenGLInteropBuffer<float3_t>> GPURenderer::get_denoiser_normals_AOV_interop_buffer()
 {
 	if (!m_denoiser_buffers.use_interop_AOVs)
+
 		// No using the interop buffers so let's not return a buffer that cannot be used
 		return nullptr;
 
@@ -626,6 +654,7 @@ std::shared_ptr<OpenGLInteropBuffer<float3_t>> GPURenderer::get_denoiser_normals
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer()
 {
 	if (!m_denoiser_buffers.use_interop_AOVs)
+
 		// No using the interop buffers so let's not return a buffer that cannot be used
 		return nullptr;
 
@@ -634,40 +663,48 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albe
 
 std::shared_ptr<OrochiBuffer<float3_t>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer()
 {
+
 	return m_denoiser_buffers.m_normals_AOV_no_interop_buffer;
 }
 std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer()
 {
+
 	return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer;
 }
 
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
 {
+
 	return m_status_buffers_values;
 }
 
 HIPRTRenderSettings& GPURenderer::get_render_settings()
 {
+
 	return m_render_data.render_settings;
 }
 
 std::shared_ptr<ApplicationSettings> GPURenderer::get_application_settings()
 {
+
 	return m_application_settings;
 }
 
 HIPRTRenderData& GPURenderer::get_render_data()
 {
+
 	return m_render_data;
 }
 
 HIPRTScene& GPURenderer::get_hiprt_scene()
 {
+
 	return m_hiprt_scene;
 }
 
 std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx()
 {
+
 	return m_hiprt_orochi_ctx;
 }
 
@@ -678,6 +715,7 @@ void GPURenderer::invalidate_render_data_buffers()
 
 oroDeviceProp GPURenderer::get_device_properties()
 {
+
 	return m_device_properties;
 }
 
@@ -686,6 +724,7 @@ std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
 	oroDeviceProp prop;
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
 	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+
 	return std::string(prop.name);
 }
 
@@ -694,6 +733,7 @@ std::string getGcnArchName(oroCtx m_ctxt, oroDevice m_device)
 	oroDeviceProp prop;
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
 	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+
 	return std::string(prop.gcnArchName);
 }
 
@@ -702,6 +742,7 @@ uint32_t getGcnArchNumber(oroCtx m_ctxt, oroDevice m_device)
 	oroDeviceProp prop;
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
 	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+
 	return prop.gcnArch;
 }
 
@@ -709,6 +750,7 @@ bool enableHwi(oroCtx m_ctxt, oroDevice m_device)
 {
 	std::string deviceName	  = getDeviceName(m_ctxt, m_device);
 	const uint32_t archNumber = getGcnArchNumber(m_ctxt, m_device);
+
 	return (archNumber >= 1030 && deviceName.find("NVIDIA") == std::string::npos);
 }
 
@@ -716,16 +758,19 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 {
 	bool enabled = m_hiprt_orochi_ctx->has_hardware_ray_tracing_support();
 	if (enabled)
+
 		return HardwareAccelerationSupport::SUPPORTED;
 	else
 	{
 		if (std::string(m_device_properties.name).find("NVIDIA") != std::string::npos)
 		{
+
 			// Not supported on NVIDIA
 			return HardwareAccelerationSupport::NVIDIA_UNSUPPORTED;
 		}
 		else
 		{
+
 			// Not NVIDIA but hardware acceleration not supported, assuming too old AMD
 			return HardwareAccelerationSupport::AMD_UNSUPPORTED;
 		}
@@ -734,11 +779,13 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 
 std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options()
 {
+
 	return m_render_thread.get_render_graphs().at(GPURendererThread::RENDER_GRAPH_FULL_NAME).get_compiler_options();
 }
 
 const std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options() const
 {
+
 	return m_render_thread.get_render_graphs().at(GPURendererThread::RENDER_GRAPH_FULL_NAME).get_compiler_options();
 }
 
@@ -791,6 +838,7 @@ std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, in
 
 oroStream_t GPURenderer::get_main_stream()
 {
+
 	return m_main_stream;
 }
 
@@ -804,11 +852,13 @@ void GPURenderer::compute_render_pass_times()
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
 {
+
 	return m_render_pass_times;
 }
 
 float GPURenderer::get_last_frame_time()
 {
+
 	return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY];
 }
 
@@ -866,6 +916,7 @@ bool GPURenderer::reset_when_holding_imgui_items()
 
 Xorshift32Generator& GPURenderer::get_rng_generator()
 {
+
 	return m_rng;
 }
 
@@ -952,6 +1003,7 @@ void GPURenderer::update_render_data()
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
 	if (scene.triangles_vertex_indices.size() == 0)
+
 		// Empty scene, nothing todo
 		return;
 
@@ -1161,11 +1213,13 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 
 bool GPURenderer::has_envmap()
 {
+
 	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
 }
 
 const std::string& GPURenderer::get_scene_filepath() const
 {
+
 	return m_scene_filepath;
 }
 
@@ -1176,16 +1230,19 @@ void GPURenderer::set_scene_filepath(const std::string& filepath)
 
 const std::vector<CPUMaterial>& GPURenderer::get_original_materials()
 {
+
 	return m_original_materials;
 }
 
 const std::vector<CPUMaterial>& GPURenderer::get_current_materials()
 {
+
 	return m_current_materials;
 }
 
 const std::vector<std::string>& GPURenderer::get_material_names()
 {
+
 	return m_parsed_scene_metadata.material_names;
 }
 
@@ -1225,61 +1282,73 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 
 const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes()
 {
+
 	return m_parsed_scene_metadata.mesh_bounding_boxes;
 }
 
 const std::vector<std::string>& GPURenderer::get_mesh_names()
 {
+
 	return m_parsed_scene_metadata.mesh_names;
 }
 
 const std::vector<int>& GPURenderer::get_mesh_material_indices()
 {
+
 	return m_parsed_scene_metadata.mesh_material_indices;
 }
 
 unsigned int GPURenderer::get_emissive_mesh_count() const
 {
+
 	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
 }
 
 unsigned int GPURenderer::get_total_triangle_count() const
 {
+
 	return m_hiprt_scene.total_triangle_count;
 }
 
 Camera& GPURenderer::get_camera()
 {
+
 	return m_camera;
 }
 
 Camera& GPURenderer::get_previous_frame_camera()
 {
+
 	return m_previous_frame_camera;
 }
 
 CameraAnimation& GPURenderer::get_camera_animation()
 {
+
 	return m_camera_animation;
 }
 
 RendererEnvmap& GPURenderer::get_envmap()
 {
+
 	return m_envmap;
 }
 
 SceneMetadata& GPURenderer::get_scene_metadata()
 {
+
 	return m_parsed_scene_metadata;
 }
 
 std::unordered_map<std::string, RenderGraph>& GPURenderer::get_render_graphs()
 {
+
 	return m_render_thread.get_render_graphs();
 }
 
 RenderGraph& GPURenderer::get_active_render_graph()
 {
+
 	return m_render_thread.get_active_render_graph();
 }
 
@@ -1313,5 +1382,6 @@ void GPURenderer::zoom_camera_view(float offset)
 
 RendererAnimationState& GPURenderer::get_animation_state()
 {
+
 	return m_animation_state;
 }

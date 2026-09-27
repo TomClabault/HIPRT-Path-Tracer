@@ -45,6 +45,7 @@ inline GGXConductorDirectionalAlbedoBake(
 	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta);
 
 	if (x >= bake_settings.texture_size_cos_theta || y >= bake_settings.texture_size_roughness)
+
 		return;
 
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);

@@ -8,6 +8,7 @@ namespace glm
 		T const& y,
 		T const& z)
 	{
+
 		return glm::min(glm::min(x, y), z);
 	}
 
@@ -19,6 +20,7 @@ namespace glm
 		typename C<T>::T const& z
 	)
 	{
+
 		return glm::min(glm::min(x, y), z);
 	}
 
@@ -30,6 +32,7 @@ namespace glm
 		C<T> const& z
 	)
 	{
+
 		return glm::min(glm::min(x, y), z);
 	}
 
@@ -42,6 +45,7 @@ namespace glm
 		T const& w
 	)
 	{
+
 		return glm::min(glm::min(x, y), glm::min(z, w));
 	}
 
@@ -54,6 +58,7 @@ namespace glm
 		typename C<T>::T const& w
 	)
 	{
+
 		return glm::min(glm::min(x, y), glm::min(z, w));
 	}
 
@@ -66,6 +71,7 @@ namespace glm
 		C<T> const& w
 	)
 	{
+
 		return glm::min(glm::min(x, y), glm::min(z, w));
 	}
 
@@ -75,6 +81,7 @@ namespace glm
 		T const& y,
 		T const& z)
 	{
+
 		return glm::max(glm::max(x, y), z);
 	}
 
@@ -86,6 +93,7 @@ namespace glm
 		typename C<T>::T const& z
 	)
 	{
+
 		return glm::max(glm::max(x, y), z);
 	}
 
@@ -97,6 +105,7 @@ namespace glm
 		C<T> const& z
 	)
 	{
+
 		return glm::max(glm::max(x, y), z);
 	}
 
@@ -109,6 +118,7 @@ namespace glm
 		T const& w
 	)
 	{
+
 		return glm::max(glm::max(x, y), glm::max(z, w));
 	}
 
@@ -121,6 +131,7 @@ namespace glm
 		typename C<T>::T const& w
 	)
 	{
+
 		return glm::max(glm::max(x, y), glm::max(z, w));
 	}
 
@@ -133,6 +144,7 @@ namespace glm
 		C<T> const& w
 	)
 	{
+
 		return glm::max(glm::max(x, y), glm::max(z, w));
 	}
 }//namespace glm

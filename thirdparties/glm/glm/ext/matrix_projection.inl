@@ -92,6 +92,7 @@ namespace glm
 		mat<4, 4, T, Q> Result(static_cast<T>(1));
 
 		if(!(delta.x > static_cast<T>(0) && delta.y > static_cast<T>(0)))
+
 			return Result; // Error
 
 		vec<3, T, Q> Temp(
@@ -101,6 +102,7 @@ namespace glm
 
 		// Translate and scale the picked region to the entire window
 		Result = translate(Result, Temp);
+
 		return scale(Result, vec<3, T, Q>(static_cast<T>(viewport[2]) / delta.x, static_cast<T>(viewport[3]) / delta.y, static_cast<T>(1)));
 	}
 }//namespace glm

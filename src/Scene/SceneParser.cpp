@@ -630,6 +630,7 @@ int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureT
 {
 	int tex_count = mesh_material->GetTextureCount(type);
 	if (tex_count == 0)
+
 		return MaterialConstants::NO_TEXTURE;
 	else
 	{
@@ -638,6 +639,7 @@ int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureT
 
 		std::string string_path = std::string(aiPath.data);
 		if (string_path.empty())
+
 			return MaterialConstants::NO_TEXTURE;
 
 		texture_path_list.push_back(std::make_pair(type, string_path));

@@ -46,6 +46,7 @@ void GPUBaker::bake_ggx_conductor_directional_albedo(const GGXConductorDirection
 
 bool GPUBaker::is_ggx_conductor_directional_albedo_bake_complete() const
 {
+
 	return m_ggx_conductor_directional_albedo_bake_kernel.is_complete();
 }
 
@@ -58,6 +59,7 @@ void GPUBaker::bake_ggx_fresnel_directional_albedo(const GGXFresnelDirectionalAl
 
 bool GPUBaker::is_ggx_fresnel_directional_albedo_bake_complete() const
 {
+
 	return m_ggx_fresnel_directional_albedo_bake_kernel.is_complete();
 }
 
@@ -70,6 +72,7 @@ void GPUBaker::bake_glossy_dielectric_directional_albedo(const GlossyDielectricD
 
 bool GPUBaker::is_glossy_dielectric_directional_albedo_bake_complete() const
 {
+
 	return m_glossy_dielectric_directional_albedo_bake_kernel.is_complete();
 }
 
@@ -86,6 +89,7 @@ void GPUBaker::bake_ggx_glass_directional_albedo(const GGXGlassDirectionalAlbedo
 
 bool GPUBaker::is_ggx_glass_directional_albedo_bake_complete() const
 {
+
 	return m_ggx_glass_entering_directional_albedo_bake_kernel.is_complete() && m_ggx_glass_exiting_directional_albedo_bake_kernel.is_complete();
 }
 
@@ -98,5 +102,6 @@ void GPUBaker::bake_ggx_thin_glass_directional_albedo(const GGXThinGlassDirectio
 
 bool GPUBaker::is_ggx_thin_glass_directional_albedo_bake_complete() const
 {
+
 	return m_ggx_thin_glass_directional_albedo_bake_kernel.is_complete();
 }

@@ -54,6 +54,7 @@ void LightTreeATSSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompile
 void LightTreeATSSamplingDataStructure::recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed)
 {
 	if (skip_if_already_computed && m_light_tree_ats_build_result.device_data.m_device_nodes_buffer.get_byte_size() > 0)
+
 		// Already computed
 		return;
 
@@ -97,10 +98,12 @@ bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count, s
 
 size_t LightTreeATSSamplingDataStructure::get_VRAM_usage_bytes() const
 {
+
 	return m_light_tree_ats_build_result.get_VRAM_usage_bytes();
 }
 
 LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
 {
+
 	return m_light_tree_builder.get_build_options();
 }

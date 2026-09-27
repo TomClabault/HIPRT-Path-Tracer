@@ -71,6 +71,7 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 		if (prev_frame_g_buffer_needs_resize)
 		{
 			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+
 			return true;
 		}
 	}
@@ -83,6 +84,7 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 		{
 			// If the buffers aren't freed already
 			m_g_buffer_prev_frame.free();
+
 			return true;
 		}
 	}
@@ -140,6 +142,7 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 
 	m_ray_volume_state_byte_size							 = size;
 	m_renderer->get_render_data().ray_volume_state_byte_size = m_ray_volume_state_byte_size;
+
 	return m_ray_volume_state_byte_size;
 }
 

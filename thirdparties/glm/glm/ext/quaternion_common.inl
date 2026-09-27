@@ -10,6 +10,7 @@ namespace glm
 		// Perform a linear interpolation when cosTheta is close to 1 to avoid side effect of sin(angle) becoming a zero denominator
 		if(cosTheta > static_cast<T>(1) - epsilon<T>())
 		{
+
 			// Linear interpolation
 			return qua<T, Q>::wxyz(
 				mix(x.w, y.w, a),
@@ -21,6 +22,7 @@ namespace glm
 		{
 			// Essential Mathematics, page 467
 			T angle = acos(cosTheta);
+
 			return (sin((static_cast<T>(1) - a) * angle) * x + sin(a * angle) * y) / sin(angle);
 		}
 	}
@@ -57,6 +59,7 @@ namespace glm
 		// Perform a linear interpolation when cosTheta is close to 1 to avoid side effect of sin(angle) becoming a zero denominator
 		if(cosTheta > static_cast<T>(1) - epsilon<T>())
 		{
+
 			// Linear interpolation
 			return qua<T, Q>::wxyz(
 				mix(x.w, z.w, a),
@@ -68,6 +71,7 @@ namespace glm
 		{
 			// Essential Mathematics, page 467
 			T angle = acos(cosTheta);
+
 			return (sin((static_cast<T>(1) - a) * angle) * x + sin(a * angle) * z) / sin(angle);
 		}
 	}
@@ -93,6 +97,7 @@ namespace glm
         // Perform a linear interpolation when cosTheta is close to 1 to avoid side effect of sin(angle) becoming a zero denominator
         if (cosTheta > static_cast<T>(1) - epsilon<T>())
         {
+
             // Linear interpolation
             return qua<T, Q>::wxyz(
                 mix(x.w, z.w, a),
@@ -105,6 +110,7 @@ namespace glm
             // Graphics Gems III, page 96
             T angle = acos(cosTheta);
             T phi = angle + static_cast<T>(k) * glm::pi<T>();
+
             return (sin(angle - a * phi)* x + sin(a * phi) * z) / sin(angle);
         }
     }
@@ -112,12 +118,14 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q> conjugate(qua<T, Q> const& q)
 	{
+
 		return qua<T, Q>::wxyz(q.w, -q.x, -q.y, -q.z);
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q> inverse(qua<T, Q> const& q)
 	{
+
 		return conjugate(q) / dot(q, q);
 	}
 

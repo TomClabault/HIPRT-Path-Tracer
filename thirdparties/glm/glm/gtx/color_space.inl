@@ -125,12 +125,14 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> saturation(const T s, const vec<3, T, Q>& color)
 	{
+
 		return vec<3, T, Q>(saturation(s) * vec<4, T, Q>(color, T(0)));
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<4, T, Q> saturation(const T s, const vec<4, T, Q>& color)
 	{
+
 		return saturation(s) * color;
 	}
 
@@ -138,6 +140,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER T luminosity(const vec<3, T, Q>& color)
 	{
 		const vec<3, T, Q> tmp = vec<3, T, Q>(0.33, 0.59, 0.11);
+
 		return dot(color, tmp);
 	}
 }//namespace glm

@@ -38,6 +38,7 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelSimple(TestCopyKernelSimpleInputData
 	uint32_t index	= x + offset;
 
 	if (index >= buffer_size)
+
 		return;
 
 	copy_function(input.buffer_b, input.buffer_a, index);

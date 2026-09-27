@@ -28,6 +28,7 @@ std::vector<unsigned char> ImGuiConvergenceGraphWidgetScreenshotter::screenshot_
 {
 	regenerate_capture_fbo(screenshot_width, screenshot_height);
 	if (m_capture_fbo == 0)
+
 		return {};
 
 	if (!m_init_done)
@@ -139,6 +140,7 @@ std::vector<unsigned char> ImGuiConvergenceGraphWidgetScreenshotter::screenshot_
 
 		for (int row = 0; row < screenshot_height; ++row)
 			std::memcpy(&flipped[(size_t)row * row_bytes], &pixels[(size_t)(screenshot_height - 1 - row) * row_bytes], row_bytes);
+
 		return flipped;
 	}
 

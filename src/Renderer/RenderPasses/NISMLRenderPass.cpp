@@ -43,6 +43,7 @@ bool NISMLRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 												   bool use_cache)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool updated = false;
@@ -63,6 +64,7 @@ void NISMLRenderPass::resize(unsigned int new_width, unsigned int new_height) {}
 bool NISMLRenderPass::pre_frame_render_update(float delta_time)
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return false;
 
 	bool render_data_needs_update = pre_render_update();
@@ -100,14 +102,17 @@ bool NISMLRenderPass::pre_render_update()
 bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
+
 		return false;
 	if (!render_data.nisml.learning_enabled || m_training_record_percentage <= 0.0f)
+
 		return true;
 
 	NeuralImportanceSamplingMLP mlp_device = m_mlp.to_device(m_adam_learning_rate);
 
 	unsigned int training_record_count = m_nisml_data.get_effective_training_record_count();
 	if (training_record_count == 0)
+
 		return true;
 
 	fp16* train_activations = reinterpret_cast<fp16*>(m_mlp.m_mlp_data.template get_buffer_data_ptr<MLPDataHostBuffers::MLP_TRAIN_ACTIVATIONS>());
@@ -193,27 +198,32 @@ void NISMLRenderPass::reset(bool reset_by_camera_movement)
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
+
 	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 float& NISMLRenderPass::get_training_record_percentage()
 {
+
 	return m_training_record_percentage;
 }
 
 int& NISMLRenderPass::get_training_spp()
 {
+
 	return m_training_spp;
 }
 
 int& NISMLRenderPass::get_training_record_buffer_capacity()
 {
+
 	return m_training_record_buffer_capacity;
 }
 
 float& NISMLRenderPass::get_adam_learning_rate()
 {
+
 	return m_adam_learning_rate;
 }
 
@@ -257,5 +267,6 @@ NISMLVRAMUsage NISMLRenderPass::get_vram_usage_breakdown() const
 
 std::size_t NISMLRenderPass::get_vram_usage_bytes() const
 {
+
 	return get_vram_usage_breakdown().get_total_bytes();
 }

@@ -6,6 +6,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] < y[i];
+
 		return Result;
 	}
 
@@ -15,6 +16,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] <= y[i];
+
 		return Result;
 	}
 
@@ -24,6 +26,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] > y[i];
+
 		return Result;
 	}
 
@@ -33,6 +36,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] >= y[i];
+
 		return Result;
 	}
 
@@ -42,6 +46,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] == y[i];
+
 		return Result;
 	}
 
@@ -51,6 +56,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = x[i] != y[i];
+
 		return Result;
 	}
 
@@ -60,6 +66,7 @@ namespace glm
 		bool Result = false;
 		for(length_t i = 0; i < L; ++i)
 			Result = Result || v[i];
+
 		return Result;
 	}
 
@@ -69,6 +76,7 @@ namespace glm
 		bool Result = true;
 		for(length_t i = 0; i < L; ++i)
 			Result = Result && v[i];
+
 		return Result;
 	}
 
@@ -78,6 +86,7 @@ namespace glm
 		vec<L, bool, Q> Result(true);
 		for(length_t i = 0; i < L; ++i)
 			Result[i] = !v[i];
+
 		return Result;
 	}
 }//namespace glm

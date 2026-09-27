@@ -7,6 +7,7 @@ namespace detail
 
 		for(int i = 0; i < 10; ++i)
 			f = f * f; // this will overflow before the for loop terminates
+
 		return f;
 	}
 
@@ -44,6 +45,7 @@ namespace detail
 
 				detail::uif32 result;
 				result.i = static_cast<unsigned int>(s << 31);
+
 				return result.f;
 			}
 			else
@@ -72,6 +74,7 @@ namespace detail
 
 				uif32 result;
 				result.i = static_cast<unsigned int>((s << 31) | 0x7f800000);
+
 				return result.f;
 			}
 			else
@@ -82,6 +85,7 @@ namespace detail
 
 				uif32 result;
 				result.i = static_cast<unsigned int>((s << 31) | 0x7f800000 | (m << 13));
+
 				return result.f;
 			}
 		}
@@ -99,6 +103,7 @@ namespace detail
 
 		uif32 Result;
 		Result.i = static_cast<unsigned int>((s << 31) | (e << 23) | m);
+
 		return Result.f;
 	}
 

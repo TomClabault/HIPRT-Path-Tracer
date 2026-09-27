@@ -15,6 +15,7 @@ namespace glm
 		genType Result = m;
 		for(length_t i = 0; i < m.length(); ++i)
 			Result[i][index] = x[i];
+
 		return Result;
 	}
 
@@ -30,6 +31,7 @@ namespace glm
 		typename genType::row_type Result(0);
 		for(length_t i = 0; i < m.length(); ++i)
 			Result[i] = m[i][index];
+
 		return Result;
 	}
 
@@ -45,6 +47,7 @@ namespace glm
 
 		genType Result = m;
 		Result[index] = x;
+
 		return Result;
 	}
 

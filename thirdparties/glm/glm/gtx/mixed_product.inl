@@ -10,6 +10,7 @@ namespace glm
 		vec<3, T, Q> const& v3
 	)
 	{
+
 		return dot(cross(v1, v2), v3);
 	}
 }//namespace glm

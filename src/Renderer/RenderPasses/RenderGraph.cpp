@@ -22,11 +22,13 @@ void RenderGraph::set_render_window(RenderWindow* render_window)
 
 std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options()
 {
+
 	return m_compiler_options;
 }
 
 const std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options() const
 {
+
 	return m_compiler_options;
 }
 
@@ -131,6 +133,7 @@ void RenderGraph::traverse_render_pass_in_dependency_order(std::shared_ptr<Rende
 	}
 
 	if (visited_render_passes[render_pass.get()])
+
 		return;
 
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
@@ -245,12 +248,15 @@ std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& rend
 
 	auto find = m_render_passes.find(pass_name);
 	if (find == m_render_passes.end())
+
 		return nullptr;
 	else
+
 		return find->second;
 }
 
 std::unordered_map<std::string, std::shared_ptr<RenderPass>> RenderGraph::get_render_passes()
 {
+
 	return m_render_passes;
 }

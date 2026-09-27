@@ -24,6 +24,7 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> orthonormalize(vec<3, T, Q> const& x, vec<3, T, Q> const& y)
 	{
+
 		return normalize(x - y * dot(y, x));
 	}
 }//namespace glm

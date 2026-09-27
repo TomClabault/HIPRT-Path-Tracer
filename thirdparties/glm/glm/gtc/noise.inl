@@ -15,6 +15,7 @@ namespace detail
 		T pW = static_cast<T>(1.5) - dot(abs(pXYZ), vec<3, T, Q>(1));
 		vec<4, T, Q> s = vec<4, T, Q>(lessThan(vec<4, T, Q>(pXYZ, pW), vec<4, T, Q>(0.0)));
 		pXYZ = pXYZ + (vec<3, T, Q>(s) * T(2) - T(1)) * s.w;
+
 		return vec<4, T, Q>(pXYZ, pW);
 	}
 }//namespace detail
@@ -57,6 +58,7 @@ namespace detail
 		vec<2, T, Q> fade_xy = detail::fade(vec<2, T, Q>(Pf.x, Pf.y));
 		vec<2, T, Q> n_x = mix(vec<2, T, Q>(n00, n01), vec<2, T, Q>(n10, n11), fade_xy.x);
 		T n_xy = mix(n_x.x, n_x.y, fade_xy.y);
+
 		return T(2.3) * n_xy;
 	}
 
@@ -128,6 +130,7 @@ namespace detail
 		vec<4, T, Q> n_z = mix(vec<4, T, Q>(n000, n100, n010, n110), vec<4, T, Q>(n001, n101, n011, n111), fade_xyz.z);
 		vec<2, T, Q> n_yz = mix(vec<2, T, Q>(n_z.x, n_z.y), vec<2, T, Q>(n_z.z, n_z.w), fade_xyz.y);
 		T n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+
 		return T(2.2) * n_xyz;
 	}
 	/*
@@ -337,6 +340,7 @@ namespace detail
 		vec<4, T, Q> n_zw = mix(n_0w, n_1w, fade_xyzw.z);
 		vec<2, T, Q> n_yzw = mix(vec<2, T, Q>(n_zw.x, n_zw.y), vec<2, T, Q>(n_zw.z, n_zw.w), fade_xyzw.y);
 		T n_xyzw = mix(n_yzw.x, n_yzw.y, fade_xyzw.x);
+
 		return T(2.2) * n_xyzw;
 	}
 
@@ -379,6 +383,7 @@ namespace detail
 		vec<2, T, Q> fade_xy = detail::fade(vec<2, T, Q>(Pf.x, Pf.y));
 		vec<2, T, Q> n_x = mix(vec<2, T, Q>(n00, n01), vec<2, T, Q>(n10, n11), fade_xy.x);
 		T n_xy = mix(n_x.x, n_x.y, fade_xy.y);
+
 		return T(2.3) * n_xy;
 	}
 
@@ -450,6 +455,7 @@ namespace detail
 		vec<4, T, Q> n_z = mix(vec<4, T, Q>(n000, n100, n010, n110), vec<4, T, Q>(n001, n101, n011, n111), fade_xyz.z);
 		vec<2, T, Q> n_yz = mix(vec<2, T, Q>(n_z.x, n_z.y), vec<2, T, Q>(n_z.z, n_z.w), fade_xyz.y);
 		T n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+
 		return T(2.2) * n_xyz;
 	}
 
@@ -584,6 +590,7 @@ namespace detail
 		vec<4, T, Q> n_zw = mix(n_0w, n_1w, fade_xyzw.z);
 		vec<2, T, Q> n_yzw = mix(vec<2, T, Q>(n_zw.x, n_zw.y), vec<2, T, Q>(n_zw.z, n_zw.w), fade_xyzw.y);
 		T n_xyzw = mix(n_yzw.x, n_yzw.y, fade_xyzw.x);
+
 		return T(2.2) * n_xyzw;
 	}
 
@@ -641,6 +648,7 @@ namespace detail
 		//g.yz = a0.yz * x12.xz + h.yz * x12.yw;
 		g.y = a0.y * x12.x + h.y * x12.y;
 		g.z = a0.z * x12.z + h.z * x12.w;
+
 		return T(130) * dot(m, g);
 	}
 
@@ -716,6 +724,7 @@ namespace detail
 		// Mix final noise value
 		vec<4, T, Q> m = max(T(0.6) - vec<4, T, Q>(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), vec<4, T, Q>(0));
 		m = m * m;
+
 		return T(42) * dot(m * m, vec<4, T, Q>(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 	}
 
@@ -800,6 +809,7 @@ namespace detail
 		vec<2, T, Q> m1 = max(T(0.6) - vec<2, T, Q>(dot(x3, x3), dot(x4, x4)             ), vec<2, T, Q>(0));
 		m0 = m0 * m0;
 		m1 = m1 * m1;
+
 		return T(49) *
 			(dot(m0 * m0, vec<3, T, Q>(dot(p0, x0), dot(p1, x1), dot(p2, x2))) +
 			dot(m1 * m1, vec<2, T, Q>(dot(p3, x3), dot(p4, x4))));

@@ -212,8 +212,10 @@ template <typename InputType, typename TransformedType, typename OutputType>
 constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_input_data_type_as_string() const
 {
 	if constexpr (std::is_same_v<InputType, unsigned int>)
+
 		return "unsigned int";
 	else if constexpr (std::is_same_v<InputType, float>)
+
 		return "float";
 	else
 		static_assert(sizeof(InputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
@@ -223,8 +225,10 @@ template <typename InputType, typename TransformedType, typename OutputType>
 constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_transformed_data_type_as_string() const
 {
 	if constexpr (std::is_same_v<TransformedType, unsigned int>)
+
 		return "unsigned int";
 	else if constexpr (std::is_same_v<TransformedType, float>)
+
 		return "float";
 	else
 		static_assert(sizeof(TransformedType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
@@ -234,8 +238,10 @@ template <typename InputType, typename TransformedType, typename OutputType>
 constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_output_data_type_as_string() const
 {
 	if constexpr (std::is_same_v<OutputType, unsigned int>)
+
 		return "unsigned int";
 	else if constexpr (std::is_same_v<OutputType, float>)
+
 		return "float";
 	else
 		static_assert(sizeof(OutputType) == 0 /* forces failure */, "Unsupported data type for ParallelPrefixScanDecoupledLookback");
@@ -244,12 +250,14 @@ constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, Transformed
 template <typename InputType, typename TransformedType, typename OutputType>
 OrochiBuffer<OutputType>& ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_output_buffer()
 {
+
 	return m_output_buffer;
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
 std::size_t ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_byte_size() const
 {
+
 	return m_input_buffer.get_byte_size() + m_output_buffer.get_byte_size() + m_global_block_index_counter_buffer.get_byte_size() +
 		   m_block_descriptors_buffer.get_byte_size();
 }
@@ -292,12 +300,14 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 	public:
 		virtual std::string emit_input_transform() const override
 		{
+
 			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
 			return "return (float)(value & 0xAAAAAAAA);";
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
+
 			return "return value;";
 		}
 	};

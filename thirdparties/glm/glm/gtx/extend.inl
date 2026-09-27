@@ -10,6 +10,7 @@ namespace glm
 		genType const& Distance
 	)
 	{
+
 		return Origin + (Source - Origin) * Distance;
 	}
 
@@ -21,6 +22,7 @@ namespace glm
 		T const& Distance
 	)
 	{
+
 		return Origin + (Source - Origin) * Distance;
 	}
 
@@ -32,6 +34,7 @@ namespace glm
 		T const& Distance
 	)
 	{
+
 		return Origin + (Source - Origin) * Distance;
 	}
 
@@ -43,6 +46,7 @@ namespace glm
 		T const& Distance
 	)
 	{
+
 		return Origin + (Source - Origin) * Distance;
 	}
 }//namespace glm

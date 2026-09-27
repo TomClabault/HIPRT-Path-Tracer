@@ -148,6 +148,7 @@ namespace glm
 		T const& angleZ
 	)
 	{
+
 		return eulerAngleX(angleX) * eulerAngleZ(angleZ);
 	}
 
@@ -158,6 +159,7 @@ namespace glm
 		T const& angleX
 	)
 	{
+
 		return eulerAngleZ(angleZ) * eulerAngleX(angleX);
 	}
 
@@ -168,6 +170,7 @@ namespace glm
 		T const& angleZ
 	)
 	{
+
 		return eulerAngleY(angleY) * eulerAngleZ(angleZ);
 	}
 
@@ -178,6 +181,7 @@ namespace glm
 		T const& angleY
 	)
 	{
+
 		return eulerAngleZ(angleZ) * eulerAngleY(angleY);
 	}
 
@@ -213,6 +217,7 @@ namespace glm
         Result[3][1] = static_cast<T>(0);
         Result[3][2] = static_cast<T>(0);
         Result[3][3] = static_cast<T>(1);
+
         return Result;
     }
 
@@ -248,6 +253,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -283,6 +289,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -318,6 +325,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -353,6 +361,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -388,6 +397,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -423,6 +433,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -458,6 +469,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -493,6 +505,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -528,6 +541,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -563,6 +577,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -598,6 +613,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -633,6 +649,7 @@ namespace glm
 		Result[3][1] = static_cast<T>(0);
 		Result[3][2] = static_cast<T>(0);
 		Result[3][3] = static_cast<T>(1);
+
 		return Result;
 	}
 
@@ -650,6 +667,7 @@ namespace glm
 		Result[0][1] = s;
 		Result[1][0] = -s;
 		Result[1][1] = c;
+
 		return Result;
 	}
 
@@ -672,6 +690,7 @@ namespace glm
 		Result[2][0] = T(0.0);
 		Result[2][1] = T(0.0);
 		Result[2][2] = T(1.0);
+
 		return Result;
 	}
 
@@ -681,6 +700,7 @@ namespace glm
 		vec<3, T, Q> const& angles
 	)
 	{
+
 		return mat<3, 3, T, Q>(yawPitchRoll(angles.z, angles.x, angles.y));
 	}
 
@@ -690,6 +710,7 @@ namespace glm
 		vec<3, T, Q> const& angles
 	)
 	{
+
 		return yawPitchRoll(angles.z, angles.x, angles.y);
 	}
 

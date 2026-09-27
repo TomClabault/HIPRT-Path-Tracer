@@ -12,6 +12,7 @@ namespace glm {
 	template<length_t D, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<D, D, T, Q> computeCovarianceMatrix(vec<D, T, Q> const* v, size_t n)
 	{
+
 		return computeCovarianceMatrix<D, T, Q, vec<D, T, Q> const*>(v, v + n);
 	}
 
@@ -19,6 +20,7 @@ namespace glm {
 	template<length_t D, typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<D, D, T, Q> computeCovarianceMatrix(vec<D, T, Q> const* v, size_t n, vec<D, T, Q> const& c)
 	{
+
 		return computeCovarianceMatrix<D, T, Q, vec<D, T, Q> const*>(v, v + n, c);
 	}
 
@@ -71,6 +73,7 @@ namespace glm {
 		template<typename T>
 		GLM_FUNC_QUALIFIER static T transferSign(T const& v, T const& s)
 		{
+
 			return ((s) >= 0 ? glm::abs(v) : -glm::abs(v));
 		}
 
@@ -82,11 +85,13 @@ namespace glm {
 			if(absa > absb) {
 				absb /= absa;
 				absb *= absb;
+
 				return absa * glm::sqrt(static_cast<T>(1) + absb);
 			}
 			if(glm::equal<T>(absb, 0, epsilon)) return static_cast<T>(0);
 			absa /= absb;
 			absa *= absa;
+
 			return absb * glm::sqrt(static_cast<T>(1) + absa);
 		}
 
@@ -230,6 +235,7 @@ namespace glm {
 				{
 					if(iter++ == MAX_ITER)
 					{
+
 						return 0; // Too many iterations in FindEigenvalues
 					}
 					g = (d[l - 1 + 1] - d[l - 1]) / (2 * e[l - 1]);

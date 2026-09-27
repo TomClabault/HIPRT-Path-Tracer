@@ -150,6 +150,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static std::string call(vec<1, bool, Q> const& x)
 		{
+
 			return detail::format("bvec1(%s)",
 				x[0] ? detail::LabelTrue : detail::LabelFalse);
 		}
@@ -160,6 +161,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static std::string call(vec<2, bool, Q> const& x)
 		{
+
 			return detail::format("bvec2(%s, %s)",
 				x[0] ? detail::LabelTrue : detail::LabelFalse,
 				x[1] ? detail::LabelTrue : detail::LabelFalse);
@@ -171,6 +173,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static std::string call(vec<3, bool, Q> const& x)
 		{
+
 			return detail::format("bvec3(%s, %s, %s)",
 				x[0] ? detail::LabelTrue : detail::LabelFalse,
 				x[1] ? detail::LabelTrue : detail::LabelFalse,
@@ -183,6 +186,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static std::string call(vec<4, bool, Q> const& x)
 		{
+
 			return detail::format("bvec4(%s, %s, %s, %s)",
 				x[0] ? detail::LabelTrue : detail::LabelFalse,
 				x[1] ? detail::LabelTrue : detail::LabelFalse,
@@ -491,6 +495,7 @@ namespace detail
 template<class matType>
 GLM_FUNC_QUALIFIER std::string to_string(matType const& x)
 {
+
 	return detail::compute_to_string<matType>::call(x);
 }
 

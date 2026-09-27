@@ -32,6 +32,7 @@ def probability_inside_threshold_cone(
 
     if kappa < 1.0e-8:
         # Uniform spherical distribution.
+
         return 0.5 * (1.0 - math.cos(ANGLE_THRESHOLD))
 
     cos_beta = math.cos(observed_angle)
@@ -99,11 +100,13 @@ def minimum_observed_angle(kappa: float) -> float | None:
     # Even identical observed directions would be enough.
     # This can happen for unusual threshold/alpha combinations.
     if probability_at_zero <= ALPHA:
+
         return 0.0
 
     # Even maximally opposite observed directions do not provide
     # enough confidence, so no split is possible.
     if probability_at_pi > ALPHA:
+
         return None
 
     return brentq(

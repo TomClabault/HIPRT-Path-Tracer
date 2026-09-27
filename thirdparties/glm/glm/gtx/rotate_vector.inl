@@ -37,6 +37,7 @@ namespace glm
 
 		Result.x = v.x * Cos - v.y * Sin;
 		Result.y = v.x * Sin + v.y * Cos;
+
 		return Result;
 	}
 
@@ -48,6 +49,7 @@ namespace glm
 		vec<3, T, Q> const& normal
 	)
 	{
+
 		return mat<3, 3, T, Q>(glm::rotate(angle, normal)) * v;
 	}
 	/*
@@ -70,6 +72,7 @@ namespace glm
 		vec<3, T, Q> const& normal
 	)
 	{
+
 		return rotate(angle, normal) * v;
 	}
 
@@ -86,6 +89,7 @@ namespace glm
 
 		Result.y = v.y * Cos - v.z * Sin;
 		Result.z = v.y * Sin + v.z * Cos;
+
 		return Result;
 	}
 
@@ -102,6 +106,7 @@ namespace glm
 
 		Result.x =  v.x * Cos + v.z * Sin;
 		Result.z = -v.x * Sin + v.z * Cos;
+
 		return Result;
 	}
 
@@ -118,6 +123,7 @@ namespace glm
 
 		Result.x = v.x * Cos - v.y * Sin;
 		Result.y = v.x * Sin + v.y * Cos;
+
 		return Result;
 	}
 
@@ -134,6 +140,7 @@ namespace glm
 
 		Result.y = v.y * Cos - v.z * Sin;
 		Result.z = v.y * Sin + v.z * Cos;
+
 		return Result;
 	}
 
@@ -150,6 +157,7 @@ namespace glm
 
 		Result.x =  v.x * Cos + v.z * Sin;
 		Result.z = -v.x * Sin + v.z * Cos;
+
 		return Result;
 	}
 
@@ -166,6 +174,7 @@ namespace glm
 
 		Result.x = v.x * Cos - v.y * Sin;
 		Result.y = v.x * Sin + v.y * Cos;
+
 		return Result;
 	}
 
@@ -177,6 +186,7 @@ namespace glm
 	)
 	{
 		if(all(equal(Normal, Up, epsilon<T>())))
+
 			return mat<4, 4, T, Q>(static_cast<T>(1));
 
 		vec<3, T, Q> RotationAxis = cross(Up, Normal);

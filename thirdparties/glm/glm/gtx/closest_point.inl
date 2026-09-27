@@ -19,6 +19,7 @@ namespace glm
 
 		if(Distance <= T(0)) return a;
 		if(Distance >= LineLength) return b;
+
 		return a + LineDirection * Distance;
 	}
 
@@ -39,6 +40,7 @@ namespace glm
 
 		if(Distance <= T(0)) return a;
 		if(Distance >= LineLength) return b;
+
 		return a + LineDirection * Distance;
 	}
 

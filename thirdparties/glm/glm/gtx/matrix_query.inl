@@ -8,6 +8,7 @@ namespace glm
 		bool result = true;
 		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
+
 		return result;
 	}
 
@@ -17,6 +18,7 @@ namespace glm
 		bool result = true;
 		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
+
 		return result;
 	}
 
@@ -26,6 +28,7 @@ namespace glm
 		bool result = true;
 		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
+
 		return result;
 	}
 
@@ -42,6 +45,7 @@ namespace glm
 			for(length_t j = i + 1; result && j < m[0].length(); ++j)
 				result = abs(m[i][j]) <= epsilon;
 		}
+
 		return result;
 	}
 
@@ -58,6 +62,7 @@ namespace glm
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
+
 		return result;
 	}
 
@@ -74,6 +79,7 @@ namespace glm
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
+
 		return result;
 	}
 
@@ -90,6 +96,7 @@ namespace glm
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
+
 		return result;
 	}
 
@@ -114,6 +121,7 @@ namespace glm
 					result = abs(dot(tmp[i], tmp[j])) <= epsilon;
 			}
 		}
+
 		return result;
 	}
 }//namespace glm

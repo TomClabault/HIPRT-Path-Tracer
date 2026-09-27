@@ -25,6 +25,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER vec<1, bool, Q> isfinite(
 		vec<1, T, Q> const& x)
 	{
+
 		return vec<1, bool, Q>(
 			isfinite(x.x));
 	}
@@ -33,6 +34,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER vec<2, bool, Q> isfinite(
 		vec<2, T, Q> const& x)
 	{
+
 		return vec<2, bool, Q>(
 			isfinite(x.x),
 			isfinite(x.y));
@@ -42,6 +44,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER vec<3, bool, Q> isfinite(
 		vec<3, T, Q> const& x)
 	{
+
 		return vec<3, bool, Q>(
 			isfinite(x.x),
 			isfinite(x.y),
@@ -52,6 +55,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER vec<4, bool, Q> isfinite(
 		vec<4, T, Q> const& x)
 	{
+
 		return vec<4, bool, Q>(
 			isfinite(x.x),
 			isfinite(x.y),

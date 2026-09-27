@@ -12,6 +12,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER GLM_CONSTEXPR static bool call(T a, T b)
 		{
+
 			return a == b;
 		}
 	};

@@ -27,6 +27,7 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelAlignment(ColorRGB32F* __restrict__ 
 	uint32_t index	= x + offset;
 
 	if (index >= buffer_size)
+
 		return;
 
 	buffer_a[index] = buffer_b[index];

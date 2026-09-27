@@ -453,6 +453,7 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
 	if (new_width_pixels == 0 || new_height_pixels == 0)
+
 		// This probably means that the application has been minimized, we're not doing anything then
 		return;
 	else
@@ -469,9 +470,11 @@ RenderWindow::gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GL
 {
 	// ignore non-significant error/warning codes
 	if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
+
 		return;
 
 	if (id == 131154)
+
 		// NVIDIA specific warning
 		// Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
 		//
@@ -479,6 +482,7 @@ RenderWindow::gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GL
 		return;
 
 	if (id == 131154)
+
 		// NVIDIA specific warning
 		// Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
 		//
@@ -758,6 +762,7 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 
 	if (new_render_height == 0 || new_render_width == 0)
+
 		// Can happen if resizing the window to a 1 pixel width/height while having a resolution scaling < 1.
 		// Integer maths will round it down to 0
 		return;
@@ -784,16 +789,19 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 
 int RenderWindow::get_width()
 {
+
 	return m_viewport_width;
 }
 
 int RenderWindow::get_height()
 {
+
 	return m_viewport_height;
 }
 
 bool RenderWindow::is_interacting()
 {
+
 	return m_mouse_interactor->is_interacting() || m_keyboard_interactor.is_interacting();
 }
 
@@ -802,6 +810,7 @@ bool RenderWindow::render_resetted_with_imgui_item_held()
 	// TODO this is a bit scuffed, this is just to avoid a bug that resets the render too often when holding ImGui widgets but that bug should be fixed in the
 	// first place, this is just a band aid
 	if (!m_renderer->reset_when_holding_imgui_items())
+
 		return false;
 
 	return m_application_state->m_render_resetted_with_imgui_item_held;
@@ -809,31 +818,37 @@ bool RenderWindow::render_resetted_with_imgui_item_held()
 
 RenderWindowKeyboardInteractor& RenderWindow::get_keyboard_interactor()
 {
+
 	return m_keyboard_interactor;
 }
 
 std::shared_ptr<RenderWindowMouseInteractor> RenderWindow::get_mouse_interactor()
 {
+
 	return m_mouse_interactor;
 }
 
 std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
 {
+
 	return m_application_settings;
 }
 
 std::shared_ptr<ApplicationState> RenderWindow::get_application_state()
 {
+
 	return m_application_state;
 }
 
 std::shared_ptr<DisplayViewSystem> RenderWindow::get_display_view_system()
 {
+
 	return m_display_view_system;
 }
 
 DisplaySettings& RenderWindow::get_display_settings()
 {
+
 	return m_display_settings;
 }
 
@@ -849,6 +864,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 	}
 
 	if (translation_x == 0.0f && translation_y == 0.0f)
+
 		return;
 
 	set_render_dirty(true);
@@ -878,6 +894,7 @@ void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time
 	offset *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 
 	if (offset == 0.0f)
+
 		return;
 
 	set_render_dirty(true);
@@ -947,6 +964,7 @@ bool RenderWindow::needs_viewport_refresh()
 
 	bool needs_refresh = enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh || (denoiser_enabled && denoise_each_frame);
 	if (!needs_refresh)
+
 		return false;
 
 	if (m_renderer->gmon_used())
@@ -955,10 +973,12 @@ bool RenderWindow::needs_viewport_refresh()
 		// before refreshing the viewport
 
 		if (!needs_refresh)
+
 			// No need to run GMoN
 			return false;
 
 		if (m_renderer->get_gmon_render_pass()->recomputation_completed())
+
 			// We requested a GMoN recomputation before and it is actually complete, we're ready to display
 			return true;
 		else
@@ -970,6 +990,7 @@ bool RenderWindow::needs_viewport_refresh()
 		}
 	}
 	else
+
 		// Not using GMoN
 		return needs_refresh;
 }
@@ -977,12 +998,15 @@ bool RenderWindow::needs_viewport_refresh()
 float RenderWindow::get_viewport_refresh_delay_ms()
 {
 	if (m_application_state->current_render_time_ms < 1000.0f)
+
 		// Always update if less than a second of render time
 		return 0.0f;
 	else if (m_application_state->current_render_time_ms > 1000.0f && m_application_state->current_render_time_ms < 5000.0f)
+
 		// 1s update in between 1s and 5s of total render time
 		return 1000.0f;
 	else
+
 		// Update every 5s otherwise
 		return 5000.0f;
 }
@@ -991,6 +1015,7 @@ float RenderWindow::get_time_ms_before_viewport_refresh()
 {
 	float time_since_last_refresh =
 		(glfwGetTimerValue() - m_application_state->last_viewport_refresh_timestamp) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+
 	return get_viewport_refresh_delay_ms() - time_since_last_refresh;
 }
 
@@ -1034,11 +1059,13 @@ void RenderWindow::clear_ImGui_status_text()
 
 float& RenderWindow::get_current_render_time_ms()
 {
+
 	return m_application_state->current_render_time_ms;
 }
 
 float RenderWindow::get_samples_per_second()
 {
+
 	return m_application_state->samples_per_second;
 }
 
@@ -1056,6 +1083,7 @@ float RenderWindow::compute_samples_per_second()
 		return 1000.0f / (difference_ms / samples_per_frame);
 	}
 	else
+
 		return 0.0f;
 }
 
@@ -1074,36 +1102,43 @@ float RenderWindow::compute_GPU_stall_duration()
 
 float RenderWindow::get_UI_delta_time()
 {
+
 	return m_application_state->last_CPU_frame_delta_time_ms;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
 {
+
 	return m_denoiser;
 }
 
 std::shared_ptr<GPURenderer> RenderWindow::get_renderer()
 {
+
 	return m_renderer;
 }
 
 std::shared_ptr<GPUBaker> RenderWindow::get_baker()
 {
+
 	return m_gpu_baker;
 }
 
 std::shared_ptr<PerformanceMetricsComputer> RenderWindow::get_performance_metrics()
 {
+
 	return m_perf_metrics;
 }
 
 std::shared_ptr<Screenshoter> RenderWindow::get_screenshoter()
 {
+
 	return m_screenshoter;
 }
 
 std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 {
+
 	return m_imgui_renderer;
 }
 

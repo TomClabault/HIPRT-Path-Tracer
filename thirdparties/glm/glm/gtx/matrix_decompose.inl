@@ -15,12 +15,14 @@ namespace detail
 		vec<3, T, Q> const& b,
 		T ascl, T bscl)
 	{
+
 		return (a * ascl) + (b * bscl);
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> scale(vec<3, T, Q> const& v, T desiredLength)
 	{
+
 		return v * desiredLength / length(v);
 	}
 }//namespace detail
@@ -36,6 +38,7 @@ namespace detail
 
 		// Normalize the matrix.
 		if(epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), epsilon<T>()))
+
 			return false;
 
 		for(length_t i = 0; i < 4; ++i)
@@ -52,6 +55,7 @@ namespace detail
 
 		/// TODO: Fixme!
 		if(epsilonEqual(determinant(PerspectiveMatrix), static_cast<T>(0), epsilon<T>()))
+
 			return false;
 
 		// First, isolate perspective.  This is the messiest.

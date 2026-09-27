@@ -104,6 +104,7 @@ Image8Bit Screenshoter::get_image(bool flip_y)
 	if (display_view == DisplayViewType::DEFAULT || display_view == DisplayViewType::GMON_BLEND || display_view == DisplayViewType::DENOISED_BLEND ||
 		display_view == DisplayViewType::DISPLAY_DENOISER_ALBEDO || display_view == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
 		display_view == DisplayViewType::WHITE_FURNACE_THRESHOLD)
+
 		return get_final_output_image(flip_y);
 
 	m_renderer->synchronize_all_kernels();

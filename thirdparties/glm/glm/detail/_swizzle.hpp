@@ -84,12 +84,14 @@ namespace detail
 		{
 			for (int i = 0; i < N; ++i)
 				(*this)[i] = t;
+
 			return *this;
 		}
 
 		GLM_FUNC_QUALIFIER _swizzle_base2& operator= (vec<N, T, Q> const& that)
 		{
 			_apply_op(that, op_equal());
+
 			return *this;
 		}
 
@@ -116,11 +118,13 @@ namespace detail
 		GLM_FUNC_QUALIFIER T& operator[](int i)
 		{
 			const int offset_dst[4] = { E0, E1, E2, E3 };
+
 			return this->elem(offset_dst[i]);
 		}
 		GLM_FUNC_QUALIFIER T operator[](int i) const
 		{
 			const int offset_dst[4] = { E0, E1, E2, E3 };
+
 			return this->elem(offset_dst[i]);
 		}
 
@@ -150,6 +154,7 @@ namespace detail
 		GLM_FUNC_QUALIFIER T operator[]  (int i) const
 		{
 			const int offset_dst[4] = { E0, E1, E2, E3 };
+
 			return this->elem(offset_dst[i]);
 		}
 	};

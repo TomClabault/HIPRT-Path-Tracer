@@ -10,6 +10,7 @@ namespace glm
 	)
 	{
 		GLM_STATIC_ASSERT(std::numeric_limits<genType>::is_iec559, "'angle' only accept floating-point inputs");
+
 		return acos(clamp(dot(x, y), genType(-1), genType(1)));
 	}
 
@@ -17,6 +18,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER T angle(vec<L, T, Q> const& x, vec<L, T, Q> const& y)
 	{
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'angle' only accept floating-point inputs");
+
 		return acos(clamp(dot(x, y), T(-1), T(1)));
 	}
 
@@ -29,8 +31,10 @@ namespace glm
 		T const partialCross = x.x * y.y - y.x * x.y;
 
 		if (partialCross > T(0))
+
 			return Angle;
 		else
+
 			return -Angle;
 	}
 
@@ -40,6 +44,7 @@ namespace glm
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'orientedAngle' only accept floating-point inputs");
 
 		T const Angle(acos(clamp(dot(x, y), T(-1), T(1))));
+
 		return mix(Angle, -Angle, dot(ref, cross(x, y)) < T(0));
 	}
 }//namespace glm

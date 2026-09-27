@@ -80,6 +80,7 @@ void Camera::set_FOV_radians(float new_fov)
 void Camera::auto_adjust_speed(const AABB& scene_bounding_box)
 {
 	if (scene_bounding_box.get_max_extent() > 1.0e35f)
+
 		// Probably an empty scene, we can't adjust the camera speed based on the scene
 		return;
 

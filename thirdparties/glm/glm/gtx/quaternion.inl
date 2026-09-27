@@ -8,18 +8,21 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q> quat_identity()
 	{
+
 		return qua<T, Q>::wxyz(static_cast<T>(1), static_cast<T>(0), static_cast<T>(0), static_cast<T>(0));
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR vec<3, T, Q> cross(vec<3, T, Q> const& v, qua<T, Q> const& q)
 	{
+
 		return inverse(q) * v;
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR vec<3, T, Q> cross(qua<T, Q> const& q, vec<3, T, Q> const& v)
 	{
+
 		return q * v;
 	}
 
@@ -32,6 +35,7 @@ namespace glm
 		qua<T, Q> const& s2,
 		T const& h)
 	{
+
 		return mix(mix(q1, q2, h), mix(s1, s2, h), static_cast<T>(2) * (static_cast<T>(1) - h) * h);
 	}
 
@@ -44,18 +48,21 @@ namespace glm
 	)
 	{
 		qua<T, Q> invQuat = inverse(curr);
+
 		return exp((log(next * invQuat) + log(prev * invQuat)) / static_cast<T>(-4)) * curr;
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> rotate(qua<T, Q> const& q, vec<3, T, Q> const& v)
 	{
+
 		return q * v;
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<4, T, Q> rotate(qua<T, Q> const& q, vec<4, T, Q> const& v)
 	{
+
 		return q * v;
 	}
 
@@ -64,14 +71,17 @@ namespace glm
 	{
 		T w = static_cast<T>(1) - q.x * q.x - q.y * q.y - q.z * q.z;
 		if(w < T(0))
+
 			return T(0);
 		else
+
 			return -sqrt(w);
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR T length2(qua<T, Q> const& q)
 	{
+
 		return q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
 	}
 
@@ -115,6 +125,7 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER qua<T, Q> fastMix(qua<T, Q> const& x, qua<T, Q> const& y, T const& a)
 	{
+
 		return glm::normalize(x * (static_cast<T>(1) - a) + (y * a));
 	}
 
@@ -125,6 +136,7 @@ namespace glm
 		vec<3, T, Q> rotationAxis;
 
 		if(cosTheta >= static_cast<T>(1) - epsilon<T>()) {
+
 			// orig and dest point in the same direction
 			return quat_identity<T,Q>();
 		}
@@ -141,6 +153,7 @@ namespace glm
 				rotationAxis = cross(vec<3, T, Q>(1, 0, 0), orig);
 
 			rotationAxis = normalize(rotationAxis);
+
 			return angleAxis(pi<T>(), rotationAxis);
 		}
 

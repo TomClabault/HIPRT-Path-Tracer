@@ -31,6 +31,7 @@ void RenderWindowMouseInteractor::glfw_mouse_scroll_callback(GLFWwindow* window,
 
 bool RenderWindowMouseInteractor::is_interacting()
 {
+
 	return m_interacting_left_button || m_interacting_right_button;
 }
 
@@ -46,10 +47,12 @@ void RenderWindowMouseInteractor::set_interacting_right_button(bool interacting)
 
 bool RenderWindowMouseInteractor::is_interacting_right_button()
 {
+
 	return m_interacting_right_button;
 }
 
 bool RenderWindowMouseInteractor::is_interacting_left_button()
 {
+
 	return m_interacting_left_button;
 }

@@ -87,6 +87,7 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used_for_frame(render_data) || !m_gmon.buffers_allocated() || render_data.buffers.gmon_estimator.result_framebuffer == nullptr)
+
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -153,16 +154,19 @@ void GMoNRenderPass::request_recomputation()
 
 bool GMoNRenderPass::recomputation_completed()
 {
+
 	return m_gmon.m_gmon_recomputed;
 }
 
 bool GMoNRenderPass::recomputation_requested()
 {
+
 	return m_gmon.m_gmon_recomputation_requested;
 }
 
 unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
 {
+
 	return m_gmon.last_recomputed_sample_count;
 }
 
@@ -194,11 +198,13 @@ void GMoNRenderPass::update_render_data()
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GMoNRenderPass::get_result_framebuffer()
 {
+
 	return m_gmon.result_framebuffer;
 }
 
 unsigned int GMoNRenderPass::get_number_of_sets_used()
 {
+
 	return m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 }
 
@@ -213,6 +219,7 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 {
 	if (is_render_pass_used(*m_compiler_options) && m_gmon.buffers_allocated())
+
 		return m_gmon.map_result_framebuffer();
 
 	return nullptr;
@@ -233,6 +240,7 @@ void GMoNRenderPass::ensure_result_framebuffer_size(unsigned int new_width, unsi
 
 bool GMoNRenderPass::buffers_allocated()
 {
+
 	return m_gmon.buffers_allocated();
 }
 
@@ -256,12 +264,14 @@ bool GMoNRenderPass::is_render_pass_used_for_frame(const HIPRTRenderData& render
 
 GMoNGPUData& GMoNRenderPass::get_gmon_data()
 {
+
 	return m_gmon;
 }
 
 unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 {
 	if (!is_render_pass_used(*m_compiler_options))
+
 		return 0;
 
 	return m_gmon.get_VRAM_usage_bytes();
@@ -269,5 +279,6 @@ unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_tracing_kernels()
 {
+
 	return {};
 }

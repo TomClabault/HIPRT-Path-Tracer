@@ -111,66 +111,83 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER glm::uint half2float(glm::uint h)
 	{
+
 		return ((h & 0x8000) << 16) | ((( h & 0x7c00) + 0x1C000) << 13) | ((h & 0x03FF) << 13);
 	}
 
 	GLM_FUNC_QUALIFIER glm::uint floatTo11bit(float x)
 	{
 		if(x == 0.0f)
+
 			return 0u;
 		else if(glm::isnan(x))
+
 			return ~0u;
 		else if(glm::isinf(x))
+
 			return 0x1Fu << 6u;
 
 		uint Pack = 0u;
 		memcpy(&Pack, &x, sizeof(Pack));
+
 		return float2packed11(Pack);
 	}
 
 	GLM_FUNC_QUALIFIER float packed11bitToFloat(glm::uint x)
 	{
 		if(x == 0)
+
 			return 0.0f;
 		else if(x == ((1 << 11) - 1))
+
 			return ~0;//NaN
 		else if(x == (0x1f << 6))
+
 			return ~0;//Inf
 
 		uint Result = packed11ToFloat(x);
 
 		float Temp = 0;
 		memcpy(&Temp, &Result, sizeof(Temp));
+
 		return Temp;
 	}
 
 	GLM_FUNC_QUALIFIER glm::uint floatTo10bit(float x)
 	{
 		if(x == 0.0f)
+
 			return 0u;
 		else if(glm::isnan(x))
+
 			return ~0u;
 		else if(glm::isinf(x))
+
 			return 0x1Fu << 5u;
 
 		uint Pack = 0;
 		memcpy(&Pack, &x, sizeof(Pack));
+
 		return float2packed10(Pack);
 	}
 
 	GLM_FUNC_QUALIFIER float packed10bitToFloat(glm::uint x)
 	{
 		if(x == 0)
+
 			return 0.0f;
 		else if(x == ((1 << 10) - 1))
+
 			return ~0;//NaN
 		else if(x == (0x1f << 5))
+
 			return ~0;//Inf
 
 		uint Result = packed10ToFloat(x);
 
 		float Temp = 0;
 		memcpy(&Temp, &Result, sizeof(Temp));
+
 		return Temp;
 	}
 
@@ -296,6 +313,7 @@ namespace detail
 			int16 const Unpack(detail::toFloat16(v.x));
 			u16vec1 Packed;
 			memcpy(&Packed, &Unpack, sizeof(Packed));
+
 			return Packed;
 		}
 
@@ -303,6 +321,7 @@ namespace detail
 		{
 			i16vec1 Unpack;
 			memcpy(&Unpack, &v, sizeof(Unpack));
+
 			return vec<1, float, Q>(detail::toFloat32(v.x));
 		}
 	};
@@ -315,6 +334,7 @@ namespace detail
 			vec<2, int16, Q> const Unpack(detail::toFloat16(v.x), detail::toFloat16(v.y));
 			u16vec2 Packed;
 			memcpy(&Packed, &Unpack, sizeof(Packed));
+
 			return Packed;
 		}
 
@@ -322,6 +342,7 @@ namespace detail
 		{
 			i16vec2 Unpack;
 			memcpy(&Unpack, &v, sizeof(Unpack));
+
 			return vec<2, float, Q>(detail::toFloat32(v.x), detail::toFloat32(v.y));
 		}
 	};
@@ -334,6 +355,7 @@ namespace detail
 			vec<3, int16, Q> const Unpack(detail::toFloat16(v.x), detail::toFloat16(v.y), detail::toFloat16(v.z));
 			u16vec3 Packed;
 			memcpy(&Packed, &Unpack, sizeof(Packed));
+
 			return Packed;
 		}
 
@@ -341,6 +363,7 @@ namespace detail
 		{
 			i16vec3 Unpack;
 			memcpy(&Unpack, &v, sizeof(Unpack));
+
 			return vec<3, float, Q>(detail::toFloat32(v.x), detail::toFloat32(v.y), detail::toFloat32(v.z));
 		}
 	};
@@ -353,6 +376,7 @@ namespace detail
 			vec<4, int16, Q> const Unpack(detail::toFloat16(v.x), detail::toFloat16(v.y), detail::toFloat16(v.z), detail::toFloat16(v.w));
 			u16vec4 Packed;
 			memcpy(&Packed, &Unpack, sizeof(Packed));
+
 			return Packed;
 		}
 
@@ -360,6 +384,7 @@ namespace detail
 		{
 			i16vec4 Unpack;
 			memcpy(&Unpack, &v, sizeof(Unpack));
+
 			return vec<4, float, Q>(detail::toFloat32(Unpack.x), detail::toFloat32(Unpack.y), detail::toFloat32(Unpack.z), detail::toFloat32(Unpack.w));
 		}
 	};
@@ -367,12 +392,14 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint8 packUnorm1x8(float v)
 	{
+
 		return static_cast<uint8>(round(clamp(v, 0.0f, 1.0f) * 255.0f));
 	}
 
 	GLM_FUNC_QUALIFIER float unpackUnorm1x8(uint8 p)
 	{
 		float const Unpack(p);
+
 		return Unpack * static_cast<float>(0.0039215686274509803921568627451); // 1 / 255
 	}
 
@@ -382,6 +409,7 @@ namespace detail
 
 		uint16 Unpack = 0;
 		memcpy(&Unpack, &Topack, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -389,6 +417,7 @@ namespace detail
 	{
 		u8vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return vec2(Unpack) * float(0.0039215686274509803921568627451); // 1 / 255
 	}
 
@@ -397,6 +426,7 @@ namespace detail
 		int8 const Topack(static_cast<int8>(round(clamp(v ,-1.0f, 1.0f) * 127.0f)));
 		uint8 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -404,6 +434,7 @@ namespace detail
 	{
 		int8 Unpack = 0;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return clamp(
 			static_cast<float>(Unpack) * 0.00787401574803149606299212598425f, // 1.0f / 127.0f
 			-1.0f, 1.0f);
@@ -414,6 +445,7 @@ namespace detail
 		i8vec2 const Topack(round(clamp(v, -1.0f, 1.0f) * 127.0f));
 		uint16 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -421,6 +453,7 @@ namespace detail
 	{
 		i8vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return clamp(
 			vec2(Unpack) * 0.00787401574803149606299212598425f, // 1.0f / 127.0f
 			-1.0f, 1.0f);
@@ -428,12 +461,14 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER uint16 packUnorm1x16(float s)
 	{
+
 		return static_cast<uint16>(round(clamp(s, 0.0f, 1.0f) * 65535.0f));
 	}
 
 	GLM_FUNC_QUALIFIER float unpackUnorm1x16(uint16 p)
 	{
 		float const Unpack(p);
+
 		return Unpack * 1.5259021896696421759365224689097e-5f; // 1.0 / 65535.0
 	}
 
@@ -442,6 +477,7 @@ namespace detail
 		u16vec4 const Topack(round(clamp(v , 0.0f, 1.0f) * 65535.0f));
 		uint64 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -449,6 +485,7 @@ namespace detail
 	{
 		u16vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return vec4(Unpack) * 1.5259021896696421759365224689097e-5f; // 1.0 / 65535.0
 	}
 
@@ -457,6 +494,7 @@ namespace detail
 		int16 const Topack = static_cast<int16>(round(clamp(v ,-1.0f, 1.0f) * 32767.0f));
 		uint16 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -464,6 +502,7 @@ namespace detail
 	{
 		int16 Unpack = 0;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return clamp(
 			static_cast<float>(Unpack) * 3.0518509475997192297128208258309e-5f, //1.0f / 32767.0f,
 			-1.0f, 1.0f);
@@ -474,6 +513,7 @@ namespace detail
 		i16vec4 const Topack(round(clamp(v ,-1.0f, 1.0f) * 32767.0f));
 		uint64 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -481,6 +521,7 @@ namespace detail
 	{
 		i16vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return clamp(
 			vec4(Unpack) * 3.0518509475997192297128208258309e-5f, //1.0f / 32767.0f,
 			-1.0f, 1.0f);
@@ -491,6 +532,7 @@ namespace detail
 		int16 const Topack(detail::toFloat16(v));
 		uint16 Packed = 0;
 		memcpy(&Packed, &Topack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -498,6 +540,7 @@ namespace detail
 	{
 		int16 Unpack = 0;
 		memcpy(&Unpack, &v, sizeof(Unpack));
+
 		return detail::toFloat32(Unpack);
 	}
 
@@ -510,6 +553,7 @@ namespace detail
 			detail::toFloat16(v.w));
 		uint64 Packed = 0;
 		memcpy(&Packed, &Unpack, sizeof(Packed));
+
 		return Packed;
 	}
 
@@ -517,6 +561,7 @@ namespace detail
 	{
 		i16vec4 Unpack;
 		memcpy(&Unpack, &v, sizeof(Unpack));
+
 		return vec4(
 			detail::toFloat32(Unpack.x),
 			detail::toFloat32(Unpack.y),
@@ -531,6 +576,7 @@ namespace detail
 		Result.data.y = v.y;
 		Result.data.z = v.z;
 		Result.data.w = v.w;
+
 		return Result.pack;
 	}
 
@@ -538,6 +584,7 @@ namespace detail
 	{
 		detail::i10i10i10i2 Unpack;
 		Unpack.pack = v;
+
 		return ivec4(
 			Unpack.data.x,
 			Unpack.data.y,
@@ -552,6 +599,7 @@ namespace detail
 		Result.data.y = v.y;
 		Result.data.z = v.z;
 		Result.data.w = v.w;
+
 		return Result.pack;
 	}
 
@@ -559,6 +607,7 @@ namespace detail
 	{
 		detail::u10u10u10u2 Unpack;
 		Unpack.pack = v;
+
 		return uvec4(
 			Unpack.data.x,
 			Unpack.data.y,
@@ -575,6 +624,7 @@ namespace detail
 		Result.data.y = Pack.y;
 		Result.data.z = Pack.z;
 		Result.data.w = Pack.w;
+
 		return Result.pack;
 	}
 
@@ -597,6 +647,7 @@ namespace detail
 		Result.data.y = Unpack.y;
 		Result.data.z = Unpack.z;
 		Result.data.w = Unpack.w;
+
 		return Result.pack;
 	}
 
@@ -606,11 +657,13 @@ namespace detail
 
 		detail::u10u10u10u2 Unpack;
 		Unpack.pack = v;
+
 		return vec4(Unpack.data.x, Unpack.data.y, Unpack.data.z, Unpack.data.w) * ScaleFactors;
 	}
 
 	GLM_FUNC_QUALIFIER uint32 packF2x11_1x10(vec3 const& v)
 	{
+
 		return
 			((detail::floatTo11bit(v.x) & ((1 << 11) - 1)) <<  0) |
 			((detail::floatTo11bit(v.y) & ((1 << 11) - 1)) << 11) |
@@ -619,6 +672,7 @@ namespace detail
 
 	GLM_FUNC_QUALIFIER vec3 unpackF2x11_1x10(uint32 v)
 	{
+
 		return vec3(
 			detail::packed11bitToFloat(v >> 0),
 			detail::packed11bitToFloat(v >> 11),
@@ -642,6 +696,7 @@ namespace detail
 		Unpack.data.y = ColorComp.y;
 		Unpack.data.z = ColorComp.z;
 		Unpack.data.w = uint(ExpShared);
+
 		return Unpack.pack;
 	}
 
@@ -660,24 +715,28 @@ namespace detail
 		vec<3, T, Q> const Color(rgb * static_cast<T>(1.0 / 6.0));
 		T Alpha = clamp(max(max(Color.x, Color.y), max(Color.z, static_cast<T>(1e-6))), static_cast<T>(0), static_cast<T>(1));
 		Alpha = ceil(Alpha * static_cast<T>(255.0)) / static_cast<T>(255.0);
+
 		return vec<4, T, Q>(Color / Alpha, Alpha);
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> unpackRGBM(vec<4, T, Q> const& rgbm)
 	{
+
 		return vec<3, T, Q>(rgbm.x, rgbm.y, rgbm.z) * rgbm.w * static_cast<T>(6);
 	}
 
 	template<length_t L, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, uint16, Q> packHalf(vec<L, float, Q> const& v)
 	{
+
 		return detail::compute_half<L, Q>::pack(v);
 	}
 
 	template<length_t L, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<L, float, Q> unpackHalf(vec<L, uint16, Q> const& v)
 	{
+
 		return detail::compute_half<L, Q>::unpack(v);
 	}
 
@@ -723,6 +782,7 @@ namespace detail
 		detail::u4u4 Result;
 		Result.data.x = Unpack.x;
 		Result.data.y = Unpack.y;
+
 		return Result.pack;
 	}
 
@@ -731,6 +791,7 @@ namespace detail
 		float const ScaleFactor(1.f / 15.f);
 		detail::u4u4 Unpack;
 		Unpack.pack = v;
+
 		return vec2(Unpack.data.x, Unpack.data.y) * ScaleFactor;
 	}
 
@@ -742,6 +803,7 @@ namespace detail
 		Result.data.y = Unpack.y;
 		Result.data.z = Unpack.z;
 		Result.data.w = Unpack.w;
+
 		return Result.pack;
 	}
 
@@ -750,6 +812,7 @@ namespace detail
 		float const ScaleFactor(1.f / 15.f);
 		detail::u4u4u4u4 Unpack;
 		Unpack.pack = v;
+
 		return vec4(Unpack.data.x, Unpack.data.y, Unpack.data.z, Unpack.data.w) * ScaleFactor;
 	}
 
@@ -760,6 +823,7 @@ namespace detail
 		Result.data.x = Unpack.x;
 		Result.data.y = Unpack.y;
 		Result.data.z = Unpack.z;
+
 		return Result.pack;
 	}
 
@@ -768,6 +832,7 @@ namespace detail
 		vec3 const ScaleFactor(1.f / 31.f, 1.f / 63.f, 1.f / 31.f);
 		detail::u5u6u5 Unpack;
 		Unpack.pack = v;
+
 		return vec3(Unpack.data.x, Unpack.data.y, Unpack.data.z) * ScaleFactor;
 	}
 
@@ -779,6 +844,7 @@ namespace detail
 		Result.data.y = Unpack.y;
 		Result.data.z = Unpack.z;
 		Result.data.w = Unpack.w;
+
 		return Result.pack;
 	}
 
@@ -787,6 +853,7 @@ namespace detail
 		vec4 const ScaleFactor(1.f / 31.f, 1.f / 31.f, 1.f / 31.f, 1.f);
 		detail::u5u5u5u1 Unpack;
 		Unpack.pack = v;
+
 		return vec4(Unpack.data.x, Unpack.data.y, Unpack.data.z, Unpack.data.w) * ScaleFactor;
 	}
 
@@ -797,6 +864,7 @@ namespace detail
 		Result.data.x = Unpack.x;
 		Result.data.y = Unpack.y;
 		Result.data.z = Unpack.z;
+
 		return Result.pack;
 	}
 
@@ -805,6 +873,7 @@ namespace detail
 		vec3 const ScaleFactor(1.f / 7.f, 1.f / 7.f, 1.f / 3.f);
 		detail::u3u3u2 Unpack;
 		Unpack.pack = v;
+
 		return vec3(Unpack.data.x, Unpack.data.y, Unpack.data.z) * ScaleFactor;
 	}
 
@@ -812,6 +881,7 @@ namespace detail
 	{
 		int16 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -819,6 +889,7 @@ namespace detail
 	{
 		i8vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -826,6 +897,7 @@ namespace detail
 	{
 		uint16 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -833,6 +905,7 @@ namespace detail
 	{
 		u8vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -840,6 +913,7 @@ namespace detail
 	{
 		int32 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -847,6 +921,7 @@ namespace detail
 	{
 		i8vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -854,6 +929,7 @@ namespace detail
 	{
 		uint32 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -861,6 +937,7 @@ namespace detail
 	{
 		u8vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -868,6 +945,7 @@ namespace detail
 	{
 		int Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -875,6 +953,7 @@ namespace detail
 	{
 		i16vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -882,6 +961,7 @@ namespace detail
 	{
 		int64 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -889,6 +969,7 @@ namespace detail
 	{
 		i16vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -896,6 +977,7 @@ namespace detail
 	{
 		uint Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -903,6 +985,7 @@ namespace detail
 	{
 		u16vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -910,6 +993,7 @@ namespace detail
 	{
 		uint64 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -917,6 +1001,7 @@ namespace detail
 	{
 		u16vec4 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -924,6 +1009,7 @@ namespace detail
 	{
 		int64 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -931,6 +1017,7 @@ namespace detail
 	{
 		i32vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 
@@ -938,6 +1025,7 @@ namespace detail
 	{
 		uint64 Pack = 0;
 		memcpy(&Pack, &v, sizeof(Pack));
+
 		return Pack;
 	}
 
@@ -945,6 +1033,7 @@ namespace detail
 	{
 		u32vec2 Unpack;
 		memcpy(&Unpack, &p, sizeof(Unpack));
+
 		return Unpack;
 	}
 }//namespace glm

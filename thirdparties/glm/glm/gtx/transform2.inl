@@ -7,6 +7,7 @@ namespace glm
 	{
 		mat<3, 3, T, Q> r(1);
 		r[1][0] = s;
+
 		return m * r;
 	}
 
@@ -15,6 +16,7 @@ namespace glm
 	{
 		mat<3, 3, T, Q> r(1);
 		r[0][1] = s;
+
 		return m * r;
 	}
 
@@ -24,6 +26,7 @@ namespace glm
 		mat<4, 4, T, Q> r(1);
 		r[0][1] = s;
 		r[0][2] = t;
+
 		return m * r;
 	}
 
@@ -33,6 +36,7 @@ namespace glm
 		mat<4, 4, T, Q> r(1);
 		r[1][0] = s;
 		r[1][2] = t;
+
 		return m * r;
 	}
 
@@ -42,6 +46,7 @@ namespace glm
 		mat<4, 4, T, Q> r(1);
 		r[2][0] = s;
 		r[2][1] = t;
+
 		return m * r;
 	}
 
@@ -53,6 +58,7 @@ namespace glm
 		r[0][1] = -static_cast<T>(2) * normal.x * normal.y;
 		r[1][0] = -static_cast<T>(2) * normal.x * normal.y;
 		r[1][1] = static_cast<T>(1) - static_cast<T>(2) * normal.y * normal.y;
+
 		return m * r;
 	}
 
@@ -71,6 +77,7 @@ namespace glm
 		r[2][0] = -static_cast<T>(2) * normal.x * normal.z;
 		r[2][1] = -static_cast<T>(2) * normal.y * normal.z;
 		r[2][2] = static_cast<T>(1) - static_cast<T>(2) * normal.z * normal.z;
+
 		return m * r;
 	}
 
@@ -84,6 +91,7 @@ namespace glm
 		r[0][1] = - normal.x * normal.y;
 		r[1][0] = - normal.x * normal.y;
 		r[1][1] = static_cast<T>(1) - normal.y * normal.y;
+
 		return m * r;
 	}
 
@@ -102,6 +110,7 @@ namespace glm
 		r[2][0] = - normal.x * normal.z;
 		r[2][1] = - normal.y * normal.z;
 		r[2][2] = static_cast<T>(1) - normal.z * normal.z;
+
 		return m * r;
 	}
 
@@ -113,12 +122,14 @@ namespace glm
 		result[0][0] = scale;
 		result[1][1] = scale;
 		result[2][2] = scale;
+
 		return result;
 	}
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, Q> scaleBias(mat<4, 4, T, Q> const& m, T scale, T bias)
 	{
+
 		return m * scaleBias<T, Q>(scale, bias);
 	}
 }//namespace glm

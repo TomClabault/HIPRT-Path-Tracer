@@ -26,6 +26,7 @@ namespace detail
 		GLM_CONSTEXPR float_t& operator=(float_t const& x)
 		{
 			f = x.f;
+
 			return *this;
 		}
 
@@ -49,6 +50,7 @@ namespace detail
 		GLM_CONSTEXPR float_t& operator=(float_t const& x)
 		{
 			f = x.f;
+
 			return *this;
 		}
 

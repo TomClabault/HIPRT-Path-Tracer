@@ -10,6 +10,7 @@ namespace glm
 		vec<3, T, Q> const& normal
 	)
 	{
+
 		return dot(cross(normal, tangent), binormal) > T(0);
 	}
 
@@ -21,6 +22,7 @@ namespace glm
 		vec<3, T, Q> const& normal
 	)
 	{
+
 		return dot(cross(normal, tangent), binormal) < T(0);
 	}
 }//namespace glm

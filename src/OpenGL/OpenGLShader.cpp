@@ -27,26 +27,31 @@ OpenGLShader::OpenGLShader(const char* filepath, ShaderType type, const std::vec
 
 std::string& OpenGLShader::get_source()
 {
+
 	return m_source_code;
 }
 
 const std::string& OpenGLShader::get_source() const
 {
+
 	return m_source_code;
 }
 
 bool OpenGLShader::has_filepath() const
 {
+
 	return m_filepath.length() > 0;
 }
 
 std::string& OpenGLShader::get_path()
 {
+
 	return m_filepath;
 }
 
 const std::string& OpenGLShader::get_path() const
 {
+
 	return m_filepath;
 }
 
@@ -62,11 +67,13 @@ void OpenGLShader::set_source_from_file(const char* filepath)
 
 GLuint OpenGLShader::get_shader() const
 {
+
 	return m_compiled_shader;
 }
 
 OpenGLShader::ShaderType OpenGLShader::get_shader_type() const
 {
+
 	return m_shader_type;
 }
 

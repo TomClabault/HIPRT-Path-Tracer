@@ -8,6 +8,7 @@ namespace glm
 		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_integer, "'isPowerOfTwo' only accept integer inputs");
 
 		vec<L, T, Q> const Result(abs(Value));
+
 		return equal(Result & (Result - vec<L, T, Q>(1)), vec<L, T, Q>(0));
 	}
 

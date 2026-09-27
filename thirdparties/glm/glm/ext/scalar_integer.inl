@@ -8,6 +8,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T)
 		{
+
 			return v;
 		}
 	};
@@ -17,6 +18,7 @@ namespace detail
 	{
 		GLM_FUNC_QUALIFIER static vec<L, T, Q> call(vec<L, T, Q> const& v, T Shift)
 		{
+
 			return v | (v >> Shift);
 		}
 	};
@@ -39,6 +41,7 @@ namespace detail
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 2>::call(v, 8);
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 4>::call(v, 16);
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 8>::call(v, 32);
+
 			return (v + static_cast<T>(1)) * Sign;
 		}
 	};
@@ -59,6 +62,7 @@ namespace detail
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 2>::call(v, 8);
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 4>::call(v, 16);
 			v = compute_ceilShift<L, T, Q, sizeof(T) >= 8>::call(v, 32);
+
 			return v + static_cast<T>(1);
 		}
 	};
@@ -73,8 +77,10 @@ namespace detail
 		GLM_FUNC_QUALIFIER static genType call(genType Source, genType Multiple)
 		{
 			if(Source > genType(0))
+
 				return Source + (Multiple - std::fmod(Source, Multiple));
 			else
+
 				return Source + std::fmod(-Source, Multiple);
 		}
 	};
@@ -86,6 +92,7 @@ namespace detail
 		GLM_FUNC_QUALIFIER static genType call(genType Source, genType Multiple)
 		{
 			genType Tmp = Source - genType(1);
+
 			return Tmp + (Multiple - (Tmp % Multiple));
 		}
 	};
@@ -100,9 +107,11 @@ namespace detail
 			if(Source > genType(0))
 			{
 				genType Tmp = Source - genType(1);
+
 				return Tmp + (Multiple - (Tmp % Multiple));
 			}
 			else
+
 				return Source + (-Source % Multiple);
 		}
 	};
@@ -117,8 +126,10 @@ namespace detail
 		GLM_FUNC_QUALIFIER static genType call(genType Source, genType Multiple)
 		{
 			if(Source >= genType(0))
+
 				return Source - std::fmod(Source, Multiple);
 			else
+
 				return Source - std::fmod(Source, Multiple) - Multiple;
 		}
 	};
@@ -130,10 +141,12 @@ namespace detail
 		GLM_FUNC_QUALIFIER static genType call(genType Source, genType Multiple)
 		{
 			if(Source >= genType(0))
+
 				return Source - Source % Multiple;
 			else
 			{
 				genType Tmp = Source + genType(1);
+
 				return Tmp - Tmp % Multiple - Multiple;
 			}
 		}
@@ -146,10 +159,12 @@ namespace detail
 		GLM_FUNC_QUALIFIER static genType call(genType Source, genType Multiple)
 		{
 			if(Source >= genType(0))
+
 				return Source - Source % Multiple;
 			else
 			{
 				genType Tmp = Source + genType(1);
+
 				return Tmp - Tmp % Multiple - Multiple;
 			}
 		}
@@ -162,6 +177,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<genIUType>::is_integer, "'isPowerOfTwo' only accept integer inputs");
 
 		genIUType const Result = glm::abs(Value);
+
 		return !(Result & (Result - 1));
 	}
 
@@ -211,6 +227,7 @@ namespace detail
 		GLM_STATIC_ASSERT(std::numeric_limits<genIUType>::is_integer, "'findNSB' only accept integer inputs");
 
 		if(bitCount(x) < significantBitCount)
+
 			return -1;
 
 		genIUType const One = static_cast<genIUType>(1);

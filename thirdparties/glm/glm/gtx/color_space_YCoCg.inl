@@ -12,6 +12,7 @@ namespace glm
 		result.x/*Y */ =   rgbColor.r / T(4) + rgbColor.g / T(2) + rgbColor.b / T(4);
 		result.y/*Co*/ =   rgbColor.r / T(2) + rgbColor.g * T(0) - rgbColor.b / T(2);
 		result.z/*Cg*/ = - rgbColor.r / T(4) + rgbColor.g / T(2) - rgbColor.b / T(4);
+
 		return result;
 	}
 
@@ -25,6 +26,7 @@ namespace glm
 		result.r = YCoCgColor.x + YCoCgColor.y - YCoCgColor.z;
 		result.g = YCoCgColor.x				   + YCoCgColor.z;
 		result.b = YCoCgColor.x - YCoCgColor.y - YCoCgColor.z;
+
 		return result;
 	}
 
@@ -40,6 +42,7 @@ namespace glm
 			result.x/*Y */ = rgbColor.g * static_cast<T>(0.5) + (rgbColor.r + rgbColor.b) * static_cast<T>(0.25);
 			result.y/*Co*/ = rgbColor.r - rgbColor.b;
 			result.z/*Cg*/ = rgbColor.g - (rgbColor.r + rgbColor.b) * static_cast<T>(0.5);
+
 			return result;
 		}
 
@@ -53,6 +56,7 @@ namespace glm
 			result.g = YCoCgRColor.z + tmp;
 			result.b = tmp - (YCoCgRColor.y * static_cast<T>(0.5));
 			result.r = result.b + YCoCgRColor.y;
+
 			return result;
 		}
 	};
@@ -70,6 +74,7 @@ namespace glm
 			T tmp = rgbColor.b + (result.y >> 1);
 			result.z/*Cg*/ = rgbColor.g - tmp;
 			result.x/*Y */ = tmp + (result.z >> 1);
+
 			return result;
 		}
 
@@ -83,6 +88,7 @@ namespace glm
 			result.g = YCoCgRColor.z + tmp;
 			result.b = tmp - (YCoCgRColor.y >> 1);
 			result.r = result.b + YCoCgRColor.y;
+
 			return result;
 		}
 	};
@@ -93,6 +99,7 @@ namespace glm
 		vec<3, T, Q> const& rgbColor
 	)
 	{
+
 		return compute_YCoCgR<T, Q, std::numeric_limits<T>::is_integer>::rgb2YCoCgR(rgbColor);
 	}
 
@@ -102,6 +109,7 @@ namespace glm
 		vec<3, T, Q> const& YCoCgRColor
 	)
 	{
+
 		return compute_YCoCgR<T, Q, std::numeric_limits<T>::is_integer>::YCoCgR2rgb(YCoCgRColor);
 	}
 }//namespace glm

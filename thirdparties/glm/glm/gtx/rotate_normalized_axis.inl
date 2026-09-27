@@ -36,6 +36,7 @@ namespace glm
 		Result[1] = m[0] * Rotate[1][0] + m[1] * Rotate[1][1] + m[2] * Rotate[1][2];
 		Result[2] = m[0] * Rotate[2][0] + m[1] * Rotate[2][1] + m[2] * Rotate[2][2];
 		Result[3] = m[3];
+
 		return Result;
 	}
 
