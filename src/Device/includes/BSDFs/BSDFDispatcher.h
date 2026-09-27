@@ -9,6 +9,7 @@
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/BSDFs/OrenNayar.h"
 #include "Device/includes/BSDFs/Principled.h"
+#include "Device/includes/BSDFs/PrincipledSpecialized.h"
 #include "Device/includes/RayPayload.h"
 #include "HostDeviceCommon/Material/MaterialTraits.h"
 
