@@ -18,9 +18,9 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_metallic_eval(const HIPRT
 	float incident_medium_ior		  = principled_get_incident_medium_ior(render_data, bsdf_context.volume_state);
 
 	float metallic_weight;
-	PrincipledLobeUserWeights controls;
-	controls.metallic			  = 1.0f;
-	PrincipledLobeWeights weights = compute_principled_lobe_weights(controls, !bsdf_context.volume_state.inside_material);
+	PrincipledLobeUserWeights user_weights;
+	user_weights.metallic		  = 1.0f;
+	PrincipledLobeWeights weights = compute_principled_lobe_weights(user_weights, !bsdf_context.volume_state.inside_material);
 	metallic_weight				  = weights.metallic_first;
 
 	ColorRGB32F contribution = principled_metallic_eval(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
