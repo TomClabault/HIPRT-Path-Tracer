@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H
 
-#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/LightSampling/RIS/RISReservoir.h"

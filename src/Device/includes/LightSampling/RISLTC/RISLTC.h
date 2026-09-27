@@ -7,7 +7,7 @@
 #define DEVICE_INLCUDES_LIGHT_SAMPLING_RISLTC_RISLTC_H
 
 #include "Device/includes/BSDFs/BSDFContext.h"
-#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTCReservoir.h"

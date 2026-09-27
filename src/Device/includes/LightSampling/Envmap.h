@@ -6,7 +6,7 @@
 #ifndef DEVICE_ENVMAP_H
 #define DEVICE_ENVMAP_H
 
-#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"

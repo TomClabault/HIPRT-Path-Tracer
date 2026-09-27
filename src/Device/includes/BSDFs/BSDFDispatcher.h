@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_DISPATCHER_H
-#define DEVICE_DISPATCHER_H
+#ifndef DEVICE_BSDF_DISPATCHER_H
+#define DEVICE_BSDF_DISPATCHER_H
 
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/BSDFs/OrenNayar.h"

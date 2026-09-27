@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_ATS_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_ATS_SAMPLING_H
 
-#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightSampleInformation.h"
