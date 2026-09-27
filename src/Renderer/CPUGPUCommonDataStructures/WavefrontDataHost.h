@@ -39,7 +39,8 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 float,
 											 float,
 											 float,
-											 unsigned int>;
+											 unsigned int,
+											 WavefrontResolvedMaterialClassification>;
 
 enum WavefrontDataHostBuffers
 {
@@ -71,6 +72,7 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_PATH_RESOLVED_MATERIAL_SHEEN,
 	WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION,
 	WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS,
+	WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS,
 };
 
 template <template <typename> typename DataContainer>
@@ -88,7 +90,8 @@ struct WavefrontDataHost
 								  WAVEFRONT_MATERIAL_FAMILY_CURSORS, WAVEFRONT_PATH_MATERIAL_FAMILY_TAGS, WAVEFRONT_MATERIAL_FAMILY_INDICES,
 								  WAVEFRONT_MATERIAL_FAMILY_OFFSETS, WAVEFRONT_PATH_RESOLVED_MATERIAL_ROUGHNESS, WAVEFRONT_PATH_RESOLVED_MATERIAL_METALLIC,
 								  WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR, WAVEFRONT_PATH_RESOLVED_MATERIAL_COAT, WAVEFRONT_PATH_RESOLVED_MATERIAL_SHEEN,
-								  WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION, WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS });
+								  WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION, WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS,
+								  WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS });
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_VOLUME_STATE_BYTES>(path_capacity * ray_volume_state_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES>(path_capacity * nee_deferred_mis_context_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_QUEUE_COUNT_0>(1);
@@ -109,6 +112,8 @@ struct WavefrontDataHost
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_SHEEN>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>(resolved_control_count);
+		std::size_t current_material_classification_count = allocate_resolved_material_control_cache && allocate_material_family_routing ? path_capacity : 0;
+		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS>(current_material_classification_count);
 		m_resolved_material_control_cache_allocated = allocate_resolved_material_control_cache;
 		m_material_family_routing_allocated			= allocate_material_family_routing;
 	}
@@ -183,6 +188,9 @@ struct WavefrontDataHost
 			wavefront_data_device.path_resolved_material_control_validity_masks =
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>();
 		}
+		if (m_resolved_material_control_cache_allocated && m_material_family_routing_allocated)
+			wavefront_data_device.path_current_material_classifications =
+				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS>();
 
 		wavefront_data_device.path_queues[0]								= m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_0>();
 		wavefront_data_device.path_queues[1]								= m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_QUEUE_1>();

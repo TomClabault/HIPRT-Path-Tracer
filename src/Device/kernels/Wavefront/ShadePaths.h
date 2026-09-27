@@ -23,8 +23,9 @@ inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_coun
 {
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(WAVEFRONT_SHADE_RENDER_DATA);
-	unsigned int queue_slot		 = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int queue_stride	 = gridDim.x * blockDim.x;
+
+	unsigned int queue_slot	  = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int queue_stride = gridDim.x * blockDim.x;
 #else  // #ifdef __KERNELCC__
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__

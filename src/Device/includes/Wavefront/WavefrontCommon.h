@@ -68,6 +68,59 @@ HIPRT_DEVICE ResolvedMaterialUserControlsCache wavefront_load_resolved_material_
 	return resolved_user_controls;
 }
 
+HIPRT_DEVICE void wavefront_store_current_material_classification(HIPRTRenderData& render_data,
+																  unsigned int path_index,
+																  int material_index,
+																  const PrincipledMaterialClassificationInputs& classification_inputs,
+																  const ResolvedMaterialUserControlsCache& resolved_user_controls)
+{
+	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+	if (wavefront_data.path_current_material_classifications == nullptr)
+		return;
+
+	WavefrontResolvedMaterialClassification current_classification;
+	current_classification.roughness = render_data.buffers.materials_buffer_soa.get_roughness(material_index);
+	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
+		current_classification.roughness = resolved_user_controls.roughness;
+	current_classification.metallic				 = classification_inputs.lobe_user_weights.metallic;
+	current_classification.specular				 = classification_inputs.lobe_user_weights.specular;
+	current_classification.coat					 = classification_inputs.lobe_user_weights.coat;
+	current_classification.sheen				 = classification_inputs.lobe_user_weights.sheen;
+	current_classification.specular_transmission = classification_inputs.lobe_user_weights.specular_transmission;
+	current_classification.dispersion_scale		 = classification_inputs.dispersion_scale;
+
+	wavefront_data.path_current_material_classifications[path_index] = current_classification;
+}
+
+HIPRT_DEVICE bool wavefront_load_current_material_classification(const HIPRTRenderData& render_data,
+																 unsigned int path_index,
+																 ResolvedMaterialUserControlsCache& out_resolved_user_controls,
+																 PrincipledMaterialClassificationInputs& out_classification_inputs)
+{
+	const WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+	if (wavefront_data.path_current_material_classifications == nullptr)
+		return false;
+
+	const WavefrontResolvedMaterialClassification& current_classification = wavefront_data.path_current_material_classifications[path_index];
+	out_resolved_user_controls.roughness								  = current_classification.roughness;
+	out_resolved_user_controls.metallic									  = current_classification.metallic;
+	out_resolved_user_controls.specular									  = current_classification.specular;
+	out_resolved_user_controls.coat										  = current_classification.coat;
+	out_resolved_user_controls.sheen									  = current_classification.sheen;
+	out_resolved_user_controls.specular_transmission					  = current_classification.specular_transmission;
+	out_resolved_user_controls.validity_mask							  = ResolvedMaterialUserControlRoughness | ResolvedMaterialUserControlMetallic |
+											   ResolvedMaterialUserControlSpecular | ResolvedMaterialUserControlCoat | ResolvedMaterialUserControlSheen |
+											   ResolvedMaterialUserControlSpecularTransmission;
+
+	out_classification_inputs.lobe_user_weights.metallic			  = current_classification.metallic;
+	out_classification_inputs.lobe_user_weights.specular			  = current_classification.specular;
+	out_classification_inputs.lobe_user_weights.coat				  = current_classification.coat;
+	out_classification_inputs.lobe_user_weights.specular_transmission = current_classification.specular_transmission;
+	out_classification_inputs.dispersion_scale						  = current_classification.dispersion_scale;
+
+	return true;
+}
+
 HIPRT_DEVICE void wavefront_load_secondary_material_state(
 	HIPRTRenderData& render_data, unsigned int path_index, RayPayloadCommon& ray_payload, HitInfo& closest_hit_info, bool& intersection_found)
 {

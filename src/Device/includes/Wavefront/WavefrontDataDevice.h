@@ -18,6 +18,20 @@ static constexpr unsigned int WAVEFRONT_PATH_STATE_INTERSECTION_FOUND = 1u;
 static constexpr unsigned int WAVEFRONT_PATH_STATE_TERMINAL			  = 2u;
 static constexpr unsigned int WAVEFRONT_COMPLETION_QUEUE_INDEX		  = 2u;
 
+// Current-hit routing output. Previous-vertex controls remain in the resolved-control buffers until deferred MIS completes in Shade.
+struct WavefrontResolvedMaterialClassification
+{
+	float roughness				= 0.0f;
+	float metallic				= 0.0f;
+	float specular				= 0.0f;
+	float coat					= 0.0f;
+	float sheen					= 0.0f;
+	float specular_transmission = 0.0f;
+	float dispersion_scale		= 0.0f;
+};
+static_assert(sizeof(WavefrontResolvedMaterialClassification) == sizeof(float) * 7,
+			  "Wavefront material classification cache must remain a compact seven-float record");
+
 struct WavefrontDataDevice
 {
 	ColorRGB32F* path_throughputs						= nullptr;
@@ -27,23 +41,24 @@ struct WavefrontDataDevice
 	int* path_bounces					= nullptr;
 	float* path_accumulated_roughnesses = nullptr;
 
-	HitInfo* path_closest_hit_infos								= nullptr;
-	unsigned int* path_state_flags								= nullptr;
-	unsigned int* path_rng_states								= nullptr;
-	RayVolumeState* path_volume_states							= nullptr;
-	void* path_nee_deferred_mis_contexts						= nullptr;
-	unsigned int* path_material_family_tags						= nullptr;
-	unsigned int* material_family_indices						= nullptr;
-	AtomicType<unsigned int>* material_family_counts			= nullptr;
-	unsigned int* material_family_offsets						= nullptr;
-	AtomicType<unsigned int>* material_family_cursors			= nullptr;
-	float* path_resolved_material_roughness						= nullptr;
-	float* path_resolved_material_metallic						= nullptr;
-	float* path_resolved_material_specular						= nullptr;
-	float* path_resolved_material_coat							= nullptr;
-	float* path_resolved_material_sheen							= nullptr;
-	float* path_resolved_material_specular_transmission			= nullptr;
-	unsigned int* path_resolved_material_control_validity_masks = nullptr;
+	HitInfo* path_closest_hit_infos												   = nullptr;
+	unsigned int* path_state_flags												   = nullptr;
+	unsigned int* path_rng_states												   = nullptr;
+	RayVolumeState* path_volume_states											   = nullptr;
+	void* path_nee_deferred_mis_contexts										   = nullptr;
+	unsigned int* path_material_family_tags										   = nullptr;
+	unsigned int* material_family_indices										   = nullptr;
+	AtomicType<unsigned int>* material_family_counts							   = nullptr;
+	unsigned int* material_family_offsets										   = nullptr;
+	AtomicType<unsigned int>* material_family_cursors							   = nullptr;
+	float* path_resolved_material_roughness										   = nullptr;
+	float* path_resolved_material_metallic										   = nullptr;
+	float* path_resolved_material_specular										   = nullptr;
+	float* path_resolved_material_coat											   = nullptr;
+	float* path_resolved_material_sheen											   = nullptr;
+	float* path_resolved_material_specular_transmission							   = nullptr;
+	unsigned int* path_resolved_material_control_validity_masks					   = nullptr;
+	WavefrontResolvedMaterialClassification* path_current_material_classifications = nullptr;
 
 	unsigned int* path_queues[3]			  = { nullptr, nullptr, nullptr };
 	AtomicType<unsigned int>* queue_counts[3] = { nullptr, nullptr, nullptr };

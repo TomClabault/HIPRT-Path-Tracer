@@ -245,17 +245,24 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 		{
 			ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
 			ray_payload.next_ray_state = RayState::MISSED;
-			int x					   = static_cast<int>(pixel_index % render_data.render_settings.render_resolution.x);
-			int y					   = static_cast<int>(pixel_index / render_data.render_settings.render_resolution.x);
+
+			int x = static_cast<int>(pixel_index % render_data.render_settings.render_resolution.x);
+			int y = static_cast<int>(pixel_index / render_data.render_settings.render_resolution.x);
 
 			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
+
 			return;
 		}
 
 		current_material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-		classification_inputs  = load_material_classification_inputs(render_data, current_material_index, closest_hit_info.texcoords, resolved_user_controls);
-		wavefront_store_resolved_material_user_controls(render_data, pixel_index, resolved_user_controls);
+		bool classification_cache_loaded =
+			wavefront_load_current_material_classification(render_data, pixel_index, resolved_user_controls, classification_inputs);
+		if (!classification_cache_loaded)
+			classification_inputs =
+				load_material_classification_inputs(render_data, current_material_index, closest_hit_info.texcoords, resolved_user_controls);
 		surface_transport_metadata = load_surface_transport_metadata(render_data, current_material_index, classification_inputs);
+
+		wavefront_store_resolved_material_user_controls(render_data, pixel_index, resolved_user_controls);
 		wavefront_initialize_secondary_hit_material(ray_payload, surface_transport_metadata, random_number_generator);
 	}
 	else if (intersection_found)
@@ -279,6 +286,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 			ray_payload.next_ray_state = RayState::MISSED;
 
 			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
+
 			return;
 		}
 	}

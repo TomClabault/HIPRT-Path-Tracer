@@ -29,6 +29,9 @@ HIPRT_DEVICE static void wavefront_classify_secondary_material_family(HIPRTRende
 		PrincipledMaterialClassificationInputs classification_inputs =
 			load_material_classification_inputs(render_data, material_index, closest_hit_info.texcoords, resolved_user_controls);
 		material_family = classify_principled_material(classification_inputs, !wavefront_data.path_volume_states[path_index].inside_material);
+
+		// Keep the current hit separate from the previous vertex controls consumed by deferred MIS at the start of Shade.
+		wavefront_store_current_material_classification(render_data, path_index, material_index, classification_inputs, resolved_user_controls);
 	}
 
 	wavefront_data.path_material_family_tags[path_index] = static_cast<unsigned int>(material_family);
