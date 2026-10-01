@@ -310,6 +310,9 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 	std::deque<std::string> yet_to_process_includes;
 	yet_to_process_includes.push_back(kernel.get_kernel_file_path());
 
+	// HIPRT injects this header internally, outside the kernel's explicit include graph.
+	yet_to_process_includes.push_back(std::string(KERNEL_COMPILER_ADDITIONAL_INCLUDE) + "/hiprt/impl/hiprt_device_impl.h");
+
 	while (!yet_to_process_includes.empty())
 	{
 		std::string current_file = yet_to_process_includes.front();
