@@ -35,6 +35,7 @@ public:
 	static const std::string COMPLETE_DEFERRED_PATHS_SINGLE_METALLIC_KERNEL;
 	static const std::string COMPLETE_DEFERRED_PATHS_SPECULAR_DIFFUSE_KERNEL;
 	static const std::string TRACE_PATHS_KERNEL;
+	static const std::string TRACE_SHADOW_RAYS_KERNEL;
 	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_RESET_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL;
@@ -72,6 +73,7 @@ private:
 	const std::string& get_secondary_shading_kernel_name(unsigned int family_index) const;
 	const std::string& get_deferred_completion_kernel_name(unsigned int family_index) const;
 	std::size_t get_nee_deferred_mis_context_byte_size();
+	unsigned int get_shadow_work_capacity(unsigned int path_capacity) const;
 	bool kernels_ready() const;
 	bool resize_staging_buffers();
 	void free_staging_buffers();

@@ -25,6 +25,7 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 	wavefront_load_secondary_shading_state(render_data, path_index, ray_payload, ray, closest_hit_info);
 
 	Xorshift32Generator random_number_generator(render_data.wavefront_data.path_rng_states[path_index]);
+	WavefrontShadowSink shadow_sink(render_data, path_index, ray_payload.throughput, ray_payload.bounce, WAVEFRONT_SHADOW_PHASE_DEFERRED_COMPLETION);
 	NEEDeferredMISContext nee_deferred_MIS_context;
 	wavefront_load_nee_deferred_mis_context(render_data, path_index, nee_deferred_MIS_context);
 
@@ -44,24 +45,38 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 	if (nee_deferred_MIS_context.last_primary_gbuffer_path_index == NEE_DEFERRED_INVALID_PATH_INDEX)
 		previous_resolved_user_controls = wavefront_load_resolved_material_user_controls(render_data, path_index, previous_resolved_user_controls);
 
+#if WavefrontDeferNEEShadowTraversal == KERNEL_OPTION_TRUE
+	ray_payload.ray_color += do_deferred_NEE_MIS<PreviousBSDFMaterialType, NEE_SHADOW_WAVEFRONT>(
+		render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission, nee_deferred_MIS_context, previous_resolved_user_controls,
+		random_number_generator, &shadow_sink);
+#else
 	ray_payload.ray_color += do_deferred_NEE_MIS<PreviousBSDFMaterialType>(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission,
 																		   nee_deferred_MIS_context, previous_resolved_user_controls, random_number_generator);
+#endif
 #else
 	ray_payload.ray_color += do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission, nee_deferred_MIS_context,
 												 random_number_generator);
 #endif
 
+	shadow_sink.finish_emission();
+
 	int x = static_cast<int>(path_index % render_data.render_settings.render_resolution.x);
 	int y = static_cast<int>(path_index / render_data.render_settings.render_resolution.x);
 	if (terminal_path)
 	{
-		wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
+		if (shadow_sink.has_work())
+			shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
+		else
+			wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
 		return;
 	}
 
 	ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, path_index);
 	ray_payload.next_ray_state = RayState::MISSED;
-	wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
+	if (shadow_sink.has_work())
+		shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
+	else
+		wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
 }
 
 #ifdef __KERNELCC__

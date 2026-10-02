@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_DATA_DEVICE_H
 #define DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_DATA_DEVICE_H
 
+#include "Device/includes/Wavefront/WavefrontShadowData.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/RayVolumeState.h"
 #include "HostDeviceCommon/AtomicType.h"
@@ -60,6 +61,19 @@ struct WavefrontDataDevice
 
 	unsigned int* path_queues[3]			  = { nullptr, nullptr, nullptr };
 	AtomicType<unsigned int>* queue_counts[3] = { nullptr, nullptr, nullptr };
+
+	ColorRGB32F* path_shadow_throughputs						= nullptr;
+	unsigned int* path_shadow_flags								= nullptr;
+	unsigned int* path_pending_finalize_ray_states				= nullptr;
+	AtomicType<unsigned int>* path_remaining_shadow_work_counts = nullptr;
+
+	WavefrontShadowWork* shadow_work_items										 = nullptr;
+	AtomicType<unsigned int>* shadow_work_count									 = nullptr;
+	AtomicType<unsigned int>* shadow_queue_overflow_count						 = nullptr;
+	WavefrontLearningToClusterShadowSidecar* learning_to_cluster_shadow_sidecars = nullptr;
+	WavefrontNISMLShadowSidecar* nisml_shadow_sidecars							 = nullptr;
+
+	unsigned int shadow_work_capacity = 0;
 
 	unsigned int path_capacity					 = 0;
 	unsigned int material_family_routing_enabled = 0;

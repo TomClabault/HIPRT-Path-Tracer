@@ -10,6 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/Wavefront/WavefrontShadow.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "HostDeviceCommon/Color.h"
@@ -171,13 +172,14 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 	return envmap_radiance;
 }
 
-template <typename BsdfMaterialType>
+template <typename BsdfMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data,
 														 RayPayloadCommon& ray_payload,
 														 BsdfMaterialType& bsdf_material,
 														 HitInfo& closest_hit_info,
 														 const float3_t& view_direction,
-														 Xorshift32Generator& random_number_generator)
+														 Xorshift32Generator& random_number_generator,
+														 WavefrontShadowSink* shadow_sink = nullptr)
 {
 	float envmap_pdf_solid_angle;
 	float3_t sampled_direction;
@@ -194,13 +196,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 			shadow_ray.origin	 = closest_hit_info.inter_point;
 			shadow_ray.direction = sampled_direction;
 
-			NEEPlusPlusContext nee_plus_plus_context;
-			nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
-			nee_plus_plus_context.point_on_light = sampled_direction;
-			nee_plus_plus_context.envmap		 = true;
-			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
-															   random_number_generator);
-			if (!in_shadow)
+			if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 			{
 				float bsdf_pdf;
 				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
@@ -217,7 +213,37 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				float mis_weight = 1.0f;
 #endif
 
-				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
+				ColorRGB32F contribution_if_visible = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
+				if (!contribution_if_visible.is_black())
+					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction,
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW);
+			}
+			else
+			{
+				NEEPlusPlusContext nee_plus_plus_context;
+				nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+				nee_plus_plus_context.point_on_light = sampled_direction;
+				nee_plus_plus_context.envmap		 = true;
+				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
+																   random_number_generator);
+				if (!in_shadow)
+				{
+					float bsdf_pdf;
+					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+					BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+																sampled_direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
+																ray_payload.accumulated_roughness,
+																EnvmapSamplingDoBSDFMIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
+																						: MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+#if EnvmapSamplingDoBSDFMIS
+					float mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
+#else
+					float mis_weight = 1.0f;
+#endif
+					envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
+				}
 			}
 		}
 	}
@@ -242,15 +268,31 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 		shadow_ray.origin	 = closest_hit_info.inter_point;
 		shadow_ray.direction = bsdf_sampled_dir;
 
-		bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
-		if (!in_shadow)
+		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 		{
 			float envmap_eval_pdf;
 			ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
 			if (envmap_eval_pdf > 0.0f)
 			{
-				float mis_weight	  = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
-				bsdf_mis_contribution = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
+				float mis_weight					= balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+				ColorRGB32F contribution_if_visible = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
+				if (!contribution_if_visible.is_black())
+					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, bsdf_sampled_dir,
+									  contribution_if_visible, WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW);
+			}
+		}
+		else
+		{
+			bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+			if (!in_shadow)
+			{
+				float envmap_eval_pdf;
+				ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
+				if (envmap_eval_pdf > 0.0f)
+				{
+					float mis_weight	  = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+					bsdf_mis_contribution = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
+				}
 			}
 		}
 	}
@@ -261,13 +303,14 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 #endif // #if EnvmapSamplingDoBSDFMIS
 }
 
-template <typename BsdfMaterialType>
+template <typename BsdfMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 												RayPayloadCommon& ray_payload,
 												BsdfMaterialType& bsdf_material,
 												HitInfo& closest_hit_info,
 												const float3_t& view_direction,
-												Xorshift32Generator& random_number_generator)
+												Xorshift32Generator& random_number_generator,
+												WavefrontShadowSink* shadow_sink = nullptr)
 {
 	const WorldSettings& world_settings = render_data.world_settings;
 
@@ -282,7 +325,8 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	return ColorRGB32F(0.0f);
 #else
-	return sample_environment_map_with_mis(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, random_number_generator);
+	return sample_environment_map_with_mis<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
+																		  random_number_generator, shadow_sink);
 #endif
 }
 

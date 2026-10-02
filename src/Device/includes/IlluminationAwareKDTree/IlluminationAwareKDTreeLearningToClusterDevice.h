@@ -141,7 +141,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING	  = 1u;
 	static constexpr unsigned int REPRESENTATIVE_SHADING_CONTEXT_STATE_READY	  = 2u;
 
-	HIPRT_DEVICE void append_learning_to_cluster_training_sample(const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample);
+	HIPRT_DEVICE unsigned int append_learning_to_cluster_training_sample(const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample);
 
 	HIPRT_DEVICE unsigned int get_light_cluster_offset(unsigned int lightcut_index, unsigned int slot) const
 	{

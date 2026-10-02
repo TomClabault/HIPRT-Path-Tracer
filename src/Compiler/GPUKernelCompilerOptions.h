@@ -94,6 +94,7 @@ public:
 
 	static const std::string DIRECT_LIGHT_NEE_ESTIMATOR;
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
+	static const std::string WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL;
 	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS;
 	static const std::string DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY;
 	static const std::string NEE_PLUS_PLUS_LINEAR_PROBING_STEPS;

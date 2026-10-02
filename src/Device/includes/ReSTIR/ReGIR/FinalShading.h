@@ -8,16 +8,52 @@
 
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSamplingReGIR.h"
+#include "Device/includes/Wavefront/WavefrontShadow.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
 template <typename BsdfMaterialType>
+HIPRT_DEVICE ColorRGB32F evaluate_regir_fallback_without_visibility(HIPRTRenderData& render_data,
+																	RayPayload& ray_payload,
+																	BsdfMaterialType& bsdf_material,
+																	const HitInfo& closest_hit_info,
+																	const float3_t& view_direction,
+																	const LightSamplePointInformation& light_sample,
+																	float3_t shadow_direction,
+																	float distance_to_light,
+																	float dot_light_source,
+																	Xorshift32Generator& random_number_generator)
+{
+	float bsdf_pdf;
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
+	MicrofacetRegularization::RegularizationMode regularization_mode = MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS;
+#else
+	MicrofacetRegularization::RegularizationMode regularization_mode = MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
+#endif
+	BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
+												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
+												regularization_mode);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+	if (bsdf_pdf == 0.0f)
+		return ColorRGB32F(0.0f);
+
+	float light_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+	if (!(light_pdf > 0.0f))
+		return ColorRGB32F(0.0f);
+
+	float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
+	return light_sample.emission * cosine_term * bsdf_color / light_pdf / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+}
+
+template <typename BsdfMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 												RayPayload& ray_payload,
 												BsdfMaterialType& bsdf_material,
 												const HitInfo closest_hit_info,
 												const float3_t& view_direction,
-												Xorshift32Generator& random_number_generator)
+												Xorshift32Generator& random_number_generator,
+												WavefrontShadowSink* shadow_sink = nullptr)
 {
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
@@ -50,18 +86,23 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		shadow_ray.origin	 = shadow_ray_origin;
 		shadow_ray.direction = shadow_ray_direction_normalized;
 
-		// NEE++ context for the shadow ray
-		NEEPlusPlusContext nee_plus_plus_context;
-		nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-
-		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator);
-
-		if (!in_shadow)
-			return selected_sample_radiance / light_sample.area_measure_pdf;
-		else
+		ColorRGB32F contribution_if_visible = selected_sample_radiance / light_sample.area_measure_pdf;
+		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
+		{
+			shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
+							  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
 			return ColorRGB32F(0.0f);
+		}
+		else
+		{
+			NEEPlusPlusContext nee_plus_plus_context;
+			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+															   nee_plus_plus_context, random_number_generator);
+
+			return in_shadow ? ColorRGB32F(0.0f) : contribution_if_visible;
+		}
 #endif // #if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
 	}
 	else
@@ -110,45 +151,29 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 
 			if (dot_light_source > 0.0f)
 			{
-				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-																   nee_plus_plus_context, random_number_generator);
-
-				if (!in_shadow)
+				if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 				{
-					float bsdf_pdf;
-
-					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-																shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
-																ray_payload.accumulated_roughness,
-																MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
-					BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-																shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, bsdf_material,
-																ray_payload.accumulated_roughness,
-																MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-
-					if (bsdf_pdf != 0.0f)
-					{
-						// Conversion to solid angle from surface area measure
-						float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-						if (light_sample_solid_angle_pdf > 0.0f)
-						{
-							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance += light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf;
-
-							// Just a CPU-only sanity check
-							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
-						}
-					}
+					ColorRGB32F contribution_if_visible =
+						evaluate_regir_fallback_without_visibility(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample,
+																   shadow_ray.direction, distance_to_light, dot_light_source, random_number_generator);
+					if (!contribution_if_visible.is_black())
+						shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index,
+										  light_sample.point_on_light, contribution_if_visible,
+										  WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
+				}
+				else
+				{
+					bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+																	   nee_plus_plus_context, random_number_generator);
+					if (!in_shadow)
+						light_source_radiance +=
+							evaluate_regir_fallback_without_visibility(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample,
+																	   shadow_ray.direction, distance_to_light, dot_light_source, random_number_generator);
 				}
 			}
 		}
 
-		return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
+		return light_source_radiance;
 	}
 
 	return ColorRGB32F(0.0f);

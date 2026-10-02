@@ -94,6 +94,13 @@
 #endif // #ifndef DirectLightSamplingStrategy
 
 /**
+ * Moves boolean direct-light visibility traversal from the wavefront Shade kernels into a dedicated shadow pass.
+ */
+#ifndef WavefrontDeferNEEShadowTraversal
+#define WavefrontDeferNEEShadowTraversal KERNEL_OPTION_TRUE
+#endif // #ifndef WavefrontDeferNEEShadowTraversal
+
+/**
  * What direct lighting sampling strategy to use.
  *
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):

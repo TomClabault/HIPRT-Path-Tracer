@@ -84,7 +84,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		float first_denominator	 = first_count * first_count * first_count;
 		float second_denominator = second_count * second_count * second_count;
 		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
-								   second_coefficient * second_coefficient * second_numerator / second_denominator;
+						 second_coefficient * second_coefficient * second_numerator / second_denominator;
 		if (!hippt::is_finite(variance))
 			return false;
 		if (variance <= 1.0e-30f)
@@ -317,29 +317,30 @@ struct IlluminationAwareKDTreeCoreDevice
 		}
 	}
 
-	HIPRT_DEVICE void append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
+	HIPRT_DEVICE unsigned int append_direct_illumination_training_sample(const IlluminationAwareKDTreeDirectIlluminationTrainingSample& sample)
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
-		return;
+		return training_sample_capacity;
 #elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
-		return;
+		return training_sample_capacity;
 #endif
 
 		// Invalid samples must not consume buffer space or affect b0.
 		if (!sample.valid_for_spatial_training)
-			return;
+			return training_sample_capacity;
 
 		unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 		// The counter may exceed capacity, but memory must never be written
 		// outside the allocated buffer.
 		if (sample_index >= training_sample_capacity)
-			return;
+			return training_sample_capacity;
 
 		sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
 		if (sample_index >= training_sample_capacity)
-			return;
+			return training_sample_capacity;
 
 		training_samples[sample_index] = sample;
+		return sample_index;
 	}
 
 	HIPRT_DEVICE void atomic_add_training_statistic(float* address, float increment)

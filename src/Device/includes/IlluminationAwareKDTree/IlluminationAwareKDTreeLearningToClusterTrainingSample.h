@@ -31,20 +31,20 @@ struct IlluminationAwareKDTreeLearningToClusterTrainingSample
 	unsigned int valid_for_lightcut = false;
 };
 
-HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::append_learning_to_cluster_training_sample(
+HIPRT_DEVICE HIPRT_INLINE unsigned int IlluminationAwareKDTreeLearningToClusterDevice::append_learning_to_cluster_training_sample(
 	const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample)
 {
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG || !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
-	return;
+	return training_sample_capacity;
 #endif
 
 	unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 	if (sample_index >= training_sample_capacity)
-		return;
+		return training_sample_capacity;
 
 	sample_index = hippt::atomic_fetch_add(training_sample_count, 1u);
 	if (sample_index >= training_sample_capacity)
-		return;
+		return training_sample_capacity;
 
 	training_samples[sample_index]						  = sample;
 	training_samples_soa.positions[sample_index]		  = sample.position;
@@ -56,6 +56,8 @@ HIPRT_DEVICE HIPRT_INLINE void IlluminationAwareKDTreeLearningToClusterDevice::a
 	training_samples_soa.cached_guiding_node_indices[sample_index] = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	training_samples_soa.cached_normal_faces[sample_index]		   = 0u;
 	training_samples_soa.cached_lightcut_set_indices[sample_index] = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
+	return sample_index;
 }
 
 #endif // #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_LEARNING_TO_CLUSTER_TRAINING_SAMPLE_H

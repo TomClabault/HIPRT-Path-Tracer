@@ -23,6 +23,7 @@ const std::string WavefrontRenderPass::SHADE_PATHS_GLASS_KERNEL							 = "Wavefr
 const std::string WavefrontRenderPass::SHADE_PATHS_SINGLE_METALLIC_KERNEL				 = "Wavefront - Shade Single Metallic Paths";
 const std::string WavefrontRenderPass::SHADE_PATHS_SPECULAR_DIFFUSE_KERNEL				 = "Wavefront - Shade Specular Diffuse Paths";
 const std::string WavefrontRenderPass::TRACE_PATHS_KERNEL								 = "Wavefront - Trace Paths";
+const std::string WavefrontRenderPass::TRACE_SHADOW_RAYS_KERNEL							 = "Wavefront - Trace Shadow Rays";
 const std::string WavefrontRenderPass::NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL				 = "Wavefront - NEE Deferred MIS Context Size";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_RESET_KERNEL				 = "Wavefront - Reset Material Family Routing";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL			 = "Wavefront - Classify Primary Material Families";
@@ -80,6 +81,10 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[TRACE_PATHS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + TRACE_PATHS_KERNEL);
 	m_kernels[TRACE_PATHS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/TracePaths.h");
 	m_kernels[TRACE_PATHS_KERNEL]->set_kernel_function_name("WavefrontTracePaths");
+
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + TRACE_SHADOW_RAYS_KERNEL);
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/TraceShadowRays.h");
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->set_kernel_function_name("WavefrontTraceShadowRays");
 
 	m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL);
 	m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/NEEDeferredMISContextSize.h");
@@ -177,6 +182,8 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	}
 	m_kernels[TRACE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[TRACE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 }
 
 void WavefrontRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -268,6 +275,8 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	*host_pinned_render_data				 = render_data;
 
 	m_kernels[TRACE_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
+	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_SHADOW_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
+																 main_stream);
 
 	int nee_estimator									= compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	WavefrontRoutingConfiguration routing_configuration = get_wavefront_routing_configuration(
@@ -276,6 +285,8 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	bool route_primary_by_material_family  = routing_configuration.route_shading_by_material_family;
 	bool has_deferred_bsdf_sampling		   = routing_configuration.requires_terminal_trace_completion;
 	bool route_deferred_by_material_family = routing_configuration.route_deferred_completion_by_material_family;
+	bool defer_nee_shadow_traversal = compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL) == KERNEL_OPTION_TRUE;
+	bool run_shadow_pass			= defer_nee_shadow_traversal && m_wavefront_data.shadow_work_capacity() > 0;
 	if (route_primary_by_material_family)
 	{
 		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
@@ -314,10 +325,16 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 	unsigned int queue_block_size	   = KernelBlockWidthHeight * KernelBlockWidthHeight;
 	unsigned int wavefront_block_count = std::max(1u, std::min((path_capacity + 63u) / 64u, 2048u));
+	unsigned int shadow_block_count	   = wavefront_block_count;
 
 	for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
 	{
 		m_wavefront_data.get_queue_count_buffer(1).upload_data_async(zero, main_stream);
+		if (run_shadow_pass)
+		{
+			m_wavefront_data.get_shadow_work_count_buffer().upload_data_async(zero, main_stream);
+			m_wavefront_data.get_shadow_queue_overflow_count_buffer().upload_data_async(zero, main_stream);
+		}
 
 		bool route_by_family	  = false;
 		void* shade_launch_args[] = { &bounce_count, &route_by_family };
@@ -350,12 +367,19 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		else if (bounce_index > 0)
 			m_kernels[SHADE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, shade_launch_args, main_stream);
 
+		if (run_shadow_pass)
+			m_kernels[TRACE_SHADOW_RAYS_KERNEL]->launch_asynchronous_3D_block_count(shadow_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
+
 		if (bounce_index >= bounce_count && !has_deferred_bsdf_sampling)
 			continue;
 
 		m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
 		m_wavefront_data.get_queue_count_buffer(WAVEFRONT_COMPLETION_QUEUE_INDEX).upload_data_async(zero, main_stream);
 		m_kernels[TRACE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, nullptr, main_stream);
+
+		bool deferred_completion_can_emit_shadow = run_shadow_pass && nee_estimator == LSS_RIS_BSDF_AND_LIGHT;
+		if (deferred_completion_can_emit_shadow)
+			m_wavefront_data.get_shadow_work_count_buffer().upload_data_async(zero, main_stream);
 
 		// Family-routed deferred completion reuses these queues and filters paths by terminal/miss state.
 		bool complete_by_family		 = route_deferred_by_material_family;
@@ -369,6 +393,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		else
 			m_kernels[COMPLETE_DEFERRED_PATHS_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, complete_launch_args,
 																						  main_stream);
+
+		if (deferred_completion_can_emit_shadow)
+			m_kernels[TRACE_SHADOW_RAYS_KERNEL]->launch_asynchronous_3D_block_count(shadow_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
 	}
 
 	return true;
@@ -528,6 +555,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 	}
 
 	active_kernels[TRACE_PATHS_KERNEL]					 = m_kernels.at(TRACE_PATHS_KERNEL);
+	active_kernels[TRACE_SHADOW_RAYS_KERNEL]			 = m_kernels.at(TRACE_SHADOW_RAYS_KERNEL);
 	active_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL] = m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL);
 
 	return active_kernels;
@@ -554,7 +582,8 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_traci
 		tracing_kernels[SHADE_PATHS_KERNEL]			= m_kernels.at(SHADE_PATHS_KERNEL);
 	}
 
-	tracing_kernels[TRACE_PATHS_KERNEL] = m_kernels.at(TRACE_PATHS_KERNEL);
+	tracing_kernels[TRACE_PATHS_KERNEL]		  = m_kernels.at(TRACE_PATHS_KERNEL);
+	tracing_kernels[TRACE_SHADOW_RAYS_KERNEL] = m_kernels.at(TRACE_SHADOW_RAYS_KERNEL);
 
 	return tracing_kernels;
 }
@@ -581,10 +610,48 @@ std::size_t WavefrontRenderPass::get_nee_deferred_mis_context_byte_size()
 	return m_nee_deferred_mis_context_byte_size;
 }
 
+unsigned int WavefrontRenderPass::get_shadow_work_capacity(unsigned int path_capacity) const
+{
+	if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL) != KERNEL_OPTION_TRUE)
+		return 0;
+
+	int nee_estimator					   = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int sampling_strategy				   = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
+	unsigned int direct_light_sample_count = 1;
+
+	if (sampling_strategy == LSS_BASE_LIGHT_TREE_ATS &&
+		m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE)
+		direct_light_sample_count =
+			static_cast<unsigned int>(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES));
+	else if (sampling_strategy == LSS_BASE_LIGHT_TREE_SG &&
+			 m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING) == KERNEL_OPTION_TRUE)
+		direct_light_sample_count =
+			static_cast<unsigned int>(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES));
+
+	unsigned int emissive_shadow_count = 0;
+	if (nee_estimator == LSS_ONE_LIGHT || nee_estimator == LSS_MIS_LIGHT_BSDF)
+		emissive_shadow_count = direct_light_sample_count;
+	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || nee_estimator == LSS_RISLTC || nee_estimator == LSS_NEURAL_MANY_LIGHTS ||
+			 DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+		emissive_shadow_count = 1;
+
+	unsigned int envmap_shadow_count = 0;
+	if (nee_estimator != LSS_NO_DIRECT_LIGHT_SAMPLING &&
+		m_compiler_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
+	{
+		envmap_shadow_count = 1;
+		if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS) == KERNEL_OPTION_TRUE)
+			envmap_shadow_count++;
+	}
+
+	return path_capacity * (emissive_shadow_count + envmap_shadow_count);
+}
+
 bool WavefrontRenderPass::kernels_ready() const
 {
 	if (!m_kernels.at(TRACE_PATHS_KERNEL)->has_been_compiled() || !m_kernels.at(COMPLETE_DEFERRED_PATHS_KERNEL)->has_been_compiled() ||
-		!m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)->has_been_compiled() || m_nee_deferred_mis_context_byte_size == 0)
+		!m_kernels.at(TRACE_SHADOW_RAYS_KERNEL)->has_been_compiled() || !m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)->has_been_compiled() ||
+		m_nee_deferred_mis_context_byte_size == 0)
 
 		return false;
 	if (uses_deferred_material_family_routing(*m_compiler_options))
@@ -614,9 +681,13 @@ bool WavefrontRenderPass::kernels_ready() const
 bool WavefrontRenderPass::resize_staging_buffers()
 {
 	unsigned int path_capacity					  = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
+	unsigned int shadow_work_capacity			  = get_shadow_work_capacity(path_capacity);
 	std::size_t ray_volume_state_byte_size		  = m_renderer->get_render_data().ray_volume_state_byte_size;
 	bool allocate_resolved_material_control_cache = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES) == KERNEL_OPTION_TRUE;
 	bool allocate_material_family_routing		  = uses_material_family_routing(*m_compiler_options);
+	int nee_estimator							  = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	bool allocate_learning_to_cluster_shadow_sidecars = shadow_work_capacity > 0 && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator);
+	bool allocate_nisml_shadow_sidecars				  = shadow_work_capacity > 0 && nee_estimator == LSS_NEURAL_MANY_LIGHTS;
 	if (ray_volume_state_byte_size == 0)
 		Debug::debugbreak();
 	std::size_t nee_deferred_mis_context_byte_size = get_nee_deferred_mis_context_byte_size();
@@ -631,6 +702,9 @@ bool WavefrontRenderPass::resize_staging_buffers()
 	bool needs_resize = !m_staging_buffers_allocated || m_wavefront_data.path_capacity() != path_capacity ||
 						m_wavefront_data.has_resolved_material_control_cache() != allocate_resolved_material_control_cache ||
 						m_wavefront_data.has_material_family_routing() != allocate_material_family_routing ||
+						m_wavefront_data.shadow_work_capacity() != shadow_work_capacity ||
+						m_wavefront_data.has_learning_to_cluster_shadow_sidecars() != allocate_learning_to_cluster_shadow_sidecars ||
+						m_wavefront_data.has_nisml_shadow_sidecars() != allocate_nisml_shadow_sidecars ||
 						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
 						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size || m_render_data_host_pinned.size() != 1 ||
 						m_zero_host_pinned.size() != 1;
@@ -640,8 +714,9 @@ bool WavefrontRenderPass::resize_staging_buffers()
 
 	free_staging_buffers();
 
-	m_wavefront_data.resize(path_capacity, ray_volume_state_byte_size, nee_deferred_mis_context_byte_size, allocate_resolved_material_control_cache,
-							allocate_material_family_routing);
+	m_wavefront_data.resize(path_capacity, shadow_work_capacity, ray_volume_state_byte_size, nee_deferred_mis_context_byte_size,
+							allocate_resolved_material_control_cache, allocate_material_family_routing, allocate_learning_to_cluster_shadow_sidecars,
+							allocate_nisml_shadow_sidecars);
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 	m_zero_host_pinned.resize_host_pinned_mem(1);
 

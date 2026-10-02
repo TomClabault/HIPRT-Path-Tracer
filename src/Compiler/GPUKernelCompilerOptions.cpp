@@ -98,6 +98,7 @@ const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIRDebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR = "DirectLightNEEEstimator";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
+const std::string GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL = "WavefrontDeferNEEShadowTraversal";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS = "DirectLightUseNEEPlusPlus";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY = "NEEPlusPlusGridPrepopulateLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS = "NEEPlusPlus_LinearProbingSteps";
@@ -236,6 +237,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS,
@@ -379,6 +381,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR] = std::make_shared<int>(DirectLightNEEEstimator);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL] = std::make_shared<int>(WavefrontDeferNEEShadowTraversal);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS] = std::make_shared<int>(DirectLightUseNEEPlusPlus);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(NEEPlusPlusGridPrepopulateLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::NEE_PLUS_PLUS_LINEAR_PROBING_STEPS] = std::make_shared<int>(NEEPlusPlus_LinearProbingSteps);

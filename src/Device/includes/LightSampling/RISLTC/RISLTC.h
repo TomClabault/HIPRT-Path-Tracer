@@ -13,6 +13,7 @@
 #include "Device/includes/LightSampling/RISLTC/RISLTCReservoir.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
+#include "Device/includes/Wavefront/WavefrontShadow.h"
 
 #include "HostDeviceCommon/Material/LightProposalState.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -25,7 +26,7 @@ HIPRT_HOST_DEVICE inline RISLTCProposalState make_RISLTC_proposal_state(const De
 	return make_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, BSDFModel::Principled>(proposal_inputs);
 }
 
-template <typename BsdfMaterialType, typename ProposalMaterialType>
+template <typename BsdfMaterialType, typename ProposalMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& render_data,
 														  RayPayloadT<BsdfMaterialType>& ray_payload,
 														  BsdfMaterialType& bsdf_material,
@@ -33,7 +34,8 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 														  const float3_t& view_direction,
 														  const RISLTCReservoir& reservoir,
 														  const ProposalMaterialType& proposal_state,
-														  Xorshift32Generator& random_number_generator)
+														  Xorshift32Generator& random_number_generator,
+														  WavefrontShadowSink* shadow_sink = nullptr)
 {
 	if (reservoir.UCW <= 0.0f)
 		// No valid sample means no light contribution
@@ -47,7 +49,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 	if (light_sample_info.area_measure_pdf == 0.0f)
 		return ColorRGB32F();
 
-	bool in_shadow;
+	bool in_shadow = false;
 	float distance_to_light;
 	float3_t shadow_ray_direction			 = light_sample_info.point_on_light - closest_hit_info.inter_point;
 	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
@@ -57,7 +59,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 		// A BSDF sample that has been picked by RIS cannot be occluded otherwise
 		// it would have a weight of 0 and would never be picked by RIS
 		in_shadow = false;
-	else
+	else if constexpr (shadow_mode == NEE_SHADOW_INLINE)
 	{
 		hiprtRay shadow_ray;
 		shadow_ray.origin	 = closest_hit_info.inter_point;
@@ -70,7 +72,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 	}
 
 	ColorRGB32F final_color;
-	if (!in_shadow)
+	if (!in_shadow || shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
 		float bsdf_pdf;
 		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
@@ -88,6 +90,16 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 		final_color = bsdf_color * reservoir.UCW / point_pdf_solid_angle * sample.emission *
 					  hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
 		sanity_check<true>(render_data, final_color, -1, -1);
+
+		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
+		{
+			if (!sample.is_bsdf_sample && !final_color.is_black())
+			{
+				shadow_sink->emit(closest_hit_info.inter_point, shadow_ray_direction_normalized, distance_to_light, closest_hit_info.primitive_index,
+								  light_sample_info.point_on_light, final_color, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
+				final_color = ColorRGB32F(0.0f);
+			}
+		}
 	}
 
 	return final_color;
@@ -294,14 +306,15 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 												   random_number_generator);
 }
 
-template <typename BsdfMaterialType, typename ProposalMaterialType>
+template <typename BsdfMaterialType, typename ProposalMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
 											  RayPayloadT<BsdfMaterialType>& ray_payload,
 											  BsdfMaterialType& bsdf_material,
 											  const HitInfo& closest_hit_info,
 											  const float3_t& view_direction,
 											  const ProposalMaterialType& proposal_state,
-											  Xorshift32Generator& random_number_generator)
+											  Xorshift32Generator& random_number_generator,
+											  WavefrontShadowSink* shadow_sink = nullptr)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return ColorRGB32F(0.0f);
@@ -309,8 +322,8 @@ HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
 	RISLTCReservoir reservoir = sample_bsdf_and_lights_RISLTC_reservoir(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
 																		proposal_state, random_number_generator);
 
-	return evaluate_RISLTC_reservoir_sample(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir, proposal_state,
-											random_number_generator);
+	return evaluate_RISLTC_reservoir_sample<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
+		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir, proposal_state, random_number_generator, shadow_sink);
 }
 
 template <typename BsdfMaterialType>

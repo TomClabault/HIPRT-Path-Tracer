@@ -11,19 +11,23 @@
 #include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/LightSampling/RIS/RISReservoir.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
+#include "Device/includes/Wavefront/WavefrontShadow.h"
 
 #include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/RenderData.h"
 
-template <typename BsdfMaterialType>
+template <typename BsdfMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_data,
 													   RayPayloadT<BsdfMaterialType>& ray_payload,
 													   BsdfMaterialType& bsdf_material,
 													   const HitInfo& closest_hit_info,
 													   const float3_t& view_direction,
 													   const RISReservoir& reservoir,
-													   Xorshift32Generator& random_number_generator)
+													   Xorshift32Generator& random_number_generator,
+													   WavefrontShadowSink* shadow_sink = nullptr,
+													   unsigned int shadow_flags		= WAVEFRONT_SHADOW_EMISSIVE_RAW,
+													   ColorRGB32F contribution_scale	= ColorRGB32F(1.0f))
 {
 	ColorRGB32F final_color;
 
@@ -33,7 +37,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 
 	RISSample sample = reservoir.sample;
 
-	bool in_shadow;
+	bool in_shadow = false;
 	float distance_to_light;
 	float3_t evaluated_point				 = closest_hit_info.inter_point;
 	float3_t shadow_ray_direction			 = sample.point_on_light_source - evaluated_point;
@@ -44,7 +48,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 		// A BSDF sample that has been picked by RIS cannot be occluded otherwise
 		// it would have a weight of 0 and would never be picked by RIS
 		in_shadow = false;
-	else
+	else if constexpr (shadow_mode == NEE_SHADOW_INLINE)
 	{
 		hiprtRay shadow_ray;
 		shadow_ray.origin	 = evaluated_point;
@@ -56,7 +60,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 													  random_number_generator);
 	}
 
-	if (!in_shadow)
+	if (!in_shadow || shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
 		float bsdf_pdf;
 		float cosine_at_evaluated_point;
@@ -82,6 +86,15 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 		}
 
 		final_color = bsdf_color * reservoir.UCW * sample.emission * cosine_at_evaluated_point;
+		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
+		{
+			if (!sample.is_bsdf_sample && !final_color.is_black())
+			{
+				shadow_sink->emit(evaluated_point, shadow_ray_direction_normalized, distance_to_light, closest_hit_info.primitive_index,
+								  sample.point_on_light_source, final_color * contribution_scale, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | shadow_flags);
+				final_color = ColorRGB32F(0.0f);
+			}
+		}
 	}
 
 	return final_color;
@@ -435,14 +448,15 @@ HIPRT_DEVICE RISReservoir sample_lights_RIS_for_deferred_NEE_BSDF_MIS(HIPRTRende
 																		  proposal_state, random_number_generator);
 }
 
-template <typename BsdfMaterialType, typename ProposalMaterialType>
+template <typename BsdfMaterialType, typename ProposalMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data,
 															 RayPayloadT<BsdfMaterialType>& ray_payload,
 															 BsdfMaterialType& bsdf_material,
 															 const HitInfo& closest_hit_info,
 															 const float3_t& view_direction,
 															 const ProposalMaterialType& proposal_state,
-															 Xorshift32Generator& random_number_generator)
+															 Xorshift32Generator& random_number_generator,
+															 WavefrontShadowSink* shadow_sink = nullptr)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)
 		return ColorRGB32F(0.0f);
@@ -450,7 +464,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& re
 	RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state,
 																  random_number_generator);
 
-	return evaluate_RIS_reservoir_sample(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir, random_number_generator);
+	return evaluate_RIS_reservoir_sample<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, reservoir,
+																		random_number_generator, shadow_sink);
 }
 
 #endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H

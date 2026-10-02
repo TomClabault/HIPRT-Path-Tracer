@@ -129,13 +129,20 @@ HIPRT_DEVICE bool wavefront_shade_hit_with_material(HIPRTRenderData& render_data
 													NEEDeferredMISContext& nee_deferred_MIS_context,
 													float dispersion_scale,
 													unsigned int path_index,
+													WavefrontShadowSink& shadow_sink,
 													Xorshift32Generator& random_number_generator,
 													BSDFIncidentLightInfo& sampled_light_info)
 {
 	if (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting)
 	{
+#if WavefrontDeferNEEShadowTraversal == KERNEL_OPTION_TRUE
+		ray_payload.ray_color += estimate_direct_lighting<true, NEE_SHADOW_WAVEFRONT>(render_data, ray_payload, bsdf_material, ray_payload.throughput,
+																					  closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context,
+																					  proposal_state, random_number_generator, &shadow_sink);
+#else
 		ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, bsdf_material, ray_payload.throughput, closest_hit_info, -ray.direction, x,
 														  y, nee_deferred_MIS_context, proposal_state, random_number_generator);
+#endif
 
 		sanity_check<true>(render_data, ray_payload.ray_color, x, y);
 	}
@@ -157,6 +164,7 @@ HIPRT_DEVICE bool wavefront_load_and_shade_hit(HIPRTRenderData& render_data,
 											   NEEDeferredMISContext& nee_deferred_MIS_context,
 											   float dispersion_scale,
 											   unsigned int path_index,
+											   WavefrontShadowSink& shadow_sink,
 											   Xorshift32Generator& random_number_generator,
 											   BSDFIncidentLightInfo& sampled_light_info)
 {
@@ -177,16 +185,21 @@ HIPRT_DEVICE bool wavefront_load_and_shade_hit(HIPRTRenderData& render_data,
 
 	bool valid_indirect_bounce =
 		wavefront_shade_hit_with_material(render_data, typed_ray_payload, typed_ray_payload.material, proposal_state, closest_hit_info, ray, x, y,
-										  nee_deferred_MIS_context, dispersion_scale, path_index, random_number_generator, sampled_light_info);
+										  nee_deferred_MIS_context, dispersion_scale, path_index, shadow_sink, random_number_generator, sampled_light_info);
 	static_cast<RayPayloadCommon&>(ray_payload) = static_cast<const RayPayloadCommon&>(typed_ray_payload);
+
 	return valid_indirect_bounce;
 }
 
 template <bool initialize_primary_path>
 HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned int bounce_count, unsigned int pixel_index)
 {
+#if DirectLightSamplingStrategy == LSS_BASE_REGIR
+	using KernelMaterial = DeviceUnpackedPrincipledFullMaterial;
+#else
 	using KernelMaterial =
 		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
+#endif // #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 
 	RayPayloadCommon ray_payload = wavefront_make_ray_payload<initialize_primary_path>();
 	hiprtRay ray;
@@ -206,9 +219,12 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 		wavefront_initialize_path(render_data, pixel_index, ray_payload, ray, closest_hit_info, intersection_found);
 
 	if constexpr (!initialize_primary_path)
-	{
 		wavefront_load_secondary_shading_state(render_data, pixel_index, ray_payload, ray, closest_hit_info);
 
+	WavefrontShadowSink shadow_sink(render_data, pixel_index, ray_payload.throughput, ray_payload.bounce);
+
+	if constexpr (!initialize_primary_path)
+	{
 		{
 			NEEDeferredMISContext previous_nee_deferred_MIS_context;
 			wavefront_load_nee_deferred_mis_context(render_data, pixel_index, previous_nee_deferred_MIS_context);
@@ -232,9 +248,15 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 				previous_resolved_user_controls = wavefront_load_resolved_material_user_controls(render_data, pixel_index, previous_resolved_user_controls);
 
 			// This kernel is specialized for the current hit, while the deferred context belongs to the previous vertex and can use another family.
+#if WavefrontDeferNEEShadowTraversal == KERNEL_OPTION_TRUE
+			ray_payload.ray_color += do_deferred_NEE_MIS<PreviousBSDFMaterial, NEE_SHADOW_WAVEFRONT>(
+				render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission, previous_nee_deferred_MIS_context,
+				previous_resolved_user_controls, random_number_generator, &shadow_sink);
+#else
 			ray_payload.ray_color +=
 				do_deferred_NEE_MIS<PreviousBSDFMaterial>(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission,
 														  previous_nee_deferred_MIS_context, previous_resolved_user_controls, random_number_generator);
+#endif
 #else
 			ray_payload.ray_color += do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission,
 														 previous_nee_deferred_MIS_context, random_number_generator);
@@ -249,7 +271,12 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 			int x = static_cast<int>(pixel_index % render_data.render_settings.render_resolution.x);
 			int y = static_cast<int>(pixel_index / render_data.render_settings.render_resolution.x);
 
-			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
+			shadow_sink.finish_emission();
+
+			if (shadow_sink.has_work())
+				shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
+			else
+				wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
 
 			return;
 		}
@@ -313,7 +340,9 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 
 	valid_indirect_bounce = wavefront_load_and_shade_hit<initialize_primary_path, KernelMaterial>(
 		render_data, ray_payload, pixel_index, closest_hit_info, ray, x, y, resolved_user_controls, nee_deferred_MIS_context,
-		surface_transport_metadata.dispersion_scale, pixel_index, random_number_generator, sampled_light_info);
+		surface_transport_metadata.dispersion_scale, pixel_index, shadow_sink, random_number_generator, sampled_light_info);
+
+	shadow_sink.finish_emission();
 
 	if (!valid_indirect_bounce)
 	{
@@ -321,7 +350,10 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 #if DirectLightNEEEstimatorHasBSDFSampling
 		wavefront_queue_path_for_tracing(render_data, pixel_index, ray_payload, ray, closest_hit_info, nee_deferred_MIS_context, random_number_generator, true);
 #else  // #if DirectLightNEEEstimatorHasBSDFSampling
-		wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
+		if (shadow_sink.has_work())
+			shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
+		else
+			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
 #endif // #if DirectLightNEEEstimatorHasBSDFSampling
 		return;
 	}
@@ -333,7 +365,10 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 #if DirectLightNEEEstimatorHasBSDFSampling
 		wavefront_queue_path_for_tracing(render_data, pixel_index, ray_payload, ray, closest_hit_info, nee_deferred_MIS_context, random_number_generator, true);
 #else  // #if DirectLightNEEEstimatorHasBSDFSampling
-		wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
+		if (shadow_sink.has_work())
+			shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
+		else
+			wavefront_finalize_path(render_data, pixel_index, x, y, ray_payload, random_number_generator);
 #endif // #if DirectLightNEEEstimatorHasBSDFSampling
 		return;
 	}
