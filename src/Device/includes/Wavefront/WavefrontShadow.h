@@ -102,13 +102,10 @@ struct WavefrontShadowSink
 	{
 		WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
-		wavefront_data.path_throughputs[path_index]					= ray_payload.throughput;
-		wavefront_data.path_ray_colors[path_index]					= ray_payload.ray_color;
-		wavefront_data.path_bounces[path_index]						= ray_payload.bounce;
-		wavefront_data.path_accumulated_roughnesses[path_index]		= ray_payload.accumulated_roughness;
-		wavefront_data.path_volume_states[path_index]				= ray_payload.volume_state;
-		wavefront_data.path_rng_states[path_index]					= random_number_generator.m_state.seed;
-		wavefront_data.path_pending_finalize_ray_states[path_index] = static_cast<unsigned int>(ray_payload.next_ray_state);
+		// This path will only accumulate its final color after shadow visibility is resolved.
+		wavefront_data.path_ray_colors[path_index] = ray_payload.ray_color;
+		wavefront_data.path_rng_states[path_index] = random_number_generator.m_state.seed;
+
 		wavefront_data.path_shadow_flags[path_index] |= WAVEFRONT_SHADOW_PATH_PENDING_FINALIZE;
 	}
 };

@@ -277,26 +277,32 @@ HIPRT_DEVICE void wavefront_queue_path_for_tracing(HIPRTRenderData& render_data,
 	wavefront_enqueue_path(render_data, 1, path_index);
 }
 
-HIPRT_DEVICE void wavefront_finalize_path(
-	HIPRTRenderData& render_data, unsigned int pixel_index, int x, int y, RayPayloadCommon& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void wavefront_finalize_color(
+	HIPRTRenderData& render_data, unsigned int pixel_index, int x, int y, ColorRGB32F& ray_color, Xorshift32Generator& random_number_generator)
 {
 	render_data.wavefront_data.path_state_flags[pixel_index] |= WAVEFRONT_PATH_STATE_TERMINAL;
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
 	// Checking for NaNs / negative value samples. Output
-	if (!sanity_check<true>(render_data, ray_payload.ray_color, x, y))
+	if (!sanity_check<true>(render_data, ray_color, x, y))
 		return;
 
 	ColorRGB32F debug_color;
-	path_tracing_compute_debug_view_debug_color(render_data, ray_payload, pixel_index, random_number_generator, debug_color);
+	path_tracing_compute_debug_view_debug_color(render_data, pixel_index, debug_color);
 
 	// If we got here, this means that we still have at least one ray active
 	// This is a concurrent write by the way but we don't really care, everyone is writing
 	// the same value
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-	path_tracing_accumulate_color(render_data, pixel_index, ray_payload.ray_color, debug_color);
+	path_tracing_accumulate_color(render_data, pixel_index, ray_color, debug_color);
+}
+
+HIPRT_DEVICE void wavefront_finalize_path(
+	HIPRTRenderData& render_data, unsigned int pixel_index, int x, int y, RayPayloadCommon& ray_payload, Xorshift32Generator& random_number_generator)
+{
+	wavefront_finalize_color(render_data, pixel_index, x, y, ray_payload.ray_color, random_number_generator);
 }
 
 #endif // #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_COMMON_H

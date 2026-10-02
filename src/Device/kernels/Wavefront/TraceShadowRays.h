@@ -62,25 +62,20 @@ HIPRT_DEVICE void wavefront_commit_shadow_contributions(HIPRTRenderData& render_
 	emissive = clamp_light_contribution(emissive, render_data.render_settings.direct_contribution_clamp, primary_vertex);
 	envmap	 = clamp_light_contribution(envmap, render_data.render_settings.envmap_contribution_clamp, primary_vertex);
 
-	ColorRGB32F contribution = (emissive + envmap) * wavefront_data.path_shadow_throughputs[path_index];
-	wavefront_data.path_ray_colors[path_index] += contribution;
+	ColorRGB32F contribution	= (emissive + envmap) * wavefront_data.path_shadow_throughputs[path_index];
+	ColorRGB32F final_ray_color = wavefront_data.path_ray_colors[path_index] + contribution;
 
 	if ((shadow_flags & WAVEFRONT_SHADOW_PATH_PENDING_FINALIZE) != 0)
 	{
-		RayPayloadCommon ray_payload(NoInitTag{});
-		ray_payload.throughput			  = wavefront_data.path_throughputs[path_index];
-		ray_payload.ray_color			  = wavefront_data.path_ray_colors[path_index];
-		ray_payload.next_ray_state		  = static_cast<RayState>(wavefront_data.path_pending_finalize_ray_states[path_index]);
-		ray_payload.bounce				  = wavefront_data.path_bounces[path_index];
-		ray_payload.accumulated_roughness = wavefront_data.path_accumulated_roughnesses[path_index];
-		ray_payload.volume_state		  = wavefront_data.path_volume_states[path_index];
-
 		Xorshift32Generator random_number_generator(wavefront_data.path_rng_states[path_index]);
 		int x = path_index % render_data.render_settings.render_resolution.x;
 		int y = path_index / render_data.render_settings.render_resolution.x;
 
-		wavefront_finalize_path(render_data, path_index, x, y, ray_payload, random_number_generator);
+		wavefront_finalize_color(render_data, path_index, x, y, final_ray_color, random_number_generator);
 	}
+	else
+		// Only continuing paths need the updated persistent path color.
+		wavefront_data.path_ray_colors[path_index] = final_ray_color;
 }
 
 HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, unsigned int path_slot, unsigned int path_stride)

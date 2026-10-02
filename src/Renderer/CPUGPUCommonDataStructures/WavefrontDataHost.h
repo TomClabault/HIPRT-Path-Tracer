@@ -40,7 +40,6 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 WavefrontResolvedMaterialClassification,
 											 ColorRGB32F,
 											 unsigned int,
-											 unsigned int,
 											 GenericAtomicType<unsigned int, DataContainer>,
 											 WavefrontShadowWork,
 											 GenericAtomicType<unsigned int, DataContainer>,
@@ -78,7 +77,6 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS,
 	WAVEFRONT_PATH_SHADOW_THROUGHPUTS,
 	WAVEFRONT_PATH_SHADOW_FLAGS,
-	WAVEFRONT_PATH_PENDING_FINALIZE_RAY_STATES,
 	WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS,
 	WAVEFRONT_SHADOW_WORK_ITEMS,
 	WAVEFRONT_SHADOW_WORK_COUNT,
@@ -116,7 +114,6 @@ struct WavefrontDataHost
 												 WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS,
 												 WAVEFRONT_PATH_SHADOW_THROUGHPUTS,
 												 WAVEFRONT_PATH_SHADOW_FLAGS,
-												 WAVEFRONT_PATH_PENDING_FINALIZE_RAY_STATES,
 												 WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS,
 												 WAVEFRONT_SHADOW_WORK_ITEMS,
 												 WAVEFRONT_SHADOW_WORK_COUNT,
@@ -131,7 +128,6 @@ struct WavefrontDataHost
 		unsigned int shadow_path_capacity = shadow_work_capacity > 0 ? path_capacity : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_SHADOW_THROUGHPUTS>(shadow_path_capacity);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_SHADOW_FLAGS>(shadow_path_capacity);
-		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_PENDING_FINALIZE_RAY_STATES>(shadow_path_capacity);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>(shadow_path_capacity);
 		m_wavefront_data.template memset_buffer<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>(0u);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_SHADOW_WORK_ITEMS>(shadow_work_capacity);
@@ -262,8 +258,6 @@ struct WavefrontDataHost
 		{
 			wavefront_data_device.path_shadow_throughputs = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_SHADOW_THROUGHPUTS>();
 			wavefront_data_device.path_shadow_flags		  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_SHADOW_FLAGS>();
-			wavefront_data_device.path_pending_finalize_ray_states =
-				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_PENDING_FINALIZE_RAY_STATES>();
 			wavefront_data_device.path_remaining_shadow_work_counts =
 				m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>();
 

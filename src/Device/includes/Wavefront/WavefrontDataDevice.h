@@ -64,7 +64,6 @@ struct WavefrontDataDevice
 
 	ColorRGB32F* path_shadow_throughputs						= nullptr;
 	unsigned int* path_shadow_flags								= nullptr;
-	unsigned int* path_pending_finalize_ray_states				= nullptr;
 	AtomicType<unsigned int>* path_remaining_shadow_work_counts = nullptr;
 
 	WavefrontShadowWork* shadow_work_items										 = nullptr;

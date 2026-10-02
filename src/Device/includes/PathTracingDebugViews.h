@@ -489,8 +489,7 @@ HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRen
 	return false;
 }
 
-HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
-	const HIPRTRenderData& render_data, RayPayloadCommon& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
+HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderData& render_data, int pixel_index, ColorRGB32F& out_debug_color)
 {
 	out_debug_color = DEFAULT_DEBUG_COLOR;
 
@@ -938,6 +937,12 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
 			out_debug_color = ColorRGB32F(1.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
 	}
 #endif // #if IlluminationAwareKDTreeDebugRepresentativePoints == KERNEL_OPTION_TRUE
+}
+
+HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(
+	const HIPRTRenderData& render_data, RayPayloadCommon& ray_payload, int pixel_index, Xorshift32Generator& rng, ColorRGB32F& out_debug_color)
+{
+	path_tracing_compute_debug_view_debug_color(render_data, pixel_index, out_debug_color);
 }
 
 #endif // #ifndef DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
