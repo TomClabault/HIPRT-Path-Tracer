@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
+#include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/WavefrontRenderPass.h"
 #include "Renderer/RenderPasses/WavefrontRoutingConfiguration.h"
@@ -325,7 +325,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 	unsigned int queue_block_size	   = KernelBlockWidthHeight * KernelBlockWidthHeight;
 	unsigned int wavefront_block_count = std::max(1u, std::min((path_capacity + 63u) / 64u, 2048u));
-	unsigned int shadow_block_count	   = wavefront_block_count;
+	unsigned int shadow_block_count	   = (path_capacity + 63u) / 64u;
 
 	for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
 	{
