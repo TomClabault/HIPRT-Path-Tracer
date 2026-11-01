@@ -76,6 +76,9 @@ struct WavefrontDataDevice
 
 	unsigned int path_capacity					 = 0;
 	unsigned int material_family_routing_enabled = 0;
+	// When non-zero, TracePaths classifies the material of the new hits and appends the paths directly to the material family queues
+	// instead of going through queue 0 and a separate classification pass
+	unsigned int trace_classifies_material_families = 0;
 };
 
 #endif // #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_DATA_DEVICE_H

@@ -16,6 +16,7 @@
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
+#include "Device/includes/Wavefront/WavefrontMaterialFamilyRouting.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 HIPRT_DEVICE void wavefront_store_resolved_material_user_controls(HIPRTRenderData& render_data,
@@ -119,6 +120,26 @@ HIPRT_DEVICE bool wavefront_load_current_material_classification(const HIPRTRend
 	out_classification_inputs.dispersion_scale						  = current_classification.dispersion_scale;
 
 	return true;
+}
+
+/**
+ * Classifies the material of a secondary hit and appends the path to the queue of its material family.
+ *
+ * The resolved classification inputs are cached so that the shading pass does not have to sample the material textures again.
+ */
+HIPRT_DEVICE void wavefront_classify_secondary_hit(HIPRTRenderData& render_data, unsigned int path_index, const HitInfo& closest_hit_info, bool inside_material)
+{
+	int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+
+	ResolvedMaterialUserControlsCache resolved_user_controls;
+	PrincipledMaterialClassificationInputs classification_inputs =
+		load_material_classification_inputs(render_data, material_index, closest_hit_info.texcoords, resolved_user_controls);
+	KernelMaterialSpecialization material_family = classify_principled_material(classification_inputs, !inside_material);
+
+	// Keep the current hit separate from the previous vertex controls consumed by deferred MIS at the start of Shade.
+	wavefront_store_current_material_classification(render_data, path_index, material_index, classification_inputs, resolved_user_controls);
+
+	wavefront_enqueue_material_family(render_data, static_cast<unsigned int>(material_family), path_index);
 }
 
 HIPRT_DEVICE void wavefront_load_secondary_material_state(

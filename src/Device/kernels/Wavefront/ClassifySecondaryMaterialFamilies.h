@@ -20,24 +20,13 @@ HIPRT_DEVICE static void wavefront_classify_secondary_material_family(HIPRTRende
 	if (wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL)
 		return;
 
-	KernelMaterialSpecialization material_family = KernelMaterialSpecializationAll;
 	if (wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_INTERSECTION_FOUND)
 	{
-		HitInfo& closest_hit_info = wavefront_data.path_closest_hit_infos[path_index];
-		int material_index		  = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-		ResolvedMaterialUserControlsCache resolved_user_controls;
-		PrincipledMaterialClassificationInputs classification_inputs =
-			load_material_classification_inputs(render_data, material_index, closest_hit_info.texcoords, resolved_user_controls);
-		material_family = classify_principled_material(classification_inputs, !wavefront_data.path_volume_states[path_index].inside_material);
-
-		// Keep the current hit separate from the previous vertex controls consumed by deferred MIS at the start of Shade.
-		wavefront_store_current_material_classification(render_data, path_index, material_index, classification_inputs, resolved_user_controls);
+		const HitInfo& closest_hit_info = wavefront_data.path_closest_hit_infos[path_index];
+		wavefront_classify_secondary_hit(render_data, path_index, closest_hit_info, wavefront_data.path_volume_states[path_index].inside_material);
 	}
-
-	unsigned int material_family_index = static_cast<unsigned int>(material_family);
-	unsigned int family_queue_slot	   = hippt::atomic_fetch_add(wavefront_data.material_family_counts + material_family_index, 1u);
-	if (family_queue_slot < wavefront_data.path_capacity)
-		wavefront_data.material_family_indices[material_family_index * wavefront_data.path_capacity + family_queue_slot] = path_index;
+	else
+		wavefront_enqueue_material_family(render_data, static_cast<unsigned int>(KernelMaterialSpecializationAll), path_index);
 }
 
 #ifdef __KERNELCC__

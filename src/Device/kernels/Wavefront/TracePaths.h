@@ -46,9 +46,16 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 	wavefront_store_trace_result(render_data, pixel_index, trace_payload.volume_state, closest_hit_info, intersection_found,
 								 random_number_generator.m_state.seed);
 
-	bool terminal_path				= (render_data.wavefront_data.path_state_flags[pixel_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
-	unsigned int output_queue_index = terminal_path || !intersection_found ? WAVEFRONT_COMPLETION_QUEUE_INDEX : 0u;
-	wavefront_enqueue_path(render_data, output_queue_index, pixel_index);
+	bool terminal_path = (render_data.wavefront_data.path_state_flags[pixel_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
+	if (!terminal_path && intersection_found && render_data.wavefront_data.trace_classifies_material_families)
+		// The hit is still in registers: classifying it here avoids a separate classification pass reloading the trace results.
+		// The path goes straight to the queue of its material family, queue 0 is not used in that case
+		wavefront_classify_secondary_hit(render_data, pixel_index, closest_hit_info, trace_payload.volume_state.inside_material);
+	else
+	{
+		unsigned int output_queue_index = terminal_path || !intersection_found ? WAVEFRONT_COMPLETION_QUEUE_INDEX : 0u;
+		wavefront_enqueue_path(render_data, output_queue_index, pixel_index);
+	}
 }
 
 #endif // #ifndef KERNELS_WAVEFRONT_TRACE_PATHS_H

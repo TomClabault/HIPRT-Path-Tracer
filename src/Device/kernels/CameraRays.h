@@ -15,6 +15,7 @@
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SSBNPermutation/SSBNScreenSpaceHashGrid.h"
+#include "Device/includes/Wavefront/WavefrontMaterialFamilyRouting.h"
 
 #include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -234,13 +235,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 	bool intersection_found =
 		trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, random_number_generator);
 
+	// Misses are shaded by the generic material family
+	unsigned int primary_material_family = static_cast<unsigned int>(KernelMaterialSpecializationAll);
 	if (intersection_found)
 	{
 		render_data.g_buffer.geometric_normals[pixel_index].pack(closest_hit_info.geometric_normal);
 		render_data.g_buffer.shading_normals[pixel_index].pack(closest_hit_info.shading_normal);
 
-		render_data.g_buffer.materials[pixel_index]			   = DevicePackedEffectiveMaterial::pack(ray_payload.material);
+		DevicePackedEffectiveMaterial packed_material		   = DevicePackedEffectiveMaterial::pack(ray_payload.material);
+		render_data.g_buffer.materials[pixel_index]			   = packed_material;
 		render_data.g_buffer.primary_hit_position[pixel_index] = closest_hit_info.inter_point;
+
+		if (render_data.wavefront_data.material_family_routing_enabled)
+			primary_material_family = wavefront_classify_primary_material_family(packed_material);
 	}
 	else
 		// Special case when not hitting anything
@@ -259,6 +266,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 	render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
 	render_data.aux_buffers.pixel_active[pixel_index]	   = true;
+
+	if (render_data.wavefront_data.material_family_routing_enabled)
+		// The wavefront primary shading passes consume the active pixels per material family. Queuing the pixel here
+		// avoids a separate classification pass that would read the G-buffer back
+		wavefront_enqueue_material_family(render_data, primary_material_family, pixel_index);
 
 	ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera,
 									 closest_hit_info.primitive_index, true, ray_payload.material);

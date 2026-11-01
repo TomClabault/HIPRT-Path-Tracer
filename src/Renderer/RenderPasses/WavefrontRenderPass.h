@@ -37,8 +37,6 @@ public:
 	static const std::string TRACE_PATHS_KERNEL;
 	static const std::string TRACE_SHADOW_RAYS_KERNEL;
 	static const std::string NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_RESET_KERNEL;
-	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL;
 	static const std::string MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL;
 
 	WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
@@ -77,6 +75,8 @@ private:
 	bool kernels_ready() const;
 	bool resize_staging_buffers();
 	void free_staging_buffers();
+	WavefrontDataDevice get_wavefront_data_device();
+	void reset_material_family_counts_async(oroStream_t stream);
 
 	int2_t m_render_resolution								   = make_int2(0, 0);
 	bool m_staging_buffers_allocated						   = false;

@@ -140,6 +140,9 @@ struct WavefrontDataHost
 		std::size_t family_count	  = allocate_material_family_routing ? KernelMaterialSpecializationCount : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_INDICES>(family_path_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(family_count);
+		if (allocate_material_family_routing)
+			// The camera rays pass appends to the family queues before any wavefront kernel had a chance to reset the counters
+			m_wavefront_data.template memset_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(0u);
 		std::size_t resolved_control_count = allocate_resolved_material_control_cache ? path_capacity : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_ROUGHNESS>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_METALLIC>(resolved_control_count);
@@ -285,6 +288,11 @@ struct WavefrontDataHost
 			return m_wavefront_data.template get_buffer<WAVEFRONT_COMPLETION_QUEUE_COUNT>();
 
 		return m_wavefront_data.template get_buffer<WAVEFRONT_QUEUE_COUNT_1>();
+	}
+
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>>& get_material_family_count_buffer()
+	{
+		return m_wavefront_data.template get_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>();
 	}
 
 	DataContainer<GenericAtomicType<unsigned int, DataContainer>>& get_shadow_work_count_buffer()

@@ -25,8 +25,6 @@ const std::string WavefrontRenderPass::SHADE_PATHS_SPECULAR_DIFFUSE_KERNEL				 =
 const std::string WavefrontRenderPass::TRACE_PATHS_KERNEL								 = "Wavefront - Trace Paths";
 const std::string WavefrontRenderPass::TRACE_SHADOW_RAYS_KERNEL							 = "Wavefront - Trace Shadow Rays";
 const std::string WavefrontRenderPass::NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL				 = "Wavefront - NEE Deferred MIS Context Size";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_RESET_KERNEL				 = "Wavefront - Reset Material Family Routing";
-const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL			 = "Wavefront - Classify Primary Material Families";
 const std::string WavefrontRenderPass::MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL = "Wavefront - Classify Secondary Material Families";
 
 const std::string WavefrontRenderPass::COMPLETE_DEFERRED_PATHS_KERNEL				   = "Wavefront - Complete Terminated Paths";
@@ -90,14 +88,8 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/NEEDeferredMISContextSize.h");
 	m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL]->set_kernel_function_name("NEEDeferredMISContextSize");
 
-	m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_RESET_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ResetMaterialFamilyRouting.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->set_kernel_function_name("ResetMaterialFamilyRouting");
-
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL] = std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL);
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Wavefront/ClassifyPrimaryMaterialFamilies.h");
-	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->set_kernel_function_name("ClassifyPrimaryMaterialFamilies");
-
+	// Primary hits are classified by CameraRays and secondary hits by TracePaths. This separate pass only runs when the family-routed deferred
+	// completion still needs the family queues of the shaded vertex after TracePaths
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
 	m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
@@ -259,10 +251,16 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 		return false;
 	if (!kernels_ready() || !m_staging_buffers_allocated)
+	{
+		if (m_staging_buffers_allocated)
+			// The camera rays pass may already have appended this frame's primary hits to the material family queues
+			reset_material_family_counts_async(m_renderer->get_main_stream());
 
 		return false;
+	}
 
-	render_data.wavefront_data = m_wavefront_data.to_device();
+	render_data.wavefront_data				= get_wavefront_data_device();
+	bool trace_classifies_material_families = render_data.wavefront_data.trace_classifies_material_families != 0;
 
 	unsigned int path_capacity = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
 	unsigned int bounce_count  = static_cast<unsigned int>(render_data.render_settings.nb_bounces);
@@ -297,12 +295,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 																								sizeof(HIPRTRenderData), main_stream);
 		}
 
-		m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->upload_to_module_global("WAVEFRONT_RESET_MATERIAL_FAMILY_ROUTING_RENDER_DATA", host_pinned_render_data,
-																				 sizeof(HIPRTRenderData), main_stream);
-		m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_PRIMARY_MATERIAL_FAMILIES_RENDER_DATA",
-																					host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-		m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA",
-																							  host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
+		if (!trace_classifies_material_families)
+			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->upload_to_module_global(
+				"WAVEFRONT_CLASSIFY_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
 	}
 	else
 	{
@@ -340,9 +335,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		void* shade_launch_args[] = { &bounce_count, &route_by_family };
 		if (bounce_index == 0 && route_primary_by_material_family && path_capacity > 0)
 		{
-			m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
-
+			// The camera rays pass has already appended the primary hits to the material family queues
 			route_by_family = true;
 			for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 				m_kernels[get_primary_shading_kernel_name(family_index)]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1,
@@ -355,9 +348,13 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		}
 		else if (bounce_index > 0 && route_primary_by_material_family && path_capacity > 0)
 		{
-			m_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]->launch_asynchronous_3D_block_count(1, 1, 1, 64, 1, 1, nullptr, main_stream);
-			m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
-																											 main_stream);
+			if (!trace_classifies_material_families)
+			{
+				// The family-routed deferred completion of the previous bounce has consumed the family queues, they can be rebuilt from queue 0
+				reset_material_family_counts_async(main_stream);
+				m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
+																												 main_stream);
+			}
 
 			route_by_family = true;
 			for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
@@ -373,7 +370,12 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		if (bounce_index >= bounce_count && !has_deferred_bsdf_sampling)
 			continue;
 
-		m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
+		if (trace_classifies_material_families)
+			// TracePaths appends the new hits to the material family queues, which the shading passes of this bounce have already consumed.
+			// Queue 0 is not used in that case
+			reset_material_family_counts_async(main_stream);
+		else
+			m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
 		m_wavefront_data.get_queue_count_buffer(WAVEFRONT_COMPLETION_QUEUE_INDEX).upload_data_async(zero, main_stream);
 		m_kernels[TRACE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, nullptr, main_stream);
 
@@ -398,6 +400,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 			m_kernels[TRACE_SHADOW_RAYS_KERNEL]->launch_asynchronous_3D_block_count(shadow_block_count, 1, 1, 64, 1, 1, nullptr, main_stream);
 	}
 
+	// The camera rays pass of the next frame appends the primary hits to the material family queues
+	reset_material_family_counts_async(main_stream);
+
 	return true;
 }
 
@@ -406,9 +411,29 @@ void WavefrontRenderPass::update_render_data()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (is_render_pass_used(*m_compiler_options) && m_staging_buffers_allocated)
-		render_data.wavefront_data = m_wavefront_data.to_device();
+		render_data.wavefront_data = get_wavefront_data_device();
 	else
 		render_data.wavefront_data = WavefrontDataDevice();
+}
+
+WavefrontDataDevice WavefrontRenderPass::get_wavefront_data_device()
+{
+	WavefrontDataDevice wavefront_data_device = m_wavefront_data.to_device();
+
+	// The family-routed deferred completion runs after TracePaths and still needs the family queues of the shaded vertex.
+	// TracePaths cannot overwrite them with the families of the new hits in that case so a separate classification pass runs instead
+	if (wavefront_data_device.material_family_routing_enabled && !uses_deferred_material_family_routing(*m_compiler_options))
+		wavefront_data_device.trace_classifies_material_families = 1;
+
+	return wavefront_data_device;
+}
+
+void WavefrontRenderPass::reset_material_family_counts_async(oroStream_t stream)
+{
+	if (!m_wavefront_data.has_material_family_routing())
+		return;
+
+	m_wavefront_data.get_material_family_count_buffer().upload_data_async(m_zero_host_pinned.get_host_pinned_pointer(), stream);
 }
 
 void WavefrontRenderPass::reset(bool reset_by_camera_movement)
@@ -537,9 +562,9 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 			active_kernels[get_secondary_shading_kernel_name(family_index)] = m_kernels.at(get_secondary_shading_kernel_name(family_index));
 		}
 
-		active_kernels[MATERIAL_FAMILY_ROUTING_RESET_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_RESET_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL]			  = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL);
-		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
+		// Without family-routed deferred completion, TracePaths classifies the secondary hits itself
+		if (uses_deferred_material_family_routing(*m_compiler_options))
+			active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
 	}
 	else
 	{
@@ -670,9 +695,10 @@ bool WavefrontRenderPass::kernels_ready() const
 
 				return false;
 
-		return m_kernels.at(MATERIAL_FAMILY_ROUTING_RESET_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_KERNEL)->has_been_compiled() &&
-			   m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL)->has_been_compiled();
+		if (uses_deferred_material_family_routing(*m_compiler_options))
+			return m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL)->has_been_compiled();
+
+		return true;
 	}
 
 	return m_kernels.at(SHADE_PRIMARY_PATHS_KERNEL)->has_been_compiled() && m_kernels.at(SHADE_PATHS_KERNEL)->has_been_compiled();
@@ -707,7 +733,7 @@ bool WavefrontRenderPass::resize_staging_buffers()
 						m_wavefront_data.has_nisml_shadow_sidecars() != allocate_nisml_shadow_sidecars ||
 						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
 						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size || m_render_data_host_pinned.size() != 1 ||
-						m_zero_host_pinned.size() != 1;
+						m_zero_host_pinned.size() != KernelMaterialSpecializationCount;
 	if (!needs_resize)
 
 		return false;
@@ -718,7 +744,9 @@ bool WavefrontRenderPass::resize_staging_buffers()
 							allocate_resolved_material_control_cache, allocate_material_family_routing, allocate_learning_to_cluster_shadow_sidecars,
 							allocate_nisml_shadow_sidecars);
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
-	m_zero_host_pinned.resize_host_pinned_mem(1);
+	// Large enough to reset all the material family counters with a single upload
+	m_zero_host_pinned.resize_host_pinned_mem(KernelMaterialSpecializationCount);
+	std::fill_n(m_zero_host_pinned.get_host_pinned_pointer(), KernelMaterialSpecializationCount, 0u);
 
 	m_allocated_ray_volume_state_byte_size		   = ray_volume_state_byte_size;
 	m_allocated_nee_deferred_mis_context_byte_size = nee_deferred_mis_context_byte_size;
