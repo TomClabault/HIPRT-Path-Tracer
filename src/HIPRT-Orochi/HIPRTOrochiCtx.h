@@ -6,6 +6,7 @@
 #ifndef HIPRT_OROCHI_CTX_H
 #define HIPRT_OROCHI_CTX_H
 
+#include <cstdlib>
 #include <memory>
 
 #include <hiprt/hiprt.h>
@@ -17,6 +18,9 @@
 #include "Utils/Utils.h"
 
 extern ImGuiLogger g_imgui_logger;
+
+// Number of hardware queues requested from the HIP runtime through GPU_MAX_HW_QUEUES
+#define HIP_HARDWARE_QUEUE_COUNT "16"
 
 struct HIPRTOrochiCtx
 {
@@ -37,9 +41,36 @@ struct HIPRTOrochiCtx
 	}
 #endif // #ifdef _WIN32
 
+	/**
+	 * The HIP runtime maps the streams onto at most GPU_MAX_HW_QUEUES hardware queues (4 by default) and the streams
+	 * beyond that share a queue. Streams sharing a queue execute one after the other and a wait on an event of such
+	 * a stream can block the host submission, which breaks the overlap of the wavefront material family kernels.
+	 *
+	 * Must be called before the HIP runtime is loaded. A value already set by the user is kept.
+	 */
+	void set_HIP_hardware_queue_count()
+	{
+		if (std::getenv("GPU_MAX_HW_QUEUES") != nullptr)
+		{
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Using user-defined GPU_MAX_HW_QUEUES=%s", std::getenv("GPU_MAX_HW_QUEUES"));
+
+			return;
+		}
+
+		// Enough for every stream of the renderer: main stream, ReGIR, wavefront material families, baker
+#ifdef _WIN32
+		_putenv_s("GPU_MAX_HW_QUEUES", HIP_HARDWARE_QUEUE_COUNT);
+#else  // #ifdef _WIN32
+		setenv("GPU_MAX_HW_QUEUES", HIP_HARDWARE_QUEUE_COUNT, 0);
+#endif // #ifdef _WIN32
+
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Setting GPU_MAX_HW_QUEUES=%s", HIP_HARDWARE_QUEUE_COUNT);
+	}
+
 	void init(int device_index)
 	{
 		this->device_index = device_index;
+
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing Orochi...");
 
 #ifdef OROCHI_ENABLE_CUEW
@@ -51,6 +82,9 @@ struct HIPRTOrochiCtx
 #ifdef OROCHI_ENABLE_CUEW
 		int error_initialize = oroInitialize((oroApi)(ORO_API_CUDA), 0);
 #else
+
+		set_HIP_hardware_queue_count();
+
 		int error_initialize = oroInitialize((oroApi)(ORO_API_HIP), 0);
 #endif
 		if (error_initialize != oroSuccess)
