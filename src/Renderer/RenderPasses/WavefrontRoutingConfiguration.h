@@ -11,9 +11,10 @@ struct WavefrontRoutingConfiguration
 	bool requires_terminal_trace_completion;
 };
 
-inline WavefrontRoutingConfiguration get_wavefront_routing_configuration(int bsdf_model, bool material_specialization_enabled, int nee_estimator)
+inline WavefrontRoutingConfiguration get_wavefront_routing_configuration(int bsdf_model, int nee_estimator)
 {
-	bool route_shading_by_material_family			  = bsdf_model == BSDF_PRINCIPLED && material_specialization_enabled;
+	// The material families are only defined for the principled BSDF
+	bool route_shading_by_material_family			  = bsdf_model == BSDF_PRINCIPLED;
 	bool route_deferred_completion_by_material_family = route_shading_by_material_family && nee_estimator == LSS_RIS_BSDF_AND_LIGHT;
 	bool requires_terminal_trace_completion = nee_estimator == LSS_BSDF || nee_estimator == LSS_MIS_LIGHT_BSDF || nee_estimator == LSS_RIS_BSDF_AND_LIGHT ||
 											  nee_estimator == LSS_RISLTC || nee_estimator == LSS_LEARNING_TO_CLUSTER_MIS;

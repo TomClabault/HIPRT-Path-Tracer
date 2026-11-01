@@ -306,16 +306,6 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		m_render_window->set_render_dirty(true);
 	}
 
-	bool wavefront_material_specialization =
-		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE;
-	if (ImGui::Checkbox("Wavefront material specialization", &wavefront_material_specialization))
-	{
-		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION,
-											   wavefront_material_specialization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-		m_renderer->recompile_kernels();
-		m_render_window->set_render_dirty(true);
-	}
-
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();

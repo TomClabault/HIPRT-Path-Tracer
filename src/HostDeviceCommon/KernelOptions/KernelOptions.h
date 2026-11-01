@@ -19,10 +19,6 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
 
-#ifndef WavefrontMaterialSpecialization
-#define WavefrontMaterialSpecialization KERNEL_OPTION_TRUE
-#endif
-
 #define DEBUG_PIXEL_X_KD_TREE 719
 #define DEBUG_PIXEL_Y_KD_TREE 393
 

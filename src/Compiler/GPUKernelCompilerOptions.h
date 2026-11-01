@@ -23,7 +23,6 @@ public:
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE;
 
 	static const std::string BSDF_MODEL;
-	static const std::string WAVEFRONT_MATERIAL_SPECIALIZATION;
 	static const std::string KERNEL_MATERIAL_SPECIALIZATION_OPTION;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
 	static const std::string PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION;

@@ -316,10 +316,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_SHADOW_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
 																 main_stream);
 
-	int nee_estimator									= compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-	WavefrontRoutingConfiguration routing_configuration = get_wavefront_routing_configuration(
-		compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
-		compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE, nee_estimator);
+	int nee_estimator = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	WavefrontRoutingConfiguration routing_configuration =
+		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL), nee_estimator);
 	bool route_primary_by_material_family  = routing_configuration.route_shading_by_material_family;
 	bool has_deferred_bsdf_sampling		   = routing_configuration.requires_terminal_trace_completion;
 	bool route_deferred_by_material_family = routing_configuration.route_deferred_completion_by_material_family;
@@ -546,7 +545,6 @@ bool WavefrontRenderPass::uses_material_family_routing(const GPUKernelCompilerOp
 {
 	WavefrontRoutingConfiguration configuration =
 		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
-											compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE,
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
 
 	return configuration.route_shading_by_material_family;
@@ -556,7 +554,6 @@ bool WavefrontRenderPass::uses_deferred_material_family_routing(const GPUKernelC
 {
 	WavefrontRoutingConfiguration configuration =
 		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
-											compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_MATERIAL_SPECIALIZATION) == KERNEL_OPTION_TRUE,
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
 
 	return configuration.route_deferred_completion_by_material_family;
