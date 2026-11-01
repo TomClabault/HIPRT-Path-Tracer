@@ -64,7 +64,17 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
+	bool get_overlap_material_family_kernels() const;
+	void set_overlap_material_family_kernels(bool overlap_material_family_kernels);
+
 private:
+	enum class MaterialFamilyKernelType
+	{
+		PRIMARY_SHADING,
+		SECONDARY_SHADING,
+		DEFERRED_COMPLETION
+	};
+
 	bool uses_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
 	bool uses_deferred_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
 	const std::string& get_primary_shading_kernel_name(unsigned int family_index) const;
@@ -77,6 +87,8 @@ private:
 	void free_staging_buffers();
 	WavefrontDataDevice get_wavefront_data_device();
 	void reset_material_family_counts_async(oroStream_t stream);
+	const std::string& get_material_family_kernel_name(MaterialFamilyKernelType kernel_type, unsigned int family_index) const;
+	void launch_material_family_kernels_async(MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int block_count, bool overlap);
 
 	int2_t m_render_resolution								   = make_int2(0, 0);
 	bool m_staging_buffers_allocated						   = false;
@@ -86,8 +98,25 @@ private:
 	bool m_nee_deferred_mis_context_byte_size_dirty			   = true;
 
 	WavefrontDataHost<OrochiBuffer> m_wavefront_data;
+	// Entry 0 is the render data of the kernels that run on the main stream.
+	// Entry 1 + family_index is the render data of the kernels of that material family: each family gets
+	// its own slice of the global BVH traversal stack buffer so that the families can run concurrently
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<unsigned int> m_zero_host_pinned;
+
+	// If true, the shading and deferred completion kernels of the different material families
+	// run concurrently on their own streams instead of one after the other on the main stream.
+	//
+	// Off by default: RGP captures on a RX 7900 XTX (white room, 1280x720) show only a ~3% shorter frame. The streams outnumber
+	// the HIP hardware queues (GPU_MAX_HW_QUEUES, 4 by default) so two families share a queue and the dominant family often waits
+	// behind the other one
+	bool m_overlap_material_family_kernels = false;
+	// One stream per material family for the overlapped family kernels
+	oroStream_t m_material_family_streams[KernelMaterialSpecializationCount] = {};
+	// Recorded on the main stream before the family kernels so that the family streams wait for the previous work of the main stream
+	oroEvent_t m_material_family_fork_event = nullptr;
+	// Recorded on each family stream after its kernel so that the main stream waits for all the families before continuing
+	oroEvent_t m_material_family_join_events[KernelMaterialSpecializationCount] = {};
 };
 
 #endif // #ifndef RENDERER_WAVEFRONT_RENDER_PASS_H

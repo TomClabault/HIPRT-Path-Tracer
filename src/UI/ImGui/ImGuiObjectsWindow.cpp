@@ -6,6 +6,8 @@
 #include "UI/ImGui/ImGuiObjectsWindow.h"
 #include "UI/RenderWindow.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+#include "Renderer/GPURendererThread.h"
+#include "Renderer/RenderPasses/WavefrontRenderPass.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -314,6 +316,19 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 											   wavefront_material_specialization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
 		m_render_window->set_render_dirty(true);
+	}
+
+	std::shared_ptr<WavefrontRenderPass> wavefront_render_pass = std::dynamic_pointer_cast<WavefrontRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(WavefrontRenderPass::WAVEFRONT_RENDER_PASS_NAME));
+	if (wavefront_render_pass)
+	{
+		ImGui::BeginDisabled(!wavefront_material_specialization);
+		bool overlap_material_family_kernels = wavefront_render_pass->get_overlap_material_family_kernels();
+		if (ImGui::Checkbox("Overlap material family kernels", &overlap_material_family_kernels))
+			wavefront_render_pass->set_overlap_material_family_kernels(overlap_material_family_kernels);
+		ImGuiRenderer::show_help_marker("Runs the wavefront shading kernels of the different material families concurrently on separate streams "
+										"instead of one after the other.");
+		ImGui::EndDisabled();
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
