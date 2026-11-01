@@ -288,7 +288,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	hiprtGlobalStackBuffer global_stack_buffer = render_data.global_traversal_stack_buffer;
 	unsigned int family_stack_count			   = global_stack_buffer.stackCount / KernelMaterialSpecializationCount;
 	unsigned int family_block_count			   = std::min(wavefront_block_count, family_stack_count / wavefront_block_size);
-	bool overlap_family_kernels				   = m_overlap_material_family_kernels && global_stack_buffer.stackData != nullptr && family_block_count > 0;
+	// The families fall back to running one after the other on the main stream with the whole stack buffer if
+	// it is too small to be split between them
+	bool overlap_family_kernels = global_stack_buffer.stackData != nullptr && family_block_count > 0;
 	if (!overlap_family_kernels)
 		family_block_count = wavefront_block_count;
 
@@ -513,17 +515,6 @@ void WavefrontRenderPass::launch_material_family_kernels_async(MaterialFamilyKer
 	// The following passes of the main stream consume the outputs of all the families
 	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 		OROCHI_CHECK_ERROR(oroStreamWaitEvent(main_stream, m_material_family_join_events[family_index], 0));
-}
-
-bool WavefrontRenderPass::get_overlap_material_family_kernels() const
-{
-
-	return m_overlap_material_family_kernels;
-}
-
-void WavefrontRenderPass::set_overlap_material_family_kernels(bool overlap_material_family_kernels)
-{
-	m_overlap_material_family_kernels = overlap_material_family_kernels;
 }
 
 void WavefrontRenderPass::reset(bool reset_by_camera_movement)

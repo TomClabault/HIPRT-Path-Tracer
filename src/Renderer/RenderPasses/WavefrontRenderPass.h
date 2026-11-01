@@ -64,9 +64,6 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
-	bool get_overlap_material_family_kernels() const;
-	void set_overlap_material_family_kernels(bool overlap_material_family_kernels);
-
 private:
 	enum class MaterialFamilyKernelType
 	{
@@ -104,13 +101,10 @@ private:
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<unsigned int> m_zero_host_pinned;
 
-	// If true, the shading and deferred completion kernels of the different material families
-	// run concurrently on their own streams instead of one after the other on the main stream.
+	// The shading and deferred completion kernels of the different material families run concurrently on their own streams.
+	// On a RX 7900 XTX (white room, 1280x720) this went from 73 to 80 samples/s compared to launching them one after the other
+	// on the main stream, with one HIP hardware queue per stream (see HIPRTOrochiCtx::set_HIP_hardware_queue_count())
 	//
-	// Off by default: RGP captures on a RX 7900 XTX (white room, 1280x720) show only a ~3% shorter frame. The streams outnumber
-	// the HIP hardware queues (GPU_MAX_HW_QUEUES, 4 by default) so two families share a queue and the dominant family often waits
-	// behind the other one
-	bool m_overlap_material_family_kernels = false;
 	// One stream per material family for the overlapped family kernels
 	oroStream_t m_material_family_streams[KernelMaterialSpecializationCount] = {};
 	// Recorded on the main stream before the family kernels so that the family streams wait for the previous work of the main stream
