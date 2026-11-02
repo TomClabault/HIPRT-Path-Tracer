@@ -58,13 +58,20 @@ HIPRT_DEVICE void wavefront_enqueue_material_family(HIPRTRenderData& render_data
  *
  * The classification uses the packed material written to the G-buffer so that the routing matches the material
  * that the primary shading pass reads back from the G-buffer.
+ *
+ * The material families are only defined for the principled BSDF: the other BSDF models only have the
+ * KernelMaterialSpecializationAll family
  */
 HIPRT_DEVICE unsigned int wavefront_classify_primary_material_family(const DevicePackedEffectiveMaterial& packed_material)
 {
+#if BSDF_MODEL == BSDF_PRINCIPLED
 	ResolvedMaterialUserControlsCache resolved_user_controls;
 	PrincipledMaterialClassificationInputs classification_inputs = load_material_classification_inputs(packed_material, resolved_user_controls);
 
 	return static_cast<unsigned int>(classify_principled_material(classification_inputs, true));
+#else
+	return static_cast<unsigned int>(KernelMaterialSpecializationAll);
+#endif
 }
 
 #endif // #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_MATERIAL_FAMILY_ROUTING_H

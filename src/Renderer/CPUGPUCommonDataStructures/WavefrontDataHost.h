@@ -93,7 +93,7 @@ struct WavefrontDataHost
 				std::size_t ray_volume_state_byte_size,
 				std::size_t nee_deferred_mis_context_byte_size,
 				bool allocate_resolved_material_control_cache,
-				bool allocate_material_family_routing,
+				bool allocate_current_material_classifications,
 				bool allocate_learning_to_cluster_shadow_sidecars,
 				bool allocate_nisml_shadow_sidecars)
 	{
@@ -136,13 +136,13 @@ struct WavefrontDataHost
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS>(
 			allocate_learning_to_cluster_shadow_sidecars ? shadow_work_capacity : 0);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_NISML_SHADOW_SIDECARS>(allocate_nisml_shadow_sidecars ? shadow_work_capacity : 0);
-		std::size_t family_path_count = allocate_material_family_routing ? static_cast<std::size_t>(path_capacity) * KernelMaterialSpecializationCount : 0;
-		std::size_t family_count	  = allocate_material_family_routing ? KernelMaterialSpecializationCount : 0;
-		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_INDICES>(family_path_count);
-		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(family_count);
-		if (allocate_material_family_routing)
-			// The camera rays pass appends to the family queues before any wavefront kernel had a chance to reset the counters
-			m_wavefront_data.template memset_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(0u);
+		// The shading passes always read their paths from the material family queues. The BSDF models other than the principled
+		// BSDF only use the queue of the KernelMaterialSpecializationAll family
+		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_INDICES>(static_cast<std::size_t>(path_capacity) *
+																					   KernelMaterialSpecializationCount);
+		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(KernelMaterialSpecializationCount);
+		// The camera rays pass appends to the family queues before any wavefront kernel had a chance to reset the counters
+		m_wavefront_data.template memset_buffer<WAVEFRONT_MATERIAL_FAMILY_COUNTS>(0u);
 		std::size_t resolved_control_count = allocate_resolved_material_control_cache ? path_capacity : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_ROUGHNESS>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_METALLIC>(resolved_control_count);
@@ -151,10 +151,10 @@ struct WavefrontDataHost
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_SHEEN>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION>(resolved_control_count);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>(resolved_control_count);
-		std::size_t current_material_classification_count = allocate_resolved_material_control_cache && allocate_material_family_routing ? path_capacity : 0;
+		std::size_t current_material_classification_count = allocate_current_material_classifications ? path_capacity : 0;
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS>(current_material_classification_count);
 		m_resolved_material_control_cache_allocated		= allocate_resolved_material_control_cache;
-		m_material_family_routing_allocated				= allocate_material_family_routing;
+		m_current_material_classifications_allocated	= allocate_current_material_classifications;
 		m_shadow_work_capacity							= shadow_work_capacity;
 		m_learning_to_cluster_shadow_sidecars_allocated = allocate_learning_to_cluster_shadow_sidecars;
 		m_nisml_shadow_sidecars_allocated				= allocate_nisml_shadow_sidecars;
@@ -167,7 +167,7 @@ struct WavefrontDataHost
 
 		m_wavefront_data.free();
 		m_resolved_material_control_cache_allocated		= false;
-		m_material_family_routing_allocated				= false;
+		m_current_material_classifications_allocated	= false;
 		m_shadow_work_capacity							= 0;
 		m_learning_to_cluster_shadow_sidecars_allocated = false;
 		m_nisml_shadow_sidecars_allocated				= false;
@@ -189,9 +189,9 @@ struct WavefrontDataHost
 		return m_resolved_material_control_cache_allocated;
 	}
 
-	bool has_material_family_routing() const
+	bool has_current_material_classifications() const
 	{
-		return m_material_family_routing_allocated;
+		return m_current_material_classifications_allocated;
 	}
 
 	unsigned int shadow_work_capacity() const
@@ -225,13 +225,10 @@ struct WavefrontDataHost
 		wavefront_data_device.path_rng_states			   = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RNG_STATES>();
 		wavefront_data_device.path_volume_states =
 			reinterpret_cast<RayVolumeState*>(m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_VOLUME_STATE_BYTES>());
-		wavefront_data_device.path_nee_deferred_mis_contexts = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES>();
-		if (m_material_family_routing_allocated)
-		{
-			wavefront_data_device.material_family_indices		  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_MATERIAL_FAMILY_INDICES>();
-			wavefront_data_device.material_family_counts		  = m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_MATERIAL_FAMILY_COUNTS>();
-			wavefront_data_device.material_family_routing_enabled = 1;
-		}
+		wavefront_data_device.path_nee_deferred_mis_contexts  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES>();
+		wavefront_data_device.material_family_indices		  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_MATERIAL_FAMILY_INDICES>();
+		wavefront_data_device.material_family_counts		  = m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_MATERIAL_FAMILY_COUNTS>();
+		wavefront_data_device.material_family_routing_enabled = 1;
 		if (m_resolved_material_control_cache_allocated)
 		{
 			wavefront_data_device.path_resolved_material_roughness =
@@ -245,7 +242,7 @@ struct WavefrontDataHost
 			wavefront_data_device.path_resolved_material_control_validity_masks =
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>();
 		}
-		if (m_resolved_material_control_cache_allocated && m_material_family_routing_allocated)
+		if (m_current_material_classifications_allocated)
 			wavefront_data_device.path_current_material_classifications =
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS>();
 
@@ -307,7 +304,7 @@ struct WavefrontDataHost
 
 	WavefrontDataHostInternal<DataContainer> m_wavefront_data;
 	bool m_resolved_material_control_cache_allocated	 = false;
-	bool m_material_family_routing_allocated			 = false;
+	bool m_current_material_classifications_allocated	 = false;
 	unsigned int m_shadow_work_capacity					 = 0;
 	bool m_learning_to_cluster_shadow_sidecars_allocated = false;
 	bool m_nisml_shadow_sidecars_allocated				 = false;

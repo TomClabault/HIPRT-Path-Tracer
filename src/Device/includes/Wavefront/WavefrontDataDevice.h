@@ -74,7 +74,9 @@ struct WavefrontDataDevice
 
 	unsigned int shadow_work_capacity = 0;
 
-	unsigned int path_capacity					 = 0;
+	unsigned int path_capacity = 0;
+	// Non-zero when the wavefront pass has allocated its buffers. The camera rays pass then appends the primary hits to the
+	// material family queues that the primary shading passes read from
 	unsigned int material_family_routing_enabled = 0;
 	// When non-zero, TracePaths classifies the material of the new hits and appends the paths directly to the material family queues
 	// instead of going through queue 0 and a separate classification pass

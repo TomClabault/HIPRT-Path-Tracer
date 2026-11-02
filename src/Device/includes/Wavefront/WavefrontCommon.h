@@ -126,9 +126,13 @@ HIPRT_DEVICE bool wavefront_load_current_material_classification(const HIPRTRend
  * Classifies the material of a secondary hit and appends the path to the queue of its material family.
  *
  * The resolved classification inputs are cached so that the shading pass does not have to sample the material textures again.
+ *
+ * The material families are only defined for the principled BSDF: with the other BSDF models, all the paths go to the
+ * KernelMaterialSpecializationAll family
  */
 HIPRT_DEVICE void wavefront_classify_secondary_hit(HIPRTRenderData& render_data, unsigned int path_index, const HitInfo& closest_hit_info, bool inside_material)
 {
+#if BSDF_MODEL == BSDF_PRINCIPLED
 	int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
 
 	ResolvedMaterialUserControlsCache resolved_user_controls;
@@ -140,6 +144,9 @@ HIPRT_DEVICE void wavefront_classify_secondary_hit(HIPRTRenderData& render_data,
 	wavefront_store_current_material_classification(render_data, path_index, material_index, classification_inputs, resolved_user_controls);
 
 	wavefront_enqueue_material_family(render_data, static_cast<unsigned int>(material_family), path_index);
+#else
+	wavefront_enqueue_material_family(render_data, static_cast<unsigned int>(KernelMaterialSpecializationAll), path_index);
+#endif
 }
 
 HIPRT_DEVICE void wavefront_load_secondary_material_state(

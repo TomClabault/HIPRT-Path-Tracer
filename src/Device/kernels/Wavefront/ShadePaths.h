@@ -15,10 +15,10 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char WAVEFRONT_SHADE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64) WavefrontShadePaths(unsigned int bounce_count, bool route_by_family)
+__launch_bounds__(64) WavefrontShadePaths(unsigned int bounce_count)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_count, unsigned int queue_slot, bool route_by_family = false)
+inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_count, unsigned int queue_slot)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -30,30 +30,16 @@ inline WavefrontShadePaths(HIPRTRenderData render_data, unsigned int bounce_coun
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__
 
-	unsigned int queue_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[0], 0u);
-	if (route_by_family)
-	{
-		if (render_data.wavefront_data.material_family_routing_enabled == 0)
-			return;
-
-		unsigned int material_family = KERNEL_MATERIAL_SPECIALIZATION;
-		queue_count					 = render_data.wavefront_data.material_family_counts[material_family];
-	}
+	// TracePaths or the secondary classification pass has appended the paths to the queue of the material family of their hit
+	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
+	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
+	unsigned int queue_count	   = render_data.wavefront_data.material_family_counts[material_family];
 	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 
 	for (; queue_slot < queue_count; queue_slot += queue_stride)
 	{
-		unsigned int path_index = queue_slot;
-		if (route_by_family)
-		{
-			unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
-			unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
-			path_index					   = render_data.wavefront_data.material_family_indices[family_queue_base + queue_slot];
-		}
-		else
-			path_index = render_data.wavefront_data.path_queues[0][queue_slot];
-
+		unsigned int path_index = render_data.wavefront_data.material_family_indices[family_queue_base + queue_slot];
 		if (path_index >= render_data.wavefront_data.path_capacity)
 			continue;
 		if (render_data.wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL)

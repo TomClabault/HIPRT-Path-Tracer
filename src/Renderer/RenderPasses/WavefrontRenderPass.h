@@ -72,7 +72,7 @@ private:
 		DEFERRED_COMPLETION
 	};
 
-	bool uses_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
+	unsigned int get_material_family_count(const GPUKernelCompilerOptions& compiler_options) const;
 	bool uses_deferred_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const;
 	const std::string& get_primary_shading_kernel_name(unsigned int family_index) const;
 	const std::string& get_secondary_shading_kernel_name(unsigned int family_index) const;
@@ -85,7 +85,8 @@ private:
 	WavefrontDataDevice get_wavefront_data_device();
 	void reset_material_family_counts_async(oroStream_t stream);
 	const std::string& get_material_family_kernel_name(MaterialFamilyKernelType kernel_type, unsigned int family_index) const;
-	void launch_material_family_kernels_async(MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int block_count, bool overlap);
+	void launch_material_family_kernels_async(
+		MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int material_family_count, unsigned int block_count, bool overlap);
 
 	int2_t m_render_resolution								   = make_int2(0, 0);
 	bool m_staging_buffers_allocated						   = false;
