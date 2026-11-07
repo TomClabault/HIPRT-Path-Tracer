@@ -380,7 +380,6 @@ void GPUKernel::set_precompiled(bool precompiled)
 
 bool GPUKernel::is_measuring_execution_time() const
 {
-
 	return m_measure_execution_time;
 }
 

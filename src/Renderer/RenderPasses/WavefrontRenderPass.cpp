@@ -177,11 +177,17 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 
+	// The forked families are the small ones, the dominant family runs on the main stream. Giving the family streams
+	// the greatest priority lets their workgroups be dispatched as soon as the dominant family kernel frees some slots
+	int least_stream_priority	 = 0;
+	int greatest_stream_priority = 0;
+	OROCHI_CHECK_ERROR(oroDeviceGetStreamPriorityRange(&least_stream_priority, &greatest_stream_priority));
+
 	// The events only order the streams, they are never used for timing
 	OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_fork_event, oroEventDisableTiming));
 	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 	{
-		OROCHI_CHECK_ERROR(oroStreamCreate(&m_material_family_streams[family_index]));
+		OROCHI_CHECK_ERROR(oroStreamCreateWithPriority(&m_material_family_streams[family_index], 0, greatest_stream_priority));
 		OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_join_events[family_index], oroEventDisableTiming));
 	}
 }
@@ -350,6 +356,10 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	unsigned int* zero = m_zero_host_pinned.get_host_pinned_pointer();
 	zero[0]			   = 0;
 
+	// The dominant material family only matters when the families are overlapped: it is the one that runs on the main stream
+	bool read_back_material_family_counts		   = overlap_family_kernels && m_material_family_count_readback_frame_counter == 0;
+	m_material_family_count_readback_frame_counter = (m_material_family_count_readback_frame_counter + 1) % MATERIAL_FAMILY_COUNT_READBACK_PERIOD;
+
 	for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
 	{
 		m_wavefront_data.get_queue_count_buffer(1).upload_data_async(zero, main_stream);
@@ -361,9 +371,13 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 		void* shade_launch_args[] = { &bounce_count };
 		if (bounce_index == 0 && path_capacity > 0)
+		{
 			// The camera rays pass has already appended the primary hits to the material family queues
 			launch_material_family_kernels_async(MaterialFamilyKernelType::PRIMARY_SHADING, shade_launch_args, material_family_count, family_block_count,
 												 overlap_family_kernels);
+			if (read_back_material_family_counts)
+				read_back_material_family_counts_async(MaterialFamilyKernelType::PRIMARY_SHADING);
+		}
 		else if (bounce_index > 0 && path_capacity > 0)
 		{
 			if (!trace_classifies_material_families)
@@ -376,6 +390,9 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 			launch_material_family_kernels_async(MaterialFamilyKernelType::SECONDARY_SHADING, shade_launch_args, material_family_count, family_block_count,
 												 overlap_family_kernels);
+			// The first secondary bounce is representative of the following ones
+			if (read_back_material_family_counts && bounce_index == 1)
+				read_back_material_family_counts_async(MaterialFamilyKernelType::SECONDARY_SHADING);
 		}
 
 		if (run_shadow_pass)
@@ -464,6 +481,36 @@ const std::string& WavefrontRenderPass::get_material_family_kernel_name(Material
 	}
 }
 
+unsigned int WavefrontRenderPass::get_material_family_count_readback_slot(MaterialFamilyKernelType kernel_type) const
+{
+	// The deferred completion consumes the family queues of the secondary hits
+	return kernel_type == MaterialFamilyKernelType::PRIMARY_SHADING ? 0 : 1;
+}
+
+unsigned int WavefrontRenderPass::get_dominant_material_family(MaterialFamilyKernelType kernel_type, unsigned int material_family_count) const
+{
+	unsigned int readback_slot	 = get_material_family_count_readback_slot(kernel_type);
+	const unsigned int* counts	 = m_material_family_counts_host_pinned.get_host_pinned_pointer() + readback_slot * KernelMaterialSpecializationCount;
+	unsigned int dominant_family = 0;
+
+	// Before the first read back has completed, all the counts are 0 and the first family is picked
+	for (unsigned int family_index = 1; family_index < material_family_count; family_index++)
+		if (counts[family_index] > counts[dominant_family])
+			dominant_family = family_index;
+
+	return dominant_family;
+}
+
+void WavefrontRenderPass::read_back_material_family_counts_async(MaterialFamilyKernelType kernel_type)
+{
+	unsigned int readback_slot = get_material_family_count_readback_slot(kernel_type);
+	unsigned int* destination  = m_material_family_counts_host_pinned.get_host_pinned_pointer() + readback_slot * KernelMaterialSpecializationCount;
+
+	// Enqueued on the main stream after the join of the family kernels: the counters still hold the counts that the
+	// family kernels have just consumed, they are only reset before the next pass that appends to the family queues
+	m_wavefront_data.get_material_family_count_buffer().download_data_async(destination, m_renderer->get_main_stream());
+}
+
 void WavefrontRenderPass::launch_material_family_kernels_async(
 	MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int material_family_count, unsigned int block_count, bool overlap)
 {
@@ -478,13 +525,25 @@ void WavefrontRenderPass::launch_material_family_kernels_async(
 		return;
 	}
 
+	unsigned int dominant_family_index = get_dominant_material_family(kernel_type, material_family_count);
+
 	// The family kernels must not start before the work already queued on the main stream: render data uploads,
 	// queue counter resets and the kernels that produced the family queues
 	OROCHI_CHECK_ERROR(oroEventRecord(m_material_family_fork_event, main_stream));
 
+	// The dominant family is launched on the main stream: it has no cross-stream wait so the worker thread of the main stream
+	// submits it ahead of time and it starts right after the kernel that produced its queue. The worker threads of the
+	// other streams wait on the CPU for the fork event before they can submit their kernels (see the comment on the join below).
+	// It still uses its own render data and its slice of the global stack buffer since the other families run concurrently
+	m_kernels[get_material_family_kernel_name(kernel_type, dominant_family_index)]->launch_asynchronous_3D_block_count(block_count, 1, 1, 64, 1, 1, launch_args,
+																													   main_stream);
+
 	// The families shade disjoint sets of paths and only append to the shared queues with atomics so they can run concurrently
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 	{
+		if (family_index == dominant_family_index)
+			continue;
+
 		oroStream_t family_stream = m_material_family_streams[family_index];
 
 		OROCHI_CHECK_ERROR(oroStreamWaitEvent(family_stream, m_material_family_fork_event, 0));
@@ -493,9 +552,17 @@ void WavefrontRenderPass::launch_material_family_kernels_async(
 		OROCHI_CHECK_ERROR(oroEventRecord(m_material_family_join_events[family_index], family_stream));
 	}
 
-	// The following passes of the main stream consume the outputs of all the families
+	// The following passes of the main stream consume the outputs of all the families.
+	// The dominant family is already ordered on the main stream so it is not joined.
+	//
+	// The HIP runtime has no direct dispatch on Windows (PAL backend): each stream has a worker thread that handles cross-stream
+	// waits on the CPU, the app thread does not block here. When the worker of the main stream reaches the wait of a family that
+	// has not finished, HostQueue::loop() first waits for all the work already submitted on the main stream, which includes the
+	// dominant family kernel, and then for the family. The next passes are only submitted after that so the GPU idles
+	// at each join (see memory/performance/OPTIMIZATIONS_SUCCESS.md)
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-		OROCHI_CHECK_ERROR(oroStreamWaitEvent(main_stream, m_material_family_join_events[family_index], 0));
+		if (family_index != dominant_family_index)
+			OROCHI_CHECK_ERROR(oroStreamWaitEvent(main_stream, m_material_family_join_events[family_index], 0));
 }
 
 void WavefrontRenderPass::reset(bool reset_by_camera_movement)
@@ -781,7 +848,8 @@ bool WavefrontRenderPass::resize_staging_buffers()
 						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
 						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size ||
 						m_render_data_host_pinned.size() != 1 + KernelMaterialSpecializationCount ||
-						m_zero_host_pinned.size() != KernelMaterialSpecializationCount;
+						m_zero_host_pinned.size() != KernelMaterialSpecializationCount ||
+						m_material_family_counts_host_pinned.size() != 2 * KernelMaterialSpecializationCount;
 	if (!needs_resize)
 
 		return false;
@@ -796,6 +864,10 @@ bool WavefrontRenderPass::resize_staging_buffers()
 	// Large enough to reset all the material family counters with a single upload
 	m_zero_host_pinned.resize_host_pinned_mem(KernelMaterialSpecializationCount);
 	std::fill_n(m_zero_host_pinned.get_host_pinned_pointer(), KernelMaterialSpecializationCount, 0u);
+	// The primary and secondary shading counts read back to find the dominant material family of each pass
+	m_material_family_counts_host_pinned.resize_host_pinned_mem(2 * KernelMaterialSpecializationCount);
+	std::fill_n(m_material_family_counts_host_pinned.get_host_pinned_pointer(), 2 * KernelMaterialSpecializationCount, 0u);
+	m_material_family_count_readback_frame_counter = 0;
 
 	m_allocated_ray_volume_state_byte_size		   = ray_volume_state_byte_size;
 	m_allocated_nee_deferred_mis_context_byte_size = nee_deferred_mis_context_byte_size;
@@ -809,6 +881,7 @@ void WavefrontRenderPass::free_staging_buffers()
 	m_wavefront_data.free();
 	m_render_data_host_pinned.free_no_error();
 	m_zero_host_pinned.free_no_error();
+	m_material_family_counts_host_pinned.free_no_error();
 
 	m_allocated_ray_volume_state_byte_size		   = 0;
 	m_allocated_nee_deferred_mis_context_byte_size = 0;

@@ -85,6 +85,9 @@ private:
 	WavefrontDataDevice get_wavefront_data_device();
 	void reset_material_family_counts_async(oroStream_t stream);
 	const std::string& get_material_family_kernel_name(MaterialFamilyKernelType kernel_type, unsigned int family_index) const;
+	unsigned int get_material_family_count_readback_slot(MaterialFamilyKernelType kernel_type) const;
+	unsigned int get_dominant_material_family(MaterialFamilyKernelType kernel_type, unsigned int material_family_count) const;
+	void read_back_material_family_counts_async(MaterialFamilyKernelType kernel_type);
 	void launch_material_family_kernels_async(
 		MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int material_family_count, unsigned int block_count, bool overlap);
 
@@ -102,15 +105,31 @@ private:
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	OrochiBuffer<unsigned int> m_zero_host_pinned;
 
+	// The family counters read back from the GPU to find the dominant material family of each shading pass.
+	// Entries [0, KernelMaterialSpecializationCount) are the counts of the primary shading pass, the following entries
+	// are the counts of the first secondary shading pass.
+	// The copies are asynchronous and never waited on: the counts are only used to choose which family kernel runs
+	// on the main stream so values that are stale or still being written cannot affect the image
+	OrochiBuffer<unsigned int> m_material_family_counts_host_pinned;
+	// The counts are read back once every that many frames: the dominant family rarely changes from one sample to the next
+	// and each read back adds a copy command on the main stream
+	static constexpr unsigned int MATERIAL_FAMILY_COUNT_READBACK_PERIOD = 16;
+	unsigned int m_material_family_count_readback_frame_counter			= 0;
+
 	// The shading and deferred completion kernels of the different material families run concurrently on their own streams.
 	// On a RX 7900 XTX (white room, 1280x720) this went from 73 to 80 samples/s compared to launching them one after the other
 	// on the main stream, with one HIP hardware queue per stream (see HIPRTOrochiCtx::set_HIP_hardware_queue_count())
 	//
-	// One stream per material family for the overlapped family kernels
+	// The dominant family (the one with the most paths) runs on the main stream so that it starts right after the kernel
+	// that produced its queue: a kernel behind a cross-stream wait is only submitted once the worker thread of its stream
+	// has seen the wait complete on the CPU. Only the other families are forked to their own streams.
+	//
+	// One stream per material family for the overlapped family kernels. The streams have the greatest priority so that
+	// the small families are dispatched while the dominant family kernel runs instead of in its tail
 	oroStream_t m_material_family_streams[KernelMaterialSpecializationCount] = {};
 	// Recorded on the main stream before the family kernels so that the family streams wait for the previous work of the main stream
 	oroEvent_t m_material_family_fork_event = nullptr;
-	// Recorded on each family stream after its kernel so that the main stream waits for all the families before continuing
+	// Recorded on each forked family stream after its kernel so that the main stream waits for all the families before continuing
 	oroEvent_t m_material_family_join_events[KernelMaterialSpecializationCount] = {};
 };
 
