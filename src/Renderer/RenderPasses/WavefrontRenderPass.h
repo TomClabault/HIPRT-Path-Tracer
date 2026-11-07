@@ -64,6 +64,9 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
+	bool get_overlap_material_family_kernels() const;
+	void set_overlap_material_family_kernels(bool overlap_material_family_kernels);
+
 private:
 	enum class MaterialFamilyKernelType
 	{
@@ -124,6 +127,10 @@ private:
 	// that produced its queue: a kernel behind a cross-stream wait is only submitted once the worker thread of its stream
 	// has seen the wait complete on the CPU. Only the other families are forked to their own streams.
 	//
+	// If false, the families run one after the other on the main stream instead. This is slower but the execution time of each
+	// family kernel is then its real cost: when overlapped, it also includes the time spent waiting for the other families
+	bool m_overlap_material_family_kernels = true;
+
 	// One stream per material family for the overlapped family kernels
 	oroStream_t m_material_family_streams[KernelMaterialSpecializationCount] = {};
 	// Recorded on the main stream before the family kernels so that the family streams wait for the previous work of the main stream

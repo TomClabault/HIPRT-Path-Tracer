@@ -16,6 +16,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
+#include "Renderer/RenderPasses/WavefrontRenderPass.h"
 #include "Scene/CameraAnimation.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ImGui/ImGuiRenderer.h"
@@ -6656,6 +6657,21 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	}
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
+
+	std::shared_ptr<WavefrontRenderPass> wavefront_render_pass = std::dynamic_pointer_cast<WavefrontRenderPass>(
+		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(WavefrontRenderPass::WAVEFRONT_RENDER_PASS_NAME));
+	if (wavefront_render_pass && wavefront_render_pass->is_render_pass_used(*m_renderer->get_global_compiler_options()))
+	{
+		bool overlap_material_family_kernels = wavefront_render_pass->get_overlap_material_family_kernels();
+		if (ImGui::Checkbox("Overlap wavefront material family kernels", &overlap_material_family_kernels))
+			wavefront_render_pass->set_overlap_material_family_kernels(overlap_material_family_kernels);
+		ImGuiRenderer::show_help_marker("Runs the wavefront kernels of the different material families concurrently on separate streams "
+										"instead of one after the other.\n\n"
+										"When enabled, the times below include the time that each family kernel spends waiting for the others: "
+										"they overlap, so they do not add up to the frame time and do not represent the cost of the kernels.\n\n"
+										"Disable this to read the real cost of each kernel. Rendering is slower when disabled. "
+										"The times below are rolling averages so wait for the measures window to fill up after changing this.");
+	}
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size			 = m_render_window_perf_metrics->get_window_size();

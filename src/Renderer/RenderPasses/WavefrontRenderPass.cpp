@@ -298,8 +298,10 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	unsigned int family_stack_count			   = global_stack_buffer.stackCount / material_family_count;
 	unsigned int family_block_count			   = std::min(wavefront_block_count, family_stack_count / wavefront_block_size);
 	// The families fall back to running one after the other on the main stream with the whole stack buffer if
-	// it is too small to be split between them. A single family has nothing to overlap with
-	bool overlap_family_kernels = material_family_count > 1 && global_stack_buffer.stackData != nullptr && family_block_count > 0;
+	// it is too small to be split between them. A single family has nothing to overlap with.
+	// They also run one after the other if overlapping was turned off to measure the cost of each family kernel
+	bool overlap_family_kernels =
+		m_overlap_material_family_kernels && material_family_count > 1 && global_stack_buffer.stackData != nullptr && family_block_count > 0;
 	if (!overlap_family_kernels)
 		family_block_count = wavefront_block_count;
 
@@ -557,6 +559,17 @@ void WavefrontRenderPass::launch_material_family_kernels_async(
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 		if (family_index != dominant_family_index)
 			OROCHI_CHECK_ERROR(oroStreamWaitEvent(main_stream, m_material_family_join_events[family_index], 0));
+}
+
+bool WavefrontRenderPass::get_overlap_material_family_kernels() const
+{
+
+	return m_overlap_material_family_kernels;
+}
+
+void WavefrontRenderPass::set_overlap_material_family_kernels(bool overlap_material_family_kernels)
+{
+	m_overlap_material_family_kernels = overlap_material_family_kernels;
 }
 
 void WavefrontRenderPass::reset(bool reset_by_camera_movement)
