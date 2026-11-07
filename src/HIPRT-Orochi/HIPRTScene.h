@@ -8,7 +8,6 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
@@ -183,7 +182,7 @@ struct HIPRTGeometry
 
 		HIPRT_CHECK_ERROR(
 			hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
- 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		if (do_compaction)
 			HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
@@ -227,7 +226,6 @@ struct HIPRTScene
 	unsigned int total_triangle_count	  = 0;
 	OrochiBuffer<int> emissive_triangles_primitive_indices;
 	OrochiBuffer<int> emissive_triangles_indices_and_emissive_textures;
-	EmissiveMeshesAliasTablesHost<OrochiBuffer> emissive_meshes_data;
 
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed

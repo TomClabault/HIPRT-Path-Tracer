@@ -18,7 +18,6 @@
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
@@ -144,11 +143,6 @@ private:
 	// their power
 	std::vector<float> m_power_alias_table_probas;
 	std::vector<int> m_power_alias_table_alias;
-
-	// Structure that contains an alias table for sampling an emissive mesh proportional
-	// to its power as well as individual alias tables for each emissive mesh to be able
-	// to sample an emissive triangle proportional to its power within a given mesh
-	EmissiveMeshesAliasTablesHost<std::vector> m_emissive_meshes_alias_tables;
 
 	LightTreeATSBuilder m_light_tree_builder_ats;
 	LightTreeATSBuildResult<std::vector> m_light_tree_ats_build_result;

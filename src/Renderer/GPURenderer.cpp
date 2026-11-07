@@ -934,7 +934,6 @@ void GPURenderer::update_render_data()
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 		{
-			m_render_data.buffers.emissive_meshes_data						 = m_hiprt_scene.emissive_meshes_data.to_device();
 			m_render_data.buffers.triangles_average_emissive_luminance		 = m_hiprt_scene.triangle_average_emissive_luminance.get_device_pointer();
 			m_render_data.buffers.triangles_average_emissive_power_luminance = m_hiprt_scene.triangle_average_emissive_power_luminance.get_device_pointer();
 		}
@@ -1113,9 +1112,6 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(
 					scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
 			}
-
-			// Uploading emissive meshes
-			m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
 		});
 }
 
@@ -1275,12 +1271,6 @@ const std::vector<int>& GPURenderer::get_mesh_material_indices()
 {
 
 	return m_parsed_scene_metadata.mesh_material_indices;
-}
-
-unsigned int GPURenderer::get_emissive_mesh_count() const
-{
-
-	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
 }
 
 unsigned int GPURenderer::get_total_triangle_count() const

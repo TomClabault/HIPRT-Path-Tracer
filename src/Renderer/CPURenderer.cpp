@@ -331,8 +331,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
 		parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
 
-	m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
-
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building scene's BVH...");
 	m_triangle_buffer			= parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
 	m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
@@ -450,8 +448,6 @@ void CPURenderer::update_render_data()
 
 	m_render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells = ReSTIRPGRenderPass::HASH_GRID_INITIAL_CELL_COUNT;
 #endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
-
-	m_render_data.buffers.emissive_meshes_data = m_emissive_meshes_alias_tables.to_device();
 
 	m_render_data.cpu_only.bvh		 = m_bvh.get();
 	m_render_data.cpu_only.light_bvh = m_light_bvh.get();

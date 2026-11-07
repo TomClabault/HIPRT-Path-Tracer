@@ -165,7 +165,6 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 	ImGui::SeparatorText("Lights & light sampling memory");
 	ImGui::TreePush("Emissive and light-tree memory");
 	ImGui::Text("Emissive triangles: %u", scene.emissive_triangles_count);
-	ImGui::Text("Emissive meshes: %u", scene.emissive_meshes_data.m_meshes_PDFs.size());
 	// TODO this is wrong
 	ImGui::Text("Triangles with emissive textures: %zu", scene.emissive_triangles_indices_and_emissive_textures.get_element_count());
 	draw_memory_stat("Emissive triangle indices", emissive_index_memory);
@@ -173,7 +172,6 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 	draw_memory_stat("Emissive power luminance", scene.triangle_average_emissive_power_luminance.get_byte_size());
 	draw_memory_stat("Emissive primitive indices", scene.emissive_triangles_primitive_indices.get_byte_size());
 	draw_memory_stat("Emissive textured primitive indices", scene.emissive_triangles_indices_and_emissive_textures.get_byte_size());
-	draw_memory_stat("Emissive mesh alias tables", scene.emissive_meshes_data.get_byte_size());
 	draw_memory_stat("ATS light tree", m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes());
 	draw_memory_stat("SG light tree", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes());
 
@@ -183,8 +181,8 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 									scene.vertex_normals.get_byte_size() + scene.material_indices.get_byte_size() + scene.materials_buffer.get_byte_size() +
 									scene.material_opaque.get_byte_size() + scene.gpu_materials_textures.get_byte_size() +
 									scene.texcoords_buffer.get_byte_size() + scene.emissive_triangles_primitive_indices.get_byte_size() +
-									scene.emissive_triangles_indices_and_emissive_textures.get_byte_size() + scene.emissive_meshes_data.get_byte_size() +
-									texture_memory + m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes() +
+									scene.emissive_triangles_indices_and_emissive_textures.get_byte_size() + texture_memory +
+									m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes() +
 									m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

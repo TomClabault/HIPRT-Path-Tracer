@@ -17,7 +17,6 @@
 #include "Renderer/Triangle.h"
 #include "Scene/AABB.h"
 #include "Scene/Camera.h"
-#include "Scene/ParsedEmissiveMeshes.h"
 #include "Utils/Utils.h"
 
 #include <filesystem>
@@ -114,7 +113,6 @@ struct Scene
 		stream << "Scene statistics: " << std::endl;
 		stream << "\t" << vertices_positions.size() << " vertices" << std::endl;
 		stream << "\t" << triangles_vertex_indices.size() / 3 << " triangles" << std::endl;
-		stream << "\t" << parsed_emissive_meshes.emissive_meshes.size() << " emissive meshes" << std::endl;
 		stream << "\t" << emissive_triangles_primitive_indices.size() << " emissive triangles" << std::endl;
 		stream << "\t" << materials.size() << " materials" << std::endl;
 		stream << "\t" << textures.size() << " textures" << std::endl;
@@ -152,8 +150,6 @@ struct Scene
 	// Vertex indices of the emissive triangles of the scene. Used only to build a BVH
 	// over the emissive triangles of the scene for ray traversal
 	std::vector<int> emissive_triangle_vertex_indices;
-
-	ParsedEmissiveMeshes parsed_emissive_meshes;
 
 	std::vector<int> material_indices;
 	std::vector<bool> material_has_opaque_base_color_texture;
