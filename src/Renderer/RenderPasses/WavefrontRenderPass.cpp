@@ -177,17 +177,11 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 
-	// The forked families are the small ones, the dominant family runs on the main stream. Giving the family streams
-	// the greatest priority lets their workgroups be dispatched as soon as the dominant family kernel frees some slots
-	int least_stream_priority	 = 0;
-	int greatest_stream_priority = 0;
-	OROCHI_CHECK_ERROR(oroDeviceGetStreamPriorityRange(&least_stream_priority, &greatest_stream_priority));
-
 	// The events only order the streams, they are never used for timing
 	OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_fork_event, oroEventDisableTiming));
 	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 	{
-		OROCHI_CHECK_ERROR(oroStreamCreateWithPriority(&m_material_family_streams[family_index], 0, greatest_stream_priority));
+		OROCHI_CHECK_ERROR(oroStreamCreate(&m_material_family_streams[family_index]));
 		OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_join_events[family_index], oroEventDisableTiming));
 	}
 }

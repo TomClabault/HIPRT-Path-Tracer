@@ -124,8 +124,7 @@ private:
 	// that produced its queue: a kernel behind a cross-stream wait is only submitted once the worker thread of its stream
 	// has seen the wait complete on the CPU. Only the other families are forked to their own streams.
 	//
-	// One stream per material family for the overlapped family kernels. The streams have the greatest priority so that
-	// the small families are dispatched while the dominant family kernel runs instead of in its tail
+	// One stream per material family for the overlapped family kernels
 	oroStream_t m_material_family_streams[KernelMaterialSpecializationCount] = {};
 	// Recorded on the main stream before the family kernels so that the family streams wait for the previous work of the main stream
 	oroEvent_t m_material_family_fork_event = nullptr;
