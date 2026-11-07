@@ -1217,8 +1217,11 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		{
 			float cpu_overhead_time = (cpu_overhead_stop_time - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
 			m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_OVERHEAD_TIME_KEY, cpu_overhead_time);
+
+			// The GPU time in the performance metrics is per sample so only the share of the CPU overhead of one sample is added to it
+			float samples_per_frame = static_cast<float>(std::max(1, m_renderer->get_render_settings().samples_per_frame));
 			m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY,
-									  cpu_overhead_time + m_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
+									  cpu_overhead_time / samples_per_frame + m_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 		}
 
 		m_keyboard_interactor.poll_keyboard_inputs();

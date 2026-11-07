@@ -54,6 +54,9 @@ public:
 
 	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
+	//
+	// In the performance metrics computer, this same key holds the time of one sample instead: the time of the frame
+	// divided by the number of samples per frame
 	static const std::string ALL_RENDER_PASSES_TIME_KEY;
 	static const std::string FULL_FRAME_TIME_WITH_CPU_KEY;
 

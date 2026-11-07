@@ -868,7 +868,12 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 	get_active_render_graph().update_perf_metrics(perf_metrics);
 
-	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
+	float samples_per_frame = static_cast<float>(m_render_data.render_settings.samples_per_frame);
+	if (samples_per_frame <= 0.0f)
+		samples_per_frame = 1.0f;
+
+	// The performance metrics are per sample, like the times of the kernels. 'm_render_pass_times' keeps the time of the whole frame
+	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] / samples_per_frame);
 }
 
 void GPURenderer::reset(bool reset_by_camera_movement)
