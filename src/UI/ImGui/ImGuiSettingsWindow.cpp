@@ -6717,8 +6717,7 @@ void ImGuiSettingsWindow::draw_perf_metric_specific_panel(std::shared_ptr<Perfor
 	// Pusing the ID for that perf key metrics so that no ImGui widgets collide
 	ImGui::PushID(perf_metrics_key.c_str());
 
-	ImGui::Text("%s: %.3fms (%.1f FPS)", label.c_str(), perf_metrics->get_current_value(perf_metrics_key),
-				1000.0f / perf_metrics->get_average(perf_metrics_key));
+	ImGui::Text("%s: %.3fms (%.1f FPS)", label.c_str(), perf_metrics->get_average(perf_metrics_key), 1000.0f / perf_metrics->get_average(perf_metrics_key));
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
 		std::string line_1 =
