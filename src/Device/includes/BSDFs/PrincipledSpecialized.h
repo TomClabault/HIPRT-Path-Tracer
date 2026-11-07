@@ -148,7 +148,8 @@ template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F principled_specialized_diffuse_eval(const BSDFContextT<MaterialType>& bsdf_context, float& pdf)
 {
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
+	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal),
+								hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
 #elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
 #endif

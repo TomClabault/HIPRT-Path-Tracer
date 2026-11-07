@@ -126,6 +126,11 @@ enum KernelMaterialSpecialization : unsigned int
 #define NestedDielectricsStackSize NESTED_DIELECTRICS_STACK_SIZE
 
 /**
+ * BSDF model for all the materials of the scene
+ */
+#define BSDFGlobalModel BSDF_LAMBERTIAN
+
+/**
  * If false, material textures will not be read and so the global material overrider
  * of ImGui will work properly
  */

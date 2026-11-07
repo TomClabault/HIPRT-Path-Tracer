@@ -31,15 +31,10 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 											 int current_iteration,
 											 GlossyDielectricDirectionalAlbedoSettings bake_settings,
 											 float* out_buffer)
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
-											 int current_iteration,
-											 GlossyDielectricDirectionalAlbedoSettings bake_settings,
-											 float* out_buffer,
-											 int x,
-											 int y,
-											 int z)
+inline GlossyDielectricDirectionalAlbedoBake(
+	int kernel_iterations, int current_iteration, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -48,8 +43,8 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
 #endif
 
-	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o +
-								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
+	const uint32_t pixel_index =
+		(x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
 
@@ -77,9 +72,8 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
 	int iterations_per_kernel = floor(hippt::max(
-							1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH /
-														  static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness *
-																			 bake_settings.texture_size_ior)));
+		1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH /
+				  static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
 	int nb_kernel_launch	  = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
 	int nb_samples			  = nb_kernel_launch * iterations_per_kernel;
 
@@ -92,7 +86,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 		{
 			// Sampling the specular lobe
 			sampled_local_to_light_direction =
-									microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
+				microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
 
 			if (sampled_local_to_light_direction.z < 0)
 				// Sampled direction below surface, this can happen with microfacet
@@ -114,7 +108,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 		float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, /* aniso */ 0.0f, false, ColorRGB32F(F),
 																				 local_view_direction, sampled_local_to_light_direction, microfacet_normal,
 																				 eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0)
-																	.r;
+												.r;
 		// Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
 		total_pdf += eval_pdf_specular * 0.5f;
 		float specular_layer_throughput = 1.0f;
@@ -126,7 +120,7 @@ inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
 		DeviceUnpackedPrincipledFullMaterial mat;
 		mat.base_color = ColorRGB32F(1.0f);
 		float eval_pdf_diffuse;
-		float directional_albedo_diffuse = lambertian_brdf_eval(mat, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;
+		float directional_albedo_diffuse = lambertian_brdf_eval(mat, local_view_direction.z, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;
 		// Multiplying the PDF by 0.5f because we have a 50% chance to sample the diffuse lobe
 		total_pdf += eval_pdf_diffuse * 0.5f;
 		// Only the fraction of light that got through the specular layer

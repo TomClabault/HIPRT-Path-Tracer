@@ -11,12 +11,20 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
+/**
+ * 'NoV' and 'NoL' are the cosines of the view and light directions with the shading normal.
+ *
+ * The BRDF is reflection-only: it evaluates to 0 if the view or light direction is below the shading
+ * hemisphere. The view check matters when the BRDF is evaluated with a view direction that the BRDF
+ * didn't sample from, e.g. during ReSTIR reconnection shifts, where a reused vertex can be seen from the
+ * other side of its surface than the light
+ */
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const MaterialType& material, float NoL, float& pdf)
+HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const MaterialType& material, float NoV, float NoL, float& pdf)
 {
 	pdf = 0.0f;
 
-	if (NoL <= 0.0f)
+	if (NoV <= 0.0f || NoL <= 0.0f)
 		return ColorRGB32F(0.0f);
 
 	pdf = NoL * hippt::M_INV_PI;
@@ -41,6 +49,7 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(float NoL)
  */
 template <bool sampleDirectionOnly = false, typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const MaterialType& material,
+													   const float3_t& view_direction,
 													   const float3_t& geometric_normal,
 													   const float3_t& shading_normal,
 													   float3_t& sampled_direction,
@@ -66,7 +75,7 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const MaterialType& mater
 		return ColorRGB32F(0.0f);
 	}
 	else
-		return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
+		return lambertian_brdf_eval(material, hippt::dot(shading_normal, view_direction), hippt::dot(shading_normal, sampled_direction), pdf);
 }
 
 #endif // #ifndef DEVICE_LAMBERTIAN_H

@@ -7,9 +7,9 @@
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
-#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "Utils/Utils.h"
 
 #include <cassert>
@@ -230,7 +230,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
 
-	m_options_macro_map[GPUKernelCompilerOptions::BSDF_MODEL] = std::make_shared<int>(BSDF_PRINCIPLED);
+	m_options_macro_map[GPUKernelCompilerOptions::BSDF_MODEL] = std::make_shared<int>(BSDFGlobalModel);
 	m_options_macro_map[GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION] =
 		std::make_shared<int>(KernelMaterialSpecializationAll);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);

@@ -302,7 +302,7 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const MaterialType& mate
 {
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-	return lambertian_brdf_eval(material, local_to_light_direction.z, pdf);
+	return lambertian_brdf_eval(material, local_view_direction.z, local_to_light_direction.z, pdf);
 #elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
 #endif
@@ -2427,8 +2427,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 
 		// Giving some information about what the BSDF sampled to the caller
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-		output_direction = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
-												principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
+		output_direction				 = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
+																principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
 	}
 	else if (rand_1 < cdf1)
 	{
