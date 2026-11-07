@@ -50,7 +50,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
 			- Improved rejection of backfacing lights with -style orientation cone
 			- Support for multiple spherical gaussian spatial lobes per tree node to improve importance estimates on multi-modal incoming radiance
-	- ReGIR (more details on what was implemented below)
+	- ReGIR (more details on what was implemented below). Removed at commit "Remove ReGIR support", [tag remove-regir-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-regir-support)
 		- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
 	- Learning to Cluster for Many Lights Rendering [\[Wang et al., 2021\]](https://kevincosner.github.io/publications/Wang2021LCR/index.html), piggybacking on an implementation of the illumination-aware KD-tree of [\[Zheng et al., 2026\]](https://spatial-subdiv.ewi.tudelft.nl/) and the spherical gaussian light tree \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
 	- Neural Importance Sampling of Many Lights [\[Figuereido et al., 2025\]](https://pedrovfigueiredo.github.io/projects/manylights/SIGGRAPH_2025_Importance_Sampling/index.html)
@@ -71,9 +71,10 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support
 		- Hash grid
 		- The implementation and logic is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
+		- Removed from the codebase at commit "Remove ReGIR support", [tag remove-regir-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-regir-support)
 	- RIS (Resampled Importance Sampling) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)with Weighted Reservoir Sampling (WRS) [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- RISLTC [\[Shash et al., 2023\]](https://ishaanshah.xyz/risltc/)
-	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/) (removed at commit "Remove ReSTIR DI support", tag remove-restir-di-support)
+	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/) (removed at commit "Remove ReSTIR DI support", [tag remove-restir-di-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-restir-di-support))
 	
 - Other light sampling features
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
@@ -93,7 +94,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)
 	
 - ReSTIR Samplers:
-	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/) (removed at commit "Remove ReSTIR DI support", tag remove-restir-di-support)
+	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/) (removed at commit "Remove ReSTIR DI support", [tag remove-restir-di-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-restir-di-support))
 		- Supports envmap sampling
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
 	- ReSTIR PT [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir)

@@ -194,12 +194,8 @@ HIPRT_DEVICE bool wavefront_load_and_shade_hit(HIPRTRenderData& render_data,
 template <bool initialize_primary_path>
 HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned int bounce_count, unsigned int pixel_index)
 {
-#if DirectLightSamplingStrategy == LSS_BASE_REGIR
-	using KernelMaterial = DeviceUnpackedPrincipledFullMaterial;
-#else
 	using KernelMaterial =
 		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
-#endif // #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 
 	RayPayloadCommon ray_payload = wavefront_make_ray_payload<initialize_primary_path>();
 	hiprtRay ray;
@@ -320,19 +316,6 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 
 	if (ray_payload.bounce == 0)
 		store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, render_data.g_buffer.materials[pixel_index].get_base_color());
-	else
-	{
-		bool ReGIR_primary_hit = render_data.render_settings.regir_settings.compute_is_primary_hit(ray_payload);
-		ReGIRMaterialInputs regir_material_inputs;
-		if constexpr (initialize_primary_path)
-			regir_material_inputs = load_regir_material_inputs(render_data.g_buffer.materials[pixel_index]);
-		else
-			regir_material_inputs = load_regir_material_inputs(render_data, current_material_index, resolved_user_controls, classification_inputs);
-
-		// Storing data for ReGIR representative points
-		ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera,
-										 closest_hit_info.primitive_index, ReGIR_primary_hit, regir_material_inputs);
-	}
 
 	BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
 																			   // so that we know what the BSDF sampled

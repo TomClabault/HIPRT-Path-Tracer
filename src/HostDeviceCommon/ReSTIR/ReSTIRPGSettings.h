@@ -6,10 +6,13 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_PG_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_PG_SETTINGS_H
 
+#include "Device/includes/HashGrid.h"
+#include "Device/includes/HashGridHash.h"
 #include "Device/includes/ReSTIR/PG/DistributionSoADevice.h"
 #include "Device/includes/ReSTIR/PG/DistributionSufficientStatisticsSoADevice.h"
 #include "Device/includes/ReSTIR/PG/SplattingSample.h"
 #include "Device/includes/ReSTIR/PG/SplattingSampleSoADevice.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 
 struct ReSTIRPGSettings

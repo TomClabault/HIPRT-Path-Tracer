@@ -57,13 +57,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = get_global_compiler_options();
 	// Adding hardware acceleration by default if supported
 	global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
-	// Just "fixing" the ReGIR options to be in sync with the UI
-	if (global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		(global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
-		 global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS ||
-		 DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)) ||
-		 global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
-		global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	setup_brdfs_data();
 	setup_filter_functions();
@@ -278,12 +271,6 @@ std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pas
 {
 
 	return m_render_thread.get_NEE_plus_plus_render_pass();
-}
-
-std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
-{
-
-	return m_render_thread.get_ReGIR_render_pass();
 }
 
 std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
@@ -505,10 +492,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
 	RenderGraph* active_render_graph;
 
-	bool imgui_item_held										= render_window->render_resetted_with_imgui_item_held();
-	bool interactivity_render_graph_when_interacting_with_imgui = imgui_item_held && reset_when_holding_imgui_items();
-
-	if ((render_window->is_interacting() || interactivity_render_graph_when_interacting_with_imgui) && m_render_data.render_settings.accumulate)
+	if (render_window->is_interacting() && m_render_data.render_settings.accumulate)
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
 	else
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
@@ -907,16 +891,6 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		m_render_data.render_settings.need_to_reset = true;
 
 	m_render_thread.reset(reset_by_camera_movement);
-}
-
-bool GPURenderer::reset_when_holding_imgui_items()
-{
-	bool regir = get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
-	bool light_distributions =
-		get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
-	bool regir_light_distributions = regir && light_distributions;
-
-	return regir_light_distributions;
 }
 
 Xorshift32Generator& GPURenderer::get_rng_generator()

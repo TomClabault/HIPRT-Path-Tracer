@@ -109,14 +109,6 @@ void PowerSamplingDataStructure::free()
 bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)
 {
 	bool directly_using_power = compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_POWER;
-	bool using_regir_power =
-		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		(compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL) == LSS_BASE_POWER ||
-		 compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL) == LSS_BASE_POWER);
-	bool regir_using_light_distributions_using_power_sampling =
-		compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
-		compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE) == LSS_BASE_POWER;
 
-	return (directly_using_power || using_regir_power || regir_using_light_distributions_using_power_sampling) && emissive_count > 0;
+	return directly_using_power && emissive_count > 0;
 }

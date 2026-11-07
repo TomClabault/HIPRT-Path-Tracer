@@ -27,7 +27,7 @@ struct ParsedEmissiveMesh
 struct ParsedEmissiveMeshes
 {
 	// Contains the list of all emissive meshes of the scene. This list is going to be used by some light
-	// sampling scheme such as ReGIR
+	// sampling schemes
 	//
 	// Any emissive mesh that contains emissive textures is NOT in that list because emissive textures
 	// aren't importance sampled

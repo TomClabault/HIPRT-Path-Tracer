@@ -1351,7 +1351,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			const char* items_light_sampling_strategy[]	   = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
-															   "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)" };
+															   "- SG light tree (Tokuyoshi et al. 2024)" };
 			const char* tooltips_light_sampling_strategy[] = {
 				"All lights are sampled uniformly.",
 
@@ -1360,10 +1360,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]",
 
 				"Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]",
-
-				"Uses ReGIR to sample lights.\n\n"
-				"Highly custom implementation of [Rendering many lights with grid - based reservoirs, Boksansky, 2021] + Disney's cache points: "
-				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
 			bool using_learning_to_cluster_or_nisml =
@@ -1373,10 +1369,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			bool power_sampling_disabled   = using_learning_to_cluster_or_nisml;
 			bool light_tree_ats_disabled   = using_learning_to_cluster_or_nisml;
 			bool sg_light_tree_disabled	   = false;
-			bool regir_disabled			   = using_learning_to_cluster_or_nisml;
 
 			unsigned char disabled_light_sampling_strategies[] = { uniform_sampling_disabled, power_sampling_disabled, light_tree_ats_disabled,
-																   sg_light_tree_disabled, regir_disabled };
+																   sg_light_tree_disabled };
 			static_assert(IM_ARRAYSIZE(disabled_light_sampling_strategies) == IM_ARRAYSIZE(items_light_sampling_strategy));
 
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips(
@@ -1426,17 +1421,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool restir_pt = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
 			bool no_direct_light_sampling_disabled = restir_pt;
-			bool uniform_one_light_disabled =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR || restir_pt;
-			bool bsdf_sampling_disabled = restir_pt;
+			bool uniform_one_light_disabled		   = restir_pt;
+			bool bsdf_sampling_disabled			   = restir_pt;
 
-			bool regir				  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
-			bool mis_disabled		  = regir || restir_pt;
-			bool ris_disabled		  = false;
-			bool risltc_disabled	  = regir || restir_pt;
-			bool ltc_shading_disabled = regir || restir_pt;
-			bool neural_many_lights_disabled  = regir || restir_pt;
-			bool learning_to_cluster_disabled = regir;
+			bool mis_disabled				  = restir_pt;
+			bool ris_disabled				  = false;
+			bool risltc_disabled			  = restir_pt;
+			bool ltc_shading_disabled		  = restir_pt;
+			bool neural_many_lights_disabled  = restir_pt;
+			bool learning_to_cluster_disabled = false;
 
 			unsigned char disabled_nee_estimator_items[] = { no_direct_light_sampling_disabled,
 															 uniform_one_light_disabled,
@@ -1451,7 +1444,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_light_sampling_strategy' array.
-			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
+			int preferred_fallback_technique[] = { LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT };
 			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_light_sampling_strategy));
 
 			if (ImGuiRenderer::ComboWithTooltips(
@@ -1593,10 +1586,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
-			case LSS_BASE_REGIR:
-				draw_ReGIR_settings_panel();
-
-				break;
 
 			case LSS_BASE_LIGHT_TREE_ATS:
 				draw_light_tree_ATS_settings_panel();
@@ -2198,38 +2187,30 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 	{
 		ImGui::TreePush("RIS Settings tree");
 
-		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR)
+		bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+		if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 		{
-			ImGui::Text("The mix of BSDF/light samples is controlled\n"
-						"by the ReGIR settings.");
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
+												   use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			m_renderer->recompile_kernels();
+
+			m_render_window->set_render_dirty(true);
 		}
-		else
+
+		if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
 		{
-			bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-			if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
-													   use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-				m_renderer->recompile_kernels();
+			// Clamping to 0
+			render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
 
-				m_render_window->set_render_dirty(true);
-			}
+			m_render_window->set_render_dirty(true);
+		}
 
-			if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-			{
-				// Clamping to 0
-				render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+		if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+		{
+			// Clamping to 0
+			render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
 
-				m_render_window->set_render_dirty(true);
-			}
-
-			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
-			{
-				// Clamping to 0
-				render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
-
-				m_render_window->set_render_dirty(true);
-			}
+			m_render_window->set_render_dirty(true);
 		}
 
 		ImGui::TreePop();
@@ -2250,28 +2231,20 @@ void ImGuiSettingsWindow::draw_risltc_settings_panel()
 	{
 		ImGui::TreePush("RISLTC Settings tree");
 
-		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR)
+		// if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+		//{
+		//	// Clamping to 0
+		//	render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+		//	m_render_window->set_render_dirty(true);
+		//}
+
+		if (ImGui::SliderInt("RIS # of light candidates", &render_settings.risltc_settings.number_of_light_candidates, 0, 32))
 		{
-			ImGui::Text("The mix of BSDF/light samples is controlled\n"
-						"by the ReGIR settings.");
-		}
-		else
-		{
-			// if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-			//{
-			//	// Clamping to 0
-			//	render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+			// Clamping to 0
+			render_settings.risltc_settings.number_of_light_candidates = std::max(0, render_settings.risltc_settings.number_of_light_candidates);
 
-			//	m_render_window->set_render_dirty(true);
-			//}
-
-			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.risltc_settings.number_of_light_candidates, 0, 32))
-			{
-				// Clamping to 0
-				render_settings.risltc_settings.number_of_light_candidates = std::max(0, render_settings.risltc_settings.number_of_light_candidates);
-
-				m_render_window->set_render_dirty(true);
-			}
+			m_render_window->set_render_dirty(true);
 		}
 
 		ImGui::TreePop();
@@ -2286,7 +2259,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -2459,916 +2432,6 @@ void ImGuiSettingsWindow::draw_ltc_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
-}
-
-void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
-{
-	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
-	HIPRTRenderData& render_data									= m_renderer->get_render_data();
-	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass				= std::dynamic_pointer_cast<ReGIRRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
-
-	ImGui::BeginDisabled(!regir_render_pass);
-	if (ImGui::CollapsingHeader("ReGIR Settings") && regir_render_pass)
-	{
-		ImGui::TreePush("ReGIR settings tree");
-
-		ImGui::SeparatorText("Grid stats (primary cells | secondary cells)");
-		ImGui::Text("# of hash cells occupied: %u | %u", regir_render_pass->get_number_of_cells_alive(true),
-					regir_render_pass->get_number_of_cells_alive(false));
-		ImGui::Text("Hash cells capacity: %u | %u", regir_render_pass->get_total_number_of_cells_alive(true),
-					regir_render_pass->get_total_number_of_cells_alive(false));
-		ImGui::Text("Load factor: %.3f%% | %.3f%%", regir_render_pass->get_alive_cells_ratio(true) * 100.0f,
-					regir_render_pass->get_alive_cells_ratio(false) * 100.0f);
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ReGIRVRAMUsage vram_usage = regir_render_pass->get_vram_usage_breakdown();
-		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", vram_usage.get_total_bytes() / 1000000.0f,
-					vram_usage.get_total_bytes() /
-						((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
-		ImGui::Text("VRAM Usage breakdown: ");
-		std::vector<char> tooltip_buffer(2048);
-		snprintf(tooltip_buffer.data(), 2048,
-				 "Breakdown:\n"
-				 "  - Primary hit reservoirs: %.3fMB\n"
-				 "    - Base reservoirs: %.3fMB\n"
-				 "    - Spatial reuse reservoirs: %.3fMB\n"
-				 "    - Correlation reduction: %.3fMB\n"
-				 "    - Cell world data: %.3fMB\n"
-				 "    - Async compute: %.3fMB\n"
-				 "    - RIS pre-integration: %.3fMB\n"
-				 "  - Primary hit light distributions: %.3fMB\n\n"
-
-				 "  - Secondary hit reservoirs: %.3fMB\n"
-				 "    - Base reservoirs: %.3fMB\n"
-				 "    - Spatial reuse reservoirs: %.3fMB\n"
-				 "    - Cell world data: %.3fMB\n"
-				 "    - Async compute: %.3fMB\n"
-				 "    - RIS pre-integration: %.3fMB\n"
-				 "  - Secondary hit light distributions: %.3fMB",
-				 vram_usage.primary_hits.get_reservoirs_bytes() / 1000000.0f, vram_usage.primary_hits.base_reservoirs / 1000000.0f,
-				 vram_usage.primary_hits.spatial_reuse_reservoirs / 1000000.0f, vram_usage.primary_hits.correlation_reduction / 1000000.0f,
-				 vram_usage.primary_hits.cell_world_data / 1000000.0f, vram_usage.primary_hits.async_compute / 1000000.0f,
-				 vram_usage.primary_hits.ris_pre_integration / 1000000.0f, vram_usage.primary_hits.light_distributions / 1000000.0f,
-
-				 vram_usage.secondary_hits.get_reservoirs_bytes() / 1000000.0f, vram_usage.secondary_hits.base_reservoirs / 1000000.0f,
-				 vram_usage.secondary_hits.spatial_reuse_reservoirs / 1000000.0f, vram_usage.secondary_hits.cell_world_data / 1000000.0f,
-				 vram_usage.secondary_hits.async_compute / 1000000.0f, vram_usage.secondary_hits.ris_pre_integration / 1000000.0f,
-				 vram_usage.secondary_hits.light_distributions / 1000000.0f);
-		ImGuiRenderer::show_help_marker(tooltip_buffer.data());
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-
-		if (ImGui::CollapsingHeader("Cell light distributions"))
-		{
-			ImGui::TreePush("Use per cell llight distributions");
-
-			if (ImGui::Checkbox("Use cell light distributions", &regir_settings.use_per_cell_light_distributions))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS,
-													   regir_settings.use_per_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, the contribution of each emissive mesh of the scene will be precomputed "
-											"at each cell of the hash grid to build a sampling distribution based on the contribution "
-											"of the emissive meshes.\n\n"
-											""
-											"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
-											"quality initial light samples");
-
-			static bool only_use_cell_light_distributions =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS);
-			if (ImGui::Checkbox("Only use cell light distributions", &only_use_cell_light_distributions))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS,
-													   only_use_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, ReGIR will not be used to shade points at path tracing time.Only the light distributions precomputed "
-											"ahead of time will be used to compute NEE.");
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			if (regir_settings.use_per_cell_light_distributions)
-			{
-				const char* items[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS", "- SG light tree" };
-				static int light_distributions_defensive_sampling_technique =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE);
-				if (ImGui::Combo("Defensive sampling technique", &light_distributions_defensive_sampling_technique, items, IM_ARRAYSIZE(items)))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE,
-														   light_distributions_defensive_sampling_technique);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
-				if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL,
-														   use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
-												"mesh to the grid cell.This can help quickly reject backfacing lights and should "
-												"probably be left enabled");
-				static bool unbiased_nee_plus_plus = ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus;
-				if (ImGui::Checkbox("Unbiased NEE++", &unbiased_nee_plus_plus))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS,
-														   unbiased_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker(
-					"If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
-					"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
-					""
-					"If this is false, NEE++ won't be used in the target function with makes the grid fill "
-					"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
-					""
-					"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
-					"actually is very small so this is a worthy optimization imo.");
-				static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
-				if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH,
-														   integrate_mesh ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("When computing the contribution of meshes to the grid cell point:\n\n"
-												""
-												"If this option is true, random points will be chosen on the emissive mesh and the "
-												"contribution to the grid cell point of each of these points on the emissive mesh "
-												"will be integrated to compute an estimate of the overall contribution of the "
-												"emissive mesh to the grid cell.\n"
-												"The number of random points drawn is equal to \"Integrate mesh sample count\".\n\n"
-												""
-												"If this option is false, the overall contribution of the mesh is going to be computed "
-												"in one go using an approximate representative point for the whole as well as an average reprensetative "
-												"normal. This is less precise than integrating over the mesh but way faster.");
-				ImGui::BeginDisabled(!integrate_mesh);
-				static int integrate_mesh_sample_count = ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
-				ImGui::SliderInt("Integrate mesh sample count", &integrate_mesh_sample_count, 1, 64);
-				ImGuiRenderer::show_help_marker("How many random points to integrate the contribution of an emissive mesh over "
-												"if \"Integrate mesh contribution\" is true");
-				if (integrate_mesh_sample_count !=
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT))
-				{
-					ImGui::TreePush("Integrate mesh sample count tree regir");
-
-					if (ImGui::Button("Apply"))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT,
-															   integrate_mesh_sample_count);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::TreePop();
-				}
-				ImGui::EndDisabled();
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
-				ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 0, 16);
-				ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
-												"samples to guarantee unbiasedness.\n\n"
-												""
-												"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
-												"cell-light-distribution is poor");
-				if (cache_cells_list_distribution_canonical_samples_count !=
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
-				{
-					ImGui::TreePush("Canonical sample count cell light distribs regir");
-
-					if (ImGui::Button("Apply"))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT,
-															   cache_cells_list_distribution_canonical_samples_count);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::TreePop();
-				}
-
-				if (ImGui::SliderInt("Light distribution max. size", &regir_settings.light_distribution_maximum_size, 1,
-									 hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count), "%d", ImGuiSliderFlags_AlwaysClamp))
-					m_render_window->set_render_dirty(true);
-
-				if (ImGui::SliderFloat("Light distribution target radiance", &regir_render_pass->get_light_distribution_target_incoming_energy(), 0.0f, 100.0f,
-									   "%.3f", ImGuiSliderFlags_AlwaysClamp))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("Percentage of the total incoming energy that we should keep in each light distribution of "
-												"each cell at *most* (roughly)\n\n"
-												""
-												"The light distribution will only contain as many emissive meshes as necessary such that the "
-												"distribution covers covers that percentage of the total incoming energy to the grid cell.\n\n"
-												""
-												"This is \"rounded up\" so if 40% of the total incoming radiance is required by this parameter but "
-												"we have to choose between (for example):\n\n"
-												""
-												" - 5 meshes in the distribution = 38% of the energy covered\n"
-												" - 6 meshes in the distribution = 51% of the energy covered\n\n"
-												""
-												"Then the light distribution will cover 6 meshes.");
-				ImGui::TreePush("VRAM saving ReGIR");
-				ImGui::Text("VRAM saving 1st hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(true));
-				ImGui::Text("VRAM saving 2nd hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(false));
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::TreePop(); // VRAM saving tree
-			} // regir_settings.use_per_cell_light_distributions
-
-			ImGui::TreePop(); // Per cell light distributions tree
-		}
-
-		if (ImGui::CollapsingHeader("Grid fill pass"))
-		{
-			ImGui::TreePush("ReGIR grid build tree");
-
-			ImGui::SeparatorText("Primary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 32))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell",
-								 regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
-			{
-				int& non_cano_reservoir_count = *regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr();
-
-				// Minimum of 1
-				non_cano_reservoir_count = hippt::max(1, non_cano_reservoir_count);
-
-				m_render_window->set_render_dirty(true);
-			}
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell",
-								 regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
-			{
-				int& cano_reservoir_count = *regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr();
-
-				// Minimum of 1
-				cano_reservoir_count = hippt::max(1, cano_reservoir_count);
-
-				m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			ImGui::SeparatorText("Secondary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir##secondary",
-								 &regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary",
-								 regir_settings.grid_fill_settings_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary",
-								 regir_settings.grid_fill_settings_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Common to primary and secondary grid cells");
-			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
-			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY,
-													   visibility_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker(
-				"Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.\n\n"
-				""
-				"Probably too expensive to be efficient.");
-
-			static bool nee_plus_plus_visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation;
-			if (ImGui::Checkbox("Use NEE++ visibility in target function", &nee_plus_plus_visibility_grid_fill_target_function))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION,
-													   nee_plus_plus_visibility_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.");
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE &&
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION) ==
-					KERNEL_OPTION_TRUE)
-			{
-				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
-
-				ImGui::TreePush("Use NEE++ ReGIR Tree");
-				use_nee_plus_plus_checkbox("Enable NEE++");
-				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
-				ImGui::TreePop();
-			}
-
-			static bool cosine_term_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTerm;
-			if (ImGui::Checkbox("Use cosine term in target function", &cosine_term_grid_fill_target_function))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM,
-													   cosine_term_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker(
-				"Whether or not to use a the cosine term between the direction to the light sample and the "
-				"representative normal of the grid cell in the target function used to resample the reservoirs of the grid cells.\n\n"
-				""
-				"This has no effect is representative points are not being used.");
-
-			static bool cosine_term_light_source_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTermLightSource;
-			if (ImGui::Checkbox("Use cosine term light source in target function", &cosine_term_light_source_grid_fill_target_function))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE,
-													   cosine_term_light_source_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Takes the cosine term at the light source (i.e. the cosine term of the geometry term) "
-											"into account when evaluating the target function during grid fill");
-
-			static bool bsdf_grid_fill_target_function_first_hits = ReGIR_GridFillPrimaryHitsTargetFunctionBSDF;
-			if (ImGui::Checkbox("Use BSDF in target function (1st hits)", &bsdf_grid_fill_target_function_first_hits))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF,
-													   bsdf_grid_fill_target_function_first_hits ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF in the target function used for the resampling of the initial candidates\n"
-											"for the grid fill.\n\n"
-											""
-											"Helps a lot on glossy surfaces.\n\n"
-											""
-											"This option applies to primary hits only and should generally be set to true for better sampling.");
-
-			static bool bsdf_grid_fill_target_function_secondary_hits = ReGIR_GridFillSecondaryHitsTargetFunctionBSDF;
-			if (ImGui::Checkbox("Use BSDF in target function (2nd hits)", &bsdf_grid_fill_target_function_secondary_hits))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF,
-													   bsdf_grid_fill_target_function_secondary_hits ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Same as the option for the primary hits but only applies to secondary hits.\n\n"
-											""
-											"This option should be set to false in general as we cannot guess in advance what the view direction is going\n"
-											"to be at secondary hits(since they can come from anywhere when the rays bounce around the scene) and thus we\n"
-											"cannot properly evaluate the BRDF for sampling lights.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Frame skip (1st hits)", &regir_settings.frame_skip_primary_hit_grid, 0, 8))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
-											""
-											"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
-											"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
-											""
-											"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
-											"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
-											"and new samples are necessary.\n\n"
-											""
-											"The frame skips can be different for filling the primary or secondary hits grid.");
-			if (ImGui::SliderInt("Frame skip (2nd hits)", &regir_settings.frame_skip_secondary_hit_grid, 0, 8))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
-											""
-											"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
-											"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
-											""
-											"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
-											"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
-											"and new samples are necessary.\n\n"
-											""
-											"The frame skips can be different for filling the primary or secondary hits grid.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Sampling strategies");
-
-			const char* items_light_sampling_strategy[]		   = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)",
-																   "- SG light tree (Tokuyoshi et al. 2024)" };
-			const char* tooltips_base_strategy_non_canonical[] = {
-				"All lights are sampled uniformly",
-
-				"Lights are sampled proportionally to their power",
-
-				"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
-
-				"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.",
-			};
-			const char* tooltips_base_strategy_canonical[] = {
-				"All lights are sampled uniformly",
-
-				"Lights are sampled proportionally to their power",
-
-				"Lights are sampled using a light hierarchy **without** orientation bounds as proposed in the paper of Conty & Kulla, 2018.\n"
-				"Canonical candidates do not use the orientation bounds to remain conservative.",
-
-				"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.\n"
-				"Orientation is not considered to remain conservative",
-			};
-
-			bool base_light_sampling_strategy_disabled =
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
-			if (base_light_sampling_strategy_disabled)
-				ImGuiRenderer::add_warning("Cell light distributions are being used as the main non-canonical sampling strategy");
-			ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
-			if (ImGuiRenderer::ComboWithTooltips(
-					"Non canonical",
-					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL),
-					items_light_sampling_strategy, IM_ARRAYSIZE(items_light_sampling_strategy), tooltips_base_strategy_non_canonical))
-			{
-				// Will recompute the alias table if necessary
-				m_renderer->recompute_emissives_sampling_data_structure();
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGui::EndDisabled();
-
-			static int canonical_candidates_strategy = 0;
-			if (ImGuiRenderer::ComboWithTooltips(
-					"Canonical",
-					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL),
-					items_light_sampling_strategy, IM_ARRAYSIZE(items_light_sampling_strategy), tooltips_base_strategy_canonical))
-			{
-				// Will recompute the alias table if necessary
-				m_renderer->recompute_emissives_sampling_data_structure();
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}
-
-		if (ImGui::CollapsingHeader("Spatial reuse"))
-		{
-			ImGui::TreePush("ReGIR spatial reuse tree");
-
-			if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Do coalesced spatial reuse", &regir_settings.spatial_reuse.do_coalesced_spatial_reuse))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame\n."
-											"This has the effect of coalescing neighbors memory accesses which improves performance");
-			if (ImGui::SliderInt("Spatial reuse pass count", &regir_settings.spatial_reuse.spatial_reuse_pass_count, 1, 4))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 16))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
-
-			if (ImGui::SliderInt("Reuse per neighbor count", &regir_settings.spatial_reuse.reuse_per_neighbor_count, 1, 16))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("How many reservoirs to reuse per neighbor cell.");
-
-			if (ImGui::SliderInt("Retries per neighbor", &regir_settings.spatial_reuse.retries_per_neighbor, 1, 16))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker(" When picking a random cell in the neighborhood for reuse, if that "
-											"cell is out of the grid or if that cell is not alive etc..., we're "
-											"going to retry another cell this many times.\n"
-											"This improves the chances that we're actually going to have a good "
-											"neighbor to reuse from --> more reuse --> less variance.");
-
-			if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("Radius in cell in which to reuse around the center cell.\n"
-											"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}
-
-		if (ImGui::CollapsingHeader("Shading"))
-		{
-			ImGui::TreePush("ReGIR shading tree");
-
-			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading_settings.number_of_neighbors, 1, 8))
-				m_render_window->set_render_dirty(true);
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
-			if (ImGui::Checkbox("Use visibility in target function", &use_vis_shading_resampling))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
-													   use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
-											"shading a point at path tracing time. This reduces visibility noise.");
-
-			ImGui::BeginDisabled(use_vis_shading_resampling);
-			static bool use_nee_plus_plus_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility;
-			if (ImGui::Checkbox("Use NEE++ visibility estimation in target function", &use_nee_plus_plus_vis_shading_resampling))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY,
-													   use_nee_plus_plus_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during "
-											"shading such that reservoirs that are likely to be occluded will have a lower resampling probability");
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE &&
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY) ==
-					KERNEL_OPTION_TRUE)
-			{
-				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
-
-				ImGui::TreePush("Use NEE++ ReGIR Tree");
-				use_nee_plus_plus_checkbox("Enable NEE++");
-				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
-				ImGui::TreePop();
-			}
-			ImGui::EndDisabled();
-
-			static bool include_canonical = ReGIR_ShadingResamplingIncludeCanonicalCandidates;
-			if (ImGui::Checkbox("Include canonical candidates", &include_canonical))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES,
-													   include_canonical ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to include canonical candidates at all during the shading.\n\n"
-											""
-											"Disabling this is biased but useful basically only for debug purposes.");
-			if (include_canonical)
-			{
-				ImGui::TreePush("Do canonical candidatres tree ReGIR");
-
-				static bool regir_shading_light_tree_canonical_candidates =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS);
-				if (ImGui::Checkbox("Use light tree", &regir_shading_light_tree_canonical_candidates))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS,
-														   regir_shading_light_tree_canonical_candidates ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("If true, uses the ATS light tree for sampling canonical candidates during shading resampling to avoid"
-												"bias instead of using the grid fill canonical candidates.");
-
-				ImGui::TreePop();
-			}
-
-			static bool do_resampling_bsdf_mis = ReGIR_ShadingResamplingDoBSDFMIS;
-			if (ImGui::Checkbox("Do BSDF MIS during resampling", &do_resampling_bsdf_mis))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
-													   do_resampling_bsdf_mis ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
-			if (do_resampling_bsdf_mis)
-			{
-				ImGui::TreePush("BSDF MIS reGIR simplified ray");
-
-				static bool do_resampling_bsdf_mis_simplified_ray = ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay;
-				if (ImGui::Checkbox("Simplified ray", &do_resampling_bsdf_mis_simplified_ray))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY,
-														   do_resampling_bsdf_mis_simplified_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene, "
-												"not the rest of the geometry.This can increase variance but make the traces way way faster to the point "
-												"where BSDF MIS rays are almost free.");
-
-				ImGui::TreePop();
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Jittering");
-			if (ImGui::Checkbox("Do cell jittering (1st hits)", &regir_settings.shading_settings.do_cell_jittering_first_hits))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Do cell jittering (2nd hits)", &regir_settings.shading_settings.do_cell_jittering_secondary_hits))
-				m_render_window->set_render_dirty(true);
-			static bool jitter_canonical = ReGIR_ShadingResamplingJitterCanonicalCandidates;
-			if (ImGui::Checkbox("Jitter canonical candidates", &jitter_canonical))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES,
-													   jitter_canonical ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to jitter canonical candidates during the shading resampling.\n"
-											"This reduces grid artifacts but increases variance.");
-			ImGui::BeginDisabled(!regir_settings.shading_settings.do_cell_jittering_first_hits &&
-								 !regir_settings.shading_settings.do_cell_jittering_secondary_hits &&
-								 !global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
-			if (ImGui::SliderFloat("Jitter radius", &regir_settings.shading_settings.jittering_radius, 0.5f, 2.0f))
-				m_render_window->set_render_dirty(true);
-			ImGui::BeginDisabled(!global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
-			if (ImGui::SliderFloat("Jitter radius can. candidates", &regir_settings.shading_settings.jittering_radius_canonical_candidates, 0.0f, 1.0f))
-				m_render_window->set_render_dirty(true);
-			ImGui::EndDisabled();
-
-			static int jitter_retries = ReGIR_ShadingJitterRetries;
-			ImGui::SliderInt("Jitter retries", &jitter_retries, 1, 16);
-			ImGuiRenderer::show_help_marker("If using jittering, how many retries to perform to find a good neighbor at shading time ?\n\n"
-											""
-											"This is because with jittering, our jittered position may end up outside of the grid "
-											"or in an empty cell, in which case we want to retry with a differently jittered position "
-											"to try and find a good neighbor");
-			if (jitter_retries != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES))
-			{
-				ImGui::TreePush("Apply jitter retries regir");
-
-				if (ImGui::Button("Apply"))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES, jitter_retries);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				ImGui::TreePop();
-			}
-			static bool jitter_in_tangent_plane = ReGIR_JitterInTangentPlane;
-			if (ImGui::Checkbox("Jitter in tangent plane", &jitter_in_tangent_plane))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE,
-													   jitter_in_tangent_plane ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, shading point jittering will only jitter the point in the tangent plane of the surface.\n\n"
-											""
-											"This helps reducing bad jittering(jittering which moves the shading point outside of the scene's surface) "
-											"and reduces variance becaues we're getting more useful neighbors out of the jitters instead of having to rely "
-											"on jittering retries to find a valid neighbor.");
-			ImGui::EndDisabled();
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Correlation reduction");
-			if (ImGui::Checkbox("Correlation reduction", &regir_settings.correlation_reduction.do_correlation_reduction))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.correlation_reduction.correlation_reduction_factor, 1, 8))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}
-
-		if (ImGui::CollapsingHeader("Hash grid"))
-		{
-			ImGui::TreePush("ReGIR hash grid tree");
-
-			ImGui::SeparatorText("Grid size");
-			static bool constant_grid_cell_size = ReGIR_HashGridConstantGridCellSize;
-			if (ImGui::Checkbox("Constant grid cell size", &constant_grid_cell_size))
-			{
-				regir_settings.hash_grid.m_grid_cell_min_size = constant_grid_cell_size ? 0.75f : 0.2f;
-
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE,
-													   constant_grid_cell_size ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use constant grid cell size for the hash grid.\n\n"
-											""
-											"If this is false, the grid cell size will increase(cells gets bigger) the further away "
-											"from the camera.This can help with performance and the number of resident cells "
-											"in the hash grid but it tends to hurt quality because of the reduced grid cell resolution.");
-
-			ImGui::BeginDisabled(constant_grid_cell_size);
-			if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size, 5, 25))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
-											"This has the effect of making the grid cells larger in the distance so that the projected size stays "
-											"approximately constant.");
-			ImGui::EndDisabled();
-
-			std::string grid_cell_size_text = constant_grid_cell_size ? "Grid cell size" : "Grid cell minimum size";
-			if (ImGui::SliderFloat(grid_cell_size_text.c_str(), &regir_settings.hash_grid.m_grid_cell_min_size, 0.1, 0.5))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Hashing");
-			static bool fuzzy_grid_cells = ReGIR_HashGridHashFuzzyGridCells;
-			if (ImGui::Checkbox("Fuzzy grid cells", &fuzzy_grid_cells))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS,
-													   fuzzy_grid_cells ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, cell borders will be a bit fuzzy to help with grid cell artifacts.");
-			if (ImGui::SliderFloat("Fuzzy grid cell strength", &regir_settings.hash_grid.fuzzy_grid_cells_strength, 0.0f, 1.0f))
-				m_render_window->set_render_dirty(true);
-
-			static bool fuzzy_normals = ReGIR_HashGridHashFuzzyNormals;
-			if (ImGui::Checkbox("Fuzzy normals", &fuzzy_normals))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS,
-													   fuzzy_normals ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, the normals used in the hash function of the hash grid will be jittered a little bit "
-											"to help hide grid artifacts caused by the discretization of normals.");
-			if (ImGui::SliderFloat("Fuzzy normals strength", &regir_settings.hash_grid.fuzzy_normals_strength, 0.0f, 1.0f))
-				m_render_window->set_render_dirty(true);
-
-			static bool include_normals_in_hash = ReGIR_HashGridHashSurfaceNormal;
-			if (ImGui::Checkbox("Use surface normal in hash", &include_normals_in_hash))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL,
-													   include_normals_in_hash ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use the surface normal in the hash function of the hash grid. "
-											"Increases quality but also significantly increases memory usage");
-			if (include_normals_in_hash)
-			{
-				ImGui::TreePush("ReGIR surface normal discretization tree");
-
-				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits;
-				ImGui::SliderInt("Precision 1st hits", &normal_discretization_precision, 2, 4);
-				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for "
-												"filling the grid as well as a potentially decreased spatial reuse efficiency.");
-
-				if (normal_discretization_precision !=
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS))
-				{
-					ImGui::TreePush("Apply button ReGIR normal discretization");
-
-					if (ImGui::Button("Apply"))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS,
-															   normal_discretization_precision);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::TreePop();
-				}
-
-				ImGui::TreePop();
-			}
-
-			if (include_normals_in_hash)
-			{
-				ImGui::TreePush("ReGIR surface normal discretization 2nd hits tree");
-
-				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits;
-				ImGui::SliderInt("Precision 2nd hits", &normal_discretization_precision, 2, 4);
-				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for "
-												"filling the grid as well as a potentially decreased spatial reuse efficiency.");
-
-				if (normal_discretization_precision !=
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS))
-				{
-					ImGui::TreePush("Apply button ReGIR normal discretization");
-
-					if (ImGui::Button("Apply"))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS,
-															   normal_discretization_precision);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::TreePop();
-				}
-
-				ImGui::TreePop();
-			}
-
-			static bool adaptive_roughness_grid_precision = ReGIR_HashGridAdaptiveRoughnessGridPrecision;
-			if (ImGui::Checkbox("Adaptive roughness grid precision", &adaptive_roughness_grid_precision))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION,
-													   adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Collision resolution");
-			const char* items[]	   = { "- Linear probing", "- Rehashing" };
-			const char* tooltips[] = {
-				"If a collision is found, look up the next index in the hash\n"
-				"table and see if that location is empty. If not empty, continue\n"
-				"looking at the next location up to the maximum number of steps' times.",
-
-				"If a collision is found, hash the current cell index to get the\n"
-				"new candidate location. Continue doing so until an empty location\n"
-				"is found or the maximum number of steps is exceeded.",
-			};
-			if (ImGuiRenderer::ComboWithTooltips(
-					"Mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE), items,
-					IM_ARRAYSIZE(items), tooltips))
-			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-
-			static int linear_probing_steps = ReGIR_HashGridCollisionResolutionMaxSteps;
-			ImGui::SliderInt("Max. steps", &linear_probing_steps, 1, 32);
-			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS))
-			{
-				ImGui::TreePush("ReGIR linear probing steps apply button");
-				if (ImGui::Button("Apply"))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS, linear_probing_steps);
-
-					m_render_window->set_render_dirty(true);
-					m_renderer->recompile_kernels();
-				}
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}
-
-		if (ImGui::CollapsingHeader("Performance"))
-		{
-			ImGui::TreePush("ReGIR Performance tree");
-
-			if (ImGui::Checkbox("Do asynchronous compute", &regir_settings.do_asynchronous_compute))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}
-
-		if (ImGui::CollapsingHeader("Debug"))
-		{
-			ImGui::TreePush("ReGIR Settings debug tree");
-
-			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[]	 = { "- No debug", "- Grid cells", "- Cell representative points", "- Cell representative normals", "- Sampling fallback" };
-			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items,
-							 IM_ARRAYSIZE(items)))
-			{
-				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
-					// Auto settings this to arbitrary 0.1f to help with visualization
-					regir_settings.debug_view_scale_factor = 0.1f;
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			else if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
-			{
-				if (ImGui::SliderFloat("Distance to point", &regir_settings.debug_view_scale_factor, 0.0f, 1.0f))
-					m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::TreePop();
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
-	ImGui::EndDisabled(); // ImGui::BeginDisabled(!regir_render_pass);
-
-	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(
-		m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
-	if (light_tree_used_by_regir)
-		draw_light_tree_ATS_settings_panel();
 }
 
 void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
@@ -3548,7 +2611,7 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -3831,7 +2894,7 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -4302,7 +3365,7 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
@@ -5804,7 +4867,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)
@@ -6926,11 +5989,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::TreePush("Debug options tree");
 
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-
-		if (ImGui::SliderInt("ReGIR Pre integration iterations", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS, 1, 64))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64))
-			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		static int debug_index = 0;

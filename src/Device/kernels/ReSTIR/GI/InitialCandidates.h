@@ -14,7 +14,6 @@
 #include "Device/includes/ReSTIR/GI/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
-#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -38,7 +37,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_GI_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_InitialCandidates()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -143,7 +142,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 				if (bounce > 0)
 				{
-					ReGIR_representative_points_update(render_data, ray_payload, closest_hit_info);
 					if (bounce == 1)
 						ReSTIR_GI_sample_point_fill(render_data, ray_payload, closest_hit_info, restir_gi_initial_sample);
 

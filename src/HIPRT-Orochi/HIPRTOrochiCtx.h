@@ -57,7 +57,7 @@ struct HIPRTOrochiCtx
 			return;
 		}
 
-		// Enough for every stream of the renderer: main stream, ReGIR, wavefront material families, baker
+		// Enough for every stream of the renderer: main stream, wavefront material families, baker
 #ifdef _WIN32
 		_putenv_s("GPU_MAX_HW_QUEUES", HIP_HARDWARE_QUEUE_COUNT);
 #else  // #ifdef _WIN32

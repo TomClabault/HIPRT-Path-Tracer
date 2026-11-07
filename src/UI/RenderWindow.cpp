@@ -805,17 +805,6 @@ bool RenderWindow::is_interacting()
 	return m_mouse_interactor->is_interacting() || m_keyboard_interactor.is_interacting();
 }
 
-bool RenderWindow::render_resetted_with_imgui_item_held()
-{
-	// TODO this is a bit scuffed, this is just to avoid a bug that resets the render too often when holding ImGui widgets but that bug should be fixed in the
-	// first place, this is just a band aid
-	if (!m_renderer->reset_when_holding_imgui_items())
-
-		return false;
-
-	return m_application_state->m_render_resetted_with_imgui_item_held;
-}
-
 RenderWindowKeyboardInteractor& RenderWindow::get_keyboard_interactor()
 {
 
@@ -1021,8 +1010,6 @@ float RenderWindow::get_time_ms_before_viewport_refresh()
 
 void RenderWindow::reset_render()
 {
-	m_application_state->m_render_resetted_with_imgui_item_held = ImGui::IsAnyItemActive();
-
 	m_application_settings->last_denoised_sample_count = -1;
 
 	m_application_state->current_render_time_ms = 0.0f;
@@ -1183,13 +1170,6 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		m_application_state->render_dirty |= is_interacting();
 		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
-		bool held_this_frame = ImGui::IsAnyItemActive();
-		static bool held_last_frame;
-
-		m_application_state->render_dirty |= render_resetted_with_imgui_item_held() && held_last_frame != held_this_frame;
-
-		held_last_frame = held_this_frame;
-
 		render();
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
@@ -1332,8 +1312,6 @@ void RenderWindow::render()
 			m_application_state->last_GPU_submit_time = current_timestamp;
 
 			m_renderer->render(delta_time_gpu, this);
-
-			m_application_state->m_render_resetted_with_imgui_item_held_last_frame = m_application_state->m_render_resetted_with_imgui_item_held;
 
 			buffer_upload_necessary = true;
 		}

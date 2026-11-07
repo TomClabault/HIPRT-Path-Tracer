@@ -445,13 +445,6 @@ struct EffectiveMaterialEmission
 	}
 };
 
-struct ReGIRMaterialInputs
-{
-	float roughness;
-	float metallic;
-	float specular;
-};
-
 struct DeviceLambertianMaterial : EffectiveMaterialEmission
 {
 	ColorRGB32F base_color;

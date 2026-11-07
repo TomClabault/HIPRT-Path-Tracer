@@ -14,7 +14,6 @@
 #include "Device/includes/ReSTIR/PT/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
-#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/ReSTIR/SPMIS/SPMISUtils.h"
 #include "Device/includes/SanityCheck.h"
 
@@ -707,12 +706,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				{
 					if (bounce == 0)
 						store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
-					if (bounce > 0)
-					{
-						ReGIR_representative_points_update(render_data, ray_payload, closest_hit_info);
-						if (bounce == 1)
-							ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
-					}
+					if (bounce == 1)
+						ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
 					ReSTIR_PT_stream_NEE_dispatch(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 												  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,

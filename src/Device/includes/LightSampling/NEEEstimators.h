@@ -19,7 +19,6 @@
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/PathTracing.h"
-#include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
 #include "Device/includes/Wavefront/WavefrontShadow.h"
@@ -42,15 +41,9 @@ HIPRT_DEVICE ColorRGB32F evaluate_one_light_no_mis_without_visibility(HIPRTRende
 {
 	float bsdf_pdf;
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-	BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
-												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
-												MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
 	BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
 												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
 												MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	if (bsdf_pdf == 0.0f)
 		return ColorRGB32F(0.0f);
@@ -779,12 +772,8 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 
 					float spatial_radiance_weight = (light_sample.emission / light_sample_solid_angle_pdf).max_component();
 					float bsdf_pdf;
-					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-					MicrofacetRegularization::RegularizationMode regularization_mode = MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS;
-#else
+					BSDFIncidentLightInfo incident_light_info						 = BSDFIncidentLightInfo::NO_INFO;
 					MicrofacetRegularization::RegularizationMode regularization_mode = MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
-#endif
 					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 											 regularization_mode);
@@ -842,15 +831,9 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 						float bsdf_pdf;
 
 						BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-						BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
-												 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-												 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
 						BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
 												 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
 												 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif // #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 						ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 						if (bsdf_pdf != 0.0f)
@@ -1003,16 +986,6 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 
 	// Any of these light sampling strategy support sampling multiple lights
 	// per each shading point, effectively "amortizing" camera and bounce rays
-#if DirectLightSamplingStrategy == LSS_BASE_REGIR && DirectLightNEEEstimator != LSS_BSDF
-	// ReGIR has its own special path to optimize things a bit.
-	//
-	// Also, BSDF sampling only can be handled by the usual path because then
-	// ReGIR isn't used
-	direct_light_contribution = sample_one_light_ReGIR<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
-																					  random_number_generator, shadow_sink);
-
-#else // Not ReGIR // #if DirectLightSamplingStrategy == LSS_BASE_REGIR && DirectLightNEEEstimator != LSS_BSDF
-
 #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
 		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, shadow_sink);
@@ -1057,8 +1030,6 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 		direct_light_contribution += sample_one_light_bsdf_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, bsdf_material, closest_hit_info,
 																						   view_direction, proposal_state, random_number_generator);
 #endif														 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
-
-#endif // #if ReGIR
 
 	return direct_light_contribution;
 }

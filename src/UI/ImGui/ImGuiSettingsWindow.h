@@ -54,7 +54,6 @@ private:
 	void draw_risltc_settings_panel();
 	void draw_ReSTIR_PG_settings_panel();
 	void draw_ltc_settings_panel();
-	void draw_ReGIR_settings_panel();
 	void draw_light_tree_ATS_settings_panel();
 	void draw_light_tree_SG_settings_panel();
 	void draw_illumination_aware_kd_tree_panel();

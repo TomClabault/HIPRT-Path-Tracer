@@ -166,8 +166,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
 	{
 		return pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, material, emissive_triangle_global_index);
 	}
-	else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
-		// We should never ask that question, we can't get the PDF of ReGIR
+	else
+		// Invalid strategy
 		return 1.0e15f;
 }
 
@@ -192,9 +192,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 {
 	float point_on_light_pdf;
 
-	// Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
-	// faking it with whatever base strategy ReGIR is using
-
 	if constexpr (lightSamplingStrategy == LSS_BASE_UNIFORM)
 	{
 		// Surface area PDF of hitting that point on that triangle in the scene
@@ -216,9 +213,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 		point_on_light_pdf = pdf_of_point_on_triangle_area_measure(render_data, shading_point, view_direction, shading_normal, material, point_on_triangle,
 																   triangle_normal, emissive_triangle_global_index, light_area);
 	}
-	else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
-		// We should never ask that question, we can't get the PDF of ReGIR
-		point_on_light_pdf = 1.0e15f;
 	else
 		// Invalid strategy
 		point_on_light_pdf = 1.0e15f;
@@ -263,8 +257,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 /**
  * Returns the PDF (solid angle measure) of the light sampler for the given 'light_hit_info'
  *
- * Note that for light samplers that cannot be point-evaluated (ReGIR for example: we cannot compute a RIS PDF),
- * the returned PDF is an approximation
+ * Note that for light samplers that cannot be point-evaluated, the returned PDF is an approximation
  *
  * 'primitive_index' is the index of the emissive triangle hit
  * 'shading_normal' is the shading normal at the intersection point of the emissive triangle hit

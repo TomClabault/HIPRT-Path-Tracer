@@ -29,7 +29,6 @@
 #define LSS_BASE_POWER			1
 #define LSS_BASE_LIGHT_TREE_ATS 2
 #define LSS_BASE_LIGHT_TREE_SG	3
-#define LSS_BASE_REGIR			4
 
 #define TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA		   0
 #define TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE		   1
@@ -81,16 +80,9 @@
  *
  *	- LSS_BASE_LIGHT_TREE_SG
  *		Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]
- *
- *	- LSS_BASE_REGIR
- *		Uses ReGIR to sample lights
- *		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
- *		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
- *
- *      Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
 #ifndef DirectLightSamplingStrategy
-#define DirectLightSamplingStrategy LSS_BASE_REGIR
+#define DirectLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
 #endif // #ifndef DirectLightSamplingStrategy
 
 /**

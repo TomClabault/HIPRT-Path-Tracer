@@ -7,7 +7,6 @@
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
-#include "Device/includes/ReSTIR/ReGIR/Settings.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
@@ -46,9 +45,6 @@ struct HIPRTRenderSettings
 
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
-
-	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
-	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
 	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;
@@ -252,8 +248,6 @@ struct HIPRTRenderSettings
 	ReSTIRPTSettings restir_pt_settings;
 	// Settings for ReSTIR Path Guiding
 	ReSTIRPGSettings restir_pg_settings;
-	// Settings for ReGIR
-	ReGIRSettings regir_settings;
 
 	/**
 	 * Returns true if the current frame should be renderer at low resolution, false otherwise.

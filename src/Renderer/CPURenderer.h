@@ -7,7 +7,6 @@
 #define CPU_RENDERER_H
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
-#include "Device/includes/ReSTIR/ReGIR/Settings.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -27,9 +26,6 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRCellsLightDistributionsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashCellDataSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReGIR/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
@@ -50,7 +46,6 @@ public:
 	void setup_nee_plus_plus();
 	void setup_gmon();
 	void GMoN_post_sample_update();
-	void ReGIR_post_sample_update();
 	void ReSTIR_PT_post_sample_update();
 
 	void set_scene(Scene& parsed_scene);
@@ -80,20 +75,9 @@ public:
 	void nee_plus_plus_cache_visibility_pass();
 	void camera_rays_pass();
 	void hierarchical_adaptive_sampling_pass();
-	void ReGIR_pass();
 	void ReSTIR_GI_pass();
 	void ReSTIR_PT_pass();
 	void ReSTIR_PG_pass();
-
-	template <bool accumulatePreIntegration>
-	void ReGIR_grid_fill_pass(bool primary_hit);
-	template <bool accumulatePreIntegration>
-	ReGIRHashGridSoADevice ReGIR_spatial_reuse_pass(bool primary_hit);
-	void ReGIR_pre_population();
-	void ReGIR_pre_integration();
-	void ReGIR_compute_cells_light_distributions();
-	void ReGIR_compute_cells_light_distributions_internal(bool primary_hit);
-	void ReGIR_compute_cell_light_compute_and_sort_internal(bool primary_hit, bool only_compute_sizes);
 
 	void tracing_pass();
 
@@ -219,48 +203,6 @@ private:
 		// Buffers used during the splatting phase to accumulate sample data (expectation phase of the EM algorithm)
 		ReSTIRPGSufficientStatisticsSoAHost<std::vector> hash_grid_distributions_sufficient_statistics_soa_buffer;
 	} m_restir_pg_state;
-
-	struct ReGIRState
-	{
-		ReGIRHashGridSoAHost<std::vector> grid_buffer_primary_hit;
-		ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer_primary_hit;
-		ReGIRHashCellDataSoAHost<std::vector> hash_cell_data_primary_hit;
-
-		ReGIRHashGridSoAHost<std::vector> grid_buffer_secondary_hit;
-		ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer_secondary_hit;
-		ReGIRHashCellDataSoAHost<std::vector> hash_cell_data_secondary_hit;
-
-		ReGIRHashGridSoAHost<std::vector> correlation_reduction_grid;
-
-		std::vector<AtomicType<float>> non_canonical_pre_integration_factors_primary_hit;
-		std::vector<AtomicType<float>> canonical_pre_integration_factors_primary_hit;
-
-		std::vector<AtomicType<float>> non_canonical_pre_integration_factors_secondary_hit;
-		std::vector<AtomicType<float>> canonical_pre_integration_factors_secondary_hit;
-
-		ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_primary_hit;
-		ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_secondary_hit;
-		unsigned int m_last_cells_light_distributions_compute_count_primary_hits   = 0;
-		unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
-		// Percentage of the total incoming energy that we should keep in each light distribution of
-		// each cell at *most* (roughly)
-		//
-		// The light distribution will only contain as many emissive meshes as necessary such that the
-		// distribution covers covers that percentage of the total incoming energy to the grid cell.
-		//
-		// This is "rounded up" so if 40% of the total incoming radiance is required by this parameter but
-		// we have to choose between (for example):
-		//
-		// - 5 meshes in the distribution = 38% of the energy covered
-		// - 6 meshes in the distribution = 51% of the energy covered
-		//
-		// Then the light distribution will cover 6 meshes
-		float m_light_distribution_incoming_light_energy_target = 1.0f;
-
-		std::vector<AtomicType<unsigned int>> grid_cell_alive;
-		std::vector<unsigned int> grid_cells_alive_list;
-		AtomicType<unsigned int> grid_cells_alive_count;
-	} m_regir_state;
 
 	struct IlluminationAwareKDTreeState
 	{

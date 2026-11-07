@@ -23,9 +23,6 @@
  *
  * This improves quality and should basically always be enabled and is mainly there for comparison
  * purposes
- *
- * This option is also disabled for producing ReGIR canonical candidates which need to be conservative
- * to avoid bias
  */
 #define LightTreeATSImportanceFunctionUseOrientation KERNEL_OPTION_TRUE
 

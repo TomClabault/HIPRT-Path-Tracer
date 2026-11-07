@@ -11,8 +11,6 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingLearningToCluster.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
-#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
-
 /**
  * The PDF is computed in area measure
  */
@@ -179,16 +177,6 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 	return light_samples;
 }
 
-HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const HIPRTRenderData& render_data,
-																		 const float3_t& shading_point,
-																		 const float3_t& view_direction,
-																		 const float3_t& shading_normal,
-																		 const float3_t& geometric_normal,
-																		 int last_hit_primitive_index,
-																		 RayPayload& ray_payload,
-																		 bool& out_need_fallback_sampling,
-																		 Xorshift32Generator& random_number_generator);
-
 template <int samplingStrategy = DirectLightSamplingStrategy, typename MaterialType>
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
 																										 const float3_t& shading_point,
@@ -244,28 +232,6 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
 		}
 	}
-	else if constexpr (samplingStrategy == LSS_BASE_REGIR)
-	{
-		bool point_outside_grid = false;
-
-		light_point_samples[0] = sample_one_point_on_light_regir(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																 last_hit_primitive_index, ray_payload, point_outside_grid, random_number_generator);
-
-		if (!point_outside_grid)
-			return light_point_samples;
-		else
-		{
-#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
-			// Invalid fallback strategy
-			invalid ReGIR light sampling fallback strategy
-#endif
-
-				// Fallback method as the point was outside of the ReGIR grid
-				light_point_samples =
-					sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																				   last_hit_primitive_index, ray_payload, random_number_generator);
-		}
-	}
 
 	return light_point_samples;
 }
@@ -313,23 +279,6 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 				sample_point_on_light_and_fill_light_sample_information(render_data, shading_point, view_direction, shading_normal, proposal_state,
 																		light_samples[i].emissive_triangle_global_index, random_number_generator);
 			light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
-		}
-	}
-	else if constexpr (samplingStrategy == LSS_BASE_REGIR)
-	{
-		bool point_outside_grid = false;
-		light_point_samples[0]	= sample_one_point_on_light_regir(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-																  last_hit_primitive_index, ray_payload, point_outside_grid, random_number_generator);
-
-		if (point_outside_grid)
-		{
-#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
-			// Invalid fallback strategy
-			invalid ReGIR light sampling fallback strategy
-#endif
-				light_point_samples = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
-																									 geometric_normal, last_hit_primitive_index, ray_payload,
-																									 proposal_state, random_number_generator);
 		}
 	}
 

@@ -107,42 +107,6 @@ HIPRT_DEVICE static SurfaceTransportMetadata load_surface_transport_metadata(con
 	return metadata;
 }
 
-HIPRT_DEVICE static ReGIRMaterialInputs load_regir_material_inputs(const DevicePackedEffectiveMaterial& packed_material)
-{
-	ReGIRMaterialInputs inputs;
-	inputs.roughness = packed_material.get_roughness();
-	inputs.metallic	 = packed_material.get_metallic();
-	inputs.specular	 = packed_material.get_specular();
-	return inputs;
-}
-
-HIPRT_DEVICE static ReGIRMaterialInputs load_regir_material_inputs(const HIPRTRenderData& render_data,
-																   int material_index,
-																   const ResolvedMaterialUserControlsCache& resolved_user_controls,
-																   const PrincipledMaterialClassificationInputs& classification_inputs)
-{
-	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
-	ReGIRMaterialInputs inputs;
-	inputs.roughness = materials_buffer_soa.get_roughness(material_index);
-	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
-		inputs.roughness = resolved_user_controls.roughness;
-	inputs.metallic = classification_inputs.lobe_user_weights.metallic;
-	inputs.specular = classification_inputs.lobe_user_weights.specular;
-
-	float coat			  = classification_inputs.lobe_user_weights.coat;
-	float coat_roughening = materials_buffer_soa.get_coat_roughening(material_index);
-	if (coat > 0.0f && coat_roughening > 0.0f)
-	{
-		float base_roughness		   = inputs.roughness;
-		float coat_roughness		   = materials_buffer_soa.get_coat_roughness(material_index);
-		float target_base_roughness	   = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
-		float roughened_base_roughness = hippt::lerp(base_roughness, target_base_roughness, coat);
-		inputs.roughness			   = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
-	}
-
-	return inputs;
-}
-
 HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
 {
 	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer_soa.read_partial_material(material_index).unpack();

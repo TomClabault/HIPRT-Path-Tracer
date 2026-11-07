@@ -70,32 +70,28 @@ void GPURendererThread::setup_render_graphs()
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass	 = render_graph_full.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = render_graph_full.create_render_pass<NEEPlusPlusRenderPass>();
 
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass = render_graph_full.create_render_pass<ReGIRRenderPass>();
-	regir_render_pass->add_dependency(camera_rays_render_pass);
-	regir_render_pass->add_dependency(nee_plus_plus_render_pass);
-
 	// Note that the megakernel pass will only be used for classical BSDF path tracing.
 	// But we're still adding the render pass to the render graph in case the user
 	// switches back to the megakernel at runtime.
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = render_graph_full.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
-	megakernel_render_pass->add_dependency(regir_render_pass);
+	megakernel_render_pass->add_dependency(nee_plus_plus_render_pass);
 
 	std::shared_ptr<WavefrontRenderPass> wavefront_render_pass = render_graph_full.create_render_pass<WavefrontRenderPass>();
 	wavefront_render_pass->add_dependency(camera_rays_render_pass);
-	wavefront_render_pass->add_dependency(regir_render_pass);
+	wavefront_render_pass->add_dependency(nee_plus_plus_render_pass);
 
 	std::shared_ptr<NISMLMegaKernelRenderPass> nisml_megakernel_render_pass = render_graph_full.create_render_pass<NISMLMegaKernelRenderPass>();
 	nisml_megakernel_render_pass->add_dependency(camera_rays_render_pass);
-	nisml_megakernel_render_pass->add_dependency(regir_render_pass);
+	nisml_megakernel_render_pass->add_dependency(nee_plus_plus_render_pass);
 
 	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = render_graph_full.create_render_pass<ReSTIRGIRenderPass>();
 	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
-	restir_gi_render_pass->add_dependency(regir_render_pass);
+	restir_gi_render_pass->add_dependency(nee_plus_plus_render_pass);
 
 	std::shared_ptr<ReSTIRPTRenderPass> restir_pt_render_pass = render_graph_full.create_render_pass<ReSTIRPTRenderPass>();
 	restir_pt_render_pass->add_dependency(camera_rays_render_pass);
-	restir_pt_render_pass->add_dependency(regir_render_pass);
+	restir_pt_render_pass->add_dependency(nee_plus_plus_render_pass);
 
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass = render_graph_full.create_render_pass<ReSTIRPGRenderPass>();
 	restir_pg_render_pass->add_dependency(restir_gi_render_pass);
@@ -148,7 +144,6 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
 	render_graph_full.add_render_pass(illumination_aware_kd_tree_render_pass);
-	render_graph_full.add_render_pass(regir_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);
 	render_graph_full.add_render_pass(wavefront_render_pass);
 	render_graph_full.add_render_pass(nisml_megakernel_render_pass);
@@ -483,12 +478,6 @@ std::shared_ptr<SSBNPermutationRenderPass> GPURendererThread::get_ssbn_permutati
 
 	return std::dynamic_pointer_cast<SSBNPermutationRenderPass>(
 		m_active_render_graph->get_render_pass(SSBNPermutationRenderPass::SSBN_PERMUTATION_RENDER_PASS_NAME));
-}
-
-std::shared_ptr<ReGIRRenderPass> GPURendererThread::get_ReGIR_render_pass()
-{
-
-	return std::dynamic_pointer_cast<ReGIRRenderPass>(m_active_render_graph->get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass()

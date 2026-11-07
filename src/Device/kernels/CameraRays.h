@@ -13,7 +13,6 @@
 #include "Device/includes/PathTracingDebugViews.h"
 #include "Device/includes/Random.h"
 #include "Device/includes/RayPayload.h"
-#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SSBNPermutation/SSBNScreenSpaceHashGrid.h"
 #include "Device/includes/Wavefront/WavefrontMaterialFamilyRouting.h"
 
@@ -272,8 +271,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		// avoids a separate classification pass that would read the G-buffer back
 		wavefront_enqueue_material_family(render_data, primary_material_family, pixel_index);
 
-	ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera,
-									 closest_hit_info.primitive_index, true, ray_payload.material);
 	SSBN_update_screen_space_hash_grid(render_data, x, y, closest_hit_info.inter_point, closest_hit_info.geometric_normal);
 
 	// If we got here, this means that we still have at least one ray active

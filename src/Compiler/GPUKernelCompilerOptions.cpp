@@ -4,12 +4,12 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
-#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "Utils/Utils.h"
 
 #include <cassert>
@@ -56,44 +56,6 @@ const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA
 
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES = "UseMaterialTextures";
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE = "UseMaterialBaseColorTextureOverride";
-
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS = "ReGIR_GridFillUsePerCellLightDistributions";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsCanonicalSampleCount";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE = "ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL = "ReGIR_GridFillCellDistributionsUseRepresentativeNormal";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH = "ReGIR_GridFillCellDistributionsIntegrateMesh";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS = "ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL = "ReGIR_GridFillLightSamplingBaseStrategyNonCanonical";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL = "ReGIR_GridFillLightSamplingBaseStrategyCanonical";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY = "ReGIR_GridFillTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM = "ReGIR_GridFillTargetFunctionCosineTerm";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE = "ReGIR_GridFillTargetFunctionCosineTermLightSource";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF = "ReGIR_GridFillPrimaryHitsTargetFunctionBSDF";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF = "ReGIR_GridFillSecondaryHitsTargetFunctionBSDF";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION = "ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION = "ReGIR_GridFillSpatialReuse_AccumulatePreIntegration";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES = "ReGIR_ShadingResamplingJitterCanonicalCandidates";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES = "ReGIR_ShadingResamplingIncludeCanonicalCandidates";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS = "ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS = "ReGIR_ShadingResamplingDoBSDFMIS";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY = "ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS = "ReGIR_ShadingResamplingSampleOnlyLightDistributions";
-const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
-const std::string GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE = "ReGIR_JitterInTangentPlane";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE = "ReGIR_HashGridCollisionResolutionMode";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS = "ReGIR_HashGridCollisionResolutionMaxSteps";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS = "ReGIR_HashGridHashFuzzyGridCells";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS = "ReGIR_HashGridHashFuzzyNormals";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL = "ReGIR_HashGridHashSurfaceNormal";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES = "ReGIR_ShadingJitterRetries";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION = "ReGIR_HashGridAdaptiveRoughnessGridPrecision";
-const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE = "ReGIR_HashGridConstantGridCellSize";
-const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIRDebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR = "DirectLightNEEEstimator";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
@@ -194,44 +156,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES,
 	GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE,
-
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS,
-	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS,
-	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION,
-	GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE,
-	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
@@ -337,44 +261,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES] = std::make_shared<int>(UseMaterialTextures);
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE] = std::make_shared<int>(UseMaterialBaseColorTextureOverride);
-
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_GridFillUsePerCellLightDistributions);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSampleCount);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL] = std::make_shared<int>(ReGIR_GridFillCellDistributionsUseRepresentativeNormal);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH] = std::make_shared<int>(ReGIR_GridFillCellDistributionsIntegrateMesh);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT] = std::make_shared<int>(ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS] = std::make_shared<int>(ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL] = std::make_shared<int>(ReGIR_GridFillLightSamplingBaseStrategyNonCanonical);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL] = std::make_shared<int>(ReGIR_GridFillLightSamplingBaseStrategyCanonical);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_GridFillTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM] = std::make_shared<int>(ReGIR_GridFillTargetFunctionCosineTerm);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE] = std::make_shared<int>(ReGIR_GridFillTargetFunctionCosineTermLightSource);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF] = std::make_shared<int>(ReGIR_GridFillPrimaryHitsTargetFunctionBSDF);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF] = std::make_shared<int>(ReGIR_GridFillSecondaryHitsTargetFunctionBSDF);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION] = std::make_shared<int>(ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION] = std::make_shared<int>(ReGIR_GridFillSpatialReuse_AccumulatePreIntegration);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES] = std::make_shared<int>(ReGIR_ShadingResamplingJitterCanonicalCandidates);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES] = std::make_shared<int>(ReGIR_ShadingResamplingIncludeCanonicalCandidates);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS] = std::make_shared<int>(ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMIS);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_ShadingResamplingSampleOnlyLightDistributions);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE] = std::make_shared<int>(ReGIR_JitterInTangentPlane);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMode);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMaxSteps);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS] = std::make_shared<int>(ReGIR_HashGridHashFuzzyGridCells);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS] = std::make_shared<int>(ReGIR_HashGridHashFuzzyNormals);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormal);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES] = std::make_shared<int>(ReGIR_ShadingJitterRetries);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION] = std::make_shared<int>(ReGIR_HashGridAdaptiveRoughnessGridPrecision);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE] = std::make_shared<int>(ReGIR_HashGridConstantGridCellSize);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIRDebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR] = std::make_shared<int>(DirectLightNEEEstimator);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);

@@ -22,7 +22,7 @@
 #define NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS 1
 
 /**
- * The resolution downscale factor to apply for the ReGIR grid prepopulation.
+ * The resolution downscale factor to apply for the NEE++ grid prepopulation.
  *
  * The lower the downscale, the more effective the prepoluation but also the more costly
  */
