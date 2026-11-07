@@ -132,7 +132,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed

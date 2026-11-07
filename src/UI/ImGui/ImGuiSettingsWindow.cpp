@@ -1432,7 +1432,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool regir				  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			bool mis_disabled		  = regir || restir_pt;
-			bool ris_disabled		  = regir;
+			bool ris_disabled		  = false;
 			bool risltc_disabled	  = regir || restir_pt;
 			bool ltc_shading_disabled = regir || restir_pt;
 			bool neural_many_lights_disabled  = regir || restir_pt;

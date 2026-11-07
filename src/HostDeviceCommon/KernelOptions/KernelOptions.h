@@ -164,7 +164,7 @@ enum KernelMaterialSpecialization : unsigned int
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_BSDF_WAVEFRONT
+#define PathSamplingStrategy PATH_SAMPLING_BSDF
 
 #endif // #ifndef __KERNELCC__
 
