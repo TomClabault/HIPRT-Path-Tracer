@@ -99,7 +99,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
 	float3_t point_on_light		 = reservoir.sample.point_on_light;
-	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	ColorRGB32F emission		 = get_triangle_emission_at_point(render_data, reservoir.sample.emissive_triangle_global_index, point_on_light);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit,
 															  random_number_generator);
@@ -118,7 +118,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
 	float3_t point_on_light		 = reservoir.sample.point_on_light;
-	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	ColorRGB32F emission		 = get_triangle_emission_at_point(render_data, reservoir.sample.emissive_triangle_global_index, point_on_light);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, RIS_integral,
 															  primary_hit, random_number_generator);
@@ -169,7 +169,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
 	float3_t point_on_light		 = reservoir.sample.point_on_light;
-	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	ColorRGB32F emission		 = get_triangle_emission_at_point(render_data, reservoir.sample.emissive_triangle_global_index, point_on_light);
 
 	return ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light, light_source_normal, emission, view_direction, shading_point, shading_normal,
 											   geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index);

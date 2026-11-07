@@ -450,6 +450,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	// Getting the shading normal
 	else
 		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+	out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
 
 	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
 	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
@@ -507,6 +508,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
 		else
 			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+		out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
 
 		out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
 		out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,

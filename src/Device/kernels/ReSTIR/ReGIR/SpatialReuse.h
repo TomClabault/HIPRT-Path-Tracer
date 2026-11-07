@@ -114,7 +114,8 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
 			if (neighbor_reservoir.UCW <= 0.0f)
 				continue;
 
-			ColorRGB32F emission		 = triangle_load_emission(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
+			ColorRGB32F emission =
+				get_triangle_emission_at_point(render_data, neighbor_reservoir.sample.emissive_triangle_global_index, neighbor_reservoir.sample.point_on_light);
 			float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
 			float light_source_area		 = hippt::length(light_source_normal) * 0.5f;
 			light_source_normal /= light_source_area * 2.0f;
@@ -156,7 +157,8 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data,
 
 	if (output_reservoir.weight_sum > 0.0f)
 	{
-		ColorRGB32F emission = triangle_load_emission(render_data, output_reservoir.sample.emissive_triangle_global_index);
+		ColorRGB32F emission =
+			get_triangle_emission_at_point(render_data, output_reservoir.sample.emissive_triangle_global_index, output_reservoir.sample.point_on_light);
 
 		float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_global_index);
 		float light_source_area		 = hippt::length(light_source_normal) * 0.5f;

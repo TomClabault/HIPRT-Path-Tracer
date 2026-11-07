@@ -191,7 +191,8 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 							 ray_payload.material, ray_payload.accumulated_roughness, regularization_mode);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
 
-	float cosine_term	= hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));
+	// abs() and not max(0, ...) because lights behind the surface contribute through the transmission lobes
+	float cosine_term	= hippt::abs(hippt::dot(shading_normal, to_light_direction));
 	float geometry_term = compute_cosine_term_at_light_source(light_source_normal, -to_light_direction) / hippt::square(distance_to_light);
 
 	sample_radiance = bsdf_color * light_emission * cosine_term * geometry_term;

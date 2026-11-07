@@ -53,7 +53,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
 	LightSamplePointInformation out_sample2;
 	out_sample2.area_measure_pdf			   = 1.0f / reservoir.UCW;
-	out_sample2.emission					   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	out_sample2.emission = get_triangle_emission_at_point(render_data, reservoir.sample.emissive_triangle_global_index, reservoir.sample.point_on_light);
 	out_sample2.emissive_triangle_global_index = reservoir.sample.emissive_triangle_global_index;
 	out_sample2.light_source_normal			   = triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
 	out_sample2.light_area					   = hippt::length(out_sample2.light_source_normal) * 0.5f;
@@ -201,7 +201,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 				point_on_light_1 = canonical_technique_1_reservoir.sample.point_on_light;
 				light_source_normal_1 =
 					hippt::normalize(triangle_load_normal_not_normalized(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index));
-				emission_1 = triangle_load_emission(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index);
+				emission_1 =
+					get_triangle_emission_at_point(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index, point_on_light_1);
 			}
 
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
@@ -225,7 +226,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 				point_on_light_2 = canonical_technique_2_reservoir.sample.point_on_light;
 				light_source_normal_2 =
 					hippt::normalize(triangle_load_normal_not_normalized(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index));
-				emission_2 = triangle_load_emission(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index);
+				emission_2 =
+					get_triangle_emission_at_point(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index, point_on_light_2);
 			}
 #endif // #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
 		}
@@ -372,7 +374,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 		float light_source_area		 = hippt::length(light_source_normal) * 0.5f;
 		light_source_normal /= hippt::length(light_source_normal);
 		float3_t point_on_light = non_canonical_reservoir.sample.point_on_light;
-		ColorRGB32F emission	= triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+		ColorRGB32F emission	= get_triangle_emission_at_point(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index, point_on_light);
 
 		ColorRGB32F sample_radiance;
 		float shading_target_function =
