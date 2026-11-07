@@ -505,7 +505,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
 	RenderGraph* active_render_graph;
 
-	bool imgui_item_held										= reset_when_holding_imgui_items();
+	bool imgui_item_held										= render_window->render_resetted_with_imgui_item_held();
 	bool interactivity_render_graph_when_interacting_with_imgui = imgui_item_held && reset_when_holding_imgui_items();
 
 	if ((render_window->is_interacting() || interactivity_render_graph_when_interacting_with_imgui) && m_render_data.render_settings.accumulate)

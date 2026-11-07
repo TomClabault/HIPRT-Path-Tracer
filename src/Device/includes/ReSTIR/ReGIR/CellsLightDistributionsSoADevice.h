@@ -17,16 +17,25 @@ struct ReGIRCellsLightDistributionsSoADevice
 
 	static constexpr unsigned int NO_AVAILABLE_LIGHT_DISTRIBUTION = 0xFFFFFFFF;
 
+	/**
+	 * The light distributions follow the CDFDeviceU16 convention:
+	 *	- cdf[0] is a marker: 65535 if the cell has a positive total weight, 0 otherwise
+	 *	- cdf[i], i > 0, is the normalized sum of the weights of the entries [0, i - 1], i.e. where entry i starts.
+	 *		Entry 0 starts at 0 and the last entry ends at 65535
+	 */
 	HIPRT_DEVICE float get_PDF(unsigned int hash_grid_cell_index, unsigned int CDF_table_index) const
 	{
-		unsigned int offset = light_distribution_offsets[hash_grid_cell_index];
+		unsigned int offset					 = light_distribution_offsets[hash_grid_cell_index];
+		unsigned int light_distribution_size = light_distribution_sizes[hash_grid_cell_index];
 
-		if (CDF_table_index == 0)
-			return all_cdfs[offset + CDF_table_index] / 65535.0f;
-		else
-		{
-			return (all_cdfs[offset + CDF_table_index] - all_cdfs[offset + CDF_table_index - 1]) / 65535.0f;
-		}
+		if (all_cdfs[offset] == 0)
+			// No positive weight in that cell
+			return 0.0f;
+
+		unsigned int entry_start = CDF_table_index == 0 ? 0 : all_cdfs[offset + CDF_table_index];
+		unsigned int entry_end	 = CDF_table_index == light_distribution_size - 1 ? 65535 : all_cdfs[offset + CDF_table_index + 1];
+
+		return (entry_end - entry_start) / 65535.0f;
 	}
 
 	HIPRT_DEVICE unsigned int get_emissive_mesh_index(unsigned hash_grid_cell_index, unsigned int CDF_table_index) const
@@ -51,11 +60,11 @@ struct ReGIRCellsLightDistributionsSoADevice
 			unsigned int bits_in_first_element_mask	 = (1 << bits_in_first_element) - 1;
 			unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
 
-			unsigned int first_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >>
-									   bit_offset_start_in_element) &
-									  bits_in_first_element_mask;
-			unsigned int second_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index + 1]) &
-									   bits_in_second_element_mask;
+			unsigned int first_part =
+				(emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) &
+				bits_in_first_element_mask;
+			unsigned int second_part =
+				(emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index + 1]) & bits_in_second_element_mask;
 
 			return first_part | (second_part << bits_in_first_element);
 		}

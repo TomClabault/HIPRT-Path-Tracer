@@ -1414,7 +1414,6 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 			std::sort(first, last,
 					  [&](unsigned int a, unsigned int b)
 					  {
-
 						  // Sorting in descendant order
 						  return get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + a) >
 								 get_float_contribution_from_scratch_buffer(i * emissive_mesh_count + b);
@@ -1514,8 +1513,11 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 					std::vector<float> cdf(effective_light_distribution_size, 0.0f);
 					Utils::compute_prefix_sum(normalized, cdf);
 
-					for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
-						cdf_u16.at(proba_index) = cdf.at(proba_index) * 65535.0f;
+					// Following the CDFDeviceU16 convention: cdf_u16[0] marks a positive total weight and cdf_u16[i] is where
+					// entry i starts, i.e. the inclusive prefix sum of entry i - 1
+					cdf_u16.at(0) = 65535;
+					for (int proba_index = 1; proba_index < cdf.size(); proba_index++)
+						cdf_u16.at(proba_index) = cdf.at(proba_index - 1) * 65535.0f;
 
 					std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed =
 						ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count,

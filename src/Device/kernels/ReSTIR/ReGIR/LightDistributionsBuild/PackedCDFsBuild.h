@@ -41,16 +41,32 @@ inline ReGIR_LightDistributionsBuildPackedCDFsBuild(const unsigned short int* __
 
 	float cell_best_contribution_sum = prefix_scanned_CDFs_device_pointer[dispatch_local_cell_index * emissive_mesh_count + light_distribution_size - 1];
 	if (cell_best_contribution_sum <= 0.0f)
+	{
+		// No mesh contributes to that cell. The CDF buffer is reallocated at each build so its content is undefined: writing an all-zero
+		// CDF (cdf[0] == 0 marks the cell as having no positive weight) instead of leaving whatever previously lived in that memory
+		for (int tid = threadIdx.x; tid < light_distribution_size; tid += blockDim.x)
+			output_CDF_elements[light_distribution_offset + tid] = 0;
+
 		return;
+	}
 
 	float normalization_factor = 1.0f / cell_best_contribution_sum;
 
+	// Following the CDFDeviceU16 convention: cdf[0] is a 'positive weight' marker and cdf[i] is where entry i starts, i.e. the
+	// sum of the weights of the entries [0, i - 1]. 'prefix_scanned_CDFs_device_pointer' is an inclusive scan so entry i starts at
+	// the inclusive scan value of entry i - 1
 	for (int tid = threadIdx.x; tid < light_distribution_size; tid += blockDim.x)
 	{
-		float prefix_sum_contribution	= prefix_scanned_CDFs_device_pointer[dispatch_local_cell_index * emissive_mesh_count + tid];
 		unsigned int contribution_index = light_distribution_offset + tid;
 
-		output_CDF_elements[contribution_index] = (unsigned short int)(prefix_sum_contribution * normalization_factor * 65535.0f);
+		if (tid == 0)
+			output_CDF_elements[contribution_index] = 65535;
+		else
+		{
+			float entry_start = prefix_scanned_CDFs_device_pointer[dispatch_local_cell_index * emissive_mesh_count + tid - 1];
+
+			output_CDF_elements[contribution_index] = (unsigned short int)(entry_start * normalization_factor * 65535.0f);
+		}
 	}
 }
 
