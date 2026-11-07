@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NISML_DEVICE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_NISML_DEVICE_H
 
+#include "Device/includes/Hash.h"
 #include "Device/includes/HashGrid.h"
 #include "Device/includes/HashGridHash.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNISMLCache.h"

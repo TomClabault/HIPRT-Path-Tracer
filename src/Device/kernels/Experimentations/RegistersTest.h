@@ -27,6 +27,7 @@
  */
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Hash.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"

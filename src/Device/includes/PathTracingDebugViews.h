@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 #define DEVICE_INCLUDES_PATH_TRACING_DEBUG_VIEWS_H
 
+#include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 

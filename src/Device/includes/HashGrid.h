@@ -6,11 +6,7 @@
 #ifndef DEVICE_INCLUDES_HASH_GRID_H
 #define DEVICE_INCLUDES_HASH_GRID_H
 
-#include "Device/includes/Hash.h"
 #include "HostDeviceCommon/Maths/Math.h"
-
-#define HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING 0
-#define HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING	   1
 
 struct HashGrid
 {
@@ -23,19 +19,12 @@ struct HashGrid
 	 * Returns false if the given 'in_out_hash_cell_index' refers to a hash cell that hasn't been
 	 * allocated yet or if there was a collision but it couldn't be resolved and the collision resolution was
 	 * aborted because too many iterations
-	 */
-	/**
-	 * 'collisionResolutionMode' defines how to resolve a collision found in the hash grid:
 	 *
-	 * - HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING: If a collision is found, look up the next index in the hash
-	 *      table and see if that location is empty. If not empty, continue looking at the next location
-	 *      up to 'maxCollisionResolveSteps' times
-	 *
-	 * - HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING: If a collision is found, hash the current cell index to get the
-	 *      new candidate location. Continue doing so until an empty location is found or 'maxCollisionResolveSteps'
-	 *      steps is exceeded
+	 * Collisions are resolved with linear probing: if a collision is found, look up the next index in the hash
+	 * table and see if that location is empty. If not empty, continue looking at the next location
+	 * up to 'maxCollisionResolveSteps' times
 	 */
-	template <int maxCollisionResolveSteps, bool isInsertion = false, unsigned int collisionResolutionMode = HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING>
+	template <int maxCollisionResolveSteps, bool isInsertion = false>
 	HIPRT_DEVICE static bool resolve_collision(AtomicType<unsigned int>* checksum_buffer,
 											   unsigned int total_number_of_cells,
 											   unsigned int& in_out_hash_cell_index,
@@ -95,11 +84,10 @@ struct HashGrid
 			unsigned int base_cell_index						 = in_out_hash_cell_index;
 			unsigned int current_cell_index_collision_resolution = base_cell_index;
 
-			// Collision resolution
+			// Collision resolution with linear probing
 			for (int i = 1; i <= maxCollisionResolveSteps; i++)
 			{
-				current_cell_index_collision_resolution =
-					collision_resolution_next_cell_index<collisionResolutionMode>(current_cell_index_collision_resolution, total_number_of_cells);
+				current_cell_index_collision_resolution = (current_cell_index_collision_resolution + 1) % total_number_of_cells;
 				if (current_cell_index_collision_resolution == base_cell_index)
 					// We looped on the whole hash table. Couldn't find an empty cell
 					return false;
@@ -157,16 +145,6 @@ struct HashGrid
 		else
 			// This is already our hash, no collision
 			return true;
-	}
-
-	template <unsigned int collisionResolutionMode>
-	HIPRT_DEVICE static unsigned int collision_resolution_next_cell_index(unsigned int current_cell_index_collision_resolution,
-																		  unsigned int total_number_of_cells)
-	{
-		if constexpr (collisionResolutionMode == HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING)
-			return (current_cell_index_collision_resolution + 1) % total_number_of_cells;
-		else if constexpr (collisionResolutionMode == HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING)
-			return wang_hash(current_cell_index_collision_resolution) % total_number_of_cells;
 	}
 };
 
