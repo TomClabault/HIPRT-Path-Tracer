@@ -733,6 +733,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						restir_pt_initial_sample.incident_light_info_at_sample_point = incident_light_info;
 						// TODO remove this line
 						restir_pt_initial_sample.rc_vertex_incident_light_direction = ray.direction;
+						// Paths continuing past the reconnection vertex must store the BSDF * cosine of their continuation direction, not the value
+						// left by the NEE sample of this bounce: the spatial-reuse neighbor selection target uses it in place of the reconnection
+						// vertex throughput
+						restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = pending_unweighted_throughput.luminance();
 					}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
