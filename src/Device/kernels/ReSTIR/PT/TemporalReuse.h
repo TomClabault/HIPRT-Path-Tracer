@@ -57,7 +57,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
-	if (render_data.render_settings.restir_pt_settings.common_temporal_pass.temporal_buffer_clear_requested)
+	if (render_data.render_settings.restir_pt_settings.temporal_pass.temporal_buffer_clear_requested)
 		// We requested a temporal buffer clear for ReSTIR PT
 		render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRPTReservoir();
 

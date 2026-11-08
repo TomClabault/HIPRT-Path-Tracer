@@ -68,9 +68,9 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 		unsigned int backup_seed = random_number_generator.m_state.seed;
 
-		random_number_generator.m_state.seed = render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_neighbors_rng_seed;
+		random_number_generator.m_state.seed = render_data.render_settings.restir_pt_settings.spatial_pass.spatial_neighbors_rng_seed;
 
-		for (int j = 0; j < render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count + 1; j++)
+		for (int j = 0; j < render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count + 1; j++)
 		{
 			int neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, j, center_pixel_coords, random_number_generator);
 			if (neighbor_index_j == -1)

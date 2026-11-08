@@ -1084,7 +1084,7 @@ void CPURenderer::ReSTIR_PT_pass()
 	configure_ReSTIR_PT_temporal_reuse_pass();
 	launch_ReSTIR_PT_temporal_reuse_pass();
 
-	for (int i = 0; i < m_render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes; i++)
+	for (int i = 0; i < m_render_data.render_settings.restir_pt_settings.spatial_pass.number_of_passes; i++)
 	{
 		configure_ReSTIR_PT_spatial_reuse_pass(i);
 		launch_ReSTIR_PT_spatial_reuse_pass();
@@ -1128,9 +1128,9 @@ void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
 	debug_render_pass(
 		[this](int x, int y)
 		{
-			ReSTIR_PT_Directional_Reuse_Compute(
-				m_render_data, x, y, m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
-				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
+			ReSTIR_PT_Directional_Reuse_Compute(m_render_data, x, y,
+												m_render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+												m_render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius);
 		});
 }
 
@@ -1233,7 +1233,7 @@ void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
 
 void CPURenderer::launch_ReSTIR_PT_temporal_reuse_pass()
 {
-	if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+	if (m_render_data.render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass)
 	{
 		debug_render_pass([this](int x, int y) { ReSTIR_PT_TemporalReuse(m_render_data, x, y); });
 	}
@@ -1241,7 +1241,7 @@ void CPURenderer::launch_ReSTIR_PT_temporal_reuse_pass()
 
 void CPURenderer::configure_ReSTIR_PT_spatial_reuse_pass(int spatial_pass_index)
 {
-	m_render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
+	m_render_data.render_settings.restir_pt_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
 	// stores in the 'spatial buffer'
@@ -1257,7 +1257,7 @@ void CPURenderer::configure_ReSTIR_PT_spatial_reuse_pass(int spatial_pass_index)
 		// This is the first spatial reuse pass, reading from the output of the temporal pass
 		// or the initial candidates depending on whether or not we have a temporal reuse pass at all
 
-		if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+		if (m_render_data.render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass)
 			// and we have a temporal reuse pass so we're going to read from the temporal reservoirs
 			input_reservoirs = m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
 		else
@@ -1290,10 +1290,10 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 
 void CPURenderer::configure_ReSTIR_PT_shading_pass()
 {
-	if (m_render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
+	if (m_render_data.render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass)
 		m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
-	else if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
+	else if (m_render_data.render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass)
 		m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
 	else

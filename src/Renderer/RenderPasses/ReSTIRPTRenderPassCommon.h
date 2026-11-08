@@ -37,7 +37,7 @@ public:
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data,
 															ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
-		ReSTIRPTCommonSpatialPassSettings spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		ReSTIRPTSpatialPassSettings spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		bool render_data_invalidated = false;
 		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))

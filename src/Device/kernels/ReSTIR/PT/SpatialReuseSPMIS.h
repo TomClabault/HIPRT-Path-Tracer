@@ -79,7 +79,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		return;
 	}
 
-	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count;
 	// Scaling the confidence sum, section 4.3 of the paper
 	float non_canonical_confidence_scaling = render_data.render_settings.restir_pt_settings.spmis_settings.do_non_canonical_confidence_adjustement
 												 ? reused_neighbors_count / (float)reuse_cell_pixel_count
@@ -184,8 +184,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 									random_number_generator);
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
-	bool last_spatial_pass = render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_pass_index ==
-							 render_data.render_settings.restir_pt_settings.common_spatial_pass.number_of_passes - 1;
+	bool last_spatial_pass = render_data.render_settings.restir_pt_settings.spatial_pass.spatial_pass_index ==
+							 render_data.render_settings.restir_pt_settings.spatial_pass.number_of_passes - 1;
 	bool m_cap_enabled = render_data.render_settings.restir_pt_settings.m_cap > 0;
 	if (last_spatial_pass && m_cap_enabled)
 		// M-capping the spatial neighbor if an M-cap has been given

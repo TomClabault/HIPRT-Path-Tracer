@@ -12,14 +12,14 @@
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTCommonSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& render_data,
 														   unsigned int center_pixel_index,
 														   Xorshift32Generator& random_number_generator)
 {
-	ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
@@ -46,7 +46,7 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
  * Note that this function will sample the first sector if there are no sectors available around the given pixel
  */
 HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data,
-																	  const ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings,
+																	  const ReSTIRPTSpatialPassSettings& spatial_pass_settings,
 																	  int2_t center_pixel_coords,
 																	  Xorshift32Generator& rng)
 {
@@ -138,7 +138,7 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
  * to spatially reuse from
  *
  * 'neighbor_number' is in [0, neighbor_reuse_count]
- * 'neighbor_reuse_count' is in [1, ReSTIRPTCommonSpatialPassSettings.reuse_neighbor_count]
+ * 'neighbor_reuse_count' is in [1, ReSTIRPTSpatialPassSettings.reuse_neighbor_count]
  * 'neighbor_reuse_radius' is the radius of the disk within which the neighbors are sampled
  * 'center_pixel_coords' is the coordinates of the center pixel that is currently
  *		doing the resampling of its neighbors. Neighbors will be spatially sampled
@@ -148,11 +148,11 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
  * 'rng' is a random generator used for generating spatial neighbor positions if not using a Hammersley
  *		point set.
  *
- *		Only used if render_data.render_settings.restir_pt_settings.common_spatial_pass.use_hammersley == false
+ *		Only used if render_data.render_settings.restir_pt_settings.spatial_pass.use_hammersley == false
  */
 HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_index, int2_t center_pixel_coords, Xorshift32Generator& rng)
 {
-	const ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 	int neighbor_pixel_index;
 	if (neighbor_index == spatial_pass_settings.reuse_neighbor_count)
@@ -240,7 +240,7 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 {
 	out_valid_neighbor_count = 0;
 
-	const ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 	Xorshift32Generator spatial_neighbors_rng(spatial_pass_settings.spatial_neighbors_rng_seed);
 
 	int center_pixel_index	   = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;

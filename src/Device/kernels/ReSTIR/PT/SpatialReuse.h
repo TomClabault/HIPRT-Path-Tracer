@@ -62,7 +62,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	ReSTIRPTSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
-	ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
 	spatial_pass_settings.spatial_neighbors_rng_seed = pcg_hash(random_number_generator.xorshift32());
 
@@ -76,7 +76,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	count_valid_spatial_neighbors(render_data, center_pixel_surface, center_pixel_coords, valid_neighbors_count, valid_neighbors_confidence_sum,
 								  neighbor_heuristics_cache);
 
-	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count;
 	int start_index			   = 0;
 	if (valid_neighbors_confidence_sum == 0)
 		// No valid neighbor to resample from, skip to the initial candidate right away
@@ -91,7 +91,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 #endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
 	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
-	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_pt_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_pt_settings.spatial_pass.spatial_neighbors_rng_seed);
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	//

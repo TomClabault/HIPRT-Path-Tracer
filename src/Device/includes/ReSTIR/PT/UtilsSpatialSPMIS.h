@@ -212,7 +212,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 			spmis_search_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface, center_cell_index, center_cell_weight,
 										  radius, max_search_iterations, distance_scaling, selected_pixel_index, selected_cell_confidence_sum_for_slot, rng);
 
-		if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
+		if (render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count > 0)
 			spmis_settings.all_pixels_reuse_cell_pixel_index[reuse_cell_cache_start_index + cache_slot] = selected_pixel_index;
 		else
 			spmis_settings.all_pixels_reuse_cell_pixel_index[reuse_cell_cache_start_index + cache_slot] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
@@ -227,7 +227,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 	if (selected_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
-	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count > 0)
+	if (render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count > 0)
 	{
 		out_neighbors_confidence_sum = selected_cell_confidence_sum;
 		out_reuse_cell_pixel_count	 = spmis_settings.cell_pixels_counters[selected_cell_index];

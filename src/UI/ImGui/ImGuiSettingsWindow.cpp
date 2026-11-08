@@ -1752,13 +1752,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					draw_ReSTIR_PT_temporal_reuse_panel(
 						[&render_settings, this]()
 						{
-							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass))
+							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
 					draw_ReSTIR_PT_spatial_reuse_panel(
 						[&render_settings, this]()
 						{
-							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass))
+							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
 					ImGui::PopItemWidth();
@@ -1780,24 +1780,24 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReSTIR PT options tree");
 
-						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_pt_settings.common_spatial_pass.debug_neighbor_location))
+						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_pt_settings.spatial_pass.debug_neighbor_location))
 							m_render_window->set_render_dirty(true);
 						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
 														"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-						if (render_settings.restir_pt_settings.common_spatial_pass.debug_neighbor_location)
+						if (render_settings.restir_pt_settings.spatial_pass.debug_neighbor_location)
 						{
 							ImGui::TreePush("Debug neighbor location vertical tree");
 
 							ImGui::Text("Debug reuse direction");
 							bool reuse_direction_changed = false;
 							reuse_direction_changed |= ImGui::RadioButton(
-								"Horizontally", ((int*)&render_settings.restir_pt_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
+								"Horizontally", ((int*)&render_settings.restir_pt_settings.spatial_pass.debug_neighbor_location_direction), 0);
 							ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton(
-								"Vertically", ((int*)&render_settings.restir_pt_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
+							reuse_direction_changed |=
+								ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_pt_settings.spatial_pass.debug_neighbor_location_direction), 1);
 							ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton(
-								"Diagonally", ((int*)&render_settings.restir_pt_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+							reuse_direction_changed |=
+								ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_pt_settings.spatial_pass.debug_neighbor_location_direction), 2);
 
 							if (reuse_direction_changed)
 								m_render_window->set_render_dirty(true);
@@ -3441,9 +3441,9 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 {
-	HIPRTRenderSettings& render_settings	= m_renderer->get_render_settings();
-	ReSTIRPTCommonSettings& common_settings = render_settings.restir_pt_settings;
-	ReSTIRPTSettings* restir_pt_settings	= &render_settings.restir_pt_settings;
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	ReSTIRPTSettings& common_settings	 = render_settings.restir_pt_settings;
+	ReSTIRPTSettings* restir_pt_settings = &render_settings.restir_pt_settings;
 
 	static bool use_heuristics_at_all				= true;
 	static bool use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
@@ -3582,17 +3582,17 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
-	HIPRTRenderSettings& render_settings								   = m_renderer->get_render_settings();
-	ReSTIRPTCommonTemporalPassSettings& restir_pt_common_temporal_settings = m_renderer->get_render_settings().restir_pt_settings.common_temporal_pass;
+	HIPRTRenderSettings& render_settings						   = m_renderer->get_render_settings();
+	ReSTIRPTTemporalPassSettings& restir_pt_temporal_pass_settings = m_renderer->get_render_settings().restir_pt_settings.temporal_pass;
 
 	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
 	{
-		ImGui::PushID(&restir_pt_common_temporal_settings);
+		ImGui::PushID(&restir_pt_temporal_pass_settings);
 		ImGui::TreePush("ReSTIR - Temporal Reuse Pass Tree");
 		{
 			draw_before_panel();
 
-			if (restir_pt_common_temporal_settings.do_temporal_reuse_pass)
+			if (restir_pt_temporal_pass_settings.do_temporal_reuse_pass)
 			{
 				// Same line as "Do Temporal Reuse"
 				ImGui::SameLine();
@@ -3605,20 +3605,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 
 				bool last_frame_g_buffer_needed = true;
 				last_frame_g_buffer_needed &= !render_settings.accumulate;
-				last_frame_g_buffer_needed &= restir_pt_common_temporal_settings.do_temporal_reuse_pass;
+				last_frame_g_buffer_needed &= restir_pt_temporal_pass_settings.do_temporal_reuse_pass;
 
-				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_pt_common_temporal_settings.max_neighbor_search_count, 0, 16))
+				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_pt_temporal_pass_settings.max_neighbor_search_count, 0, 16))
 				{
 					// Clamping
-					restir_pt_common_temporal_settings.max_neighbor_search_count = std::max(0, restir_pt_common_temporal_settings.max_neighbor_search_count);
+					restir_pt_temporal_pass_settings.max_neighbor_search_count = std::max(0, restir_pt_temporal_pass_settings.max_neighbor_search_count);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_pt_common_temporal_settings.neighbor_search_radius, 0, 16))
+				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_pt_temporal_pass_settings.neighbor_search_radius, 0, 16))
 				{
 					// Clamping
-					restir_pt_common_temporal_settings.neighbor_search_radius = std::max(0, restir_pt_common_temporal_settings.neighbor_search_radius);
+					restir_pt_temporal_pass_settings.neighbor_search_radius = std::max(0, restir_pt_temporal_pass_settings.neighbor_search_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -3645,8 +3645,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
 {
-	HIPRTRenderSettings& render_settings							   = m_renderer->get_render_settings();
-	ReSTIRPTCommonSpatialPassSettings& restir_pt_spatial_pass_settings = render_settings.restir_pt_settings.common_spatial_pass;
+	HIPRTRenderSettings& render_settings						 = m_renderer->get_render_settings();
+	ReSTIRPTSpatialPassSettings& restir_pt_spatial_pass_settings = render_settings.restir_pt_settings.spatial_pass;
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
@@ -3763,7 +3763,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_data().render_settings;
 
-	ReSTIRPTCommonSettings& common_settings = render_settings.restir_pt_settings;
+	ReSTIRPTSettings& common_settings = render_settings.restir_pt_settings;
 
 	if (ImGui::CollapsingHeader("MIS Weights"))
 	{

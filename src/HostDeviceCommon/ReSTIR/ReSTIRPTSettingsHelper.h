@@ -17,22 +17,22 @@ struct ReSTIRPTSettingsHelper
 		return render_data.render_settings.restir_pt_settings;
 	}
 
-	HIPRT_HOST_DEVICE static const ReSTIRPTCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static const ReSTIRPTSpatialPassSettings& get_restir_pt_spatial_pass_settings(const HIPRTRenderData& render_data)
 	{
-		return render_data.render_settings.restir_pt_settings.common_spatial_pass;
+		return render_data.render_settings.restir_pt_settings.spatial_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRPTCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTSpatialPassSettings& get_restir_pt_spatial_pass_settings(HIPRTRenderData& render_data)
 	{
-		return render_data.render_settings.restir_pt_settings.common_spatial_pass;
+		return render_data.render_settings.restir_pt_settings.spatial_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRPTCommonTemporalPassSettings get_restir_pt_temporal_pass_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTTemporalPassSettings get_restir_pt_temporal_pass_settings(const HIPRTRenderData& render_data)
 	{
-		return render_data.render_settings.restir_pt_settings.common_temporal_pass;
+		return render_data.render_settings.restir_pt_settings.temporal_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRPTCommonNeighborSimiliaritySettings get_restir_pt_neighbor_similarity_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTNeighborSimiliaritySettings get_restir_pt_neighbor_similarity_settings(const HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings.neighbor_similarity_settings;
 	}
@@ -49,7 +49,7 @@ struct ReSTIRPTSettingsHelper
 
 	HIPRT_HOST_DEVICE static unsigned long long int get_spatial_reuse_direction_mask_ull(const HIPRTRenderData& render_data, int pixel_index)
 	{
-		return render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
+		return render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
 	}
 
 	/**

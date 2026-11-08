@@ -89,7 +89,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 		out_normalization_nume	= 1.0f;
 
 		int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-		const ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		const ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		random_number_generator.m_state.seed = spatial_pass_settings.spatial_neighbors_rng_seed;
 

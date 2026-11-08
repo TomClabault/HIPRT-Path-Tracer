@@ -59,20 +59,19 @@ struct ReSTIRPTDirectionalSpatialReuseDataHost
 
 	void to_device(HIPRTRenderData& render_data)
 	{
-		ReSTIRPTCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		if (maximum_size() == 0)
 		{
-			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
-			common_spatial_pass_settings.per_pixel_spatial_reuse_radius				 = nullptr;
+			spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
+			spatial_pass_settings.per_pixel_spatial_reuse_radius			  = nullptr;
 
 			return;
 		}
 
-		common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull =
+		spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull =
 			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
-		common_spatial_pass_settings.per_pixel_spatial_reuse_radius =
-			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
+		spatial_pass_settings.per_pixel_spatial_reuse_radius = m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
 	}
 
 	ReSTIRPTDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;

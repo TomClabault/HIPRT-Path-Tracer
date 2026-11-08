@@ -9,7 +9,6 @@
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/PathRussianRoulette.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
@@ -302,7 +301,7 @@ struct HIPRTRenderSettings
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const
 	{
 		bool need_g_buffer = false;
-		need_g_buffer |= PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass;
+		need_g_buffer |= PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && restir_pt_settings.temporal_pass.do_temporal_reuse_pass;
 
 		return need_g_buffer;
 	}
