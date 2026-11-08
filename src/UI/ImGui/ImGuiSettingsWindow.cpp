@@ -1725,9 +1725,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
-			{
-			case PATH_SAMPLING_RESTIR_PT:
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 			{
 				if (ImGui::CollapsingHeader("ReSTIR PT"))
 				{
@@ -1749,18 +1747,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 					draw_ReSTIR_PT_initial_candidates_panel();
-					draw_ReSTIR_PT_temporal_reuse_panel(
-						[&render_settings, this]()
-						{
-							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass))
-								m_render_window->set_render_dirty(true);
-						});
-					draw_ReSTIR_PT_spatial_reuse_panel(
-						[&render_settings, this]()
-						{
-							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass))
-								m_render_window->set_render_dirty(true);
-						});
+					draw_ReSTIR_PT_temporal_reuse_panel();
+					draw_ReSTIR_PT_spatial_reuse_panel();
 					ImGui::PopItemWidth();
 
 					if (ImGui::CollapsingHeader("Rejection Heuristics"))
@@ -1844,14 +1832,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop(); // ReSTIR PT Tree
 				}
-			}
 
-			default:
-				break;
-			}
-
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 				draw_ReSTIR_PG_settings_panel();
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -3442,47 +3425,46 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	ReSTIRPTSettings& common_settings	 = render_settings.restir_pt_settings;
-	ReSTIRPTSettings* restir_pt_settings = &render_settings.restir_pt_settings;
+	ReSTIRPTSettings& restir_pt_settings = render_settings.restir_pt_settings;
 
 	static bool use_heuristics_at_all				= true;
-	static bool use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
-	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
-	static bool use_roughness_heuristic_backup		= common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+	static bool use_normal_heuristic_backup			= restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
+	static bool use_plane_distance_heuristic_backup = restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
+	static bool use_roughness_heuristic_backup		= restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
 
 	static bool use_neighbor_sample_point_roughness_heuristic_backup = false;
 	static bool use_jacobian_heuristic_backup						 = false;
-	use_neighbor_sample_point_roughness_heuristic_backup			 = restir_pt_settings->use_neighbor_sample_point_roughness_heuristic;
-	use_jacobian_heuristic_backup									 = restir_pt_settings->use_jacobian_rejection_heuristic;
+	use_neighbor_sample_point_roughness_heuristic_backup			 = restir_pt_settings.use_neighbor_sample_point_roughness_heuristic;
+	use_jacobian_heuristic_backup									 = restir_pt_settings.use_jacobian_rejection_heuristic;
 
 	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 	{
 		if (!use_heuristics_at_all)
 		{
 			// Saving the usage of the heuristics for later restoration
-			use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
-			use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
-			use_roughness_heuristic_backup		= common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+			use_normal_heuristic_backup			= restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
+			use_plane_distance_heuristic_backup = restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
+			use_roughness_heuristic_backup		= restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
 
-			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic	= false;
-			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= false;
-			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+			restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic	   = false;
+			restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic	   = false;
+			restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 
-			use_jacobian_heuristic_backup						 = restir_pt_settings->use_jacobian_rejection_heuristic;
-			use_neighbor_sample_point_roughness_heuristic_backup = restir_pt_settings->use_neighbor_sample_point_roughness_heuristic;
+			use_jacobian_heuristic_backup						 = restir_pt_settings.use_jacobian_rejection_heuristic;
+			use_neighbor_sample_point_roughness_heuristic_backup = restir_pt_settings.use_neighbor_sample_point_roughness_heuristic;
 
-			restir_pt_settings->use_jacobian_rejection_heuristic			  = false;
-			restir_pt_settings->use_neighbor_sample_point_roughness_heuristic = false;
+			restir_pt_settings.use_jacobian_rejection_heuristic				 = false;
+			restir_pt_settings.use_neighbor_sample_point_roughness_heuristic = false;
 		}
 		else
 		{
 			// Restoring heuristics usage to their backup values
-			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic	= use_normal_heuristic_backup;
-			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= use_plane_distance_heuristic_backup;
-			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
+			restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic	   = use_normal_heuristic_backup;
+			restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic	   = use_plane_distance_heuristic_backup;
+			restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
 
-			restir_pt_settings->use_jacobian_rejection_heuristic			  = use_jacobian_heuristic_backup;
-			restir_pt_settings->use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
+			restir_pt_settings.use_jacobian_rejection_heuristic				 = use_jacobian_heuristic_backup;
+			restir_pt_settings.use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
 		}
 
 		m_render_window->set_render_dirty(true);
@@ -3498,20 +3480,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 		{
-			if (ImGui::Checkbox("Use normal similarity heuristic", &common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
+			if (ImGui::Checkbox("Use normal similarity heuristic", &restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePush("Normal similarity heuristic tree");
-			if (ImGui::Checkbox("Use geometric normals", &common_settings.neighbor_similarity_settings.reject_using_geometric_normals))
+			if (ImGui::Checkbox("Use geometric normals", &restir_pt_settings.neighbor_similarity_settings.reject_using_geometric_normals))
 				m_render_window->set_render_dirty(true);
 
-			if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
+			if (restir_pt_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
 			{
-				if (ImGui::SliderFloat("Angle threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f,
+				if (ImGui::SliderFloat("Angle threshold", &restir_pt_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f,
 									   "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
 				{
-					common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp =
-						std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
+					restir_pt_settings.neighbor_similarity_settings.normal_similarity_angle_precomp =
+						std::cos(restir_pt_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -3521,46 +3503,46 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 		{
-			if (ImGui::Checkbox("Use plane distance heuristic", &common_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
+			if (ImGui::Checkbox("Use plane distance heuristic", &restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePush("Plane distance heuristic tree");
-			if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
-				if (ImGui::SliderFloat("Distance threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
+			if (restir_pt_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
+				if (ImGui::SliderFloat("Distance threshold", &restir_pt_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
 			ImGui::TreePop();
 		}
 		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 		{
-			if (ImGui::Checkbox("Use roughness heuristic", &common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
+			if (ImGui::Checkbox("Use roughness heuristic", &restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePush("Roughness heuristic tree");
-			if (common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
-				if (ImGui::SliderFloat("Roughness threshold", &common_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f",
-									   ImGuiSliderFlags_AlwaysClamp))
+			if (restir_pt_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
+				if (ImGui::SliderFloat("Roughness threshold", &restir_pt_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f,
+									   "%.3f", ImGuiSliderFlags_AlwaysClamp))
 					m_render_window->set_render_dirty(true);
 			ImGui::TreePop();
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 10.0f));
-		if (ImGui::Checkbox("Use jacobian heuristic", &restir_pt_settings->use_jacobian_rejection_heuristic))
+		if (ImGui::Checkbox("Use jacobian heuristic", &restir_pt_settings.use_jacobian_rejection_heuristic))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::TreePush("Jacobian heuristic tree");
-		if (restir_pt_settings->use_jacobian_rejection_heuristic)
+		if (restir_pt_settings.use_jacobian_rejection_heuristic)
 		{
-			if (ImGui::SliderFloat("Jacobian threshold", restir_pt_settings->get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
+			if (ImGui::SliderFloat("Jacobian threshold", restir_pt_settings.get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
 			{
-				restir_pt_settings->set_jacobian_heuristic_threshold(hippt::max(1.001f, restir_pt_settings->get_jacobian_heuristic_threshold()));
+				restir_pt_settings.set_jacobian_heuristic_threshold(hippt::max(1.001f, restir_pt_settings.get_jacobian_heuristic_threshold()));
 				m_render_window->set_render_dirty(true);
 			}
 		}
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-		if (ImGui::Checkbox("Use sample point roughness heuristic", &restir_pt_settings->use_neighbor_sample_point_roughness_heuristic))
+		if (ImGui::Checkbox("Use sample point roughness heuristic", &restir_pt_settings.use_neighbor_sample_point_roughness_heuristic))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker(
 			"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
@@ -3571,8 +3553,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 			"specular surface: a rough primary hit bouncing into a window / mirror for example.");
 
 		ImGui::TreePush("Sample point roughness heuristic tree");
-		if (restir_pt_settings->use_neighbor_sample_point_roughness_heuristic)
-			if (ImGui::SliderFloat("Min. neighbor roughness", &restir_pt_settings->neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
+		if (restir_pt_settings.use_neighbor_sample_point_roughness_heuristic)
+			if (ImGui::SliderFloat("Min. neighbor roughness", &restir_pt_settings.neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
 				m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
 		// ReSTIR heuristics tree
@@ -3580,17 +3562,18 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 	}
 }
 
-void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
+void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel()
 {
 	HIPRTRenderSettings& render_settings						   = m_renderer->get_render_settings();
-	ReSTIRPTTemporalPassSettings& restir_pt_temporal_pass_settings = m_renderer->get_render_settings().restir_pt_settings.temporal_pass;
+	ReSTIRPTTemporalPassSettings& restir_pt_temporal_pass_settings = render_settings.restir_pt_settings.temporal_pass;
 
 	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
 	{
 		ImGui::PushID(&restir_pt_temporal_pass_settings);
 		ImGui::TreePush("ReSTIR - Temporal Reuse Pass Tree");
 		{
-			draw_before_panel();
+			if (ImGui::Checkbox("Do Temporal Reuse", &restir_pt_temporal_pass_settings.do_temporal_reuse_pass))
+				m_render_window->set_render_dirty(true);
 
 			if (restir_pt_temporal_pass_settings.do_temporal_reuse_pass)
 			{
@@ -3627,7 +3610,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 												" to add temporal variations.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				int& m_cap = m_renderer->get_render_settings().restir_pt_settings.m_cap;
+				int& m_cap = render_settings.restir_pt_settings.m_cap;
 				if (ImGui::SliderInt("M-cap", &m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					m_cap = std::max(0, m_cap);
@@ -3643,7 +3626,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 	}
 }
 
-void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
+void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel()
 {
 	HIPRTRenderSettings& render_settings						 = m_renderer->get_render_settings();
 	ReSTIRPTSpatialPassSettings& restir_pt_spatial_pass_settings = render_settings.restir_pt_settings.spatial_pass;
@@ -3655,7 +3638,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 		ImGui::PushID(&restir_pt_spatial_pass_settings);
 		ImGui::TreePush("ReSTIR - Spatial Reuse Pass Tree");
 		{
-			draw_before_panel();
+			if (ImGui::Checkbox("Do spatial reuse", &restir_pt_spatial_pass_settings.do_spatial_reuse_pass))
+				m_render_window->set_render_dirty(true);
 
 			if (restir_pt_spatial_pass_settings.do_spatial_reuse_pass)
 			{
@@ -3763,11 +3747,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_data().render_settings;
 
-	ReSTIRPTSettings& common_settings = render_settings.restir_pt_settings;
+	ReSTIRPTSettings& restir_pt_settings = render_settings.restir_pt_settings;
 
 	if (ImGui::CollapsingHeader("MIS Weights"))
 	{
-		ImGui::PushID(&common_settings);
+		ImGui::PushID(&restir_pt_settings);
 		ImGui::TreePush("MIS Weights tree ReSTIR");
 
 		std::vector<const char*> mis_weights_types_items = { "- 1/M (Biased)",
@@ -3812,34 +3796,19 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 
 			"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
 			""
-			"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
-		};
+			"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
 
-		tooltips.push_back(
 			"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-			"importance sampled based on the luminance of their samples");
+			"importance sampled based on the luminance of their samples",
 
-		tooltips.push_back(
 			"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
 			"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher "
-			"variance");
-
-		std::vector<unsigned char> disabled_items = {
-			false, // "- 1/M (Biased)",
-			false, // "- 1/Z",
-			false, // "- MIS-like",
-			false, //"- Generalized balance heuristic",
-			false, // "- Pairwise MIS",
-			false, // "- Pairwise MIS defensive",
-			false, // "- Pairwise symmetric ratio",
-			false, // "- Pairwise asymmetric ratio",
-			false, // "- Stochastic pairwise MIS"
-			false, // "- Stochastic pairwise MIS defensive"
+			"variance"
 		};
 
 		int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 		if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items.data(), mis_weights_types_items.size(),
-											 tooltips.data(), disabled_items.data()))
+											 tooltips.data()))
 		{
 			m_renderer->recompile_kernels();
 
@@ -3851,11 +3820,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M || *mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z;
 
 		if (*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
-			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
 			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
 		{
-			if (ImGui::SliderFloat("Beta exponent", &common_settings.symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
+			if (ImGui::SliderFloat("Beta exponent", &restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
