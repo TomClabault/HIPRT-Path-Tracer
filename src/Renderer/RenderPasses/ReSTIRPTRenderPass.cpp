@@ -6,7 +6,6 @@
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReSTIRPTRenderPass.h"
-#include "Renderer/RenderPasses/ReSTIRPTRenderPassCommon.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
@@ -32,7 +31,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_PT_SpatialReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMIS" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, "ReSTIR_PT_Shading" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRPTRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
+	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, "ReSTIR_PT_Directional_Reuse_Compute" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetBuffers" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetCellsData" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, "ReSTIR_PT_SPMIS_CountCells" },
@@ -48,7 +47,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMIS.h" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/Shading.h" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRPTRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
+	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetBuffers.h" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCellsData.h" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/CountCells.h" },
@@ -302,7 +301,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRPTRenderPassCommon::pre_render_update_common_buffers(render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= pre_render_update_directional_reuse_buffers(render_data);
 		render_data_invalidated |= pre_render_update_spmis_buffers(render_data, *m_renderer->get_global_compiler_options());
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
@@ -332,15 +331,41 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= ReSTIRPTRenderPassCommon::free_common_buffers(m_directional_spatial_reuse_data);
+		render_data_invalidated |= m_directional_spatial_reuse_data.free();
 		render_data_invalidated |= m_spmis_data.free();
 	}
 
 	if (render_data.render_settings.restir_pt_settings.spatial_pass.auto_reuse_radius)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
 		render_data.render_settings.restir_pt_settings.spatial_pass.reuse_radius =
-			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) *
-			ReSTIRPTRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * ReSTIRPTRenderPass::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+
+	return render_data_invalidated;
+}
+
+bool ReSTIRPTRenderPass::pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data)
+{
+	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
+
+	bool render_data_invalidated = false;
+	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
+	{
+		if (m_directional_spatial_reuse_data.maximum_size() == 0)
+		{
+			m_directional_spatial_reuse_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
+
+			render_data_invalidated = true;
+		}
+	}
+	else
+	{
+		if (m_directional_spatial_reuse_data.maximum_size() > 0)
+		{
+			m_directional_spatial_reuse_data.free();
+
+			render_data_invalidated = true;
+		}
+	}
 
 	return render_data_invalidated;
 }
@@ -729,7 +754,7 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRPTRenderPassCommon::update_render_data_common_buffers(render_data, m_directional_spatial_reuse_data);
+		m_directional_spatial_reuse_data.to_device(render_data);
 		m_spmis_data.to_device(render_data);
 	}
 	else
@@ -749,7 +774,7 @@ void ReSTIRPTRenderPass::update_render_data()
 
 void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 {
-	ReSTIRPTRenderPassCommon::reset_common_buffers(m_directional_spatial_reuse_data);
+	m_directional_spatial_reuse_data.reset();
 	m_spmis_data.reset();
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();

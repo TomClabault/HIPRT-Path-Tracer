@@ -35,6 +35,8 @@ public:
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
+	static constexpr float AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE = 0.025f;
+
 	ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
@@ -44,6 +46,7 @@ public:
 											  bool silent,
 											  bool use_cache) override;
 	virtual bool pre_frame_render_update(float delta_time) override;
+	bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data);
 	bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 
 	/**
