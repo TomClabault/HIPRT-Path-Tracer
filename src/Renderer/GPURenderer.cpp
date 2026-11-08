@@ -432,10 +432,13 @@ void GPURenderer::resize(int new_width, int new_height)
 	// Needed so that this function can eventually be called from another thread
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-	m_render_resolution = make_int2(new_width, new_height);
-
+	// The frame that may still be in flight on the render thread launches its kernels with m_render_resolution: it must keep seeing the
+	// resolution its buffers were allocated for until it completes. Publishing the new resolution earlier launches wider grids than the
+	// global BVH traversal stack buffer was sized for, which makes ray tracing kernels overflow that buffer.
 	synchronize_all_kernels();
 	unmap_buffers();
+
+	m_render_resolution = make_int2(new_width, new_height);
 
 	m_framebuffer->resize(new_width * new_height);
 	m_display_post_process_framebuffer->resize(new_width * new_height);
