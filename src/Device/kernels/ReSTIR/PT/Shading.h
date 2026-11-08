@@ -19,7 +19,7 @@
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
+#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifdef __KERNELCC__
@@ -170,9 +170,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
 			 render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
-		unsigned char accepted_directions = hippt::popc(ReSTIRPTSettingsHelper::get_spatial_reuse_direction_mask_ull(render_data, pixel_index));
-		float accepted_percentage		  = accepted_directions / 32.0f;
-		ColorRGB32F debug_color			  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
+		unsigned char accepted_directions =
+			hippt::popc(render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index]);
+		float accepted_percentage = accepted_directions / 32.0f;
+		ColorRGB32F debug_color	  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
 
 		debug_set_final_color(render_data, x, y, debug_color);
 	}

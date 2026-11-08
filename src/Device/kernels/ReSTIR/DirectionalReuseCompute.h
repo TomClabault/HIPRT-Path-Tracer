@@ -56,10 +56,10 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
 	out_adaptive_radius_buffer[center_pixel_index]			   = 0;
 
-	ReSTIRPTSpatialPassSettings spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	ReSTIRPTSpatialPassSettings spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
 
 	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-	float3_t center_normal		  = ReSTIRPTSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data).reject_using_geometric_normals
+	float3_t center_normal		  = render_data.render_settings.restir_pt_settings.neighbor_similarity_settings.reject_using_geometric_normals
 										? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
 										: render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 

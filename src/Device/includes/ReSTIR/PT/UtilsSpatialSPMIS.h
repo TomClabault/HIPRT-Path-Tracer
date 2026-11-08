@@ -15,7 +15,6 @@
 #include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMISSettings& spmis_settings,
 															  float3_t camera_position,

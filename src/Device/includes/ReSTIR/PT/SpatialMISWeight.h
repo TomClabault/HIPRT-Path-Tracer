@@ -11,7 +11,6 @@
 #include "Device/includes/ReSTIR/SymmetricMISCommon.h"
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/TriangleLoadUtils.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 template <int BiasCorrectionMode>
 struct ReSTIRPTSpatialResamplingMISWeight
@@ -79,7 +78,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics(render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
-													  ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
+													  get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 

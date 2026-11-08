@@ -6,7 +6,7 @@
 #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
 #define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
 
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
+#include "HostDeviceCommon/RenderData.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
@@ -59,7 +59,7 @@ struct ReSTIRPTDirectionalSpatialReuseDataHost
 
 	void to_device(HIPRTRenderData& render_data)
 	{
-		ReSTIRPTSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
 
 		if (maximum_size() == 0)
 		{

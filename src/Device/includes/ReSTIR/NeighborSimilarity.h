@@ -7,9 +7,20 @@
 #define DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H
 
 #include "Device/includes/ReSTIR/Jacobian.h"
+#include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
+
+/**
+ * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
+ */
+HIPRT_HOST_DEVICE float3_t get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRPTSurface& surface)
+{
+	if (render_data.render_settings.restir_pt_settings.neighbor_similarity_settings.reject_using_geometric_normals)
+		return surface.geometric_normal;
+	else
+		return surface.shading_normal;
+}
 
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
@@ -84,7 +95,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 			return false;
 	}
 
-	const ReSTIRPTNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRPTSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data);
+	const ReSTIRPTNeighborSimiliaritySettings& neighbor_similarity_settings = render_data.render_settings.restir_pt_settings.neighbor_similarity_settings;
 
 	float3_t neighbor_world_space_point;
 	float neighbor_roughness		 = 0.0f;

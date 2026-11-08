@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/PT/TemporalNormalizationWeight.h"
@@ -17,7 +18,6 @@
 #include "Device/includes/ReSTIR/UtilsTemporal.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 /** References:
  *
@@ -76,9 +76,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 	// Surface data of the center pixel
 	ReSTIRPTSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	int temporal_neighbor_pixel_index =
-		find_temporal_neighbor_index(render_data, center_pixel_surface.shading_point,
-									 ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface), center_pixel_index,
-									 random_number_generator)
+		find_temporal_neighbor_index(render_data, center_pixel_surface.shading_point, get_normal_for_rejection_heuristic(render_data, center_pixel_surface),
+									 center_pixel_index, random_number_generator)
 			.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{

@@ -8,7 +8,6 @@
 
 #include "Device/includes/HashGridHash.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 HIPRT_DEVICE unsigned int ReSTIR_PT_spmis_hash(
 	const ReSTIRPTSPMISSettings& spmis_settings, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal, unsigned int& out_checksum)

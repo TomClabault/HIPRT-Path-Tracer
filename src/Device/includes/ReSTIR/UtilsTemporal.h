@@ -9,7 +9,6 @@
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 /**
  * Returns a triplet (x, y, z) with
@@ -33,7 +32,7 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 		return make_int3(center_pixel_index, center_pixel_index % render_data.render_settings.render_resolution.x,
 						 center_pixel_index / render_data.render_settings.render_resolution.x);
 
-	const ReSTIRPTTemporalPassSettings& temporal_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_temporal_pass_settings(render_data);
+	const ReSTIRPTTemporalPassSettings& temporal_pass_settings = render_data.render_settings.restir_pt_settings.temporal_pass;
 
 	float3_t previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	float2_t previous_screen_space_point	 = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
