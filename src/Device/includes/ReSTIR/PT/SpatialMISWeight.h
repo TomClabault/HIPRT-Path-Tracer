@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/SymmetricMISCommon.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 

@@ -8,8 +8,8 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
 #include "HostDeviceCommon/RenderData.h"

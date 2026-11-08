@@ -8,7 +8,6 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
@@ -17,6 +16,7 @@
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/PT/UtilsSpatialSPMIS.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"

@@ -6,8 +6,8 @@
 #ifndef DEVICE_RESTIR_PT_SPATIAL_NORMALIZATION_WEIGHT_H
 #define DEVICE_RESTIR_PT_SPATIAL_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"

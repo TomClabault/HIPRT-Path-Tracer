@@ -9,12 +9,12 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
-#include "Device/includes/ReSTIR/DI_GI/UtilsTemporal.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/PT/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/Surface.h"
+#include "Device/includes/ReSTIR/UtilsTemporal.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
