@@ -1173,7 +1173,12 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
 
-		if (batch_output && is_rendering_done())
+		// A viewport resize during draw_interface() (the docking layout settles over the first frames) reallocates the framebuffer
+		// and only marks the render dirty: the sample count is reset by the next render() call, so is_rendering_done() still
+		// reports the previous render as done here. With 1 sample per pixel, capturing at that point writes a black image
+		// at the transient resolution
+		bool render_reset_pending = m_application_state->render_dirty;
+		if (batch_output && is_rendering_done() && !render_reset_pending)
 		{
 			m_screenshoter->write_to_png(output_filepath);
 			glfwSetWindowShouldClose(m_glfw_window, GLFW_TRUE);
