@@ -59,7 +59,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 };
 
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: MegaKernelRenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
+	: RenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
 {
 	m_render_data_host_pinned.resize_host_pinned_mem(1);
 
@@ -269,7 +269,14 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	MegaKernelRenderPass::pre_frame_render_update(delta_time);
+	if (is_render_pass_used(*m_compiler_options))
+	{
+		// Resetting this flag as this is a new frame
+		render_data.render_settings.do_update_status_buffers = false;
+
+		if (!render_data.render_settings.accumulate)
+			render_data.render_settings.sample_number = 0;
+	}
 
 	bool render_data_invalidated = false;
 
@@ -686,8 +693,6 @@ void ReSTIRPTRenderPass::post_sample_update_async(HIPRTRenderData& render_data, 
 	// now reset the flag
 	m_temporal_buffer_clear_requested = false;
 
-	MegaKernelRenderPass::post_sample_update_async(render_data, compiler_options);
-
 	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
@@ -747,25 +752,18 @@ void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 	ReSTIRPTRenderPassCommon::reset_common_buffers(m_directional_spatial_reuse_data);
 	m_spmis_data.reset();
 
-	MegaKernelRenderPass::reset(reset_by_camera_movement);
-}
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTRenderPass::get_all_kernels()
-{
 	if (!is_render_pass_used(*m_compiler_options))
 
-		return std::map<std::string, std::shared_ptr<GPUKernel>>();
+		return;
 
-	return MegaKernelRenderPass::get_all_kernels();
-}
+	if (render_data.render_settings.accumulate)
+		if (m_renderer->get_application_settings()->auto_sample_per_frame)
+			render_data.render_settings.samples_per_frame = 1;
 
-std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTRenderPass::get_tracing_kernels()
-{
-	if (!is_render_pass_used(*m_compiler_options))
-
-		return std::map<std::string, std::shared_ptr<GPUKernel>>();
-
-	return MegaKernelRenderPass::get_all_kernels();
+	render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
+	render_data.render_settings.sample_number					  = 0;
 }
 
 bool ReSTIRPTRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const

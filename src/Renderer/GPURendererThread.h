@@ -12,6 +12,7 @@
 #include "RenderPasses/GMoNRenderPass.h"
 #include "RenderPasses/HierarchicalAdaptiveSamplingRenderPass.h"
 #include "RenderPasses/IlluminationAwareKDTreeRenderPass.h"
+#include "RenderPasses/MegaKernelRenderPass.h"
 #include "RenderPasses/NEEPlusPlusRenderPass.h"
 #include "RenderPasses/NISMLMegaKernelRenderPass.h"
 #include "RenderPasses/NISMLRenderPass.h"

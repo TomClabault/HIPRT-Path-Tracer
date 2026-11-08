@@ -10,12 +10,11 @@
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTDirectionalSpatialReuseDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
-#include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 class GPURenderer;
 
-class ReSTIRPTRenderPass : public MegaKernelRenderPass
+class ReSTIRPTRenderPass : public RenderPass
 {
 public:
 	static const std::string RESTIR_PT_RENDER_PASS_NAME;
@@ -71,9 +70,6 @@ public:
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;
-
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
 	virtual bool is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const override;
 	void request_temporal_bufffers_clear();
