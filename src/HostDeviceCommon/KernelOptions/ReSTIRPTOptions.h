@@ -93,13 +93,6 @@
 #define ReSTIR_PT_MISWeightsType RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 
 /**
- * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
- *
- * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
- */
-#define ReSTIR_PT_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
-
-/**
  * This is a compile time switch to enable the debug view that only outputs initial candidates to the viewport. Other debug views generally don't have compile
  * time switch but because this option can performance implications even if not selected, it's guarded by a compile time switch
  */
