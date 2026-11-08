@@ -71,15 +71,14 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 		for (int j = 0; j < render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_neighbor_count + 1; j++)
 		{
-			int neighbor_index_j = get_spatial_neighbor_pixel_index<ReSTIR_VARIANT_PT>(render_data, j, center_pixel_coords, random_number_generator);
+			int neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, j, center_pixel_coords, random_number_generator);
 			if (neighbor_index_j == -1)
 				// Invalid neighbor, skipping
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(
-					render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
-					ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface)))
+			if (!check_neighbor_similarity_heuristics(render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
+													  ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 

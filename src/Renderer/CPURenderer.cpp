@@ -410,7 +410,7 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_restir_pt_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_restir_pt_state.temporal_reservoirs.data();
 
-	m_restir_pt_state.directional_spatial_reuse_data_buffer.template to_device<ReSTIR_VARIANT_PT>(m_render_data);
+	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
@@ -1128,7 +1128,7 @@ void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
 	debug_render_pass(
 		[this](int x, int y)
 		{
-			ReSTIR_PT_Directional_Reuse_Compute<ReSTIR_VARIANT_PT>(
+			ReSTIR_PT_Directional_Reuse_Compute(
 				m_render_data, x, y, m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
 				m_render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
 		});

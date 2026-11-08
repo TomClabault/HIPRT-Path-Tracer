@@ -1749,13 +1749,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 					draw_ReSTIR_PT_initial_candidates_panel();
-					draw_ReSTIR_PT_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
+					draw_ReSTIR_PT_temporal_reuse_panel(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
-					draw_ReSTIR_PT_spatial_reuse_panel<ReSTIR_VARIANT_PT>(
+					draw_ReSTIR_PT_spatial_reuse_panel(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass))
@@ -1767,13 +1767,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReSTIR PT - Rejection Heuristics Tree");
 
-						draw_ReSTIR_PT_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
+						draw_ReSTIR_PT_neighbor_heuristics_panel();
 
 						ImGui::TreePop();
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
-					draw_ReSTIR_PT_bias_correction_panel<ReSTIR_VARIANT_PT>();
+					draw_ReSTIR_PT_bias_correction_panel();
 					draw_ReSTIR_PT_SPMIS_settings_panel();
 
 					if (ImGui::CollapsingHeader("Debug"))
@@ -3439,7 +3439,6 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 	}
 }
 
-template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 {
 	HIPRTRenderSettings& render_settings  = m_renderer->get_render_settings();
@@ -3581,7 +3580,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 	}
 }
 
-template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings							  = m_renderer->get_render_settings();
@@ -3645,7 +3643,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 	}
 }
 
-template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings			 = m_renderer->get_render_settings();
@@ -3688,7 +3685,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 1, 16))
 					m_render_window->set_render_dirty(true);
 
-				bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean<ReSTIRVariant>();
+				bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean();
 
 				ImGui::BeginDisabled(using_spmis);
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
@@ -3759,7 +3756,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 	}
 }
 
-template <int ReSTIRVariant>
 void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
@@ -3869,17 +3865,14 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 	}
 }
 
-template <int ReSTIRVariant>
 bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_boolean()
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
-	bool using_spmis = false;
-	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-		using_spmis =
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-				RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
+	bool using_spmis =
+		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
+			RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
 
 	return using_spmis;
 }
@@ -3888,7 +3881,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean<ReSTIR_VARIANT_PT>();
+	bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean();
 
 	bool disable_spmis_settings = !using_spmis;
 	ImGui::BeginDisabled(disable_spmis_settings);

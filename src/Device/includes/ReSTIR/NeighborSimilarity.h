@@ -60,7 +60,6 @@ HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimil
 	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
-template <int ReSTIRVariant>
 HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
 													   int neighbor_pixel_index,
 													   int center_pixel_index,
@@ -85,8 +84,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 			return false;
 	}
 
-	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings =
-		ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings<ReSTIRVariant>(render_data);
+	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data);
 
 	float3_t neighbor_world_space_point;
 	float neighbor_roughness		 = 0.0f;

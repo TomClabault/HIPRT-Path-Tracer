@@ -60,15 +60,10 @@ private:
 	void draw_learning_to_cluster_many_lights_panel();
 	void draw_neural_many_lights_panel();
 
-	template <int ReSTIRVariant>
 	void draw_ReSTIR_PT_neighbor_heuristics_panel();
-	template <int ReSTIRVariant>
 	void draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel = {});
-	template <int ReSTIRVariant>
 	void draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel = {});
-	template <int ReSTIRVariant>
 	void draw_ReSTIR_PT_bias_correction_panel();
-	template <int ReSTIRVariant>
 	bool compute_ReSTIR_PT_using_SPMIS_boolean();
 	void draw_ReSTIR_PT_SPMIS_settings_panel();
 	void draw_ReSTIR_PT_initial_candidates_panel();

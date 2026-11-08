@@ -33,7 +33,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_TemporalReuse()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -75,11 +75,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	int temporal_neighbor_pixel_index  = find_temporal_neighbor_index<ReSTIR_VARIANT_PT>(
-											 render_data, center_pixel_surface.shading_point,
-											 ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<ReSTIR_VARIANT_PT>(render_data, center_pixel_surface),
-											 center_pixel_index, random_number_generator)
-											.x;
+	int temporal_neighbor_pixel_index =
+		find_temporal_neighbor_index(render_data, center_pixel_surface.shading_point,
+									 ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface), center_pixel_index,
+									 random_number_generator)
+			.x;
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -172,12 +172,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 			render_data, temporal_neighbor_reservoir, initial_candidates_reservoir, center_pixel_surface, temporal_neighbor_surface,
 
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#else // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#else																	 // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #error "Unsupported mis weight type"
 #endif // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 
@@ -202,12 +203,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(
 		render_data, initial_candidates_reservoir.sample, initial_candidates_reservoir.confidence, temporal_neighbor_surface, center_pixel_surface,
 		temporal_neighbor_reservoir.confidence, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||                                                                                      \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
 
 																						/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 																						center_pixel_surface, temporal_neighbor_surface,
 
@@ -241,18 +244,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 											 initial_candidates_reservoir.confidence, temporal_neighbor_reservoir.confidence, center_pixel_surface,
 											 temporal_neighbor_surface, normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE	   // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 											 initial_candidates_reservoir.confidence, temporal_neighbor_reservoir.confidence, center_pixel_surface,
 											 temporal_neighbor_surface, selected_sample, normalization_numerator, normalization_denominator,
 											 random_number_generator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH	   // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||                                                                                      \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
+#elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||                                                                                   \
+	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 #elif ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                           \

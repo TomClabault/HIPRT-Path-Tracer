@@ -17,7 +17,6 @@ HIPRT_DEVICE unsigned int ReSTIR_PT_spmis_hash(
 									 spmis_settings.hash_normal_jitter_strength, &out_checksum);
 }
 
-template <int ReSTIRVariant>
 HIPRT_DEVICE void ReSTIR_PT_spmis_insert_pixel_hash(HIPRTRenderData& render_data, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;

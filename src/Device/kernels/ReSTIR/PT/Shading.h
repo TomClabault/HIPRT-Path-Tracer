@@ -29,7 +29,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_Shading()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -170,10 +170,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
 			 render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
-		unsigned char accepted_directions =
-			hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<ReSTIR_VARIANT_PT>(render_data, pixel_index));
-		float accepted_percentage = accepted_directions / 32.0f;
-		ColorRGB32F debug_color	  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
+		unsigned char accepted_directions = hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull(render_data, pixel_index));
+		float accepted_percentage		  = accepted_directions / 32.0f;
+		ColorRGB32F debug_color			  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
 
 		debug_set_final_color(render_data, x, y, debug_color);
 	}

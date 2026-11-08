@@ -57,10 +57,9 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		return m_spatial_reuse_data.maximum_size();
 	}
 
-	template <int ReSTIRVariant>
 	void to_device(HIPRTRenderData& render_data)
 	{
-		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<ReSTIRVariant>(render_data);
+		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		if (maximum_size() == 0)
 		{

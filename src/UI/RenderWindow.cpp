@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
+// - Remove directional spatial reuse
 // - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
 //		- After removing ReGIR, do we still need the BSDF_pdf() functions and 'sample_direction_only'?

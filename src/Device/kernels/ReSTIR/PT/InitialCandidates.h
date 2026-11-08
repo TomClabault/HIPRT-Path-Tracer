@@ -773,7 +773,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	float3_t pixel_first_hit_point			  = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t pixel_first_hit_geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-	ReSTIR_PT_spmis_insert_pixel_hash<ReSTIR_VARIANT_PT>(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
+	ReSTIR_PT_spmis_insert_pixel_hash(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
 #endif // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
 	   // RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 

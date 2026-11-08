@@ -99,8 +99,8 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 				render_data.g_buffer.primary_hit_position[neighbor_pixel_index], center_pixel_surface.geometric_normal,
 				render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack());
 		}
-		else if (!check_neighbor_similarity_heuristics<ReSTIR_VARIANT_PT>(render_data, neighbor_pixel_index, center_pixel_index,
-																		  center_pixel_surface.shading_point, center_pixel_surface.geometric_normal))
+		else if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
+													   center_pixel_surface.geometric_normal))
 			// Neighbor doesn't pass the similarity heuristics, skipping
 			continue;
 

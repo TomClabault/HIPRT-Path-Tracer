@@ -134,8 +134,6 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(
 		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(m_compiler_options);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->get_kernel_options().set_macro_value(
-		ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_RESTIR_VARIANT_COMPILE_OPTION_NAME, ReSTIR_VARIANT_PT);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID);
@@ -297,7 +295,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers<ReSTIR_VARIANT_PT>(render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers(render_data, m_directional_spatial_reuse_data);
 		render_data_invalidated |= pre_render_update_spmis_buffers(render_data, *m_renderer->get_global_compiler_options());
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
@@ -327,7 +325,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::free_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRRenderPassCommon::free_common_buffers(m_directional_spatial_reuse_data);
 		render_data_invalidated |= m_spmis_data.free();
 	}
 
@@ -719,7 +717,7 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<ReSTIR_VARIANT_PT>(render_data, m_directional_spatial_reuse_data);
+		ReSTIRRenderPassCommon::update_render_data_common_buffers(render_data, m_directional_spatial_reuse_data);
 		m_spmis_data.to_device(render_data);
 	}
 	else
@@ -739,7 +737,7 @@ void ReSTIRPTRenderPass::update_render_data()
 
 void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 {
-	ReSTIRRenderPassCommon::reset_common_buffers<ReSTIR_VARIANT_PT>(m_directional_spatial_reuse_data);
+	ReSTIRRenderPassCommon::reset_common_buffers(m_directional_spatial_reuse_data);
 	m_spmis_data.reset();
 
 	MegaKernelRenderPass::reset(reset_by_camera_movement);

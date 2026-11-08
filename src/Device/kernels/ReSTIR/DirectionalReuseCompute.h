@@ -27,7 +27,6 @@ GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(64) ReSTIR_PT_Directional_Reuse_Compute(unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
 														  unsigned char* __restrict__ out_adaptive_radius_buffer)
 #else  // #ifdef __KERNELCC__
-template <int ReSTIRVariant>
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 										   int x,
@@ -57,16 +56,10 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
 	out_adaptive_radius_buffer[center_pixel_index]			   = 0;
 
-#ifdef __KERNELCC__
-	constexpr int RESTIR_VARIANT = ComputingSpatialDirectionalReuseReSTIRVariant;
-#else
-	constexpr int RESTIR_VARIANT = ReSTIRVariant;
-#endif
-
-	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<RESTIR_VARIANT>(render_data);
+	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings<RESTIR_VARIANT>(render_data).reject_using_geometric_normals
+	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data).reject_using_geometric_normals
 										? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
 										: render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 
@@ -103,7 +96,7 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 			int neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
 			// On the CPU, the template argument selects the ReSTIR variant.
-			if (!check_neighbor_similarity_heuristics<RESTIR_VARIANT>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
+			if (!check_neighbor_similarity_heuristics(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
 				continue;
 
 			valid_samples_per_radius[radius_index] |= (1ull << sample_index);
