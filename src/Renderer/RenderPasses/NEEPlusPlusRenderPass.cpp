@@ -35,8 +35,7 @@ NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_
 		NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(
 		NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL,
-																									   BSDF_LAMBERTIAN);
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL, BSDF_LAMBERTIAN);
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 
 	m_nee_plus_plus_storage.set_nee_plus_plus_render_pass(this);
@@ -151,7 +150,7 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 bool NEEPlusPlusRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 
-	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
+	// Only active if we're not using ReSTIR PT because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
 }

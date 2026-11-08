@@ -22,20 +22,6 @@
 
 HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-	if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
-	{
-		// ReSTIR GI enabled
-
-		if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
-			render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
-
-		if (render_data.aux_buffers.restir_gi_reservoir_buffer_2)
-			render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
-
-		if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
-			render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
-	}
-
 	if (render_data.aux_buffers.restir_pt_reservoir_buffer_1 != nullptr)
 	{
 		// ReSTIR PT enabled

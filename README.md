@@ -90,13 +90,13 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Path sampling:
 	- BSDF Sampling:
 		- One sample MIS for lobe sampling [\[Hery et al., 2017\]](https://graphics.pixar.com/library/PxrMaterialsCourse2017/paper.pdf)
-	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing) (removed at commit "Remove ReSTIR GI support", [tag remove-restir-gi-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-restir-gi-support))
 	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)
 	
 - ReSTIR Samplers:
 	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/) (removed at commit "Remove ReSTIR DI support", [tag remove-restir-di-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-restir-di-support))
 		- Supports envmap sampling
-	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing) (removed at commit "Remove ReSTIR GI support", [tag remove-restir-gi-support](https://github.com/TomClabault/HIPRT-Path-Tracer/releases/tag/remove-restir-gi-support))
 	- ReSTIR PT [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir)
 		- ReSTIR PT Enhanced fused single reservoir DI-GI [\[Lin et al. 2026\]](https://research.nvidia.com/labs/rtr/publication/lin2026restirptenhanced/)
 	- ReSTIR Path Guiding [\[Zeng at al., 2025\]](https://research.nvidia.com/labs/rtr/publication/zeng2025restirpg/)

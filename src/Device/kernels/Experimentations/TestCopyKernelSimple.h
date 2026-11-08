@@ -4,7 +4,7 @@
  */
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 #include "HostDeviceCommon/Color.h"
 

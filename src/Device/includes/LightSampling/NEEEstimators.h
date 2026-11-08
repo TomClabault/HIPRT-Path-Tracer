@@ -1026,7 +1026,7 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	direct_light_contribution = sample_one_light_MIS_SG_tree_learning_to_cluster<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
 		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, pixel_coords, shadow_sink);
 	if constexpr (!deferred_BSDF_MIS)
-		// ReSTIR GI's final shading has no path continuation to supply the complementary sample.
+		// Without deferred BSDF MIS, there is no path continuation to supply the complementary sample.
 		direct_light_contribution += sample_one_light_bsdf_MIS_SG_tree_learning_to_cluster(render_data, ray_payload, bsdf_material, closest_hit_info,
 																						   view_direction, proposal_state, random_number_generator);
 #endif														 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT

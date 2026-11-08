@@ -16,10 +16,10 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_SPMIS_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_ResetCellsData(unsigned int size)
-#else // #ifdef __KERNELCC__
+ReSTIR_PT_SPMIS_ResetCellsData(unsigned int size)
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int size, int cell_index)
+inline ReSTIR_PT_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int size, int cell_index)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__

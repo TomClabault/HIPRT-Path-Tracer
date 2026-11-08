@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& 
 
 	nee_deferred_MIS_context.fill_last_bsdf_information(unweighted_throughput, bsdf_pdf);
 
-	// With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit
+	// With ReSTIR PT, we want the outgoing radiance from the second hit to the camera hit
 	// This means that we're basically not taking the first hit into account and so we're not
 	// updating the throughput (or the ray_color either, see the main loop) on the bounce 0
 

@@ -322,13 +322,12 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	ImGui::TreePush("Render settings tree");
 
 	static int preset_selected			  = 0;
-	std::vector<const char*> preset_items = { "Default", "Reference path-tracer", "MIS NEE Path Tracer", "RIS NEE Path Tracer", "ReSTIR GI" };
+	std::vector<const char*> preset_items = { "Default", "Reference path-tracer", "MIS NEE Path Tracer", "RIS NEE Path Tracer" };
 	std::vector<const char*> tooltips	  = {
 		"No preset",
 		"Reference, no NEE, brute-force path-tracer",
 		"NEE with MIS (BSDF + Light sampling) at each vertex of the path",
 		"NEE with RIS (N*BSDF + M*Light sampling) at each vertex of the path",
-		"5 bounces with ReSTIR GI and RIS at each vertex of the path",
 	};
 
 	ImGui::SeparatorText("Global settings presets");
@@ -828,42 +827,6 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 
 		break;
 
-	case SETTINGS_PRESET_RESTIR_GI:
-		render_settings.nb_bounces								= 5;
-		render_settings.ris_settings.number_of_bsdf_candidates	= 1;
-		render_settings.ris_settings.number_of_light_candidates = 4;
-
-		render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass   = true;
-		render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location = false;
-		render_settings.restir_gi_settings.common_spatial_pass.number_of_passes		   = 2;
-		render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count	   = 8;
-		// Reuse radius 1% of the resolution
-		render_settings.restir_gi_settings.common_spatial_pass.reuse_radius =
-			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
-
-		render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass = true;
-
-		render_settings.restir_gi_settings.neighbor_similarity_settings.use_normal_similarity_heuristic	   = true;
-		render_settings.restir_gi_settings.neighbor_similarity_settings.use_plane_distance_heuristic	   = true;
-		render_settings.restir_gi_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
-		render_settings.restir_gi_settings.use_jacobian_rejection_heuristic								   = true;
-		render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic				   = true;
-		render_settings.restir_gi_settings.m_cap														   = 3;
-
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
-
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_GI);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
-		m_renderer->recompile_kernels();
-
-		m_render_window->set_render_dirty(true);
-
-		break;
-
 	default:
 		break;
 	}
@@ -1147,7 +1110,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					if (!render_settings.accumulate)
 						ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI)
+					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 					{
 						ImGuiRenderer::add_warning(
 							"Adaptive sampling may not be efficient when used with ReSTIR. This is because "
@@ -1246,7 +1209,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"Sample subsets and low-resolution interaction rendering temporarily bypass this mode.");
 				if (!render_settings.accumulate)
 					ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI)
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 				{
 					ImGuiRenderer::add_warning(
 						"Adaptive sampling may not be efficient when used with ReSTIR. This is because "
@@ -1719,14 +1682,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Path sampling tree");
 
-			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR GI", "- ReSTIR PT", "- ReSTIR PG" };
+			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR PT", "- ReSTIR PG" };
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
 				"Uses classical BSDF path tracing while processing paths one bounce at a time through compacted wavefront queues.",
-				"Uses ReSTIR GI to resample a path to shade for the pixel. Biased (although barely noticeable by design of resampling full path trees instead "
-				"of just paths as ReSTIR PT)",
-				"Uses ReSTIR PT to resample a path to shade for the pixel. The difference with ReSTIR GI is that is resamples paths and not full path trees, "
-				"guaranteeing unbiasedness.",
+				"Uses ReSTIR PT to resample a path to shade for the pixel. ReSTIR PT resamples paths and not full path trees, guaranteeing unbiasedness.",
 				"Uses ReSTIR Path Guiding piggy-backing on another ReSTIR path sampler to improve path sampling distributions over time with guiding.",
 			};
 			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy",
@@ -1735,7 +1695,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PG)
 				{
-					// This is ReSTIR PG. Its enabled through ReSTIR GI/PT so let's enable ReSTIR PT
+					// This is ReSTIR PG. Its enabled through ReSTIR PT so let's enable ReSTIR PT
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_PT);
 
 					// Automatically enabling ReSTIR PG still for convenience
@@ -1767,124 +1727,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
 			{
-			case PATH_SAMPLING_RESTIR_GI:
-			{
-				if (ImGui::CollapsingHeader("ReSTIR GI"))
-				{
-					ImGui::TreePush("ReSTIR GI tree");
-
-					static float last_VRAM_usage = 0.0f;
-					if (m_renderer->get_ReSTIR_GI_render_pass())
-						last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
-					ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
-					{
-						render_settings.restir_gi_settings.m_cap = std::max(0, render_settings.restir_gi_settings.m_cap);
-						if (render_settings.accumulate)
-							m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_GI>(
-						[&render_settings, this]()
-						{
-							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
-								m_render_window->set_render_dirty(true);
-						});
-					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_GI>(
-						[&render_settings, this]()
-						{
-							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
-								m_render_window->set_render_dirty(true);
-						});
-					ImGui::PopItemWidth();
-
-					if (ImGui::CollapsingHeader("Rejection Heuristics"))
-					{
-						ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
-
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_GI>();
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_GI>();
-
-					if (ImGui::CollapsingHeader("Debug"))
-					{
-						ImGui::TreePush("ReSTIR GI options tree");
-
-						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-														"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-						if (render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location)
-						{
-							ImGui::TreePush("Debug neighbor location vertical tree");
-
-							ImGui::Text("Debug reuse direction");
-							bool reuse_direction_changed = false;
-							reuse_direction_changed |= ImGui::RadioButton(
-								"Horizontally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0);
-							ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton(
-								"Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 1);
-							ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton(
-								"Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
-
-							if (reuse_direction_changed)
-								m_render_window->set_render_dirty(true);
-
-							ImGui::TreePop();
-						}
-
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						std::vector<const char*> debug_view_items = { "- No debug view",
-																	  "- Shade only initial candidates",
-																	  "- Final reservoir UCW",
-																	  "- Final reservoir target function",
-																	  "- Final reservoir weight sum",
-																	  "- Final reservoir M",
-																	  "- Per pixel reuse radius",
-																	  "- Valid directions percentage" };
-						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items.data(), debug_view_items.size()))
-						{
-							int macro_value_before =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
-							if (render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::GI_SHADE_ONLY_INITIAL_CANDIDATES)
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
-																	   KERNEL_OPTION_TRUE);
-							else
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
-																	   KERNEL_OPTION_FALSE);
-							int macro_value_after =
-								global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED);
-
-							bool macro_option_changed = macro_value_before != macro_value_after;
-							if (macro_option_changed)
-								m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-						if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
-							m_render_window->set_render_dirty(true);
-
-						ImGui::TreePop(); // Debug tree
-					}
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::TreePop(); // ReSTIR GI Tree
-				}
-
-				break;
-			}
-
 			case PATH_SAMPLING_RESTIR_PT:
 			{
 				if (ImGui::CollapsingHeader("ReSTIR PT"))
@@ -1907,13 +1749,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 					draw_ReSTIR_PT_initial_candidates_panel();
-					draw_ReSTIR_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
+					draw_ReSTIR_PT_temporal_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass))
 								m_render_window->set_render_dirty(true);
 						});
-					draw_ReSTIR_spatial_reuse_panel<ReSTIR_VARIANT_PT>(
+					draw_ReSTIR_PT_spatial_reuse_panel<ReSTIR_VARIANT_PT>(
 						[&render_settings, this]()
 						{
 							if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass))
@@ -1925,13 +1767,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReSTIR PT - Rejection Heuristics Tree");
 
-						draw_ReSTIR_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
+						draw_ReSTIR_PT_neighbor_heuristics_panel<ReSTIR_VARIANT_PT>();
 
 						ImGui::TreePop();
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
-					draw_ReSTIR_bias_correction_panel<ReSTIR_VARIANT_PT>();
+					draw_ReSTIR_PT_bias_correction_panel<ReSTIR_VARIANT_PT>();
 					draw_ReSTIR_PT_SPMIS_settings_panel();
 
 					if (ImGui::CollapsingHeader("Debug"))
@@ -2000,7 +1842,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::TreePop(); // ReSTIR GI Tree
+					ImGui::TreePop(); // ReSTIR PT Tree
 				}
 			}
 
@@ -2008,8 +1850,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI ||
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 				draw_ReSTIR_PG_settings_panel();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -3599,41 +3440,21 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 }
 
 template <int ReSTIRVariant>
-void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
+void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 {
 	HIPRTRenderSettings& render_settings  = m_renderer->get_render_settings();
-	ReSTIRCommonSettings& common_settings = [&render_settings]
-	{
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-
-			return std::ref(render_settings.restir_gi_settings);
-		else
-
-			return std::ref(render_settings.restir_pt_settings);
-	}();
-
-	using GIOrPTSettingsType = std::conditional_t<ReSTIRVariant == ReSTIR_VARIANT_GI, ReSTIRGISettings, ReSTIRPTSettings>;
-	GIOrPTSettingsType* gi_or_pt_settings;
-	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-		gi_or_pt_settings = &render_settings.restir_gi_settings;
-	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-		gi_or_pt_settings = &render_settings.restir_pt_settings;
-	else
-		gi_or_pt_settings = nullptr;
+	ReSTIRCommonSettings& common_settings = render_settings.restir_pt_settings;
+	ReSTIRPTSettings* restir_pt_settings  = &render_settings.restir_pt_settings;
 
 	static bool use_heuristics_at_all				= true;
 	static bool use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
 	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
 	static bool use_roughness_heuristic_backup		= common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
 
-	// For ReSTIR GI only
 	static bool use_neighbor_sample_point_roughness_heuristic_backup = false;
 	static bool use_jacobian_heuristic_backup						 = false;
-	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
-	{
-		use_neighbor_sample_point_roughness_heuristic_backup = gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic;
-		use_jacobian_heuristic_backup						 = gi_or_pt_settings->use_jacobian_rejection_heuristic;
-	}
+	use_neighbor_sample_point_roughness_heuristic_backup			 = restir_pt_settings->use_neighbor_sample_point_roughness_heuristic;
+	use_jacobian_heuristic_backup									 = restir_pt_settings->use_jacobian_rejection_heuristic;
 
 	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 	{
@@ -3648,14 +3469,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= false;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 
-			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
-			{
-				use_jacobian_heuristic_backup						 = gi_or_pt_settings->use_jacobian_rejection_heuristic;
-				use_neighbor_sample_point_roughness_heuristic_backup = gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic;
+			use_jacobian_heuristic_backup						 = restir_pt_settings->use_jacobian_rejection_heuristic;
+			use_neighbor_sample_point_roughness_heuristic_backup = restir_pt_settings->use_neighbor_sample_point_roughness_heuristic;
 
-				gi_or_pt_settings->use_jacobian_rejection_heuristic				 = false;
-				gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic = false;
-			}
+			restir_pt_settings->use_jacobian_rejection_heuristic			  = false;
+			restir_pt_settings->use_neighbor_sample_point_roughness_heuristic = false;
 		}
 		else
 		{
@@ -3664,11 +3482,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic		= use_plane_distance_heuristic_backup;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
 
-			if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
-			{
-				gi_or_pt_settings->use_jacobian_rejection_heuristic				 = use_jacobian_heuristic_backup;
-				gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
-			}
+			restir_pt_settings->use_jacobian_rejection_heuristic			  = use_jacobian_heuristic_backup;
+			restir_pt_settings->use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
 		}
 
 		m_render_window->set_render_dirty(true);
@@ -3730,52 +3545,47 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			ImGui::TreePop();
 		}
 
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI || ReSTIRVariant == ReSTIR_VARIANT_PT)
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
+		if (ImGui::Checkbox("Use jacobian heuristic", &restir_pt_settings->use_jacobian_rejection_heuristic))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::TreePush("Jacobian heuristic tree");
+		if (restir_pt_settings->use_jacobian_rejection_heuristic)
 		{
-			ImGui::Dummy(ImVec2(0.0f, 10.0f));
-			if (ImGui::Checkbox("Use jacobian heuristic", &gi_or_pt_settings->use_jacobian_rejection_heuristic))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::TreePush("Jacobian heuristic tree");
-			if (gi_or_pt_settings->use_jacobian_rejection_heuristic)
+			if (ImGui::SliderFloat("Jacobian threshold", restir_pt_settings->get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
 			{
-				if (ImGui::SliderFloat("Jacobian threshold", gi_or_pt_settings->get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
-				{
-					gi_or_pt_settings->set_jacobian_heuristic_threshold(hippt::max(1.001f, gi_or_pt_settings->get_jacobian_heuristic_threshold()));
-					m_render_window->set_render_dirty(true);
-				}
-			}
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-			if (ImGui::Checkbox("Use sample point roughness heuristic", &gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic))
+				restir_pt_settings->set_jacobian_heuristic_threshold(hippt::max(1.001f, restir_pt_settings->get_jacobian_heuristic_threshold()));
 				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker(
-				"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
-				"won't be reused\n"
-				"If the neighbor's sample point's roughness is higher than the threshold, it can be reused.\n"
-				"This is pretty much necessary to avoid \"bias\" (although this isn't stricly bias, more like extremely "
-				"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
-				"specular surface: a rough primary hit bouncing into a window / mirror for example.");
-
-			ImGui::TreePush("Sample point roughness heuristic tree");
-			if (gi_or_pt_settings->use_neighbor_sample_point_roughness_heuristic)
-				if (ImGui::SliderFloat("Min. neighbor roughness", &gi_or_pt_settings->neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
-					m_render_window->set_render_dirty(true);
-			ImGui::TreePop();
+			}
 		}
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+		if (ImGui::Checkbox("Use sample point roughness heuristic", &restir_pt_settings->use_neighbor_sample_point_roughness_heuristic))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker(
+			"If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
+			"won't be reused\n"
+			"If the neighbor's sample point's roughness is higher than the threshold, it can be reused.\n"
+			"This is pretty much necessary to avoid \"bias\" (although this isn't stricly bias, more like extremely "
+			"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
+			"specular surface: a rough primary hit bouncing into a window / mirror for example.");
+
+		ImGui::TreePush("Sample point roughness heuristic tree");
+		if (restir_pt_settings->use_neighbor_sample_point_roughness_heuristic)
+			if (ImGui::SliderFloat("Min. neighbor roughness", &restir_pt_settings->neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
+				m_render_window->set_render_dirty(true);
+		ImGui::TreePop();
 		// ReSTIR heuristics tree
 		ImGui::TreePop();
 	}
 }
 
 template <int ReSTIRVariant>
-void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
+void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings							  = m_renderer->get_render_settings();
-	ReSTIRCommonTemporalPassSettings& restir_common_temporal_settings = ReSTIRVariant == ReSTIR_VARIANT_GI
-																			? m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass
-																			: m_renderer->get_render_settings().restir_pt_settings.common_temporal_pass;
+	ReSTIRCommonTemporalPassSettings& restir_common_temporal_settings = m_renderer->get_render_settings().restir_pt_settings.common_temporal_pass;
 
 	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
 	{
@@ -3790,10 +3600,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 				ImGui::SameLine();
 				if (ImGui::Button("Reset Temporal Reservoirs"))
 				{
-					if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-						m_renderer->get_ReSTIR_GI_render_pass()->request_temporal_bufffers_clear();
-					else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-						m_renderer->get_ReSTIR_PT_render_pass()->request_temporal_bufffers_clear();
+					m_renderer->get_ReSTIR_PT_render_pass()->request_temporal_bufffers_clear();
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -3822,8 +3629,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 												" to add temporal variations.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				int& m_cap = ReSTIRVariant == ReSTIR_VARIANT_GI ? m_renderer->get_render_settings().restir_gi_settings.m_cap
-																: m_renderer->get_render_settings().restir_pt_settings.m_cap;
+				int& m_cap = m_renderer->get_render_settings().restir_pt_settings.m_cap;
 				if (ImGui::SliderInt("M-cap", &m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					m_cap = std::max(0, m_cap);
@@ -3840,18 +3646,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(vo
 }
 
 template <int ReSTIRVariant>
-void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
+void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings			 = m_renderer->get_render_settings();
-	ReSTIRCommonSpatialPassSettings& restir_settings = [&render_settings]()
-	{
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-
-			return std::ref(render_settings.restir_gi_settings.common_spatial_pass);
-		else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-
-			return std::ref(render_settings.restir_pt_settings.common_spatial_pass);
-	}();
+	ReSTIRCommonSpatialPassSettings& restir_settings = render_settings.restir_pt_settings.common_spatial_pass;
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
@@ -3865,18 +3663,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 			if (restir_settings.do_spatial_reuse_pass)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				bool use_spatial_target_function_visibility;
-				if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-					use_spatial_target_function_visibility =
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
-				else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
-					use_spatial_target_function_visibility =
-						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY);
+				bool use_spatial_target_function_visibility =
+					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY);
 				if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
 				{
-					global_kernel_options->set_macro_value(ReSTIRVariant == ReSTIR_VARIANT_GI
-															   ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY
-															   : GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY,
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 														   use_spatial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 					m_renderer->recompile_kernels();
 
@@ -3969,20 +3760,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 }
 
 template <int ReSTIRVariant>
-void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
+void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_data().render_settings;
 
-	ReSTIRCommonSettings& common_settings = [&render_settings]()
-	{
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-
-			return std::ref(render_settings.restir_gi_settings);
-		else
-
-			return std::ref(render_settings.restir_pt_settings);
-	}();
+	ReSTIRCommonSettings& common_settings = render_settings.restir_pt_settings;
 
 	if (ImGui::CollapsingHeader("MIS Weights"))
 	{
@@ -4034,22 +3817,14 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
 		};
 
-		if (ReSTIRVariant == ReSTIR_VARIANT_PT)
-		{
-			tooltips.push_back(
-				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-				"importance sampled based on the luminance of their samples");
+		tooltips.push_back(
+			"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
+			"importance sampled based on the luminance of their samples");
 
-			tooltips.push_back(
-				"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
-				"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher "
-				"variance");
-		}
-		else
-		{
-			tooltips.push_back("Not implemented for ReSTIR GI");
-			tooltips.push_back("Not implemented for ReSTIR GI");
-		}
+		tooltips.push_back(
+			"Implementation of [Stochastic Pairwise MIS for Unbiased Large - Kernel Reuse in Real - Time, Hedstrom et al. 2026] where neighbors are "
+			"importance sampled based on the luminance of their samples, defensive approach to reduce correlations at the cost of a bit higher "
+			"variance");
 
 		std::vector<unsigned char> disabled_items = {
 			false, // "- 1/M (Biased)",
@@ -4060,27 +3835,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			false, // "- Pairwise MIS defensive",
 			false, // "- Pairwise symmetric ratio",
 			false, // "- Pairwise asymmetric ratio",
+			false, // "- Stochastic pairwise MIS"
+			false, // "- Stochastic pairwise MIS defensive"
 		};
 
-		if (ReSTIRVariant == ReSTIR_VARIANT_PT)
-		{
-			// "- Stochastic pairwise MIS"
-			disabled_items.push_back(false);
-			// "- Stochastic pairwise MIS defensive"
-			disabled_items.push_back(false);
-		}
-		else
-		{
-			// Disabled for ReSTIR GI
-
-			// "- Stochastic pairwise MIS"
-			disabled_items.push_back(true);
-			// "- Stochastic pairwise MIS defensive"
-			disabled_items.push_back(true);
-		}
-
-		int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(
-			ReSTIRVariant == ReSTIR_VARIANT_GI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE : GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
+		int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 		if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items.data(), mis_weights_types_items.size(),
 											 tooltips.data(), disabled_items.data()))
 		{
@@ -4104,27 +3863,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		// No visibility for 1/M weights
-		if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-		{
-			bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M;
-			bool mis_weights_use_visibility;
-			mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
-			ImGui::BeginDisabled(bias_correction_visibility_disabled);
-			if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
-			{
-				int* bias_correction_use_visibility_option_pointer =
-					global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
-				*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			if (bias_correction_visibility_disabled)
-				ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
-			ImGui::EndDisabled();
-		}
-
 		ImGui::TreePop();
 		ImGui::PopID();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4137,10 +3875,7 @@ bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_boolean()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	bool using_spmis = false;
-	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_GI)
-		// SPMIS not implemented for ReSTIR GI
-		using_spmis = false;
-	else if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
+	if constexpr (ReSTIRVariant == ReSTIR_VARIANT_PT)
 		using_spmis =
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
@@ -5449,15 +5184,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 										"Same with all the other lobes that can be delta distributions.\n\n"
 										""
 										"There is basically no point in disabling that, this is just for performance comparisons.");
-		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_GI)
-		{
-			ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
-									   "are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
-									   "\nThis will manifest as darkening on perfectly specular surfaces (delta distributions).\n\n"
-									   ""
-									   "Enable \"BSDF delta distribution optimization\" to get rid of this issue.");
-		}
-
 		bool direct_light_delta_distrib_opti =
 			global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION);
 		if (ImGui::Checkbox("NEE delta distribution optimization", &direct_light_delta_distrib_opti))

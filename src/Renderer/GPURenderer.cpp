@@ -273,12 +273,6 @@ std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pas
 	return m_render_thread.get_NEE_plus_plus_render_pass();
 }
 
-std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
-{
-
-	return m_render_thread.get_ReSTIR_GI_render_pass();
-}
-
 std::shared_ptr<ReSTIRPTRenderPass> GPURenderer::get_ReSTIR_PT_render_pass()
 {
 

@@ -11,16 +11,16 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_Sort(
+ReSTIR_PT_SPMIS_Sort(
 	unsigned int* all_pixel_hashes, unsigned int* all_pixels_index_in_cell, unsigned int* cell_offsets, unsigned int* pixel_indices_sorted, unsigned int size)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_Sort(unsigned int* all_pixel_hashes,
-						 unsigned int* all_pixels_index_in_cell,
-						 unsigned int* cell_offsets,
-						 unsigned int* pixel_indices_sorted,
-						 unsigned int size,
-						 int linear_pixel_index)
+inline ReSTIR_PT_SPMIS_Sort(unsigned int* all_pixel_hashes,
+							unsigned int* all_pixels_index_in_cell,
+							unsigned int* cell_offsets,
+							unsigned int* pixel_indices_sorted,
+							unsigned int size,
+							int linear_pixel_index)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__

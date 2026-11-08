@@ -12,28 +12,28 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
-					   unsigned int* cell_offsets,
-					   unsigned int* cell_alive_list,
-					   unsigned int* pixel_indices_sorted,
-					   ReSTIRPTReservoir* input_reservoirs,
-					   float* out_cdfs,
-					   unsigned short int* cell_cdf_luts,
-					   unsigned int* cell_cdf_luts_offsets,
-					   unsigned int size)
-#else // #ifdef __KERNELCC__
+ReSTIR_PT_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
+						  unsigned int* cell_offsets,
+						  unsigned int* cell_alive_list,
+						  unsigned int* pixel_indices_sorted,
+						  ReSTIRPTReservoir* input_reservoirs,
+						  float* out_cdfs,
+						  unsigned short int* cell_cdf_luts,
+						  unsigned int* cell_cdf_luts_offsets,
+						  unsigned int size)
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
-							  unsigned int* cell_offsets,
-							  unsigned int* cell_alive_list,
-							  unsigned int cell_alive_count,
-							  unsigned int* pixel_indices_sorted,
-							  ReSTIRPTReservoir* input_reservoirs,
-							  float* out_cdfs,
-							  unsigned short int* cell_cdf_luts,
-							  unsigned int* cell_cdf_luts_offsets,
-							  [[maybe_unused]] unsigned int size			 = 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
-							  [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
+inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
+								 unsigned int* cell_offsets,
+								 unsigned int* cell_alive_list,
+								 unsigned int cell_alive_count,
+								 unsigned int* pixel_indices_sorted,
+								 ReSTIRPTReservoir* input_reservoirs,
+								 float* out_cdfs,
+								 unsigned short int* cell_cdf_luts,
+								 unsigned int* cell_cdf_luts_offsets,
+								 [[maybe_unused]] unsigned int size				= 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
+								 [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
 #endif // #ifdef __KERNELCC__
 {
 #ifndef __KERNELCC__

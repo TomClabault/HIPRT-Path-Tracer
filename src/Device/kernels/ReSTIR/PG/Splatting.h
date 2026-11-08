@@ -88,7 +88,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PG_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PG_Splatting()
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_data, uint32_t index)
 #endif // #ifdef __KERNELCC__
 {
@@ -110,11 +110,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	uint32_t restir_reservoir_pixel_index;
 	if (thread_valid)
 	{
-		// Reading from the output of ReSTIR GI or PT depending on which one is being used
+		// Reading from the output of ReSTIR PT
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
-		restir_reservoir_pixel_index = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		restir_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
 #else
 		restir_reservoir_pixel_index = -1;
@@ -122,7 +120,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
 #endif
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_GI
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	}
 	if (restir_reservoir_pixel_index == static_cast<unsigned int>(-1))
 		// That means potentially no spatial reuse / temporal so our reservoir didn't move

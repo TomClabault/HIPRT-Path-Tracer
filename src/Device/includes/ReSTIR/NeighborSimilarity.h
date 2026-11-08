@@ -86,7 +86,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 	}
 
 	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings =
-		ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<ReSTIRVariant>(render_data);
+		ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings<ReSTIRVariant>(render_data);
 
 	float3_t neighbor_world_space_point;
 	float neighbor_roughness		 = 0.0f;

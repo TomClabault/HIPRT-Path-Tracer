@@ -15,7 +15,6 @@
 #include "RenderPasses/NEEPlusPlusRenderPass.h"
 #include "RenderPasses/NISMLMegaKernelRenderPass.h"
 #include "RenderPasses/NISMLRenderPass.h"
-#include "RenderPasses/ReSTIRGIRenderPass.h"
 #include "RenderPasses/ReSTIRPGRenderPass.h"
 #include "RenderPasses/ReSTIRPTRenderPass.h"
 #include "RenderPasses/SSBNPermutationRenderPass.h"
@@ -112,7 +111,6 @@ public:
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;
 	std::shared_ptr<SSBNPermutationRenderPass> get_ssbn_permutation_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
-	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 	std::shared_ptr<ReSTIRPTRenderPass> get_ReSTIR_PT_render_pass();
 	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> get_illumination_aware_kd_tree_render_pass();

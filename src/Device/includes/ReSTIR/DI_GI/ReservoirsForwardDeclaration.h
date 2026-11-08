@@ -3,16 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_GI_PT_RESERVOIRS_FORWARD_DECLARATION_H
-#define DEVICE_RESTIR_GI_PT_RESERVOIRS_FORWARD_DECLARATION_H
+#ifndef DEVICE_RESTIR_PT_RESERVOIRS_FORWARD_DECLARATION_H
+#define DEVICE_RESTIR_PT_RESERVOIRS_FORWARD_DECLARATION_H
 
 /**
  * Forward declarations
  */
-struct ReSTIRGIReservoir;
-struct ReSTIRGIReservoirSample;
-
 struct ReSTIRPTReservoir;
 struct ReSTIRPTReservoirSample;
 
-#endif // #ifndef DEVICE_RESTIR_GI_PT_RESERVOIRS_FORWARD_DECLARATION_H
+#endif // #ifndef DEVICE_RESTIR_PT_RESERVOIRS_FORWARD_DECLARATION_H

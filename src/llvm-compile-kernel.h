@@ -54,7 +54,7 @@ int main()
 	int number_of_blocks;
 	int threads_per_block;
 
-	ReSTIR_GI_SpatialReuse<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);*/
+	ReSTIR_PT_SpatialReuse<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);*/
 }
 
 #endif // #ifndef LLVM_COMPILE_KERNEL_H

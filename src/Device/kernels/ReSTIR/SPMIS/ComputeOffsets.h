@@ -11,14 +11,14 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_ComputeOffsets(unsigned short int* cell_counters, unsigned int* global_cell_offset_counter, unsigned int* cell_offsets, unsigned int size)
+ReSTIR_PT_SPMIS_ComputeOffsets(unsigned short int* cell_counters, unsigned int* global_cell_offset_counter, unsigned int* cell_offsets, unsigned int size)
 #else
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_ComputeOffsets(AtomicType<unsigned short int>* cell_counters,
-								   AtomicType<unsigned int>* global_cell_offset_counter,
-								   unsigned int* cell_offsets,
-								   unsigned int size,
-								   unsigned int x)
+inline ReSTIR_PT_SPMIS_ComputeOffsets(AtomicType<unsigned short int>* cell_counters,
+									  AtomicType<unsigned int>* global_cell_offset_counter,
+									  unsigned int* cell_offsets,
+									  unsigned int size,
+									  unsigned int x)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__

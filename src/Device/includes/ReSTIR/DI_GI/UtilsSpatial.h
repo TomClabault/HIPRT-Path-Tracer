@@ -9,7 +9,7 @@
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRCommonOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
@@ -19,7 +19,7 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 														   unsigned int center_pixel_index,
 														   Xorshift32Generator& random_number_generator)
 {
-	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<ReSTIRVariant>(render_data);
 
 	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
@@ -34,35 +34,6 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 		if (spatial_pass_settings.reuse_radius == 0)
 			spatial_pass_settings.reuse_neighbor_count = 0;
 	}
-}
-
-template <int ReSTIRVariant>
-HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
-{
-	const ReSTIRCommonSpatialPassSettings& spatial_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
-
-	// Only doing visibility if we want it at all
-	bool include_target_function_visibility = ReSTIR_GI_SpatialTargetFunctionVisibility;
-
-	// We don't want visibility for the center pixel because we're going to reuse the
-	// target function stored in the reservoir anyways
-	// Note: the center pixel has index 'spatial_settings.reuse_neighbor_count'
-	// while actual *neighbors* have index between [0, spatial_settings.reuse_neighbor_count - 1]
-	bool is_center_sample = current_neighbor_index == spatial_settings.reuse_neighbor_count;
-	include_target_function_visibility &= !is_center_sample;
-
-	// Pairwise MIS schemes just reuse the target function compute for the resampling weight
-	// for the pairwise MIS PDFs.
-	// If we have visibility in the MIS weight, we want visibility in the PDF so we need visibility in
-	// the target function
-	constexpr bool bias_correction_use_visibility = ReSTIR_GI_MISWeightsUseVisibility;
-	constexpr int mis_weights_type				  = ReSTIR_GI_MISWeightsType;
-	include_target_function_visibility |=
-		!is_center_sample && bias_correction_use_visibility &&
-		(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
-		 mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
-
-	return include_target_function_visibility;
 }
 
 /**
@@ -182,7 +153,7 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
 template <int ReSTIRVariant>
 HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_index, int2_t center_pixel_coords, Xorshift32Generator& rng)
 {
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<ReSTIRVariant>(render_data);
 
 	int neighbor_pixel_index;
 	if (neighbor_index == spatial_pass_settings.reuse_neighbor_count)
@@ -271,7 +242,7 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 {
 	out_valid_neighbor_count = 0;
 
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<ReSTIRVariant>(render_data);
 	Xorshift32Generator spatial_neighbors_rng(spatial_pass_settings.spatial_neighbors_rng_seed);
 
 	int center_pixel_index	   = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
@@ -293,7 +264,7 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 			continue;
 
 		out_valid_neighbor_confidence_sum +=
-			ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_confidence<ReSTIRVariant>(render_data, neighbor_pixel_index);
+			ReSTIRSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence<ReSTIRVariant>(render_data, neighbor_pixel_index);
 		out_valid_neighbor_count++;
 		out_neighbor_heuristics_cache |= (1 << neighbor_index);
 	}

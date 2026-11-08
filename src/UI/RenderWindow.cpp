@@ -22,10 +22,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Remove ReSTIR GI impl
 // - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
-// - Remove ReGIR
 //		- After removing ReGIR, do we still need the BSDF_pdf() functions and 'sample_direction_only'?
 // - Remove RIS LTC estimator
 // - Rename tree cut to light cut everywhere
@@ -200,11 +198,7 @@ extern ImGuiLogger g_imgui_logger;
 // VRAM saves
 // - Using the indirect index for the spatial output buffer, can we double buffer the initial candidates grid and run the spatial reuse of ReGIR async of the
 // path tracing too?
-// - There is bias in ReSTIR
-// - Greedy spatial reuse to retry neighbors if we didn't get a good one
-//			For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
-// - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - See how many pixels of ReSTIR GI end up with the initial candidate as the final sample --> we can reuse NEE at the first hit for those samples in the
 // shading pass instead of recomputing NEE
 // - BSDF MIS reuse for ReSTIR
@@ -232,8 +226,12 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Get inspiation from OpenQMC https://github.com/AcademySoftwareFoundation/openqmc
+// - Blue Noise Dithering for Reservoir-Based Spatio-Temporal Importance Resampling
+// - Screen space russian roulette: https://sa2026.conference-schedule.org/presentation/?id=papers_1375&sess=sess105
+// - LTC-based microfacet multiscatter sampler
 // - Stochastic vertex NEE: do NEE at only one vertex of the path but choose that vertex probalistically to avoid bias. The question is then how to choose the
-// vertex probability correctly? NEE-only radiance cache?
+//		vertex probability correctly? NEE-only radiance cache?
 // - Radiance cache somehow, have a look at what HouseOfCards is doing, looks pretty good
 // - Neural incident radiance cache
 // - Use the neural incident radiance cache to do specular reflections resampling with ReSTIR: when resampling a specular neighbor, estimate target function at

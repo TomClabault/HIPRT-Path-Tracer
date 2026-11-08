@@ -24,16 +24,16 @@ extern "C"
 	HIPRT_DEVICE __constant__ GPU_CPU_ALIGN(16) unsigned char RESTIR_DIRECTIONAL_REUSE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64) ReSTIR_Directional_Reuse_Compute(unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
-													   unsigned char* __restrict__ out_adaptive_radius_buffer)
+__launch_bounds__(64) ReSTIR_PT_Directional_Reuse_Compute(unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
+														  unsigned char* __restrict__ out_adaptive_radius_buffer)
 #else  // #ifdef __KERNELCC__
 template <int ReSTIRVariant>
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
-										int x,
-										int y,
-										unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
-										unsigned char* __restrict__ out_adaptive_radius_buffer)
+inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
+										   int x,
+										   int y,
+										   unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
+										   unsigned char* __restrict__ out_adaptive_radius_buffer)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -63,10 +63,10 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	constexpr int RESTIR_VARIANT = ReSTIRVariant;
 #endif
 
-	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<RESTIR_VARIANT>(render_data);
+	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<RESTIR_VARIANT>(render_data);
 
 	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<RESTIR_VARIANT>(render_data).reject_using_geometric_normals
+	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings<RESTIR_VARIANT>(render_data).reject_using_geometric_normals
 										? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
 										: render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 
@@ -102,7 +102,7 @@ inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
 
 			int neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
-			// On the CPU, the template argument selects the ReSTIR GI or PT variant.
+			// On the CPU, the template argument selects the ReSTIR variant.
 			if (!check_neighbor_similarity_heuristics<RESTIR_VARIANT>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
 				continue;
 

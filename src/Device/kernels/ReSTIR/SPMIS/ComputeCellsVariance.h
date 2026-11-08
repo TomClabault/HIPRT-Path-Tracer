@@ -14,24 +14,24 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
-								  unsigned int* cell_offsets,
-								  unsigned int* cell_alive_list,
-								  unsigned int* pixel_indices_sorted,
-								  ReSTIRPTReservoir* input_reservoirs,
-								  float* out_cell_variance,
-								  unsigned int size)
-#else // #ifdef __KERNELCC__
+ReSTIR_PT_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
+									 unsigned int* cell_offsets,
+									 unsigned int* cell_alive_list,
+									 unsigned int* pixel_indices_sorted,
+									 ReSTIRPTReservoir* input_reservoirs,
+									 float* out_cell_variance,
+									 unsigned int size)
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pixels_counters,
-										 unsigned int* cell_offsets,
-										 unsigned int* cell_alive_list,
-										 unsigned int cell_alive_count,
-										 unsigned int* pixel_indices_sorted,
-										 ReSTIRPTReservoir* input_reservoirs,
-										 float* out_cell_variance,
-										 [[maybe_unused]] unsigned int size				= 0,
-										 [[maybe_unused]] unsigned int cell_alive_index = 0)
+inline ReSTIR_PT_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell_pixels_counters,
+											unsigned int* cell_offsets,
+											unsigned int* cell_alive_list,
+											unsigned int cell_alive_count,
+											unsigned int* pixel_indices_sorted,
+											ReSTIRPTReservoir* input_reservoirs,
+											float* out_cell_variance,
+											[[maybe_unused]] unsigned int size			   = 0,
+											[[maybe_unused]] unsigned int cell_alive_index = 0)
 #endif // #ifdef __KERNELCC__
 {
 #ifndef __KERNELCC__

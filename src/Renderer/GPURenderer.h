@@ -28,7 +28,6 @@
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
 #include "Renderer/RenderPasses/NISMLRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
-#include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
@@ -112,7 +111,6 @@ public:
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass() const;
 	std::shared_ptr<SSBNPermutationRenderPass> get_ssbn_permutation_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
-	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 	std::shared_ptr<ReSTIRPTRenderPass> get_ReSTIR_PT_render_pass();
 	std::shared_ptr<ReSTIRPGRenderPass> get_ReSTIR_PG_render_pass();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> get_illumination_aware_kd_tree_render_pass();

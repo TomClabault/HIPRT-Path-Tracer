@@ -6,7 +6,6 @@
 #ifndef HOST_DEVICE_COMMON_AUXILIARY_BUFFERS_H
 #define HOST_DEVICE_COMMON_AUXILIARY_BUFFERS_H
 
-#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HierarchicalAdaptiveSampling.h"
@@ -66,10 +65,6 @@ struct AuxiliaryBuffers
 	// framebuffer, then all pixels have converged according to the given
 	// noise threshold.
 	AtomicType<unsigned int>* pixel_count_converged_so_far = nullptr;
-
-	ReSTIRGIReservoir* restir_gi_reservoir_buffer_1 = nullptr;
-	ReSTIRGIReservoir* restir_gi_reservoir_buffer_2 = nullptr;
-	ReSTIRGIReservoir* restir_gi_reservoir_buffer_3 = nullptr;
 
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_1 = nullptr;
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_2 = nullptr;

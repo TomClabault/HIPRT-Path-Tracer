@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
 
-HIPRT_DEVICE unsigned int ReSTIR_spmis_hash(
+HIPRT_DEVICE unsigned int ReSTIR_PT_spmis_hash(
 	const ReSTIRPTSPMISSettings& spmis_settings, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal, unsigned int& out_checksum)
 {
 	return screen_space_gbuffer_hash(pixel_x, pixel_y, spmis_settings.tile_size, shading_point, surface_normal, spmis_settings.hash_normal_precision,
@@ -18,7 +18,7 @@ HIPRT_DEVICE unsigned int ReSTIR_spmis_hash(
 }
 
 template <int ReSTIRVariant>
-HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal)
+HIPRT_DEVICE void ReSTIR_PT_spmis_insert_pixel_hash(HIPRTRenderData& render_data, int pixel_x, int pixel_y, float3_t shading_point, float3_t surface_normal)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
@@ -26,7 +26,7 @@ HIPRT_DEVICE void ReSTIR_spmis_insert_pixel_hash(HIPRTRenderData& render_data, i
 
 	unsigned int checksum;
 	unsigned int total_num_cells = spmis_settings.pixel_hashes_count;
-	unsigned int hash_cell_index = ReSTIR_spmis_hash(spmis_settings, pixel_x, pixel_y, shading_point, surface_normal, checksum) % total_num_cells;
+	unsigned int hash_cell_index = ReSTIR_PT_spmis_hash(spmis_settings, pixel_x, pixel_y, shading_point, surface_normal, checksum) % total_num_cells;
 	if (!HashGrid::resolve_collision<ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps, true>(
 			spmis_settings.all_pixel_hashes_checksums, render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y,
 			hash_cell_index, checksum))

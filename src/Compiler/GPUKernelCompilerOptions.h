@@ -94,11 +94,6 @@ public:
 
 	static const std::string PATH_SAMPLING_STRATEGY;
 
-	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
-	static const std::string RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY;
-	static const std::string RESTIR_GI_MIS_WEIGHTS_TYPE;
-	static const std::string RESTIR_GI_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED;
-
 	static const std::string RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_PT_MIS_WEIGHTS_TYPE;
 	static const std::string RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED;

@@ -6,8 +6,6 @@
 #ifndef CPU_RENDERER_H
 #define CPU_RENDERER_H
 
-#include "Device/includes/ReSTIR/GI/Reservoir.h"
-
 #include "HostDeviceCommon/RenderData.h"
 
 #include "Image/EnvmapRGBE9995.h"
@@ -74,22 +72,10 @@ public:
 	void nee_plus_plus_cache_visibility_pass();
 	void camera_rays_pass();
 	void hierarchical_adaptive_sampling_pass();
-	void ReSTIR_GI_pass();
 	void ReSTIR_PT_pass();
 	void ReSTIR_PG_pass();
 
 	void tracing_pass();
-
-	void compute_ReSTIR_GI_optimal_spatial_reuse_radii();
-	void configure_ReSTIR_GI_initial_candidates_pass();
-	void configure_ReSTIR_GI_temporal_reuse_pass();
-	void configure_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_index);
-	void configure_ReSTIR_GI_shading_pass();
-
-	void launch_ReSTIR_GI_initial_candidates_pass();
-	void launch_ReSTIR_GI_temporal_reuse_pass();
-	void launch_ReSTIR_GI_spatial_reuse_pass();
-	void launch_ReSTIR_GI_shading_pass();
 
 	void compute_ReSTIR_PT_optimal_spatial_reuse_radii();
 	void configure_ReSTIR_PT_initial_candidates_pass();
@@ -163,16 +149,6 @@ private:
 
 	// Random number generator for given a random seed to the threads at each sample
 	Xorshift32Generator m_rng;
-
-	struct ReSTIRGIState
-	{
-		std::vector<ReSTIRGIReservoir> initial_candidates_reservoirs;
-		std::vector<ReSTIRGIReservoir> temporal_reservoirs;
-		std::vector<ReSTIRGIReservoir> spatial_reservoirs;
-
-		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
-		ReSTIRSPMISDataHost<std::vector> spmis_data;
-	} m_restir_gi_state;
 
 	struct ReSTIRPTState
 	{

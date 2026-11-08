@@ -47,17 +47,17 @@ public:
 	 * This compile method will always be called on all render passes of a renderer.
 	 * It is the responsibility of the class overriding this method to compile the kernels if necessary or not.
 	 *
-	 * For example: if a ReSTIRGIRenderPass implements this interface but the renderer doesn't
-	 * actually use ReSTIR GI at the moment, then calling 'compile'
+	 * For example: if a ReSTIRPTRenderPass implements this interface but the renderer doesn't
+	 * actually use ReSTIR PT at the moment, then calling 'compile'
 	 * should probably be a no-op (i.e. return directly),
 	 * otherwise, this would be compiling kernels unecessarily (since the render pass is not being used
 	 *
 	 * The kernels in this function may be compiled asynchronously by using the ThreadManager and launching threads
-	 * with the 'COMPILE_KERNELS_THREAD_KEY' key. Look at the ReSTIR GI render pass for some examples
+	 * with the 'COMPILE_KERNELS_THREAD_KEY' key. Look at the ReSTIR PT render pass for some examples
 	 *
 	 * The default implementation does this and compiles all kernels found in the map returned by
 	 * 'get_all_kernels()'. This assumes that kernels are configured in the constructor
-	 * (given their options, file path, kernel function name ,...). Have a look at the GMoNRenderPass or ReSTIRGIRenderPass
+	 * (given their options, file path, kernel function name ,...). Have a look at the GMoNRenderPass or ReSTIRPTRenderPass
 	 * for examples
 	 */
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {});
@@ -92,7 +92,7 @@ public:
 	 * Function before 'pre_frame_render_update()' that should compile kernels that haven't
 	 * been compiled so far if necessary
 	 *
-	 * For example, in a ReSTIR GI render pass, if the temporal reuse is disabled
+	 * For example, in a ReSTIR PT render pass, if the temporal reuse is disabled
 	 * when the application starts, the temporal reuse kernel will not be
 	 * compiled because it isn't needed. However, if the user then decides to enable temporal reuse at runtime, the temporal reuse will now have to be compiled
 	 * and this function is in charge.
@@ -253,15 +253,15 @@ public:
 	 *
 	 * and then the execution time of this render pass should be set in the 'ms_time_per_pass' map of the renderer.
 	 *
-	 * For example, for the initial candidates pass of ReSTIR GI:
-	 * ms_time_per_pass[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID] =
+	 * For example, for the initial candidates pass of ReSTIR PT:
+	 * ms_time_per_pass[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID] =
 	 *
-	 * m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID].compute_execution_time_and_reset_execution_count();
+	 * m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID].compute_execution_time_and_reset_execution_count();
 	 * The key used in the map
 	 * can be arbitrary but should be unique. The practice used in this codebase is to define the keys in the render pass itself as "static const std::string"
 	 * and use these keys to index the 'ms_time_per_pass' map.
 	 *
-	 * In the example above, the key is 'ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID'
+	 * In the example above, the key is 'ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID'
 	 */
 	virtual void compute_render_times();
 
@@ -272,9 +272,9 @@ public:
 	 *
 	 * For example:
 	 * std::unordered_map<std::string, float> render_pass_times = m_renderer->get_render_pass_times();
-	 * perf_metrics->add_value(ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID,
+	 * perf_metrics->add_value(ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID,
 	 *
-	 * render_pass_times[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]);
+	 * render_pass_times[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]);
 	 * The performance metrics computer is what stores the timings of all
 	 * the render passes to display the "Performance metrics" panel in ImGui
 	 *
@@ -296,14 +296,14 @@ public:
 	 * The map values are the kernel themselves
 	 *
 	 * If this render pass isn't being used by the renderer
-	 * (for example a ReSTIR GI render pass whereas we're using RIS
-	 * for direct lighting at the first bounce, i.e. the ReSTIR GI render
+	 * (for example a ReSTIR PT render pass whereas we're using BSDF
+	 * path sampling, i.e. the ReSTIR PT render
 	 * pass is not
 	 * in use), this function should return an empty map.
 	 * This is such that ImGui doesn't display the GPU timings of this render pass.
 	 *
 	 * This function also should not return inactive kernels of a render pass if
-	 * the render pass has more than 1 kernel. For example, the ReSTIR GI render
+	 * the render pass has more than 1 kernel. For example, the ReSTIR PT render
 	 * pass has multiple kernels: spatial and temporal.
 	 * If spatiotemporal
 	 * is being used, the spatial and temporal are not being used and so they will not be in the map returned by this function. This is also to avoid ImGui from
@@ -322,14 +322,14 @@ public:
 	 * The map values are the kernel themselves
 	 *
 	 * If this render pass isn't being used by the renderer
-	 * (for example a ReSTIR GI render pass whereas we're using RIS
-	 * for direct lighting at the first bounce, i.e. the ReSTIR GI render
+	 * (for example a ReSTIR PT render pass whereas we're using BSDF
+	 * path sampling, i.e. the ReSTIR PT render
 	 * pass is not
 	 * in use), this function should return an empty map.
 	 * This is such that ImGui doesn't display the GPU timings of this render pass.
 	 *
 	 * This function also should not return inactive kernels of a render pass if
-	 * the render pass has more than 1 kernel. For example, the ReSTIR GI render
+	 * the render pass has more than 1 kernel. For example, the ReSTIR PT render
 	 * pass has multiple kernels: spatial and temporal.
 	 * If spatiotemporal
 	 * is being used, the spatial and temporal are not being used and so they will not be in the map returned by this function. This is also to avoid ImGui from

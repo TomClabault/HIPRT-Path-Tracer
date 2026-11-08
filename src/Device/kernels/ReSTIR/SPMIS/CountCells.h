@@ -11,25 +11,25 @@
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
-						unsigned int* all_pixel_index_in_cell,
-						unsigned short int* cell_counters,
-						unsigned short int* cell_non_zero_reservoir_counters,
-						unsigned int* cell_confidence_sums,
-						ReSTIRPTReservoir* reservoirs,
-						unsigned int size,
-						bool count_important)
-#else // #ifdef __KERNELCC__
+ReSTIR_PT_SPMIS_CountCells(unsigned int* all_pixel_hashes,
+						   unsigned int* all_pixel_index_in_cell,
+						   unsigned short int* cell_counters,
+						   unsigned short int* cell_non_zero_reservoir_counters,
+						   unsigned int* cell_confidence_sums,
+						   ReSTIRPTReservoir* reservoirs,
+						   unsigned int size,
+						   bool count_important)
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_SPMIS_CountCells(unsigned int* all_pixel_hashes,
-							   unsigned int* all_pixel_index_in_cell,
-							   AtomicType<unsigned short int>* cell_counters,
-							   AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
-							   AtomicType<unsigned int>* cell_confidence_sums,
-							   ReSTIRPTReservoir* reservoirs,
-							   unsigned int size,
-							   bool count_important,
-							   int linear_pixel_index)
+inline ReSTIR_PT_SPMIS_CountCells(unsigned int* all_pixel_hashes,
+								  unsigned int* all_pixel_index_in_cell,
+								  AtomicType<unsigned short int>* cell_counters,
+								  AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
+								  AtomicType<unsigned int>* cell_confidence_sums,
+								  ReSTIRPTReservoir* reservoirs,
+								  unsigned int size,
+								  bool count_important,
+								  int linear_pixel_index)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__

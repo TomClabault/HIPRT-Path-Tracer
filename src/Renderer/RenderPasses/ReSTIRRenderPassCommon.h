@@ -12,7 +12,7 @@
 class ReSTIRRenderPassCommon
 {
 public:
-	static constexpr const char* const DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME				= "ReSTIR_Directional_Reuse_Compute";
+	static constexpr const char* const DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME				= "ReSTIR_PT_Directional_Reuse_Compute";
 	static constexpr const char* const DIRECTIONAL_REUSE_KERNEL_FILE						= DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h";
 	static constexpr const char* const DIRECTIONAL_REUSE_RESTIR_VARIANT_COMPILE_OPTION_NAME = "ComputingSpatialDirectionalReuseReSTIRVariant";
 
@@ -38,7 +38,7 @@ public:
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data,
 															ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
-		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ReSTIRVariant>(render_data);
+		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings<ReSTIRVariant>(render_data);
 
 		bool render_data_invalidated = false;
 		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
