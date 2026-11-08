@@ -3441,9 +3441,9 @@ void ImGuiSettingsWindow::draw_neural_many_lights_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 {
-	HIPRTRenderSettings& render_settings  = m_renderer->get_render_settings();
-	ReSTIRCommonSettings& common_settings = render_settings.restir_pt_settings;
-	ReSTIRPTSettings* restir_pt_settings  = &render_settings.restir_pt_settings;
+	HIPRTRenderSettings& render_settings	= m_renderer->get_render_settings();
+	ReSTIRPTCommonSettings& common_settings = render_settings.restir_pt_settings;
+	ReSTIRPTSettings* restir_pt_settings	= &render_settings.restir_pt_settings;
 
 	static bool use_heuristics_at_all				= true;
 	static bool use_normal_heuristic_backup			= common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
@@ -3582,17 +3582,17 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_neighbor_heuristics_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
-	HIPRTRenderSettings& render_settings							  = m_renderer->get_render_settings();
-	ReSTIRCommonTemporalPassSettings& restir_common_temporal_settings = m_renderer->get_render_settings().restir_pt_settings.common_temporal_pass;
+	HIPRTRenderSettings& render_settings								   = m_renderer->get_render_settings();
+	ReSTIRPTCommonTemporalPassSettings& restir_pt_common_temporal_settings = m_renderer->get_render_settings().restir_pt_settings.common_temporal_pass;
 
 	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
 	{
-		ImGui::PushID(&restir_common_temporal_settings);
+		ImGui::PushID(&restir_pt_common_temporal_settings);
 		ImGui::TreePush("ReSTIR - Temporal Reuse Pass Tree");
 		{
 			draw_before_panel();
 
-			if (restir_common_temporal_settings.do_temporal_reuse_pass)
+			if (restir_pt_common_temporal_settings.do_temporal_reuse_pass)
 			{
 				// Same line as "Do Temporal Reuse"
 				ImGui::SameLine();
@@ -3605,20 +3605,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 
 				bool last_frame_g_buffer_needed = true;
 				last_frame_g_buffer_needed &= !render_settings.accumulate;
-				last_frame_g_buffer_needed &= restir_common_temporal_settings.do_temporal_reuse_pass;
+				last_frame_g_buffer_needed &= restir_pt_common_temporal_settings.do_temporal_reuse_pass;
 
-				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_common_temporal_settings.max_neighbor_search_count, 0, 16))
+				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_pt_common_temporal_settings.max_neighbor_search_count, 0, 16))
 				{
 					// Clamping
-					restir_common_temporal_settings.max_neighbor_search_count = std::max(0, restir_common_temporal_settings.max_neighbor_search_count);
+					restir_pt_common_temporal_settings.max_neighbor_search_count = std::max(0, restir_pt_common_temporal_settings.max_neighbor_search_count);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_common_temporal_settings.neighbor_search_radius, 0, 16))
+				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_pt_common_temporal_settings.neighbor_search_radius, 0, 16))
 				{
 					// Clamping
-					restir_common_temporal_settings.neighbor_search_radius = std::max(0, restir_common_temporal_settings.neighbor_search_radius);
+					restir_pt_common_temporal_settings.neighbor_search_radius = std::max(0, restir_pt_common_temporal_settings.neighbor_search_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -3645,19 +3645,19 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_temporal_reuse_panel(std::function<void
 
 void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(void)> draw_before_panel)
 {
-	HIPRTRenderSettings& render_settings			 = m_renderer->get_render_settings();
-	ReSTIRCommonSpatialPassSettings& restir_settings = render_settings.restir_pt_settings.common_spatial_pass;
+	HIPRTRenderSettings& render_settings							   = m_renderer->get_render_settings();
+	ReSTIRPTCommonSpatialPassSettings& restir_pt_spatial_pass_settings = render_settings.restir_pt_settings.common_spatial_pass;
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
 	{
-		ImGui::PushID(&restir_settings);
+		ImGui::PushID(&restir_pt_spatial_pass_settings);
 		ImGui::TreePush("ReSTIR - Spatial Reuse Pass Tree");
 		{
 			draw_before_panel();
 
-			if (restir_settings.do_spatial_reuse_pass)
+			if (restir_pt_spatial_pass_settings.do_spatial_reuse_pass)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				bool use_spatial_target_function_visibility =
@@ -3674,35 +3674,36 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 												"resampling spatial neighbors.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
+				if (ImGui::SliderInt("Spatial reuse pass count", &restir_pt_spatial_pass_settings.number_of_passes, 1, 8))
 				{
 					// Clamping
-					restir_settings.number_of_passes = std::max(1, restir_settings.number_of_passes);
+					restir_pt_spatial_pass_settings.number_of_passes = std::max(1, restir_pt_spatial_pass_settings.number_of_passes);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 1, 16))
+				if (ImGui::SliderInt("Neighbor reuse count", &restir_pt_spatial_pass_settings.reuse_neighbor_count, 1, 16))
 					m_render_window->set_render_dirty(true);
 
 				bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean();
 
 				ImGui::BeginDisabled(using_spmis);
-				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
+				std::string spatial_reuse_radius_text =
+					restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
+				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_pt_spatial_pass_settings.reuse_radius, 0, 64))
 				{
-					restir_settings.auto_reuse_radius = false;
+					restir_pt_spatial_pass_settings.auto_reuse_radius = false;
 
-					if (!restir_settings.debug_neighbor_location)
+					if (!restir_pt_spatial_pass_settings.debug_neighbor_location)
 						// Clamping if not debugging (we do allow negative values when debugging)
-						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
+						restir_pt_spatial_pass_settings.reuse_radius = std::max(0, restir_pt_spatial_pass_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
 				if (using_spmis)
 					ImGuiRenderer::add_tooltip("Disabled because using SPMIS, use the radius settings in \"SPMIS Settings\"");
 				ImGui::SameLine();
-				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
+				if (ImGui::Checkbox("Auto", &restir_pt_spatial_pass_settings.auto_reuse_radius))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
 												"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
@@ -3719,7 +3720,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 
 					ImGui::BeginDisabled(!render_settings.accumulate);
 
-					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
+					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse))
 						m_render_window->set_render_dirty(true);
 					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
 													"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
@@ -3729,9 +3730,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel(std::function<void(
 													""
 													"Has no effect if not accumulating.");
 
-					if (restir_settings.use_adaptive_directional_spatial_reuse)
+					if (restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse)
 					{
-						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_settings.minimum_per_pixel_reuse_radius, 0, restir_settings.reuse_radius))
+						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_pt_spatial_pass_settings.minimum_per_pixel_reuse_radius, 0,
+											 restir_pt_spatial_pass_settings.reuse_radius))
 							m_render_window->set_render_dirty(true);
 						ImGuiRenderer::show_help_marker("The minimum radius that will be used per pixel when the optimal per-pixel spatial reuse "
 														"radius is computed by \"adaptive-directional spatial reuse\"");
@@ -3761,7 +3763,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_data().render_settings;
 
-	ReSTIRCommonSettings& common_settings = render_settings.restir_pt_settings;
+	ReSTIRPTCommonSettings& common_settings = render_settings.restir_pt_settings;
 
 	if (ImGui::CollapsingHeader("MIS Weights"))
 	{
@@ -3846,12 +3848,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_bias_correction_panel()
 		ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
 		bool disable_confidence_weights =
-			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M || *mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z;
+			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M || *mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z;
 
-		if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
-			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-			*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
+		if (*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+			*mis_weights_type_option_pointer == RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
 		{
 			if (ImGui::SliderFloat("Beta exponent", &common_settings.symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
 				m_render_window->set_render_dirty(true);
@@ -3870,9 +3872,9 @@ bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_boolean()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	bool using_spmis =
-		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-			RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
+			RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE;
 
 	return using_spmis;
 }

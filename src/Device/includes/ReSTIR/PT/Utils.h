@@ -14,7 +14,7 @@
 #include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 /**
  * Tests the visibility of the sample containde in 'reservoir' from the given shading point and kills the reservoir

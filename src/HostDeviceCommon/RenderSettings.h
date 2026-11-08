@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/PathRussianRoulette.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"

@@ -3,14 +3,14 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_RESTIR_COMMON_SPMIS_SETTINGS_H
-#define DEVICE_INCLUDES_RESTIR_COMMON_SPMIS_SETTINGS_H
+#ifndef DEVICE_INCLUDES_RESTIR_PT_COMMON_SPMIS_SETTINGS_H
+#define DEVICE_INCLUDES_RESTIR_PT_COMMON_SPMIS_SETTINGS_H
 
 #include "HostDeviceCommon/AtomicType.h"
 
 static constexpr unsigned int RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE = 4;
 
-struct ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings
+struct ReSTIRPTCommonSPMISCompatibilityGuidedCellSelectionSettings
 {
 	// If true, uses the heuristic from [Compatibility-Guided Neighbor Selection for ReSTIR, Junkins, 2026] to weight the selection of the neighboring cell.
 	// Disabled by default because not that good, a bit worse than hard rejection actually
@@ -38,7 +38,7 @@ struct ReSTIRPTSPMISSettings
 	float distance_scaling			 = 8.0f;
 	bool variance_aware_reuse_radius = true;
 
-	ReSTIRCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
+	ReSTIRPTCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
 
 	int hash_normal_precision		  = 2;
 	float hash_normal_jitter_strength = 0.2f;
@@ -110,4 +110,4 @@ struct ReSTIRPTSPMISSettings
 	float* cell_variance = nullptr;
 };
 
-#endif // #ifndef DEVICE_INCLUDES_RESTIR_COMMON_SPMIS_SETTINGS_H
+#endif // #ifndef DEVICE_INCLUDES_RESTIR_PT_COMMON_SPMIS_SETTINGS_H

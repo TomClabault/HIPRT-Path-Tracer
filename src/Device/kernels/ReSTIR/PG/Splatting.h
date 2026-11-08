@@ -107,26 +107,26 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 	uint32_t pixel_index = y * render_data.render_settings.render_resolution.x + x;
 	uint32_t pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
-	uint32_t restir_reservoir_pixel_index;
+	uint32_t restir_pt_reservoir_pixel_index;
 	if (thread_valid)
 	{
 		// Reading from the output of ReSTIR PT
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
-		restir_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index].sample.pixel_index;
+		restir_pt_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs[pixel_index].sample.pixel_index;
 #else
-		restir_reservoir_pixel_index = -1;
+		restir_pt_reservoir_pixel_index = -1;
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
 #endif
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	}
-	if (restir_reservoir_pixel_index == static_cast<unsigned int>(-1))
+	if (restir_pt_reservoir_pixel_index == static_cast<unsigned int>(-1))
 		// That means potentially no spatial reuse / temporal so our reservoir didn't move
-		restir_reservoir_pixel_index = pixel_index;
-	uint32_t reservoir_x = restir_reservoir_pixel_index % render_data.render_settings.render_resolution.x;
-	uint16_t reservoir_y = restir_reservoir_pixel_index / render_data.render_settings.render_resolution.x;
+		restir_pt_reservoir_pixel_index = pixel_index;
+	uint32_t reservoir_x = restir_pt_reservoir_pixel_index % render_data.render_settings.render_resolution.x;
+	uint16_t reservoir_y = restir_pt_reservoir_pixel_index / render_data.render_settings.render_resolution.x;
 
 	const ReSTIRPGSettings& restir_pg_settings = render_data.render_settings.restir_pg_settings;
 

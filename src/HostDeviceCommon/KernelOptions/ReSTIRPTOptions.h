@@ -7,7 +7,7 @@
 #define HOST_DEVICE_COMMON_RESTIR_PT_OPTIONS_H
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
-#include "HostDeviceCommon/KernelOptions/ReSTIRCommonOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
 
 // This block is a security to make sure that we have everything defined otherwise this can lead
 // to weird behavior because of the compiler not knowing about some macros
@@ -37,10 +37,10 @@
 #define ReSTIR_PT_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
- * See the doc of the RESTIR_MIS_WEIGHTS_TYPE macros in ReSTIRCommonOptions.h for more details on the different types of MIS weights that can be used when
+ * See the doc of the RESTIR_PT_MIS_WEIGHTS_TYPE macros in ReSTIRPTCommonOptions.h for more details on the different types of MIS weights that can be used when
  * resampling spatial neighbors.
  */
-#define ReSTIR_PT_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#define ReSTIR_PT_MISWeightsType RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 
 /**
  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]

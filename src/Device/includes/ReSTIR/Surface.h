@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/RenderData.h"
 
-struct ReSTIRSurface
+struct ReSTIRPTSurface
 {
 	DeviceUnpackedPrincipledFullMaterial material;
 	RayVolumeState ray_volume_state;
@@ -22,9 +22,9 @@ struct ReSTIRSurface
 	float3_t shading_point	  = { 0.0f, 0.0f, 0.0f };
 };
 
-HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRPTSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
 {
-	ReSTIRSurface surface;
+	ReSTIRPTSurface surface;
 
 	surface.material		= render_data.g_buffer.materials[pixel_index].unpack();
 	surface.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
@@ -44,11 +44,11 @@ HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& rende
  * that could have produced the sample that we picked, we need to consider the neighbors at their previous positions,
  * not the current so we need to read in the last frame's g-buffer.
  */
-HIPRT_DEVICE static ReSTIRSurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data,
-																   int pixel_index,
-																   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRPTSurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data,
+																	 int pixel_index,
+																	 Xorshift32Generator& random_number_generator)
 {
-	ReSTIRSurface surface;
+	ReSTIRPTSurface surface;
 
 	surface.material		= render_data.g_buffer_prev_frame.materials[pixel_index].unpack();
 	surface.primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
@@ -65,10 +65,10 @@ HIPRT_DEVICE static ReSTIRSurface get_pixel_surface_previous_frame(const HIPRTRe
 /**
  * Simple overload of the function to base the 'previous_frame' decision on a boolean instead of on the name of the function
  */
-HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data,
-													int pixel_index,
-													bool previous_frame,
-													Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRPTSurface get_pixel_surface(const HIPRTRenderData& render_data,
+													  int pixel_index,
+													  bool previous_frame,
+													  Xorshift32Generator& random_number_generator)
 {
 	if (previous_frame)
 		return get_pixel_surface_previous_frame(render_data, pixel_index, random_number_generator);

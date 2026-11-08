@@ -8,8 +8,8 @@
 
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTDirectionalSpatialReuseDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -88,12 +88,12 @@ private:
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
 
-	ReSTIRDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	ReSTIRPTDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
-	ReSTIRSPMISDataHost<OrochiBuffer> m_spmis_data;
+	ReSTIRPTSPMISDataHost<OrochiBuffer> m_spmis_data;
 
-	ReSTIRPTReservoir* m_last_temporal_output_reservoirs = nullptr;
-	ReSTIRPTReservoir* m_last_restir_output_reservoirs	 = nullptr;
+	ReSTIRPTReservoir* m_last_temporal_output_reservoirs  = nullptr;
+	ReSTIRPTReservoir* m_last_restir_pt_output_reservoirs = nullptr;
 
 	int m_initial_candidates_generation_seed;
 	bool m_temporal_buffer_clear_requested;

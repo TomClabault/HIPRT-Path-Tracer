@@ -9,8 +9,8 @@
 #include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRCommonOptions.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 template <int BiasCorrectionMode>
 struct ReSTIRPTSpatialNormalizationWeight
@@ -18,11 +18,11 @@ struct ReSTIRPTSpatialNormalizationWeight
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 float final_reservoir_weight_sum,
-											 const ReSTIRSurface& center_pixel_surface,
+											 const ReSTIRPTSurface& center_pixel_surface,
 											 int2_t center_pixel_coords,
 											 float& out_normalization_nume,
 											 float& out_normalization_denom,
@@ -45,7 +45,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).reuse_neighbor_count + 1; neighbor++)
+		for (int neighbor = 0; neighbor < ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, center_pixel_coords, random_number_generator);
 			if (neighbor_pixel_index == -1)
@@ -54,21 +54,21 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-													  ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
+													  ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				continue;
 
-			out_normalization_denom += ReSTIRSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
+			out_normalization_denom += ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
 		}
 	}
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 const ReSTIRSurface& center_pixel_surface,
+											 const ReSTIRPTSurface& center_pixel_surface,
 											 int2_t center_pixel_coords,
 											 float& out_normalization_nume,
 											 float& out_normalization_denom,
@@ -89,7 +89,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 		out_normalization_nume	= 1.0f;
 
 		int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		const ReSTIRPTCommonSpatialPassSettings& spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		random_number_generator.m_state.seed = spatial_pass_settings.spatial_neighbors_rng_seed;
 
@@ -101,11 +101,11 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 				continue;
 
 			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-													  ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
+													  ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				continue;
 
 			// Getting the surface data at the neighbor
-			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+			ReSTIRPTSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 			float jacobian = 1.0f;
 			if (!final_reservoir_sample.is_envmap_path())
@@ -118,18 +118,18 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 
 			if (target_function_at_neighbor > 0.0f)
 				// If the neighbor could have produced this sample...
-				out_normalization_denom += ReSTIRSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
+				out_normalization_denom += ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
 		}
 	}
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
-											 const ReSTIRSurface& center_pixel_surface,
+											 const ReSTIRPTSurface& center_pixel_surface,
 											 int selected_neighbor,
 											 int2_t center_pixel_coords,
 											 float& out_normalization_nume,
@@ -148,9 +148,9 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 		out_normalization_denom = 0.0f;
 		out_normalization_nume	= 0.0f;
 
-		random_number_generator.m_state.seed = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).spatial_neighbors_rng_seed;
+		random_number_generator.m_state.seed = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).spatial_neighbors_rng_seed;
 
-		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).reuse_neighbor_count + 1; neighbor++)
+		for (int neighbor = 0; neighbor < ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, center_pixel_coords, random_number_generator);
 			if (neighbor_pixel_index == -1)
@@ -159,11 +159,11 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-													  ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
+													  ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				continue;
 
 			// Getting the surface data at the neighbor
-			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+			ReSTIRPTSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 			float target_function_at_neighbor =
 				ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
@@ -177,7 +177,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 
 			if (target_function_at_neighbor > 0.0f)
 			{
-				int M = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
+				int M = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_input_reservoir_confidence(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we
@@ -190,7 +190,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -201,7 +201,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -212,7 +212,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -223,7 +223,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -234,7 +234,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -245,7 +245,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -256,7 +256,7 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 };
 
 template <>
-struct ReSTIRPTSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

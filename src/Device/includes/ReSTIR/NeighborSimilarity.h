@@ -9,12 +9,12 @@
 #include "Device/includes/ReSTIR/Jacobian.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
  */
-HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
+HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRPTCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
 										   const float3_t& temporal_world_space_point,
 										   const float3_t& current_point,
 										   const float3_t& current_surface_normal,
@@ -29,7 +29,7 @@ HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliarity
 	return distance_to_plane < plane_distance_threshold;
 }
 
-HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
+HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRPTCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
 											  const float3_t& current_normal,
 											  const float3_t& neighbor_normal,
 											  float threshold)
@@ -40,7 +40,7 @@ HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliar
 	return hippt::dot(current_normal, neighbor_normal) > threshold;
 }
 
-HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
+HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRPTCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
 												 float neighbor_roughness,
 												 float center_pixel_roughness,
 												 float threshold)
@@ -84,7 +84,8 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 			return false;
 	}
 
-	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data);
+	const ReSTIRPTCommonNeighborSimiliaritySettings& neighbor_similarity_settings =
+		ReSTIRPTSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data);
 
 	float3_t neighbor_world_space_point;
 	float neighbor_roughness		 = 0.0f;

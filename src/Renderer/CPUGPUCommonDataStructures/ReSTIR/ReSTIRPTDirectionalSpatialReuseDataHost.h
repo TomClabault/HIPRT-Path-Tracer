@@ -3,26 +3,26 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
-#define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
+#ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
+#define RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
 
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using ReSTIRDirectionalSpatialReuseDataHostInternal =
+using ReSTIRPTDirectionalSpatialReuseDataHostInternal =
 	GenericSoA<DataContainer,
 			   unsigned char,			// Spatial reuse radius
 			   unsigned long long int>; // Spatial reuse direction mask (encoded as a bitfield of valid reuse directions)
 
-enum ReSTIRDirectionalSpatialReuseDataHostBuffers
+enum ReSTIRPTDirectionalSpatialReuseDataHostBuffers
 {
-	RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS,
-	RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL,
+	RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS,
+	RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL,
 };
 
 template <template <typename> typename DataContainer>
-struct ReSTIRDirectionalSpatialReuseDataHost
+struct ReSTIRPTDirectionalSpatialReuseDataHost
 {
 	void resize(unsigned int width, unsigned int height)
 	{
@@ -59,7 +59,7 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 
 	void to_device(HIPRTRenderData& render_data)
 	{
-		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		ReSTIRPTCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		if (maximum_size() == 0)
 		{
@@ -70,12 +70,12 @@ struct ReSTIRDirectionalSpatialReuseDataHost
 		}
 
 		common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull =
-			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
+			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
 		common_spatial_pass_settings.per_pixel_spatial_reuse_radius =
-			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
+			m_spatial_reuse_data.template get_buffer_data_ptr<RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
 	}
 
-	ReSTIRDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;
+	ReSTIRPTDirectionalSpatialReuseDataHostInternal<DataContainer> m_spatial_reuse_data;
 };
 
-#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H
+#endif // #ifndef RENDERER_CPU_GPU_COMMON_DATA_STRUCTURES_RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DATA_HOST_H

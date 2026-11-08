@@ -23,8 +23,8 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRDirectionalSpatialReuseDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRSPMISDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTDirectionalSpatialReuseDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -156,8 +156,8 @@ private:
 		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
 		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
 
-		ReSTIRDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
-		ReSTIRSPMISDataHost<std::vector> spmis_data;
+		ReSTIRPTDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
+		ReSTIRPTSPMISDataHost<std::vector> spmis_data;
 	} m_restir_pt_state;
 
 	struct ReSTIRPGState

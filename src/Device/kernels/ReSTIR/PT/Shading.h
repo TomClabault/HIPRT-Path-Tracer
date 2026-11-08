@@ -19,7 +19,7 @@
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifdef __KERNELCC__
@@ -84,7 +84,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		// Adding the directly visible emission from an emissive surface
 		camera_outgoing_radiance += ray_payload.material.get_emission();
 
-	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_output_reservoirs[pixel_index];
+	ReSTIRPTReservoir resampling_reservoir = render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs[pixel_index];
 	if (resampling_reservoir.UCW > 0.0f && (!resampling_reservoir.sample.di_sample || render_data.render_settings.enable_direct_lighting))
 	{
 		// Only doing the shading if we do actually have a sample
@@ -170,7 +170,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
 			 render_data.render_settings.restir_pt_settings.common_spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
 	{
-		unsigned char accepted_directions = hippt::popc(ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull(render_data, pixel_index));
+		unsigned char accepted_directions = hippt::popc(ReSTIRPTSettingsHelper::get_spatial_reuse_direction_mask_ull(render_data, pixel_index));
 		float accepted_percentage		  = accepted_directions / 32.0f;
 		ColorRGB32F debug_color			  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
 

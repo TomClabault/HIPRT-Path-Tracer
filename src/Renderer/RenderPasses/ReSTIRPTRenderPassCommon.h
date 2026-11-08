@@ -3,13 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef GPU_RENDERER_RESTIR_RENDER_PASS_COMMON_H
-#define GPU_RENDERER_RESTIR_RENDER_PASS_COMMON_H
+#ifndef GPU_RENDERER_RESTIR_PT_RENDER_PASS_COMMON_H
+#define GPU_RENDERER_RESTIR_PT_RENDER_PASS_COMMON_H
 
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 #include "Renderer/GPURenderer.h"
 
-class ReSTIRRenderPassCommon
+class ReSTIRPTRenderPassCommon
 {
 public:
 	static constexpr const char* const DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME = "ReSTIR_PT_Directional_Reuse_Compute";
@@ -21,23 +21,23 @@ public:
 	static void resize_common_buffers(GPURenderer* renderer,
 									  int new_width,
 									  int new_height,
-									  ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+									  ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		directional_spatial_reuse_data.resize(new_width, new_height);
 	}
 
 	template <template <typename> typename DataContainer>
 	static bool pre_render_update_common_buffers(const HIPRTRenderData& render_data,
-												 ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+												 ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		return pre_render_update_directional_reuse_buffers(render_data, directional_spatial_reuse_data);
 	}
 
 	template <template <typename> typename DataContainer>
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data,
-															ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+															ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
-		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+		ReSTIRPTCommonSpatialPassSettings spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 		bool render_data_invalidated = false;
 		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
@@ -63,23 +63,23 @@ public:
 	}
 
 	template <template <typename> typename DataContainer>
-	static void reset_common_buffers(ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+	static void reset_common_buffers(ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		directional_spatial_reuse_data.reset();
 	}
 
 	template <template <typename> typename DataContainer>
-	static bool free_common_buffers(ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+	static bool free_common_buffers(ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		return directional_spatial_reuse_data.free();
 	}
 
 	template <template <typename> typename DataContainer>
 	static void update_render_data_common_buffers(HIPRTRenderData& render_data,
-												  ReSTIRDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
+												  ReSTIRPTDirectionalSpatialReuseDataHost<DataContainer>& directional_spatial_reuse_data)
 	{
 		directional_spatial_reuse_data.to_device(render_data);
 	}
 };
 
-#endif // #ifndef GPU_RENDERER_RESTIR_RENDER_PASS_COMMON_H
+#endif // #ifndef GPU_RENDERER_RESTIR_PT_RENDER_PASS_COMMON_H

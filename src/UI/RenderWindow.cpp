@@ -25,7 +25,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove directional spatial reuse
 // - NEE++ visibility queries for direct-light reuse
 // - Remove LTC shading
-//		- After removing ReGIR, do we still need the BSDF_pdf() functions and 'sample_direction_only'?
+// - After removing ReGIR, do we still need the BSDF_pdf() functions and 'sample_direction_only'?
 // - Remove RIS LTC estimator
 // - Rename tree cut to light cut everywhere
 // - Remove principled lobe oren nayar support, just use Lambertian all the time

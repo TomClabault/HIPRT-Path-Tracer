@@ -42,7 +42,7 @@ struct ReSTIRPTTemporalResamplingMISWeight
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRPTReservoir& reservoir_being_resampled)
 	{
@@ -54,7 +54,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRPTReservoir& reservoir_being_resampled)
 	{
@@ -67,7 +67,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRPTReservoir& reservoir_being_resampled)
 	{
@@ -81,15 +81,15 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 													  const ReSTIRPTReservoirSample& reservoir_being_resampled_sample,
 													  float initial_candidates_reservoir_confidence,
 
-													  ReSTIRSurface& temporal_neighbor_surface,
-													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRPTSurface& temporal_neighbor_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
 													  int temporal_neighbor_reservoir_confidence,
 													  int current_neighbor_index,
 													  Xorshift32Generator& random_number_generator)
@@ -138,15 +138,15 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 {
 	static constexpr float NO_NEIGHBOR_RESAMPLING = -1.0f;
 
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  ReSTIRPTReservoir& temporal_neighbor_reservoir,
 													  ReSTIRPTReservoir& initial_candidates_reservoir,
-													  ReSTIRSurface& center_pixel_surface,
-													  ReSTIRSurface& temporal_neighbor_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
+													  ReSTIRPTSurface& temporal_neighbor_surface,
 
 													  float neighbor_sample_target_function_at_center,
 													  int current_neighbor_index,
@@ -234,13 +234,13 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  ReSTIRPTReservoir& temporal_neighbor_reservoir,
 													  ReSTIRPTReservoir& initial_candidates_reservoir,
-													  ReSTIRSurface& center_pixel_surface,
-													  ReSTIRSurface& temporal_neighbor_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
+													  ReSTIRPTSurface& temporal_neighbor_surface,
 
 													  float neighbor_sample_target_function_at_center,
 													  int current_neighbor_index,
@@ -330,13 +330,13 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  ReSTIRPTReservoir& temporal_neighbor_reservoir,
 													  ReSTIRPTReservoir& initial_candidates_reservoir,
-													  ReSTIRSurface& center_pixel_surface,
-													  ReSTIRSurface& temporal_neighbor_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
+													  ReSTIRPTSurface& temporal_neighbor_surface,
 
 													  float neighbor_sample_target_function_at_center,
 													  int current_neighbor_index,
@@ -429,13 +429,13 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  ReSTIRPTReservoir& temporal_neighbor_reservoir,
 													  ReSTIRPTReservoir& initial_candidates_reservoir,
-													  ReSTIRSurface& center_pixel_surface,
-													  ReSTIRSurface& temporal_neighbor_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
+													  ReSTIRPTSurface& temporal_neighbor_surface,
 
 													  float neighbor_sample_target_function_at_center,
 													  int current_neighbor_index,
@@ -548,14 +548,14 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 
 // For temporal reuse, we're not using SPMIS (we're not importance sampling the temporal neighbor) so we just use traditional pairwise MIS weights
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
-	: public ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+	: public ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 {
 };
 
 template <>
-struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
-	: public ReSTIRPTTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
+	: public ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
 {
 };
 

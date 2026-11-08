@@ -11,7 +11,7 @@
 #include "Device/includes/ReSTIR/DI_GI/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRCommonOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #define NB_RADIUS			  32
@@ -21,7 +21,7 @@
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
-	HIPRT_DEVICE __constant__ GPU_CPU_ALIGN(16) unsigned char RESTIR_DIRECTIONAL_REUSE_RENDER_DATA[sizeof(HIPRTRenderData)];
+	HIPRT_DEVICE __constant__ GPU_CPU_ALIGN(16) unsigned char RESTIR_PT_DIRECTIONAL_REUSE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
 __launch_bounds__(64) ReSTIR_PT_Directional_Reuse_Compute(unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
@@ -36,7 +36,7 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_DIRECTIONAL_REUSE_RENDER_DATA);
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_DIRECTIONAL_REUSE_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -56,10 +56,10 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
 	out_adaptive_radius_buffer[center_pixel_index]			   = 0;
 
-	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
+	ReSTIRPTCommonSpatialPassSettings spatial_pass_settings = ReSTIRPTSettingsHelper::get_restir_pt_spatial_pass_settings(render_data);
 
 	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-	float3_t center_normal		  = ReSTIRSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data).reject_using_geometric_normals
+	float3_t center_normal		  = ReSTIRPTSettingsHelper::get_restir_pt_neighbor_similarity_settings(render_data).reject_using_geometric_normals
 										? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
 										: render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 

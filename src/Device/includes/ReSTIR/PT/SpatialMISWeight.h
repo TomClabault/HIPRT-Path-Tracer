@@ -10,7 +10,7 @@
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/SymmetricMISCommon.h"
 #include "Device/includes/TriangleLoadUtils.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 template <int BiasCorrectionMode>
 struct ReSTIRPTSpatialResamplingMISWeight
@@ -18,7 +18,7 @@ struct ReSTIRPTSpatialResamplingMISWeight
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(int reservoir_being_resampled_confidence)
 	{
@@ -27,7 +27,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(int reservoir_being_resampled_confidence)
 	{
@@ -36,7 +36,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, int reservoir_being_resampled_confidence)
 	{
@@ -45,14 +45,14 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 													  float reservoir_being_resampled_UCW,
 													  const ReSTIRPTReservoirSample& reservoir_being_resampled_sample,
 
-													  const ReSTIRSurface& center_pixel_surface,
+													  const ReSTIRPTSurface& center_pixel_surface,
 													  int current_neighbor_index,
 													  int2_t center_pixel_coords,
 													  Xorshift32Generator& random_number_generator)
@@ -78,11 +78,11 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics(render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
-													  ReSTIRSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
+													  ReSTIRPTSettingsHelper::get_normal_for_rejection_heuristic(render_data, center_pixel_surface)))
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 
-			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, random_number_generator);
+			ReSTIRPTSurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, random_number_generator);
 
 			float target_function_at_j;
 			if (j == current_neighbor_index)
@@ -116,7 +116,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
@@ -126,7 +126,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 													  int center_pixel_reservoir_confidence,
 													  float center_pixel_reservoir_target_function,
 
-													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
 													  float target_function_at_center,
 													  int neighbor_pixel_index,
 													  int valid_neighbors_count,
@@ -162,7 +162,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 
 			if (update_mc)
 			{
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+				ReSTIRPTSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 				float target_function_center_sample_at_neighbor =
 					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
@@ -224,7 +224,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
@@ -234,7 +234,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 													  float center_pixel_reservoir_confidence,
 													  float center_pixel_reservoir_target_function,
 
-													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
 													  float target_function_at_center,
 													  int neighbor_pixel_index,
 													  int valid_neighbors_count,
@@ -277,7 +277,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 				//
 				// So we can avoid computing all that stuff
 
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+				ReSTIRPTSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 				float target_function_center_sample_at_neighbor =
 					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
@@ -343,7 +343,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_D
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  int reservoir_being_resampled_confidence,
@@ -352,7 +352,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 													  int center_pixel_reservoir_confidence,
 													  float center_pixel_reservoir_target_function,
 
-													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
 													  float target_function_neighbor_sample_at_center,
 													  int neighbor_pixel_index,
 													  int valid_neighbors_count,
@@ -383,7 +383,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 
 			if (update_mc)
 			{
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+				ReSTIRPTSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 				float target_function_center_sample_at_neighbor =
 					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
@@ -450,7 +450,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATI
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 													  int reservoir_being_resampled_confidence,
@@ -459,7 +459,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 													  int center_pixel_reservoir_confidence,
 													  float center_pixel_reservoir_target_function,
 
-													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRPTSurface& center_pixel_surface,
 													  float target_function_neighbor_sample_at_center,
 													  int neighbor_pixel_index,
 													  int valid_neighbors_count,
@@ -503,7 +503,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 
 			if (update_mc)
 			{
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+				ReSTIRPTSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 				float target_function_center_sample_at_neighbor =
 					ReSTIR_PT_evaluate_target_function<true>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
@@ -578,7 +578,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RAT
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
 
@@ -587,7 +587,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 																int center_pixel_reservoir_confidence,
 																float center_pixel_reservoir_target_function,
 
-																ReSTIRSurface& center_pixel_surface,
+																ReSTIRPTSurface& center_pixel_surface,
 																int neighbor_pixel_index,
 																float neighbors_confidence_sum,
 
@@ -675,7 +675,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 };
 
 template <>
-struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
 
@@ -684,7 +684,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAI
 																int center_pixel_reservoir_confidence,
 																float center_pixel_reservoir_target_function,
 
-																ReSTIRSurface& center_pixel_surface,
+																ReSTIRPTSurface& center_pixel_surface,
 																int neighbor_pixel_index,
 																float neighbors_confidence_sum,
 

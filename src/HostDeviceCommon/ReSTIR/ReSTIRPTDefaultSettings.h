@@ -6,6 +6,6 @@
 #ifndef HOST_DEVICE_RESTIR_PT_DEFAULT_SETTINGS_H
 #define HOST_DEVICE_RESTIR_PT_DEFAULT_SETTINGS_H
 
-#include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTCommonSettings.h"
 
 #endif // #ifndef HOST_DEVICE_RESTIR_PT_DEFAULT_SETTINGS_H

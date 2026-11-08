@@ -39,7 +39,7 @@ struct ReSTIRPTTemporalNormalizationWeight
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
 											 int initial_candidates_confidence,
@@ -67,15 +67,15 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 int initial_candidates_confidence,
 											 int temporal_neighbor_confidence,
-											 ReSTIRSurface& center_pixel_surface,
-											 ReSTIRSurface& temporal_neighbor_surface,
+											 ReSTIRPTSurface& center_pixel_surface,
+											 ReSTIRPTSurface& temporal_neighbor_surface,
 											 float& out_normalization_nume,
 											 float& out_normalization_denom,
 											 Xorshift32Generator& random_number_generator)
@@ -121,15 +121,15 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z>
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 											 const ReSTIRPTReservoirSample& final_reservoir_sample,
 											 float final_reservoir_weight_sum,
 											 int initial_candidates_confidence,
 											 int temporal_neighbor_confidence,
-											 ReSTIRSurface& center_pixel_surface,
-											 ReSTIRSurface& temporal_neighbor_surface,
+											 ReSTIRPTSurface& center_pixel_surface,
+											 ReSTIRPTSurface& temporal_neighbor_surface,
 											 int selected_neighbor,
 											 float& out_normalization_nume,
 											 float& out_normalization_denom,
@@ -177,7 +177,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE>
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -189,7 +189,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH>
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -201,7 +201,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS>
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -213,7 +213,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -225,7 +225,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RAT
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -237,7 +237,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RA
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -249,7 +249,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PA
 };
 
 template <>
-struct ReSTIRPTTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
+struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

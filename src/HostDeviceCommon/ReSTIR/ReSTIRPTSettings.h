@@ -56,7 +56,7 @@ enum ReSTIRPTDebugView
 	PT_CELL_VARIANCE						 = 9,
 };
 
-struct ReSTIRPTSettings : public ReSTIRCommonSettings
+struct ReSTIRPTSettings : public ReSTIRPTCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRPTSettings()
 	{
@@ -109,7 +109,7 @@ struct ReSTIRPTSettings : public ReSTIRCommonSettings
 	ReSTIRPTSpatialPassSettings spatial_pass;
 	ReSTIRPTSPMISSettings spmis_settings;
 
-	ReSTIRPTReservoir* restir_output_reservoirs = nullptr;
+	ReSTIRPTReservoir* restir_pt_output_reservoirs = nullptr;
 
 	ReSTIRPTDebugView debug_view;
 	float debug_view_scale_factor;

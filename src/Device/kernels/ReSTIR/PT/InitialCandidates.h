@@ -769,18 +769,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
 	restir_pt_initial_reservoir_output->sanity_check(make_int2(x, y));
 
-#if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                             \
-	ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+#if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                          \
+	ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	float3_t pixel_first_hit_point			  = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t pixel_first_hit_geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 	ReSTIR_PT_spmis_insert_pixel_hash(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
-#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
-	   // RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
+#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
+	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 
 	if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SHADE_ONLY_INITIAL_CANDIDATES &&
 		ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled)
 	{
-		ReSTIRSurface initial_surface;
+		ReSTIRPTSurface initial_surface;
 		initial_surface.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 		initial_surface.shading_normal	 = render_data.g_buffer.shading_normals[pixel_index].unpack();
 		initial_surface.primitive_index	 = render_data.g_buffer.first_hit_prim_index[pixel_index];

@@ -35,8 +35,8 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		if (render_data.aux_buffers.restir_pt_reservoir_buffer_3)
 			render_data.aux_buffers.restir_pt_reservoir_buffer_3[pixel_index] = ReSTIRPTReservoir();
 
-#if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                            \
-	 ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) &&                                                                 \
+#if (ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                         \
+	 ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) &&                                                              \
 	PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes[pixel_index]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
@@ -52,8 +52,8 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_global_offset_counter[0]					= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance[pixel_index]					= -1.0f;
-#endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
-	   // RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
+	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())

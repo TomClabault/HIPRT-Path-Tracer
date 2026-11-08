@@ -13,7 +13,7 @@
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
 {
-	HIPRT_DEVICE __constant__ unsigned char RESTIR_SPMIS_RENDER_DATA[sizeof(HIPRTRenderData)];
+	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_SPMIS_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void)
 ReSTIR_PT_SPMIS_ResetCellsData(unsigned int size)
@@ -23,7 +23,7 @@ inline ReSTIR_PT_SPMIS_ResetCellsData(HIPRTRenderData render_data, unsigned int 
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_SPMIS_RENDER_DATA);
+	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_SPMIS_RENDER_DATA);
 
 	const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif

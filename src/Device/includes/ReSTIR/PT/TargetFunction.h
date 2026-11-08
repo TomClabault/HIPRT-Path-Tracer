@@ -67,7 +67,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRende
 template <bool withVisiblity>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& sample,
-														   ReSTIRSurface& surface,
+														   ReSTIRPTSurface& surface,
 														   Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;

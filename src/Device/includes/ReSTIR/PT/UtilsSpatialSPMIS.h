@@ -15,7 +15,7 @@
 #include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/ReSTIR/ReSTIRSettingsHelper.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMISSettings& spmis_settings,
 															  float3_t camera_position,
@@ -40,7 +40,7 @@ HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMI
 HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& render_data,
 														unsigned int center_pixel_index,
 														int2_t center_pixel_coords,
-														const ReSTIRSurface& center_pixel_surface,
+														const ReSTIRPTSurface& center_pixel_surface,
 														unsigned int center_cell_index,
 														unsigned int center_cell_weight,
 														float radius,
@@ -130,7 +130,7 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& render_data,
 													 unsigned int center_pixel_index,
 													 int2_t center_pixel_coords,
-													 const ReSTIRSurface& center_pixel_surface,
+													 const ReSTIRPTSurface& center_pixel_surface,
 													 int& out_neighbors_confidence_sum,
 													 unsigned int& out_reuse_cell_pixel_count,
 													 Xorshift32Generator& rng)
@@ -242,7 +242,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 }
 
 HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
-																 ReSTIRSurface& center_surface,
+																 ReSTIRPTSurface& center_surface,
 																 unsigned int neighbor_cell_index,
 																 float& out_selection_probability,
 																 Xorshift32Generator& rng)

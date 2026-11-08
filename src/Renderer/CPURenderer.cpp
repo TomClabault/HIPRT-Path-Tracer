@@ -167,7 +167,7 @@ void CPURenderer::setup_buffers()
 
 	m_restir_pt_state.directional_spatial_reuse_data_buffer.resize(width, height);
 	m_restir_pt_state.spmis_data.resize(width, height);
-	m_restir_pt_state.spmis_data.m_spmis_data.memset_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>(
+	m_restir_pt_state.spmis_data.m_spmis_data.memset_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>(
 		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
@@ -1146,21 +1146,22 @@ void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
 
 void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservoir* input_reservoirs)
 {
-	ReSTIRSPMISDataHostInternal<std::vector>& spmis_data = m_restir_pt_state.spmis_data.m_spmis_data;
+	ReSTIRPTSPMISDataHostInternal<std::vector>& spmis_data = m_restir_pt_state.spmis_data.m_spmis_data;
 
-	AtomicType<unsigned short int>* cell_pixels_counters = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().data();
+	AtomicType<unsigned short int>* cell_pixels_counters = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_COUNTERS>().data();
 	AtomicType<unsigned short int>* cell_non_zero_reservoir_counters =
-		spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().data();
-	AtomicType<unsigned int>* cell_confidence_sums		 = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>().data();
-	AtomicType<unsigned int>* cell_global_offset_counter = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().data();
-	unsigned int num_cells								 = m_resolution.x * m_resolution.y;
+		spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().data();
+	AtomicType<unsigned int>* cell_confidence_sums = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CONFIDENCE_SUMS>().data();
+	AtomicType<unsigned int>* cell_global_offset_counter =
+		spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().data();
+	unsigned int num_cells = m_resolution.x * m_resolution.y;
 	for (int i = 0; i < num_cells; i++)
 	{
 		ReSTIR_PT_SPMIS_ResetCellsData(m_render_data, num_cells, i);
 	}
 
-	unsigned int* all_pixels_hashes	   = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES>().data();
-	unsigned int* pixels_index_in_cell = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().data();
+	unsigned int* all_pixels_hashes	   = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES>().data();
+	unsigned int* pixels_index_in_cell = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().data();
 	for (int i = 0; i < num_cells; i++)
 	{
 		// First call to count important pixels first
@@ -1175,38 +1176,38 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 								   input_reservoirs, num_cells, false, i);
 	}
 
-	unsigned int* cell_offsets			= spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().data();
+	unsigned int* cell_offsets			= spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_OFFSETS>().data();
 	void* compute_offsets_launch_args[] = { &cell_pixels_counters, &cell_global_offset_counter, &cell_offsets, &num_cells };
 	for (int i = 0; i < num_cells; i++)
 	{
 		ReSTIR_PT_SPMIS_ComputeOffsets(cell_pixels_counters, cell_global_offset_counter, cell_offsets, num_cells, i);
 	}
 
-	unsigned int* pixel_indices_sorted = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_PIXEL_INDICES_SORTED>().data();
+	unsigned int* pixel_indices_sorted = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_PIXEL_INDICES_SORTED>().data();
 	for (int i = 0; i < num_cells; i++)
 	{
 		ReSTIR_PT_SPMIS_Sort(all_pixels_hashes, pixels_index_in_cell, cell_offsets, pixel_indices_sorted, num_cells, i);
 	}
 
-	unsigned int* cell_alive_list = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().data();
-	unsigned int cell_alive_count = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().at(0);
-	float* cell_cdfs			  = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().data();
+	unsigned int* cell_alive_list = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_ALIVE_LIST>().data();
+	unsigned int cell_alive_count = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().at(0);
+	float* cell_cdfs			  = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDFS>().data();
 
-	if (spmis_data.template get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
+	if (spmis_data.template get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
 	{
-		spmis_data.template resize_one_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize);
+		spmis_data.template resize_one_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize);
 		m_render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
-			spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();
+			spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().data();
 	}
-	unsigned short int* cell_cdf_luts = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().data();
+	unsigned short int* cell_cdf_luts = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().data();
 
-	unsigned int* cell_cdf_luts_offsets = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>().data();
+	unsigned int* cell_cdf_luts_offsets = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().data();
 	ReSTIR_PT_SPMIS_BuildCDFs(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
 							  cell_cdfs, cell_cdf_luts, cell_cdf_luts_offsets);
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
-		float* cell_variance = spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_VARIANCE>().data();
+		float* cell_variance = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_VARIANCE>().data();
 		ReSTIR_PT_SPMIS_ComputeCellsVariance(cell_pixels_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
 											 cell_variance);
 	}
@@ -1221,7 +1222,7 @@ void CPURenderer::configure_ReSTIR_PT_temporal_reuse_pass()
 	else
 		// Not the first frame, the input to the temporal pass is the output of the last frame ReSTIR
 		m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs =
-			m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs;
+			m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs;
 
 	// For the output, using whatever buffer isn't the one we're reading from (the input buffer)
 	if (m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs == m_restir_pt_state.temporal_reservoirs.data())
@@ -1276,8 +1277,8 @@ void CPURenderer::configure_ReSTIR_PT_spatial_reuse_pass(int spatial_pass_index)
 
 void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 {
-	if (ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-		ReSTIR_PT_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	if (ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
 		launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
 
@@ -1290,13 +1291,13 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 void CPURenderer::configure_ReSTIR_PT_shading_pass()
 {
 	if (m_render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
-		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+		m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			m_render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
 	else if (m_render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
-		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+		m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
 	else
-		m_render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+		m_render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer;
 }
 

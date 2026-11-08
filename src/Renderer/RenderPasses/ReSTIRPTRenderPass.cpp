@@ -6,7 +6,7 @@
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReSTIRPTRenderPass.h"
-#include "Renderer/RenderPasses/ReSTIRRenderPassCommon.h"
+#include "Renderer/RenderPasses/ReSTIRPTRenderPassCommon.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
@@ -32,7 +32,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_PT_SpatialReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMIS" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, "ReSTIR_PT_Shading" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
+	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRPTRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetBuffers" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetCellsData" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, "ReSTIR_PT_SPMIS_CountCells" },
@@ -48,7 +48,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMIS.h" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/Shading.h" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
+	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRPTRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetBuffers.h" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCellsData.h" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/CountCells.h" },
@@ -241,9 +241,9 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	bool using_spmis = (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-							RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+							RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 						m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
-							RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE);
+							RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE);
 	if (using_spmis)
 	{
 		if (!m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->has_been_compiled())
@@ -295,7 +295,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_common_buffers(render_data, m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRPTRenderPassCommon::pre_render_update_common_buffers(render_data, m_directional_spatial_reuse_data);
 		render_data_invalidated |= pre_render_update_spmis_buffers(render_data, *m_renderer->get_global_compiler_options());
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
@@ -325,7 +325,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::free_common_buffers(m_directional_spatial_reuse_data);
+		render_data_invalidated |= ReSTIRPTRenderPassCommon::free_common_buffers(m_directional_spatial_reuse_data);
 		render_data_invalidated |= m_spmis_data.free();
 	}
 
@@ -333,7 +333,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
 		render_data.render_settings.restir_pt_settings.common_spatial_pass.reuse_radius =
 			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) *
-			ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+			ReSTIRPTRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
 
 	return render_data_invalidated;
 }
@@ -343,7 +343,8 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& 
 	int mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 
 	bool render_data_invalidated = false;
-	if (mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || mis_weight_type == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	if (mis_weight_type == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		mis_weight_type == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
 		if (m_spmis_data.maximum_size() == 0)
 		{
@@ -384,10 +385,10 @@ void ReSTIRPTRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 
 		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull =
 			m_directional_spatial_reuse_data.m_spatial_reuse_data
-				.get_buffer_data_ptr<ReSTIRDirectionalSpatialReuseDataHostBuffers::RESTIR_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
+				.get_buffer_data_ptr<ReSTIRPTDirectionalSpatialReuseDataHostBuffers::RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
 		unsigned char* per_pixel_spatial_reuse_radius =
 			m_directional_spatial_reuse_data.m_spatial_reuse_data
-				.get_buffer_data_ptr<ReSTIRDirectionalSpatialReuseDataHostBuffers::RESTIR_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
+				.get_buffer_data_ptr<ReSTIRPTDirectionalSpatialReuseDataHostBuffers::RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
 		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, render_data);
 		void* launch_args[] = { &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
@@ -415,8 +416,8 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 															  GPUKernelCompilerOptions& compiler_options,
 															  ReSTIRPTReservoir* input_reservoirs)
 {
-	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) != RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS &&
-		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) != RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) != RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS &&
+		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) != RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 
 		return;
 
@@ -428,14 +429,16 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
 																								   reset_counters_launch_args, m_renderer->get_main_stream());
 
-	unsigned short int* cell_counters = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_COUNTERS>().get_device_pointer();
+	unsigned short int* cell_counters =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_COUNTERS>().get_device_pointer();
 	unsigned short int* cell_non_zero_reservoir_counters =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().get_device_pointer();
 	unsigned int* cell_confidence_sums =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CONFIDENCE_SUMS>().get_device_pointer();
-	unsigned int* all_pixels_hashes = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_HASHES>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CONFIDENCE_SUMS>().get_device_pointer();
+	unsigned int* all_pixels_hashes =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES>().get_device_pointer();
 	unsigned int* all_pixels_index_in_cell =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().get_device_pointer();
 	bool count_important			= true; // We want to count the important pixels first so that they are sorted at the beginning of their cell
 	void* count_cells_launch_args[] = { &all_pixels_hashes,	   &all_pixels_index_in_cell, &cell_counters, &cell_non_zero_reservoir_counters,
 										&cell_confidence_sums, &input_reservoirs,		  &num_cells,	  &count_important };
@@ -448,30 +451,31 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 																							  m_renderer->get_main_stream());
 
 	unsigned int* cell_global_offset_counter =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().get_device_pointer();
-	unsigned int* cell_offsets			= m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_OFFSETS>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().get_device_pointer();
+	unsigned int* cell_offsets = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_OFFSETS>().get_device_pointer();
 	void* compute_offsets_launch_args[] = { &cell_counters, &cell_global_offset_counter, &cell_offsets, &num_cells };
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1,
 																								  compute_offsets_launch_args, m_renderer->get_main_stream());
 
 	unsigned int* pixel_indices_sorted =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_PIXEL_INDICES_SORTED>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_PIXEL_INDICES_SORTED>().get_device_pointer();
 	void* sort_launch_args[] = { &all_pixels_hashes, &all_pixels_index_in_cell, &cell_offsets, &pixel_indices_sorted, &num_cells };
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, 1, num_cells, 1, sort_launch_args,
 																					   m_renderer->get_main_stream());
 
-	float* cell_cdfs				 = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDFS>().get_device_pointer();
-	unsigned int* cell_alive_list	 = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
-	unsigned int cell_size			 = spmis_settings.tile_size;
+	float* cell_cdfs			  = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDFS>().get_device_pointer();
+	unsigned int* cell_alive_list = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
+	unsigned int cell_size		  = spmis_settings.tile_size;
 	unsigned int dispatch_block_size = cell_size * cell_size;
 	unsigned int cell_alive_count =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
 
 	resize_cdf_luts_buffer(render_data, cell_alive_count);
 
-	unsigned short int* cell_cdf_luts = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+	unsigned short int* cell_cdf_luts =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
 	unsigned int* cell_cdf_lut_offsets =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
 	void* build_cdfs_launch_args[] = { &cell_non_zero_reservoir_counters,
 									   &cell_offsets,
 									   &cell_alive_list,
@@ -492,7 +496,7 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 		// subsequent frames reuse the cached cell index and never read cell_variance.
 		if (render_data.render_settings.sample_number == 0)
 		{
-			float* cell_variance = m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_VARIANCE>().get_device_pointer();
+			float* cell_variance = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_VARIANCE>().get_device_pointer();
 			void* compute_noise_launch_args[] = { &cell_counters,	 &cell_offsets,	 &cell_alive_list, &pixel_indices_sorted,
 												  &input_reservoirs, &cell_variance, &num_cells };
 
@@ -505,17 +509,18 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 void ReSTIRPTRenderPass::resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count)
 {
-	if (m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().size() < cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
+	if (m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().size() <
+		cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize)
 	{
 		// Resizing the buffer to get enough space for the CDF LUTs of all cells
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().resize(cell_alive_count * ReSTIR_PT_SPMISCDFLUTSize *
-																											  1.05f);
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().resize(cell_alive_count *
+																												   ReSTIR_PT_SPMISCDFLUTSize * 1.05f);
 
 		// Settings the pointer in both the render data and the renderer render data to the new buffer pointer
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
-			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
 		m_renderer->get_render_data().render_settings.restir_pt_settings.spmis_settings.cell_cdf_luts =
-			m_spmis_data.m_spmis_data.get_buffer<ReSTIRSPMISDataHostBuffers::RESTIR_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
 	}
 }
 
@@ -531,7 +536,7 @@ void ReSTIRPTRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_d
 		temporal_input_reservoirs = render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer;
 	else
 		// Not the first frame, the input to the temporal pass is the output of the last frame ReSTIR
-		temporal_input_reservoirs = m_last_restir_output_reservoirs;
+		temporal_input_reservoirs = m_last_restir_pt_output_reservoirs;
 
 	// For the output, using whatever buffer isn't the one we're reading from (the input buffer)
 	if (temporal_input_reservoirs == m_spatial_buffer.get_device_pointer())
@@ -602,8 +607,9 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 	{
 		configure_spatial_reuse_pass(render_data, pass_index);
 
-		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+			compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
+				RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 		{
 			launch_spmis_create_reuse_cells_pass(render_data, compiler_options, render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
 			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, render_data);
@@ -625,15 +631,16 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 void ReSTIRPTRenderPass::configure_shading_pass(HIPRTRenderData& render_data)
 {
 	if (render_data.render_settings.restir_pt_settings.common_spatial_pass.do_spatial_reuse_pass)
-		render_data.render_settings.restir_pt_settings.restir_output_reservoirs = render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
+		render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
+			render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs;
 	else if (render_data.render_settings.restir_pt_settings.common_temporal_pass.do_temporal_reuse_pass)
-		render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+		render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs;
 	else
-		render_data.render_settings.restir_pt_settings.restir_output_reservoirs =
+		render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs =
 			render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer;
 
-	m_last_restir_output_reservoirs = render_data.render_settings.restir_pt_settings.restir_output_reservoirs;
+	m_last_restir_pt_output_reservoirs = render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs;
 }
 
 void ReSTIRPTRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
@@ -681,8 +688,8 @@ void ReSTIRPTRenderPass::post_sample_update_async(HIPRTRenderData& render_data, 
 
 	MegaKernelRenderPass::post_sample_update_async(render_data, compiler_options);
 
-	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
-		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
+	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
+		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
 		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, render_data);
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->launch_asynchronous(
@@ -697,10 +704,10 @@ void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 	*host_pinned_render_data				 = render_data;
 
 	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID
-											  ? "RESTIR_DIRECTIONAL_REUSE_RENDER_DATA"
+											  ? "RESTIR_PT_DIRECTIONAL_REUSE_RENDER_DATA"
 										  : kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID ||
 												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID
-											  ? "RESTIR_SPMIS_RENDER_DATA"
+											  ? "RESTIR_PT_SPMIS_RENDER_DATA"
 											  : "RESTIR_PT_RENDER_DATA";
 	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData),
 												  m_renderer->get_main_stream());
@@ -717,7 +724,7 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers(render_data, m_directional_spatial_reuse_data);
+		ReSTIRPTRenderPassCommon::update_render_data_common_buffers(render_data, m_directional_spatial_reuse_data);
 		m_spmis_data.to_device(render_data);
 	}
 	else
@@ -737,7 +744,7 @@ void ReSTIRPTRenderPass::update_render_data()
 
 void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 {
-	ReSTIRRenderPassCommon::reset_common_buffers(m_directional_spatial_reuse_data);
+	ReSTIRPTRenderPassCommon::reset_common_buffers(m_directional_spatial_reuse_data);
 	m_spmis_data.reset();
 
 	MegaKernelRenderPass::reset(reset_by_camera_movement);

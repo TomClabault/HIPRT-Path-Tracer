@@ -3,36 +3,36 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HOST_DEVICE_COMMON_RESTI_SETTINGS_HELPER_H
-#define HOST_DEVICE_COMMON_RESTI_SETTINGS_HELPER_H
+#ifndef HOST_DEVICE_COMMON_RESTIR_PT_SETTINGS_HELPER_H
+#define HOST_DEVICE_COMMON_RESTIR_PT_SETTINGS_HELPER_H
 
 #include "Device/includes/ReSTIR/Surface.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
-struct ReSTIRSettingsHelper
+struct ReSTIRPTSettingsHelper
 {
 	HIPRT_HOST_DEVICE static ReSTIRPTSettings get_restir_pt_settings(const HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings;
 	}
 
-	HIPRT_HOST_DEVICE static const ReSTIRCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static const ReSTIRPTCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(const HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings.common_spatial_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTCommonSpatialPassSettings& get_restir_pt_spatial_pass_settings(HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings.common_spatial_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRCommonTemporalPassSettings get_restir_pt_temporal_pass_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTCommonTemporalPassSettings get_restir_pt_temporal_pass_settings(const HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings.common_temporal_pass;
 	}
 
-	HIPRT_HOST_DEVICE static ReSTIRCommonNeighborSimiliaritySettings get_restir_pt_neighbor_similarity_settings(const HIPRTRenderData& render_data)
+	HIPRT_HOST_DEVICE static ReSTIRPTCommonNeighborSimiliaritySettings get_restir_pt_neighbor_similarity_settings(const HIPRTRenderData& render_data)
 	{
 		return render_data.render_settings.restir_pt_settings.neighbor_similarity_settings;
 	}
@@ -55,7 +55,7 @@ struct ReSTIRSettingsHelper
 	/**
 	 * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
 	 */
-	HIPRT_HOST_DEVICE static float3_t get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
+	HIPRT_HOST_DEVICE static float3_t get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRPTSurface& surface)
 	{
 		if (render_data.render_settings.restir_pt_settings.neighbor_similarity_settings.reject_using_geometric_normals)
 			return surface.geometric_normal;
@@ -64,4 +64,4 @@ struct ReSTIRSettingsHelper
 	}
 };
 
-#endif // #ifndef HOST_DEVICE_COMMON_RESTI_SETTINGS_HELPER_H
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PT_SETTINGS_HELPER_H

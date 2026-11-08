@@ -3,17 +3,17 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
-#define HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
+#ifndef HOST_DEVICE_COMMON_RESTIR_PT_COMMON_SETTINGS_H
+#define HOST_DEVICE_COMMON_RESTIR_PT_COMMON_SETTINGS_H
 
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSPMISSettings.h"
 
 /**
  * Note that no default values are set here because they are all set in
- * the ReSTIR_XXX_DefaultSettings structure/header files
+ * the ReSTIRPTDefaultSettings structure/header files
  */
 
-struct ReSTIRCommonTemporalPassSettings
+struct ReSTIRPTCommonTemporalPassSettings
 {
 	bool do_temporal_reuse_pass;
 
@@ -29,7 +29,7 @@ struct ReSTIRCommonTemporalPassSettings
 	bool temporal_buffer_clear_requested;
 };
 
-struct ReSTIRCommonSpatialPassSettings
+struct ReSTIRPTCommonSpatialPassSettings
 {
 	bool do_spatial_reuse_pass;
 
@@ -96,7 +96,7 @@ struct ReSTIRCommonSpatialPassSettings
 	unsigned long long int current_pixel_directions_reuse_mask = 0;
 };
 
-struct ReSTIRCommonNeighborSimiliaritySettings
+struct ReSTIRPTCommonNeighborSimiliaritySettings
 {
 	bool use_normal_similarity_heuristic;
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
@@ -124,14 +124,14 @@ struct ReSTIRCommonNeighborSimiliaritySettings
 	float roughness_similarity_threshold;
 };
 
-struct ReSTIRCommonSettings
+struct ReSTIRPTCommonSettings
 {
 	// Settings for the initial candidates generation pass
-	ReSTIRCommonTemporalPassSettings common_temporal_pass;
+	ReSTIRPTCommonTemporalPassSettings common_temporal_pass;
 	// Settings for the spatial reuse pass
-	ReSTIRCommonSpatialPassSettings common_spatial_pass;
+	ReSTIRPTCommonSpatialPassSettings common_spatial_pass;
 
-	ReSTIRCommonNeighborSimiliaritySettings neighbor_similarity_settings;
+	ReSTIRPTCommonNeighborSimiliaritySettings neighbor_similarity_settings;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.
@@ -152,4 +152,4 @@ struct ReSTIRCommonSettings
 	float symmetric_ratio_mis_weights_beta_exponent = 2.0f;
 };
 
-#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
+#endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PT_COMMON_SETTINGS_H

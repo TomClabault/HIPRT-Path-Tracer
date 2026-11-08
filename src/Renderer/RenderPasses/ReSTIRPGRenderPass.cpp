@@ -261,11 +261,11 @@ void ReSTIRPGRenderPass::update_render_data()
 
 bool ReSTIRPGRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	bool restir_path_sampling_used = compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
-	bool using_restir_pg		   = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
-	bool bounces				   = m_renderer->get_render_data().render_settings.nb_bounces > 0;
+	bool restir_pt_path_sampling_used = compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+	bool using_restir_pg			  = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE) == KERNEL_OPTION_TRUE;
+	bool bounces					  = m_renderer->get_render_data().render_settings.nb_bounces > 0;
 
-	return restir_path_sampling_used && using_restir_pg && bounces;
+	return restir_pt_path_sampling_used && using_restir_pg && bounces;
 }
 
 float ReSTIRPGRenderPass::get_VRAM_usage() const
