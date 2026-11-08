@@ -136,9 +136,9 @@ HIPRT_DEVICE bool wavefront_shade_hit_with_material(HIPRTRenderData& render_data
 	if (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting)
 	{
 #if WavefrontDeferNEEShadowTraversal == KERNEL_OPTION_TRUE
-		ray_payload.ray_color += estimate_direct_lighting<true, NEE_SHADOW_WAVEFRONT>(render_data, ray_payload, bsdf_material, ray_payload.throughput,
-																					  closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context,
-																					  proposal_state, random_number_generator, &shadow_sink);
+		ray_payload.ray_color +=
+			estimate_direct_lighting<NEE_SHADOW_WAVEFRONT>(render_data, ray_payload, bsdf_material, ray_payload.throughput, closest_hit_info, -ray.direction, x,
+														   y, nee_deferred_MIS_context, proposal_state, random_number_generator, &shadow_sink);
 #else
 		ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, bsdf_material, ray_payload.throughput, closest_hit_info, -ray.direction, x,
 														  y, nee_deferred_MIS_context, proposal_state, random_number_generator);

@@ -15,7 +15,7 @@ extern "C"
 	HIPRT_DEVICE __constant__ unsigned char NISML_MEGAKERNEL_RESUME_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) NISMLMegaKernelResume(unsigned int stage_index)
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData render_data, unsigned int stage_index, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
@@ -61,7 +61,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 
 		if (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting)
 		{
-			ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting_from_emissive_contribution<true>(
+			ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting_from_emissive_contribution(
 				render_data, ray_payload, emissive_geometry_direct_contribution, closest_hit_info, -ray.direction, random_number_generator);
 
 			ray_payload.ray_color +=
