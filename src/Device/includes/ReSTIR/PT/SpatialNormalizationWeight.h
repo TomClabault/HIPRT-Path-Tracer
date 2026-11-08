@@ -9,7 +9,7 @@
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
 
 template <int BiasCorrectionMode>

@@ -11,7 +11,7 @@
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #define NB_RADIUS			  32

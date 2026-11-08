@@ -10,7 +10,7 @@
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRPTCommonOptions.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettingsHelper.h"
