@@ -40,18 +40,26 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 
 /**
  * Sum of p_j(y) over 'draw_count' pixels j drawn uniformly (with replacement) in the reuse domain
+ *
+ * 'first_draw_uniform' >= 0 gives the position of the first pixel in the pixel list of the domain (spmis_union_domain_pixel_at_uniform()) instead of
+ * drawing it: the caller stratifies that position over several calls. Negative: every pixel is drawn independently
  */
 HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRenderData& render_data,
 																const ReSTIRPTReservoirSample& sample,
 																const ReSTIRPTSurface& center_pixel_surface,
 																const ReSTIRPTSPMISUnionDomain& domain,
 																int draw_count,
+																float first_draw_uniform,
 																Xorshift32Generator& random_number_generator)
 {
 	float target_function_sum = 0.0f;
 	for (int draw = 0; draw < draw_count; draw++)
 	{
-		unsigned int pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
+		unsigned int pixel_index;
+		if (draw == 0 && first_draw_uniform >= 0.0f)
+			pixel_index = spmis_union_domain_pixel_at_uniform(render_data, domain, first_draw_uniform);
+		else
+			pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
 		target_function_sum += spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface, pixel_index, random_number_generator);
 	}
@@ -165,7 +173,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 			float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
 			for (int probe = 0; probe < probe_count; probe++)
 				probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																							 domain, 1, random_number_generator);
+																							 domain, 1, -1.0f, random_number_generator);
 
 			float bracket_sum		  = 0.0f;
 			unsigned int subset_count = 0;
@@ -205,7 +213,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 		for (int group = 0; group < canonical_group_count; group++)
 		{
 			float group_target_function_sum = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																						   domain, group_size, random_number_generator);
+																						   domain, group_size, -1.0f, random_number_generator);
 
 			mis_weight += canonical_bracket(canonical_numerator, group_scale, group_target_function_sum) / canonical_group_count;
 		}
@@ -225,6 +233,10 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 *
 	 * 'target_function_at_neighbor' is p_i(y_i) in the measure of the center pixel (target function of the sample at its pixel / Jacobian of the shift)
 	 * and 'target_function_at_center' is p_c(y_i). Both must be > 0 (the caller skips the neighbor otherwise, its contribution is zero)
+	 *
+	 * 'first_group_pixel_uniform' >= 0 is the position in the pixel list of the domain of the first of the g - 1 uniformly drawn pixels (see
+	 * spmis_union_domain_group_target_function_sum()). It must be uniform in [0, 1) and independent of the selection of the neighbors, the caller
+	 * stratifies it over the neighbor slots (ReSTIRPTSPMISUnionDomainSettings::stratified_reverse_probes). Negative: independent draw
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_non_canonical(const HIPRTRenderData& render_data,
 															   const ReSTIRPTReservoirSample& neighbor_reservoir_sample,
@@ -237,11 +249,12 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 															   int group_size,
 															   int reused_neighbors_count,
 															   float neighbor_selection_probability,
+															   float first_group_pixel_uniform,
 															   Xorshift32Generator& random_number_generator)
 	{
 		float group_target_function_sum =
 			target_function_at_neighbor + spmis_union_domain_group_target_function_sum(render_data, neighbor_reservoir_sample, center_pixel_surface, domain,
-																					   group_size - 1, random_number_generator);
+																					   group_size - 1, first_group_pixel_uniform, random_number_generator);
 
 		float denominator = target_function_at_center * center_pixel_reservoir_confidence;
 		denominator += static_cast<float>(domain.confidence_sum) / group_size * group_target_function_sum;

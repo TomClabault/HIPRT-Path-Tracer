@@ -4018,6 +4018,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 										"stratum) instead of drawing them independently. Unbiased, lower variance for the same rays. Only with a MIS group "
 										"size of 2 and 2 to 4 canonical groups.");
 
+		if (ImGui::Checkbox("Stratified neighbor groups", &union_domain_settings.stratified_reverse_probes))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Stratifies over the reuse domain, across the neighbors, the pixels that stand for the domain in the MIS weights of "
+										"the neighbors instead of drawing them independently. Unbiased, same cost, slightly lower variance.");
+
 		if (ImGui::SliderInt("Selection candidates", &union_domain_settings.selection_candidate_count, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "

@@ -68,6 +68,10 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// instead of drawn independently, see ReSTIRPTSpatialGroupwiseMISWeight::get_resampling_MIS_weight_canonical(). Same expectation, lower variance:
 	// 3 stratified groups measured as good as 4 independent groups. Only with mis_group_size = 2 and 2 to 4 groups, independent draws otherwise
 	bool stratified_canonical_probes = true;
+	// If true, the pixels that stand for the domain in the MIS weights of the neighbors (one per neighbor with mis_group_size = 2, one shadow ray each)
+	// are stratified over the pixel list of the domain across the neighbor slots instead of drawn independently. Same expectation, same ray count,
+	// slightly lower variance
+	bool stratified_reverse_probes = true;
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells
 	int selection_candidate_count = 16;

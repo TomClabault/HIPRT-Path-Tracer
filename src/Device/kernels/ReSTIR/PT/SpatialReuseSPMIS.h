@@ -75,6 +75,10 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 			spmis_union_domain_select_neighbors(render_data, center_pixel_surface, domain, center_pixel_reservoir_confidence, reused_neighbors_count,
 												visibility_candidate_count, selected_pixel_indices, selection_probabilities, random_number_generator);
 
+	// Stratified reverse probes: the pixel that stands for the domain in the MIS weight of a neighbor is taken at one uniform position of the pixel list
+	// of the domain, rotated by slot / slot count. Every position is still uniform in [0, 1) and independent of the selection of the neighbors
+	float reverse_probe_base_uniform = union_domain_settings.stratified_reverse_probes ? random_number_generator() : -1.0f;
+
 	// Resampling only the neighbors, canonical resampling is further below
 	for (int neighbor_index = 0; neighbor_index < selected_slot_count; neighbor_index++)
 	{
@@ -106,10 +110,18 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 			// Target function of the neighbor's sample at the neighbor in the measure of the center pixel
 			float target_function_at_neighbor = neighbor_reservoir.sample.target_function / shift_mapping_jacobian;
 
+			float reverse_probe_uniform = -1.0f;
+			if (reverse_probe_base_uniform >= 0.0f)
+			{
+				reverse_probe_uniform = reverse_probe_base_uniform + neighbor_index / static_cast<float>(selected_slot_count);
+				reverse_probe_uniform = reverse_probe_uniform >= 1.0f ? reverse_probe_uniform - 1.0f : reverse_probe_uniform;
+				reverse_probe_uniform = hippt::min(reverse_probe_uniform, 0.99999994f);
+			}
+
 			mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
 				render_data, neighbor_reservoir.sample, static_cast<float>(neighbor_reservoir.confidence), target_function_at_neighbor,
 				center_pixel_reservoir_confidence, target_function_at_center, center_pixel_surface, domain, mis_group_size, reused_neighbors_count,
-				neighbor_selection_probability, random_number_generator);
+				neighbor_selection_probability, reverse_probe_uniform, random_number_generator);
 		}
 
 		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
