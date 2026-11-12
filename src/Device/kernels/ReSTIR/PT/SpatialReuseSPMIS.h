@@ -122,7 +122,7 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	{
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
 			render_data, center_pixel_reservoir.sample, center_pixel_reservoir.confidence, center_pixel_reservoir.sample.target_function, center_pixel_surface,
-			domain, mis_group_size, canonical_group_count, random_number_generator);
+			domain, mis_group_size, canonical_group_count, union_domain_settings.stratified_canonical_probes, random_number_generator);
 
 		constexpr float shift_mapping_jacobian = 1.0f;
 		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;

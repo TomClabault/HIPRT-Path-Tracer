@@ -4012,6 +4012,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. Up to 8 pixels in "
 										"total, the weight is averaged over all the groups that can be formed with these pixels, for the same cost.");
 
+		if (ImGui::Checkbox("Stratified canonical groups", &union_domain_settings.stratified_canonical_probes))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Stratifies the pixels that estimate the MIS weight of the canonical sample over the reuse domain (two pixels per "
+										"stratum) instead of drawing them independently. Unbiased, lower variance for the same rays. Only with a MIS group "
+										"size of 2 and 2 to 4 canonical groups.");
+
 		if (ImGui::SliderInt("Selection candidates", &union_domain_settings.selection_candidate_count, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "

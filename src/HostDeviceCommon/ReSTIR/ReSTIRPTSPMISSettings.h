@@ -63,7 +63,11 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// Number of pixels per group of the stochastic group-wise MIS weights. 1 is pairwise MIS. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE]
 	int mis_group_size = 2;
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
-	int canonical_group_count = 4;
+	int canonical_group_count = 3;
+	// If true, the pixels that estimate the MIS weight of the canonical sample are stratified over the pixel list of the domain (two pixels per stratum)
+	// instead of drawn independently, see ReSTIRPTSpatialGroupwiseMISWeight::get_resampling_MIS_weight_canonical(). Same expectation, lower variance:
+	// 3 stratified groups measured as good as 4 independent groups. Only with mis_group_size = 2 and 2 to 4 groups, independent draws otherwise
+	bool stratified_canonical_probes = true;
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells
 	int selection_candidate_count = 16;

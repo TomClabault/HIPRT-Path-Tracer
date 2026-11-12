@@ -198,27 +198,48 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderDa
 }
 
 /**
- * One pixel drawn uniformly over all the pixels of the domain's cells, zero reservoirs included (as the canonical MIS weight estimator of the legacy SPMIS
- * path does over one cell). The probability is 1 / domain.pixel_count
+ * The pixel at 'pixel_list_index' (in [0, domain.pixel_count - 1]) in the pixel list of the domain: all the pixels of the cells of the domain, zero
+ * reservoirs included, cell after cell in the order of pixel_indices_sorted
  */
-HIPRT_DEVICE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData& render_data, const ReSTIRPTSPMISUnionDomain& domain, Xorshift32Generator& rng)
+HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_index(const HIPRTRenderData& render_data,
+															const ReSTIRPTSPMISUnionDomain& domain,
+															unsigned int pixel_list_index)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
-	unsigned int random_index = rng.random_index(domain.pixel_count);
 	for (int cell = 0; cell < domain.cell_count; cell++)
 	{
 		unsigned int cell_index		  = domain.get_cell(cell);
 		unsigned int cell_pixel_count = spmis_settings.cell_pixels_counters[cell_index];
-		if (random_index < cell_pixel_count)
-			return spmis_settings.pixel_indices_sorted[spmis_settings.cell_offsets[cell_index] + random_index];
+		if (pixel_list_index < cell_pixel_count)
+			return spmis_settings.pixel_indices_sorted[spmis_settings.cell_offsets[cell_index] + pixel_list_index];
 
-		random_index -= cell_pixel_count;
+		pixel_list_index -= cell_pixel_count;
 	}
 
 	// Floating point / count safety: last pixel of the last cell
 	unsigned int last_cell = domain.get_cell(domain.cell_count - 1);
 	return spmis_settings.pixel_indices_sorted[spmis_settings.cell_offsets[last_cell] + spmis_settings.cell_pixels_counters[last_cell] - 1];
+}
+
+/**
+ * One pixel drawn uniformly over all the pixels of the domain's cells, zero reservoirs included (as the canonical MIS weight estimator of the legacy SPMIS
+ * path does over one cell). The probability is 1 / domain.pixel_count
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData& render_data, const ReSTIRPTSPMISUnionDomain& domain, Xorshift32Generator& rng)
+{
+	return spmis_union_domain_pixel_at_index(render_data, domain, rng.random_index(domain.pixel_count));
+}
+
+/**
+ * The pixel at the position 'uniform' (in [0, 1)) of the pixel list of the domain (see spmis_union_domain_pixel_at_index()). A uniform drawn uniformly in
+ * [0, 1) gives a pixel drawn uniformly in the domain, a uniform drawn in a sub-interval gives a pixel of that stratum of the list (stratified draws)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_uniform(const HIPRTRenderData& render_data, const ReSTIRPTSPMISUnionDomain& domain, float uniform)
+{
+	unsigned int pixel_list_index = hippt::min(domain.pixel_count - 1u, static_cast<unsigned int>(uniform * domain.pixel_count));
+
+	return spmis_union_domain_pixel_at_index(render_data, domain, pixel_list_index);
 }
 
 /**

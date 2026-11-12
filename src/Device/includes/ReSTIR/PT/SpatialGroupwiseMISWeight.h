@@ -90,6 +90,16 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 * RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES probes (and g <= 3), the bracket is averaged over ALL the subsets of size g of the probes (U-statistic):
 	 * every subset is a group of g i.i.d. uniform pixels so every bracket is an unbiased estimate of E[m_c], with the same rays as canonical_group_count
 	 * disjoint groups. Above that, the bracket is averaged over canonical_group_count disjoint groups
+	 *
+	 * 'stratified_probes' (ReSTIRPTSPMISUnionDomainSettings::stratified_canonical_probes, g = 2 and 4 to RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES
+	 * probes only): the pixel list of the domain is cut in S = probes / 2 strata of equal probability, with two independent probes per stratum. For two
+	 * independent uniform pixels a and b of the domain:
+	 *
+	 *		E[bracket(p_a + p_b)] = (1 / S^2) x sum over the ordered pairs of strata (k, k') of E[bracket(p_a + p_b) | a in k, b in k']
+	 *
+	 * The term k = k' is estimated by the two probes of the stratum and a term k != k' by the mean over the 4 pairs (one probe of k, one probe of k').
+	 * Every term is unbiased so the estimate has the same expectation as the U-statistic, with a lower variance when the visibility of the canonical
+	 * sample is coherent over the domain (the list is ordered cell after cell)
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
@@ -99,6 +109,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 														   const ReSTIRPTSPMISUnionDomain& domain,
 														   int group_size,
 														   int canonical_group_count,
+														   bool stratified_probes,
 														   Xorshift32Generator& random_number_generator)
 	{
 		float canonical_numerator = center_pixel_reservoir_target_function * center_pixel_reservoir_confidence;
@@ -106,6 +117,48 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 		float group_scale = static_cast<float>(domain.confidence_sum) / group_size;
 
 		int probe_count = canonical_group_count * group_size;
+
+		if (stratified_probes && group_size == 2 && probe_count >= 4 && probe_count <= RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES)
+		{
+			int strata_count	 = probe_count / 2;
+			float strata_inverse = 1.0f / strata_count;
+
+			float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
+			for (int probe = 0; probe < probe_count; probe++)
+			{
+				// Probes 2k and 2k + 1 are drawn independently in the stratum k
+				float probe_uniform		 = hippt::min(((probe / 2) + random_number_generator()) * strata_inverse, 0.99999994f);
+				unsigned int pixel_index = spmis_union_domain_pixel_at_uniform(render_data, domain, probe_uniform);
+
+				probe_target_functions[probe] = spmis_target_function_at_domain_pixel(render_data, center_pixel_reservoir_sample, center_pixel_surface,
+																					  pixel_index, random_number_generator);
+			}
+
+			float same_stratum_bracket_sum = 0.0f;
+			float cross_strata_bracket_sum = 0.0f;
+			for (int first_stratum = 0; first_stratum < strata_count; first_stratum++)
+			{
+				float first_probe_0 = probe_target_functions[first_stratum * 2 + 0];
+				float first_probe_1 = probe_target_functions[first_stratum * 2 + 1];
+
+				same_stratum_bracket_sum += canonical_bracket(canonical_numerator, group_scale, first_probe_0 + first_probe_1);
+
+				for (int second_stratum = first_stratum + 1; second_stratum < strata_count; second_stratum++)
+				{
+					float second_probe_0 = probe_target_functions[second_stratum * 2 + 0];
+					float second_probe_1 = probe_target_functions[second_stratum * 2 + 1];
+
+					cross_strata_bracket_sum += canonical_bracket(canonical_numerator, group_scale, first_probe_0 + second_probe_0);
+					cross_strata_bracket_sum += canonical_bracket(canonical_numerator, group_scale, first_probe_0 + second_probe_1);
+					cross_strata_bracket_sum += canonical_bracket(canonical_numerator, group_scale, first_probe_1 + second_probe_0);
+					cross_strata_bracket_sum += canonical_bracket(canonical_numerator, group_scale, first_probe_1 + second_probe_1);
+				}
+			}
+
+			// An unordered pair of distinct strata stands for 2 ordered pairs, each one the mean of its 4 brackets
+			return (same_stratum_bracket_sum + 0.5f * cross_strata_bracket_sum) * strata_inverse * strata_inverse;
+		}
+
 		// The subsets of the U-statistic are enumerated by up to 3 nested loops below
 		if (group_size <= 3 && probe_count <= RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES && probe_count >= group_size)
 		{
