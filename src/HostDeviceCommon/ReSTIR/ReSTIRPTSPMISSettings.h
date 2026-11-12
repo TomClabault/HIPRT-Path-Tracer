@@ -66,11 +66,11 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	int canonical_group_count = 4;
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells
-	int selection_candidate_count = 64;
+	int selection_candidate_count = 16;
 	// If > 0, the neighbors are taken among the visible candidates of ONE pool of visibility_pool_size candidates for the pixel (one shadow ray each,
 	// whatever neighbor_count) instead of visibility_candidate_count candidates per neighbor, see spmis_union_domain_select_neighbors_from_pool().
 	// Clamped to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE
-	int visibility_pool_size = 0;
+	int visibility_pool_size = 6;
 
 	// For every pixel with a non-zero spatial reuse input reservoir, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats at the slot of the
 	// pixel in its cell (same indexing as pixel_indices_sorted), built every frame by ReSTIR_PT_SPMIS_BuildNeighborRecords

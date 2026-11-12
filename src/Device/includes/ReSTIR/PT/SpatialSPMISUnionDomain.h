@@ -129,7 +129,8 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_search_union_domain(const HIPRTRende
 			continue;
 
 		out_representative_pixels[domain.cell_count] = selected_pixel_index;
-		domain_cells[domain.cell_count]				 = cell_index;
+
+		domain_cells[domain.cell_count] = cell_index;
 		domain.add_cell(spmis_settings, cell_index);
 	}
 
@@ -479,13 +480,16 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 	float cell_importance_3 = spmis_union_domain_cell_importance(spmis_settings, domain, 3);
 
 	int written_slot_count = 0;
+
 	for (int slot = 0; slot < neighbor_count; slot++)
 	{
 		float slot_weight_sum = 0.0f;
+
 		// Slot of the selected record in pixel_indices_sorted (cell_offsets[cell] + index in the cell): the pixel index is only loaded for the selected
 		// candidates, after the resampling. The initial value is never output: the first candidate with a non-zero weight is accepted by every reservoir
 		unsigned int slot_selected_record_slots[MaxCandidatesPerNeighbor];
 		float slot_selected_targets[MaxCandidatesPerNeighbor];
+
 		UNROLL_LOOP
 		for (int candidate = 0; candidate < MaxCandidatesPerNeighbor; candidate++)
 		{
@@ -503,12 +507,14 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 			float cumulative_before		= 0.0f;
 			float cumulative_importance = 0.0f;
 			bool cell_found				= false;
+
 			for (int cell = 0; cell < domain.cell_count; cell++)
 			{
 				unsigned int candidate_cell_index = domain.get_cell(cell);
 				float importance = cell == 0 ? cell_importance_0 : (cell == 1 ? cell_importance_1 : (cell == 2 ? cell_importance_2 : cell_importance_3));
 
 				float next_cumulative_importance = cumulative_importance + importance * inverse_importance_sum;
+
 				bool take_cell = !cell_found && importance > 0.0f && (stratified_uniform < next_cumulative_importance || cell == domain.cell_count - 1);
 				if (take_cell)
 				{
@@ -517,8 +523,10 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 					cumulative_before = cumulative_importance;
 					cell_found		  = true;
 				}
+
 				cumulative_importance = next_cumulative_importance;
 			}
+
 			if (!cell_found || cell_importance <= 0.0f)
 				continue;
 
@@ -551,12 +559,14 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 			float acceptance		 = weight / slot_weight_sum;
 			float acceptance_uniform = rng();
 			unsigned int record_slot = cell_start_index + record_index;
+
 			UNROLL_LOOP
 			for (int candidate = 0; candidate < MaxCandidatesPerNeighbor; candidate++)
 			{
 				float rotated_uniform = acceptance_uniform + candidate * inverse_candidates_per_neighbor;
 				rotated_uniform		  = rotated_uniform >= 1.0f ? rotated_uniform - 1.0f : rotated_uniform;
-				bool accept			  = candidate < candidates_per_neighbor && rotated_uniform < acceptance;
+
+				bool accept = candidate < candidates_per_neighbor && rotated_uniform < acceptance;
 
 				slot_selected_record_slots[candidate] = accept ? record_slot : slot_selected_record_slots[candidate];
 				slot_selected_targets[candidate]	  = accept ? target : slot_selected_targets[candidate];
