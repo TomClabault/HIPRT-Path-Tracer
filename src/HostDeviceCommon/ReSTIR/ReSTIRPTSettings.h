@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_RESTIR_PT_SETTINGS_H
 #define HOST_DEVICE_RESTIR_PT_SETTINGS_H
 
+#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSPMISSettings.h"
 
 struct ReSTIRPTReservoir;
@@ -276,6 +277,26 @@ struct ReSTIRPTSettings
 	HIPRT_HOST_DEVICE void set_jacobian_heuristic_threshold(float new_threshold)
 	{
 		jacobian_rejection_threshold = new_threshold;
+	}
+
+	/**
+	 * Whether the SPMIS spatial reuse uses the union domain reuse (ReSTIRPTSPMISUnionDomainSettings) or the legacy single reuse cell path.
+	 *
+	 * 'restir_pt_mis_weights_type' is the value of the ReSTIR_PT_MISWeightsType kernel option: the macro itself on the device, the value of
+	 * GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE on the host.
+	 *
+	 * The union domain reuse needs:
+	 *	- its setting enabled
+	 *	- the non-defensive stochastic pairwise MIS weights type (the group-wise MIS weights replace them, there is no defensive version)
+	 *	- no temporal reuse and a single spatial reuse pass: the group-wise MIS weights are an exact partition of unity only when all the input
+	 *	  reservoirs have the same confidence, which is the case for the initial candidates reservoirs (confidence 1)
+	 *
+	 * Prefer using this function rather than checking 'spmis_settings.union_domain.do_union_domain_reuse' directly
+	 */
+	HIPRT_HOST_DEVICE bool do_spmis_union_domain_reuse(int restir_pt_mis_weights_type) const
+	{
+		return spmis_settings.union_domain.do_union_domain_reuse && restir_pt_mis_weights_type == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS &&
+			   !temporal_pass.do_temporal_reuse_pass && spatial_pass.number_of_passes == 1;
 	}
 
 private:

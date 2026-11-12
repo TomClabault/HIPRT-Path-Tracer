@@ -23,6 +23,7 @@
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
+#include "Device/kernels/ReSTIR/SPMIS/BuildNeighborRecords.h"
 #include "Device/kernels/ReSTIR/SPMIS/ComputeCellsVariance.h"
 #include "Device/kernels/ReSTIR/SPMIS/ComputeOffsets.h"
 #include "Device/kernels/ReSTIR/SPMIS/CountCells.h"
@@ -169,6 +170,8 @@ void CPURenderer::setup_buffers()
 	m_restir_pt_state.spmis_data.resize(width, height);
 	m_restir_pt_state.spmis_data.m_spmis_data.memset_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>(
 		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	// Always allocated on the CPU, the spatial reuse decides every frame whether it uses them (ReSTIRPTSettings::do_spmis_union_domain_reuse())
+	m_restir_pt_state.spmis_data.resize_union_domain_buffers(width, height);
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -1210,6 +1213,15 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 		float* cell_variance = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_VARIANCE>().data();
 		ReSTIR_PT_SPMIS_ComputeCellsVariance(cell_pixels_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
 											 cell_variance);
+	}
+
+	if (m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType))
+	{
+		// Neighbor records of the union domain reuse, for all the pixels (not only the debug pixels): they are the neighbors of the debug pixels
+		// No OpenMP on this loop: MSVC 14.51 crashes (internal compiler error C1001) when compiling it as an 'omp parallel for'
+		unsigned int pixel_count = m_resolution.x * m_resolution.y;
+		for (unsigned int pixel_index = 0; pixel_index < pixel_count; pixel_index++)
+			ReSTIR_PT_SPMIS_BuildNeighborRecords(m_render_data, pixel_index);
 	}
 }
 

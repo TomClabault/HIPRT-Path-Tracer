@@ -3666,8 +3666,14 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+				bool using_spmis_union_domain_reuse = compute_ReSTIR_PT_using_SPMIS_union_domain_boolean();
+				ImGui::BeginDisabled(using_spmis_union_domain_reuse);
 				if (ImGui::SliderInt("Neighbor reuse count", &restir_pt_spatial_pass_settings.reuse_neighbor_count, 1, 16))
 					m_render_window->set_render_dirty(true);
+				if (using_spmis_union_domain_reuse)
+					ImGuiRenderer::add_tooltip("Disabled because using the SPMIS union domain reuse, which has its own neighbor count in \"SPMIS "
+											   "Settings\" > \"Union domain reuse\"");
+				ImGui::EndDisabled();
 
 				bool using_spmis = compute_ReSTIR_PT_using_SPMIS_boolean();
 
@@ -3846,6 +3852,14 @@ bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_boolean()
 	return using_spmis;
 }
 
+bool ImGuiSettingsWindow::compute_ReSTIR_PT_using_SPMIS_union_domain_boolean()
+{
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	return m_renderer->get_render_settings().restir_pt_settings.do_spmis_union_domain_reuse(
+		global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE));
+}
+
 void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
@@ -3942,18 +3956,90 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Union domain reuse");
+		ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = spmis_settings.union_domain;
+		bool using_union_domain_reuse							= compute_ReSTIR_PT_using_SPMIS_union_domain_boolean();
+		if (ImGui::Checkbox("Union domain reuse", &union_domain_settings.do_union_domain_reuse))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker(
+			"Reuses from the union of up to 4 cells found by the neighbor cell search instead of a single cell. The neighbors are drawn approximately "
+			"proportionally to their visibility-free contribution at the center pixel, then one visible neighbor is resampled among a few candidates. The MIS "
+			"weights are stochastic group-wise MIS weights.\n\nOnly used with the non-defensive stochastic pairwise MIS weights, without temporal reuse and "
+			"with a single spatial reuse pass: the settings below are not used otherwise.");
+
+		if (union_domain_settings.do_union_domain_reuse && !using_union_domain_reuse)
+		{
+			std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+			// Telling the user which condition of ReSTIRPTSettings::do_spmis_union_domain_reuse() disables the union domain reuse
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) !=
+				RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS)
+				ImGui::TextWrapped("Inactive: needs the non-defensive stochastic pairwise MIS weights.");
+			else if (render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass)
+				ImGui::TextWrapped("Inactive: needs the temporal reuse pass to be disabled.");
+			else if (render_settings.restir_pt_settings.spatial_pass.number_of_passes != 1)
+				ImGui::TextWrapped("Inactive: needs a single spatial reuse pass.");
+		}
+
+		ImGui::BeginDisabled(!using_union_domain_reuse);
+		if (ImGui::SliderInt("Neighbor count", &union_domain_settings.neighbor_count, 1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, "%d",
+							 ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::add_tooltip("How many neighbors are resampled from the union domain. Replaces the \"Neighbor reuse count\" of the spatial reuse pass.");
+
+		if (ImGui::SliderInt("Visibility candidates", &union_domain_settings.visibility_candidate_count, 1,
+							 RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES, "%d", ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("How many candidates are drawn per neighbor. The visibility of every candidate at the center pixel is traced (one "
+										"shadow ray each) and one visible candidate is resampled. More candidates find a visible neighbor more often "
+										"in occluded regions.");
+
+		if (ImGui::SliderInt("Visibility pool size", &union_domain_settings.visibility_pool_size, 0, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE,
+							 "%d", ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("0: \"Visibility candidates\" per neighbor. Otherwise, the pixel draws one pool of that many candidates "
+										"(one shadow ray each, whatever the neighbor count) and the neighbors are chosen among the visible ones. "
+										"Replaces \"Visibility candidates\".");
+
+		if (ImGui::SliderInt("MIS group size", &union_domain_settings.mis_group_size, 1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE, "%d",
+							 ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("How many pixels of the domain (one shadow ray each) stand for the whole domain in the denominator of the "
+										"group-wise MIS weights. 1 is stochastic pairwise MIS, larger groups get closer to the balance heuristic.");
+
+		if (ImGui::SliderInt("Canonical group count", &union_domain_settings.canonical_group_count, 1, 8, "%d", ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. Up to 8 pixels in "
+										"total, the weight is averaged over all the groups that can be formed with these pixels, for the same cost.");
+
+		if (ImGui::SliderInt("Selection candidates", &union_domain_settings.selection_candidate_count, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "
+										"Larger domains draw that many stratified candidates in total, split over the neighbors.");
+		ImGui::EndDisabled();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Non-canonical sampling");
+		ImGui::BeginDisabled(using_union_domain_reuse);
 		if (ImGui::Checkbox("Non-canonical confidence scaling", &spmis_settings.do_non_canonical_confidence_adjustement))
 			m_render_window->set_render_dirty(true);
+		if (using_union_domain_reuse)
+			ImGuiRenderer::add_tooltip("Not used by the union domain reuse");
 
 		ImGui::BeginDisabled(spmis_settings.ris_neighbor_cdf);
 		if (ImGui::SliderInt("RIS Steps", &spmis_settings.ris_neighbor_count, 1, 64))
 			m_render_window->set_render_dirty(true);
 		ImGui::EndDisabled();
+		if (using_union_domain_reuse)
+			ImGuiRenderer::add_tooltip("Not used by the union domain reuse");
 		if (ImGui::Checkbox("CDF sampling of the cell", &spmis_settings.ris_neighbor_cdf))
 			m_render_window->set_render_dirty(true);
+		if (using_union_domain_reuse)
+			ImGuiRenderer::add_tooltip("Not used by the union domain reuse");
 		if (ImGui::SliderInt("CDF RIS count", &spmis_settings.ris_neighbor_cdf_count, 1, 8))
 			m_render_window->set_render_dirty(true);
+		if (using_union_domain_reuse)
+			ImGuiRenderer::add_tooltip("Not used by the union domain reuse");
 		ImGuiRenderer::show_help_marker(
 			"How many pixels to sample from the reuse cell using the CDF built over the cell. Each of these neighbors is going to be RISed with a target "
 			"function approximately equal to the target function of the center pixel, this improves quality at the cost of some performance.");
@@ -3962,7 +4048,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGui::SeparatorText("Canonical sampling");
 		if (ImGui::SliderInt("Canonical estimation count", &spmis_settings.canonical_weight_estimation_count, 1, 4))
 			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::add_tooltip("How many samples to take to estimate the MIS weight of the canonical sample. Section 4.2 of the paper.");
+		ImGuiRenderer::add_tooltip(using_union_domain_reuse
+									   ? "Not used by the union domain reuse, see \"Canonical group count\""
+									   : "How many samples to take to estimate the MIS weight of the canonical sample. Section 4.2 of the paper.");
+		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Hash grid settings");

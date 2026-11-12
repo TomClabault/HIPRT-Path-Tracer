@@ -34,7 +34,22 @@ HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMI
 }
 
 /**
+ * Whether 'cell_index' is one of the 'cell_count' first entries of 'cells' (false for an empty list)
+ */
+HIPRT_DEVICE bool spmis_cell_in_list(unsigned int cell_index, const unsigned int* cells, int cell_count)
+{
+	for (int i = 0; i < cell_count; i++)
+		if (cells[i] == cell_index)
+			return true;
+
+	return false;
+}
+
+/**
  * Searches for a cell to reuse from around the center pixel, with increasing search radius
+ *
+ * The 'excluded_cell_count' first cells of 'excluded_cells' cannot be selected (the center cell included): used by the union domain reuse to search
+ * cells that are not in its domain yet. If every cell the search finds is excluded, HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX is returned
  */
 HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& render_data,
 														unsigned int center_pixel_index,
@@ -47,7 +62,9 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 														float distance_scaling,
 														unsigned int& out_selected_pixel_index,
 														unsigned int& out_selected_cell_confidence_sum,
-														Xorshift32Generator& rng)
+														Xorshift32Generator& rng,
+														const unsigned int* excluded_cells = nullptr,
+														int excluded_cell_count			   = 0)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
@@ -56,6 +73,14 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 	unsigned int selected_cell_index = center_cell_index;
 	out_selected_pixel_index		 = center_pixel_index;
 	out_selected_cell_confidence_sum = center_cell_weight;
+	if (spmis_cell_in_list(center_cell_index, excluded_cells, excluded_cell_count))
+	{
+		// The center cell is excluded, starting the WRS with nothing selected
+		weight_sum						 = 0.0f;
+		selected_cell_index				 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		out_selected_pixel_index		 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		out_selected_cell_confidence_sum = 0;
+	}
 
 	for (unsigned int search_iteration = 0; search_iteration < max_search_iterations;
 		 search_iteration++, radius *= spmis_settings.neighboring_cell_search_radius_increment)
@@ -88,6 +113,8 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 			continue;
 		else if (neighbor_cell_index == center_cell_index)
 			// Hit a pixel that has the same cell index as the center pixel, skipping because we already accounted for the center cell at the beginning
+			continue;
+		else if (spmis_cell_in_list(neighbor_cell_index, excluded_cells, excluded_cell_count))
 			continue;
 
 		float compatibility_weight = 1.0f;
@@ -124,6 +151,45 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 		return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 	return selected_cell_index;
+}
+
+/**
+ * Radius, number of iterations and distance scaling of the SPMIS cell search (spmis_search_reuse_cell_index()) of a pixel whose cell is
+ * 'center_cell_index': from the variance of the cell if 'variance_aware_reuse_radius' is on, from the SPMIS settings otherwise
+ */
+HIPRT_DEVICE void spmis_get_cell_search_settings(const ReSTIRPTSPMISSettings& spmis_settings,
+												 unsigned int center_cell_index,
+												 float& out_radius,
+												 unsigned int& out_max_search_iterations,
+												 float& out_distance_scaling)
+{
+	constexpr float variance_slider_lower_bound = 0.5f;
+	constexpr float variance_slider_upper_bound = 0.725f;
+	float cell_variance							= spmis_settings.cell_variance[center_cell_index];
+	if (cell_variance == -1.0f || cell_variance == 0.0f)
+		// In case we have no variance information, default to maximum variance.
+		// Same for 0 variance cells: 0 variance is basically impossible so this probably means that the cell is completely empty (no contributing reservoirs)
+		// because the variance is so high (or it's a completely shadowed region)
+		cell_variance = 1.0f;
+	float variance_slider = hippt::clamp(0.0f, 1.0f, (cell_variance - variance_slider_lower_bound) / (1.0f - variance_slider_upper_bound));
+
+	// Determining the search settings
+	if (spmis_settings.variance_aware_reuse_radius)
+	{
+		out_radius				  = hippt::lerp(10.0f, 20.0f, variance_slider);
+		out_max_search_iterations = hippt::lerp(2, 12, variance_slider);
+		if (cell_variance > 0.65f)
+			// Disabled
+			out_distance_scaling = 0.0f;
+		else
+			out_distance_scaling = hippt::lerp(3.0f, 8.0f, 1.0f - variance_slider);
+	}
+	else
+	{
+		out_radius				  = spmis_settings.initial_search_radius;
+		out_max_search_iterations = spmis_settings.neighboring_cell_max_search_iterations;
+		out_distance_scaling	  = spmis_settings.distance_scaling;
+	}
 }
 
 HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& render_data,
@@ -170,36 +236,11 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 
 	unsigned int center_cell_weight = spmis_settings.cell_confidence_sums[center_cell_index];
 
-	constexpr float variance_slider_lower_bound = 0.5f;
-	constexpr float variance_slider_upper_bound = 0.725f;
-	float cell_variance							= spmis_settings.cell_variance[center_cell_index];
-	if (cell_variance == -1.0f || cell_variance == 0.0f)
-		// In case we have no variance information, default to maximum variance.
-		// Same for 0 variance cells: 0 variance is basically impossible so this probably means that the cell is completely empty (no contributing reservoirs)
-		// because the variance is so high (or it's a completely shadowed region)
-		cell_variance = 1.0f;
-	float variance_slider = hippt::clamp(0.0f, 1.0f, (cell_variance - variance_slider_lower_bound) / (1.0f - variance_slider_upper_bound));
-
 	// Determining the search settings
 	float radius;
 	unsigned int max_search_iterations;
 	float distance_scaling;
-	if (spmis_settings.variance_aware_reuse_radius)
-	{
-		radius				  = hippt::lerp(10.0f, 20.0f, variance_slider);
-		max_search_iterations = hippt::lerp(2, 12, variance_slider);
-		if (cell_variance > 0.65f)
-			// Disabled
-			distance_scaling = 0.0f;
-		else
-			distance_scaling = hippt::lerp(3.0f, 8.0f, 1.0f - variance_slider);
-	}
-	else
-	{
-		radius				  = spmis_settings.initial_search_radius;
-		max_search_iterations = spmis_settings.neighboring_cell_max_search_iterations;
-		distance_scaling	  = spmis_settings.distance_scaling;
-	}
+	spmis_get_cell_search_settings(spmis_settings, center_cell_index, radius, max_search_iterations, distance_scaling);
 
 	unsigned int selected_cell_index		  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	unsigned int selected_cell_confidence_sum = 0;

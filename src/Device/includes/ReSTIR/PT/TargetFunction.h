@@ -64,12 +64,18 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRende
 	return (visible_point_throughput * sample_point_throughput * sample.rc_vertex_incident_radiance).luminance();
 }
 
-template <bool withVisiblity>
+/**
+ * 'onlyVisibility' (only with 'withVisiblity'): returns 1.0f if the sample gets past the zero tests and the visibility test below, 0.0f otherwise, without
+ * evaluating the BSDFs. See ReSTIR_PT_sample_visible_at_surface()
+ */
+template <bool withVisiblity, bool onlyVisibility = false>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& sample,
 														   ReSTIRPTSurface& surface,
 														   Xorshift32Generator& random_number_generator)
 {
+	static_assert(withVisiblity || !onlyVisibility, "The visibility-only evaluation of the target function needs the visibility test");
+
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
 	if (sample.is_envmap_path())
@@ -113,9 +119,25 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 			return 0.0f;
 	}
 
+	if constexpr (onlyVisibility)
+		return 1.0f;
+
 	return ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface.shading_point, surface.view_direction, surface.shading_normal,
 												   surface.geometric_normal, surface.primitive_index, surface.ray_volume_state, surface.material,
 												   incident_light_direction, cosine_term, random_number_generator);
+}
+
+/**
+ * Returns true exactly when ReSTIR_PT_evaluate_target_function<true>() gets past its zero tests (degenerate distance, backfacing light of a DI sample,
+ * cosine <= 0 outside of a transmission lobe) and its visibility test for this sample at this surface: same tests and same shadow ray (alpha test seeded
+ * by the sample, deterministic) but no BSDF evaluation and no material fetch
+ */
+HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData& render_data,
+														   const ReSTIRPTReservoirSample& sample,
+														   ReSTIRPTSurface& surface,
+														   Xorshift32Generator& random_number_generator)
+{
+	return ReSTIR_PT_evaluate_target_function<true, true>(render_data, sample, surface, random_number_generator) > 0.0f;
 }
 
 template <bool withVisiblity>

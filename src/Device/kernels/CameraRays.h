@@ -45,6 +45,11 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 			render_data.render_settings.restir_pt_settings.spmis_settings
 				.all_pixels_reuse_cell_pixel_index[pixel_index * RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE + cache_slot] =
 				HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		if (render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache != nullptr)
+			// The union domain cache is emptied with the reuse cell cache. Its buffer is only allocated while the union domain reuse is used. An undefined
+			// cell count marks an empty cache
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache[pixel_index * RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE] =
+				HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.pixel_indices_sorted[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_pixels_counters[pixel_index] = 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters[pixel_index] = 0;

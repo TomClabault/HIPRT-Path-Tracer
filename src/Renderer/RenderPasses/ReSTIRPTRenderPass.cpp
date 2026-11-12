@@ -24,6 +24,7 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID	
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "ReSTIR PT SPMIS Sort";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT SPMIS Build CDFs";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT SPMIS Compute Per Cell Noise";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT SPMIS Build Neighbor Records";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },
@@ -38,7 +39,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, "ReSTIR_PT_SPMIS_ComputeOffsets" },
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, "ReSTIR_PT_SPMIS_Sort" },
 	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildCDFs" },
-	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, "ReSTIR_PT_SPMIS_ComputeCellsVariance" }
+	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, "ReSTIR_PT_SPMIS_ComputeCellsVariance" },
+	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildNeighborRecords" }
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FILES = {
@@ -54,7 +56,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeOffsets.h" },
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/Sort.h" },
 	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildCDFs.h" },
-	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeCellsVariance.h" }
+	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeCellsVariance.h" },
+	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildNeighborRecords.h" }
 };
 
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
@@ -189,6 +192,14 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->set_kernel_function_name(
 		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID));
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->synchronize_options_with(m_compiler_options);
+
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->set_kernel_file_path(
+		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->set_kernel_function_name(
+		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 }
 
 void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -256,6 +267,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 			recompiled = true;
 		}
@@ -384,6 +396,19 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& 
 
 			render_data_invalidated = true;
 		}
+
+		// The buffers of the union domain reuse are only allocated while the spatial reuse kernel uses them
+		if (render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(mis_weight_type))
+		{
+			if (!m_spmis_data.union_domain_buffers_allocated())
+			{
+				m_spmis_data.resize_union_domain_buffers(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
+
+				render_data_invalidated = true;
+			}
+		}
+		else
+			render_data_invalidated |= m_spmis_data.free_union_domain_buffers();
 	}
 	else
 	{
@@ -535,6 +560,17 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 			// Same dispatch as BuildCDFs: one block per alive cell, 1024 threads/block
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
 				1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
+		}
+
+		if (render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
+				compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE)))
+		{
+			// Compact records of the non-zero reservoirs of the cells, read by the neighbor selection of the union domain reuse. One thread per pixel
+			unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
+
+			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, render_data);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->launch_asynchronous(64, 1, pixel_count, 1, nullptr,
+																												 m_renderer->get_main_stream());
 		}
 	}
 }
@@ -736,7 +772,8 @@ void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID
 											  ? "RESTIR_PT_DIRECTIONAL_REUSE_RENDER_DATA"
 										  : kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID ||
-												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID
+												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID ||
+												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID
 											  ? "RESTIR_PT_SPMIS_RENDER_DATA"
 											  : "RESTIR_PT_RENDER_DATA";
 	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData),

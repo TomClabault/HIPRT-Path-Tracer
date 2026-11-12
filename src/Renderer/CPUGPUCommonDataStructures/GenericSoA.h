@@ -152,6 +152,21 @@ struct GenericSoA
 		resize_buffer_internal(get_buffer<bufferIndex>(), new_element_count);
 	}
 
+	/**
+	 * Frees the memory of one buffer only. Unlike free(), the other buffers and the maximum size of the SoA are left untouched
+	 */
+	template <int bufferIndex>
+	void free_one_buffer()
+	{
+		if constexpr (IsCPUBuffer::value)
+		{
+			get_buffer<bufferIndex>().clear();
+			get_buffer<bufferIndex>().shrink_to_fit();
+		}
+		else
+			get_buffer<bufferIndex>().free_no_error();
+	}
+
 	std::size_t get_byte_size() const
 	{
 		std::size_t total = 0;
