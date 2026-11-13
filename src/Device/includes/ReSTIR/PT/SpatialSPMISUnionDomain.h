@@ -21,6 +21,7 @@
  *	- The reuse domain of a pixel is the union of up to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS distinct SPMIS cells, each found by the SPMIS cell search
  *	  with the cells already in the domain excluded. It is searched once and cached per pixel (one representative pixel per cell), as the single reuse cell
  *	  of the legacy SPMIS path is.
+ *
  *	- The neighbors are sampled in two stages. Stage 1 draws candidates approximately proportionally to the visibility-free shifted integrand of the
  *	  non-zero neighbors of the domain, evaluated in closed form from compact per-pixel records (ReSTIR_PT_SPMIS_BuildNeighborRecords). Stage 2 traces
  *	  the visibility of every candidate at the center pixel and resamples one visible candidate per neighbor.
@@ -142,10 +143,13 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_search_union_domain(const HIPRTRende
  * spmis_get_reuse_cell_index() applied to the whole domain.
  *
  * The cache of a pixel (RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE unsigned ints: the number of cells, then one representative pixel per cell) is emptied
- * (cell count = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX) whenever the reuse cell cache is. While it is empty, or when none of the cached pixels has a
- * defined, non-empty cell this frame, the cells are searched again and their representative pixels cached. Otherwise the domain is the union of the
- * cells of the cached pixels in this frame (the cell indices are rebuilt every frame), duplicates and undefined cells skipped. After the search, the
- * domain is then a function of the pixel and of the cells of this frame, not of the random numbers of the frame
+ * (cell count = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX) whenever the reuse cell cache is.
+ *
+ * While it is empty, or when none of the cached pixels has a defined, non-empty cell this frame, the cells are searched again and their representative
+ * pixels cached. Otherwise the domain is the union of the cells of the cached pixels in this frame (the cell indices are rebuilt every frame), duplicates
+ * and undefined cells skipped.
+ *
+ * After the search, the domain is then a function of the pixel and of the cells of this frame, not of the random numbers of the frame
  */
 HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderData& render_data,
 															 unsigned int center_pixel_index,
@@ -245,6 +249,7 @@ HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_uniform(const HIPRTRenderD
 /**
  * Neighbor records (ReSTIRPTSPMISUnionDomainSettings::neighbor_records), written by ReSTIR_PT_SPMIS_BuildNeighborRecords for every pixel with a non-zero
  * spatial reuse input reservoir, at the slot of the pixel in its SPMIS cell (cell_offsets[cell] + index_in_cell, the same slot as in pixel_indices_sorted).
+ *
  * RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats, read as two float4:
  *	[0..2] reconnection vertex position (the direction of the path for an envmap path)
  *	[3..4] octahedral encoding of the geometric normal of the reconnection vertex. [3] = 2 marks an envmap path
@@ -372,6 +377,7 @@ HIPRT_DEVICE float spmis_union_domain_cell_importance(const ReSTIRPTSPMISSetting
  *	- domains with at most ReSTIRPTSPMISUnionDomainSettings::total_neighbor_budget non-zero neighbors: exact streaming over all the records of the
  *	  domain into neighbor_count x candidates_per_neighbor weighted reservoirs that share one acceptance uniform per record, rotated per reservoir (virtual
  *	  slot j = candidate x neighbor_count + slot: the candidates of one slot are spread over the CDF). Exact probabilities P = t_i / sum(t)
+ *
  *	- larger domains: RIS. Every slot draws its own ceil(K / neighbor_count) stratified candidates: the cell proportionally to its importance sum, then
  *	  the record in the cell through its CDF (every non-zero record has a non-zero importance c W p_hat). The candidates_per_neighbor reservoirs of the slot
  *	  resample that candidate set with rotated copies of one acceptance uniform. P = t_i / sum(RIS weights of the slot), the inverse of the RIS unbiased

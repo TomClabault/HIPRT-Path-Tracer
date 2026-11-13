@@ -26,11 +26,14 @@
  * The flags below (pixel flags in the padding byte of GBufferDevice::shading_normals, written by CameraRays; sample flags in
  * ReSTIRPTReservoirSample::mis_approximation_flags) select the "cheap path" for a pair (sample, pixel): both the pixel material and the reconnection vertex
  * material are in an analytic class whose BSDF is strictly positive for every pair of directions above the shading normal with cosines above
- * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (the support of the target function is then decided by the geometry alone). The approximation is then:
+ * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (the support of the target function is then decided by the geometry alone).
+ *
+ * The approximation is then:
  *	- Lambertian BSDF: the cosine at the pixel, zero when the pixel is below the shading normal of the reconnection vertex
  *	- principled BSDF: the analytic lobe value at the pixel (one 8-byte record per pixel, GBufferDevice::mis_approximation_lobe_records) times the analytic lobe
  *	  value at the reconnection vertex (stored in the sample), 1 for DI samples. No material fetch, no BSDF evaluation
  *	- other BSDF models: no material is in the analytic class
+ *
  * Every other pair takes the "fallback": the full target function evaluation, the value is then the full target function divided by the luminance of the
  * radiance of the sample (principled) or the cosine at the pixel on the support of the full target function (Lambertian).
  *
@@ -60,10 +63,14 @@
  *		value = NoL * [Cs * F(LoH) D(H) G2 / (4 NoV NoL) + Cd0 + Cd1 * (1 - F_d(NoL)) * (reconnection side: (1 - F_d(NoV)), pixel side: 1)]
  *
  * with the isotropic GGX D and Smith G2 of the code (alpha = roughness^2), F = full_fresnel_dielectric(., ior) (dielectric) or the Schlick luminance
- * lumF0 + (1 - lumF0) (1 - LoH)^5 (metal). Pixel side (V fixed, folded): Cs = s lum(tint) / E, Cd0 = lum(base) (1 - s) / (pi E),
- * Cd1 = lum(base darkening) s (1 - F_d(NoV)) / (pi E) with E the glossy base energy compensation at the NoV of the pixel. Reconnection side (L fixed):
- * the same without E and without the (1 - F_d(NoV)) factor. Metal: Cs = 1, Cd0 = Cd1 = 0. A perfectly smooth lobe has Cs = 0 (its value is 0 off the
- * delta peak), a pair whose directions may hit the delta peak goes to the fallback (ReSTIR_PT_MIS_approximation_delta_peak_possible())
+ * lumF0 + (1 - lumF0) (1 - LoH)^5 (metal).
+ *
+ * Pixel side (V fixed, folded): Cs = s lum(tint) / E, Cd0 = lum(base) (1 - s) / (pi E), Cd1 = lum(base darkening) s (1 - F_d(NoV)) / (pi E) with E the
+ * glossy base energy compensation at the NoV of the pixel. Reconnection side (L fixed): the same without E and without the (1 - F_d(NoV)) factor.
+ * Metal: Cs = 1, Cd0 = Cd1 = 0.
+ *
+ * A perfectly smooth lobe has Cs = 0 (its value is 0 off the delta peak), a pair whose directions may hit the delta peak goes to the fallback
+ * (ReSTIR_PT_MIS_approximation_delta_peak_possible())
  */
 
 // Bit 0 of the pixel flags and of the sample flags: the material is in an analytic class (and the other conditions of
@@ -169,12 +176,15 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_material_class(const DeviceUnpacked
 #endif // #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 
 		// principled_bsdf_eval() outside of the object (volume state checked by the callers) with NoV and NoL above
-		// RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (no refraction): an opaque dielectric without coat, sheen or thin film. The diffuse layer (Lambertian,
-		// PrincipledBSDFDiffuseLobe) is then base_color / pi times a diffuse weight of 1 (no metallic, no transmission) times the layers throughput of the
-		// specular layer only, lerp(1, (1 - F(NoL)) (1 - F(NoV)) darkening, specular): >= 1 - specular for specular < 1, and > 0 for specular = 1 because
-		// the dielectric Fresnel of an IOR >= 1 (the relative IOR of the specular layer without a coat is the material IOR) stays below 1 above the cosine
-		// threshold. The specular GGX lobe adds a non-negative term, the glossy base energy compensation divides by a positive LUT value, the clearcoat
-		// compensation is 1 without a coat
+		// RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (no refraction): an opaque dielectric without coat, sheen or thin film.
+		//
+		// The diffuse layer (Lambertian, PrincipledBSDFDiffuseLobe) is then base_color / pi times a diffuse weight of 1 (no metallic, no transmission) times
+		// the layers throughput of the specular layer only, lerp(1, (1 - F(NoL)) (1 - F(NoV)) darkening, specular): >= 1 - specular for specular < 1, and > 0
+		// for specular = 1 because the dielectric Fresnel of an IOR >= 1 (the relative IOR of the specular layer without a coat is the material IOR) stays
+		// below 1 above the cosine threshold.
+		//
+		// The specular GGX lobe adds a non-negative term, the glossy base energy compensation divides by a positive LUT value, the clearcoat compensation is
+		// 1 without a coat
 		if (material.coat != 0.0f || material.sheen != 0.0f)
 			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
 		if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f || material.thin_film != 0.0f)
@@ -493,9 +503,13 @@ HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_decode_sam
 /**
  * Flags of a pixel (padding byte of GBufferDevice::shading_normals), from the values the target function reads back from the G-buffer: 'material' is the
  * unpacked G-buffer material, 'shading_normal' the unpacked G-buffer shading normal and the view direction comes from the camera position and
- * 'shading_point'. Class bit: the material is in an analytic class, the view direction is above the shading normal with a cosine above
- * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD and (principled BSDF) the camera is outside of the object. Smooth bit: the lobe is perfectly smooth. With the
- * principled BSDF, also writes the lobe record of the pixel when the class bit is set
+ * 'shading_point'.
+ *
+ * Class bit: the material is in an analytic class, the view direction is above the shading normal with a cosine above
+ * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD and (principled BSDF) the camera is outside of the object.
+ * Smooth bit: the lobe is perfectly smooth.
+ *
+ * With the principled BSDF, also writes the lobe record of the pixel when the class bit is set
  */
 HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_pixel_flags(const HIPRTRenderData& render_data,
 																   unsigned int pixel_index,
@@ -557,9 +571,10 @@ HIPRT_DEVICE void ReSTIR_PT_MIS_approximation_fill_rc_vertex(const HIPRTRenderDa
 }
 
 /**
- * Final flag byte of a sample (0 = not in an analytic class) from the material part written by ReSTIR_PT_MIS_approximation_fill_rc_vertex(). For any pixel
- * that passes the zero tests of the target function and sees the reconnection vertex from above its shading normal, the target function is then non-zero
- * as soon as the pixel BSDF is:
+ * Final flag byte of a sample (0 = not in an analytic class) from the material part written by ReSTIR_PT_MIS_approximation_fill_rc_vertex().
+ *
+ * For any pixel that passes the zero tests of the target function and sees the reconnection vertex from above its shading normal, the target function is
+ * then non-zero as soon as the pixel BSDF is:
  *	- the radiance has no negative channel and a positive luminance (a product of strictly positive colors with it has a positive luminance)
  *	- DI sample: no BSDF at the reconnection vertex in the target function, only the class bit
  *	- otherwise not an envmap path, no transmission lobe at the visible point (the volume state of the reconnection vertex BSDF evaluation would then
@@ -659,9 +674,10 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_pair_delta_peak_possible(const HIP
 
 /**
  * Cheap path or fallback for a sample at a pixel whose flags are 'pixel_flags', for a pair that passed the zero tests of the target function (degenerate
- * distance, backfacing light of a DI sample, cosine <= 0 outside of a transmission lobe). The same decision in the probes and in the own terms. Returns
- * RESTIR_PT_MIS_APPROXIMATION_FALLBACK, RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH or RESTIR_PT_MIS_APPROXIMATION_ZERO (cheap path, the pixel is below the shading
- * normal of the reconnection vertex: every lobe of the reconnection vertex BSDF is zero)
+ * distance, backfacing light of a DI sample, cosine <= 0 outside of a transmission lobe). The same decision in the probes and in the own terms.
+ *
+ * Returns RESTIR_PT_MIS_APPROXIMATION_FALLBACK, RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH or RESTIR_PT_MIS_APPROXIMATION_ZERO (cheap path, the pixel is below
+ * the shading normal of the reconnection vertex: every lobe of the reconnection vertex BSDF is zero)
  */
 HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_decision(const HIPRTRenderData& render_data,
 													  const ReSTIRPTReservoirSample& sample,

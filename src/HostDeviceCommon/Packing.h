@@ -365,7 +365,7 @@ private:
 	unsigned char m_packed_y = 0;
 	unsigned char m_packed_z = 0;
 	// This padding here improves performance significantly on my machine for the megakernel.
-	// Order of 60% faster, mainly due to a massive reduction in register pressure and we got 2 more wavefronts running
+	// Much faster, mainly due to a massive reduction in register pressure and we got 2 more wavefronts running
 	// out of that. Tested with a lambertian BRDF
 	//
 	// Doesn't really make sense that we would get any register out of that but :shrug:.
