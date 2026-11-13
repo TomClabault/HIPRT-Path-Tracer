@@ -63,7 +63,7 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// Number of pixels per group of the stochastic group-wise MIS weights. 1 is pairwise MIS. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE]
 	int mis_group_size = 2;
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
-	int canonical_group_count = 3;
+	int canonical_group_count = 2;
 	// If true, the pixels that estimate the MIS weight of the canonical sample are stratified over the pixel list of the domain (two pixels per stratum)
 	// instead of drawn independently, see ReSTIRPTSpatialGroupwiseMISWeight::get_resampling_MIS_weight_canonical(). Same expectation, lower variance:
 	// 3 stratified groups measured as good as 4 independent groups. Only with mis_group_size = 2 and 2 to 4 groups, independent draws otherwise
@@ -73,12 +73,13 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// slightly lower variance
 	bool stratified_reverse_probes = true;
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
-	// stratified candidates in total, split over the neighbors, through the CDFs of the cells
-	int selection_candidate_count = 16;
+	// stratified candidates in total, split over the neighbors, through the CDFs of the cells. A candidate costs no ray: 32 candidates with a
+	// visibility pool of 5 and 2 canonical groups measured faster and at least as good as 16 candidates with a pool of 6 and 3 canonical groups
+	int selection_candidate_count = 32;
 	// If > 0, the neighbors are taken among the visible candidates of ONE pool of visibility_pool_size candidates for the pixel (one shadow ray each,
 	// whatever neighbor_count) instead of visibility_candidate_count candidates per neighbor, see spmis_union_domain_select_neighbors_from_pool().
 	// Clamped to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE
-	int visibility_pool_size = 6;
+	int visibility_pool_size = 5;
 
 	// For every pixel with a non-zero spatial reuse input reservoir, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats at the slot of the
 	// pixel in its cell (same indexing as pixel_indices_sorted), built every frame by ReSTIR_PT_SPMIS_BuildNeighborRecords
