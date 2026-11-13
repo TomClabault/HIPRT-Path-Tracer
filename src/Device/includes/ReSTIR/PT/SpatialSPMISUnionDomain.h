@@ -369,7 +369,7 @@ HIPRT_DEVICE float spmis_union_domain_cell_importance(const ReSTIRPTSPMISSetting
 /**
  * Stage 1 of the neighbor selection of the union domain reuse: 'candidates_per_neighbor' draws per neighbor slot, each one individually distributed
  * approximately proportionally to the selection target t of spmis_neighbor_record_target() (the draws of a slot are correlated, which stage 2 allows):
- *	- domains with at most ReSTIRPTSPMISUnionDomainSettings::selection_candidate_count non-zero neighbors: exact streaming over all the records of the
+ *	- domains with at most ReSTIRPTSPMISUnionDomainSettings::total_neighbor_budget non-zero neighbors: exact streaming over all the records of the
  *	  domain into neighbor_count x candidates_per_neighbor weighted reservoirs that share one acceptance uniform per record, rotated per reservoir (virtual
  *	  slot j = candidate x neighbor_count + slot: the candidates of one slot are spread over the CDF). Exact probabilities P = t_i / sum(t)
  *	- larger domains: RIS. Every slot draws its own ceil(K / neighbor_count) stratified candidates: the cell proportionally to its importance sum, then
@@ -402,8 +402,8 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 	if (domain.non_zero_count == 0 || domain.importance_sum <= 0.0f || neighbor_count <= 0)
 		return 0;
 
-	int candidate_count = hippt::max(1, union_domain_settings.selection_candidate_count);
-	bool exact			= domain.non_zero_count <= static_cast<unsigned int>(candidate_count);
+	int total_neighbor_budget = hippt::max(1, union_domain_settings.total_neighbor_budget);
+	bool exact				  = domain.non_zero_count <= static_cast<unsigned int>(total_neighbor_budget);
 
 	// Luminance of the center BSDF, evaluated once (exact for a Lambertian BSDF, albedo / pi, the cosine is applied per neighbor)
 	float bsdf_pdf;
@@ -489,7 +489,7 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 	}
 
 	// Independent candidate sets: every neighbor slot resamples its own ceil(K / N) stratified candidates
-	int per_neighbor_candidate_count		   = (candidate_count + neighbor_count - 1) / neighbor_count;
+	int per_neighbor_candidate_count		   = (total_neighbor_budget + neighbor_count - 1) / neighbor_count;
 	float inverse_per_neighbor_candidate_count = 1.0f / per_neighbor_candidate_count;
 	float inverse_importance_sum			   = 1.0f / domain.importance_sum;
 

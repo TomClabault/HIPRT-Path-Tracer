@@ -4029,7 +4029,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 										"BSDF evaluation for simple materials) that is non-zero exactly where the target function is. Unbiased, faster "
 										"spatial reuse for a similar quality.");
 
-		if (ImGui::SliderInt("Selection candidates", &union_domain_settings.selection_candidate_count, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
+		if (ImGui::SliderInt("Total neighbor budget", &union_domain_settings.total_neighbor_budget, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "
 										"Larger domains draw that many stratified candidates in total, split over the neighbors.");
