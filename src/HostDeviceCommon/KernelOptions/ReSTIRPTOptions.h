@@ -103,4 +103,21 @@
 #define ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps 256
 #define ReSTIR_PT_SPMISCDFLUTSize						   1024
 
+// Maximum number of distinct SPMIS cells in the reuse domain of the union domain reuse (ReSTIRPTSPMISUnionDomainSettings)
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS 4
+// Maximum number of SPMIS cell searches done to find the cells of a union domain (a search may not find a new cell)
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELL_SEARCHES 8
+// Maximum values of ReSTIRPTSPMISUnionDomainSettings::neighbor_count and mis_group_size
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS		8
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE 3
+// Maximum value of ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE 8
+// Maximum number of probes (canonical_group_count x mis_group_size) for which the canonical MIS weight of the union domain reuse is computed as a
+// U-statistic over all the groups of probes. Above that, the canonical MIS weight averages canonical_group_count disjoint groups
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES 8
+// Number of floats of the neighbor record of a pixel (two float4, see ReSTIR_PT_SPMIS_BuildNeighborRecords)
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT 8u
+// Per pixel in the union domain cache: the number of cached cells then one representative pixel per cell
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE (1u + RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS)
+
 #endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PT_OPTIONS_H
