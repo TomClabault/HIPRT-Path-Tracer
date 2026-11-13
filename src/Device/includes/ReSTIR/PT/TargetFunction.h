@@ -10,6 +10,7 @@
 #include "Device/includes/Material.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetApproximation.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -140,12 +141,18 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
 	return ReSTIR_PT_evaluate_target_function<true, true>(render_data, sample, surface, random_number_generator) > 0.0f;
 }
 
+/**
+ * 'mis_target_approximation': returns the MIS target approximation of the union domain reuse instead of the target function (SpatialMISTargetApproximation.h).
+ * The zero tests below are the same, the approximation is computed before the visibility test (a zero approximation skips the ray): analytic value on the cheap
+ * path, full target function evaluation otherwise (see ReSTIR_PT_MIS_approximation_decision())
+ */
 template <bool withVisiblity>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
 																	const ReSTIRPTReservoirSample& sample,
 																	int surface_pixel_index,
 																	const float3_t& surface_shading_point,
-																	Xorshift32Generator& random_number_generator)
+																	Xorshift32Generator& random_number_generator,
+																	bool mis_target_approximation = false)
 {
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
@@ -173,12 +180,48 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 		// Backfacing light
 		return 0.0f;
 
-	float3_t surface_shading_normal = render_data.g_buffer.shading_normals[surface_pixel_index].unpack();
-	float cosine_term				= hippt::dot(incident_light_direction, surface_shading_normal);
+	// The padding byte of the packed shading normal holds the flags of the pixel for the MIS target approximation
+	Octahedral24BitNormalPadded32b surface_packed_shading_normal = render_data.g_buffer.shading_normals[surface_pixel_index];
+	float3_t surface_shading_normal								 = surface_packed_shading_normal.unpack();
+	float cosine_term											 = hippt::dot(incident_light_direction, surface_shading_normal);
 	if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
 		return 0.0f;
 
 	int surface_primitive_index = render_data.g_buffer.first_hit_prim_index[surface_pixel_index];
+
+	float approximation_value = 0.0f;
+	if (mis_target_approximation)
+	{
+		int decision = ReSTIR_PT_MIS_approximation_decision(render_data, sample, surface_packed_shading_normal.get_padding(), surface_shading_point,
+															surface_shading_normal, incident_light_direction, cosine_term);
+
+		if (decision == RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH)
+			approximation_value = ReSTIR_PT_MIS_approximation_cheap_path_value(render_data, sample, surface_pixel_index, surface_shading_point,
+																			   surface_shading_normal, incident_light_direction, cosine_term);
+		else if (decision == RESTIR_PT_MIS_APPROXIMATION_FALLBACK)
+		{
+			// The full target function before the visibility test, as at the end of this function
+			DeviceUnpackedPrincipledFullMaterial fallback_surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
+			RayVolumeState fallback_surface_ray_volume_state;
+			fallback_surface_ray_volume_state.reconstruct_first_hit(fallback_surface_material, render_data.buffers.material_indices, surface_primitive_index,
+																	random_number_generator);
+
+			float3_t fallback_surface_view_direction   = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
+			float3_t fallback_surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
+
+			float full_target_function =
+				ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, fallback_surface_view_direction, surface_shading_normal,
+														fallback_surface_geometric_normal, surface_primitive_index, fallback_surface_ray_volume_state,
+														fallback_surface_material, incident_light_direction, cosine_term, random_number_generator);
+
+			approximation_value = ReSTIR_PT_MIS_approximation_fallback_value(sample, full_target_function, cosine_term);
+		}
+
+		if (approximation_value <= 0.0f)
+			// Zero whatever the visibility
+			return 0.0f;
+	}
+
 	if constexpr (withVisiblity)
 	{
 		hiprtRay visibility_ray;
@@ -191,6 +234,9 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 		if (sample_point_occluded)
 			return 0.0f;
 	}
+
+	if (mis_target_approximation)
+		return approximation_value;
 
 	// Keep the large material and volume state out of the geometric rejection and visibility phases.
 	DeviceUnpackedPrincipledFullMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();

@@ -55,6 +55,12 @@ public:
 	void resize_g_buffer_ray_volume_states();
 
 private:
+	/**
+	 * Whether the G-buffer needs the lobe records of the MIS target approximation of ReSTIR PT (GBufferDevice::mis_approximation_lobe_records): ReSTIR PT path
+	 * sampling with the union domain SPMIS reuse, the approximation enabled and the principled BSDF
+	 */
+	bool mis_approximation_lobe_records_needed() const;
+
 	int2_t m_render_resolution = make_int2(0, 0);
 
 	// G-buffers of the current frame (camera rays hits) and previous frame

@@ -48,11 +48,25 @@ struct ReSTIRPTReservoirSample
 
 	bool di_sample = false;
 
+	// Flags of the MIS target approximation of the union domain reuse (SpatialMISTargetApproximation.h), 0 when the approximation is not used: bit 0 = the
+	// reconnection vertex material is in an analytic class and the sample conditions of ReSTIR_PT_MIS_approximation_sample_flags() hold (the only bit of a DI
+	// sample), bit 1 = the analytic lobe of the reconnection vertex is perfectly smooth, bits 2..7 = the 6-bit Fresnel code of that lobe. The byte is non-zero
+	// exactly when bit 0 is set
+	unsigned char mis_approximation_flags = 0;
+	// Analytic lobe of the reconnection vertex for the principled BSDF (ReSTIR_PT_MIS_approximation_encode_sample_lobe()): alpha code and Cs' code. Cd1' is in
+	// the padding byte of 'rc_vertex_shading_normal' and Cd0' (bits 0..6) + the metal bit (bit 7) in the padding byte of 'rc_vertex_geometric_normal'.
+	// These three bytes fill the struct padding after 'di_sample': no size change (static_assert below)
+	unsigned char mis_approximation_lobe_alpha	  = 0;
+	unsigned char mis_approximation_lobe_specular = 0;
+
 	HIPRT_DEVICE bool is_envmap_path() const
 	{
 		return rc_vertex_primitive_index == -1;
 	}
 };
+
+// The MIS target approximation fields fill the padding of the sample, its size must not change
+static_assert(sizeof(ReSTIRPTReservoirSample) == 84, "The size of ReSTIRPTReservoirSample changed");
 
 struct ReSTIRPTReservoir
 {

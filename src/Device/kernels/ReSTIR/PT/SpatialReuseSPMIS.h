@@ -12,6 +12,7 @@
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/SpatialGroupwiseMISWeight.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetApproximation.h"
 #include "Device/includes/ReSTIR/PT/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/PT/SpatialNormalizationWeight.h"
 #include "Device/includes/ReSTIR/PT/SpatialSPMISUnionDomain.h"
@@ -45,7 +46,8 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	if (domain.cell_count == 0)
 	{
 		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then
-		ReSTIRPTReservoir center_pixel_reservoir														  = input_reservoir_buffer[center_pixel_index];
+		ReSTIRPTReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
+
 		render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = center_pixel_reservoir;
 
 		return;
@@ -79,6 +81,10 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	// of the domain, rotated by slot / slot count. Every position is still uniform in [0, 1) and independent of the selection of the neighbors
 	float reverse_probe_base_uniform = union_domain_settings.stratified_reverse_probes ? random_number_generator() : -1.0f;
 
+	// The MIS weights use the MIS target approximation instead of the target function (probes and own terms), the resampling weights still use the target
+	// function
+	bool mis_target_approximation = ReSTIR_PT_MIS_approximation_enabled(render_data);
+
 	// Resampling only the neighbors, canonical resampling is further below
 	for (int neighbor_index = 0; neighbor_index < selected_slot_count; neighbor_index++)
 	{
@@ -110,6 +116,19 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 			// Target function of the neighbor's sample at the neighbor in the measure of the center pixel
 			float target_function_at_neighbor = neighbor_reservoir.sample.target_function / shift_mapping_jacobian;
 
+			float mis_target_at_neighbor = target_function_at_neighbor;
+			float mis_target_at_center	 = target_function_at_center;
+			if (mis_target_approximation)
+			{
+				// Own terms: the approximation of the sample at its own pixel (from its target function in its own measure, the Jacobian division does not
+				// change the support) and at the center pixel
+				mis_target_at_neighbor = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
+																			  neighbor_reservoir.sample.target_function) /
+										 shift_mapping_jacobian;
+				mis_target_at_center = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index),
+																			target_function_at_center);
+			}
+
 			float reverse_probe_uniform = -1.0f;
 			if (reverse_probe_base_uniform >= 0.0f)
 			{
@@ -119,9 +138,9 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 			}
 
 			mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
-				render_data, neighbor_reservoir.sample, static_cast<float>(neighbor_reservoir.confidence), target_function_at_neighbor,
-				center_pixel_reservoir_confidence, target_function_at_center, center_pixel_surface, domain, mis_group_size, reused_neighbors_count,
-				neighbor_selection_probability, reverse_probe_uniform, random_number_generator);
+				render_data, neighbor_reservoir.sample, static_cast<float>(neighbor_reservoir.confidence), mis_target_at_neighbor,
+				center_pixel_reservoir_confidence, mis_target_at_center, center_pixel_surface, domain, mis_group_size, reused_neighbors_count,
+				neighbor_selection_probability, reverse_probe_uniform, mis_target_approximation, random_number_generator);
 		}
 
 		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
@@ -132,9 +151,15 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	ReSTIRPTReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if (center_pixel_reservoir.UCW > 0.0f)
 	{
+		// Own term of the canonical sample at the center pixel
+		float canonical_mis_target = center_pixel_reservoir.sample.target_function;
+		if (mis_target_approximation)
+			canonical_mis_target = ReSTIR_PT_MIS_approximation_own_term(render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index),
+																		center_pixel_reservoir.sample.target_function);
+
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
-			render_data, center_pixel_reservoir.sample, center_pixel_reservoir.confidence, center_pixel_reservoir.sample.target_function, center_pixel_surface,
-			domain, mis_group_size, canonical_group_count, union_domain_settings.stratified_canonical_probes, random_number_generator);
+			render_data, center_pixel_reservoir.sample, center_pixel_reservoir.confidence, canonical_mis_target, center_pixel_surface, domain, mis_group_size,
+			canonical_group_count, union_domain_settings.stratified_canonical_probes, mis_target_approximation, random_number_generator);
 
 		constexpr float shift_mapping_jacobian = 1.0f;
 		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;

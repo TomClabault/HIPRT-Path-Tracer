@@ -10,6 +10,17 @@
 
 #include "HostDeviceCommon/Material/MaterialPacked.h"
 
+/**
+ * Lobe record of a pixel for the MIS target approximation of the union domain reuse of ReSTIR PT (see SpatialMISTargetApproximation.h), two words loaded
+ * together. 'coefficients': bits 0..15 Cs (unorm of Cs / 4), bits 16..31 Cd0 (unorm, rounded up). 'parameters': bits 0..15 Cd1 (unorm, rounded up), bits 16..23
+ * alpha (log code), bits 24..30 Fresnel code, bit 31 metal
+ */
+struct alignas(8) ReSTIRPTMISApproximationPixelLobeRecord
+{
+	unsigned int coefficients = 0;
+	unsigned int parameters	  = 0;
+};
+
 // Structure of arrays for the data contained in the pixels of the GBuffer
 //
 // If you want the roughness of the pixel (X, Y) = [50, 0] for example,
@@ -30,6 +41,11 @@ struct GBufferDevice
 	// model when used with smooth normals / normal mapping
 	Octahedral24BitNormalPadded32b* shading_normals	  = nullptr;
 	Octahedral24BitNormalPadded32b* geometric_normals = nullptr;
+
+	// Analytic lobe of the pixel material for the MIS target approximation of the union domain reuse of ReSTIR PT with the principled BSDF
+	// (SpatialMISTargetApproximation.h), written by CameraRays, read with one load by the MIS weights. The padding byte of 'shading_normals' holds the flags of
+	// the pixel for that approximation. Only allocated on the GPU while the approximation is used with the principled BSDF, nullptr otherwise
+	ReSTIRPTMISApproximationPixelLobeRecord* mis_approximation_lobe_records = nullptr;
 };
 
 #endif // #ifndef GBUFFER_DEVICE_H

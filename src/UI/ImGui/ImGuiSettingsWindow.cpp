@@ -4023,6 +4023,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGuiRenderer::show_help_marker("Stratifies over the reuse domain, across the neighbors, the pixels that stand for the domain in the MIS weights of "
 										"the neighbors instead of drawing them independently. Unbiased, same cost, slightly lower variance.");
 
+		if (ImGui::Checkbox("MIS target approximation", &union_domain_settings.mis_target_approximation))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("The MIS weights evaluate a cheap approximation of the target function (cosine or analytic lobes, no material fetch or "
+										"BSDF evaluation for simple materials) that is non-zero exactly where the target function is. Unbiased, faster "
+										"spatial reuse for a similar quality.");
+
 		if (ImGui::SliderInt("Selection candidates", &union_domain_settings.selection_candidate_count, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "

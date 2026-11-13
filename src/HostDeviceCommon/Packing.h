@@ -267,6 +267,20 @@ public:
 		return final_decode(v.x, v.y);
 	}
 
+	/**
+	 * The padding byte can carry data next to the normal (the flags of the MIS target approximation of ReSTIR PT in the G-buffer shading normals, lobe codes in
+	 * the reconnection normals of a ReSTIR PT sample, see SpatialMISTargetApproximation.h). pack() leaves it untouched
+	 */
+	HIPRT_DEVICE unsigned char get_padding() const
+	{
+		return padding;
+	}
+
+	HIPRT_DEVICE void set_padding(unsigned char value)
+	{
+		padding = value;
+	}
+
 private:
 	HIPRT_DEVICE float pack_Snorm12_float(float f)
 	{

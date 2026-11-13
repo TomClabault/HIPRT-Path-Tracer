@@ -72,6 +72,14 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// are stratified over the pixel list of the domain across the neighbor slots instead of drawn independently. Same expectation, same ray count,
 	// slightly lower variance
 	bool stratified_reverse_probes = true;
+	// If true, the group-wise MIS weights (canonical and neighbor probes, and the target functions of a sample at its own pixel, of a neighbor's sample at
+	// the center pixel and of the canonical sample at the center pixel) use an approximation of the target function instead of the target function, see
+	// SpatialMISTargetApproximation.h. The approximation is non-zero exactly where the target function is (same support): the MIS weights stay a partition of
+	// unity and the reuse stays unbiased. It costs no material fetch and no BSDF evaluation for the pairs of analytic materials (cosine at the pixel with the
+	// Lambertian BSDF, analytic lobes with the principled BSDF), the full target function otherwise. The resampling weights still use the target function.
+	// Measured at level quality (research node N90): spatial reuse pass -3 to -19 % on five scenes with the principled BSDF, -5.8 % on the white room with
+	// the Lambertian BSDF
+	bool mis_target_approximation = true;
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells. A candidate costs no ray: 32 candidates with a
 	// visibility pool of 5 and 2 canonical groups measured faster and at least as good as 16 candidates with a pool of 6 and 3 canonical groups
