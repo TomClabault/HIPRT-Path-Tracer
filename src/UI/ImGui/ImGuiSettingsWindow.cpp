@@ -3987,19 +3987,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::add_tooltip("How many neighbors are resampled from the union domain. Replaces the \"Neighbor reuse count\" of the spatial reuse pass.");
 
-		if (ImGui::SliderInt("Visibility candidates", &union_domain_settings.visibility_candidate_count, 1,
-							 RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES, "%d", ImGuiSliderFlags_AlwaysClamp))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("How many candidates are drawn per neighbor. The visibility of every candidate at the center pixel is traced (one "
-										"shadow ray each) and one visible candidate is resampled. More candidates find a visible neighbor more often "
-										"in occluded regions.");
-
-		if (ImGui::SliderInt("Visibility pool size", &union_domain_settings.visibility_pool_size, 0, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE,
+		if (ImGui::SliderInt("Visibility pool size", &union_domain_settings.visibility_pool_size, 1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE,
 							 "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("0: \"Visibility candidates\" per neighbor. Otherwise, the pixel draws one pool of that many candidates "
-										"(one shadow ray each, whatever the neighbor count) and the neighbors are chosen among the visible ones. "
-										"Replaces \"Visibility candidates\".");
+		ImGuiRenderer::show_help_marker("The pixel draws one pool of that many candidates (one shadow ray each, whatever the neighbor count) and the "
+										"neighbors are chosen among the visible ones. More candidates find visible neighbors more often in occluded "
+										"regions.");
 
 		if (ImGui::SliderInt("MIS group size", &union_domain_settings.mis_group_size, 1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE, "%d",
 							 ImGuiSliderFlags_AlwaysClamp))

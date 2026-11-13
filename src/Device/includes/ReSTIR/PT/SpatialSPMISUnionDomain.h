@@ -22,9 +22,9 @@
  *	  with the cells already in the domain excluded. It is searched once and cached per pixel (one representative pixel per cell), as the single reuse cell
  *	  of the legacy SPMIS path is.
  *
- *	- The neighbors are sampled in two stages. Stage 1 draws candidates approximately proportionally to the visibility-free shifted integrand of the
- *	  non-zero neighbors of the domain, evaluated in closed form from compact per-pixel records (ReSTIR_PT_SPMIS_BuildNeighborRecords). Stage 2 traces
- *	  the visibility of every candidate at the center pixel and resamples one visible candidate per neighbor.
+ *	- The neighbors are sampled in two stages. Stage 1 draws one pool of candidates approximately proportionally to the visibility-free shifted
+ *	  integrand of the non-zero neighbors of the domain, evaluated in closed form from compact per-pixel records (ReSTIR_PT_SPMIS_BuildNeighborRecords).
+ *	  Stage 2 traces the visibility of every candidate of the pool at the center pixel and chooses the neighbors among the visible ones.
  */
 
 /**
@@ -372,41 +372,36 @@ HIPRT_DEVICE float spmis_union_domain_cell_importance(const ReSTIRPTSPMISSetting
 }
 
 /**
- * Stage 1 of the neighbor selection of the union domain reuse: 'candidates_per_neighbor' draws per neighbor slot, each one individually distributed
- * approximately proportionally to the selection target t of spmis_neighbor_record_target() (the draws of a slot are correlated, which stage 2 allows):
+ * Stage 1 of the neighbor selection of the union domain reuse: ONE pool of 'pool_size' picks for the pixel, each one individually distributed
+ * approximately proportionally to the selection target t of spmis_neighbor_record_target() (the picks are correlated, which stage 2 allows):
  *	- domains with at most ReSTIRPTSPMISUnionDomainSettings::total_neighbor_budget non-zero neighbors: exact streaming over all the records of the
- *	  domain into neighbor_count x candidates_per_neighbor weighted reservoirs that share one acceptance uniform per record, rotated per reservoir (virtual
- *	  slot j = candidate x neighbor_count + slot: the candidates of one slot are spread over the CDF). Exact probabilities P = t_i / sum(t)
+ *	  domain into pool_size weighted reservoirs that share one acceptance uniform per record, rotated per reservoir (the picks are spread over the CDF).
+ *	  Exact probabilities P = t_i / sum(t)
  *
- *	- larger domains: RIS. Every slot draws its own ceil(K / neighbor_count) stratified candidates: the cell proportionally to its importance sum, then
- *	  the record in the cell through its CDF (every non-zero record has a non-zero importance c W p_hat). The candidates_per_neighbor reservoirs of the slot
- *	  resample that candidate set with rotated copies of one acceptance uniform. P = t_i / sum(RIS weights of the slot), the inverse of the RIS unbiased
- *	  contribution weight
+ *	- larger domains: RIS. The pool draws K = total_neighbor_budget stratified candidates: the cell proportionally to its importance sum, then the record
+ *	  in the cell through its CDF (every non-zero record has a non-zero importance c W p_hat). The pool_size reservoirs resample that candidate set with
+ *	  rotated copies of one acceptance uniform. P = t_i / sum(RIS weights), the inverse of the RIS unbiased contribution weight
  *
- * Outputs, slot-major (index = slot x candidates_per_neighbor + candidate): the pixel, its selection "probability" P (1 / unbiased contribution weight) and
- * its selection target t. Slots without any non-zero candidate are compacted away. Returns the number of slots written
+ * Outputs, per pick: the pixel, its selection "probability" P (1 / unbiased contribution weight) and its selection target t. 'pool_size' must be in
+ * [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE].
  *
- * 'MaxCandidatesPerNeighbor' is the maximum of candidates_per_neighbor (size of the per-slot reservoir arrays)
+ * Returns false (nothing written) when the domain has no candidate with a non-zero selection target
  */
-template <int MaxCandidatesPerNeighbor>
-HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& render_data,
-													  ReSTIRPTSurface& center_surface,
-													  const ReSTIRPTSPMISUnionDomain& domain,
-													  int center_pixel_reservoir_confidence,
-													  int neighbor_count,
-													  int candidates_per_neighbor,
-													  unsigned int* out_pixel_indices,
-													  float* out_selection_probabilities,
-													  float* out_selection_targets,
-													  Xorshift32Generator& rng)
+HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderData& render_data,
+															ReSTIRPTSurface& center_surface,
+															const ReSTIRPTSPMISUnionDomain& domain,
+															int center_pixel_reservoir_confidence,
+															int pool_size,
+															unsigned int* out_pixel_indices,
+															float* out_selection_probabilities,
+															float* out_selection_targets,
+															Xorshift32Generator& rng)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings					  = render_data.render_settings.restir_pt_settings.spmis_settings;
 	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = spmis_settings.union_domain;
 
-	neighbor_count			= hippt::min(neighbor_count, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS);
-	candidates_per_neighbor = hippt::clamp(1, MaxCandidatesPerNeighbor, candidates_per_neighbor);
-	if (domain.non_zero_count == 0 || domain.importance_sum <= 0.0f || neighbor_count <= 0)
-		return 0;
+	if (domain.non_zero_count == 0 || domain.importance_sum <= 0.0f)
+		return false;
 
 	int total_neighbor_budget = hippt::max(1, union_domain_settings.total_neighbor_budget);
 	bool exact				  = domain.non_zero_count <= static_cast<unsigned int>(total_neighbor_budget);
@@ -421,21 +416,16 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 	float center_confidence		= static_cast<float>(center_pixel_reservoir_confidence);
 	float domain_confidence_sum = static_cast<float>(domain.confidence_sum);
 
-	const float4_t* neighbor_records	  = reinterpret_cast<const float4_t*>(union_domain_settings.neighbor_records);
-	float inverse_candidates_per_neighbor = 1.0f / candidates_per_neighbor;
+	const float4_t* neighbor_records = reinterpret_cast<const float4_t*>(union_domain_settings.neighbor_records);
+	float inverse_pool_size			 = 1.0f / pool_size;
 
 	if (exact)
 	{
-		// Virtual slot j = candidate x neighbor_count + slot, its acceptance uniform is rotated by j / (neighbor_count x candidates_per_neighbor)
-		int virtual_slot_count			 = neighbor_count * candidates_per_neighbor;
-		float inverse_virtual_slot_count = 1.0f / virtual_slot_count;
-
-		unsigned int selected_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * MaxCandidatesPerNeighbor];
-		float selected_targets[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * MaxCandidatesPerNeighbor];
-		for (int virtual_slot = 0; virtual_slot < virtual_slot_count; virtual_slot++)
+		// The acceptance uniform of pick j is rotated by j / pool_size
+		for (int pick = 0; pick < pool_size; pick++)
 		{
-			selected_pixel_indices[virtual_slot] = 0;
-			selected_targets[virtual_slot]		 = 0.0f;
+			out_pixel_indices[pick]		= 0;
+			out_selection_targets[pick] = 0.0f;
 		}
 
 		float target_sum = 0.0f;
@@ -462,42 +452,31 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 				float acceptance_uniform = rng();
 				unsigned int pixel_index = spmis_settings.pixel_indices_sorted[cell_start_index + record];
 
-				for (int virtual_slot = 0; virtual_slot < virtual_slot_count; virtual_slot++)
+				for (int pick = 0; pick < pool_size; pick++)
 				{
-					float rotated_uniform = acceptance_uniform + virtual_slot * inverse_virtual_slot_count;
+					float rotated_uniform = acceptance_uniform + pick * inverse_pool_size;
 					rotated_uniform		  = rotated_uniform >= 1.0f ? rotated_uniform - 1.0f : rotated_uniform;
 					if (rotated_uniform < acceptance)
 					{
-						selected_pixel_indices[virtual_slot] = pixel_index;
-						selected_targets[virtual_slot]		 = target;
+						out_pixel_indices[pick]		= pixel_index;
+						out_selection_targets[pick] = target;
 					}
 				}
 			}
 		}
 
 		if (!(target_sum > 0.0f))
-			return 0;
+			return false;
 
-		for (int slot = 0; slot < neighbor_count; slot++)
-		{
-			for (int candidate = 0; candidate < candidates_per_neighbor; candidate++)
-			{
-				int virtual_slot = candidate * neighbor_count + slot;
-				int output_index = slot * candidates_per_neighbor + candidate;
+		for (int pick = 0; pick < pool_size; pick++)
+			out_selection_probabilities[pick] = out_selection_targets[pick] / target_sum;
 
-				out_pixel_indices[output_index]			  = selected_pixel_indices[virtual_slot];
-				out_selection_probabilities[output_index] = selected_targets[virtual_slot] / target_sum;
-				out_selection_targets[output_index]		  = selected_targets[virtual_slot];
-			}
-		}
-
-		return neighbor_count;
+		return true;
 	}
 
-	// Independent candidate sets: every neighbor slot resamples its own ceil(K / N) stratified candidates
-	int per_neighbor_candidate_count		   = (total_neighbor_budget + neighbor_count - 1) / neighbor_count;
-	float inverse_per_neighbor_candidate_count = 1.0f / per_neighbor_candidate_count;
-	float inverse_importance_sum			   = 1.0f / domain.importance_sum;
+	// RIS over K stratified candidates of the whole domain
+	float inverse_total_neighbor_budget = 1.0f / total_neighbor_budget;
+	float inverse_importance_sum		= 1.0f / domain.importance_sum;
 
 	// The importance sums of the cells of the domain do not depend on the candidate: loaded once per pixel instead of once per candidate and per
 	// cell by the cell selection below
@@ -506,212 +485,115 @@ HIPRT_DEVICE int spmis_union_domain_select_candidates(const HIPRTRenderData& ren
 	float cell_importance_2 = spmis_union_domain_cell_importance(spmis_settings, domain, 2);
 	float cell_importance_3 = spmis_union_domain_cell_importance(spmis_settings, domain, 3);
 
-	int written_slot_count = 0;
+	float weight_sum = 0.0f;
 
-	for (int slot = 0; slot < neighbor_count; slot++)
+	// Slot of the selected record in pixel_indices_sorted (cell_offsets[cell] + index in the cell): the pixel index is only loaded for the selected
+	// candidates, after the resampling. The initial value is never output: the first candidate with a non-zero weight is accepted by every reservoir
+	unsigned int selected_record_slots[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
+	float selected_targets[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
+
+	UNROLL_LOOP
+	for (int pick = 0; pick < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE; pick++)
 	{
-		float slot_weight_sum = 0.0f;
+		selected_record_slots[pick] = 0;
+		selected_targets[pick]		= 0.0f;
+	}
 
-		// Slot of the selected record in pixel_indices_sorted (cell_offsets[cell] + index in the cell): the pixel index is only loaded for the selected
-		// candidates, after the resampling. The initial value is never output: the first candidate with a non-zero weight is accepted by every reservoir
-		unsigned int slot_selected_record_slots[MaxCandidatesPerNeighbor];
-		float slot_selected_targets[MaxCandidatesPerNeighbor];
+	for (int stratum = 0; stratum < total_neighbor_budget; stratum++)
+	{
+		float stratified_uniform = hippt::min((stratum + rng()) * inverse_total_neighbor_budget, 0.99999994f);
+
+		// Cell proportionally to its importance sum, the uniform is remapped into the interval of the chosen cell (the stratification carries over)
+		unsigned int cell_index		= domain.cell_0;
+		float cell_importance		= 0.0f;
+		float cumulative_before		= 0.0f;
+		float cumulative_importance = 0.0f;
+		bool cell_found				= false;
+
+		for (int cell = 0; cell < domain.cell_count; cell++)
+		{
+			unsigned int candidate_cell_index = domain.get_cell(cell);
+			float importance = cell == 0 ? cell_importance_0 : (cell == 1 ? cell_importance_1 : (cell == 2 ? cell_importance_2 : cell_importance_3));
+
+			float next_cumulative_importance = cumulative_importance + importance * inverse_importance_sum;
+
+			bool take_cell = !cell_found && importance > 0.0f && (stratified_uniform < next_cumulative_importance || cell == domain.cell_count - 1);
+			if (take_cell)
+			{
+				cell_index		  = candidate_cell_index;
+				cell_importance	  = importance;
+				cumulative_before = cumulative_importance;
+				cell_found		  = true;
+			}
+
+			cumulative_importance = next_cumulative_importance;
+		}
+
+		if (!cell_found || cell_importance <= 0.0f)
+			continue;
+
+		float cell_share		 = cell_importance * inverse_importance_sum;
+		float cell_local_uniform = hippt::clamp(0.0f, 0.99999994f, (stratified_uniform - cumulative_before) / cell_share);
+
+		unsigned int cell_start_index	   = spmis_settings.cell_offsets[cell_index];
+		unsigned int non_zero_cell_size	   = spmis_settings.cell_non_zero_reservoir_counters[cell_index];
+		const float* cell_cdf			   = spmis_settings.cell_cdfs + cell_start_index;
+		const unsigned short int* cell_lut = spmis_settings.cell_cdf_luts + spmis_settings.cell_cdf_lut_offsets[cell_index];
+		unsigned int record_index		   = spmis_sample_cell_cdf(cell_cdf, cell_lut, non_zero_cell_size, cell_local_uniform);
+
+		float4_t record_first  = neighbor_records[(cell_start_index + record_index) * 2 + 0];
+		float4_t record_second = neighbor_records[(cell_start_index + record_index) * 2 + 1];
+		// Probability of the candidate: probability of its cell x probability of the record in the CDF of the cell (record_second.z is the CDF
+		// importance c W p_hat of the record)
+		float candidate_probability = cell_share * record_second.z / cell_importance;
+		// The records store the confidence sum of their own cell, the selection target needs the one of the whole domain
+		record_second.w *= domain_confidence_sum / hippt::max(1.0f, static_cast<float>(spmis_settings.cell_confidence_sums[cell_index]));
+
+		float target = spmis_neighbor_record_target(record_first, record_second, center_surface, center_bsdf_luminance, center_confidence);
+		if (target <= 0.0f)
+			continue;
+
+		float weight = target * inverse_total_neighbor_budget / candidate_probability;
+		weight_sum += weight;
+
+		// One acceptance uniform, rotated for every reservoir of the pool: each reservoir is a weighted reservoir sampling of the same candidate set
+		// with uniform acceptance tests
+		float acceptance		 = weight / weight_sum;
+		float acceptance_uniform = rng();
+		unsigned int record_slot = cell_start_index + record_index;
 
 		UNROLL_LOOP
-		for (int candidate = 0; candidate < MaxCandidatesPerNeighbor; candidate++)
+		for (int pick = 0; pick < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE; pick++)
 		{
-			slot_selected_record_slots[candidate] = 0;
-			slot_selected_targets[candidate]	  = 0.0f;
-		}
+			float rotated_uniform = acceptance_uniform + pick * inverse_pool_size;
+			rotated_uniform		  = rotated_uniform >= 1.0f ? rotated_uniform - 1.0f : rotated_uniform;
 
-		for (int stratum = 0; stratum < per_neighbor_candidate_count; stratum++)
-		{
-			float stratified_uniform = hippt::min((stratum + rng()) * inverse_per_neighbor_candidate_count, 0.99999994f);
+			bool accept = pick < pool_size && rotated_uniform < acceptance;
 
-			// Cell proportionally to its importance sum, the uniform is remapped into the interval of the chosen cell (the stratification carries over)
-			unsigned int cell_index		= domain.cell_0;
-			float cell_importance		= 0.0f;
-			float cumulative_before		= 0.0f;
-			float cumulative_importance = 0.0f;
-			bool cell_found				= false;
-
-			for (int cell = 0; cell < domain.cell_count; cell++)
-			{
-				unsigned int candidate_cell_index = domain.get_cell(cell);
-				float importance = cell == 0 ? cell_importance_0 : (cell == 1 ? cell_importance_1 : (cell == 2 ? cell_importance_2 : cell_importance_3));
-
-				float next_cumulative_importance = cumulative_importance + importance * inverse_importance_sum;
-
-				bool take_cell = !cell_found && importance > 0.0f && (stratified_uniform < next_cumulative_importance || cell == domain.cell_count - 1);
-				if (take_cell)
-				{
-					cell_index		  = candidate_cell_index;
-					cell_importance	  = importance;
-					cumulative_before = cumulative_importance;
-					cell_found		  = true;
-				}
-
-				cumulative_importance = next_cumulative_importance;
-			}
-
-			if (!cell_found || cell_importance <= 0.0f)
-				continue;
-
-			float cell_share		 = cell_importance * inverse_importance_sum;
-			float cell_local_uniform = hippt::clamp(0.0f, 0.99999994f, (stratified_uniform - cumulative_before) / cell_share);
-
-			unsigned int cell_start_index	   = spmis_settings.cell_offsets[cell_index];
-			unsigned int non_zero_cell_size	   = spmis_settings.cell_non_zero_reservoir_counters[cell_index];
-			const float* cell_cdf			   = spmis_settings.cell_cdfs + cell_start_index;
-			const unsigned short int* cell_lut = spmis_settings.cell_cdf_luts + spmis_settings.cell_cdf_lut_offsets[cell_index];
-			unsigned int record_index		   = spmis_sample_cell_cdf(cell_cdf, cell_lut, non_zero_cell_size, cell_local_uniform);
-
-			float4_t record_first  = neighbor_records[(cell_start_index + record_index) * 2 + 0];
-			float4_t record_second = neighbor_records[(cell_start_index + record_index) * 2 + 1];
-			// Probability of the candidate: probability of its cell x probability of the record in the CDF of the cell (record_second.z is the CDF
-			// importance c W p_hat of the record)
-			float candidate_probability = cell_share * record_second.z / cell_importance;
-			// The records store the confidence sum of their own cell, the selection target needs the one of the whole domain
-			record_second.w *= domain_confidence_sum / hippt::max(1.0f, static_cast<float>(spmis_settings.cell_confidence_sums[cell_index]));
-
-			float target = spmis_neighbor_record_target(record_first, record_second, center_surface, center_bsdf_luminance, center_confidence);
-			if (target <= 0.0f)
-				continue;
-
-			float weight = target * inverse_per_neighbor_candidate_count / candidate_probability;
-			slot_weight_sum += weight;
-
-			// One acceptance uniform, rotated for every reservoir of the slot: each reservoir is a weighted reservoir sampling of the same candidate set
-			// with uniform acceptance tests
-			float acceptance		 = weight / slot_weight_sum;
-			float acceptance_uniform = rng();
-			unsigned int record_slot = cell_start_index + record_index;
-
-			UNROLL_LOOP
-			for (int candidate = 0; candidate < MaxCandidatesPerNeighbor; candidate++)
-			{
-				float rotated_uniform = acceptance_uniform + candidate * inverse_candidates_per_neighbor;
-				rotated_uniform		  = rotated_uniform >= 1.0f ? rotated_uniform - 1.0f : rotated_uniform;
-
-				bool accept = candidate < candidates_per_neighbor && rotated_uniform < acceptance;
-
-				slot_selected_record_slots[candidate] = accept ? record_slot : slot_selected_record_slots[candidate];
-				slot_selected_targets[candidate]	  = accept ? target : slot_selected_targets[candidate];
-			}
-		}
-
-		if (slot_weight_sum > 0.0f)
-		{
-			for (int candidate = 0; candidate < candidates_per_neighbor; candidate++)
-			{
-				int output_index = written_slot_count * candidates_per_neighbor + candidate;
-
-				out_pixel_indices[output_index]			  = spmis_settings.pixel_indices_sorted[slot_selected_record_slots[candidate]];
-				out_selection_probabilities[output_index] = slot_selected_targets[candidate] / slot_weight_sum;
-				out_selection_targets[output_index]		  = slot_selected_targets[candidate];
-			}
-
-			written_slot_count++;
+			selected_record_slots[pick] = accept ? record_slot : selected_record_slots[pick];
+			selected_targets[pick]		= accept ? target : selected_targets[pick];
 		}
 	}
 
-	return written_slot_count;
-}
+	if (!(weight_sum > 0.0f))
+		return false;
 
-/**
- * Two-stage visibility-aware neighbor selection of the union domain reuse (ReSTIRPTSPMISUnionDomainSettings::visibility_candidate_count = M).
- *
- * Stage 1: spmis_union_domain_select_candidates(), M draws (i_k, W_k = 1 / P_k) per neighbor slot, each with E[W_k g(i_k)] = sum over the domain of g
- * for any function g of the neighbors that is zero where the selection target t is zero.
- *
- * Stage 2: the visibility V_k of the sample of every candidate at the center pixel, with the same tests and shadow ray as the visibility part of
- * ReSTIR_PT_evaluate_target_function<true>() (ReSTIR_PT_sample_visible_at_surface()). RIS with target t x V: w_k = t(i_k) V_k W_k, k* drawn with
- * probability w_k / sum(w), W' = (sum(w) / M) / t(i_k*). The returned "probability" is P' = 1 / W' = M t(i_k*) / sum(w).
- *
- * Unbiasedness: V_k = 0 implies a zero contribution of the candidate (its target function at the center, visibility included, is zero) so
- * E[W' g(i_k*)] = (1 / M) sum over k of E[W_k g(i_k)] = sum over the domain of g. M = 1 is a single draw with its visibility test.
- *
- * Every selected neighbor's sample is visible at the center pixel: the caller evaluates its target function at the center without the visibility ray. A
- * slot whose candidates are all occluded gets the pixel index HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, the caller skips it (zero contribution).
- * Returns the number of slots written
- */
-HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& render_data,
-													 ReSTIRPTSurface& center_surface,
-													 const ReSTIRPTSPMISUnionDomain& domain,
-													 int center_pixel_reservoir_confidence,
-													 int neighbor_count,
-													 int candidates_per_neighbor,
-													 unsigned int* out_pixel_indices,
-													 float* out_selection_probabilities,
-													 Xorshift32Generator& rng)
-{
-	neighbor_count			= hippt::min(neighbor_count, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS);
-	candidates_per_neighbor = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES, candidates_per_neighbor);
-
-	unsigned int candidate_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES];
-	float candidate_selection_probabilities[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES];
-	float candidate_selection_targets[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES];
-
-	int slot_count = spmis_union_domain_select_candidates<RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES>(
-		render_data, center_surface, domain, center_pixel_reservoir_confidence, neighbor_count, candidates_per_neighbor, candidate_pixel_indices,
-		candidate_selection_probabilities, candidate_selection_targets, rng);
-
-	const ReSTIRPTReservoir* input_reservoirs = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs;
-	for (int slot = 0; slot < slot_count; slot++)
+	for (int pick = 0; pick < pool_size; pick++)
 	{
-		float second_stage_weight_sum	= 0.0f;
-		unsigned int chosen_pixel_index = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-		float chosen_selection_target	= 0.0f;
-
-		for (int candidate = 0; candidate < candidates_per_neighbor; candidate++)
-		{
-			int candidate_index				   = slot * candidates_per_neighbor + candidate;
-			unsigned int candidate_pixel_index = candidate_pixel_indices[candidate_index];
-			float selection_target			   = candidate_selection_targets[candidate_index];
-			float selection_probability		   = candidate_selection_probabilities[candidate_index];
-			if (selection_target <= 0.0f || selection_probability <= 0.0f)
-				continue;
-
-			const ReSTIRPTReservoir& candidate_reservoir = input_reservoirs[candidate_pixel_index];
-			bool candidate_visible						 = false;
-			if (candidate_reservoir.UCW > 0.0f)
-				candidate_visible = ReSTIR_PT_sample_visible_at_surface(render_data, candidate_reservoir.sample, center_surface, rng);
-
-			if (!candidate_visible)
-				// V_k = 0
-				continue;
-
-			// w_k = t x V_k x W_k with W_k = 1 / P_k
-			float second_stage_weight = selection_target / selection_probability;
-			second_stage_weight_sum += second_stage_weight;
-			if (rng() < second_stage_weight / second_stage_weight_sum)
-			{
-				chosen_pixel_index		= candidate_pixel_index;
-				chosen_selection_target = selection_target;
-			}
-		}
-
-		if (second_stage_weight_sum > 0.0f)
-		{
-			out_pixel_indices[slot]			  = chosen_pixel_index;
-			out_selection_probabilities[slot] = candidates_per_neighbor * chosen_selection_target / second_stage_weight_sum;
-		}
-		else
-		{
-			out_pixel_indices[slot]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-			out_selection_probabilities[slot] = 1.0f;
-		}
+		out_pixel_indices[pick]			  = spmis_settings.pixel_indices_sorted[selected_record_slots[pick]];
+		out_selection_probabilities[pick] = selected_targets[pick] / weight_sum;
+		out_selection_targets[pick]		  = selected_targets[pick];
 	}
 
-	return slot_count;
+	return true;
 }
 
 /**
- * Visibility pool variant of the neighbor selection of the union domain reuse (ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size = L > 0): every
- * pixel traces exactly L shadow rays, whatever the number of neighbors N.
+ * Two-stage visibility-aware neighbor selection of the union domain reuse with a visibility pool (ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
+ * = L >= 1): every pixel traces exactly L shadow rays, whatever the number of neighbors N.
  *
- * Stage 1: ONE pool for the pixel, spmis_union_domain_select_candidates() with a single slot: the K stratified candidates of the whole domain resampled
- * by L reservoirs with rotated copies of one acceptance uniform. Every pick l is marginally drawn proportionally to the RIS weights w of the pool,
+ * Stage 1: ONE pool for the pixel, spmis_union_domain_select_pool_candidates(): the K stratified candidates of the whole domain resampled by L
+ * reservoirs with rotated copies of one acceptance uniform. Every pick l is marginally drawn proportionally to the RIS weights w of the pool,
  * P_l = t_l / W with W the sum of the RIS weights, so that for any function g of the neighbors that is zero where t is zero:
  *
  *		E[(1 / L) x sum over the L picks of g(i_l) / P_l] = E[sum over the pool of w_k g(c_k) / t_k] = sum over the domain of g
@@ -729,15 +611,15 @@ HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& rend
  *
  * Returns the number of slots written: N, or 0 when the pool is empty
  */
-HIPRT_DEVICE int spmis_union_domain_select_neighbors_from_pool(const HIPRTRenderData& render_data,
-															   ReSTIRPTSurface& center_surface,
-															   const ReSTIRPTSPMISUnionDomain& domain,
-															   int center_pixel_reservoir_confidence,
-															   int neighbor_count,
-															   int pool_size,
-															   unsigned int* out_pixel_indices,
-															   float* out_selection_probabilities,
-															   Xorshift32Generator& rng)
+HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& render_data,
+													 ReSTIRPTSurface& center_surface,
+													 const ReSTIRPTSPMISUnionDomain& domain,
+													 int center_pixel_reservoir_confidence,
+													 int neighbor_count,
+													 int pool_size,
+													 unsigned int* out_pixel_indices,
+													 float* out_selection_probabilities,
+													 Xorshift32Generator& rng)
 {
 	neighbor_count = hippt::min(neighbor_count, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS);
 	pool_size	   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE, pool_size);
@@ -746,11 +628,10 @@ HIPRT_DEVICE int spmis_union_domain_select_neighbors_from_pool(const HIPRTRender
 	float pool_selection_probabilities[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
 	float pool_selection_targets[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
 
-	// A single slot: one pool of L picks
-	int pool_slot_count = spmis_union_domain_select_candidates<RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE>(
-		render_data, center_surface, domain, center_pixel_reservoir_confidence, 1, pool_size, pool_pixel_indices, pool_selection_probabilities,
-		pool_selection_targets, rng);
-	if (pool_slot_count == 0)
+	// Stage 1: one pool of L picks
+	bool pool_valid = spmis_union_domain_select_pool_candidates(render_data, center_surface, domain, center_pixel_reservoir_confidence, pool_size,
+																pool_pixel_indices, pool_selection_probabilities, pool_selection_targets, rng);
+	if (!pool_valid)
 		return 0;
 
 	for (int slot = 0; slot < neighbor_count; slot++)

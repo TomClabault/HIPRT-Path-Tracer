@@ -14,10 +14,9 @@ static constexpr unsigned int RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE = 4;
 static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS = 4;
 // Maximum number of SPMIS cell searches done to find the cells of a union domain (a search may not find a new cell)
 static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELL_SEARCHES = 8;
-// Maximum values of ReSTIRPTSPMISUnionDomainSettings::neighbor_count, visibility_candidate_count and mis_group_size
-static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS				= 8;
-static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES = 4;
-static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE		= 3;
+// Maximum values of ReSTIRPTSPMISUnionDomainSettings::neighbor_count and mis_group_size
+static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS		 = 8;
+static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE = 3;
 // Maximum value of ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
 static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE = 8;
 // Maximum number of probes (canonical_group_count x mis_group_size) for which the canonical MIS weight of the union domain reuse is computed as a
@@ -42,8 +41,8 @@ struct ReSTIRPTCommonSPMISCompatibilityGuidedCellSelectionSettings
 /**
  * Settings of the SPMIS "union domain" spatial reuse, see SpatialSPMISUnionDomain.h:
  *	- the reuse domain of a pixel is the union of up to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS distinct SPMIS cells found by the SPMIS cell search
- *	- the neighbors are sampled with a two-stage selection: candidates drawn approximately proportionally to the visibility-free shifted integrand
- *	  (closed form on compact neighbor records), then one visible candidate resampled per neighbor
+ *	- the neighbors are sampled with a two-stage selection: one pool of candidates drawn approximately proportionally to the visibility-free shifted
+ *	  integrand (closed form on compact neighbor records), then the neighbors chosen among the visible candidates of the pool
  *	- the MIS weights are stochastic group-wise MIS weights (generalization of the stochastic pairwise MIS weights, see SpatialGroupwiseMISWeight.h)
  *
  * Only used when ReSTIRPTSettings::do_spmis_union_domain_reuse() returns true: the group-wise MIS weights are only an exact partition of unity when all
@@ -57,9 +56,6 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// How many neighbors are resampled from the union domain. Replaces ReSTIRPTSpatialPassSettings::reuse_neighbor_count. Clamped to
 	// [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS]
 	int neighbor_count = 3;
-	// How many candidates are drawn per neighbor before tracing their visibility and resampling one visible candidate. One shadow ray per candidate.
-	// Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES]
-	int visibility_candidate_count = 3;
 	// Number of pixels per group of the stochastic group-wise MIS weights. 1 is pairwise MIS. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE]
 	int mis_group_size = 2;
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
@@ -90,9 +86,8 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// A candidate costs no ray: 32 candidates with a visibility pool of 5 and 2 canonical groups measured faster and at least as good as 16 candidates
 	// with a pool of 6 and 3 canonical groups
 	int total_neighbor_budget = 32;
-	// If > 0, the neighbors are taken among the visible candidates of ONE pool of visibility_pool_size candidates for the pixel (one shadow ray each,
-	// whatever neighbor_count) instead of visibility_candidate_count candidates per neighbor, see spmis_union_domain_select_neighbors_from_pool().
-	// Clamped to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE
+	// The neighbors are taken among the visible candidates of ONE pool of visibility_pool_size candidates for the pixel (one shadow ray each, whatever
+	// neighbor_count), see spmis_union_domain_select_neighbors(). Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE]
 	int visibility_pool_size = 5;
 
 	// For every pixel with a non-zero spatial reuse input reservoir, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats at the slot of the

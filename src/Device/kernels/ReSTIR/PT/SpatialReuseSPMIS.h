@@ -53,10 +53,9 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 		return;
 	}
 
-	int reused_neighbors_count	   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
-	int visibility_candidate_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_CANDIDATES, union_domain_settings.visibility_candidate_count);
-	int mis_group_size			   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE, union_domain_settings.mis_group_size);
-	int canonical_group_count	   = hippt::max(1, union_domain_settings.canonical_group_count);
+	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
+	int mis_group_size		   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE, union_domain_settings.mis_group_size);
+	int canonical_group_count  = hippt::max(1, union_domain_settings.canonical_group_count);
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	ReSTIRPTSpatialGroupwiseMISWeight mis_weight_function;
@@ -67,15 +66,11 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	unsigned int selected_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS];
 	float selection_probabilities[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS];
 	int selected_slot_count = 0;
-	if (domain.non_zero_count > 0 && union_domain_settings.visibility_pool_size > 0)
+	if (domain.non_zero_count > 0)
 		// One pool of visibility candidates for the pixel
-		selected_slot_count = spmis_union_domain_select_neighbors_from_pool(render_data, center_pixel_surface, domain, center_pixel_reservoir_confidence,
-																			reused_neighbors_count, union_domain_settings.visibility_pool_size,
-																			selected_pixel_indices, selection_probabilities, random_number_generator);
-	else if (domain.non_zero_count > 0)
-		selected_slot_count =
-			spmis_union_domain_select_neighbors(render_data, center_pixel_surface, domain, center_pixel_reservoir_confidence, reused_neighbors_count,
-												visibility_candidate_count, selected_pixel_indices, selection_probabilities, random_number_generator);
+		selected_slot_count = spmis_union_domain_select_neighbors(render_data, center_pixel_surface, domain, center_pixel_reservoir_confidence,
+																  reused_neighbors_count, union_domain_settings.visibility_pool_size, selected_pixel_indices,
+																  selection_probabilities, random_number_generator);
 
 	// Stratified reverse probes: the pixel that stands for the domain in the MIS weight of a neighbor is taken at one uniform position of the pixel list
 	// of the domain, rotated by slot / slot count. Every position is still uniform in [0, 1) and independent of the selection of the neighbors
