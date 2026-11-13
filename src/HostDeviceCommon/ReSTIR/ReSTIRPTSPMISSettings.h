@@ -27,17 +27,6 @@ static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT
 // Per pixel in the union domain cache: the number of cached cells then one representative pixel per cell
 static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE = 1 + RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS;
 
-struct ReSTIRPTCommonSPMISCompatibilityGuidedCellSelectionSettings
-{
-	// If true, uses the heuristic from [Compatibility-Guided Neighbor Selection for ReSTIR, Junkins, 2026] to weight the selection of the neighboring cell.
-	// Disabled by default because not that good, a bit worse than hard rejection actually
-	bool do_compatibility_guided_selection = false;
-
-	// How much the distance to the center pixel is scaled when computing the weight of a neighboring cell. The lower this factor, the more closer cells are
-	// preferred. 0.0f turns off distance scaling.
-	float solid_angle_omega = 0.05f;
-};
-
 /**
  * Settings of the SPMIS "union domain" spatial reuse, see SpatialSPMISUnionDomain.h:
  *	- the reuse domain of a pixel is the union of up to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS distinct SPMIS cells found by the SPMIS cell search
@@ -114,8 +103,6 @@ struct ReSTIRPTSPMISSettings
 	// factor. The lower this factor, the more closer cells are preferred. 0.0f turns off distance scaling.
 	float distance_scaling			 = 8.0f;
 	bool variance_aware_reuse_radius = true;
-
-	ReSTIRPTCommonSPMISCompatibilityGuidedCellSelectionSettings compatibility_guided_cell_selection;
 
 	int hash_normal_precision		  = 2;
 	float hash_normal_jitter_strength = 0.2f;

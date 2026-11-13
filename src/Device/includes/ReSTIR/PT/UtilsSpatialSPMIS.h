@@ -16,23 +16,6 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float compatibility_guided_cell_selection_weight(const ReSTIRPTSPMISSettings& spmis_settings,
-															  float3_t camera_position,
-															  float3_t center_pixel_shading_point,
-															  float3_t neighbor_pixel_shading_point,
-															  float3_t center_pixel_geometric_normal,
-															  float3_t neighbor_pixel_geometric_normal)
-{
-	float distance_to_camera_2	  = hippt::length2(center_pixel_shading_point - camera_position);
-	float shading_points_distance = hippt::length(center_pixel_shading_point - neighbor_pixel_shading_point);
-	float s						  = hippt::sqrt(distance_to_camera_2 * spmis_settings.compatibility_guided_cell_selection.solid_angle_omega * hippt::M_INV_PI);
-	float heuristic_position	  = hippt::intrin_expf(-(shading_points_distance / s));
-
-	float heuristic_normal = hippt::pow_8(hippt::max(0.0f, hippt::dot(center_pixel_geometric_normal, neighbor_pixel_geometric_normal)));
-
-	return heuristic_position * heuristic_normal;
-}
-
 /**
  * Whether 'cell_index' is one of the 'cell_count' first entries of 'cells' (false for an empty list)
  */
@@ -117,25 +100,15 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 		else if (spmis_cell_in_list(neighbor_cell_index, excluded_cells, excluded_cell_count))
 			continue;
 
-		float compatibility_weight = 1.0f;
-		if (spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
-		{
-			compatibility_weight = compatibility_guided_cell_selection_weight(
-				spmis_settings, render_data.current_camera.position, center_pixel_surface.shading_point,
-				render_data.g_buffer.primary_hit_position[neighbor_pixel_index], center_pixel_surface.geometric_normal,
-				render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack());
-		}
-		else if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
-													   center_pixel_surface.geometric_normal))
+		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point,
+												  center_pixel_surface.geometric_normal))
 			// Neighbor doesn't pass the similarity heuristics, skipping
 			continue;
 
 		unsigned int neighbor_cell_weight = spmis_settings.cell_confidence_sums[neighbor_cell_index];
 
 		float selection_weight = neighbor_cell_weight;
-		selection_weight *= compatibility_weight;
-		if (!spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
-			selection_weight *= distance_scaling > 0.0f ? 1.0f / (hippt::length(neighbor_coords - center_pixel_coords) / distance_scaling) : 1.0f;
+		selection_weight *= distance_scaling > 0.0f ? 1.0f / (hippt::length(neighbor_coords - center_pixel_coords) / distance_scaling) : 1.0f;
 
 		weight_sum += selection_weight;
 		if (rng() < selection_weight / weight_sum)

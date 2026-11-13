@@ -3883,7 +3883,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		if (ImGui::SliderInt("Max search iterations", &spmis_settings.neighboring_cell_max_search_iterations, 0, 16))
 			m_render_window->set_render_dirty(true);
 
-		ImGui::BeginDisabled(spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection);
 		if (ImGui::SliderFloat("Distance scaling", &spmis_settings.distance_scaling, 0.0f, 8.0f))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker(
@@ -3891,7 +3890,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			"improve variance (since we will then be reusing from closer pixels). However, directly weighting by the inverse distance isn't enough "
 			"so we're further scaling by a controllable factor. The lower this factor, the more closer cells are preferred. 0.0f turns off "
 			"distance scaling.");
-		ImGui::EndDisabled();
 		if (ImGui::Checkbox("Variance aware reuse radius", &spmis_settings.variance_aware_reuse_radius))
 			m_render_window->set_render_dirty(true);
 
@@ -3943,19 +3941,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			"better convergence could be achieved with the \"Good input\" preset.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::Checkbox("Compatibility-guided selection", &spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection))
-			m_render_window->set_render_dirty(true);
-		if (spmis_settings.compatibility_guided_cell_selection.do_compatibility_guided_selection)
-		{
-			ImGui::TreePush("Compatibility guided selection settings tree");
-
-			if (ImGui::SliderFloat("Solid angle omega", &spmis_settings.compatibility_guided_cell_selection.solid_angle_omega, 0.0f, 0.2f))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::TreePop();
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Union domain reuse");
 		ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = spmis_settings.union_domain;
 		bool using_union_domain_reuse							= compute_ReSTIR_PT_using_SPMIS_union_domain_boolean();
@@ -3963,7 +3948,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker(
 			"Reuses from the union of up to 4 cells found by the neighbor cell search instead of a single cell. The neighbors are drawn approximately "
-			"proportionally to their visibility-free contribution at the center pixel, then one visible neighbor is resampled among a few candidates. The MIS "
+			"proportionally to their visibility-free contribution at the center pixel, then chosen among the visible candidates of one pool. The MIS "
 			"weights are stochastic group-wise MIS weights.\n\nOnly used with the non-defensive stochastic pairwise MIS weights, without temporal reuse and "
 			"with a single spatial reuse pass: the settings below are not used otherwise.");
 
