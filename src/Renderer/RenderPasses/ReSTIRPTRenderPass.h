@@ -22,6 +22,7 @@ public:
 	static const std::string RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID;
 	static const std::string RESTIR_PT_SHADING_KERNEL_ID;
 	static const std::string RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID;
@@ -64,6 +65,11 @@ public:
 	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index);
+	/**
+	 * Returns true if the spatial reuse of this frame runs the SPMIS union domain reuse kernel (RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID)
+	 * instead of the legacy SPMIS spatial reuse kernel (RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID)
+	 */
+	bool use_spmis_union_domain_kernel(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const;
 	void launch_spatial_reuse_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	void configure_shading_pass(HIPRTRenderData& render_data);
 	void launch_shading_pass(HIPRTRenderData& render_data);

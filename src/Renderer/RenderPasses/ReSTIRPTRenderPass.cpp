@@ -10,27 +10,29 @@
 #include "Threads/ThreadManager.h"
 
 #include <ranges>
-const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME					   = "ReSTIR PT Render pass";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID		   = "ReSTIR PT Initial candidates";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID			   = "ReSTIR PT Temporal reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID				   = "ReSTIR PT Spatial reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID		   = "ReSTIR PT Spatial reuse SPMIS";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					   = "ReSTIR PT Shading";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID	   = "ReSTIR PT Directional reuse compute";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		   = "ReSTIR PT SPMIS Reset Buffers";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	   = "ReSTIR PT SPMIS Reset Cells Data";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			   = "ReSTIR PT SPMIS Count Cells";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		   = "ReSTIR PT SPMIS Compute Offsets";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "ReSTIR PT SPMIS Sort";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT SPMIS Build CDFs";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT SPMIS Compute Per Cell Noise";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT SPMIS Build Neighbor Records";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME						   = "ReSTIR PT Render pass";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID			   = "ReSTIR PT Initial candidates";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID				   = "ReSTIR PT Temporal reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID					   = "ReSTIR PT Spatial reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID			   = "ReSTIR PT Spatial reuse SPMIS";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID = "ReSTIR PT Spatial reuse SPMIS Union Domain";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID						   = "ReSTIR PT Shading";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID		   = "ReSTIR PT Directional reuse compute";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID			   = "ReSTIR PT SPMIS Reset Buffers";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID		   = "ReSTIR PT SPMIS Reset Cells Data";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID				   = "ReSTIR PT SPMIS Count Cells";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID			   = "ReSTIR PT SPMIS Compute Offsets";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID					   = "ReSTIR PT SPMIS Sort";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID				   = "ReSTIR PT SPMIS Build CDFs";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID	   = "ReSTIR PT SPMIS Compute Per Cell Noise";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID	   = "ReSTIR PT SPMIS Build Neighbor Records";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },
 	{ RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_PT_TemporalReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_PT_SpatialReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMIS" },
+	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomain" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, "ReSTIR_PT_Shading" },
 	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, "ReSTIR_PT_Directional_Reuse_Compute" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetBuffers" },
@@ -48,6 +50,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/TemporalReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMIS.h" },
+	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMISUnionDomain.h" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/Shading.h" },
 	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetBuffers.h" },
@@ -115,6 +118,19 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GP
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->get_kernel_options().set_macro_value(
+		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->set_kernel_file_path(
+		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->set_kernel_function_name(
+		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->synchronize_options_with(m_compiler_options,
+																												  GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->get_kernel_options().set_macro_value(
+		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID] =
@@ -260,6 +276,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 		{
 			// SPMIS has never been compiled but we need it now
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
@@ -665,6 +682,17 @@ void ReSTIRPTRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_da
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs = output_reservoirs;
 }
 
+bool ReSTIRPTRenderPass::use_spmis_union_domain_kernel(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const
+{
+	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
+
+	// The union domain reuse buffers are allocated by pre_render_update_spmis_buffers() whenever do_spmis_union_domain_reuse() is true, checking them
+	// anyway so that a frame that doesn't have them falls back to the legacy kernel
+	return render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
+			   compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE)) &&
+		   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr;
+}
+
 void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!render_data.render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass)
@@ -680,11 +708,16 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 				RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 		{
 			launch_spmis_create_reuse_cells_pass(render_data, compiler_options, render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
-			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, render_data);
 
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->launch_asynchronous(
-				KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
-				m_renderer->get_main_stream());
+			// The union domain reuse and the legacy single reuse cell path are two kernels: each one only carries the code of its own path
+			const std::string& spmis_spatial_reuse_kernel_id = use_spmis_union_domain_kernel(render_data, compiler_options)
+																   ? ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID
+																   : ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID;
+
+			upload_render_data(spmis_spatial_reuse_kernel_id, render_data);
+
+			m_kernels[spmis_spatial_reuse_kernel_id]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x,
+																		  m_renderer->m_render_resolution.y, nullptr, m_renderer->get_main_stream());
 		}
 		else
 		{

@@ -16,7 +16,7 @@
 
 /**
  * SPMIS "union domain" spatial reuse (ReSTIRPTSPMISUnionDomainSettings), the reuse domain and the neighbor selection. The MIS weights are in
- * SpatialGroupwiseMISWeight.h and the spatial reuse itself in ReSTIR_PT_SPMIS_union_domain_spatial_reuse() (SpatialReuseSPMIS.h).
+ * SpatialGroupwiseMISWeight.h and the spatial reuse itself in ReSTIR_PT_SPMIS_union_domain_spatial_reuse() (SpatialReuseSPMISUnionDomain.h).
  *
  *	- The reuse domain of a pixel is the union of up to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS distinct SPMIS cells, each found by the SPMIS cell search
  *	  with the cells already in the domain excluded. It is searched once and cached per pixel (one representative pixel per cell), as the single reuse cell

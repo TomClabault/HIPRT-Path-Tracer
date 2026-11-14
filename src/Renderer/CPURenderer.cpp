@@ -20,6 +20,7 @@
 #include "Device/kernels/ReSTIR/PT/Shading.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMIS.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomain.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
@@ -1296,7 +1297,16 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 	{
 		launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
 
-		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMIS(m_render_data, x, y); });
+		// Same kernel selection as ReSTIRPTRenderPass::use_spmis_union_domain_kernel(): the union domain reuse and the legacy single reuse cell path
+		// are two kernels
+		const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = m_render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
+		bool use_union_domain_kernel = m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType) &&
+									   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr;
+
+		if (use_union_domain_kernel)
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomain(m_render_data, x, y); });
+		else
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMIS(m_render_data, x, y); });
 	}
 	else
 		debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuse(m_render_data, x, y); });
