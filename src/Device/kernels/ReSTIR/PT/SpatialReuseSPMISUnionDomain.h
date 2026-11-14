@@ -6,6 +6,12 @@
 #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_H
 #define DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_H
 
+// The shadow rays of this kernel are mostly visible and are not faster with the shadow ray traversal hint (Intersect.h): they keep the
+// default hint. Defined before the includes so that Intersect.h sees it. GPU only: the CPU renderer compiles every kernel in one translation unit
+#ifdef __KERNELCC__
+#define SHADOW_RAY_TRAVERSAL_HINT hiprtTraversalHintDefault
+#endif
+
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/ReSTIR/Jacobian.h"

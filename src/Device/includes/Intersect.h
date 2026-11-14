@@ -39,18 +39,26 @@
 	}
 #endif // #if SharedStackBVHTraversalSize > 0
 
+// Traversal hint of the any-hit (shadow ray) traversals. Shadow rays that are mostly occluded traverse the BVH faster with the shadow ray hint,
+// which only changes the box traversal order: the visibility result is the same. A kernel whose shadow rays are mostly visible does not benefit
+// and defines this macro to hiprtTraversalHintDefault before its includes (SpatialReuseSPMISUnionDomain.h).
+// This must stay a compile-time constant: a per-ray hint value makes the compiler wrap every BVH intersection instruction in a loop
+#ifndef SHADOW_RAY_TRAVERSAL_HINT
+#define SHADOW_RAY_TRAVERSAL_HINT hiprtTraversalHintShadowRays
+#endif
+
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
 	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload,  \
 																				   render_data.hiprt_function_table, 0)
 #define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
-	hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload,   \
+	hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, SHADOW_RAY_TRAVERSAL_HINT, &payload,   \
 																				  render_data.hiprt_function_table, 0)
 #else // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
 	hiprtGeomTraversalClosest traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
-	hiprtGeomTraversalAnyHit traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+	hiprtGeomTraversalAnyHit traversal_variable_name(GPU_BVH_hiprtGeom, ray, SHADOW_RAY_TRAVERSAL_HINT, &payload, render_data.hiprt_function_table, 0);
 #endif // #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 
 #define DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)                           \
