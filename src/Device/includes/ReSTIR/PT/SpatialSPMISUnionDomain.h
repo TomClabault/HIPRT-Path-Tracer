@@ -241,37 +241,31 @@ HIPRT_DEVICE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData
  *
  * RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats, read as two float4:
  *	[0..2] reconnection vertex position (the direction of the path for an envmap path)
- *	[3..4] octahedral encoding of the geometric normal of the reconnection vertex. [3] = 2 marks an envmap path
+ *	[3]	   bits of the Octahedral24BitNormalPadded32b geometric normal of the reconnection vertex (the reservoir's packed normal, copied as is). Its padding
+ *		   byte is 1 for an envmap path (no normal), 0 otherwise, see spmis_neighbor_record_read_normal()
+ *	[4]	   unused
  *	[5]	   Q_k: luminance of the radiance leaving the reconnection vertex toward the shading point of the neighbor, times the inverse of the solid angle to
  *		   area conversion of the neighbor (d^2 / cosine at the reconnection vertex). Just the luminance of the radiance for an envmap path. The sign is
  *		   negative for a DI sample (reconnection vertex on a light)
  *	[6]	   c_i W_i p_hat_i(X_i): the importance of the pixel in the CDF of its cell (same value as ReSTIR_PT_SPMIS_BuildCDFs)
  *	[7]	   C_cell p_hat_i(X_i), with C_cell the confidence sum of the cell of the pixel
  */
-HIPRT_HOST_DEVICE float2_t spmis_neighbor_record_encode_normal(const float3_t& normal)
+HIPRT_DEVICE float spmis_neighbor_record_write_normal(Octahedral24BitNormalPadded32b packed_normal, bool envmap_path)
 {
-	float l1_norm	  = hippt::abs(normal.x) + hippt::abs(normal.y) + hippt::abs(normal.z);
-	float projected_x = normal.x / l1_norm;
-	float projected_y = normal.y / l1_norm;
-	if (normal.z < 0.0f)
-		return make_float2((1.0f - hippt::abs(projected_y)) * (projected_x >= 0.0f ? 1.0f : -1.0f),
-						   (1.0f - hippt::abs(projected_x)) * (projected_y >= 0.0f ? 1.0f : -1.0f));
+	packed_normal.set_padding(envmap_path ? 1 : 0);
 
-	return make_float2(projected_x, projected_y);
+	float normal_bits;
+	memcpy(&normal_bits, &packed_normal, sizeof(float));
+
+	return normal_bits;
 }
 
-HIPRT_HOST_DEVICE float3_t spmis_neighbor_record_decode_normal(float x, float y)
+HIPRT_DEVICE Octahedral24BitNormalPadded32b spmis_neighbor_record_read_normal(float normal_bits)
 {
-	float3_t normal = make_float3(x, y, 1.0f - hippt::abs(x) - hippt::abs(y));
-	if (normal.z < 0.0f)
-	{
-		float decoded_x = (1.0f - hippt::abs(y)) * (x >= 0.0f ? 1.0f : -1.0f);
-		float decoded_y = (1.0f - hippt::abs(x)) * (y >= 0.0f ? 1.0f : -1.0f);
-		normal.x		= decoded_x;
-		normal.y		= decoded_y;
-	}
+	Octahedral24BitNormalPadded32b packed_normal;
+	memcpy(&packed_normal, &normal_bits, sizeof(float));
 
-	return hippt::normalize(normal);
+	return packed_normal;
 }
 
 /**
@@ -294,8 +288,10 @@ HIPRT_DEVICE float spmis_neighbor_record_target(
 	float signed_qk	   = record_second.y;
 	float qk		   = hippt::abs(signed_qk);
 
+	Octahedral24BitNormalPadded32b packed_rc_normal = spmis_neighbor_record_read_normal(record_first.w);
+
 	float shifted_target_times_jacobian;
-	if (record_first.w == 2.0f)
+	if (packed_rc_normal.get_padding() == 1)
 	{
 		// Envmap path, 'rc_vertex' is the direction of the path
 		float cosine_center			  = hippt::dot(center_surface.shading_normal, rc_vertex);
@@ -303,7 +299,7 @@ HIPRT_DEVICE float spmis_neighbor_record_target(
 	}
 	else
 	{
-		float3_t rc_normal	   = spmis_neighbor_record_decode_normal(record_first.w, record_second.x);
+		float3_t rc_normal	   = packed_rc_normal.unpack();
 		float3_t to_rc_vertex  = rc_vertex - center_surface.shading_point;
 		float distance_2	   = hippt::dot(to_rc_vertex, to_rc_vertex);
 		float inverse_distance = 1.0f / hippt::sqrt(distance_2);

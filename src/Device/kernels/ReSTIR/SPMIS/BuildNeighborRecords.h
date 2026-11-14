@@ -17,7 +17,7 @@
 
 /**
  * Neighbor records of the SPMIS union domain reuse (ReSTIRPTSPMISUnionDomainSettings::neighbor_records, layout documented above
- * spmis_neighbor_record_encode_normal() in SpatialSPMISUnionDomain.h).
+ * spmis_neighbor_record_write_normal() in SpatialSPMISUnionDomain.h).
  *
  * One thread per pixel: every pixel with a non-zero spatial reuse input reservoir writes its record at its slot in its SPMIS cell (cell_offsets[cell] +
  * index_in_cell, the same slot as in pixel_indices_sorted). The records let the neighbor selection of every center pixel evaluate the visibility-free
@@ -99,11 +99,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SPMIS_BuildNeighborRecords(HIPRTR
 		}
 	}
 
-	// x = 2 marks an envmap path, which has no normal
-	float2_t encoded_rc_vertex_normal = make_float2(2.0f, 0.0f);
-	if (!reservoir.sample.is_envmap_path())
-		encoded_rc_vertex_normal = spmis_neighbor_record_encode_normal(rc_vertex_normal);
-
 	// The neighbor selection scales this confidence sum to the one of the whole domain. No non-canonical confidence scaling: the union domain reuse
 	// doesn't use it
 	float cell_confidence_sum = static_cast<float>(spmis_settings.cell_confidence_sums[cell_index]);
@@ -115,8 +110,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SPMIS_BuildNeighborRecords(HIPRTR
 	record[0] = reservoir.sample.rc_vertex.x;
 	record[1] = reservoir.sample.rc_vertex.y;
 	record[2] = reservoir.sample.rc_vertex.z;
-	record[3] = encoded_rc_vertex_normal.x;
-	record[4] = encoded_rc_vertex_normal.y;
+	// The padding byte of the packed normal marks an envmap path, which has no normal
+	record[3] = spmis_neighbor_record_write_normal(reservoir.sample.rc_vertex_geometric_normal, reservoir.sample.is_envmap_path());
+	record[4] = 0.0f;
 	// Negative for DI samples, see the backfacing light test of spmis_neighbor_record_target()
 	record[5] = !reservoir.sample.is_envmap_path() && reservoir.sample.di_sample ? -qk : qk;
 	// Same importance as in the CDF of the cell (ReSTIR_PT_SPMIS_BuildCDFs)
