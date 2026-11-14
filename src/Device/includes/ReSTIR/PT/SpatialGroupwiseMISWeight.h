@@ -17,19 +17,19 @@
  * (times the Jacobian of the center -> j shift). 'sample' is the canonical sample or the sample of a neighbor (the reconnection data is the same whichever
  * pixel the sample comes from). Same evaluation as the canonical MIS weight of the stochastic pairwise MIS (get_resampling_MIS_weight_canonical())
  *
- * 'mis_target_approximation': the MIS target approximation (SpatialMISTargetApproximation.h) replaces the target function, the Jacobian is unchanged
+ * With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, the MIS target approximation (SpatialMISTargetApproximation.h) replaces the
+ * target function, the Jacobian is unchanged
  */
 HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
 														 const ReSTIRPTReservoirSample& sample,
 														 const ReSTIRPTSurface& center_pixel_surface,
 														 unsigned int pixel_index,
-														 bool mis_target_approximation,
 														 Xorshift32Generator& random_number_generator)
 {
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
-	float target_function = ReSTIR_PT_evaluate_target_function_at_pixel<true>(render_data, sample, pixel_index, pixel_shading_point, random_number_generator,
-																			  mis_target_approximation);
+	float target_function = ReSTIR_PT_evaluate_target_function_at_pixel<true, ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE>(
+		render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
 	if (target_function > 0.0f && !sample.is_envmap_path())
 	{
 		// If this is an envmap path the jacobian is just 1
@@ -50,7 +50,6 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
 																const ReSTIRPTSurface& center_pixel_surface,
 																const ReSTIRPTSPMISUnionDomain& domain,
 																int draw_count,
-																bool mis_target_approximation,
 																Xorshift32Generator& random_number_generator)
 {
 	float target_function_sum = 0.0f;
@@ -58,8 +57,7 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
 	{
 		unsigned int pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
-		target_function_sum +=
-			spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface, pixel_index, mis_target_approximation, random_number_generator);
+		target_function_sum += spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface, pixel_index, random_number_generator);
 	}
 
 	return target_function_sum;
@@ -85,8 +83,8 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
  * the neighbors: the spatial reuse stays unbiased. ReSTIRPTSettings::do_spmis_union_domain_reuse() only enables these weights when the confidences are
  * equal (initial candidates reservoirs as the only input)
  *
- * The partition of unity holds for any functions p_j with the support of the target functions. With 'mis_target_approximation'
- * (ReSTIRPTSPMISUnionDomainSettings::mis_target_approximation), every p_j(y) of these weights is the MIS target approximation of
+ * The partition of unity holds for any functions p_j with the support of the target functions. With the kernel option
+ * ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, every p_j(y) of these weights is the MIS target approximation of
  * SpatialMISTargetApproximation.h, the own terms passed by the caller included (ReSTIR_PT_MIS_approximation_own_term())
  */
 struct ReSTIRPTSpatialGroupwiseMISWeight
@@ -102,7 +100,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 * disjoint groups. Above that, the bracket is averaged over canonical_group_count disjoint groups
 	 *
 	 * 'center_pixel_reservoir_target_function' is the MIS target approximation of the canonical sample at the center pixel when
-	 * 'mis_target_approximation' is true
+	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
@@ -112,7 +110,6 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 														   const ReSTIRPTSPMISUnionDomain& domain,
 														   int group_size,
 														   int canonical_group_count,
-														   bool mis_target_approximation,
 														   Xorshift32Generator& random_number_generator)
 	{
 		float canonical_numerator = center_pixel_reservoir_target_function * center_pixel_reservoir_confidence;
@@ -127,7 +124,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 			float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
 			for (int probe = 0; probe < probe_count; probe++)
 				probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																							 domain, 1, mis_target_approximation, random_number_generator);
+																							 domain, 1, random_number_generator);
 
 			float bracket_sum		  = 0.0f;
 			unsigned int subset_count = 0;
@@ -166,8 +163,8 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 		float mis_weight = 0.0f;
 		for (int group = 0; group < canonical_group_count; group++)
 		{
-			float group_target_function_sum = spmis_union_domain_group_target_function_sum(
-				render_data, center_pixel_reservoir_sample, center_pixel_surface, domain, group_size, mis_target_approximation, random_number_generator);
+			float group_target_function_sum = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
+																						   domain, group_size, random_number_generator);
 
 			mis_weight += canonical_bracket(canonical_numerator, group_scale, group_target_function_sum) / canonical_group_count;
 		}
@@ -189,7 +186,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 * and 'target_function_at_center' is p_c(y_i). Both must be > 0 (the caller skips the neighbor otherwise, its contribution is zero)
 	 *
 	 * 'target_function_at_neighbor' and 'target_function_at_center' are the MIS target approximations of the neighbor's sample when
-	 * 'mis_target_approximation' is true
+	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_non_canonical(const HIPRTRenderData& render_data,
 															   const ReSTIRPTReservoirSample& neighbor_reservoir_sample,
@@ -202,12 +199,11 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 															   int group_size,
 															   int reused_neighbors_count,
 															   float neighbor_selection_probability,
-															   bool mis_target_approximation,
 															   Xorshift32Generator& random_number_generator)
 	{
 		float group_target_function_sum =
 			target_function_at_neighbor + spmis_union_domain_group_target_function_sum(render_data, neighbor_reservoir_sample, center_pixel_surface, domain,
-																					   group_size - 1, mis_target_approximation, random_number_generator);
+																					   group_size - 1, random_number_generator);
 
 		float denominator = target_function_at_center * center_pixel_reservoir_confidence;
 		denominator += static_cast<float>(domain.confidence_sum) / group_size * group_target_function_sum;

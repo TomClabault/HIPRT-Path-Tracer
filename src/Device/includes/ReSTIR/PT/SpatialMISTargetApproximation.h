@@ -15,9 +15,10 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
- * Approximation of the target function in the MIS weights of the union domain reuse of ReSTIR PT (ReSTIRPTSPMISUnionDomainSettings::mis_target_approximation):
- * canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms (ReSTIR_PT_MIS_approximation_own_term(): a sample at its own
- * pixel, a neighbor's sample at the center pixel, the canonical sample at the center pixel). The resampling weights still use the target function.
+ * Approximation of the target function in the MIS weights of the union domain reuse of ReSTIR PT (kernel option
+ *ReSTIR_PT_SPMISUnionDomainMISTargetApproximation): canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms
+ *(ReSTIR_PT_MIS_approximation_own_term(): a sample at its own pixel, a neighbor's sample at the center pixel, the canonical sample at the center pixel). The
+ *resampling weights still use the target function.
  *
  * INVARIANT: for every sample and every pixel, the approximation is > 0 exactly when the target function is > 0, and the probes and the own terms use the same
  * function of (sample, pixel). The group-wise MIS weights then stay a partition of unity and the spatial reuse stays unbiased, whatever the approximation
@@ -130,15 +131,18 @@ struct ReSTIRPTMISApproximationLobe
 };
 
 /**
- * Whether the MIS weights of the union domain reuse use the approximation for this render: the setting is on and the spatial reuse takes the union domain
- * path of ReSTIR PT (and, with the principled BSDF, the lobe records are allocated). CameraRays and the initial candidates only write the flags and the
- * lobes when this is true, they stay zero otherwise
+ * Whether the MIS weights of the union domain reuse use the approximation for this render: the kernel option
+ * ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on and the spatial reuse takes the union domain path of ReSTIR PT (and, with the principled BSDF, the
+ * lobe records are allocated). CameraRays and the initial candidates only write the flags and the lobes when this is true, they stay zero otherwise
+ *
+ * The union domain spatial reuse kernel does not call this function: it is only launched when the spatial reuse takes the union domain path and it compiles
+ * the approximation in or out with the kernel option alone. Without the flags and the lobes (this function returned false when they were written), no pair
+ * (sample, pixel) is on the cheap path: every pair takes the fallback and the lobe records are not read
  */
 HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_enabled(const HIPRTRenderData& render_data)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
-	bool enabled = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.mis_target_approximation &&
-				   render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+	bool enabled = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
 	enabled = enabled && render_data.g_buffer.mis_approximation_lobe_records != nullptr;
@@ -147,7 +151,7 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_enabled(const HIPRTRenderData& ren
 	return enabled;
 #else
 	return false;
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
 }
 
 /**

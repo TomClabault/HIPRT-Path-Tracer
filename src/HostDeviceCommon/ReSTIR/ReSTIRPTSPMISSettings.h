@@ -33,18 +33,9 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	int mis_group_size = 2;
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
 	int canonical_group_count = 2;
-	// If true, the group-wise MIS weights (canonical and neighbor probes, and the target functions of a sample at its own pixel, of a neighbor's sample at
-	// the center pixel and of the canonical sample at the center pixel) use an approximation of the target function instead of the target function, see
-	// SpatialMISTargetApproximation.h. The resampling weights still use the target function.
-	//
-	// The approximation is non-zero exactly where the target function is (same support): the MIS weights stay a partition of unity and the reuse stays
-	// unbiased.
-	//
-	// It costs no material fetch and no BSDF evaluation for the pairs of analytic materials (cosine at the pixel with the Lambertian BSDF, analytic lobes
-	// with the principled BSDF), the full target function otherwise.
-	//
-	// At the same quality, the spatial reuse pass is faster with both the principled and the Lambertian BSDF
-	bool mis_target_approximation = true;
+	// Whether the group-wise MIS weights use an approximation of the target function is the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation
+	// (ReSTIRPTOptions.h), not a setting of this structure
+
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells.
 	//

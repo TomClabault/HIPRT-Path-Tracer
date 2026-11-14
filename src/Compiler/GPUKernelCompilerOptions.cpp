@@ -101,6 +101,7 @@ const std::string GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY = "PathSampli
 const std::string GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_PT_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE = "ReSTIR_PT_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED = "ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled";
+const std::string GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION = "ReSTIR_PT_SPMISUnionDomainMISTargetApproximation";
 
 const std::string GPUKernelCompilerOptions::RESTIR_PG_ENABLE = "ReSTIRPGEnable";
 const std::string GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT = "ReSTIRPGDistributionComponentCount";
@@ -196,6 +197,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
+	GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION,
 
 	GPUKernelCompilerOptions::RESTIR_PG_ENABLE,
 	GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT,
@@ -301,6 +303,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_PT_SpatialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_PT_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED] = std::make_shared<int>(ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION] = std::make_shared<int>(ReSTIR_PT_SPMISUnionDomainMISTargetApproximation);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_ENABLE] = std::make_shared<int>(ReSTIRPGEnable);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT] = std::make_shared<int>(ReSTIRPGDistributionComponentCount);

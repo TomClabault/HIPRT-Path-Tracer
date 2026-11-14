@@ -70,9 +70,8 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 																  reused_neighbors_count, union_domain_settings.visibility_pool_size, selected_pixel_indices,
 																  selection_probabilities, random_number_generator);
 
-	// The MIS weights use the MIS target approximation instead of the target function (probes and own terms), the resampling weights still use the target
-	// function
-	bool mis_target_approximation = ReSTIR_PT_MIS_approximation_enabled(render_data);
+	// With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, the MIS weights use the MIS target approximation instead of the target
+	// function (probes and own terms), the resampling weights still use the target function
 
 	// Resampling only the neighbors, canonical resampling is further below
 	for (int neighbor_index = 0; neighbor_index < selected_slot_count; neighbor_index++)
@@ -107,21 +106,21 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 
 			float mis_target_at_neighbor = target_function_at_neighbor;
 			float mis_target_at_center	 = target_function_at_center;
-			if (mis_target_approximation)
-			{
-				// Own terms: the approximation of the sample at its own pixel (from its target function in its own measure, the Jacobian division does not
-				// change the support) and at the center pixel
-				mis_target_at_neighbor = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
-																			  neighbor_reservoir.sample.target_function) /
-										 shift_mapping_jacobian;
-				mis_target_at_center = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index),
-																			target_function_at_center);
-			}
+
+#if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+			// Own terms: the approximation of the sample at its own pixel (from its target function in its own measure, the Jacobian division does not
+			// change the support) and at the center pixel
+			mis_target_at_neighbor = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
+																		  neighbor_reservoir.sample.target_function) /
+									 shift_mapping_jacobian;
+			mis_target_at_center =
+				ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), target_function_at_center);
+#endif // #if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
 
 			mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
 				render_data, neighbor_reservoir.sample, static_cast<float>(neighbor_reservoir.confidence), mis_target_at_neighbor,
 				center_pixel_reservoir_confidence, mis_target_at_center, center_pixel_surface, domain, mis_group_size, reused_neighbors_count,
-				neighbor_selection_probability, mis_target_approximation, random_number_generator);
+				neighbor_selection_probability, random_number_generator);
 		}
 
 		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
@@ -134,13 +133,14 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	{
 		// Own term of the canonical sample at the center pixel
 		float canonical_mis_target = center_pixel_reservoir.sample.target_function;
-		if (mis_target_approximation)
-			canonical_mis_target = ReSTIR_PT_MIS_approximation_own_term(render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index),
-																		center_pixel_reservoir.sample.target_function);
+#if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+		canonical_mis_target = ReSTIR_PT_MIS_approximation_own_term(render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index),
+																	center_pixel_reservoir.sample.target_function);
+#endif
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
 			render_data, center_pixel_reservoir.sample, center_pixel_reservoir.confidence, canonical_mis_target, center_pixel_surface, domain, mis_group_size,
-			canonical_group_count, mis_target_approximation, random_number_generator);
+			canonical_group_count, random_number_generator);
 
 		constexpr float shift_mapping_jacobian = 1.0f;
 		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;

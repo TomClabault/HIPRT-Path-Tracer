@@ -142,17 +142,19 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
 }
 
 /**
- * 'mis_target_approximation': returns the MIS target approximation of the union domain reuse instead of the target function (SpatialMISTargetApproximation.h).
+ * 'misTargetApproximation': returns the MIS target approximation of the union domain reuse instead of the target function (SpatialMISTargetApproximation.h).
  * The zero tests below are the same, the approximation is computed before the visibility test (a zero approximation skips the ray): analytic value on the cheap
  * path, full target function evaluation otherwise (see ReSTIR_PT_MIS_approximation_decision())
+ *
+ * This is a template parameter so that only one of the two evaluations is compiled at a call site: the approximation (with its full target function
+ * fallback before the visibility test) or the full target function after the visibility test
  */
-template <bool withVisiblity>
+template <bool withVisiblity, bool misTargetApproximation = false>
 HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
 																	const ReSTIRPTReservoirSample& sample,
 																	int surface_pixel_index,
 																	const float3_t& surface_shading_point,
-																	Xorshift32Generator& random_number_generator,
-																	bool mis_target_approximation = false)
+																	Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
@@ -190,7 +192,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 	int surface_primitive_index = render_data.g_buffer.first_hit_prim_index[surface_pixel_index];
 
 	float approximation_value = 0.0f;
-	if (mis_target_approximation)
+	if constexpr (misTargetApproximation)
 	{
 		int decision = ReSTIR_PT_MIS_approximation_decision(render_data, sample, surface_packed_shading_normal.get_padding(), surface_shading_point,
 															surface_shading_normal, incident_light_direction, cosine_term);
@@ -235,20 +237,23 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 			return 0.0f;
 	}
 
-	if (mis_target_approximation)
+	if constexpr (misTargetApproximation)
 		return approximation_value;
+	else
+	{
+		// Keep the large material and volume state out of the geometric rejection and visibility phases.
+		DeviceUnpackedPrincipledFullMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
+		RayVolumeState surface_ray_volume_state;
+		surface_ray_volume_state.reconstruct_first_hit(surface_material, render_data.buffers.material_indices, surface_primitive_index,
+													   random_number_generator);
 
-	// Keep the large material and volume state out of the geometric rejection and visibility phases.
-	DeviceUnpackedPrincipledFullMaterial surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
-	RayVolumeState surface_ray_volume_state;
-	surface_ray_volume_state.reconstruct_first_hit(surface_material, render_data.buffers.material_indices, surface_primitive_index, random_number_generator);
+		float3_t surface_view_direction	  = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
+		float3_t surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
 
-	float3_t surface_view_direction	  = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
-	float3_t surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
-
-	return ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, surface_view_direction, surface_shading_normal,
-												   surface_geometric_normal, surface_primitive_index, surface_ray_volume_state, surface_material,
-												   incident_light_direction, cosine_term, random_number_generator);
+		return ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, surface_view_direction, surface_shading_normal,
+													   surface_geometric_normal, surface_primitive_index, surface_ray_volume_state, surface_material,
+													   incident_light_direction, cosine_term, random_number_generator);
+	}
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_TARGET_FUNCTION_H

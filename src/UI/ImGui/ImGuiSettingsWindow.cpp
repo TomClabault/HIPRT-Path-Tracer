@@ -3990,11 +3990,21 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. Up to 8 pixels in "
 										"total, the weight is averaged over all the groups that can be formed with these pixels, for the same cost.");
 
-		if (ImGui::Checkbox("MIS target approximation", &union_domain_settings.mis_target_approximation))
+		// Kernel option: the MIS probes only compile the evaluation they use
+		std::shared_ptr<GPUKernelCompilerOptions> union_domain_kernel_options = m_renderer->get_global_compiler_options();
+		bool mis_target_approximation =
+			union_domain_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION) == KERNEL_OPTION_TRUE;
+		if (ImGui::Checkbox("MIS target approximation", &mis_target_approximation))
+		{
+			union_domain_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION,
+														 mis_target_approximation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			m_renderer->recompile_kernels();
+
 			m_render_window->set_render_dirty(true);
+		}
 		ImGuiRenderer::show_help_marker("The MIS weights evaluate a cheap approximation of the target function (cosine or analytic lobes, no material fetch or "
 										"BSDF evaluation for simple materials) that is non-zero exactly where the target function is. Unbiased, faster "
-										"spatial reuse for a similar quality.");
+										"spatial reuse for a similar quality.\n\nChanging this recompiles the kernels.");
 
 		if (ImGui::SliderInt("Total neighbor budget", &union_domain_settings.total_neighbor_budget, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
