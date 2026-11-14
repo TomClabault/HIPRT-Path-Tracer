@@ -101,7 +101,7 @@
 /**
  * If KERNEL_OPTION_TRUE, the group-wise MIS weights of the SPMIS union domain reuse (canonical and neighbor probes, and the target functions of a sample at
  * its own pixel, of a neighbor's sample at the center pixel and of the canonical sample at the center pixel) use an approximation of the target function
- * instead of the target function, see SpatialMISTargetApproximation.h. The resampling weights still use the target function.
+ * instead of the target function, see SpatialMISTargetFunctionBSDFApproximation.h. The resampling weights still use the target function.
  *
  * The approximation is non-zero exactly where the target function is (same support): the MIS weights stay a partition of unity and the reuse stays
  * unbiased.
@@ -116,7 +116,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_PT_SPMISUnionDomainMISTargetApproximation KERNEL_OPTION_TRUE
+#define ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

@@ -17,8 +17,8 @@
  * (times the Jacobian of the center -> j shift). 'sample' is the canonical sample or the sample of a neighbor (the reconnection data is the same whichever
  * pixel the sample comes from). Same evaluation as the canonical MIS weight of the stochastic pairwise MIS (get_resampling_MIS_weight_canonical())
  *
- * With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, the MIS target approximation (SpatialMISTargetApproximation.h) replaces the
- * target function, the Jacobian is unchanged
+ * With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation, the MIS target function BSDF approximation
+ * (SpatialMISTargetFunctionBSDFApproximation.h) replaces the target function, the Jacobian is unchanged
  *
  * 'withVisibility' false: the same value with the pixel assumed visible, no shadow ray. The shadow split kernels of the union domain reuse
  * (SpatialSPMISUnionDomainShadowSplit.h) evaluate it this way and trace the ray of the probe in another kernel when the value is non-zero
@@ -32,8 +32,9 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 {
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
-	float target_function = ReSTIR_PT_evaluate_target_function_at_pixel<withVisibility, ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE>(
-		render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
+	float target_function =
+		ReSTIR_PT_evaluate_target_function_at_pixel<withVisibility, ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE>(
+			render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
 	if (target_function > 0.0f && !sample.is_envmap_path())
 	{
 		// If this is an envmap path the jacobian is just 1
@@ -88,8 +89,8 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
  * equal (initial candidates reservoirs as the only input)
  *
  * The partition of unity holds for any functions p_j with the support of the target functions. With the kernel option
- * ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, every p_j(y) of these weights is the MIS target approximation of
- * SpatialMISTargetApproximation.h, the own terms passed by the caller included (ReSTIR_PT_MIS_approximation_own_term())
+ * ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation, every p_j(y) of these weights is the MIS target function BSDF approximation of
+ * SpatialMISTargetFunctionBSDFApproximation.h, the own terms passed by the caller included (ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term())
  */
 struct ReSTIRPTSpatialGroupwiseMISWeight
 {
@@ -105,8 +106,8 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 *
 	 * 'group_size' must be in [1, 3] (RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE) and 'canonical_group_count' >= 1
 	 *
-	 * 'center_pixel_reservoir_target_function' is the MIS target approximation of the canonical sample at the center pixel when
-	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on
+	 * 'center_pixel_reservoir_target_function' is the MIS target function BSDF approximation of the canonical sample at the center pixel when
+	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation is on
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
 														   const ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
@@ -193,8 +194,8 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 * 'target_function_at_neighbor' is p_i(y_i) in the measure of the center pixel (target function of the sample at its pixel / Jacobian of the shift)
 	 * and 'target_function_at_center' is p_c(y_i). Both must be > 0 (the caller skips the neighbor otherwise, its contribution is zero)
 	 *
-	 * 'target_function_at_neighbor' and 'target_function_at_center' are the MIS target approximations of the neighbor's sample when
-	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on
+	 * 'target_function_at_neighbor' and 'target_function_at_center' are the MIS target function BSDF approximations of the neighbor's sample when
+	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation is on
 	 */
 	HIPRT_DEVICE float get_resampling_MIS_weight_non_canonical(const HIPRTRenderData& render_data,
 															   const ReSTIRPTReservoirSample& neighbor_reservoir_sample,

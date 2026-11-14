@@ -43,7 +43,7 @@
  *	  prepare kernel, and the chain above is not disturbed
  *
  * The rays are the rays of the single kernel (same origin, endpoint, distance, origin primitive and alpha test seed). A probe ray is traced when the
- * value of its probe without visibility is non-zero: same condition as the single kernel with the MIS target approximation (except for a zero
+ * value of its probe without visibility is non-zero: same condition as the single kernel with the MIS target function BSDF approximation (except for a zero
  * Jacobian, which the single kernel tests after its ray), fewer rays without it (the single kernel then traces before evaluating the target
  * function). A ray whose value is zero cannot change the estimate. A ray that repeats the query of an earlier ray of the same pixel (same origin,
  * endpoint and seed) is traced once and its answer copied: the single kernel traces it again and gets the same answer.
@@ -58,7 +58,7 @@
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "Device/includes/ReSTIR/PT/SpatialGroupwiseMISWeight.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
 #include "Device/includes/ReSTIR/PT/SpatialSPMISUnionDomain.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/Surface.h"
@@ -430,9 +430,9 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 		// Own term of the canonical sample at the center pixel
 		float canonical_mis_target = center_pixel_reservoir.sample.target_function;
-#if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
-		canonical_mis_target = ReSTIR_PT_MIS_approximation_own_term(render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index),
-																	center_pixel_reservoir.sample.target_function);
+#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+		canonical_mis_target = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(
+			render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_reservoir.sample.target_function);
 #endif
 
 		shadow_split_buffers.canonical_numerators[center_pixel_index] = canonical_mis_target * center_pixel_reservoir_confidence;
@@ -722,13 +722,14 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 
 			float mis_target_at_neighbor = target_function_at_neighbor;
 			float mis_target_at_center	 = target_function_at_center;
-#if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
-			mis_target_at_neighbor = ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
+#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+			mis_target_at_neighbor =
+				ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
 																		  neighbor_reservoir.sample.target_function) /
-									 shift_mapping_jacobian;
-			mis_target_at_center =
-				ReSTIR_PT_MIS_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), target_function_at_center);
-#endif // #if ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+				shift_mapping_jacobian;
+			mis_target_at_center = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample,
+																							 static_cast<int>(center_pixel_index), target_function_at_center);
+#endif // #if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
 			unsigned int companion_pixel_index = shadow_split_buffers.companions[chosen * pixel_count + center_pixel_index];

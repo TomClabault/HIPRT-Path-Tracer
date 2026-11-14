@@ -396,8 +396,8 @@ void CPURenderer::update_render_data()
 	m_render_data.g_buffer.shading_normals		= m_g_buffer.shading_normals.data();
 	m_render_data.g_buffer.primary_hit_position = m_g_buffer.primary_hit_position.data();
 	m_render_data.g_buffer.first_hit_prim_index = m_g_buffer.first_hit_prim_index.data();
-	// Only the G-buffer of the current frame is read by the MIS target approximation, the previous frame G-buffer keeps a nullptr
-	m_render_data.g_buffer.mis_approximation_lobe_records = m_g_buffer.mis_approximation_lobe_records.data();
+	// Only the G-buffer of the current frame is read by the MIS target function BSDF approximation, the previous frame G-buffer keeps a nullptr
+	m_render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records = m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.data();
 
 	m_render_data.g_buffer_prev_frame.materials			   = m_g_buffer_prev_frame.materials.data();
 	m_render_data.g_buffer_prev_frame.geometric_normals	   = m_g_buffer_prev_frame.geometric_normals.data();

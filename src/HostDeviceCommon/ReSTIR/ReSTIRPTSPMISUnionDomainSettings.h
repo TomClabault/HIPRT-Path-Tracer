@@ -32,8 +32,8 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample. canonical_group_count x mis_group_size
 	// is at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES (probes beyond that are not traced)
 	int canonical_group_count = 2;
-	// Whether the group-wise MIS weights use an approximation of the target function is the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation
-	// (ReSTIRPTOptions.h), not a setting of this structure
+	// Whether the group-wise MIS weights use an approximation of the target function is the kernel option
+	// ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation (ReSTIRPTOptions.h), not a setting of this structure
 
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
 	// stratified candidates in total, split over the neighbors, through the CDFs of the cells.

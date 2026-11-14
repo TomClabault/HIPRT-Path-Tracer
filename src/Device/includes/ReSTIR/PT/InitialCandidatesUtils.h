@@ -8,7 +8,7 @@
 
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/PG/SampleDistribution.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
 
 #define ReSTIR_PT_invalid_throughput ColorRGB32F(-1.0f, -1.0f, -1.0f)
 
@@ -138,10 +138,10 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 	restir_pt_initial_sample.rc_vertex_texcoords_v	   = closest_hit_info.texcoords.y;
 	restir_pt_initial_sample.rc_vertex_primitive_index = closest_hit_info.primitive_index;
 
-	if (ReSTIR_PT_MIS_approximation_enabled(render_data))
-		// Material part of the MIS target approximation flags and lobe of the sample. The material of the payload is the one that the target function fetches
-		// for the reconnection vertex (get_intersection_material() with the same primitive and texcoords): no extra material fetch
-		ReSTIR_PT_MIS_approximation_fill_rc_vertex(render_data, ray_payload.material, restir_pt_initial_sample);
+	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
+		// Material part of the MIS target function BSDF approximation flags and lobe of the sample. The material of the payload is the one that the target
+		// function fetches for the reconnection vertex (get_intersection_material() with the same primitive and texcoords): no extra material fetch
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(render_data, ray_payload.material, restir_pt_initial_sample);
 }
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \

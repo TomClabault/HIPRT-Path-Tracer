@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_APPROXIMATION_H
-#define DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_APPROXIMATION_H
+#ifndef DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_H
+#define DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_H
 
 #include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/GBufferDevice.h"
@@ -15,33 +15,33 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
- * Approximation of the target function in the MIS weights of the union domain reuse of ReSTIR PT (kernel option
- *ReSTIR_PT_SPMISUnionDomainMISTargetApproximation): canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms
- *(ReSTIR_PT_MIS_approximation_own_term(): a sample at its own pixel, a neighbor's sample at the center pixel, the canonical sample at the center pixel). The
- *resampling weights still use the target function.
+ * Approximation of the BSDF in the target function of the MIS weights of the union domain reuse of ReSTIR PT (kernel option
+ *ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation): canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms
+ *(ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(): a sample at its own pixel, a neighbor's sample at the center pixel, the canonical sample at the
+ *center pixel). The resampling weights still use the target function.
  *
  * INVARIANT: for every sample and every pixel, the approximation is > 0 exactly when the target function is > 0, and the probes and the own terms use the same
  * function of (sample, pixel). The group-wise MIS weights then stay a partition of unity and the spatial reuse stays unbiased, whatever the approximation
  * values are on that support.
  *
  * The flags below (pixel flags in the padding byte of GBufferDevice::shading_normals, written by CameraRays; sample flags in
- * ReSTIRPTReservoirSample::mis_approximation_flags) select the "cheap path" for a pair (sample, pixel): both the pixel material and the reconnection vertex
- * material are in an analytic class whose BSDF is strictly positive for every pair of directions above the shading normal with cosines above
- * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (the support of the target function is then decided by the geometry alone).
+ * ReSTIRPTReservoirSample::mis_target_function_bsdf_approximation_flags) select the "cheap path" for a pair (sample, pixel): both the pixel material and the
+ *reconnection vertex material are in an analytic class whose BSDF is strictly positive for every pair of directions above the shading normal with cosines above
+ * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD (the support of the target function is then decided by the geometry alone).
  *
  * The approximation is then:
  *	- Lambertian BSDF: the cosine at the pixel, zero when the pixel is below the shading normal of the reconnection vertex
- *	- principled BSDF: the analytic lobe value at the pixel (one 8-byte record per pixel, GBufferDevice::mis_approximation_lobe_records) times the analytic lobe
- *	  value at the reconnection vertex (stored in the sample), 1 for DI samples. No material fetch, no BSDF evaluation
+ *	- principled BSDF: the analytic lobe value at the pixel (one 8-byte record per pixel, GBufferDevice::mis_target_function_bsdf_approximation_lobe_records)
+ *times the analytic lobe value at the reconnection vertex (stored in the sample), 1 for DI samples. No material fetch, no BSDF evaluation
  *	- other BSDF models: no material is in the analytic class
  *
  * Every other pair takes the "fallback": the full target function evaluation, the value is then the full target function divided by the luminance of the
  * radiance of the sample (principled) or the cosine at the pixel on the support of the full target function (Lambertian).
  *
  * The analytic classes and lobes MIRROR THE ZERO CASES AND THE VALUES OF THE BSDF CODE BELOW. Any change to one of these functions or kernel options must
- * be checked against ReSTIR_PT_MIS_approximation_material_class(), ReSTIR_PT_MIS_approximation_lobe_from_material(),
- * ReSTIR_PT_MIS_approximation_lobe_value() and ReSTIR_PT_MIS_approximation_delta_peak_possible() (an approximation that is zero where the target
- * function is not, or the opposite, biases the spatial reuse):
+ * be checked against ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(), ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(),
+ * ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value() and ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible() (an approximation
+ *that is zero where the target function is not, or the opposite, biases the spatial reuse):
  *	- lambertian_brdf_eval()
  *	- principled_bsdf_eval(), internal_eval_glossy_base(), internal_eval_specular_layer()
  *	- principled_specular_eval(), principled_specular_fresnel(), principled_specular_compute_darkening()
@@ -59,7 +59,7 @@
  *	- metal: metallic 1, no second roughness, no retro reflection, no coat / sheen / thin film / transmission and, when not perfectly smooth, anisotropy 0,
  *	  F82 = F90 = (1, 1, 1), F90 falloff exponent 5 and every base color channel >= 1e-6 (the metal Fresnel is then Schlick with F0 = base color)
  *
- * Lobe value at a pair of directions (V, L) around the shading normal n, NoV and NoL above RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD:
+ * Lobe value at a pair of directions (V, L) around the shading normal n, NoV and NoL above RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD:
  *
  *		value = NoL * [Cs * F(LoH) D(H) G2 / (4 NoV NoL) + Cd0 + Cd1 * (1 - F_d(NoL)) * (reconnection side: (1 - F_d(NoV)), pixel side: 1)]
  *
@@ -71,56 +71,56 @@
  * Metal: Cs = 1, Cd0 = Cd1 = 0.
  *
  * A perfectly smooth lobe has Cs = 0 (its value is 0 off the delta peak), a pair whose directions may hit the delta peak goes to the fallback
- * (ReSTIR_PT_MIS_approximation_delta_peak_possible())
+ * (ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible())
  */
 
 // Bit 0 of the pixel flags and of the sample flags: the material is in an analytic class (and the other conditions of
-// ReSTIR_PT_MIS_approximation_pixel_flags() / ReSTIR_PT_MIS_approximation_sample_flags() hold)
-#define RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG 1u
+// ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_flags() / ReSTIR_PT_MIS_target_function_bsdf_approximation_sample_flags() hold)
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG 1u
 // Bit 1 of the pixel flags and of the sample flags: the analytic lobe is perfectly smooth (its delta peak can return the delta value)
-#define RESTIR_PT_MIS_APPROXIMATION_SMOOTH_LOBE_FLAG 2u
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG 2u
 
 // The cosines of the cheap path (NoV and NoL at both BSDFs) must be above this threshold, smaller positive cosines go to the fallback. 0 for the Lambertian
 // BRDF (exact zero test), 1.0e-3 for the principled BSDF (keeps the Fresnel transmission of the specular layer away from its float rounding to 0 at grazing
 // angles)
 #if BSDF_MODEL == BSDF_PRINCIPLED
-#define RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD 1.0e-3f
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD 1.0e-3f
 #else
-#define RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD 0.0f
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD 0.0f
 #endif // #if BSDF_MODEL == BSDF_PRINCIPLED
 
 // Analytic classes of the materials, see the top of this file
-#define RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE		 0
-#define RESTIR_PT_MIS_APPROXIMATION_CLASS_DIELECTRIC 1
-#define RESTIR_PT_MIS_APPROXIMATION_CLASS_METAL		 2
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE		  0
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC 1
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL	  2
 
-// Decisions of ReSTIR_PT_MIS_approximation_decision() for a pair (sample, pixel)
-#define RESTIR_PT_MIS_APPROXIMATION_FALLBACK   0
-#define RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH 1
+// Decisions of ReSTIR_PT_MIS_target_function_bsdf_approximation_decision() for a pair (sample, pixel)
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK	0
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH 1
 // Cheap path with a zero approximation: the pixel is below the shading normal of the reconnection vertex
-#define RESTIR_PT_MIS_APPROXIMATION_ZERO 2
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO 2
 
 // The cheap path is left for the fallback when the light direction is within this cosine of the mirror direction of a perfectly smooth lobe that can
 // return its delta value (wider than MaterialConstants::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.99999 of the code, world space here against the local
 // frame of the code)
-#define RESTIR_PT_MIS_APPROXIMATION_DELTA_ALIGNMENT_THRESHOLD 0.9999f
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_DELTA_ALIGNMENT_THRESHOLD 0.9999f
 // Incident light infos for which DeviceUnpackedPrincipledFullMaterial::is_specular_delta_reflection_sampled() can answer SPECULAR_PEAK_SAMPLED for a
 // perfectly smooth base roughness: glass reflection, first / second metal, retro reflection, coat, specular (all of them, whatever the lobe evaluated)
-#define RESTIR_PT_MIS_APPROXIMATION_DELTA_TRIGGER_INFOS                                                                                                        \
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_DELTA_TRIGGER_INFOS                                                                                   \
 	(BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE | BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE |                    \
 	 BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE | BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE |       \
 	 BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE | BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE)
 
 // The principled approximation values are floored at this value where the target function is known to be > 0 so that their support stays exact
-#define RESTIR_PT_MIS_APPROXIMATION_VALUE_FLOOR 1.0e-30f
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_VALUE_FLOOR 1.0e-30f
 // The cosine of the Lambertian own terms is floored at this value where the target function is known to be > 0 (a stored target function evaluated with a
 // cosine that rounds to 0 here)
-#define RESTIR_PT_MIS_APPROXIMATION_COSINE_FLOOR 1.0e-8f
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_FLOOR 1.0e-8f
 
 /**
  * Analytic lobe of a material (quantized or not), see the top of this file. 'fresnel_parameter' is the ior of a dielectric, the luminance of F0 of a metal
  */
-struct ReSTIRPTMISApproximationLobe
+struct ReSTIRPTMISTargetFunctionBSDFApproximationLobe
 {
 	float specular_scale	= 0.0f;
 	float diffuse_constant	= 0.0f;
@@ -132,33 +132,33 @@ struct ReSTIRPTMISApproximationLobe
 
 /**
  * Whether the MIS weights of the union domain reuse use the approximation for this render: the kernel option
- * ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on and the spatial reuse takes the union domain path of ReSTIR PT (and, with the principled BSDF, the
- * lobe records are allocated). CameraRays and the initial candidates only write the flags and the lobes when this is true, they stay zero otherwise
+ * ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation is on and the spatial reuse takes the union domain path of ReSTIR PT (and, with the principled
+ * BSDF, the lobe records are allocated). CameraRays and the initial candidates only write the flags and the lobes when this is true, they stay zero otherwise
  *
  * The union domain spatial reuse kernel does not call this function: it is only launched when the spatial reuse takes the union domain path and it compiles
  * the approximation in or out with the kernel option alone. Without the flags and the lobes (this function returned false when they were written), no pair
  * (sample, pixel) is on the cheap path: every pair takes the fallback and the lobe records are not read
  */
-HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_enabled(const HIPRTRenderData& render_data)
+HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const HIPRTRenderData& render_data)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 	bool enabled = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
-	enabled = enabled && render_data.g_buffer.mis_approximation_lobe_records != nullptr;
+	enabled = enabled && render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records != nullptr;
 #endif // #if BSDF_MODEL == BSDF_PRINCIPLED
 
 	return enabled;
 #else
 	return false;
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 }
 
 /**
- * Analytic class of 'material' (RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE when it is not in one) and whether its lobe is perfectly smooth ('out_smooth_lobe',
- * only meaningful for a class). Mirrors the zero cases of the BSDF model compiled in, see the top of this file
+ * Analytic class of 'material' (RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE when it is not in one) and whether its lobe is perfectly smooth
+ * ('out_smooth_lobe', only meaningful for a class). Mirrors the zero cases of the BSDF model compiled in, see the top of this file
  */
-HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_material_class(const DeviceUnpackedPrincipledFullMaterial& material, bool& out_smooth_lobe)
+HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(const DeviceUnpackedPrincipledFullMaterial& material, bool& out_smooth_lobe)
 {
 	out_smooth_lobe = false;
 
@@ -166,21 +166,22 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_material_class(const DeviceUnpacked
 	// lambertian_brdf_eval(): 0 if NoV <= 0 or NoL <= 0, base_color / pi otherwise
 	bool positive_base_color = material.base_color.r > 0.0f && material.base_color.g > 0.0f && material.base_color.b > 0.0f;
 
-	return positive_base_color ? RESTIR_PT_MIS_APPROXIMATION_CLASS_DIELECTRIC : RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+	return positive_base_color ? RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC
+							   : RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 #elif BSDF_MODEL == BSDF_PRINCIPLED
 	bool smooth_lobe = MaterialUtils::is_perfectly_smooth(material.roughness);
 	if (smooth_lobe && PrincipledBSDFDeltaDistributionEvaluationOptimization != KERNEL_OPTION_TRUE)
 		// The perfectly smooth lobes are then evaluated as GGX lobes with a tiny alpha, not handled
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 	if (material.metallic == 0.0f)
 	{
 #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 #endif // #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 
 		// principled_bsdf_eval() outside of the object (volume state checked by the callers) with NoV and NoL above
-		// RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD (no refraction): an opaque dielectric without coat, sheen or thin film.
+		// RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD (no refraction): an opaque dielectric without coat, sheen or thin film.
 		//
 		// The diffuse layer (Lambertian, PrincipledBSDFDiffuseLobe) is then base_color / pi times a diffuse weight of 1 (no metallic, no transmission) times
 		// the layers throughput of the specular layer only, lerp(1, (1 - F(NoL)) (1 - F(NoV)) darkening, specular): >= 1 - specular for specular < 1, and > 0
@@ -190,46 +191,46 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_material_class(const DeviceUnpacked
 		// The specular GGX lobe adds a non-negative term, the glossy base energy compensation divides by a positive LUT value, the clearcoat compensation is
 		// 1 without a coat
 		if (material.coat != 0.0f || material.sheen != 0.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 		if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f || material.thin_film != 0.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 		if (material.ior < 1.0f || material.specular < 0.0f || material.specular > 1.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 		if (material.base_color.r <= 0.0f || material.base_color.g <= 0.0f || material.base_color.b <= 0.0f || material.anisotropy != 0.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 		out_smooth_lobe = smooth_lobe;
 
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_DIELECTRIC;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC;
 	}
 
 	if (material.metallic != 1.0f || material.second_roughness_weight != 0.0f || material.retro_reflection != 0.0f)
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 	if (material.coat != 0.0f || material.sheen != 0.0f || material.thin_film != 0.0f)
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 	// Zero weights for metallic = 1 in compute_principled_lobe_weights(), excluded anyway (volume state of the target function)
 	if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f)
-		return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 	if (!smooth_lobe)
 	{
 		if (material.anisotropy != 0.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 		bool default_fresnel = material.metallic_F82.r == 1.0f && material.metallic_F82.g == 1.0f && material.metallic_F82.b == 1.0f &&
 							   material.metallic_F90.r == 1.0f && material.metallic_F90.g == 1.0f && material.metallic_F90.b == 1.0f &&
 							   material.metallic_F90_falloff_exponent == 5.0f;
 		if (!default_fresnel)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 		if (material.base_color.r < 1.0e-6f || material.base_color.g < 1.0e-6f || material.base_color.b < 1.0e-6f)
-			return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 	}
 
 	out_smooth_lobe = smooth_lobe;
 
-	return RESTIR_PT_MIS_APPROXIMATION_CLASS_METAL;
+	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL;
 #else
-	return RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE;
+	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
 }
 
@@ -237,19 +238,20 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_material_class(const DeviceUnpacked
  * Unquantized lobe of 'material' (class 'material_class'). 'pixel_side': V is the view direction of the pixel with cosine 'view_cosine', the (1 - F_d(NoV))
  * factor and the 1 / E glossy base energy compensation are folded in. Only used with the principled BSDF
  */
-HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_lobe_from_material(const HIPRTRenderData& render_data,
-																						 const DeviceUnpackedPrincipledFullMaterial& material,
-																						 int material_class,
-																						 bool smooth_lobe,
-																						 bool pixel_side,
-																						 float view_cosine)
+HIPRT_DEVICE ReSTIRPTMISTargetFunctionBSDFApproximationLobe
+ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(const HIPRTRenderData& render_data,
+																	const DeviceUnpackedPrincipledFullMaterial& material,
+																	int material_class,
+																	bool smooth_lobe,
+																	bool pixel_side,
+																	float view_cosine)
 {
-	ReSTIRPTMISApproximationLobe lobe;
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
 	lobe.alpha = hippt::clamp(0.0f, 1.0f, material.roughness * material.roughness);
 
-	if (material_class == RESTIR_PT_MIS_APPROXIMATION_CLASS_METAL)
+	if (material_class == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL)
 	{
 		lobe.metal			   = true;
 		lobe.fresnel_parameter = material.base_color.luminance();
@@ -286,7 +288,9 @@ HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_lobe_from_
  * (sin theta, 0, cos theta) of 'direction' around 'normal' (cosine 'cosine'), the tangential part from the projection for precision near the normal. The
  * isotropic GGX functions of the code only read x^2 + y^2 and z
  */
-HIPRT_DEVICE float3_t ReSTIR_PT_MIS_approximation_isotropic_local_direction(const float3_t& direction, const float3_t& normal, float cosine)
+HIPRT_DEVICE float3_t ReSTIR_PT_MIS_target_function_bsdf_approximation_isotropic_local_direction(const float3_t& direction,
+																								 const float3_t& normal,
+																								 float cosine)
 {
 	float3_t tangential = direction - cosine * normal;
 
@@ -297,14 +301,14 @@ HIPRT_DEVICE float3_t ReSTIR_PT_MIS_approximation_isotropic_local_direction(cons
  * Value of a lobe at a pair of directions (see the top of this file). 'view_cosine' and 'light_cosine' are > 0. 'reconnection_side': the
  * (1 - F_d(NoV)) factor is evaluated here instead of being folded in the lobe
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_lobe_value(const HIPRTRenderData& render_data,
-														  const ReSTIRPTMISApproximationLobe& lobe,
-														  const float3_t& shading_normal,
-														  const float3_t& view_direction,
-														  const float3_t& light_direction,
-														  float view_cosine,
-														  float light_cosine,
-														  bool reconnection_side)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(const HIPRTRenderData& render_data,
+																			   const ReSTIRPTMISTargetFunctionBSDFApproximationLobe& lobe,
+																			   const float3_t& shading_normal,
+																			   const float3_t& view_direction,
+																			   const float3_t& light_direction,
+																			   float view_cosine,
+																			   float light_cosine,
+																			   bool reconnection_side)
 {
 	float value = lobe.diffuse_constant;
 
@@ -315,12 +319,14 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_lobe_value(const HIPRTRenderData&
 		float half_cosine		= hippt::dot(shading_normal, half_vector);
 		float light_half_cosine = hippt::dot(light_direction, half_vector);
 
-		float alpha		   = lobe.alpha;
-		float distribution = GGX_anisotropic(alpha, alpha, ReSTIR_PT_MIS_approximation_isotropic_local_direction(half_vector, shading_normal, half_cosine));
+		float alpha = lobe.alpha;
+		float distribution =
+			GGX_anisotropic(alpha, alpha, ReSTIR_PT_MIS_target_function_bsdf_approximation_isotropic_local_direction(half_vector, shading_normal, half_cosine));
 
-		float lambda_view = G1_Smith_lambda(alpha, alpha, ReSTIR_PT_MIS_approximation_isotropic_local_direction(view_direction, shading_normal, view_cosine));
-		float lambda_light =
-			G1_Smith_lambda(alpha, alpha, ReSTIR_PT_MIS_approximation_isotropic_local_direction(light_direction, shading_normal, light_cosine));
+		float lambda_view = G1_Smith_lambda(
+			alpha, alpha, ReSTIR_PT_MIS_target_function_bsdf_approximation_isotropic_local_direction(view_direction, shading_normal, view_cosine));
+		float lambda_light = G1_Smith_lambda(
+			alpha, alpha, ReSTIR_PT_MIS_target_function_bsdf_approximation_isotropic_local_direction(light_direction, shading_normal, light_cosine));
 		float masking_shadowing;
 		if (render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated)
 			masking_shadowing = 1.0f / ((1.0f + lambda_view) * (1.0f + lambda_light));
@@ -357,21 +363,22 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_lobe_value(const HIPRTRenderData&
  * True when a perfectly smooth lobe can return its delta value for this incident light info and pair of directions: the pair is then left for the
  * fallback. 'view_direction' and 'light_direction' point away from the surface
  */
-HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_delta_peak_possible(BSDFIncidentLightInfo incident_light_info,
-																  const float3_t& view_direction,
-																  const float3_t& shading_normal,
-																  const float3_t& light_direction)
+HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible(BSDFIncidentLightInfo incident_light_info,
+																					   const float3_t& view_direction,
+																					   const float3_t& shading_normal,
+																					   const float3_t& light_direction)
 {
-	if ((incident_light_info & RESTIR_PT_MIS_APPROXIMATION_DELTA_TRIGGER_INFOS) == 0)
+	if ((incident_light_info & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_DELTA_TRIGGER_INFOS) == 0)
 		return false;
 
-	return hippt::dot(reflect_ray(view_direction, shading_normal), light_direction) >= RESTIR_PT_MIS_APPROXIMATION_DELTA_ALIGNMENT_THRESHOLD;
+	return hippt::dot(reflect_ray(view_direction, shading_normal), light_direction) >=
+		   RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_DELTA_ALIGNMENT_THRESHOLD;
 }
 
 /**
  * 'bits'-bit unorm code of 'value' in [0, 1], rounded to the nearest or up
  */
-HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_approximation_quantize(float value, unsigned int bits, bool round_up)
+HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(float value, unsigned int bits, bool round_up)
 {
 	float maximum_code = static_cast<float>((1u << bits) - 1u);
 	float scaled	   = hippt::clamp(0.0f, maximum_code, value * maximum_code);
@@ -379,7 +386,7 @@ HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_approximation_quantize(float value, unsi
 	return static_cast<unsigned int>(round_up ? ceilf(scaled) : scaled + 0.5f);
 }
 
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_dequantize(unsigned int code, unsigned int bits)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(unsigned int code, unsigned int bits)
 {
 	return code / static_cast<float>((1u << bits) - 1u);
 }
@@ -387,14 +394,14 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_dequantize(unsigned int code, uns
 /**
  * 8-bit log code of alpha: alpha = 1e-4 ^ (1 - code / 255)
  */
-HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_approximation_encode_alpha(float alpha)
+HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_alpha(float alpha)
 {
 	float normalized = 1.0f + log10f(hippt::max(alpha, 1.0e-4f)) * 0.25f;
 
-	return ReSTIR_PT_MIS_approximation_quantize(normalized, 8, false);
+	return ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(normalized, 8, false);
 }
 
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_decode_alpha(unsigned int code)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_alpha(unsigned int code)
 {
 	// log2(1e-4)
 	return exp2f(-13.287712379549449f * (1.0f - code * (1.0f / 255.0f)));
@@ -403,19 +410,20 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_decode_alpha(unsigned int code)
 /**
  * Fresnel code: dielectric sqrt(F0) = (ior - 1) / (ior + 1) uniform on [0, 0.5], metal sqrt(lumF0) uniform on [0, 1]
  */
-HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_approximation_encode_fresnel(const ReSTIRPTMISApproximationLobe& lobe, unsigned int bits)
+HIPRT_DEVICE unsigned int ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(const ReSTIRPTMISTargetFunctionBSDFApproximationLobe& lobe,
+																						  unsigned int bits)
 {
 	if (lobe.metal)
-		return ReSTIR_PT_MIS_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.fresnel_parameter)), bits, false);
+		return ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.fresnel_parameter)), bits, false);
 
 	float F0_sqrt = (lobe.fresnel_parameter - 1.0f) / (lobe.fresnel_parameter + 1.0f);
 
-	return ReSTIR_PT_MIS_approximation_quantize(F0_sqrt * 2.0f, bits, false);
+	return ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(F0_sqrt * 2.0f, bits, false);
 }
 
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_decode_fresnel(unsigned int code, unsigned int bits, bool metal)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_fresnel(unsigned int code, unsigned int bits, bool metal)
 {
-	float normalized = ReSTIR_PT_MIS_approximation_dequantize(code, bits);
+	float normalized = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(code, bits);
 	if (metal)
 		return normalized * normalized;
 
@@ -428,32 +436,34 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_decode_fresnel(unsigned int code,
  * Pixel record of a lobe (layout in GBufferDevice.h). A positive Cs keeps a non-zero code, Cd0 and Cd1 are rounded up: the support of the decoded lobe is
  * the one of the unquantized lobe
  */
-HIPRT_DEVICE ReSTIRPTMISApproximationPixelLobeRecord ReSTIR_PT_MIS_approximation_encode_pixel_lobe(const ReSTIRPTMISApproximationLobe& lobe)
+HIPRT_DEVICE ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord
+ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_pixel_lobe(const ReSTIRPTMISTargetFunctionBSDFApproximationLobe& lobe)
 {
-	unsigned int specular_code = ReSTIR_PT_MIS_approximation_quantize(lobe.specular_scale * 0.25f, 16, false);
+	unsigned int specular_code = ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(lobe.specular_scale * 0.25f, 16, false);
 	if (lobe.specular_scale > 0.0f)
 		specular_code = hippt::max(specular_code, 1u);
 
-	unsigned int diffuse_constant_code = ReSTIR_PT_MIS_approximation_quantize(lobe.diffuse_constant, 16, true);
-	unsigned int diffuse_fresnel_code  = ReSTIR_PT_MIS_approximation_quantize(lobe.diffuse_fresnel, 16, true);
+	unsigned int diffuse_constant_code = ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(lobe.diffuse_constant, 16, true);
+	unsigned int diffuse_fresnel_code  = ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(lobe.diffuse_fresnel, 16, true);
 
-	ReSTIRPTMISApproximationPixelLobeRecord record;
+	ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord record;
 	record.coefficients = specular_code | (diffuse_constant_code << 16);
-	record.parameters	= diffuse_fresnel_code | (ReSTIR_PT_MIS_approximation_encode_alpha(lobe.alpha) << 16) |
-						(ReSTIR_PT_MIS_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
+	record.parameters	= diffuse_fresnel_code | (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_alpha(lobe.alpha) << 16) |
+						(ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
 
 	return record;
 }
 
-HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_decode_pixel_lobe(const ReSTIRPTMISApproximationPixelLobeRecord& record)
+HIPRT_DEVICE ReSTIRPTMISTargetFunctionBSDFApproximationLobe
+ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_pixel_lobe(const ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord& record)
 {
-	ReSTIRPTMISApproximationLobe lobe;
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
 	lobe.metal			   = (record.parameters >> 31) != 0;
-	lobe.specular_scale	   = ReSTIR_PT_MIS_approximation_dequantize(record.coefficients & 0xFFFFu, 16) * 4.0f;
-	lobe.diffuse_constant  = ReSTIR_PT_MIS_approximation_dequantize(record.coefficients >> 16, 16);
-	lobe.diffuse_fresnel   = ReSTIR_PT_MIS_approximation_dequantize(record.parameters & 0xFFFFu, 16);
-	lobe.alpha			   = ReSTIR_PT_MIS_approximation_decode_alpha((record.parameters >> 16) & 0xFFu);
-	lobe.fresnel_parameter = ReSTIR_PT_MIS_approximation_decode_fresnel((record.parameters >> 24) & 0x7Fu, 7, lobe.metal);
+	lobe.specular_scale	   = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(record.coefficients & 0xFFFFu, 16) * 4.0f;
+	lobe.diffuse_constant  = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(record.coefficients >> 16, 16);
+	lobe.diffuse_fresnel   = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(record.parameters & 0xFFFFu, 16);
+	lobe.alpha			   = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_alpha((record.parameters >> 16) & 0xFFu);
+	lobe.fresnel_parameter = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_fresnel((record.parameters >> 24) & 0x7Fu, 7, lobe.metal);
 
 	return lobe;
 }
@@ -463,43 +473,50 @@ HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_decode_pix
  * 'smooth_lobe', bits 2..7 the 6-bit Fresnel code). Cs' sqrt-coded on [0, 4] (8 bits, a positive value keeps a non-zero code), Cd0' sqrt-coded on [0, 1]
  * (7 bits, rounded up), Cd1' sqrt-coded on [0, 1] (8 bits, rounded up)
  */
-HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_encode_sample_lobe(ReSTIRPTReservoirSample& sample,
-																		  const ReSTIRPTMISApproximationLobe& lobe,
-																		  bool smooth_lobe)
+HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_sample_lobe(ReSTIRPTReservoirSample& sample,
+																							   const ReSTIRPTMISTargetFunctionBSDFApproximationLobe& lobe,
+																							   bool smooth_lobe)
 {
-	unsigned int specular_code = ReSTIR_PT_MIS_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.specular_scale * 0.25f)), 8, false);
+	unsigned int specular_code =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.specular_scale * 0.25f)), 8, false);
 	if (lobe.specular_scale > 0.0f)
 		specular_code = hippt::max(specular_code, 1u);
 
-	unsigned int diffuse_constant_code = ReSTIR_PT_MIS_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_constant)), 7, true);
-	unsigned int diffuse_fresnel_code  = ReSTIR_PT_MIS_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_fresnel)), 8, true);
+	unsigned int diffuse_constant_code =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_constant)), 7, true);
+	unsigned int diffuse_fresnel_code =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_fresnel)), 8, true);
 
-	sample.mis_approximation_lobe_alpha	   = static_cast<unsigned char>(ReSTIR_PT_MIS_approximation_encode_alpha(lobe.alpha));
-	sample.mis_approximation_lobe_specular = static_cast<unsigned char>(specular_code);
+	sample.mis_target_function_bsdf_approximation_lobe_alpha =
+		static_cast<unsigned char>(ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_alpha(lobe.alpha));
+	sample.mis_target_function_bsdf_approximation_lobe_specular = static_cast<unsigned char>(specular_code);
 	sample.rc_vertex_shading_normal.set_padding(static_cast<unsigned char>(diffuse_fresnel_code));
 	sample.rc_vertex_geometric_normal.set_padding(static_cast<unsigned char>(diffuse_constant_code | (lobe.metal ? 0x80u : 0u)));
 
-	unsigned int flags = RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG | (smooth_lobe ? RESTIR_PT_MIS_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u) |
-						 (ReSTIR_PT_MIS_approximation_encode_fresnel(lobe, 6) << 2);
+	unsigned int flags = RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG |
+						 (smooth_lobe ? RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u) |
+						 (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 6) << 2);
 
 	return static_cast<unsigned char>(flags);
 }
 
-HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_decode_sample_lobe(const ReSTIRPTReservoirSample& sample)
+HIPRT_DEVICE ReSTIRPTMISTargetFunctionBSDFApproximationLobe
+ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_sample_lobe(const ReSTIRPTReservoirSample& sample)
 {
 	unsigned int geometric_normal_byte = sample.rc_vertex_geometric_normal.get_padding();
 
-	float specular_normalized		  = ReSTIR_PT_MIS_approximation_dequantize(sample.mis_approximation_lobe_specular, 8);
-	float diffuse_constant_normalized = ReSTIR_PT_MIS_approximation_dequantize(geometric_normal_byte & 0x7Fu, 7);
-	float diffuse_fresnel_normalized  = ReSTIR_PT_MIS_approximation_dequantize(sample.rc_vertex_shading_normal.get_padding(), 8);
+	float specular_normalized = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(sample.mis_target_function_bsdf_approximation_lobe_specular, 8);
+	float diffuse_constant_normalized = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(geometric_normal_byte & 0x7Fu, 7);
+	float diffuse_fresnel_normalized  = ReSTIR_PT_MIS_target_function_bsdf_approximation_dequantize(sample.rc_vertex_shading_normal.get_padding(), 8);
 
-	ReSTIRPTMISApproximationLobe lobe;
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
 	lobe.metal			   = (geometric_normal_byte & 0x80u) != 0;
 	lobe.specular_scale	   = 4.0f * specular_normalized * specular_normalized;
 	lobe.diffuse_constant  = diffuse_constant_normalized * diffuse_constant_normalized;
 	lobe.diffuse_fresnel   = diffuse_fresnel_normalized * diffuse_fresnel_normalized;
-	lobe.alpha			   = ReSTIR_PT_MIS_approximation_decode_alpha(sample.mis_approximation_lobe_alpha);
-	lobe.fresnel_parameter = ReSTIR_PT_MIS_approximation_decode_fresnel(static_cast<unsigned int>(sample.mis_approximation_flags) >> 2, 6, lobe.metal);
+	lobe.alpha			   = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_alpha(sample.mis_target_function_bsdf_approximation_lobe_alpha);
+	lobe.fresnel_parameter = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_fresnel(
+		static_cast<unsigned int>(sample.mis_target_function_bsdf_approximation_flags) >> 2, 6, lobe.metal);
 
 	return lobe;
 }
@@ -510,24 +527,25 @@ HIPRT_DEVICE ReSTIRPTMISApproximationLobe ReSTIR_PT_MIS_approximation_decode_sam
  * 'shading_point'.
  *
  * Class bit: the material is in an analytic class, the view direction is above the shading normal with a cosine above
- * RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD and (principled BSDF) the camera is outside of the object.
+ * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD and (principled BSDF) the camera is outside of the object.
  * Smooth bit: the lobe is perfectly smooth.
  *
  * With the principled BSDF, also writes the lobe record of the pixel when the class bit is set
  */
-HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_pixel_flags(const HIPRTRenderData& render_data,
-																   unsigned int pixel_index,
-																   const DeviceUnpackedPrincipledFullMaterial& material,
-																   const float3_t& shading_point,
-																   const float3_t& shading_normal,
-																   int primitive_index)
+HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_flags(const HIPRTRenderData& render_data,
+																						unsigned int pixel_index,
+																						const DeviceUnpackedPrincipledFullMaterial& material,
+																						const float3_t& shading_point,
+																						const float3_t& shading_normal,
+																						int primitive_index)
 {
 	float3_t view_direction = hippt::normalize(render_data.current_camera.position - shading_point);
 	float view_cosine		= hippt::dot(view_direction, shading_normal);
 
 	bool smooth_lobe;
-	int material_class = ReSTIR_PT_MIS_approximation_material_class(material, smooth_lobe);
-	if (material_class == RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE || view_cosine <= RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD)
+	int material_class = ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(material, smooth_lobe);
+	if (material_class == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE ||
+		view_cosine <= RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
 		return 0;
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
@@ -539,43 +557,47 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_pixel_flags(const HIPRTRe
 	if (first_hit_volume_state.inside_material)
 		return 0;
 
-	ReSTIRPTMISApproximationLobe lobe = ReSTIR_PT_MIS_approximation_lobe_from_material(render_data, material, material_class, smooth_lobe, true, view_cosine);
-	render_data.g_buffer.mis_approximation_lobe_records[pixel_index] = ReSTIR_PT_MIS_approximation_encode_pixel_lobe(lobe);
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, material, material_class, smooth_lobe, true, view_cosine);
+	render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records[pixel_index] =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_pixel_lobe(lobe);
 #endif // #if BSDF_MODEL == BSDF_PRINCIPLED
 
-	return static_cast<unsigned char>(RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG | (smooth_lobe ? RESTIR_PT_MIS_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u));
+	return static_cast<unsigned char>(RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG |
+									  (smooth_lobe ? RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u));
 }
 
 /**
  * Material part of the flags of a sample whose reconnection vertex has the material 'rc_vertex_material' (the material that the target function fetches
  * for the reconnection vertex), and with the principled BSDF the reconnection-side lobe of the sample. Written when the reconnection vertex is recorded,
- * completed by ReSTIR_PT_MIS_approximation_sample_flags() once the sample is final
+ * completed by ReSTIR_PT_MIS_target_function_bsdf_approximation_sample_flags() once the sample is final
  */
-HIPRT_DEVICE void ReSTIR_PT_MIS_approximation_fill_rc_vertex(const HIPRTRenderData& render_data,
-															 const DeviceUnpackedPrincipledFullMaterial& rc_vertex_material,
-															 ReSTIRPTReservoirSample& sample)
+HIPRT_DEVICE void ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(const HIPRTRenderData& render_data,
+																				  const DeviceUnpackedPrincipledFullMaterial& rc_vertex_material,
+																				  ReSTIRPTReservoirSample& sample)
 {
 	bool smooth_lobe;
-	int material_class = ReSTIR_PT_MIS_approximation_material_class(rc_vertex_material, smooth_lobe);
-	if (material_class == RESTIR_PT_MIS_APPROXIMATION_CLASS_NONE)
+	int material_class = ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(rc_vertex_material, smooth_lobe);
+	if (material_class == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE)
 	{
-		sample.mis_approximation_flags = 0;
+		sample.mis_target_function_bsdf_approximation_flags = 0;
 
 		return;
 	}
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
-	ReSTIRPTMISApproximationLobe lobe =
-		ReSTIR_PT_MIS_approximation_lobe_from_material(render_data, rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe =
+		ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
 
-	sample.mis_approximation_flags = ReSTIR_PT_MIS_approximation_encode_sample_lobe(sample, lobe, smooth_lobe);
+	sample.mis_target_function_bsdf_approximation_flags = ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_sample_lobe(sample, lobe, smooth_lobe);
 #else
-	sample.mis_approximation_flags = static_cast<unsigned char>(RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG);
+	sample.mis_target_function_bsdf_approximation_flags = static_cast<unsigned char>(RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG);
 #endif // #if BSDF_MODEL == BSDF_PRINCIPLED
 }
 
 /**
- * Final flag byte of a sample (0 = not in an analytic class) from the material part written by ReSTIR_PT_MIS_approximation_fill_rc_vertex().
+ * Final flag byte of a sample (0 = not in an analytic class) from the material part written by
+ *ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex().
  *
  * For any pixel that passes the zero tests of the target function and sees the reconnection vertex from above its shading normal, the target function is
  * then non-zero as soon as the pixel BSDF is:
@@ -583,9 +605,9 @@ HIPRT_DEVICE void ReSTIR_PT_MIS_approximation_fill_rc_vertex(const HIPRTRenderDa
  *	- DI sample: no BSDF at the reconnection vertex in the target function, only the class bit
  *	- otherwise not an envmap path, no transmission lobe at the visible point (the volume state of the reconnection vertex BSDF evaluation would then
  *	  depend on the refraction at the pixel), the stored incident light direction is above the shading normal of the reconnection vertex with a cosine
- *	  above RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD and the reconnection vertex material is in an analytic class
+ *	  above RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD and the reconnection vertex material is in an analytic class
  */
-HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_sample_flags(const ReSTIRPTReservoirSample& sample)
+HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_sample_flags(const ReSTIRPTReservoirSample& sample)
 {
 	ColorRGB32F radiance = sample.rc_vertex_incident_radiance;
 	if (radiance.r < 0.0f || radiance.g < 0.0f || radiance.b < 0.0f || radiance.luminance() <= 0.0f)
@@ -593,43 +615,45 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_approximation_sample_flags(const ReSTIR
 
 	if (sample.di_sample)
 		// No BSDF at the reconnection vertex in the target function
-		return static_cast<unsigned char>(RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG);
+		return static_cast<unsigned char>(RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG);
 
 	if (sample.is_envmap_path() || bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
 		return 0;
 
 	float3_t rc_vertex_shading_normal = sample.rc_vertex_shading_normal.unpack();
-	if (hippt::dot(sample.rc_vertex_incident_light_direction, rc_vertex_shading_normal) <= RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD)
+	if (hippt::dot(sample.rc_vertex_incident_light_direction, rc_vertex_shading_normal) <= RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
 		return 0;
 
-	return sample.mis_approximation_flags;
+	return sample.mis_target_function_bsdf_approximation_flags;
 }
 
 /**
  * Pixel-side value of the principled approximation from the lobe record of the pixel (one 8-byte load), view direction from the camera position
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_pixel_side_value(const HIPRTRenderData& render_data,
-																int pixel_index,
-																const float3_t& shading_point,
-																const float3_t& shading_normal,
-																const float3_t& incident_light_direction,
-																float cosine_term)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value(const HIPRTRenderData& render_data,
+																					 int pixel_index,
+																					 const float3_t& shading_point,
+																					 const float3_t& shading_normal,
+																					 const float3_t& incident_light_direction,
+																					 float cosine_term)
 {
 	float3_t view_direction = hippt::normalize(render_data.current_camera.position - shading_point);
 	float view_cosine		= hippt::dot(shading_normal, view_direction);
 
-	ReSTIRPTMISApproximationLobe lobe = ReSTIR_PT_MIS_approximation_decode_pixel_lobe(render_data.g_buffer.mis_approximation_lobe_records[pixel_index]);
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_pixel_lobe(
+		render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records[pixel_index]);
 
-	return ReSTIR_PT_MIS_approximation_lobe_value(render_data, lobe, shading_normal, view_direction, incident_light_direction, view_cosine, cosine_term, false);
+	return ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(render_data, lobe, shading_normal, view_direction, incident_light_direction, view_cosine,
+																	   cosine_term, false);
 }
 
 /**
  * Reconnection-side value of the principled approximation from the lobe stored in the sample, view direction from the reconnection vertex to the pixel at
  * 'shading_point'. 1 for a DI sample. No material fetch
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_rc_side_value(const HIPRTRenderData& render_data,
-															 const ReSTIRPTReservoirSample& sample,
-															 const float3_t& shading_point)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_value(const HIPRTRenderData& render_data,
+																				  const ReSTIRPTReservoirSample& sample,
+																				  const float3_t& shading_point)
 {
 	if (sample.di_sample)
 		return 1.0f;
@@ -639,10 +663,10 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_rc_side_value(const HIPRTRenderDa
 	float view_cosine				  = hippt::dot(view_direction, rc_vertex_shading_normal);
 	float light_cosine				  = hippt::dot(sample.rc_vertex_incident_light_direction, rc_vertex_shading_normal);
 
-	ReSTIRPTMISApproximationLobe lobe = ReSTIR_PT_MIS_approximation_decode_sample_lobe(sample);
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe = ReSTIR_PT_MIS_target_function_bsdf_approximation_decode_sample_lobe(sample);
 
-	return ReSTIR_PT_MIS_approximation_lobe_value(render_data, lobe, rc_vertex_shading_normal, view_direction, sample.rc_vertex_incident_light_direction,
-												  view_cosine, light_cosine, true);
+	return ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(render_data, lobe, rc_vertex_shading_normal, view_direction,
+																	   sample.rc_vertex_incident_light_direction, view_cosine, light_cosine, true);
 }
 
 /**
@@ -650,26 +674,27 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_rc_side_value(const HIPRTRenderDa
  * view direction of the pixel, direction to the reconnection vertex) or the reconnection vertex lobe (sample smooth bit, incident light info at the sample
  * point, direction to the pixel, stored outgoing direction)
  */
-HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_pair_delta_peak_possible(const HIPRTRenderData& render_data,
-																	   const ReSTIRPTReservoirSample& sample,
-																	   unsigned int pixel_flags,
-																	   const float3_t& shading_point,
-																	   const float3_t& shading_normal,
-																	   const float3_t& incident_light_direction)
+HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_peak_possible(const HIPRTRenderData& render_data,
+																							const ReSTIRPTReservoirSample& sample,
+																							unsigned int pixel_flags,
+																							const float3_t& shading_point,
+																							const float3_t& shading_normal,
+																							const float3_t& incident_light_direction)
 {
-	if ((pixel_flags & RESTIR_PT_MIS_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0)
+	if ((pixel_flags & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0)
 	{
 		float3_t view_direction = hippt::normalize(render_data.current_camera.position - shading_point);
-		if (ReSTIR_PT_MIS_approximation_delta_peak_possible(sample.incident_light_info_at_visible_point, view_direction, shading_normal,
-															incident_light_direction))
+		if (ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible(sample.incident_light_info_at_visible_point, view_direction, shading_normal,
+																				 incident_light_direction))
 			return true;
 	}
 
-	if (!sample.di_sample && (sample.mis_approximation_flags & RESTIR_PT_MIS_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0)
+	if (!sample.di_sample && (sample.mis_target_function_bsdf_approximation_flags & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0)
 	{
 		float3_t rc_vertex_view_direction = hippt::normalize(shading_point - sample.rc_vertex);
-		if (ReSTIR_PT_MIS_approximation_delta_peak_possible(sample.incident_light_info_at_sample_point, rc_vertex_view_direction,
-															sample.rc_vertex_shading_normal.unpack(), sample.rc_vertex_incident_light_direction))
+		if (ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible(sample.incident_light_info_at_sample_point, rc_vertex_view_direction,
+																				 sample.rc_vertex_shading_normal.unpack(),
+																				 sample.rc_vertex_incident_light_direction))
 			return true;
 	}
 
@@ -680,20 +705,22 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_approximation_pair_delta_peak_possible(const HIP
  * Cheap path or fallback for a sample at a pixel whose flags are 'pixel_flags', for a pair that passed the zero tests of the target function (degenerate
  * distance, backfacing light of a DI sample, cosine <= 0 outside of a transmission lobe). The same decision in the probes and in the own terms.
  *
- * Returns RESTIR_PT_MIS_APPROXIMATION_FALLBACK, RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH or RESTIR_PT_MIS_APPROXIMATION_ZERO (cheap path, the pixel is below
- * the shading normal of the reconnection vertex: every lobe of the reconnection vertex BSDF is zero)
+ * Returns RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK, RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH or
+ * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO (cheap path, the pixel is below the shading normal of the reconnection vertex: every lobe of the
+ * reconnection vertex BSDF is zero)
  */
-HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_decision(const HIPRTRenderData& render_data,
-													  const ReSTIRPTReservoirSample& sample,
-													  unsigned int pixel_flags,
-													  const float3_t& shading_point,
-													  const float3_t& shading_normal,
-													  const float3_t& incident_light_direction,
-													  float cosine_term)
+HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(const HIPRTRenderData& render_data,
+																		   const ReSTIRPTReservoirSample& sample,
+																		   unsigned int pixel_flags,
+																		   const float3_t& shading_point,
+																		   const float3_t& shading_normal,
+																		   const float3_t& incident_light_direction,
+																		   float cosine_term)
 {
-	bool analytic_pixel = (pixel_flags & RESTIR_PT_MIS_APPROXIMATION_CLASS_FLAG) != 0;
-	if (!analytic_pixel || sample.mis_approximation_flags == 0 || cosine_term <= RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD)
-		return RESTIR_PT_MIS_APPROXIMATION_FALLBACK;
+	bool analytic_pixel = (pixel_flags & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG) != 0;
+	if (!analytic_pixel || sample.mis_target_function_bsdf_approximation_flags == 0 ||
+		cosine_term <= RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK;
 
 	if (!sample.di_sample)
 	{
@@ -702,38 +729,40 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_approximation_decision(const HIPRTRenderData& ren
 		float3_t rc_vertex_view_direction = hippt::normalize(shading_point - sample.rc_vertex);
 		float rc_vertex_view_cosine		  = hippt::dot(rc_vertex_view_direction, sample.rc_vertex_shading_normal.unpack());
 		if (rc_vertex_view_cosine <= 0.0f)
-			return RESTIR_PT_MIS_APPROXIMATION_ZERO;
-		if (rc_vertex_view_cosine <= RESTIR_PT_MIS_APPROXIMATION_COSINE_THRESHOLD)
-			return RESTIR_PT_MIS_APPROXIMATION_FALLBACK;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO;
+		if (rc_vertex_view_cosine <= RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK;
 	}
 
 #if BSDF_MODEL != BSDF_LAMBERTIAN
 	// A perfectly smooth lobe that can return its delta value for this pair goes to the fallback
-	if (ReSTIR_PT_MIS_approximation_pair_delta_peak_possible(render_data, sample, pixel_flags, shading_point, shading_normal, incident_light_direction))
-		return RESTIR_PT_MIS_APPROXIMATION_FALLBACK;
+	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_peak_possible(render_data, sample, pixel_flags, shading_point, shading_normal,
+																				  incident_light_direction))
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK;
 #endif // #if BSDF_MODEL != BSDF_LAMBERTIAN
 
-	return RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH;
+	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH;
 }
 
 /**
- * Approximation value of a pair (sample, pixel) on the cheap path (ReSTIR_PT_MIS_approximation_decision() returned RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH)
+ * Approximation value of a pair (sample, pixel) on the cheap path (ReSTIR_PT_MIS_target_function_bsdf_approximation_decision() returned
+ * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_cheap_path_value(const HIPRTRenderData& render_data,
-																const ReSTIRPTReservoirSample& sample,
-																int pixel_index,
-																const float3_t& shading_point,
-																const float3_t& shading_normal,
-																const float3_t& incident_light_direction,
-																float cosine_term)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(const HIPRTRenderData& render_data,
+																					 const ReSTIRPTReservoirSample& sample,
+																					 int pixel_index,
+																					 const float3_t& shading_point,
+																					 const float3_t& shading_normal,
+																					 const float3_t& incident_light_direction,
+																					 float cosine_term)
 {
 #if BSDF_MODEL == BSDF_LAMBERTIAN
 	return cosine_term;
 #else
-	float pixel_side_value =
-		ReSTIR_PT_MIS_approximation_pixel_side_value(render_data, pixel_index, shading_point, shading_normal, incident_light_direction, cosine_term);
+	float pixel_side_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value(render_data, pixel_index, shading_point, shading_normal,
+																							   incident_light_direction, cosine_term);
 
-	return pixel_side_value * ReSTIR_PT_MIS_approximation_rc_side_value(render_data, sample, shading_point);
+	return pixel_side_value * ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_value(render_data, sample, shading_point);
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
 }
 
@@ -742,7 +771,9 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_cheap_path_value(const HIPRTRende
  * the support of the full target function (Lambertian BSDF), the full target function without the radiance of the sample otherwise (floored on its
  * support)
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_fallback_value(const ReSTIRPTReservoirSample& sample, float full_target_function, float cosine_term)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(const ReSTIRPTReservoirSample& sample,
+																				   float full_target_function,
+																				   float cosine_term)
 {
 	if (full_target_function <= 0.0f)
 		return 0.0f;
@@ -750,7 +781,8 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_fallback_value(const ReSTIRPTRese
 #if BSDF_MODEL == BSDF_LAMBERTIAN
 	return hippt::abs(cosine_term);
 #else
-	return hippt::max(full_target_function / hippt::max(sample.rc_vertex_incident_radiance.luminance(), 1.0e-30f), RESTIR_PT_MIS_APPROXIMATION_VALUE_FLOOR);
+	return hippt::max(full_target_function / hippt::max(sample.rc_vertex_incident_radiance.luminance(), 1.0e-30f),
+					  RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_VALUE_FLOOR);
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
 }
 
@@ -763,10 +795,10 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_fallback_value(const ReSTIRPTRese
  * A known full target function can be > 0 where a re-evaluation at the current G-buffer is 0 (a stored delta-peak target of a perfectly smooth lobe whose
  * mirror direction moved). The support of the own term must be the one of 'own_full_target_function': a zero cheap value then takes the fallback value
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_own_term(const HIPRTRenderData& render_data,
-														const ReSTIRPTReservoirSample& sample,
-														int pixel_index,
-														float own_full_target_function)
+HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(const HIPRTRenderData& render_data,
+																			 const ReSTIRPTReservoirSample& sample,
+																			 int pixel_index,
+																			 float own_full_target_function)
 {
 	if (own_full_target_function <= 0.0f)
 		return 0.0f;
@@ -784,14 +816,14 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_own_term(const HIPRTRenderData& r
 		incident_light_direction	   = sample.rc_vertex - shading_point;
 		float distance_to_sample_point = hippt::length(incident_light_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
-			return RESTIR_PT_MIS_APPROXIMATION_COSINE_FLOOR;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_FLOOR;
 
 		incident_light_direction /= distance_to_sample_point;
 	}
 
 	float cosine = hippt::abs(hippt::dot(incident_light_direction, render_data.g_buffer.shading_normals[pixel_index].unpack()));
 
-	return hippt::max(cosine, RESTIR_PT_MIS_APPROXIMATION_COSINE_FLOOR);
+	return hippt::max(cosine, RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_FLOOR);
 #else
 	float3_t shading_point								 = render_data.g_buffer.primary_hit_position[pixel_index];
 	Octahedral24BitNormalPadded32b packed_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
@@ -805,27 +837,27 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_approximation_own_term(const HIPRTRenderData& r
 		incident_light_direction	   = sample.rc_vertex - shading_point;
 		float distance_to_sample_point = hippt::length(incident_light_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
-			return RESTIR_PT_MIS_APPROXIMATION_VALUE_FLOOR;
+			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_VALUE_FLOOR;
 
 		incident_light_direction /= distance_to_sample_point;
 	}
 
 	float cosine_term = hippt::dot(incident_light_direction, shading_normal);
 
-	int decision = ReSTIR_PT_MIS_approximation_decision(render_data, sample, packed_shading_normal.get_padding(), shading_point, shading_normal,
-														incident_light_direction, cosine_term);
+	int decision = ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(render_data, sample, packed_shading_normal.get_padding(), shading_point,
+																			 shading_normal, incident_light_direction, cosine_term);
 
 	float own_term_value = 0.0f;
-	if (decision == RESTIR_PT_MIS_APPROXIMATION_CHEAP_PATH)
-		own_term_value = ReSTIR_PT_MIS_approximation_cheap_path_value(render_data, sample, pixel_index, shading_point, shading_normal, incident_light_direction,
-																	  cosine_term);
+	if (decision == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
+		own_term_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(render_data, sample, pixel_index, shading_point, shading_normal,
+																						   incident_light_direction, cosine_term);
 
-	if (decision == RESTIR_PT_MIS_APPROXIMATION_FALLBACK || !(own_term_value > 0.0f))
+	if (decision == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK || !(own_term_value > 0.0f))
 		// The fallback, or a zero cheap value with a known full target function > 0
-		own_term_value = ReSTIR_PT_MIS_approximation_fallback_value(sample, own_full_target_function, cosine_term);
+		own_term_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(sample, own_full_target_function, cosine_term);
 
 	return own_term_value;
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
 }
 
-#endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_APPROXIMATION_H
+#endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_H

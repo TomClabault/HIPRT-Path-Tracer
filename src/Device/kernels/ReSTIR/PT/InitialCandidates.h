@@ -773,15 +773,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
 	restir_pt_initial_reservoir_output->sanity_check(make_int2(x, y));
 
-	if (ReSTIR_PT_MIS_approximation_enabled(render_data))
+	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
 	{
-		// Final MIS target approximation flags of the sample (the material part was written with the reconnection vertex). The flags depend only on the
-		// reconnection data of the sample, they stay valid in every copy of the sample
-		unsigned char mis_approximation_flags = 0;
+		// Final MIS target function BSDF approximation flags of the sample (the material part was written with the reconnection vertex). The flags depend only
+		// on the reconnection data of the sample, they stay valid in every copy of the sample
+		unsigned char mis_target_function_bsdf_approximation_flags = 0;
 		if (restir_pt_initial_reservoir_output->UCW > 0.0f)
-			mis_approximation_flags = ReSTIR_PT_MIS_approximation_sample_flags(restir_pt_initial_reservoir_output->sample);
+			mis_target_function_bsdf_approximation_flags =
+				ReSTIR_PT_MIS_target_function_bsdf_approximation_sample_flags(restir_pt_initial_reservoir_output->sample);
 
-		restir_pt_initial_reservoir_output->sample.mis_approximation_flags = mis_approximation_flags;
+		restir_pt_initial_reservoir_output->sample.mis_target_function_bsdf_approximation_flags = mis_target_function_bsdf_approximation_flags;
 	}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                          \

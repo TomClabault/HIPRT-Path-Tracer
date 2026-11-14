@@ -4004,12 +4004,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 
 		// Kernel option: the MIS probes only compile the evaluation they use
 		std::shared_ptr<GPUKernelCompilerOptions> union_domain_kernel_options = m_renderer->get_global_compiler_options();
-		bool mis_target_approximation =
-			union_domain_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION) == KERNEL_OPTION_TRUE;
-		if (ImGui::Checkbox("MIS target approximation", &mis_target_approximation))
+		bool mis_target_function_bsdf_approximation =
+			union_domain_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION) ==
+			KERNEL_OPTION_TRUE;
+		if (ImGui::Checkbox("MIS target function BSDF approximation", &mis_target_function_bsdf_approximation))
 		{
-			union_domain_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_APPROXIMATION,
-														 mis_target_approximation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			union_domain_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION,
+														 mis_target_function_bsdf_approximation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 			m_renderer->recompile_kernels();
 
 			m_render_window->set_render_dirty(true);

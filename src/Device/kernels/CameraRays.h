@@ -13,7 +13,7 @@
 #include "Device/includes/PathTracingDebugViews.h"
 #include "Device/includes/Random.h"
 #include "Device/includes/RayPayload.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
 #include "Device/includes/SSBNPermutation/SSBNScreenSpaceHashGrid.h"
 #include "Device/includes/Wavefront/WavefrontMaterialFamilyRouting.h"
 
@@ -236,17 +236,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		render_data.g_buffer.materials[pixel_index]			   = packed_material;
 		render_data.g_buffer.primary_hit_position[pixel_index] = closest_hit_info.inter_point;
 
-		// The flags of the MIS target approximation of ReSTIR PT in the padding byte of the shading normal (0 when the approximation is not used), computed
-		// from the values the target function reads back from the G-buffer (unpacked normal and material, view direction from the camera position and the hit
-		// point)
-		Octahedral24BitNormalPadded32b packed_shading_normal = Octahedral24BitNormalPadded32b::pack_static(closest_hit_info.shading_normal);
-		unsigned char mis_approximation_pixel_flags			 = 0;
-		if (ReSTIR_PT_MIS_approximation_enabled(render_data))
-			mis_approximation_pixel_flags =
-				ReSTIR_PT_MIS_approximation_pixel_flags(render_data, pixel_index, packed_material.unpack(), closest_hit_info.inter_point,
-														packed_shading_normal.unpack(), closest_hit_info.primitive_index);
+		// The flags of the MIS target function BSDF approximation of ReSTIR PT in the padding byte of the shading normal (0 when the approximation is not
+		// used), computed from the values the target function reads back from the G-buffer (unpacked normal and material, view direction from the camera
+		// position and the hit point)
+		Octahedral24BitNormalPadded32b packed_shading_normal			 = Octahedral24BitNormalPadded32b::pack_static(closest_hit_info.shading_normal);
+		unsigned char mis_target_function_bsdf_approximation_pixel_flags = 0;
+		if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
+			mis_target_function_bsdf_approximation_pixel_flags =
+				ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_flags(render_data, pixel_index, packed_material.unpack(), closest_hit_info.inter_point,
+																			 packed_shading_normal.unpack(), closest_hit_info.primitive_index);
 
-		packed_shading_normal.set_padding(mis_approximation_pixel_flags);
+		packed_shading_normal.set_padding(mis_target_function_bsdf_approximation_pixel_flags);
 		render_data.g_buffer.shading_normals[pixel_index] = packed_shading_normal;
 
 		if (render_data.wavefront_data.material_family_routing_enabled)
