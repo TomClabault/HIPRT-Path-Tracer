@@ -20,6 +20,99 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
+ * Resolve kernel for the center pixel whose resolve flags are 'resolve_flags' (pixel not done) once its reverse probe rays are traced
+ * ('companion_visible_mask': the slots whose companion is visible), see the top of SpatialSPMISUnionDomainShadowSplit.h.
+ *
+ * Merges the candidate slots in slot order then the canonical sample (the order of the single kernel) with streaming resampling. One uniform is drawn
+ * per candidate whatever its weight (a zero weight is never selected): same distribution as ReSTIRPTReservoir::combine_with(), but only the sample
+ * of the selected candidate is loaded, once, at the end. Then the normalization, the M-cap, the output reservoir and the random seed of the pixel
+ */
+HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData& render_data,
+																unsigned int center_pixel_index,
+																unsigned int resolve_flags,
+																unsigned int companion_visible_mask)
+{
+	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings		   = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
+	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers = union_domain_settings.shadow_split_buffers;
+	ReSTIRPTReservoir* input_reservoir_buffer							   = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs;
+	unsigned int pixel_count											   = shadow_split_buffers.pixel_count;
+
+	// Continues the generator chain of the weights kernel
+	Xorshift32Generator random_number_generator(shadow_split_buffers.random_states[center_pixel_index]);
+
+	// Slots that traced a reverse probe ray whose companion is occluded
+	unsigned int reverse_ray_mask =
+		(resolve_flags >> RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_REVERSE_RAY_SHIFT) & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_NEIGHBOR_SLOT_MASK;
+	unsigned int companion_occluded_mask = reverse_ray_mask & ~companion_visible_mask;
+
+	// The canonical sample is the candidate after the neighbor slots
+	constexpr int canonical_candidate = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS;
+
+	float weight_sum = 0.0f;
+	// -1 = nothing selected
+	int selected_candidate = -1;
+
+	unsigned int candidate_mask = resolve_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_NEIGHBOR_SLOT_MASK;
+	while (candidate_mask != 0)
+	{
+		unsigned int slot = hippt::lowest_set_bit(candidate_mask);
+		candidate_mask &= candidate_mask - 1u;
+
+		// w = w0 + (1 - V) x correction
+		unsigned int slot_entry_index = slot * pixel_count + center_pixel_index;
+		float weight				  = shadow_split_buffers.neighbor_weights[slot_entry_index];
+		if ((companion_occluded_mask >> slot) & 1u)
+			weight += shadow_split_buffers.neighbor_weight_corrections[slot_entry_index];
+
+		float acceptance_uniform = random_number_generator();
+		if (!(weight > 0.0f))
+			continue;
+
+		weight_sum += weight;
+		if (acceptance_uniform < weight / weight_sum)
+			selected_candidate = static_cast<int>(slot);
+	}
+
+	if (resolve_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_CANONICAL_BIT)
+	{
+		float weight			 = shadow_split_buffers.canonical_weights[center_pixel_index];
+		float acceptance_uniform = random_number_generator();
+		if (weight > 0.0f)
+		{
+			weight_sum += weight;
+			if (acceptance_uniform < weight / weight_sum)
+				selected_candidate = canonical_candidate;
+		}
+	}
+
+	ReSTIRPTReservoir spatial_reuse_output_reservoir;
+	if (selected_candidate == canonical_candidate)
+		// The canonical sample keeps its target function
+		spatial_reuse_output_reservoir.sample = input_reservoir_buffer[center_pixel_index].sample;
+	else if (selected_candidate >= 0)
+	{
+		// The sample of the selected neighbor with its target function at the center pixel
+		unsigned int slot_entry_index						  = selected_candidate * pixel_count + center_pixel_index;
+		spatial_reuse_output_reservoir.sample				  = input_reservoir_buffer[shadow_split_buffers.neighbor_pixels[slot_entry_index]].sample;
+		spatial_reuse_output_reservoir.sample.target_function = shadow_split_buffers.neighbor_targets[slot_entry_index];
+	}
+	spatial_reuse_output_reservoir.weight_sum = weight_sum;
+
+	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
+
+	spatial_reuse_output_reservoir.confidence = reused_neighbors_count + input_reservoir_buffer[center_pixel_index].confidence;
+	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);
+
+	// M-capping as the single kernel
+	bool m_cap_enabled = render_data.render_settings.restir_pt_settings.m_cap > 0;
+	if (m_cap_enabled)
+		spatial_reuse_output_reservoir.confidence = hippt::min(spatial_reuse_output_reservoir.confidence, render_data.render_settings.restir_pt_settings.m_cap);
+
+	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
+	render_data.store_updated_random_seed(center_pixel_index, random_number_generator.m_state.seed);
+}
+
+/**
  * Resolve kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): the reverse probe rays recorded by the
  * weights kernel, block-distributed (spmis_union_domain_shadow_split_trace_rays_block()), then the final weights, the merge, the normalization and the
  * output reservoir. One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel. GPU only.

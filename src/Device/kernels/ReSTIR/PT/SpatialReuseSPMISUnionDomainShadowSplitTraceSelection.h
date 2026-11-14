@@ -20,6 +20,43 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
+ * The ray bit whose visibility the ray 'ray_bit' copies according to the duplicate map (its own bit when it is not a duplicate)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_source(unsigned int duplicate_map, unsigned int ray_bit)
+{
+	unsigned int field_shift  = spmis_union_domain_shadow_split_duplicate_field_shift(ray_bit);
+	unsigned int source_index = (duplicate_map >> field_shift) & spmis_union_domain_shadow_split_duplicate_field_mask(ray_bit);
+
+	bool stage2_ray = ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+
+	return stage2_ray ? source_index : RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + source_index;
+}
+
+/**
+ * The visibility bits 'visible_mask' of the traced rays of a pixel, completed with the bits of its duplicate rays copied from their sources (which
+ * are never duplicates themselves)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_copy_duplicate_visibility(unsigned int visible_mask, unsigned int duplicate_map)
+{
+	unsigned int completed_visible_mask = visible_mask;
+
+	unsigned int ray_bit_count =
+		RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES;
+	for (unsigned int ray_bit = 0; ray_bit < ray_bit_count; ray_bit++)
+	{
+		unsigned int source_ray_bit = spmis_union_domain_shadow_split_duplicate_source(duplicate_map, ray_bit);
+		if (source_ray_bit == ray_bit)
+			// Not a duplicate: traced, its bit is already there
+			continue;
+
+		unsigned int source_visible = (visible_mask >> source_ray_bit) & 1u;
+		completed_visible_mask		= (completed_visible_mask & ~(1u << ray_bit)) | (source_visible << ray_bit);
+	}
+
+	return completed_visible_mask;
+}
+
+/**
  * Trace selection kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): the stage-2 rays of the pool
  * picks and the canonical probe rays recorded by the prepare kernel, block-distributed (spmis_union_domain_shadow_split_trace_rays_block()), one
  * visibility bit per ray. The bits of the duplicate rays are copied from the rays they repeat (spmis_union_domain_shadow_split_copy_duplicate_visibility()).
