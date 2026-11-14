@@ -24,8 +24,8 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	// Per-pixel flags and random state (prepare -> later kernels)
 
 	// One unsigned int per pixel, the RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_* prepare flags (ray bits of the stage-2 picks and canonical probes,
-	// envmap bits, pool valid, canonical present, pixel done). Written by the prepare kernel. Read by the trace selection kernel (which rays to trace)
-	// and by the weights kernel (which picks and probes to use, pixels already done)
+	// envmap bits, pool valid, canonical present, pixel done, duplicate rays). Written by the prepare kernel. Read by the trace selection kernel (which rays to
+	// trace) and by the weights kernel (which picks and probes to use, pixels already done)
 	unsigned int* prepare_flags = nullptr;
 
 	// One unsigned int per pixel, the state of the random generator of the pixel. Written by the prepare kernel, read and rewritten by the weights
@@ -48,18 +48,22 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 
 	// Trace selection -> weights
 
-	// One unsigned int per pixel: the visibility bits of the rays of the prepare flags (same bit positions, 0 = occluded or no ray). Written by the
-	// trace selection kernel for the pixels not done. Read by the weights kernel: the visible picks of the selection, the visible canonical probes
+	// One unsigned int per pixel: the visibility bits of the stage-2 picks and canonical probes (bit positions of the ray bits of the prepare flags,
+	// 0 = occluded or no ray), the bits of the duplicate rays copied from the rays they repeat. Written by the trace selection kernel for the pixels
+	// not done. Read by the weights kernel: the visible picks of the selection, the visible canonical probes.
+	//
+	// Before that, for the pixels with the duplicate rays flag only: the duplicate map of the pixel (bit layout in SpatialSPMISUnionDomainShadowSplit.h),
+	// written by the prepare kernel and read by the trace selection kernel, which then overwrites it with the visibility bits
 	unsigned int* selection_visibility = nullptr;
 
 	// Prepare -> weights
 
 	// One pixel index per stage-2 pool pick: RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE slots per pixel, slot-major. Written by the
-	// prepare kernel for the picks with a ray bit. Read by the weights kernel: the neighbor pixel of a chosen pick
+	// prepare kernel for the picks that need a ray (traced or duplicate). Read by the weights kernel: the neighbor pixel of a chosen pick
 	unsigned int* pick_pixels = nullptr;
 
 	// One float per stage-2 pool pick, same layout as pick_pixels: the stage-1 selection probability P_l of the pick. Written by the prepare kernel
-	// for the picks with a ray bit. Read by the weights kernel: the selection probability of a chosen neighbor
+	// for the picks that need a ray (traced or duplicate). Read by the weights kernel: the selection probability of a chosen neighbor
 	float* pick_probabilities = nullptr;
 
 	// One pixel index per neighbor slot: RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS slots per pixel, slot-major. The uniform companion
@@ -68,7 +72,7 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	unsigned int* companions = nullptr;
 
 	// One float per canonical probe, same layout as canonical_viewpoints: the value of the probe without visibility. Written by the prepare kernel for
-	// the probes with a non-zero value. Read by the weights kernel for the visible probes: the canonical MIS weight
+	// the probes with a non-zero value (traced or duplicate). Read by the weights kernel for the visible probes: the canonical MIS weight
 	float* canonical_values = nullptr;
 
 	// One float per pixel: the numerator c_c p_c of the canonical MIS weight. Written by the prepare kernel when the canonical sample is resampled.

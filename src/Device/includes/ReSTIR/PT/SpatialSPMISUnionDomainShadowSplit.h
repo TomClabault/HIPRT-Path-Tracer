@@ -17,9 +17,10 @@
  *
  *	- prepare (heavy, SpatialReuseSPMISUnionDomainShadowSplitPrepare.h): domain, stage 1 of the neighbor selection (the pool), the stage-2 ray record of
  *	  every pool pick, the uniform companion of every neighbor slot (the reverse probe pixel of the MIS weight of that slot), the canonical probes
- *	  (pixels, values without visibility, ray records). The pixels without work (inactive, no primary hit, no domain) are finished here exactly
- *	  as the single kernel does
- *	- trace selection (lean, SpatialReuseSPMISUnionDomainShadowSplitTraceSelection.h): the stage-2 and canonical probe rays, one visibility bit each
+ *	  (pixels, values without visibility, ray records), the duplicate map of the rays. The pixels without work (inactive, no primary hit, no domain)
+ *	  are finished here exactly as the single kernel does
+ *	- trace selection (lean, SpatialReuseSPMISUnionDomainShadowSplitTraceSelection.h): the stage-2 and canonical probe rays, one visibility bit each.
+ *	  A ray that repeats the query of an earlier ray of the pixel is not traced, its bit is copied (see "Duplicate rays" below)
  *	- weights (heavy, SpatialReuseSPMISUnionDomainShadowSplitWeights.h): the choice of the neighbors among the visible picks (same partial Fisher-Yates
  *	  shuffle), the shifts, the target functions at the center, for every chosen neighbor its resampling weight with the companion visible and the
  *	  correction of that weight when the companion is occluded, the reverse probe ray records, the canonical MIS weight from the probe bits
@@ -44,7 +45,8 @@
  * The rays are the rays of the single kernel (same origin, endpoint, distance, origin primitive and alpha test seed). A probe ray is traced when the
  * value of its probe without visibility is non-zero: same condition as the single kernel with the MIS target approximation (except for a zero
  * Jacobian, which the single kernel tests after its ray), fewer rays without it (the single kernel then traces before evaluating the target
- * function). A ray whose value is zero cannot change the estimate.
+ * function). A ray whose value is zero cannot change the estimate. A ray that repeats the query of an earlier ray of the same pixel (same origin,
+ * endpoint and seed) is traced once and its answer copied: the single kernel traces it again and gets the same answer.
  *
  * Every kernel runs one thread per pixel over the 8 x 8 blocks of the single kernel: the global BVH traversal stack has one slot per thread of
  * such a launch, a kernel with more threads than pixels would overflow it. The lean kernels distribute the rays of a block over its threads, see
@@ -77,6 +79,18 @@ static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICA
 static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_POOL_VALID_BIT = 1u << 26;
 // The prepare kernel finished the pixel (output written), the other kernels skip it
 static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PIXEL_DONE_BIT = 1u << 27;
+// The pixel has duplicate rays: until the trace selection kernel, its visibility word holds its duplicate map (see "Duplicate rays" below)
+static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATES_BIT = 1u << 28;
+
+// Duplicate map of a pixel, 32 bits:
+//	- bits 3p .. 3p + 2, for every stage-2 pool pick p < 8: the pick whose ray answers the query of p
+//	- bits 24 + 2j .. 25 + 2j, for every canonical probe j < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES: the probe whose
+//	  ray answers the query of j (a probe index, not a ray bit)
+// A pick or probe that is not a duplicate holds its own index. The canonical probes beyond the deduplicated ones are always traced
+static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS		 = 3;
+static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_SHIFT = 24;
+static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_BITS	 = 2;
+static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES			 = 4;
 
 // Per-pixel flags written by the weights kernel (ReSTIRPTSPMISUnionDomainShadowSplitBuffers::resolve_flags): bit k (k < 4) = neighbor slot k is a candidate
 // of the merge, bit 4 + k = slot k traces a reverse probe ray, bit 8 + k = the sample of slot k is an envmap sample, then the single bits below
@@ -89,9 +103,127 @@ static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE <= 8, "The prepare flags hold one stage-2 ray bit and one envmap bit per pool pick");
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES <= 8, "The prepare flags hold one ray bit per canonical probe");
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS <= 4, "The resolve flags hold three bits per neighbor slot");
+static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS <=
+				  RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_SHIFT,
+			  "The pick fields of the duplicate map hold one pick index each, below the canonical probe fields");
 
 // The shadow split kernels only run with an MIS group size of 2 (ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels()): one companion per neighbor
 static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE = 2;
+
+/**
+ * Duplicate rays of the trace selection kernel.
+ *
+ * A stage-2 ray is a function of the sample of the reservoir of its pool pick (reconnection vertex or envmap direction, alpha test seed of the
+ * sample) and of the center pixel (origin and origin primitive: its primary hit), see spmis_union_domain_shadow_split_store_ray() and
+ * spmis_union_domain_shadow_split_trace_pixel_ray(). Two picks of the same pool pixel read the same reservoir: their rays are the same query, whose
+ * answer is deterministic (the alpha test generator is seeded by the ray record). Likewise, every canonical probe ray goes to the canonical sample
+ * with its seed and starts at the primary hit of the probe pixel: two probes of the same domain pixel are the same query.
+ *
+ * The prepare kernel gives no ray bit to such a duplicate and records in the duplicate map of the pixel the earlier pick or probe whose ray answers
+ * it: the first one of that pixel, which always has a ray bit itself. The trace selection kernel then traces a shorter list and copies the visibility
+ * bit of every duplicate from its source. Every pick and probe stays its own term of the estimator (own selection probability, own probe value),
+ * only the trace is shared. Duplicates are only searched among the picks and probes that need a ray: a pick or probe without a ray is never a
+ * duplicate nor a source.
+ *
+ * The map travels from the prepare kernel to the trace selection kernel in the visibility word of the pixel (no extra buffer), which the trace
+ * selection kernel then overwrites with the visibility bits
+ */
+
+/**
+ * The duplicate map in which no ray is a duplicate: every field holds its own index
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_map_identity()
+{
+	unsigned int duplicate_map = 0;
+
+	for (unsigned int pick = 0; pick < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE; pick++)
+		duplicate_map |= pick << (pick * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS);
+
+	for (unsigned int probe = 0; probe < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES; probe++)
+		duplicate_map |= probe << (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_SHIFT +
+								   probe * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_BITS);
+
+	return duplicate_map;
+}
+
+/**
+ * Bit position in the duplicate map of the field of the ray 'ray_bit' (a ray bit of the prepare flags: a stage-2 pick, or a canonical probe below
+ * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_field_shift(unsigned int ray_bit)
+{
+	if (ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT)
+		return ray_bit * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS;
+
+	unsigned int probe = ray_bit - RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+
+	return RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_SHIFT +
+		   probe * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_BITS;
+}
+
+/**
+ * Mask (in the low bits) of the field of the ray 'ray_bit' in the duplicate map
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_field_mask(unsigned int ray_bit)
+{
+	bool stage2_ray			= ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+	unsigned int field_bits = stage2_ray ? RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS
+										 : RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_BITS;
+
+	return (1u << field_bits) - 1u;
+}
+
+/**
+ * The ray bit whose visibility the ray 'ray_bit' copies according to the duplicate map (its own bit when it is not a duplicate)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_source(unsigned int duplicate_map, unsigned int ray_bit)
+{
+	unsigned int field_shift  = spmis_union_domain_shadow_split_duplicate_field_shift(ray_bit);
+	unsigned int source_index = (duplicate_map >> field_shift) & spmis_union_domain_shadow_split_duplicate_field_mask(ray_bit);
+
+	bool stage2_ray = ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+
+	return stage2_ray ? source_index : RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + source_index;
+}
+
+/**
+ * 'duplicate_map' with the ray 'ray_bit' marked as a duplicate of the earlier ray 'source_ray_bit' of the same class (stage-2 pick or canonical
+ * probe)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_set_duplicate_source(unsigned int duplicate_map, unsigned int ray_bit, unsigned int source_ray_bit)
+{
+	bool stage2_ray			  = ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+	unsigned int source_index = stage2_ray ? source_ray_bit : source_ray_bit - RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
+
+	unsigned int field_shift = spmis_union_domain_shadow_split_duplicate_field_shift(ray_bit);
+	unsigned int field_mask	 = spmis_union_domain_shadow_split_duplicate_field_mask(ray_bit) << field_shift;
+
+	return (duplicate_map & ~field_mask) | (source_index << field_shift);
+}
+
+/**
+ * The visibility bits 'visible_mask' of the traced rays of a pixel, completed with the bits of its duplicate rays copied from their sources (which
+ * are never duplicates themselves)
+ */
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_copy_duplicate_visibility(unsigned int visible_mask, unsigned int duplicate_map)
+{
+	unsigned int completed_visible_mask = visible_mask;
+
+	unsigned int ray_bit_count =
+		RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES;
+	for (unsigned int ray_bit = 0; ray_bit < ray_bit_count; ray_bit++)
+	{
+		unsigned int source_ray_bit = spmis_union_domain_shadow_split_duplicate_source(duplicate_map, ray_bit);
+		if (source_ray_bit == ray_bit)
+			// Not a duplicate: traced, its bit is already there
+			continue;
+
+		unsigned int source_visible = (visible_mask >> source_ray_bit) & 1u;
+		completed_visible_mask		= (completed_visible_mask & ~(1u << ray_bit)) | (source_visible << ray_bit);
+	}
+
+	return completed_visible_mask;
+}
 
 /**
  * Ray record 'entry_index' of 'rays': the reconnection vertex of the sample (or its envmap direction) and the bits of its alpha test seed
@@ -214,6 +346,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].confidence;
 
 	unsigned int prepare_flags = 0;
+	// Duplicate rays of the pixel, see spmis_union_domain_shadow_split_duplicate_map_identity()
+	unsigned int duplicate_map = spmis_union_domain_shadow_split_duplicate_map_identity();
 
 	// Stage 1 of spmis_union_domain_select_neighbors() and the stage-2 ray records of the picks that trace one
 	if (domain.non_zero_count > 0)
@@ -245,10 +379,34 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 				unsigned int entry_index = pick * pixel_count + center_pixel_index;
 
-				spmis_union_domain_shadow_split_store_ray(shadow_split_buffers.selection_rays, entry_index, pick_reservoir.sample);
-
+				// A duplicate still is its own pick of the selection
 				shadow_split_buffers.pick_pixels[entry_index]		 = pool_pixel_indices[pick];
 				shadow_split_buffers.pick_probabilities[entry_index] = pool_selection_probabilities[pick];
+
+				// An earlier pick of the same pool pixel with a ray bit is the same query. The first pick of a pool pixel has a ray bit, the later ones
+				// are its duplicates
+				int source_pick = pick;
+				for (int earlier_pick = 0; earlier_pick < pick; earlier_pick++)
+				{
+					bool earlier_pick_ray = (prepare_flags >> earlier_pick) & 1u;
+					if (earlier_pick_ray && pool_pixel_indices[earlier_pick] == pool_pixel_indices[pick])
+					{
+						source_pick = earlier_pick;
+
+						break;
+					}
+				}
+
+				if (source_pick != pick)
+				{
+					// No ray: the trace selection kernel copies the visibility bit of the source pick
+					duplicate_map = spmis_union_domain_shadow_split_set_duplicate_source(duplicate_map, pick, source_pick);
+					prepare_flags |= RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATES_BIT;
+
+					continue;
+				}
+
+				spmis_union_domain_shadow_split_store_ray(shadow_split_buffers.selection_rays, entry_index, pick_reservoir.sample);
 
 				prepare_flags |= 1u << pick;
 				if (pick_reservoir.sample.is_envmap_path())
@@ -281,6 +439,10 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 		int probe_count =
 			hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
+
+		// Pixels of the deduplicated probes, only read for the probes that have a ray bit
+		unsigned int probe_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES];
+
 		for (int probe = 0; probe < probe_count; probe++)
 		{
 			unsigned int probe_pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
@@ -289,10 +451,42 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 																			 probe_pixel_index, random_number_generator);
 			if (probe_value > 0.0f)
 			{
-				// Only the probes with a ray can be non-zero: the weights kernel reads the value of a probe whose ray is visible only
+				// Only the probes with a ray can be non-zero: the weights kernel reads the value of a probe whose ray is visible only. A duplicate keeps
+				// its own value, only its visibility is copied
 				unsigned int entry_index = probe * pixel_count + center_pixel_index;
 
-				shadow_split_buffers.canonical_values[entry_index]	   = probe_value;
+				shadow_split_buffers.canonical_values[entry_index] = probe_value;
+
+				// An earlier probe of the same domain pixel with a ray bit is the same query
+				int source_probe = probe;
+				if (probe < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES)
+				{
+					for (int earlier_probe = 0; earlier_probe < probe; earlier_probe++)
+					{
+						bool earlier_probe_ray = (prepare_flags >> (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + earlier_probe)) & 1u;
+						if (earlier_probe_ray && probe_pixel_indices[earlier_probe] == probe_pixel_index)
+						{
+							source_probe = earlier_probe;
+
+							break;
+						}
+					}
+
+					probe_pixel_indices[probe] = probe_pixel_index;
+				}
+
+				if (source_probe != probe)
+				{
+					// No ray: the trace selection kernel copies the visibility bit of the source probe
+					unsigned int probe_ray_bit		  = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + probe;
+					unsigned int source_probe_ray_bit = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + source_probe;
+
+					duplicate_map = spmis_union_domain_shadow_split_set_duplicate_source(duplicate_map, probe_ray_bit, source_probe_ray_bit);
+					prepare_flags |= RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATES_BIT;
+
+					continue;
+				}
+
 				shadow_split_buffers.canonical_viewpoints[entry_index] = probe_pixel_index;
 				prepare_flags |= 1u << (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + probe);
 			}
@@ -309,6 +503,10 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 	shadow_split_buffers.domain_confidence_sums[center_pixel_index] = static_cast<float>(domain.confidence_sum);
 	shadow_split_buffers.prepare_flags[center_pixel_index]			= prepare_flags;
 	shadow_split_buffers.random_states[center_pixel_index]			= random_number_generator.m_state.seed;
+
+	// The duplicate map goes to the trace selection kernel through the visibility word, which that kernel overwrites with the visibility bits
+	if (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATES_BIT)
+		shadow_split_buffers.selection_visibility[center_pixel_index] = duplicate_map;
 }
 
 /**

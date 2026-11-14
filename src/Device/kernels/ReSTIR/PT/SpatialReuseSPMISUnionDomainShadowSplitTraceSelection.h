@@ -22,7 +22,8 @@
 /**
  * Trace selection kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): the stage-2 rays of the pool
  * picks and the canonical probe rays recorded by the prepare kernel, block-distributed (spmis_union_domain_shadow_split_trace_rays_block()), one
- * visibility bit per ray. One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel. GPU only.
+ * visibility bit per ray. The bits of the duplicate rays are copied from the rays they repeat (spmis_union_domain_shadow_split_copy_duplicate_visibility()).
+ * One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel. GPU only.
  */
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
@@ -54,7 +55,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShado
 	bool pixel_done		  = (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PIXEL_DONE_BIT) != 0;
 	unsigned int ray_mask = pixel_done ? 0u : (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_SELECTION_RAY_MASK);
 
+	// The duplicate map that the prepare kernel left in the visibility word of a pixel with duplicate rays (overwritten below). The duplicates have no
+	// ray bit: only their sources are traced
+	bool has_duplicates		   = !pixel_done && (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATES_BIT);
+	unsigned int duplicate_map = has_duplicates ? shadow_split_buffers.selection_visibility[center_pixel_index] : 0u;
+
 	unsigned int visible_mask = spmis_union_domain_shadow_split_trace_rays_block<false>(render_data, center_pixel_index, ray_mask, prepare_flags);
+
+	if (has_duplicates)
+		visible_mask = spmis_union_domain_shadow_split_copy_duplicate_visibility(visible_mask, duplicate_map);
 
 	if (!pixel_done)
 		shadow_split_buffers.selection_visibility[center_pixel_index] = visible_mask;
