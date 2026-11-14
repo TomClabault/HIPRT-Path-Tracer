@@ -3990,11 +3990,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. Up to 8 pixels in "
 										"total, the weight is averaged over all the groups that can be formed with these pixels, for the same cost.");
 
-		if (ImGui::Checkbox("Stratified neighbor groups", &union_domain_settings.stratified_reverse_probes))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("Stratifies over the reuse domain, across the neighbors, the pixels that stand for the domain in the MIS weights of "
-										"the neighbors instead of drawing them independently. Unbiased, same cost, slightly lower variance.");
-
 		if (ImGui::Checkbox("MIS target approximation", &union_domain_settings.mis_target_approximation))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("The MIS weights evaluate a cheap approximation of the target function (cosine or analytic lobes, no material fetch or "

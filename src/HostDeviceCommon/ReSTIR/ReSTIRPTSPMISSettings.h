@@ -33,10 +33,6 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	int mis_group_size = 2;
 	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
 	int canonical_group_count = 2;
-	// If true, the pixels that stand for the domain in the MIS weights of the neighbors (one per neighbor with mis_group_size = 2, one shadow ray each)
-	// are stratified over the pixel list of the domain across the neighbor slots instead of drawn independently. Same expectation, same ray count,
-	// slightly lower variance
-	bool stratified_reverse_probes = true;
 	// If true, the group-wise MIS weights (canonical and neighbor probes, and the target functions of a sample at its own pixel, of a neighbor's sample at
 	// the center pixel and of the canonical sample at the center pixel) use an approximation of the target function instead of the target function, see
 	// SpatialMISTargetApproximation.h. The resampling weights still use the target function.

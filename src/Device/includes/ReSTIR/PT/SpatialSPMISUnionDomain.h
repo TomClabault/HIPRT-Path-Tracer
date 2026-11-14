@@ -236,17 +236,6 @@ HIPRT_DEVICE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData
 }
 
 /**
- * The pixel at the position 'uniform' (in [0, 1)) of the pixel list of the domain (see spmis_union_domain_pixel_at_index()). A uniform drawn uniformly in
- * [0, 1) gives a pixel drawn uniformly in the domain, a uniform drawn in a sub-interval gives a pixel of that stratum of the list (stratified draws)
- */
-HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_uniform(const HIPRTRenderData& render_data, const ReSTIRPTSPMISUnionDomain& domain, float uniform)
-{
-	unsigned int pixel_list_index = hippt::min(domain.pixel_count - 1u, static_cast<unsigned int>(uniform * domain.pixel_count));
-
-	return spmis_union_domain_pixel_at_index(render_data, domain, pixel_list_index);
-}
-
-/**
  * Neighbor records (ReSTIRPTSPMISUnionDomainSettings::neighbor_records), written by ReSTIR_PT_SPMIS_BuildNeighborRecords for every pixel with a non-zero
  * spatial reuse input reservoir, at the slot of the pixel in its SPMIS cell (cell_offsets[cell] + index_in_cell, the same slot as in pixel_indices_sorted).
  *
