@@ -41,7 +41,8 @@
 
 // Traversal hint of the any-hit (shadow ray) traversals. Shadow rays that are mostly occluded traverse the BVH faster with the shadow ray hint,
 // which only changes the box traversal order: the visibility result is the same. A kernel whose shadow rays are mostly visible does not benefit
-// and defines this macro to hiprtTraversalHintDefault before its includes (SpatialReuseSPMISUnionDomain.h).
+// and defines this macro to hiprtTraversalHintDefault before its includes (SpatialReuseSPMISUnionDomain.h and the kernels of its shadow split
+// version that trace rays).
 // This must stay a compile-time constant: a per-ray hint value makes the compiler wrap every BVH intersection instruction in a loop
 #ifndef SHADOW_RAY_TRAVERSAL_HINT
 #define SHADOW_RAY_TRAVERSAL_HINT hiprtTraversalHintShadowRays

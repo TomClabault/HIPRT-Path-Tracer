@@ -4022,6 +4022,24 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "
 										"Larger domains draw that many stratified candidates in total, split over the neighbors.");
+
+		if (ImGui::Checkbox("Shadow split kernels", &union_domain_settings.use_shadow_split_kernels))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker(
+			"Runs the union domain spatial reuse as four kernels instead of one: the shadow rays are split out into two small kernels that keep almost no "
+			"state while they traverse the BVH, which makes each ray cheaper. Same estimator as the single kernel, faster on most scenes.\n\nNeeds an MIS "
+			"group size of 2 and at most 4 neighbors, the single kernel runs otherwise. Uses extra VRAM for the per-pixel state passed between the kernels, "
+			"only allocated while the shadow split kernels run.");
+		if (using_union_domain_reuse && union_domain_settings.use_shadow_split_kernels)
+		{
+			// Telling the user which condition of ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() makes the single kernel run
+			if (union_domain_settings.mis_group_size != 2)
+				ImGui::TextWrapped("Inactive: needs an MIS group size of 2.");
+			else if (union_domain_settings.neighbor_count > RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS)
+				ImGui::TextWrapped("Inactive: needs at most %d neighbors.", RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS);
+			else if (!render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass)
+				ImGui::TextWrapped("Inactive: needs the spatial reuse pass to be enabled.");
+		}
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -945,6 +945,16 @@ namespace hippt
 		return __ffs(bitmask);
 	}
 
+	/**
+	 * Returns the index (0 to 31) of the least significant bit set to 1 in a 32 bit unsigned integer.
+	 *
+	 * Returns 32 if all bits are zero
+	 */
+	__device__ static unsigned int lowest_set_bit(unsigned int bitmask)
+	{
+		return bitmask == 0u ? 32u : static_cast<unsigned int>(__builtin_ctz(bitmask));
+	}
+
 	template <typename T>
 	__device__ static T clz(T bitmask)
 	{
@@ -1835,6 +1845,16 @@ namespace hippt
 				return i;
 
 		return 0;
+	}
+
+	/**
+	 * Returns the index (0 to 31) of the least significant bit set to 1 in a 32 bit unsigned integer.
+	 *
+	 * Returns 32 if all bits are zero
+	 */
+	static constexpr unsigned int lowest_set_bit(unsigned int bitmask)
+	{
+		return static_cast<unsigned int>(std::countr_zero(bitmask));
 	}
 
 	template <typename T>

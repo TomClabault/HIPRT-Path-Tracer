@@ -23,6 +23,11 @@ public:
 	static const std::string RESTIR_PT_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID;
+	// Kernels of the shadow split version of the union domain spatial reuse, see SpatialSPMISUnionDomainShadowSplit.h
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID;
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID;
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID;
 	static const std::string RESTIR_PT_SHADING_KERNEL_ID;
 	static const std::string RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID;
@@ -50,6 +55,16 @@ public:
 	virtual bool pre_frame_render_update(float delta_time) override;
 	bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data);
 	bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
+	/**
+	 * Allocates the per-pixel state of the shadow split union domain kernels when ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() is true,
+	 * frees it otherwise. Returns true if the buffer was allocated or freed
+	 */
+	bool pre_render_update_spmis_union_domain_shadow_split_buffer(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
+	void resize_spmis_union_domain_shadow_split_buffer(unsigned int width, unsigned int height);
+	/**
+	 * Returns true if the buffer was allocated
+	 */
+	bool free_spmis_union_domain_shadow_split_buffer();
 
 	/**
 	 * This pass computes the optimal reuse radius and reuse directions to use, per-pixel
@@ -70,6 +85,13 @@ public:
 	 * instead of the legacy SPMIS spatial reuse kernel (RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID)
 	 */
 	bool use_spmis_union_domain_kernel(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const;
+	/**
+	 * Returns true if the union domain reuse of this frame runs as the shadow split kernels (see SpatialSPMISUnionDomainShadowSplit.h) instead of the single
+	 * union domain kernel: the union domain kernel is used, ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() is true and the state of the shadow
+	 * split kernels is allocated for the render resolution
+	 */
+	bool use_spmis_union_domain_shadow_split_kernels(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const;
+	void launch_spmis_union_domain_shadow_split_kernels(HIPRTRenderData& render_data);
 	void launch_spatial_reuse_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	void configure_shading_pass(HIPRTRenderData& render_data);
 	void launch_shading_pass(HIPRTRenderData& render_data);
@@ -90,6 +112,26 @@ public:
 	float get_VRAM_usage() const;
 
 private:
+	/**
+	 * Reserves 'element_count' elements of type T at a 256 byte aligned offset of the buffer of the shadow split union domain kernels whose first
+	 * 'buffer_byte_size' bytes are already reserved, and moves 'buffer_byte_size' past them. 'out_array' points to the reserved elements in the buffer
+	 * 'buffer_device_pointer', or is nullptr when the buffer pointer is nullptr (only the size of the buffer is computed)
+	 */
+	template <typename T>
+	static void reserve_spmis_union_domain_shadow_split_array(unsigned char* buffer_device_pointer,
+															  size_t& buffer_byte_size,
+															  size_t element_count,
+															  T*& out_array);
+
+	/**
+	 * Layout of all the arrays of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one buffer for 'pixel_count' pixels (460 bytes per pixel with the
+	 * maximum pool size and probe count of ReSTIRPTOptions.h, plus alignment). Sets the pointers of 'shadow_split_buffers' into the buffer
+	 * 'buffer_device_pointer' (nullptr pointers when 'buffer_device_pointer' is nullptr) and returns the byte size of the buffer
+	 */
+	static size_t layout_spmis_union_domain_shadow_split_buffers(unsigned char* buffer_device_pointer,
+																 unsigned int pixel_count,
+																 ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers);
+
 	OrochiBuffer<ReSTIRPTReservoir> m_initial_candidates_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
@@ -97,6 +139,11 @@ private:
 	ReSTIRPTDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 	ReSTIRPTSPMISDataHost<OrochiBuffer> m_spmis_data;
+	// Per-pixel state of the shadow split union domain kernels (every array of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one allocation, in
+	// elements of 16 bytes so that the element count stays small at large resolutions) and the number of pixels it is allocated for. Only allocated
+	// while the shadow split kernels run
+	OrochiBuffer<float4_t> m_spmis_union_domain_shadow_split_buffer;
+	unsigned int m_spmis_union_domain_shadow_split_pixel_count = 0;
 
 	ReSTIRPTReservoir* m_last_temporal_output_reservoirs  = nullptr;
 	ReSTIRPTReservoir* m_last_restir_pt_output_reservoirs = nullptr;

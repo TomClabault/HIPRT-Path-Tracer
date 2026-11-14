@@ -1303,6 +1303,8 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 		bool use_union_domain_kernel = m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType) &&
 									   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr;
 
+		// The shadow split version of the union domain kernel (SpatialSPMISUnionDomainShadowSplit.h,
+		// ReSTIRPTSPMISUnionDomainSettings::use_shadow_split_kernels) is GPU only: the CPU always runs the single union domain kernel, same estimator
 		if (use_union_domain_kernel)
 			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomain(m_render_data, x, y); });
 		else

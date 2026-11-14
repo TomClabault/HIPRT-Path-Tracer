@@ -139,5 +139,8 @@
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT 8u
 // Per pixel in the union domain cache: the number of cached cells then one representative pixel per cell
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE (1u + RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS)
+// Maximum value of ReSTIRPTSPMISUnionDomainSettings::neighbor_count with which the shadow split kernels of the union domain reuse run (see
+// SpatialSPMISUnionDomainShadowSplit.h), the single kernel runs with more neighbors
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS 4
 
 #endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PT_OPTIONS_H

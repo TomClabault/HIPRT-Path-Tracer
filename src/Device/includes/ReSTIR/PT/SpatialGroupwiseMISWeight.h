@@ -19,7 +19,11 @@
  *
  * With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation, the MIS target approximation (SpatialMISTargetApproximation.h) replaces the
  * target function, the Jacobian is unchanged
+ *
+ * 'withVisibility' false: the same value with the pixel assumed visible, no shadow ray. The shadow split kernels of the union domain reuse
+ * (SpatialSPMISUnionDomainShadowSplit.h) evaluate it this way and trace the ray of the probe in another kernel when the value is non-zero
  */
+template <bool withVisibility = true>
 HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
 														 const ReSTIRPTReservoirSample& sample,
 														 const ReSTIRPTSurface& center_pixel_surface,
@@ -28,7 +32,7 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 {
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
-	float target_function = ReSTIR_PT_evaluate_target_function_at_pixel<true, ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE>(
+	float target_function = ReSTIR_PT_evaluate_target_function_at_pixel<withVisibility, ReSTIR_PT_SPMISUnionDomainMISTargetApproximation == KERNEL_OPTION_TRUE>(
 		render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
 	if (target_function > 0.0f && !sample.is_envmap_path())
 	{
@@ -127,6 +131,20 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 			probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
 																						 domain, 1, random_number_generator);
 
+		return get_canonical_MIS_weight_from_probes(canonical_numerator, group_scale, probe_target_functions, probe_count, group_size);
+	}
+
+	/**
+	 * The U-statistic of get_resampling_MIS_weight_canonical() over the 'probe_count' values p_j(y) of 'probe_target_functions' (zero for an occluded
+	 * probe): the average over all the subsets of size 'group_size' of the probes of c_c p_c / (c_c p_c + group_scale x sum of the p_j of the subset).
+	 * 'canonical_numerator' is c_c p_c and 'group_scale' is C / g.
+	 *
+	 * Also used by the shadow split kernels of the union domain reuse (SpatialSPMISUnionDomainShadowSplit.h), whose probe values and visibilities come from two
+	 * kernels
+	 */
+	HIPRT_DEVICE float get_canonical_MIS_weight_from_probes(
+		float canonical_numerator, float group_scale, const float* probe_target_functions, int probe_count, int group_size)
+	{
 		// The subsets of the U-statistic are enumerated by up to 3 nested loops below
 		float bracket_sum		  = 0.0f;
 		unsigned int subset_count = 0;
@@ -195,8 +213,30 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 			target_function_at_neighbor + spmis_union_domain_group_target_function_sum(render_data, neighbor_reservoir_sample, center_pixel_surface, domain,
 																					   group_size - 1, random_number_generator);
 
+		return get_MIS_weight_non_canonical_from_group_sum(neighbor_reservoir_confidence, target_function_at_neighbor, center_pixel_reservoir_confidence,
+														   target_function_at_center, static_cast<float>(domain.confidence_sum), group_size,
+														   reused_neighbors_count, neighbor_selection_probability, group_target_function_sum);
+	}
+
+	/**
+	 * The MIS weight of get_resampling_MIS_weight_non_canonical() for the sum 'group_target_function_sum' of p_i(y_i) and of the g - 1 probes of the
+	 * group (zero for an occluded probe). 'domain_confidence_sum' is C.
+	 *
+	 * Also used by the shadow split kernels of the union domain reuse (SpatialSPMISUnionDomainShadowSplit.h): their weights kernel evaluates it for the two
+	 * possible visibilities of the companion, whose ray is traced by the resolve kernel
+	 */
+	HIPRT_DEVICE float get_MIS_weight_non_canonical_from_group_sum(float neighbor_reservoir_confidence,
+																   float target_function_at_neighbor,
+																   int center_pixel_reservoir_confidence,
+																   float target_function_at_center,
+																   float domain_confidence_sum,
+																   int group_size,
+																   int reused_neighbors_count,
+																   float neighbor_selection_probability,
+																   float group_target_function_sum)
+	{
 		float denominator = target_function_at_center * center_pixel_reservoir_confidence;
-		denominator += static_cast<float>(domain.confidence_sum) / group_size * group_target_function_sum;
+		denominator += domain_confidence_sum / group_size * group_target_function_sum;
 
 		if (denominator > 0.0f)
 			return neighbor_reservoir_confidence * target_function_at_neighbor / denominator / (reused_neighbors_count * neighbor_selection_probability);
