@@ -3985,10 +3985,22 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 		ImGuiRenderer::show_help_marker("How many pixels of the domain (one shadow ray each) stand for the whole domain in the denominator of the "
 										"group-wise MIS weights. 1 is stochastic pairwise MIS, larger groups get closer to the balance heuristic.");
 
-		if (ImGui::SliderInt("Canonical group count", &union_domain_settings.canonical_group_count, 1, 8, "%d", ImGuiSliderFlags_AlwaysClamp))
+		// The canonical MIS weight uses at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES pixels in total: the group count is kept within that maximum
+		// for the current group size (also when the group size was just raised)
+		int max_canonical_group_count = RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES / std::max(1, union_domain_settings.mis_group_size);
+		if (union_domain_settings.canonical_group_count > max_canonical_group_count)
+		{
+			union_domain_settings.canonical_group_count = max_canonical_group_count;
+
 			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. Up to 8 pixels in "
-										"total, the weight is averaged over all the groups that can be formed with these pixels, for the same cost.");
+		}
+
+		if (ImGui::SliderInt("Canonical group count", &union_domain_settings.canonical_group_count, 1, max_canonical_group_count, "%d",
+							 ImGuiSliderFlags_AlwaysClamp))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. At most 8 pixels in "
+										"total (group count x group size), the weight is averaged over all the groups that can be formed with these "
+										"pixels, for the same cost.");
 
 		// Kernel option: the MIS probes only compile the evaluation they use
 		std::shared_ptr<GPUKernelCompilerOptions> union_domain_kernel_options = m_renderer->get_global_compiler_options();

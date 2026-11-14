@@ -31,7 +31,8 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	int neighbor_count = 3;
 	// Number of pixels per group of the stochastic group-wise MIS weights. 1 is pairwise MIS. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE]
 	int mis_group_size = 2;
-	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample
+	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample. canonical_group_count x mis_group_size
+	// is at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES (probes beyond that are not traced)
 	int canonical_group_count = 2;
 	// Whether the group-wise MIS weights use an approximation of the target function is the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation
 	// (ReSTIRPTOptions.h), not a setting of this structure

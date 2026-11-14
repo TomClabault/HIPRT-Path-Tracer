@@ -94,10 +94,12 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 *
 	 *		m_c(y) = c_c p_c(y) / (c_c p_c(y) + (C / g) x sum over a group of g uniform pixels of p_j(y))
 	 *
-	 * estimated with 'canonical_group_count' x g probes (one shadow ray each) drawn i.i.d. uniformly in the domain. Up to
-	 * RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES probes (and g <= 3), the bracket is averaged over ALL the subsets of size g of the probes (U-statistic):
+	 * estimated with 'canonical_group_count' x g probes (one shadow ray each) drawn i.i.d. uniformly in the domain, at most
+	 * RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES probes. The bracket is averaged over ALL the subsets of size g of the probes (U-statistic):
 	 * every subset is a group of g i.i.d. uniform pixels so every bracket is an unbiased estimate of E[m_c], with the same rays as canonical_group_count
-	 * disjoint groups. Above that, the bracket is averaged over canonical_group_count disjoint groups
+	 * disjoint groups. This is the only estimator of the canonical weight: a single probe site (target evaluation + shadow ray) is compiled
+	 *
+	 * 'group_size' must be in [1, 3] (RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE) and 'canonical_group_count' >= 1
 	 *
 	 * 'center_pixel_reservoir_target_function' is the MIS target approximation of the canonical sample at the center pixel when
 	 * the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetApproximation is on
@@ -116,60 +118,48 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 		// The g pixels of a group stand for the whole domain
 		float group_scale = static_cast<float>(domain.confidence_sum) / group_size;
 
-		int probe_count = canonical_group_count * group_size;
+		// The settings window keeps canonical_group_count x mis_group_size within RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES, clamping anyway: the probes
+		// are stored in an array of that size. The U-statistic is valid for any number of probes >= g, not only for the multiples of g
+		int probe_count = hippt::min(canonical_group_count * group_size, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
+
+		float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
+		for (int probe = 0; probe < probe_count; probe++)
+			probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
+																						 domain, 1, random_number_generator);
 
 		// The subsets of the U-statistic are enumerated by up to 3 nested loops below
-		if (group_size <= 3 && probe_count <= RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES && probe_count >= group_size)
+		float bracket_sum		  = 0.0f;
+		unsigned int subset_count = 0;
+		for (int first = 0; first < probe_count; first++)
 		{
-			float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
-			for (int probe = 0; probe < probe_count; probe++)
-				probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																							 domain, 1, random_number_generator);
-
-			float bracket_sum		  = 0.0f;
-			unsigned int subset_count = 0;
-			for (int first = 0; first < probe_count; first++)
+			if (group_size == 1)
 			{
-				if (group_size == 1)
+				bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first]);
+				subset_count++;
+
+				continue;
+			}
+
+			for (int second = first + 1; second < probe_count; second++)
+			{
+				if (group_size == 2)
 				{
-					bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first]);
+					bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first] + probe_target_functions[second]);
 					subset_count++;
 
 					continue;
 				}
 
-				for (int second = first + 1; second < probe_count; second++)
+				for (int third = second + 1; third < probe_count; third++)
 				{
-					if (group_size == 2)
-					{
-						bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first] + probe_target_functions[second]);
-						subset_count++;
-
-						continue;
-					}
-
-					for (int third = second + 1; third < probe_count; third++)
-					{
-						bracket_sum += canonical_bracket(canonical_numerator, group_scale,
-														 probe_target_functions[first] + probe_target_functions[second] + probe_target_functions[third]);
-						subset_count++;
-					}
+					bracket_sum += canonical_bracket(canonical_numerator, group_scale,
+													 probe_target_functions[first] + probe_target_functions[second] + probe_target_functions[third]);
+					subset_count++;
 				}
 			}
-
-			return subset_count > 0 ? bracket_sum / subset_count : 0.0f;
 		}
 
-		float mis_weight = 0.0f;
-		for (int group = 0; group < canonical_group_count; group++)
-		{
-			float group_target_function_sum = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																						   domain, group_size, random_number_generator);
-
-			mis_weight += canonical_bracket(canonical_numerator, group_scale, group_target_function_sum) / canonical_group_count;
-		}
-
-		return mis_weight;
+		return subset_count > 0 ? bracket_sum / subset_count : 0.0f;
 	}
 
 	/**

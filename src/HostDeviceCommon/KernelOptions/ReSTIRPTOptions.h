@@ -132,8 +132,8 @@
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE 3
 // Maximum value of ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE 8
-// Maximum number of probes (canonical_group_count x mis_group_size) for which the canonical MIS weight of the union domain reuse is computed as a
-// U-statistic over all the groups of probes. Above that, the canonical MIS weight averages canonical_group_count disjoint groups
+// Maximum number of probes (canonical_group_count x mis_group_size) of the canonical MIS weight of the union domain reuse, computed as a U-statistic over
+// all the groups of probes. The settings window keeps the product of the two settings within this maximum and the kernel clamps the number of probes to it
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES 8
 // Number of floats of the neighbor record of a pixel (two float4, see ReSTIR_PT_SPMIS_BuildNeighborRecords)
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT 8u
