@@ -76,6 +76,11 @@ struct SGImportanceDebug
 	float max_corner_dot;
 };
 
+/**
+ * The early-outs of this function are selects at the end instead of returns: with returns, the cone fields of the node were only loaded after
+ * the bounding sphere test, one more dependent memory round trip per node of the light tree traversal. A wave executes both sides of a
+ * divergent branch anyway so the selects cost almost nothing
+ */
 HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
 	float3_t center_to_shading = shading_point - node.gaussian_spatial_mean;
@@ -87,9 +92,8 @@ HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDe
 	 *
 	 * If the shading point lies inside the bounding sphere, emitters in the node may be seen in arbitrary directions. We cannot reject it.
 	 */
-	float radius = support_radius;
-	if (distance <= radius)
-		return 1.0f;
+	float radius	   = support_radius;
+	bool inside_sphere = distance <= radius;
 
 	float sin_theta_u = hippt::clamp(0.0f, 1.0f, radius / distance);
 	float cos_theta_u = hippt::sqrt(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
@@ -109,20 +113,20 @@ HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDe
 	 * For angles in [0, 2*pi], negative sin indicates that the sum
 	 * passed pi. This assumes theta_o is stored in [0, pi].
 	 */
-	if (sin_bound <= 0.0f)
-		return 1.0f;
+	bool cone_covers_everything = sin_bound <= 0.0f;
 
 	float3_t direction = center_to_shading / distance;
 	float cos_theta	   = hippt::clamp(-1.0f, 1.0f, hippt::dot(node.orientation_axis, direction));
 
 	// Query direction lies inside the expanded orientation cone.
-	if (cos_theta >= cos_bound)
-		return 1.0f;
+	bool inside_cone = cos_theta >= cos_bound;
 
 	float sin_theta = hippt::sqrt(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
 
 	// cos(theta - (theta_o + theta_u))
-	return cos_theta * cos_bound + sin_theta * sin_bound;
+	float max_cosine = cos_theta * cos_bound + sin_theta * sin_bound;
+
+	return (inside_sphere | cone_covers_everything | inside_cone) ? 1.0f : max_cosine;
 }
 
 HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice& spatial_lobe,
@@ -135,8 +139,9 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 													   float alpha_x,
 													   float alpha_y)
 {
-	if (spatial_lobe.power <= 0.0f)
-		return 0.0f;
+	// The zero power test is a select at the end instead of an early return: with the return, the mean, variance and radius of the lobe were
+	// only loaded after the power, one more dependent memory round trip per lobe
+	bool zero_power = spatial_lobe.power <= 0.0f;
 
 	// This importance only shapes the sampling probabilities and the same code evaluates it for sampling and for the PDF
 	// so the hardware reciprocal / reciprocal square root are used instead of the correctly rounded division / sqrt sequences:
@@ -201,7 +206,63 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 	}
 #endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 
-	return emissive * (diffuse_illumination + specular * specular_illumination);
+	float importance = emissive * (diffuse_illumination + specular * specular_illumination);
+
+	return zero_power ? 0.0f : importance;
+}
+
+/**
+ * Importance of a node whose spatial lobes are 'spatial_lobes[0 .. spatial_lobe_count - 1]'.
+ *
+ * The lobes of node i are stored at 'LightTreeSGDevice::spatial_lobes + i * LightTreeSGSettings::spatial_lobe_count': a caller that knows the
+ * index of the node can pass that address directly instead of 'node.spatial_lobes', which saves the dependent load of the pointer
+ *
+ * The rejection tests are selects at the end instead of early returns: with returns, every field of the node and of its lobes was only loaded
+ * after the test that precedes its use, a chain of dependent memory round trips per node of the traversal. A wave executes both sides of a
+ * divergent branch anyway so evaluating the lobes of a rejected node costs almost nothing. The result is the same as with the early returns
+ */
+HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
+												 const SpatialSGLobeDevice* spatial_lobes,
+												 unsigned int spatial_lobe_count,
+												 const SGSpecularImportanceData& spec_data,
+												 float3_t shading_point,
+												 float3_t view_direction,
+												 float3_t shading_normal,
+												 float specular,
+												 float alpha_x,
+												 float alpha_y)
+{
+	bool rejected = node.total_power <= 0.0f;
+
+	// The full bounds of the node only reject it if the spatial mean is behind the surface (if it's in front of the surface the node definitely cannot be
+	// rejected for sure so the bounds test does not matter).
+	bool mean_behind_surface = hippt::dot(shading_normal, node.gaussian_spatial_mean - shading_point) <= 0.0f;
+
+	float3_t max_corner;
+	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+
+	bool bounds_behind_surface = hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f;
+
+	// Bitwise | and & instead of || and &&: the short-circuit operators were compiled to a branch around the cone test, which delayed the loads
+	// of the cone fields behind the other tests
+	rejected = rejected | (mean_behind_surface & bounds_behind_surface);
+
+	if (!DirectLightSamplingAllowBackfacingLights)
+		// Light is backfacing and backfacing lights are not allowed, so the importance is 0, rejecting it
+		rejected = rejected | (light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f);
+
+	// The first lobe is evaluated outside of the loop: inside the loop, its loads could only be issued after the test of the loop count. The
+	// builder always allocates at least one lobe per node so 'spatial_lobes[0]' is always readable
+	float first_lobe_importance =
+		light_tree_sg_evaluate_spatial_lobe(spatial_lobes[0], node.vmf, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+	float final_importance = spatial_lobe_count > 0 ? 0.0f + first_lobe_importance : 0.0f;
+	for (unsigned int lobe_index = 1; lobe_index < spatial_lobe_count; lobe_index++)
+		final_importance += light_tree_sg_evaluate_spatial_lobe(spatial_lobes[lobe_index], node.vmf, spec_data, shading_point, view_direction, shading_normal,
+																specular, alpha_x, alpha_y);
+
+	return rejected ? 0.0f : final_importance;
 }
 
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
@@ -213,33 +274,8 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 												 float alpha_x,
 												 float alpha_y)
 {
-	if (node.total_power <= 0.0f)
-		return 0.0f;
-
-	if (hippt::dot(shading_normal, node.gaussian_spatial_mean - shading_point) <= 0.0f)
-	{
-		// Only checking the full bounds of the node if the spatial mean is behind the surface (if it's in front of the surface the node definitely cannot be
-		// rejected for sure so we don't even have to do the test).
-
-		float3_t max_corner;
-		max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
-		max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
-		max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
-
-		if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
-			return 0.0f;
-	}
-
-	if (!DirectLightSamplingAllowBackfacingLights && light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f)
-		// Light is backfacing and backfacing lights are not allowed, so the importance is 0, rejecting it immediately
-		return 0.0f;
-
-	float final_importance = 0.0f;
-	for (unsigned int lobe_index = 0; lobe_index < node.spatial_lobe_count; lobe_index++)
-		final_importance += light_tree_sg_evaluate_spatial_lobe(node.spatial_lobes[lobe_index], node.vmf, spec_data, shading_point, view_direction,
-																shading_normal, specular, alpha_x, alpha_y);
-
-	return final_importance;
+	return light_tree_sg_node_importance(node, node.spatial_lobes, node.spatial_lobe_count, spec_data, shading_point, view_direction, shading_normal, specular,
+										 alpha_x, alpha_y);
 }
 
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
