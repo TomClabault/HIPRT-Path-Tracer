@@ -133,6 +133,22 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 	}
 }
 
+std::vector<unsigned int> Utils::compute_triangles_opaque_bitfield(const std::vector<int>& material_indices, const std::vector<unsigned char>& material_opaque)
+{
+	std::vector<unsigned int> bitfield((material_indices.size() + 31) / 32, 0u);
+	for (size_t triangle_index = 0; triangle_index < material_indices.size(); triangle_index++)
+	{
+		int material_index = material_indices[triangle_index];
+		// A triangle without a valid material is left non-opaque: the filter function then reads its material as it would without the bitfield
+		if (material_index < 0 || material_index >= static_cast<int>(material_opaque.size()) || !material_opaque[material_index])
+			continue;
+
+		bitfield[triangle_index / 32] |= 1u << (triangle_index % 32);
+	}
+
+	return bitfield;
+}
+
 void Utils::compute_alias_table(const std::vector<float>& input, std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_input_total_sum)
 {
 	float sum = 0.0f;

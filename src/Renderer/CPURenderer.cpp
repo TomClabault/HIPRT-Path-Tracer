@@ -77,6 +77,7 @@
 #include "Device/kernels/HierarchicalAdaptiveSampling/ResolveMask.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
+#include "Utils/Utils.h"
 
 #include <algorithm>
 #include <atomic>
@@ -313,7 +314,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	for (int i = 0; i < parsed_scene.materials.size(); i++)
 		m_material_opaque[i] = parsed_scene.material_has_opaque_base_color_texture[i] && parsed_scene.materials[i].alpha_opacity == 1.0f;
 
-	m_render_data.buffers.material_opaque = m_material_opaque.data();
+	m_triangles_opaque_bitfield						= Utils::compute_triangles_opaque_bitfield(parsed_scene.material_indices, m_material_opaque);
+	m_render_data.buffers.triangles_opaque_bitfield = m_triangles_opaque_bitfield.data();
 
 	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	m_render_data.buffers.triangles_average_emissive_luminance		 = parsed_scene.triangles_average_emissive_luminance.data();

@@ -29,6 +29,13 @@ public:
 	template <typename T>
 	static void compute_prefix_sum(const std::vector<T>& input, std::vector<T>& out_prefix_summed);
 
+	/**
+	 * One bit per triangle, 32 triangles per unsigned int: the bit of a triangle is set if its material is fully opaque
+	 * (material_opaque[material_indices[triangle]] != 0). See RenderBuffers::triangles_opaque_bitfield
+	 */
+	static std::vector<unsigned int> compute_triangles_opaque_bitfield(const std::vector<int>& material_indices,
+																	   const std::vector<unsigned char>& material_opaque);
+
 	static std::string file_to_string(const char* filepath);
 	static void get_current_date_string(std::stringstream& ss);
 

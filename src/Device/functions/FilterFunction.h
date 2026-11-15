@@ -34,6 +34,11 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 	else
 		global_triangle_index_hit = hit.primID;
 
+	// Read before the tests below so that both loads are issued together: after a test that may return, a load would only be issued once the
+	// test is resolved
+	bool do_alpha_testing			   = payload->render_data->render_settings.do_alpha_testing;
+	unsigned int triangles_opaque_bits = payload->render_data->buffers.triangles_opaque_bitfield[global_triangle_index_hit / 32];
+
 	if (global_triangle_index_hit == payload->last_hit_primitive_index)
 		// This is a self-intersection, filtering it out
 		//
@@ -44,14 +49,16 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		// This self-intersection avoidance only works for planar primitives
 		return true;
 
-	if (!payload->render_data->render_settings.do_alpha_testing)
+	if (!do_alpha_testing)
 		// No alpha testing
 		return false;
 
-	int material_index = payload->render_data->buffers.material_indices[global_triangle_index_hit];
-	if (payload->render_data->buffers.material_opaque[material_index])
-		// The material is fully opaque, no need to test further, accept the intersection
+	if (triangles_opaque_bits & (1u << (global_triangle_index_hit % 32)))
+		// The material of the triangle is fully opaque, no need to test further, accept the intersection. One bit per triangle, read without
+		// loading the material index of the triangle first
 		return false;
+
+	int material_index = payload->render_data->buffers.material_indices[global_triangle_index_hit];
 
 	// Composition both the alpha of the base color texture and the material
 	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer[material_index].get_base_color_texture_index();

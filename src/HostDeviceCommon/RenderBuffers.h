@@ -69,14 +69,12 @@ struct RenderBuffers
 	// Only the parameters that are read are loaded: see DevicePackedTexturedMaterial::read_partial_effective_material() for the reads that
 	// skip the parameters of the lobes that a material doesn't use
 	DevicePackedTexturedMaterial* materials_buffer = nullptr;
-	// A buffer that can be indexed by a material_id.
+	// One bit per triangle (global triangle index), 32 triangles per unsigned int: set if the material of the triangle is fully opaque, in which
+	// case there is no need to do alpha testing for that triangle.
 	//
-	// If indexing this buffer returns true, then the material is fully opaque
-	// and there is no need to test alpha testing for it
-	//
-	// This is actually a buffer of bools but manipulating bools is annoying so this
-	// is unsigned char. But the value of the unsigned char is either 0 or 1
-	unsigned char* material_opaque = nullptr;
+	// Built on the CPU from the per-material opacity flags (HIPRTScene::material_opaque). One memory access instead of a material index then a
+	// per-material flag: the filter function reads it for every triangle intersected by every ray
+	unsigned int* triangles_opaque_bitfield = nullptr;
 
 	int emissive_triangles_count = 0;
 	// A buffer that contains the primitive indices of the emissive triangles of the scene

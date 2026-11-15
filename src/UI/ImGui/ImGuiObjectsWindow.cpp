@@ -152,7 +152,7 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 	ImGui::SeparatorText("Material and texture memory");
 	ImGui::TreePush("Material and texture memory");
 	draw_memory_stat("Packed material parameters", scene.materials_buffer.get_byte_size());
-	draw_memory_stat("Material opaque flags", scene.material_opaque.get_byte_size());
+	draw_memory_stat("Triangle opaque flags", scene.triangles_opaque_bitfield.get_byte_size());
 	draw_memory_stat("Material texture handles", scene.gpu_materials_textures.get_byte_size());
 
 	size_t texture_memory = 0;
@@ -179,7 +179,7 @@ void ImGuiObjectsWindow::draw_scene_statistics_panel()
 									scene.triangle_average_emissive_luminance.get_byte_size() +
 									scene.triangle_average_emissive_power_luminance.get_byte_size() + scene.has_vertex_normals.get_byte_size() +
 									scene.vertex_normals.get_byte_size() + scene.material_indices.get_byte_size() + scene.materials_buffer.get_byte_size() +
-									scene.material_opaque.get_byte_size() + scene.gpu_materials_textures.get_byte_size() +
+									scene.triangles_opaque_bitfield.get_byte_size() + scene.gpu_materials_textures.get_byte_size() +
 									scene.texcoords_buffer.get_byte_size() + scene.emissive_triangles_primitive_indices.get_byte_size() +
 									scene.emissive_triangles_indices_and_emissive_textures.get_byte_size() + texture_memory +
 									m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes() +

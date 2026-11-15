@@ -13,6 +13,7 @@
 #include "RenderPasses/FillGBufferRenderPass.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
+#include "Utils/Utils.h"
 
 #include <condition_variable>
 
@@ -919,10 +920,10 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.has_vertex_normals				  = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals					  = m_hiprt_scene.vertex_normals.get_device_pointer();
 
-		m_render_data.buffers.material_indices		   = m_hiprt_scene.material_indices.get_device_pointer();
-		m_render_data.buffers.materials_buffer		   = m_hiprt_scene.materials_buffer.get_device_pointer();
-		m_render_data.buffers.material_opaque		   = m_hiprt_scene.material_opaque.get_device_pointer();
-		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
+		m_render_data.buffers.material_indices			= m_hiprt_scene.material_indices.get_device_pointer();
+		m_render_data.buffers.materials_buffer			= m_hiprt_scene.materials_buffer.get_device_pointer();
+		m_render_data.buffers.triangles_opaque_bitfield = m_hiprt_scene.triangles_opaque_bitfield.get_device_pointer();
+		m_render_data.buffers.emissive_triangles_count	= m_hiprt_scene.emissive_triangles_count;
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices =
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
@@ -1031,9 +1032,14 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 									std::vector<unsigned char> material_opaque(scene.materials.size());
 									for (int i = 0; i < scene.materials.size(); i++)
 										material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
-									m_hiprt_scene.material_opaque.resize(material_opaque.size());
-									m_hiprt_scene.material_opaque.upload_data(material_opaque);
+									m_hiprt_scene.material_opaque						 = material_opaque;
 									m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
+
+									m_hiprt_scene.host_material_indices = scene.material_indices;
+									std::vector<unsigned int> triangles_opaque_bitfield =
+										Utils::compute_triangles_opaque_bitfield(m_hiprt_scene.host_material_indices, material_opaque);
+									m_hiprt_scene.triangles_opaque_bitfield.resize(triangles_opaque_bitfield.size());
+									m_hiprt_scene.triangles_opaque_bitfield.upload_data(triangles_opaque_bitfield);
 
 									m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
 									m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
@@ -1163,7 +1169,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 									m_envmap.init_from_image(envmap_image, envmap_filepath);
 									m_envmap.recompute_sampling_data_structure(this, &envmap_image);
 
-									m_render_data.world_settings.envmap						  = m_envmap.get_packed_data_pointer();
+									m_render_data.world_settings.envmap = m_envmap.get_packed_data_pointer();
 									m_render_data.world_settings.set_envmap_dimensions(m_envmap.get_width(), m_envmap.get_height());
 									m_render_data.world_settings.envmap_packed_scaling_factor = m_envmap.get_envmap_packed_scaling_factor();
 									// We found an envmap so let's use it
@@ -1232,9 +1238,11 @@ void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 		new_opacity[i] = materials[i].alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[i];
 	}
 
-	// Because the materials have changed, reuploading the "precomputed oapcity" of the materials
-	m_hiprt_scene.material_opaque.upload_data(new_opacity);
 	m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
+
+	// Because the materials have changed, reuploading the "precomputed oapcity" of the triangles
+	m_hiprt_scene.material_opaque = new_opacity;
+	m_hiprt_scene.triangles_opaque_bitfield.upload_data(Utils::compute_triangles_opaque_bitfield(m_hiprt_scene.host_material_indices, new_opacity));
 }
 
 void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
@@ -1246,9 +1254,16 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 	// and if the alpha opacity is fully opaque too (1.0f)
 	unsigned char new_opacity = material.alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[material_index];
 
-	// Because the materials have changed, reuploading the "precomputed oapcity" of the materials
-	m_hiprt_scene.material_opaque.upload_data_partial(material_index, &new_opacity, 1);
 	m_hiprt_scene.materials_buffer.upload_data_partial(material_index, &packed_gpu_material, 1);
+
+	// Because the materials have changed, reuploading the "precomputed oapcity" of the triangles if the opacity of the material changed: the bits
+	// of all its triangles change with it
+	if (new_opacity != m_hiprt_scene.material_opaque[material_index])
+	{
+		m_hiprt_scene.material_opaque[material_index] = new_opacity;
+		m_hiprt_scene.triangles_opaque_bitfield.upload_data(
+			Utils::compute_triangles_opaque_bitfield(m_hiprt_scene.host_material_indices, m_hiprt_scene.material_opaque));
+	}
 }
 
 const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes()

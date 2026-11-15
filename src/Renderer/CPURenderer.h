@@ -143,6 +143,8 @@ private:
 	std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
 	// Keeps track of which material is fully opaque or not
 	std::vector<unsigned char> m_material_opaque;
+	// See RenderBuffers::triangles_opaque_bitfield
+	std::vector<unsigned int> m_triangles_opaque_bitfield;
 
 	GBufferCPUData m_g_buffer;
 	GBufferCPUData m_g_buffer_prev_frame;

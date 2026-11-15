@@ -221,7 +221,20 @@ struct HIPRTScene
 	// This vector isn't used on the GPU, it's only used by the CPU to basically remember which
 	// materials had textures with some alpha in it
 	std::vector<bool> material_has_opaque_base_color_texture;
-	OrochiBuffer<unsigned char> material_opaque;
+	// Can be indexed by a material_id.
+	//
+	// If indexing this vector returns true, then the material is fully opaque
+	// and there is no need to test alpha testing for it
+	//
+	// This is actually a vector of bools but manipulating bools is annoying so this
+	// is unsigned char. But the value of the unsigned char is either 0 or 1
+	//
+	// CPU only: the GPU reads the per-triangle 'triangles_opaque_bitfield' built from it
+	std::vector<unsigned char> material_opaque;
+	// See RenderBuffers::triangles_opaque_bitfield
+	OrochiBuffer<unsigned int> triangles_opaque_bitfield;
+	// CPU copy of 'material_indices', used to compute 'triangles_opaque_bitfield' again when the opacity of a material changes
+	std::vector<int> host_material_indices;
 
 	unsigned int emissive_triangles_count = 0;
 	unsigned int total_triangle_count	  = 0;
