@@ -87,6 +87,17 @@
 #define ReSTIR_PT_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
+ * How many path trees are resampled per pixel during the initial candidates generation pass.
+ *
+ * This is a compile time option because the loop over the path trees is the outermost loop of the initial candidates kernel: with a run-time count,
+ * the compiler keeps the values it hoists out of that loop (G-buffer addresses, constants of the per-tree setup) in registers for the whole kernel. With
+ * a count of 1, the loop disappears and the initial candidates kernel uses fewer registers
+ *
+ *	- Any integer >= 1 is accepted
+ */
+#define ReSTIR_PT_InitialPathTreesCount 1
+
+/**
  * See the doc of the RESTIR_PT_MIS_WEIGHTS_TYPE macros at the top of this file for more details on the different types of MIS weights that can be used when
  * resampling spatial neighbors.
  */

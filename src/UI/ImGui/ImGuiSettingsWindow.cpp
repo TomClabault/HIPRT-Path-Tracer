@@ -4101,9 +4101,29 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
 	{
 		ImGui::TreePush("ReSTIR PT - Initial candidates tree");
 
-		if (ImGui::SliderInt("Initial path trees count", &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.initial_path_trees_count, 1,
-							 8))
-			m_render_window->set_render_dirty(true);
+		// Kernel option: the loop over the path trees is compiled out when there is only one
+		std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+		static int initial_path_trees_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT);
+		ImGui::SliderInt("Initial path trees count", &initial_path_trees_count, 1, 8, "%d", ImGuiSliderFlags_AlwaysClamp);
+		ImGuiRenderer::show_help_marker("How many path trees are resampled per pixel during the initial candidates pass.\n\n"
+										"Changing this recompiles the kernels.");
+
+		// If the user modified the number of path trees, displaying an "Apply" button
+		if (initial_path_trees_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT))
+		{
+			ImGui::TreePush("ReSTIR PT initial path trees count apply button");
+
+			if (ImGui::Button("Apply##ReSTIR PT initial path trees count"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT, initial_path_trees_count);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

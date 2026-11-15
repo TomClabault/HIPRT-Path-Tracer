@@ -640,7 +640,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	ReSTIRPTReservoir* restir_pt_initial_reservoir_output =
 		&render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[pixel_index];
 	ReSTIRPTInitialCandidatesReservoir restir_pt_initial_reservoir(restir_pt_initial_reservoir_output);
-	for (int candidate = 0; candidate < render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count; candidate++)
+	for (int candidate = 0; candidate < ReSTIR_PT_InitialPathTreesCount; candidate++)
 	{
 		HitInfo closest_hit_info;
 		closest_hit_info.inter_point	  = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -774,7 +774,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	// the same value
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-	restir_pt_initial_reservoir.end_with_normalization(1.0f, render_data.render_settings.restir_pt_settings.initial_candidates.initial_path_trees_count);
+	restir_pt_initial_reservoir.end_with_normalization(1.0f, ReSTIR_PT_InitialPathTreesCount);
 	restir_pt_initial_reservoir_output->sanity_check(make_int2(x, y));
 
 	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))

@@ -98,6 +98,7 @@ const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERIN
 
 const std::string GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY = "PathSamplingStrategy";
 
+const std::string GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT = "ReSTIR_PT_InitialPathTreesCount";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_PT_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE = "ReSTIR_PT_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED = "ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled";
@@ -194,6 +195,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY,
 
+	GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT,
 	GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED,
@@ -300,6 +302,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY] = std::make_shared<int>(PathSamplingStrategy);
 
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_INITIAL_PATH_TREES_COUNT] = std::make_shared<int>(ReSTIR_PT_InitialPathTreesCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_PT_SpatialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_PT_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED] = std::make_shared<int>(ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled);

@@ -94,6 +94,7 @@ public:
 
 	static const std::string PATH_SAMPLING_STRATEGY;
 
+	static const std::string RESTIR_PT_INITIAL_PATH_TREES_COUNT;
 	static const std::string RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_PT_MIS_WEIGHTS_TYPE;
 	static const std::string RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED;
