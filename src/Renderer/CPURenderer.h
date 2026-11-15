@@ -153,6 +153,8 @@ private:
 	struct ReSTIRPTState
 	{
 		std::vector<ReSTIRPTReservoir> initial_candidates_reservoirs;
+		// See ReSTIRPTInitialCandidatesPassSettings::initial_candidates_working_samples_buffer
+		std::vector<ReSTIRPTReservoirSample> initial_candidates_working_samples;
 		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
 		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
 

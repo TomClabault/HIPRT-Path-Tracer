@@ -133,6 +133,8 @@ private:
 																 ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers);
 
 	OrochiBuffer<ReSTIRPTReservoir> m_initial_candidates_buffer;
+	// See ReSTIRPTInitialCandidatesPassSettings::initial_candidates_working_samples_buffer
+	OrochiBuffer<ReSTIRPTReservoirSample> m_initial_candidates_working_samples_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
 

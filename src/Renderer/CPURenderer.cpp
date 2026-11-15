@@ -164,6 +164,7 @@ void CPURenderer::setup_buffers()
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
+	m_restir_pt_state.initial_candidates_working_samples.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
 	m_restir_pt_state.spatial_reservoirs.resize(width * height);
 
@@ -523,7 +524,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
 	float envmap_scaling_factor;
 	m_packed_envmap.pack_from(envmap_image, envmap_scaling_factor);
-	m_render_data.world_settings.envmap						  = m_packed_envmap.get_data_pointer();
+	m_render_data.world_settings.envmap = m_packed_envmap.get_data_pointer();
 	m_render_data.world_settings.set_envmap_dimensions(envmap_image.width, envmap_image.height);
 	m_render_data.world_settings.envmap_packed_scaling_factor = envmap_scaling_factor;
 	m_render_data.world_settings.ambient_light_type			  = AmbientLightType::ENVMAP;
@@ -642,9 +643,9 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
-		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result			 = m_light_tree_sg_build_result;
-		const std::vector<unsigned int>& second_tree_cut_node_indices					 = light_tree_sg_build_result.second_tree_cut_node_indices;
-		unsigned int effective_second_tree_cut_size										 = light_tree_sg_build_result.effective_second_tree_cut_size;
+		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result = m_light_tree_sg_build_result;
+		const std::vector<unsigned int>& second_tree_cut_node_indices		  = light_tree_sg_build_result.second_tree_cut_node_indices;
+		unsigned int effective_second_tree_cut_size							  = light_tree_sg_build_result.effective_second_tree_cut_size;
 		kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
 		m_render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
 
@@ -1140,6 +1141,8 @@ void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
 void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
 {
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer =
+		m_restir_pt_state.initial_candidates_working_samples.data();
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.update_candidate_counts_as_float();
 }
 

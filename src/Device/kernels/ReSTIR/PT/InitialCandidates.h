@@ -712,7 +712,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices,
 													   render_data.g_buffer.first_hit_prim_index[pixel_index], random_number_generator);
 
-		ReSTIRPTReservoirSample restir_pt_initial_sample;
+		// The sample of the path lives in memory, not in registers: the reconnection vertex fields written at bounces 0 and 1 would otherwise stay live
+		// across every later NEE and traced ray, which costs the kernel resident waves. Memory is only read back when a candidate is selected (copy into
+		// the output reservoir)
+		ReSTIRPTReservoirSample& restir_pt_initial_sample =
+			render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer[pixel_index];
+		restir_pt_initial_sample			 = ReSTIRPTReservoirSample();
 		restir_pt_initial_sample.pixel_index = pixel_index;
 
 		// Bounce throughput from rc_vertex to the next vertex included

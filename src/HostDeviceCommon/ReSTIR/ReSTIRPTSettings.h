@@ -10,6 +10,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSPMISSettings.h"
 
 struct ReSTIRPTReservoir;
+struct ReSTIRPTReservoirSample;
 
 /**
  * Note that no default values are set in the temporal pass, spatial pass and neighbor similarity
@@ -49,6 +50,11 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
 	ReSTIRPTReservoir* initial_candidates_buffer = nullptr;
+	// One sample per pixel: the path sample that the initial candidates kernel builds while tracing the path of the pixel.
+	//
+	// The fields of the reconnection vertex are written once (bounces 0 and 1) but read by every later candidate: kept in registers, they stay live
+	// across every NEE and every traced ray of the path. In memory, they are only read back when a candidate is selected
+	ReSTIRPTReservoirSample* initial_candidates_working_samples_buffer = nullptr;
 };
 
 struct ReSTIRPTTemporalPassSettings

@@ -26,16 +26,16 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN
 	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Weights";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID =
 	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Resolve";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID						   = "ReSTIR PT Shading";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID		   = "ReSTIR PT Directional reuse compute";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID			   = "ReSTIR PT SPMIS Reset Buffers";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID		   = "ReSTIR PT SPMIS Reset Cells Data";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID				   = "ReSTIR PT SPMIS Count Cells";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID			   = "ReSTIR PT SPMIS Compute Offsets";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID					   = "ReSTIR PT SPMIS Sort";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID				   = "ReSTIR PT SPMIS Build CDFs";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID	   = "ReSTIR PT SPMIS Compute Per Cell Noise";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID	   = "ReSTIR PT SPMIS Build Neighbor Records";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					   = "ReSTIR PT Shading";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID	   = "ReSTIR PT Directional reuse compute";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		   = "ReSTIR PT SPMIS Reset Buffers";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	   = "ReSTIR PT SPMIS Reset Cells Data";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			   = "ReSTIR PT SPMIS Count Cells";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		   = "ReSTIR PT SPMIS Compute Offsets";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "ReSTIR PT SPMIS Sort";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT SPMIS Build CDFs";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT SPMIS Compute Per Cell Noise";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT SPMIS Build Neighbor Records";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },
@@ -301,6 +301,7 @@ void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
 		return;
 
 	m_initial_candidates_buffer.resize(new_width * new_height);
+	m_initial_candidates_working_samples_buffer.resize(new_width * new_height);
 	m_temporal_buffer.resize(new_width * new_height);
 	m_spatial_buffer.resize(new_width * new_height);
 
@@ -410,7 +411,10 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 			render_data_invalidated = true;
 
 		if (initial_candidates_reservoir_needs_resize)
+		{
 			m_initial_candidates_buffer.resize(render_resolution.x * render_resolution.y);
+			m_initial_candidates_working_samples_buffer.resize(render_resolution.x * render_resolution.y);
+		}
 
 		if (temporal_candidates_reservoir_needs_resize)
 			m_temporal_buffer.resize(render_resolution.x * render_resolution.y);
@@ -430,6 +434,7 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		if (m_initial_candidates_buffer.size() > 0)
 		{
 			m_initial_candidates_buffer.free();
+			m_initial_candidates_working_samples_buffer.free();
 
 			render_data_invalidated = true;
 		}
@@ -664,6 +669,8 @@ void ReSTIRPTRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 void ReSTIRPTRenderPass::configure_initial_candidates_pass(HIPRTRenderData& render_data)
 {
 	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
+	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer =
+		m_initial_candidates_working_samples_buffer.get_device_pointer();
 	render_data.render_settings.restir_pt_settings.initial_candidates.update_candidate_counts_as_float();
 }
 
@@ -1156,7 +1163,8 @@ void ReSTIRPTRenderPass::request_temporal_bufffers_clear()
 float ReSTIRPTRenderPass::get_VRAM_usage() const
 {
 
-	return (m_initial_candidates_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() + m_spatial_buffer.get_byte_size() +
-			m_directional_spatial_reuse_data.get_byte_size() + m_spmis_data.get_byte_size() + m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /
+	return (m_initial_candidates_buffer.get_byte_size() + m_initial_candidates_working_samples_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() +
+			m_spatial_buffer.get_byte_size() + m_directional_spatial_reuse_data.get_byte_size() + m_spmis_data.get_byte_size() +
+			m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /
 		   1000000.0f;
 }

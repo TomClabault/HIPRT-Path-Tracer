@@ -138,7 +138,7 @@
 // ReSTIR PT defaults to RIS; the runtime compiler/UI can select the supported learned estimators.
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 #else
-#define DirectLightNEEEstimator LSS_BASE_POWER
+#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \
