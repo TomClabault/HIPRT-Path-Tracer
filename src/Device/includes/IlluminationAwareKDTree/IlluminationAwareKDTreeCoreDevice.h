@@ -267,9 +267,9 @@ struct IlluminationAwareKDTreeCoreDevice
 		{
 			const IlluminationAwareKDTreeNode& node = nodes[node_index];
 
-			// Every field of the node used by the descent is read before the node is tested so that they are all loaded together. With the
-			// tests first, the child index was only loaded once the flags had arrived and the split plane once the child index had arrived:
-			// three memory round trips per level instead of one
+			// Every field of the node used by the descent is read before the node is tested so that they are all loaded together. Testing a
+			// field before reading the next one would delay each load until the previous one has arrived: three memory round trips per level
+			// instead of one
 			//
 			// The compiler does not do this reordering itself: a load written after a test that may return stays after that test unless the
 			// compiler can prove that the load is safe on every path, which it cannot do here. Written unconditionally at the top of the loop,

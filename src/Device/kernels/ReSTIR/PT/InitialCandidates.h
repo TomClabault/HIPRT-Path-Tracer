@@ -650,7 +650,7 @@ extern "C"
 	// band processed by this launch. Zero when the image is launched in one go
 	__device__ unsigned int RESTIR_PT_INITIAL_CANDIDATES_BAND_Y_OFFSET;
 }
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_InitialCandidates()
+GLOBAL_KERNEL_SIGNATURE(void) __attribute__((amdgpu_num_vgpr(144))) __launch_bounds__(64) ReSTIR_PT_InitialCandidates()
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
@@ -684,9 +684,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 	Xorshift32Generator random_number_generator(render_data.get_updated_random_seed(pixel_index));
 
-	ReSTIRPTReservoir* restir_pt_initial_reservoir_output =
-		&render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[pixel_index];
-	ReSTIRPTInitialCandidatesReservoir restir_pt_initial_reservoir(restir_pt_initial_reservoir_output);
+	ReSTIRPTInitialCandidatesReservoir restir_pt_initial_reservoir(render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer,
+																   pixel_index);
 	for (int candidate = 0; candidate < ReSTIR_PT_InitialPathTreesCount; candidate++)
 	{
 		HitInfo closest_hit_info;
@@ -727,6 +726,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		// Keep the clamped continuation factor separate until deferred MIS has consumed the segment's starting throughputs.
 		ColorRGB32F pending_unweighted_throughput = ColorRGB32F(1.0f);
 
+		if (intersection_found)
+			store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
+
 		// + 1 to nb_bounces here because we want "0" bounces to still act as one
 		// hit and to return some color
 		NEEDeferredMISContext nee_deferred_MIS_context;
@@ -760,8 +762,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 				if (intersection_found)
 				{
-					if (bounce == 0)
-						store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
 					if (bounce == 1)
 						ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
@@ -825,6 +825,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	pixel_index = hippt::hide_from_optimizer(pixel_index);
 	int pixel_y = pixel_index / render_data.render_settings.render_resolution.x;
 	int pixel_x = pixel_index - pixel_y * render_data.render_settings.render_resolution.x;
+
+	// Computed where it is first needed: a pointer computed before the bounce loop would be kept in two registers across the whole path
+	ReSTIRPTReservoir* restir_pt_initial_reservoir_output =
+		&render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[pixel_index];
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 

@@ -208,18 +208,23 @@ struct ReSTIRPTReservoir
  */
 struct ReSTIRPTInitialCandidatesReservoir
 {
-	HIPRT_DEVICE ReSTIRPTInitialCandidatesReservoir(ReSTIRPTReservoir* output_reservoir) : output_reservoir(output_reservoir) {}
+	HIPRT_DEVICE ReSTIRPTInitialCandidatesReservoir(ReSTIRPTReservoir* output_reservoirs, unsigned int pixel_index)
+		: output_reservoirs(output_reservoirs), pixel_index(pixel_index)
+	{
+	}
 
 	HIPRT_DEVICE void add_one_candidate(const ReSTIRPTReservoirSample& new_sample, float weight, Xorshift32Generator& random_number_generator)
 	{
 		weight_sum += weight;
 
 		if (random_number_generator() < weight / weight_sum)
-			output_reservoir->sample = new_sample;
+			get_output_reservoir()->sample = new_sample;
 	}
 
 	HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
 	{
+		ReSTIRPTReservoir* output_reservoir = get_output_reservoir();
+
 		output_reservoir->confidence = 1;
 		output_reservoir->weight_sum = weight_sum;
 
@@ -238,13 +243,24 @@ struct ReSTIRPTInitialCandidatesReservoir
 #ifndef __KERNELCC__
 		ReSTIRPTReservoir validation_reservoir;
 		if (weight_sum > 0.0f)
-			validation_reservoir.sample = output_reservoir->sample;
+			validation_reservoir.sample = get_output_reservoir()->sample;
 		validation_reservoir.weight_sum = weight_sum;
 		validation_reservoir.sanity_check(pixel_coords);
 #endif // #ifndef __KERNELCC__
 	}
 
-	ReSTIRPTReservoir* output_reservoir;
+	/**
+	 * Address of the output reservoir of the pixel, computed again at each use. Computed once, the address would be kept in two registers across
+	 * the whole path of the initial candidates kernel
+	 */
+	HIPRT_DEVICE ReSTIRPTReservoir* get_output_reservoir() const
+	{
+		return &output_reservoirs[hippt::hide_from_optimizer(pixel_index)];
+	}
+
+	// Output reservoirs of all the pixels
+	ReSTIRPTReservoir* output_reservoirs;
+	unsigned int pixel_index;
 	float weight_sum = 0.0f;
 };
 
