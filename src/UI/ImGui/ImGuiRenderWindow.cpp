@@ -25,7 +25,7 @@ void ImGuiRenderWindow::draw()
 	ImVec2 window_size = ImGui::GetContentRegionAvail();
 
 	if (window_size.x != m_current_size.x || window_size.y != m_current_size.y)
-		m_render_window->resize(window_size.x, window_size.y);
+		m_render_window->queue_resize(window_size.x, window_size.y);
 
 	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, window_size, ImVec2(0, 1), ImVec2(1, 0));
 

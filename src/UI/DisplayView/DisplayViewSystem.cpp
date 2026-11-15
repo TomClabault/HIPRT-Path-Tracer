@@ -59,7 +59,9 @@ void DisplayViewSystem::configure_framebuffer()
 	glGenTextures(1, &m_fbo_texture);
 	glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_render_window->get_width(), m_render_window->get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	m_fbo_texture_width	 = m_render_window->get_width();
+	m_fbo_texture_height = m_render_window->get_height();
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_fbo_texture_width, m_fbo_texture_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
 	// GL_NEAREST because we don't want to linearly interpolate between those beautiful pixels, THAT'S DISGUSTING!
 	// We want maximum monte carlo noise crispiness!
@@ -87,7 +89,9 @@ void DisplayViewSystem::resize_framebuffer()
 	glGenTextures(1, &m_fbo_texture);
 	glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_render_window->get_width(), m_render_window->get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	m_fbo_texture_width	 = m_render_window->get_width();
+	m_fbo_texture_height = m_render_window->get_height();
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_fbo_texture_width, m_fbo_texture_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
 	// GL_NEAREST because we don't want to linearly interpolate between those beautiful pixels, THAT'S DISGUSTING!
 	// We want maximum monte carlo noise crispiness!
@@ -149,6 +153,9 @@ void DisplayViewSystem::display()
 {
 	m_display_program->use();
 	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+	// The OpenGL viewport follows the viewport size but the framebuffer texture keeps
+	// its previous size until the next upload after a resize
+	glViewport(0, 0, m_fbo_texture_width, m_fbo_texture_height);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
@@ -174,6 +181,8 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 void DisplayViewSystem::upload_final_display_buffer()
 {
+	apply_pending_resize();
+
 	internal_upload_buffer_to_texture(m_renderer->get_display_post_process_interop_framebuffer(), m_display_texture, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 }
 
@@ -190,8 +199,20 @@ void DisplayViewSystem::queue_display_view_change(DisplayViewType display_view)
 
 void DisplayViewSystem::resize(int new_render_width, int new_render_height)
 {
+	m_resize_pending		= true;
+	m_pending_render_width	= new_render_width;
+	m_pending_render_height = new_render_height;
+}
+
+void DisplayViewSystem::apply_pending_resize()
+{
+	if (!m_resize_pending)
+		return;
+
 	resize_framebuffer();
-	internal_resize_display_texture(new_render_width, new_render_height);
+	internal_resize_display_texture(m_pending_render_width, m_pending_render_height);
+
+	m_resize_pending = false;
 }
 
 void DisplayViewSystem::internal_resize_display_texture(int width, int height)

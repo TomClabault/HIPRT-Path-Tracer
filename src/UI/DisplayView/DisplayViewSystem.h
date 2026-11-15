@@ -49,6 +49,11 @@ public:
 	 */
 	void queue_display_view_change(DisplayViewType display_view);
 
+	/**
+	 * The textures are not resized immediately: the renderer buffers still hold the image of the previous resolution
+	 * until a sample has been rendered at the new resolution. The textures keep their previous size and content (displayed
+	 * stretched in the viewport) and are resized by the next upload_final_display_buffer(), which brings the new image
+	 */
 	void resize(int new_render_width, int new_render_height);
 
 	/**
@@ -70,6 +75,9 @@ private:
 
 	// Every display view now consumes the final device-side RGB32F framebuffer.
 	void internal_resize_display_texture(int width, int height);
+
+	// Resizes the display texture and the framebuffer texture if resize() was called since the last upload
+	void apply_pending_resize();
 
 	/**
 	 * Automatically changes the display view used if some conditions are met (or not met).
@@ -93,6 +101,10 @@ private:
 	GLuint m_display_texture						 = 0;
 	std::shared_ptr<OpenGLProgram> m_display_program = nullptr;
 
+	// Render resolution given to the last resize() call, applied to the textures by apply_pending_resize()
+	bool m_resize_pending	   = false;
+	int m_pending_render_width = 0, m_pending_render_height = 0;
+
 	// We don't need a VAO because we're hardcoding our fullscreen
 	// quad vertices in our vertex shader but we still need an empty/fake
 	// VAO for NVIDIA drivers to avoid errors
@@ -101,6 +113,8 @@ private:
 	// Framebuffer we're drawing. We're not directly drawing to the back buffer because we
 	// want ImGui to do the drawing in one of its ImGui window
 	GLuint m_framebuffer;
+	// Size of m_fbo_texture. It can differ from the viewport size between a resize() and the next upload
+	int m_fbo_texture_width = 0, m_fbo_texture_height = 0;
 
 public:
 	GLuint m_fbo_texture;

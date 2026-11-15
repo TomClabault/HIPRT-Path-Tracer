@@ -446,23 +446,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT
 
-void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
-{
-	int new_width_pixels, new_height_pixels;
-	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
-
-	if (new_width_pixels == 0 || new_height_pixels == 0)
-
-		// This probably means that the application has been minimized, we're not doing anything then
-		return;
-	else
-	{
-		// We've stored a pointer to the RenderWindow in the "WindowUserPointer" of glfw
-		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-		render_window->resize(width, height);
-	}
-}
-
 // Implementation from https://learnopengl.com/In-Practice/Debugging
 void APIENTRY
 RenderWindow::gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -707,7 +690,8 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_glfw_window, this);
 	glfwSwapInterval(1);
-	glfwSetWindowSizeCallback(m_glfw_window, glfw_window_resized_callback);
+	// No window size callback: the window size includes the ImGui windows around the viewport so it is not the render
+	// resolution. ImGuiRenderWindow::draw() resizes the renderer to the size of the ImGui viewport when it changes
 	m_mouse_interactor->set_callbacks(m_glfw_window);
 	m_keyboard_interactor.set_callbacks(m_glfw_window);
 
@@ -768,12 +752,29 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 		return;
 
 	m_renderer->resize(new_render_width, new_render_height);
+	m_renderer_buffers_hold_previous_resolution = true;
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
 
 	m_display_view_system->resize(new_render_width, new_render_height);
 
 	set_render_dirty(true);
+}
+
+void RenderWindow::queue_resize(int pixels_width, int pixels_height)
+{
+	m_resize_queued		   = true;
+	m_queued_resize_width  = pixels_width;
+	m_queued_resize_height = pixels_height;
+}
+
+void RenderWindow::apply_queued_resize()
+{
+	if (!m_resize_queued)
+		return;
+
+	m_resize_queued = false;
+	resize(m_queued_resize_width, m_queued_resize_height);
 }
 
 void RenderWindow::correct_window_size_for_requested_viewport()
@@ -825,6 +826,7 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer->resize(new_render_width, new_render_height);
+	m_renderer_buffers_hold_previous_resolution = true;
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
 	m_display_view_system->resize(new_render_width, new_render_height);
@@ -1208,6 +1210,18 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		bool frame_render_done = m_renderer->frame_render_done();
 
 		glfwPollEvents();
+
+		// Resizing the renderer to the viewport size that draw_interface() saw at the previous frame. Not done during
+		// draw_interface() because the resize is slow: the frame where the window size changed would only be presented
+		// after it and in the meantime, Windows shows the previous (smaller) frame in the resized window, leaving
+		// unpainted strips on the edges of the window
+		apply_queued_resize();
+
+		// Done before drawing so that this frame is drawn at the corrected window size. The viewport size change is then
+		// queued by draw_interface() in this frame, which delays the batch capture below until the render has been redone
+		// at the requested resolution
+		correct_window_size_for_requested_viewport();
+
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		m_application_state->render_dirty |= is_interacting();
@@ -1217,15 +1231,14 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
 
-		// Done before the batch capture check below: a correction resizes the viewport, which marks the render dirty
-		// and so delays the capture until the render has been redone at the requested resolution
-		correct_window_size_for_requested_viewport();
-
-		// A viewport resize during draw_interface() (the docking layout settles over the first frames) reallocates the framebuffer
+		// A viewport resize (the docking layout settles over the first frames) reallocates the framebuffer
 		// and only marks the render dirty: the sample count is reset by the next render() call, so is_rendering_done() still
 		// reports the previous render as done here. With 1 sample per pixel, capturing at that point writes a black image
-		// at the transient resolution
-		bool render_reset_pending = m_application_state->render_dirty;
+		// at the transient resolution.
+		//
+		// A viewport size change queued by draw_interface() in this frame is only applied at the next frame and must also
+		// delay the capture, otherwise the capture is written at the previous resolution
+		bool render_reset_pending = m_application_state->render_dirty || m_resize_queued;
 		if (batch_output && is_rendering_done() && !render_reset_pending)
 		{
 			m_screenshoter->write_to_png(output_filepath);
@@ -1292,7 +1305,9 @@ void RenderWindow::render()
 			// it can be a bit expensive and for offline rendering, we don't need an update every
 			// frame, we can afford to update only every few samples (or every few seconds) to save
 			// resources
-			bool needs_refresh = needs_viewport_refresh();
+			// No refresh from buffers that still hold the image of the previous resolution: the viewport
+			// keeps showing the last image until a frame has been rendered at the new resolution
+			bool needs_refresh = needs_viewport_refresh() && !m_renderer_buffers_hold_previous_resolution;
 			if (needs_refresh)
 			{
 				// We can unmap the renderer's buffers so that OpenGL can use them for displaying
@@ -1364,6 +1379,7 @@ void RenderWindow::render()
 			m_application_state->last_GPU_submit_time = current_timestamp;
 
 			m_renderer->render(delta_time_gpu, this);
+			m_renderer_buffers_hold_previous_resolution = false;
 
 			buffer_upload_necessary = true;
 		}

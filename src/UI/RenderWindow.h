@@ -39,6 +39,10 @@ public:
 	static void APIENTRY
 	gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize(int pixels_width, int pixels_height);
+	/**
+	 * Resizes the viewport at the beginning of the next frame (see apply_queued_resize())
+	 */
+	void queue_resize(int pixels_width, int pixels_height);
 	void change_resolution_scaling(float new_scaling);
 
 	int get_width();
@@ -166,6 +170,9 @@ private:
 	 */
 	void correct_window_size_for_requested_viewport();
 
+	// Applies the resize queued by queue_resize(), if any
+	void apply_queued_resize();
+
 	// How many times at most the window is resized to reach the requested viewport size.
 	// If the requested size still isn't reached after that (window larger than the screen
 	// for example), the viewport just keeps the size it has
@@ -179,6 +186,15 @@ private:
 	int m_previous_frame_viewport_width = 0, m_previous_frame_viewport_height = 0;
 	int m_window_size_correction_count = 0;
 	bool m_window_size_correction_done = false;
+
+	// True between a resize of the renderer and the launch of the first frame at the new resolution.
+	// The renderer buffers then still hold the image of the previous resolution: displaying them
+	// with the new resolution reads the rows with the wrong width and shows a torn image
+	bool m_renderer_buffers_hold_previous_resolution = false;
+
+	// Viewport size queued by queue_resize(), applied at the beginning of the next frame
+	bool m_resize_queued	  = false;
+	int m_queued_resize_width = 0, m_queued_resize_height = 0;
 
 	/**
 	 * Denoises the renderer framebuffer using the OpenGL interop buffers.
