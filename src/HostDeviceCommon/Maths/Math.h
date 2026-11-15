@@ -1132,6 +1132,21 @@ namespace hippt
 	}
 
 	/**
+	 * Returns 'value' unchanged, but the GPU compiler cannot tell that the returned value is equal to 'value'.
+	 *
+	 * Without it, the compiler reuses, at the end of a kernel, the addresses that it computed at the beginning from the same value (a pixel index
+	 * for example) instead of computing them again: every such address is then kept in two registers for the whole kernel when recomputing it
+	 * costs one instruction
+	 */
+	__device__ static unsigned int hide_from_optimizer(unsigned int value)
+	{
+		// The empty assembly statement may have changed the value as far as the compiler knows
+		asm volatile("" : "+v"(value));
+
+		return value;
+	}
+
+	/**
 	 * Returns the index within its warp (not group) of the calling thread
 	 */
 	__device__ static unsigned int warp_2D_thread_index()
@@ -1148,7 +1163,7 @@ namespace hippt
 		return *(&v.x + index);
 	}
 
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 	constexpr float M_INV_FOUR_PI	 = 0.07957747154594766788f;	 // 1.0f / (4.0f * M_PI)
 	constexpr float M_INV_TWO_PI	 = 0.15915494309189533577f;	 // 1.0f / (2.0f * M_PI)
 	constexpr float M_INV_PI		 = 0.31830988618379067154f;	 // 1.0f / M_PI
@@ -2036,6 +2051,20 @@ namespace hippt
 	{
 		// Not available on the CPU
 		return fp16x16{};
+	}
+
+	/**
+	 * Returns 'value' unchanged, but the GPU compiler cannot tell that the returned value is equal to 'value'.
+	 *
+	 * Without it, the compiler reuses, at the end of a kernel, the addresses that it computed at the beginning from the same value (a pixel index
+	 * for example) instead of computing them again: every such address is then kept in two registers for the whole kernel when recomputing it
+	 * costs one instruction
+	 *
+	 * No effect on the CPU
+	 */
+	static unsigned int hide_from_optimizer(unsigned int value)
+	{
+		return value;
 	}
 
 	/**

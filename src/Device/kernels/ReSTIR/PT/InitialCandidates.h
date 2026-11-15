@@ -819,6 +819,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 										   nee_deferred_MIS_context, intersection_found, random_number_generator);
 	}
 
+	// The end of the kernel reads per-pixel buffers that the beginning of the kernel already read (G-buffer, random seeds). Hidden from the
+	// optimizer, the pixel index makes the compiler compute these addresses again here instead of keeping the ones of the beginning of the kernel
+	// in registers across the whole path, and so do the pixel coordinates recomputed from it
+	pixel_index = hippt::hide_from_optimizer(pixel_index);
+	int pixel_y = pixel_index / render_data.render_settings.render_resolution.x;
+	int pixel_x = pixel_index - pixel_y * render_data.render_settings.render_resolution.x;
+
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 
 	// If we got here, this means that we still have at least one ray active
@@ -827,7 +834,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	render_data.aux_buffers.still_one_ray_active[0] = 1;
 
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, ReSTIR_PT_InitialPathTreesCount);
-	restir_pt_initial_reservoir_output->sanity_check(make_int2(x, y));
+	restir_pt_initial_reservoir_output->sanity_check(make_int2(pixel_x, pixel_y));
 
 	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
 	{
@@ -845,7 +852,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	float3_t pixel_first_hit_point			  = render_data.g_buffer.primary_hit_position[pixel_index];
 	float3_t pixel_first_hit_geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-	ReSTIR_PT_spmis_insert_pixel_hash(render_data, x, y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
+	ReSTIR_PT_spmis_insert_pixel_hash(render_data, pixel_x, pixel_y, pixel_first_hit_point, pixel_first_hit_geometric_normal);
 #endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
 	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 
