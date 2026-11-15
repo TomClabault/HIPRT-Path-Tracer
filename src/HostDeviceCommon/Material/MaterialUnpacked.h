@@ -69,13 +69,13 @@
  *		hit). The unpacked textured material will then be used to read the textures of the material at the hit point and the whole will result in a
  *		DeviceUnpackedPrincipledFullMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
  *
- * 4)   MaterialPackedSoA.h
+ * 4)   MaterialPacked.h, partial reads
  *
- *      Add a getter for the parameter to DevicePackedEffectiveMaterialSoA.
- *      This is to read the parameter from the structure of arrays (one buffer per each parameter packed) given a material index
+ *      The materials buffer of the GPU (HIPRTRenderData::buffers.materials_buffer) is an array of DevicePackedTexturedMaterial: the parameter is read
+ *      with the getter of step 3) on the material of the buffer, 'render_data.buffers.materials_buffer[material_index].get_xxx()'
  *
- *      Add the parameter reading in DevicePackedEffectiveMaterialSoA::read_partial_material(). This function is just a handy function
- *      to produce a DevicePackedTexturedMaterial by reading all the arrays of the structure of arrays
+ *      Add the parameter reading in DevicePackedTexturedMaterial::read_partial_material(), read_partial_effective_material() and
+ *      read_partial_effective_material_noinit(). These functions read, from the materials buffer, only the parameters that the material uses
  *
  *      Note that memory traffic can be saved in some case. Let's you're adding a bunch of parameters for a "super metallic" lobe:
  *      - super metallic strength
@@ -91,11 +91,7 @@
  *
  *      This logic to save memory traffic has already been applied to most of the other lobes (coat, glass, ...)
  *
- * 5)	Update MaterialPackedSoAGPUData.h
- *
- * 6)	Update MaterialPackedSoACPUData.h
- *
- * 7)   Add controls to ImGuiObjectsWindow.cpp (and the global material overrider)
+ * 5)   Add controls to ImGuiObjectsWindow.cpp (and the global material overrider)
  */
 
 /**

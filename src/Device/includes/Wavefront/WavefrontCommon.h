@@ -80,7 +80,7 @@ HIPRT_DEVICE void wavefront_store_current_material_classification(HIPRTRenderDat
 		return;
 
 	WavefrontResolvedMaterialClassification current_classification;
-	current_classification.roughness = render_data.buffers.materials_buffer_soa.get_roughness(material_index);
+	current_classification.roughness = render_data.buffers.materials_buffer[material_index].get_roughness();
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
 		current_classification.roughness = resolved_user_controls.roughness;
 	current_classification.metallic				 = classification_inputs.lobe_user_weights.metallic;

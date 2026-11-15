@@ -503,7 +503,7 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
 	if (render_data.bsdfs_data.white_furnace_mode)
 		absorption_color = ColorRGB32F(1.0f);
 	else
-		absorption_color = render_data.buffers.materials_buffer_soa.get_absorption_color(ray_volume_state.incident_mat_index);
+		absorption_color = render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_absorption_color();
 	if (!absorption_color.is_white())
 	{
 		// Capping the distance to avoid numerical issues at 0 distance
@@ -514,7 +514,7 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
 		// according to Burley, 2015 [5].
 		// This effectively gives us a "at distance" absorption coefficient.
 		ColorRGB32F absorption_coefficient =
-			intrin_logf(absorption_color) / render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
+			intrin_logf(absorption_color) / render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_absorption_at_distance();
 		return intrin_expf(absorption_coefficient * ray_volume_state.distance_in_volume);
 	}
 
@@ -544,10 +544,10 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	// Relative eta = eta_t / eta_i
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.outgoing_mat_index].get_ior();
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
@@ -794,10 +794,10 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 	// Relative eta = eta_t / eta_i
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.outgoing_mat_index].get_ior();
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
@@ -981,10 +981,10 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 {
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
 	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 					  ? 1.0f
-					  : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.outgoing_mat_index].get_ior();
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
@@ -2141,7 +2141,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 
 	float incident_medium_ior = volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 									? 1.0f
-									: render_data.buffers.materials_buffer_soa.get_ior(volume_state.incident_mat_index);
+									: render_data.buffers.materials_buffer[volume_state.incident_mat_index].get_ior();
 	principled_bsdf_get_lobes_sampling_proba(
 		render_data, material, NoV, incident_medium_ior, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
 		retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
@@ -2154,7 +2154,7 @@ HIPRT_DEVICE static float principled_get_incident_medium_ior(const HIPRTRenderDa
 {
 	return volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 			   ? 1.0f
-			   : render_data.buffers.materials_buffer_soa.get_ior(volume_state.incident_mat_index);
+			   : render_data.buffers.materials_buffer[volume_state.incident_mat_index].get_ior();
 }
 
 template <typename MaterialType>
@@ -2220,7 +2220,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 									? 1.0f
-									: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+									: render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
 
 	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
@@ -2318,7 +2318,7 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 									? 1.0f
-									: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+									: render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
 
 	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;

@@ -288,13 +288,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.GPU_BVH = nullptr;
 	m_scene_bounding_box  = parsed_scene.metadata.scene_bounding_box;
 
-	std::vector<DevicePackedTexturedMaterial> gpu_packed_materials;
-	gpu_packed_materials.resize(parsed_scene.materials.size());
+	m_gpu_packed_materials.resize(parsed_scene.materials.size());
 	for (int i = 0; i < parsed_scene.materials.size(); i++)
-		gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
+		m_gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
 
-	m_gpu_packed_materials.upload_data(gpu_packed_materials);
-	m_render_data.buffers.materials_buffer_soa				  = m_gpu_packed_materials.get_device_SoA_struct();
+	m_render_data.buffers.materials_buffer					  = m_gpu_packed_materials.data();
 	m_render_data.buffers.material_indices					  = parsed_scene.material_indices.data();
 	m_render_data.buffers.has_vertex_normals				  = parsed_scene.has_vertex_normals.data();
 	m_render_data.buffers.triangles_indices					  = parsed_scene.triangles_vertex_indices.data();

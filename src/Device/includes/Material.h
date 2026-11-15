@@ -53,7 +53,7 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2_t uv)
 {
 	int material_index							= render_data.buffers.material_indices[prim_id];
-	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
+	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer[material_index].get_base_color_texture_index();
 
 	return get_hit_base_color_alpha(render_data, base_color_texture_index, prim_id, uv);
 }
@@ -61,7 +61,7 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
 	int material_index							= render_data.buffers.material_indices[hit.primID];
-	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
+	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer[material_index].get_base_color_texture_index();
 
 	return get_hit_base_color_alpha(render_data, base_color_texture_index, hit.primID, hit.uv);
 }
@@ -71,7 +71,7 @@ HIPRT_DEVICE static unsigned char get_intersection_dielectric_priority(const HIP
 #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 	return 0;
 #else
-	return render_data.buffers.materials_buffer_soa.get_dielectric_priority(material_index);
+	return render_data.buffers.materials_buffer[material_index].get_dielectric_priority();
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
 }
 
@@ -109,7 +109,7 @@ HIPRT_DEVICE static SurfaceTransportMetadata load_surface_transport_metadata(con
 
 HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
 {
-	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer_soa.read_partial_material(material_index).unpack();
+	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer[material_index].read_partial_material().unpack();
 
 	float trash_alpha;
 	if (render_data.bsdfs_data.white_furnace_mode)
@@ -318,27 +318,27 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 																							   float2_t texcoords,
 																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
 {
-	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
 	PrincipledMaterialClassificationInputs inputs;
-	inputs.lobe_user_weights.coat					 = materials_buffer_soa.get_coat(material_index);
-	inputs.lobe_user_weights.sheen					 = materials_buffer_soa.get_sheen(material_index);
-	inputs.lobe_user_weights.metallic				 = materials_buffer_soa.get_metallic(material_index);
-	inputs.lobe_user_weights.second_roughness_weight = materials_buffer_soa.get_second_roughness_weight(material_index);
-	inputs.lobe_user_weights.retro_reflection		 = materials_buffer_soa.get_retro_reflection(material_index);
-	inputs.lobe_user_weights.specular				 = materials_buffer_soa.get_specular(material_index);
-	inputs.lobe_user_weights.specular_transmission	 = materials_buffer_soa.get_specular_transmission(material_index);
-	inputs.lobe_user_weights.diffuse_transmission	 = materials_buffer_soa.get_diffuse_transmission(material_index);
-	inputs.thin_film_strength						 = materials_buffer_soa.get_thin_film(material_index);
-	inputs.dispersion_scale							 = materials_buffer_soa.get_dispersion_scale(material_index);
-	inputs.thin_walled								 = materials_buffer_soa.get_thin_walled(material_index);
-	inputs.enforce_strong_energy_conservation		 = materials_buffer_soa.get_enforce_strong_energy_conservation(material_index);
+	inputs.lobe_user_weights.coat					 = packed_material.get_coat();
+	inputs.lobe_user_weights.sheen					 = packed_material.get_sheen();
+	inputs.lobe_user_weights.metallic				 = packed_material.get_metallic();
+	inputs.lobe_user_weights.second_roughness_weight = packed_material.get_second_roughness_weight();
+	inputs.lobe_user_weights.retro_reflection		 = packed_material.get_retro_reflection();
+	inputs.lobe_user_weights.specular				 = packed_material.get_specular();
+	inputs.lobe_user_weights.specular_transmission	 = packed_material.get_specular_transmission();
+	inputs.lobe_user_weights.diffuse_transmission	 = packed_material.get_diffuse_transmission();
+	inputs.thin_film_strength						 = packed_material.get_thin_film();
+	inputs.dispersion_scale							 = packed_material.get_dispersion_scale();
+	inputs.thin_walled								 = packed_material.get_thin_walled();
+	inputs.enforce_strong_energy_conservation		 = packed_material.get_enforce_strong_energy_conservation();
 
 	out_resolved_user_controls = ResolvedMaterialUserControlsCache();
 
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
-	unsigned short int roughness_metallic_texture_index = materials_buffer_soa.get_roughness_metallic_texture_index(material_index);
-	unsigned short int roughness_texture_index			= materials_buffer_soa.get_roughness_texture_index(material_index);
-	unsigned short int metallic_texture_index			= materials_buffer_soa.get_metallic_texture_index(material_index);
+	unsigned short int roughness_metallic_texture_index = packed_material.get_roughness_metallic_texture_index();
+	unsigned short int roughness_texture_index			= packed_material.get_roughness_texture_index();
+	unsigned short int metallic_texture_index			= packed_material.get_metallic_texture_index();
 	float2_t roughness_metallic =
 		get_metallic_roughness(render_data, texcoords, metallic_texture_index, roughness_texture_index, roughness_metallic_texture_index);
 
@@ -366,7 +366,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 	if (out_resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic)
 		inputs.lobe_user_weights.metallic = out_resolved_user_controls.metallic;
 
-	unsigned short int specular_texture_index = materials_buffer_soa.get_specular_texture_index(material_index);
+	unsigned short int specular_texture_index = packed_material.get_specular_texture_index();
 	if (specular_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		out_resolved_user_controls.specular = read_material_texture<float>(render_data, texcoords, specular_texture_index, false);
@@ -374,7 +374,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 		inputs.lobe_user_weights.specular = out_resolved_user_controls.specular;
 	}
 
-	unsigned short int coat_texture_index = materials_buffer_soa.get_coat_texture_index(material_index);
+	unsigned short int coat_texture_index = packed_material.get_coat_texture_index();
 	if (coat_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		out_resolved_user_controls.coat = read_material_texture<float>(render_data, texcoords, coat_texture_index, false);
@@ -382,7 +382,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 		inputs.lobe_user_weights.coat = out_resolved_user_controls.coat;
 	}
 
-	unsigned short int sheen_texture_index = materials_buffer_soa.get_sheen_texture_index(material_index);
+	unsigned short int sheen_texture_index = packed_material.get_sheen_texture_index();
 	if (sheen_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		out_resolved_user_controls.sheen = read_material_texture<float>(render_data, texcoords, sheen_texture_index, false);
@@ -390,7 +390,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 		inputs.lobe_user_weights.sheen = out_resolved_user_controls.sheen;
 	}
 
-	unsigned short int specular_transmission_texture_index = materials_buffer_soa.get_specular_transmission_texture_index(material_index);
+	unsigned short int specular_transmission_texture_index = packed_material.get_specular_transmission_texture_index();
 	if (specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		out_resolved_user_controls.specular_transmission = read_material_texture<float>(render_data, texcoords, specular_transmission_texture_index, false);
@@ -409,18 +409,18 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 															 DeviceUnpackedPrincipledFullMaterial& out_material,
 															 const ResolvedMaterialUserControlsCache* resolved_user_controls = nullptr)
 {
-	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
 	if constexpr (initialize_material_defaults)
-		materials_buffer_soa.read_partial_effective_material(material_index, out_material);
+		packed_material.read_partial_effective_material(out_material);
 	else
-		materials_buffer_soa.read_partial_effective_material_noinit(material_index, out_material);
+		packed_material.read_partial_effective_material_noinit(out_material);
 
 	if (render_data.bsdfs_data.white_furnace_mode)
 		out_material.base_color = ColorRGB32F(1.0f);
 	else
 	{
 #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
-		unsigned int base_color_texture_index = materials_buffer_soa.get_base_color_texture_index(material_index);
+		unsigned int base_color_texture_index = packed_material.get_base_color_texture_index();
 		if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 		{
 			float trash_alpha;
@@ -441,9 +441,9 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 		}
 		else
 		{
-			unsigned int roughness_metallic_texture_index = materials_buffer_soa.get_roughness_metallic_texture_index(material_index);
-			unsigned int roughness_texture_index		  = materials_buffer_soa.get_roughness_texture_index(material_index);
-			unsigned int metallic_texture_index			  = materials_buffer_soa.get_metallic_texture_index(material_index);
+			unsigned int roughness_metallic_texture_index = packed_material.get_roughness_metallic_texture_index();
+			unsigned int roughness_texture_index		  = packed_material.get_roughness_texture_index();
+			unsigned int metallic_texture_index			  = packed_material.get_metallic_texture_index();
 
 			float2_t roughness_metallic =
 				get_metallic_roughness(render_data, texcoords, metallic_texture_index, roughness_texture_index, roughness_metallic_texture_index);
@@ -466,7 +466,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 	}
 
 	{
-		unsigned int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+		unsigned int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 		if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 			out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 	}
@@ -476,7 +476,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 			out_material.specular = resolved_user_controls->specular;
 		else
 		{
-			unsigned int specular_texture_index = materials_buffer_soa.get_specular_texture_index(material_index);
+			unsigned int specular_texture_index = packed_material.get_specular_texture_index();
 			if (specular_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.specular = read_material_texture<float>(render_data, texcoords, specular_texture_index, false);
 		}
@@ -487,7 +487,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 			out_material.coat = resolved_user_controls->coat;
 		else
 		{
-			unsigned int coat_texture_index = materials_buffer_soa.get_coat_texture_index(material_index);
+			unsigned int coat_texture_index = packed_material.get_coat_texture_index();
 			if (coat_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.coat = read_material_texture<float>(render_data, texcoords, coat_texture_index, false);
 		}
@@ -498,7 +498,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 			out_material.sheen = resolved_user_controls->sheen;
 		else
 		{
-			unsigned int sheen_texture_index = materials_buffer_soa.get_sheen_texture_index(material_index);
+			unsigned int sheen_texture_index = packed_material.get_sheen_texture_index();
 			if (sheen_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.sheen = read_material_texture<float>(render_data, texcoords, sheen_texture_index, false);
 		}
@@ -509,7 +509,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 			out_material.specular_transmission = resolved_user_controls->specular_transmission;
 		else
 		{
-			unsigned int specular_transmission_texture_index = materials_buffer_soa.get_specular_transmission_texture_index(material_index);
+			unsigned int specular_transmission_texture_index = packed_material.get_specular_transmission_texture_index();
 			if (specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.specular_transmission = read_material_texture<float>(render_data, texcoords, specular_transmission_texture_index, false);
 		}
@@ -517,7 +517,7 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
 
 	{
-		unsigned int emission_texture_index = materials_buffer_soa.get_emission_texture_index(material_index);
+		unsigned int emission_texture_index = packed_material.get_emission_texture_index();
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
 			out_material.set_raw_emission(read_material_texture<ColorRGB32F>(render_data, texcoords, emission_texture_index, false));
 	}
@@ -575,12 +575,12 @@ HIPRT_DEVICE static void load_effective_emission(const HIPRTRenderData& render_d
 												 float2_t texcoords,
 												 EffectiveMaterialEmission& out_emission)
 {
-	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
 
-	ColorRGB32F raw_emission = materials_buffer_soa.get_emission(material_index);
-	float emission_strength	 = materials_buffer_soa.get_emission_strength(material_index);
+	ColorRGB32F raw_emission = packed_material.get_raw_emission();
+	float emission_strength	 = packed_material.get_emission_strength();
 
-	unsigned short int emission_texture_index = materials_buffer_soa.get_emission_texture_index(material_index);
+	unsigned short int emission_texture_index = packed_material.get_emission_texture_index();
 	bool uses_emission_texture =
 		emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 
@@ -657,7 +657,7 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 		get_intersection_material_into_impl<true>(render_data, material_index, texcoords, out_material, &resolved_user_controls);
 	else
 	{
-		const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+		const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
 		load_effective_emission(render_data, material_index, texcoords, out_material);
 
 		if (render_data.bsdfs_data.white_furnace_mode)
@@ -665,7 +665,7 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 		else
 		{
 #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
-			unsigned short int base_color_texture_index = materials_buffer_soa.get_base_color_texture_index(material_index);
+			unsigned short int base_color_texture_index = packed_material.get_base_color_texture_index();
 			if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 			{
 				float trash_alpha;
@@ -673,70 +673,66 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 			}
 			else
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
-				out_material.base_color = materials_buffer_soa.get_base_color(material_index);
+				out_material.base_color = packed_material.get_base_color();
 		}
 
 		if constexpr (std::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
-			out_material.oren_nayar_sigma = materials_buffer_soa.get_oren_nayar_sigma(material_index);
+			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
-			out_material.oren_nayar_sigma = materials_buffer_soa.get_oren_nayar_sigma(material_index);
+			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
 #endif
 		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
 		{
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness
-										  ? resolved_user_controls.roughness
-										  : materials_buffer_soa.get_roughness(material_index);
-			out_material.anisotropy = materials_buffer_soa.get_anisotropy(material_index);
+			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
+																												  : packed_material.get_roughness();
+			out_material.anisotropy = packed_material.get_anisotropy();
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			unsigned short int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation		  = materials_buffer_soa.get_anisotropy_rotation(material_index);
-			out_material.ior						  = materials_buffer_soa.get_ior(material_index);
-			out_material.do_glass_energy_compensation = materials_buffer_soa.get_do_glass_energy_compensation(material_index);
+			out_material.anisotropy_rotation		  = packed_material.get_anisotropy_rotation();
+			out_material.ior						  = packed_material.get_ior();
+			out_material.do_glass_energy_compensation = packed_material.get_do_glass_energy_compensation();
 		}
 		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
 		{
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness
-										  ? resolved_user_controls.roughness
-										  : materials_buffer_soa.get_roughness(material_index);
-			out_material.anisotropy = materials_buffer_soa.get_anisotropy(material_index);
+			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
+																												  : packed_material.get_roughness();
+			out_material.anisotropy = packed_material.get_anisotropy();
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			unsigned short int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation			 = materials_buffer_soa.get_anisotropy_rotation(material_index);
-			out_material.metallic_F82					 = materials_buffer_soa.get_metallic_F82(material_index);
-			out_material.metallic_F90					 = materials_buffer_soa.get_metallic_F90(material_index);
-			out_material.metallic_F90_falloff_exponent	 = materials_buffer_soa.get_metallic_F90_falloff_exponent(material_index);
-			out_material.do_metallic_energy_compensation = materials_buffer_soa.get_do_metallic_energy_compensation(material_index);
+			out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
+			out_material.metallic_F82					 = packed_material.get_metallic_F82();
+			out_material.metallic_F90					 = packed_material.get_metallic_F90();
+			out_material.metallic_F90_falloff_exponent	 = packed_material.get_metallic_F90_falloff_exponent();
+			out_material.do_metallic_energy_compensation = packed_material.get_do_metallic_energy_compensation();
 		}
 		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
 		{
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-			out_material.oren_nayar_sigma = materials_buffer_soa.get_oren_nayar_sigma(material_index);
+			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
 #endif
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness
-										  ? resolved_user_controls.roughness
-										  : materials_buffer_soa.get_roughness(material_index);
-			out_material.anisotropy = materials_buffer_soa.get_anisotropy(material_index);
+			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
+																												  : packed_material.get_roughness();
+			out_material.anisotropy = packed_material.get_anisotropy();
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			unsigned short int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation			 = materials_buffer_soa.get_anisotropy_rotation(material_index);
-			out_material.ior							 = materials_buffer_soa.get_ior(material_index);
-			out_material.specular						 = resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular
-															   ? resolved_user_controls.specular
-															   : materials_buffer_soa.get_specular(material_index);
-			out_material.specular_tint					 = materials_buffer_soa.get_specular_tint(material_index);
-			out_material.specular_color					 = materials_buffer_soa.get_specular_color(material_index);
-			out_material.specular_darkening				 = materials_buffer_soa.get_specular_darkening(material_index);
-			out_material.do_specular_energy_compensation = materials_buffer_soa.get_do_specular_energy_compensation(material_index);
+			out_material.anisotropy_rotation = packed_material.get_anisotropy_rotation();
+			out_material.ior				 = packed_material.get_ior();
+			out_material.specular =
+				resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular ? resolved_user_controls.specular : packed_material.get_specular();
+			out_material.specular_tint					 = packed_material.get_specular_tint();
+			out_material.specular_color					 = packed_material.get_specular_color();
+			out_material.specular_darkening				 = packed_material.get_specular_darkening();
+			out_material.do_specular_energy_compensation = packed_material.get_do_specular_energy_compensation();
 		}
 	}
 }
@@ -765,20 +761,20 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 																   float base_color_luminance,
 																   const ResolvedMaterialUserControlsCache& resolved_user_controls)
 {
-	const DevicePackedTexturedMaterialSoA& materials_buffer_soa = render_data.buffers.materials_buffer_soa;
+	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
 	LightProposalInputs proposal_inputs{};
 	proposal_inputs.base_color_luminance  = base_color_luminance;
-	proposal_inputs.roughness			  = materials_buffer_soa.get_roughness(material_index);
-	proposal_inputs.ior					  = materials_buffer_soa.get_ior(material_index);
-	proposal_inputs.metallic			  = materials_buffer_soa.get_metallic(material_index);
-	proposal_inputs.specular			  = materials_buffer_soa.get_specular(material_index);
-	proposal_inputs.coat				  = materials_buffer_soa.get_coat(material_index);
-	proposal_inputs.coat_roughness		  = materials_buffer_soa.get_coat_roughness(material_index);
-	proposal_inputs.coat_ior			  = materials_buffer_soa.get_coat_ior(material_index);
-	proposal_inputs.specular_transmission = materials_buffer_soa.get_specular_transmission(material_index);
-	proposal_inputs.diffuse_transmission  = materials_buffer_soa.get_diffuse_transmission(material_index);
-	proposal_inputs.anisotropy			  = materials_buffer_soa.get_anisotropy(material_index);
-	proposal_inputs.coat_anisotropy		  = materials_buffer_soa.get_coat_anisotropy(material_index);
+	proposal_inputs.roughness			  = packed_material.get_roughness();
+	proposal_inputs.ior					  = packed_material.get_ior();
+	proposal_inputs.metallic			  = packed_material.get_metallic();
+	proposal_inputs.specular			  = packed_material.get_specular();
+	proposal_inputs.coat				  = packed_material.get_coat();
+	proposal_inputs.coat_roughness		  = packed_material.get_coat_roughness();
+	proposal_inputs.coat_ior			  = packed_material.get_coat_ior();
+	proposal_inputs.specular_transmission = packed_material.get_specular_transmission();
+	proposal_inputs.diffuse_transmission  = packed_material.get_diffuse_transmission();
+	proposal_inputs.anisotropy			  = packed_material.get_anisotropy();
+	proposal_inputs.coat_anisotropy		  = packed_material.get_coat_anisotropy();
 
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
@@ -786,9 +782,9 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic)
 		proposal_inputs.metallic = resolved_user_controls.metallic;
 
-	unsigned int roughness_metallic_texture_index = materials_buffer_soa.get_roughness_metallic_texture_index(material_index);
-	unsigned int roughness_texture_index		  = materials_buffer_soa.get_roughness_texture_index(material_index);
-	unsigned int metallic_texture_index			  = materials_buffer_soa.get_metallic_texture_index(material_index);
+	unsigned int roughness_metallic_texture_index = packed_material.get_roughness_metallic_texture_index();
+	unsigned int roughness_texture_index		  = packed_material.get_roughness_texture_index();
+	unsigned int metallic_texture_index			  = packed_material.get_metallic_texture_index();
 	bool roughness_needs_texture				  = !(resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness);
 	bool metallic_needs_texture					  = !(resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic);
 	if ((roughness_needs_texture || metallic_needs_texture) &&
@@ -817,7 +813,7 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 		proposal_inputs.specular = resolved_user_controls.specular;
 	else
 	{
-		unsigned int specular_texture_index = materials_buffer_soa.get_specular_texture_index(material_index);
+		unsigned int specular_texture_index = packed_material.get_specular_texture_index();
 		if (specular_texture_index != MaterialConstants::NO_TEXTURE)
 			proposal_inputs.specular = read_material_texture<float>(render_data, texcoords, specular_texture_index, false);
 	}
@@ -826,21 +822,21 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 		proposal_inputs.coat = resolved_user_controls.coat;
 	else
 	{
-		unsigned int coat_texture_index = materials_buffer_soa.get_coat_texture_index(material_index);
+		unsigned int coat_texture_index = packed_material.get_coat_texture_index();
 		if (coat_texture_index != MaterialConstants::NO_TEXTURE)
 			proposal_inputs.coat = read_material_texture<float>(render_data, texcoords, coat_texture_index, false);
 	}
 
-	unsigned int anisotropic_texture_index = materials_buffer_soa.get_anisotropic_texture_index(material_index);
+	unsigned int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 	if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 		proposal_inputs.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 
-	unsigned int specular_transmission_texture_index = materials_buffer_soa.get_specular_transmission_texture_index(material_index);
+	unsigned int specular_transmission_texture_index = packed_material.get_specular_transmission_texture_index();
 	if (specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
 		proposal_inputs.specular_transmission = read_material_texture<float>(render_data, texcoords, specular_transmission_texture_index, false);
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
 
-	float coat_roughening = materials_buffer_soa.get_coat_roughening(material_index);
+	float coat_roughening = packed_material.get_coat_roughening();
 	if (proposal_inputs.coat > 0.0f && coat_roughening > 0.0f)
 	{
 		float base_roughness		   = proposal_inputs.roughness;

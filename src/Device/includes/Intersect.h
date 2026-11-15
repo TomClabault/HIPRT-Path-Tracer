@@ -152,7 +152,7 @@ HIPRT_DEVICE float3_t get_shading_normal(const HIPRTRenderData& render_data,
 
 	// Do normal mapping if we have a normal map
 	int material_index							= render_data.buffers.material_indices[primitive_index];
-	unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer_soa.get_normal_map_texture_index(material_index);
+	unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer[material_index].get_normal_map_texture_index();
 	if (normal_map_texture_index != MaterialConstants::NO_TEXTURE)
 		surface_normal =
 			normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
@@ -448,7 +448,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	// Reading the emission of the material
 	int global_triangle_index  = render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures[shadow_ray_hit.primID];
 	int material_index		   = render_data.buffers.material_indices[global_triangle_index];
-	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
+	int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index);
 	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
@@ -458,8 +458,8 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
 	// Getting the shading normal
 	else
-		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
-	out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
+		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_raw_emission();
+	out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer[material_index].get_emission_strength();
 
 	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
 	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
@@ -507,7 +507,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 		// If we found a hit and that it is close enough (hit_found conditions)
 
 		int material_index		   = render_data.buffers.material_indices[global_triangle_index_hit];
-		int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
+		int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index_hit);
 		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
@@ -516,8 +516,8 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
 		else
-			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
-		out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
+			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_raw_emission();
+		out_light_hit_info.hit_emission *= render_data.buffers.materials_buffer[material_index].get_emission_strength();
 
 		out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
 		out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
@@ -603,18 +603,18 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 
 	// Reading the emission of the material
 	int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
-	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
+	int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
 	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
 	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
-	float emission_strength = render_data.buffers.materials_buffer_soa.get_emission_strength(material_index);
+	float emission_strength = render_data.buffers.materials_buffer[material_index].get_emission_strength();
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
 	// Getting the shading normal
 	else
-		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_raw_emission();
 	out_light_hit_info.hit_emission *= emission_strength;
 
 	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;

@@ -9,7 +9,7 @@
 #include "Device/includes/AliasTable.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
 
-#include "HostDeviceCommon/Material/MaterialPackedSoA.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/PrecomputedEmissiveTrianglesDataSoADevice.h"
 
 struct HIPRTRenderData;
@@ -61,7 +61,14 @@ struct RenderBuffers
 	int* material_indices = nullptr;
 	// Materials array to be indexed by an index retrieved from the
 	// material_indices array
-	DevicePackedTexturedMaterialSoA materials_buffer_soa;
+	//
+	// One packed record per material: the parameters are at compile-time offsets in the record so the GPU addresses all of them from this single
+	// pointer. With one array per parameter, the base pointers of the arrays are uniform values that the compiler keeps in scalar registers for
+	// the whole kernel and, in the larger kernels, spills to vector registers.
+	//
+	// Only the parameters that are read are loaded: see DevicePackedTexturedMaterial::read_partial_material() for the reads that skip the
+	// parameters of the lobes that a material doesn't use
+	DevicePackedTexturedMaterial* materials_buffer = nullptr;
 	// A buffer that can be indexed by a material_id.
 	//
 	// If indexing this buffer returns true, then the material is fully opaque

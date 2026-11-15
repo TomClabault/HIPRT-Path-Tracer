@@ -8,7 +8,8 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
-#include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"
@@ -212,7 +213,7 @@ struct HIPRTScene
 	OrochiBuffer<float3_t> vertex_normals;
 	OrochiBuffer<int> material_indices;
 	OrochiBuffer<unsigned int> global_triangle_index_to_mesh_index;
-	DevicePackedTexturedMaterialSoAGPUData materials_buffer;
+	OrochiBuffer<DevicePackedTexturedMaterial> materials_buffer;
 
 	// This vector contains true for a material that has a fully opaque base color texture.
 	// Otherwise, the texture has some alpha transparency in it

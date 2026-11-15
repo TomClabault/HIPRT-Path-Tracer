@@ -920,7 +920,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.vertex_normals					  = m_hiprt_scene.vertex_normals.get_device_pointer();
 
 		m_render_data.buffers.material_indices		   = m_hiprt_scene.material_indices.get_device_pointer();
-		m_render_data.buffers.materials_buffer_soa	   = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
+		m_render_data.buffers.materials_buffer		   = m_hiprt_scene.materials_buffer.get_device_pointer();
 		m_render_data.buffers.material_opaque		   = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)

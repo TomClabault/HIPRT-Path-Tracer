@@ -181,9 +181,9 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 	float2_t texcoords					 = uv_interpolate(triangle_texcoords, uvs);
 
 	unsigned short int emissive_texture_index =
-		render_data.buffers.materials_buffer_soa.get_emission_texture_index(render_data.buffers.material_indices[global_triangle_index]);
+		render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_emission_texture_index();
 	unsigned short int base_color_texture_index =
-		render_data.buffers.materials_buffer_soa.get_base_color_texture_index(render_data.buffers.material_indices[global_triangle_index]);
+		render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_base_color_texture_index();
 
 	ColorRGBA32F rgba_emission = sample_texture_rgba(render_data.buffers.material_textures, texcoords, emissive_texture_index, false);
 	ColorRGBA32F base_color	   = ColorRGBA32F(1.0f);
@@ -202,13 +202,12 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 
 HIPRT_DEVICE ColorRGB32F get_triangle_emission_at_point(const HIPRTRenderData& render_data, int global_triangle_index, float3_t point_on_triangle)
 {
-	float emission_strength = render_data.buffers.materials_buffer_soa.get_emission_strength(render_data.buffers.material_indices[global_triangle_index]);
+	float emission_strength = render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_emission_strength();
 
-	bool emissive_texture_used =
-		render_data.buffers.materials_buffer_soa.get_emissive_texture_used(render_data.buffers.material_indices[global_triangle_index]);
+	bool emissive_texture_used = render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_emissive_texture_used();
 	if (!emissive_texture_used)
 	{
-		ColorRGB32F emisison = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
+		ColorRGB32F emisison = render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_raw_emission();
 
 		return emisison * emission_strength;
 	}

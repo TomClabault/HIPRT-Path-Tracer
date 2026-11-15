@@ -36,7 +36,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
 		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
 		ColorRGB32F triangle_emission =
-			render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[emissive_triangle_global_index]);
+			render_data.buffers.materials_buffer[render_data.buffers.material_indices[emissive_triangle_global_index]].get_raw_emission();
 
 		float3_t to_light_direction = point_on_triangle - shading_point;
 		float to_light_distance		= hippt::length(to_light_direction);
@@ -59,7 +59,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
 		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
 		ColorRGB32F triangle_emission =
-			render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[emissive_triangle_global_index]);
+			render_data.buffers.materials_buffer[render_data.buffers.material_indices[emissive_triangle_global_index]].get_raw_emission();
 
 		float3_t to_light_direction = point_on_triangle - shading_point;
 		float to_light_distance		= hippt::length(to_light_direction);
