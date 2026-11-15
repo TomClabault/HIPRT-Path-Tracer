@@ -64,18 +64,15 @@
  *      The function DevicePackedEffectiveMaterial::unpack() needs to be completed (follow what is done for the other parameters).
  *      This is the function that will be called when unpacking the material from the G-Buffer
  *
- *      The function DevicePackedTexturedMaterial::unpack() needs to be completed (follow what is done for the other parameters).
- *      This is the function that will be called when unpacking the material from the materials buffer (when reading the material of the geometry a ray just
- *		hit). The unpacked textured material will then be used to read the textures of the material at the hit point and the whole will result in a
- *		DeviceUnpackedPrincipledFullMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
- *
  * 4)   MaterialPacked.h, partial reads
  *
  *      The materials buffer of the GPU (HIPRTRenderData::buffers.materials_buffer) is an array of DevicePackedTexturedMaterial: the parameter is read
  *      with the getter of step 3) on the material of the buffer, 'render_data.buffers.materials_buffer[material_index].get_xxx()'
  *
- *      Add the parameter reading in DevicePackedTexturedMaterial::read_partial_material() and read_partial_effective_material(). These
- *      functions read, from the materials buffer, only the parameters that the material uses
+ *      Add the parameter reading in DevicePackedTexturedMaterial::read_partial_effective_material(). This function reads, from the materials
+ *      buffer, only the parameters that the material uses. It is called when reading the material of the geometry a ray just hit
+ *      (get_intersection_material_into()), which then reads the textures of the material at the hit point and gives the
+ *      DeviceUnpackedPrincipledFullMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
  *
  *      Note that memory traffic can be saved in some case. Let's you're adding a bunch of parameters for a "super metallic" lobe:
  *      - super metallic strength
@@ -393,26 +390,6 @@ private:
 	// Private because this may be different depending on the BRDF override
 	// being used so we want to control this with getters/setters
 	unsigned char dielectric_priority;
-};
-
-struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedPrincipledFullMaterial
-{
-	int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
-
-	int emission_texture_index	 = MaterialConstants::NO_TEXTURE;
-	int base_color_texture_index = MaterialConstants::NO_TEXTURE;
-
-	// If not 65535, there is only one texture for the metallic and the roughness parameters in which.
-	// case the green channel is the roughness and the blue channel is the metalness
-	int roughness_metallic_texture_index = MaterialConstants::NO_TEXTURE;
-	int roughness_texture_index			 = MaterialConstants::NO_TEXTURE;
-	int metallic_texture_index			 = MaterialConstants::NO_TEXTURE;
-	int anisotropic_texture_index		 = MaterialConstants::NO_TEXTURE;
-
-	int specular_texture_index				= MaterialConstants::NO_TEXTURE;
-	int coat_texture_index					= MaterialConstants::NO_TEXTURE;
-	int sheen_texture_index					= MaterialConstants::NO_TEXTURE;
-	int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 };
 
 enum EffectiveMaterialEmissionFlags : unsigned int

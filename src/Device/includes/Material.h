@@ -9,8 +9,8 @@
 #include "Device/includes/Texture.h"
 
 #include "Device/includes/HitInfo.h"
-#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Material/LightProposalState.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "HostDeviceCommon/Material/PrincipledLobeClassification.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -107,106 +107,6 @@ HIPRT_DEVICE static SurfaceTransportMetadata load_surface_transport_metadata(con
 	return metadata;
 }
 
-HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
-{
-	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer[material_index].read_partial_material().unpack();
-
-	float trash_alpha;
-	if (render_data.bsdfs_data.white_furnace_mode)
-		material.base_color = ColorRGB32F(1.0f);
-	else
-	{
-#if UseMaterialTextures == KERNEL_OPTION_TRUE || UseMaterialBaseColorTextureOverride == KERNEL_OPTION_TRUE
-		if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
-			material.base_color = get_base_color(render_data, trash_alpha, texcoords, material.base_color_texture_index);
-#endif
-	}
-
-	// Reading some parameters from the textures
-#if UseMaterialTextures == KERNEL_OPTION_TRUE
-	float2_t roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index,
-														 material.roughness_metallic_texture_index);
-	if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
-	{
-		// Merged roughness metallic texture
-
-		material.roughness = roughness_metallic.x;
-		material.metallic  = roughness_metallic.y;
-	}
-	else
-	{
-		// Separate roughness / metallic texture
-
-		if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
-			// If we have a roughness texture, it will already have been read above by get_metallic_roughness
-			material.roughness = roughness_metallic.x;
-
-		if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
-			// If we have a roughness texture, it will already have been read above by get_metallic_roughness
-			material.metallic = roughness_metallic.y;
-	}
-
-	float anisotropy = read_material_texture<float>(render_data, texcoords, material.anisotropic_texture_index, false);
-	if (material.anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
-		material.anisotropy = anisotropy;
-
-	float specular = read_material_texture<float>(render_data, texcoords, material.specular_texture_index, false);
-	if (material.specular_texture_index != MaterialConstants::NO_TEXTURE)
-		material.specular = specular;
-
-	float coat = read_material_texture<float>(render_data, texcoords, material.coat_texture_index, false);
-	if (material.coat_texture_index != MaterialConstants::NO_TEXTURE)
-		material.coat = coat;
-
-	float sheen = read_material_texture<float>(render_data, texcoords, material.sheen_texture_index, false);
-	if (material.sheen_texture_index != MaterialConstants::NO_TEXTURE)
-		material.sheen = sheen;
-
-	float specular_transmission = read_material_texture<float>(render_data, texcoords, material.specular_transmission_texture_index, false);
-	if (material.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
-		material.specular_transmission = specular_transmission;
-#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-
-	ColorRGB32F emission;
-	if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
-		emission = material.get_raw_emission();
-	else
-		emission = read_material_texture<ColorRGB32F>(render_data, texcoords, material.emission_texture_index, false);
-
-	DeviceUnpackedPrincipledFullMaterial unpacked_effective_material(material);
-	unpacked_effective_material.base_color = material.base_color;
-
-	unpacked_effective_material.set_raw_emission(emission);
-	unpacked_effective_material.set_emission_strength(material.get_emission_strength());
-	// Roughening of the base roughness and second metallic roughness based
-	// on the coat roughness. This should be precomputed instead of being done here
-	//
-	// Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
-	float coat_roughening = unpacked_effective_material.coat_roughening;
-	if (material.coat > 0.0f && coat_roughening > 0.0f)
-	{
-		float base_roughness = material.roughness;
-		float coat_roughness = unpacked_effective_material.coat_roughness;
-
-		// Roughening of the base roughness of the material based on the coat roughness
-		float target_base_roughness			  = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
-		float roughened_base_roughness		  = hippt::lerp(base_roughness, target_base_roughness, material.coat);
-		unpacked_effective_material.roughness = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
-
-		if (unpacked_effective_material.second_roughness_weight > 0.0f)
-		{
-			// Roughening of the second metallic roughness based on the coat roughness
-
-			float second_roughness				   = unpacked_effective_material.second_roughness;
-			float target_second_metal_roughness	   = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
-			float roughened_second_metal_roughness = hippt::lerp(second_roughness, target_second_metal_roughness, material.coat);
-			unpacked_effective_material.second_roughness = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
-		}
-	}
-
-	return unpacked_effective_material;
-}
-
 /**
  * The float2_t returned is (roughness, metallic)
  */
@@ -287,6 +187,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
 {
 	PrincipledMaterialClassificationInputs inputs;
+
 	inputs.lobe_user_weights.coat					 = packed_material.get_coat();
 	inputs.lobe_user_weights.sheen					 = packed_material.get_sheen();
 	inputs.lobe_user_weights.metallic				 = packed_material.get_metallic();
@@ -306,7 +207,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 	out_resolved_user_controls.coat					 = inputs.lobe_user_weights.coat;
 	out_resolved_user_controls.sheen				 = inputs.lobe_user_weights.sheen;
 	out_resolved_user_controls.specular_transmission = inputs.lobe_user_weights.specular_transmission;
-	out_resolved_user_controls.validity_mask		 = ResolvedMaterialUserControlRoughness | ResolvedMaterialUserControlMetallic |
+	out_resolved_user_controls.validity_mask = ResolvedMaterialUserControlRoughness | ResolvedMaterialUserControlMetallic |
 											   ResolvedMaterialUserControlSpecular | ResolvedMaterialUserControlCoat | ResolvedMaterialUserControlSheen |
 											   ResolvedMaterialUserControlSpecularTransmission;
 
@@ -319,6 +220,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
 {
 	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
+
 	PrincipledMaterialClassificationInputs inputs;
 	inputs.lobe_user_weights.coat					 = packed_material.get_coat();
 	inputs.lobe_user_weights.sheen					 = packed_material.get_sheen();
@@ -402,6 +304,12 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 	return inputs;
 }
 
+/**
+ * Reads the material 'material_index' of the materials buffer and evaluates its textures at 'texcoords'.
+ *
+ * 'out_material' must be freshly constructed: its parameters of the lobes that the material doesn't use are not written
+ * (see DevicePackedTexturedMaterial::read_partial_effective_material())
+ */
 HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
 														int material_index,
 														float2_t texcoords,
@@ -453,9 +361,11 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 			{
 				// Separate roughness / metallic texture
 				if (roughness_texture_index != MaterialConstants::NO_TEXTURE)
+					// If we have a roughness texture, it will already have been read above by get_metallic_roughness
 					out_material.roughness = roughness_metallic.x;
 
 				if (metallic_texture_index != MaterialConstants::NO_TEXTURE)
+					// Same for the metallic texture
 					out_material.metallic = roughness_metallic.y;
 			}
 		}
@@ -542,6 +452,15 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 			out_material.second_roughness		   = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
 		}
 	}
+}
+
+HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
+{
+	DeviceUnpackedPrincipledFullMaterial material;
+
+	get_intersection_material_into(render_data, material_index, texcoords, material);
+
+	return material;
 }
 
 HIPRT_DEVICE static void load_effective_emission(const DevicePackedEffectiveMaterial& packed_material, EffectiveMaterialEmission& out_emission)

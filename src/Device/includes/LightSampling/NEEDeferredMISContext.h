@@ -35,6 +35,7 @@ HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial load_deferred_material_
 		return render_data.g_buffer.materials[primary_gbuffer_path_index].unpack();
 
 	int material_index = render_data.buffers.material_indices[primitive_index];
+
 	return get_intersection_material(render_data, material_index, texcoords);
 }
 
@@ -47,10 +48,12 @@ HIPRT_DEVICE static void load_deferred_material_reference(const HIPRTRenderData&
 	if (nee_deferred_MIS_context.last_primary_gbuffer_path_index != NEE_DEFERRED_INVALID_PATH_INDEX)
 	{
 		load_effective_material(render_data.g_buffer.materials[nee_deferred_MIS_context.last_primary_gbuffer_path_index], out_material);
+
 		return;
 	}
 
 	int material_index = render_data.buffers.material_indices[nee_deferred_MIS_context.last_primitive_index];
+
 	load_effective_material(render_data, material_index, nee_deferred_MIS_context.last_texcoords, resolved_user_controls, out_material);
 }
 

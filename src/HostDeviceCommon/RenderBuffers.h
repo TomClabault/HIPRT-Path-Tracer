@@ -66,8 +66,8 @@ struct RenderBuffers
 	// pointer. With one array per parameter, the base pointers of the arrays are uniform values that the compiler keeps in scalar registers for
 	// the whole kernel and, in the larger kernels, spills to vector registers.
 	//
-	// Only the parameters that are read are loaded: see DevicePackedTexturedMaterial::read_partial_material() for the reads that skip the
-	// parameters of the lobes that a material doesn't use
+	// Only the parameters that are read are loaded: see DevicePackedTexturedMaterial::read_partial_effective_material() for the reads that
+	// skip the parameters of the lobes that a material doesn't use
 	DevicePackedTexturedMaterial* materials_buffer = nullptr;
 	// A buffer that can be indexed by a material_id.
 	//
