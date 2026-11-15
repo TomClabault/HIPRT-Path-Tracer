@@ -188,7 +188,7 @@ void DisplayViewSystem::upload_final_display_buffer()
 
 void DisplayViewSystem::upload_relevant_buffers_to_texture()
 {
-	// The legacy compute screenshot path still calls this name; it now uploads the same final buffer.
+	// Called by the legacy compute screenshot path: uploads the same final buffer as the display
 	upload_final_display_buffer();
 }
 

@@ -72,8 +72,9 @@ struct RenderBuffers
 	// One bit per triangle (global triangle index), 32 triangles per unsigned int: set if the material of the triangle is fully opaque, in which
 	// case there is no need to do alpha testing for that triangle.
 	//
-	// Built on the CPU from the per-material opacity flags (HIPRTScene::material_opaque). One memory access instead of a material index then a
-	// per-material flag: the filter function reads it for every triangle intersected by every ray
+	// Built on the CPU from the per-material opacity flags (HIPRTScene::material_opaque). Kept per triangle because the filter function reads it for
+	// every triangle intersected by every ray: a per-material flag would need the material index of the triangle first, a second memory access
+	// that depends on the first one
 	unsigned int* triangles_opaque_bitfield = nullptr;
 
 	int emissive_triangles_count = 0;

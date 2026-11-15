@@ -31,7 +31,7 @@
  * #elif BiasCorrectionmode == MIS_LIKE
  * ....
  *
- * We now have one structure per mis weight type method one #if / #elif
+ * Each MIS weight type has its own specialization of this structure
  */
 template <int BiasCorrectionMode>
 struct ReSTIRPTTemporalNormalizationWeight

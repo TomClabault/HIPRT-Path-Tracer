@@ -139,7 +139,7 @@ std::vector<unsigned int> Utils::compute_triangles_opaque_bitfield(const std::ve
 	for (size_t triangle_index = 0; triangle_index < material_indices.size(); triangle_index++)
 	{
 		int material_index = material_indices[triangle_index];
-		// A triangle without a valid material is left non-opaque: the filter function then reads its material as it would without the bitfield
+		// A triangle without a valid material is left non-opaque: the filter function then reads its material for the alpha test
 		if (material_index < 0 || material_index >= static_cast<int>(material_opaque.size()) || !material_opaque[material_index])
 			continue;
 

@@ -54,8 +54,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		return false;
 
 	if (triangles_opaque_bits & (1u << (global_triangle_index_hit % 32)))
-		// The material of the triangle is fully opaque, no need to test further, accept the intersection. One bit per triangle, read without
-		// loading the material index of the triangle first
+		// The material of the triangle is fully opaque, no need to test further, accept the intersection
 		return false;
 
 	int material_index = payload->render_data->buffers.material_indices[global_triangle_index_hit];

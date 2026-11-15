@@ -185,8 +185,8 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 	unsigned int spatial_lobe_count			 = render_data.light_tree_sg.settings.spatial_lobe_count;
 	float cumulative_probability			 = 1.0f;
 
-	// The traversal fields of the chosen child are carried to the next level instead of being loaded again from the node: one dependent memory
-	// round trip less per level
+	// The traversal fields of the chosen child are carried to the next level: loading them again from the node at the next level would be one
+	// more dependent memory round trip per level
 	unsigned int current_triangle_count				  = nodes[sample.cluster_node_index].triangle_count;
 	unsigned int current_left_child_or_first_triangle = nodes[sample.cluster_node_index].left_child_index_or_first_triangle_index;
 
@@ -300,11 +300,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 	// the cut are not sampled.
 	//
 	// Every slot is tested on its own, without an early exit, so that the loads of many slots can be in flight together (following the trail
-	// from the root and scanning the cut at each depth was a chain of dependent loads). The shallowest match is kept: this is the node that the
+	// from the root and scanning the cut at each depth would be a chain of dependent loads). The shallowest match is kept: this is the node that the
 	// root-down search finds first.
 	//
 	// The slots are tested in unrolled groups of 8 so that the loads of a whole group are in flight together: in a plain loop over the slots,
-	// every slot waited for its own loads before the next slot was loaded
+	// every slot would wait for its own loads before the loads of the next slot are issued
 	constexpr unsigned int slot_group_size = 8;
 	// The last group reads the slots up to the next multiple of the group size, which must stay inside the storage of the cut
 	static_assert(LearningToClusterMaximumLightCutSize % 8 == 0, "The cut search of the PDF reads the slots of a cut by groups of 8");
@@ -340,7 +340,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 			unsigned int path_depth = group_path_codes[group_slot].y;
 			unsigned int path_mask	= path_depth >= 32u ? 0xFFFFFFFFu : (1u << path_depth) - 1u;
 
-			// Bitwise & instead of &&: the short-circuit operator was compiled to a branch between the loads of the depth and of the path
+			// Bitwise & instead of &&: the short-circuit operator would compile to a branch between the loads of the depth and of the path
 			bool matches =
 				(slot < lightcut_size) & (path_depth <= 32u) & ((bit_trail & path_mask) == group_path_codes[group_slot].x) & (path_depth < selected_depth);
 			selected_slot  = matches ? slot : selected_slot;

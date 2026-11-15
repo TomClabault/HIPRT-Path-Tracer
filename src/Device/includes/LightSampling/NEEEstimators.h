@@ -818,7 +818,7 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	direct_light_contribution = sample_one_light_no_MIS<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
 		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, shadow_sink);
 #elif DirectLightNEEEstimator == LSS_BSDF
-	// This code here is legacy. We are now using the main path's bounce for BSDF sampling of lights
+	// No light sampling here: with LSS_BSDF, lights are only reached by the BSDF sample of the main path's next bounce
 	// direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF			 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_MIS_deferred_BSDF<BsdfMaterialType, ProposalMaterialType, shadow_mode>(

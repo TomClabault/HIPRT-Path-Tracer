@@ -77,7 +77,7 @@ struct SGImportanceDebug
 };
 
 /**
- * The early-outs of this function are selects at the end instead of returns: with returns, the cone fields of the node were only loaded after
+ * The early-outs of this function are selects at the end, not returns: with returns, the cone fields of the node would only be loaded after
  * the bounding sphere test, one more dependent memory round trip per node of the light tree traversal. A wave executes both sides of a
  * divergent branch anyway so the selects cost almost nothing
  */
@@ -139,8 +139,8 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 													   float alpha_x,
 													   float alpha_y)
 {
-	// The zero power test is a select at the end instead of an early return: with the return, the mean, variance and radius of the lobe were
-	// only loaded after the power, one more dependent memory round trip per lobe
+	// The zero power test is a select at the end, not an early return: with an early return, the mean, variance and radius of the lobe would
+	// only be loaded after the power, one more dependent memory round trip per lobe
 	bool zero_power = spatial_lobe.power <= 0.0f;
 
 	// This importance only shapes the sampling probabilities and the same code evaluates it for sampling and for the PDF
@@ -217,9 +217,9 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
  * The lobes of node i are stored at 'LightTreeSGDevice::spatial_lobes + i * LightTreeSGSettings::spatial_lobe_count': a caller that knows the
  * index of the node can pass that address directly instead of 'node.spatial_lobes', which saves the dependent load of the pointer
  *
- * The rejection tests are selects at the end instead of early returns: with returns, every field of the node and of its lobes was only loaded
+ * The rejection tests are selects at the end, not early returns: with returns, every field of the node and of its lobes would only be loaded
  * after the test that precedes its use, a chain of dependent memory round trips per node of the traversal. A wave executes both sides of a
- * divergent branch anyway so evaluating the lobes of a rejected node costs almost nothing. The result is the same as with the early returns
+ * divergent branch anyway so evaluating the lobes of a rejected node costs almost nothing. The result is the same as with early returns
  */
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
 												 const SpatialSGLobeDevice* spatial_lobes,
@@ -245,8 +245,8 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 	bool bounds_behind_surface = hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f;
 
-	// Bitwise | and & instead of || and &&: the short-circuit operators were compiled to a branch around the cone test, which delayed the loads
-	// of the cone fields behind the other tests
+	// Bitwise | and & instead of || and &&: the short-circuit operators would compile to a branch around the cone test, which would delay the
+	// loads of the cone fields behind the other tests
 	rejected = rejected | (mean_behind_surface & bounds_behind_surface);
 
 	if (!DirectLightSamplingAllowBackfacingLights)
