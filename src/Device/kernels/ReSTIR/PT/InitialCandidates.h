@@ -185,8 +185,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
 		constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 		float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, nb_envmap_candidates_as_float, bsdf_pdf, nb_bsdf_candidates_as_float);
-		float mis_weight							  = multi_light_sample_mis_weight * nee_mis_weight;
-		float weight = mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
+		float mis_weight	 = multi_light_sample_mis_weight * nee_mis_weight;
+		float weight		 = mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
@@ -268,6 +268,8 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 																	Xorshift32Generator& random_number_generator,
 																	float number_of_light_candidates,
 																	float number_of_bsdf_candidates,
+																	unsigned int lightcut_index,
+																	unsigned int guiding_node_index,
 																	int x,
 																	int y)
 {
@@ -281,7 +283,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
 
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
-		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, mesh_id, random_number_generator);
+		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, lightcut_index, guiding_node_index, random_number_generator);
 	if (!triangle_sample.valid())
 	{
 		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
@@ -422,6 +424,27 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& rend
 														   int x,
 														   int y)
 {
+	// The lightcut of this shading point is resolved once and used by every light candidate, by the BSDF candidates below and by the deferred
+	// PDF of the next vertex, which are all evaluated at this same shading point.
+	//
+	// It is resolved before the early exit for disabled direct lighting because the deferred PDF of the next vertex is evaluated even then. It
+	// stays unresolved only when no PDF reads it: without emissive triangles or for a material that cannot do light sampling, the PDFs return
+	// before reading the lightcut
+	unsigned int lightcut_index		= IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
+	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	if (render_data.buffers.emissive_triangles_count > 0 && ray_payload.material.can_do_light_sampling())
+	{
+		IlluminationAwareKDTreeSGShadingContext shading_context =
+			build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
+
+		lightcut_index = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id, &guiding_node_index);
+	}
+	// Also written when unresolved so that the deferred PDF of the next vertex never reads the lightcut of an older vertex
+	nee_deferred_MIS_context.set_last_lightcut_index(lightcut_index);
+
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		return;
 
@@ -451,10 +474,10 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& rend
 	float number_of_light_candidates_as_float = nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
 	{
-		ReSTIR_PT_add_learning_to_cluster_light_candidate<use_MIS>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-																   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
-																   restir_pt_initial_sample, closest_hit_info, random_number_generator,
-																   number_of_light_candidates_as_float, nb_bsdf_candidates_as_float, x, y);
+		ReSTIR_PT_add_learning_to_cluster_light_candidate<use_MIS>(
+			render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
+			restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, random_number_generator, number_of_light_candidates_as_float,
+			nb_bsdf_candidates_as_float, lightcut_index, guiding_node_index, x, y);
 	}
 
 	for (int envmap_candidate = 0; envmap_candidate < nb_envmap_candidates; envmap_candidate++)
@@ -574,11 +597,8 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& rend
 
 				IlluminationAwareKDTreeSGShadingContext shading_context =
 					build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
-				unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
-				if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
-					mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
 				float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
-					render_data, shading_context, mesh_id, ray_payload.material, shadow_light_ray_hit_info.hit_prim_index, point_on_light,
+					render_data, shading_context, lightcut_index, ray_payload.material, shadow_light_ray_hit_info.hit_prim_index, point_on_light,
 					shadow_light_ray_hit_info.hit_geometric_normal);
 				float nee_mis_weight =
 					balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf, number_of_light_candidates_as_float);

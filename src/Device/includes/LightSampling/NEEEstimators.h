@@ -1207,8 +1207,9 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
 
 		// Learning updates run after the megakernel, so this resolves the same cut and CDF used at the previous vertex.
+		unsigned int lightcut_index	  = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id);
 		light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
-			render_data, shading_context, mesh_id, nee_deferred_MIS_context.last_can_do_light_sampling, proposal_state, light_hit_info.primitive_index,
+			render_data, shading_context, lightcut_index, nee_deferred_MIS_context.last_can_do_light_sampling, proposal_state, light_hit_info.primitive_index,
 			light_hit_info.inter_point, light_hit_info.original_geometric_normal());
 	}
 

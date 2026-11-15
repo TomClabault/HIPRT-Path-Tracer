@@ -146,21 +146,19 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
 	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
-HIPRT_DEVICE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
-																		const NEEDeferredMISContext& nee_deferred_MIS_context,
-																		const HitInfo& light_hit_info,
-																		const float3_t& view_direction,
-																		const float3_t& sampled_bsdf_direction)
+// Not inlined: inlined into the initial candidates kernel, this PDF raises the register count of the kernel above an allocation step
+HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
+																					   const NEEDeferredMISContext& nee_deferred_MIS_context,
+																					   const HitInfo& light_hit_info,
+																					   const float3_t& view_direction,
+																					   const float3_t& sampled_bsdf_direction)
 {
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
-	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
-	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
-		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
-
-	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, shading_context, mesh_id,
+	// The lightcut was resolved by the NEE of the previous vertex, at this same shading point
+	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index,
 																		nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index,
 																		light_hit_info.inter_point, light_hit_info.original_geometric_normal());
 #else

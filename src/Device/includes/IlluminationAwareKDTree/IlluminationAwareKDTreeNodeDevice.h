@@ -27,6 +27,11 @@ struct IlluminationAwareKDTreeNode
 	//
 	// Only an active guiding cell owns a valid light clustering.
 	static constexpr unsigned int INVALID_LIGHTCUT_INDEX = 0xFFFFFFFFu;
+	// Lightcut index of a shading point whose lightcut was not resolved because no PDF or sample reads it there. It must never be used to index
+	// the lightcuts.
+	//
+	// Distinct from INVALID_LIGHTCUT_INDEX, which is a resolved result (the shading point uses the initial lightcut)
+	static constexpr unsigned int UNRESOLVED_LIGHTCUT_INDEX = 0xFFFFFFFEu;
 
 	// Index of the left child.
 	//

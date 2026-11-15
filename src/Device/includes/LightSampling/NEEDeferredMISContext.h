@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_NEE_DEFERRED_MIS_CONTEXT_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_NEE_DEFERRED_MIS_CONTEXT_H
 
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 #include "Device/includes/LightSampling/RIS/RISReservoir.h"
 #include "Device/includes/Material.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
@@ -77,6 +78,8 @@ struct NEEDeferredMISContextSpecialized
 	HIPRT_DEVICE void fill_ris_reservoir(const RISReservoir& reservoir) {}
 
 	HIPRT_DEVICE void set_last_light_proposal_state(const NEEDeferredLightProposalState& proposal_state, bool can_do_light_sampling) {}
+
+	HIPRT_DEVICE void set_last_lightcut_index(unsigned int lightcut_index) {}
 };
 
 template <int PathIntegrator>
@@ -177,6 +180,11 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 template <int PathIntegrator>
 struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegrator> : NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 {
+	// The lightcut resolved by the NEE at the previous vertex, IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX where the deferred PDF does
+	// not read it. The deferred PDF is evaluated at that same shading point and the tree is not updated inside the kernel: reusing it saves
+	// resolving it again
+	unsigned int last_lightcut_index = IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
+
 	// The previous surface's mesh selects the learned cut, independently of the light hit by the BSDF ray.
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
@@ -188,6 +196,11 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 	{
 		NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>::fill_last_hit_information(
 			closest_hit_info, view_direction, volume_state, primitive_index, texcoords, primary_gbuffer_path_index, ray_throughput);
+	}
+
+	HIPRT_DEVICE void set_last_lightcut_index(unsigned int lightcut_index)
+	{
+		last_lightcut_index = lightcut_index;
 	}
 };
 

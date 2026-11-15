@@ -93,10 +93,13 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 	}
 }
 
+/**
+ * 'lightcut_index': see pdf_of_emissive_triangle_learning_to_cluster()
+ */
 template <typename ProposalMaterialType>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(const HIPRTRenderData& render_data,
 																				const IlluminationAwareKDTreeSGShadingContext& context,
-																				unsigned int mesh_id,
+																				unsigned int lightcut_index,
 																				bool can_do_light_sampling,
 																				const ProposalMaterialType& proposal_state,
 																				int emissive_triangle_global_index,
@@ -106,7 +109,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 	if (!can_do_light_sampling)
 		return 0.0f;
 
-	float triangle_probability = pdf_of_emissive_triangle_learning_to_cluster(render_data, context, mesh_id, emissive_triangle_global_index);
+	float triangle_probability = pdf_of_emissive_triangle_learning_to_cluster(render_data, context, lightcut_index, emissive_triangle_global_index);
 	if (triangle_probability <= 0.0f)
 		return 0.0f;
 
@@ -128,13 +131,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(const HIPRTRenderData& render_data,
 																				const IlluminationAwareKDTreeSGShadingContext& context,
-																				unsigned int mesh_id,
+																				unsigned int lightcut_index,
 																				const DeviceUnpackedPrincipledFullMaterial& material,
 																				int emissive_triangle_global_index,
 																				const float3_t& point_on_light,
 																				const float3_t& light_normal)
 {
-	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, context, mesh_id, material.can_do_light_sampling(), material,
+	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, context, lightcut_index, material.can_do_light_sampling(), material,
 																		emissive_triangle_global_index, point_on_light, light_normal);
 }
 

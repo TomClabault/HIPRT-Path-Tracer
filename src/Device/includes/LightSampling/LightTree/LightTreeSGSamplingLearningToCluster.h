@@ -91,17 +91,19 @@ HIPRT_DEVICE float light_clustering_cluster_probability(const IlluminationAwareK
 	return static_cast<float>(cdf_end - cdf_start) / 65535.0f;
 }
 
+/**
+ * 'lightcut_index' and 'guiding_node_index' are the results of IlluminationAwareKDTreeDevice::resolve_lightcut() at the shading point of 'context'
+ */
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cluster_from_light_cut(const HIPRTRenderData& render_data,
 																									 const IlluminationAwareKDTreeSGShadingContext& context,
-																									 unsigned int mesh_id,
+																									 unsigned int lightcut_index,
+																									 unsigned int guiding_node_index,
 																									 Xorshift32Generator& random_number_generator)
 {
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample result{};
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 
-	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	unsigned int lightcut_index		= kd_tree.resolve_lightcut(context, mesh_id, &guiding_node_index);
-	result.guiding_node_index		= guiding_node_index;
+	result.guiding_node_index = guiding_node_index;
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
 		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;
@@ -232,13 +234,19 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 	return sample.conditional_triangle_probability > 0.0f;
 }
 
+/**
+ * Overload for a caller that already resolved the lightcut of the shading point of 'context': 'lightcut_index' and 'guiding_node_index' are the
+ * results of IlluminationAwareKDTreeDevice::resolve_lightcut() there
+ */
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
 												 const IlluminationAwareKDTreeSGShadingContext& context,
-												 unsigned int mesh_id,
+												 unsigned int lightcut_index,
+												 unsigned int guiding_node_index,
 												 Xorshift32Generator& random_number_generator)
 {
-	IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample = sample_cluster_from_light_cut(render_data, context, mesh_id, random_number_generator);
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample =
+		sample_cluster_from_light_cut(render_data, context, lightcut_index, guiding_node_index, random_number_generator);
 	if (sample.cluster_probability <= 0.0f)
 		return {};
 
@@ -248,16 +256,31 @@ sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_d
 	return sample;
 }
 
+HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample
+sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
+												 const IlluminationAwareKDTreeSGShadingContext& context,
+												 unsigned int mesh_id,
+												 Xorshift32Generator& random_number_generator)
+{
+	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int lightcut_index		= render_data.kd_tree_device.resolve_lightcut(context, mesh_id, &guiding_node_index);
+
+	return sample_one_emissive_triangle_learning_to_cluster(render_data, context, lightcut_index, guiding_node_index, random_number_generator);
+}
+
+/**
+ * 'lightcut_index' is the result of IlluminationAwareKDTreeDevice::resolve_lightcut() at the shading point of 'context': the caller resolves it,
+ * once for every PDF and sample of that shading point
+ */
 HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
 																const IlluminationAwareKDTreeSGShadingContext& context,
-																unsigned int mesh_id,
+																unsigned int lightcut_index,
 																int emissive_triangle_global_index)
 {
 	if (emissive_triangle_global_index < 0 || render_data.buffers.emissive_triangles_count == 0)
 		return 0.0f;
 
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
-	unsigned int lightcut_index					 = kd_tree.resolve_lightcut(context, mesh_id);
 	bool initial_lightcut						 = lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 	unsigned int lightcut_size					 = initial_lightcut ? kd_tree.learning_to_cluster.effective_initial_lightcut_size
 																	: kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
