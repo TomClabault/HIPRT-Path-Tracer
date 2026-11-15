@@ -74,8 +74,8 @@
  *      The materials buffer of the GPU (HIPRTRenderData::buffers.materials_buffer) is an array of DevicePackedTexturedMaterial: the parameter is read
  *      with the getter of step 3) on the material of the buffer, 'render_data.buffers.materials_buffer[material_index].get_xxx()'
  *
- *      Add the parameter reading in DevicePackedTexturedMaterial::read_partial_material(), read_partial_effective_material() and
- *      read_partial_effective_material_noinit(). These functions read, from the materials buffer, only the parameters that the material uses
+ *      Add the parameter reading in DevicePackedTexturedMaterial::read_partial_material() and read_partial_effective_material(). These
+ *      functions read, from the materials buffer, only the parameters that the material uses
  *
  *      Note that memory traffic can be saved in some case. Let's you're adding a bunch of parameters for a "super metallic" lobe:
  *      - super metallic strength

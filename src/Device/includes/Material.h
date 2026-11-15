@@ -402,18 +402,14 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 	return inputs;
 }
 
-template <bool initialize_material_defaults>
-HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderData& render_data,
-															 int material_index,
-															 float2_t texcoords,
-															 DeviceUnpackedPrincipledFullMaterial& out_material,
-															 const ResolvedMaterialUserControlsCache* resolved_user_controls = nullptr)
+HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
+														int material_index,
+														float2_t texcoords,
+														DeviceUnpackedPrincipledFullMaterial& out_material,
+														const ResolvedMaterialUserControlsCache* resolved_user_controls = nullptr)
 {
 	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
-	if constexpr (initialize_material_defaults)
-		packed_material.read_partial_effective_material(out_material);
-	else
-		packed_material.read_partial_effective_material_noinit(out_material);
+	packed_material.read_partial_effective_material(out_material);
 
 	if (render_data.bsdfs_data.white_furnace_mode)
 		out_material.base_color = ColorRGB32F(1.0f);
@@ -548,22 +544,6 @@ HIPRT_DEVICE static void get_intersection_material_into_impl(const HIPRTRenderDa
 	}
 }
 
-HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& render_data,
-														int material_index,
-														float2_t texcoords,
-														DeviceUnpackedPrincipledFullMaterial& out_material)
-{
-	get_intersection_material_into_impl<true>(render_data, material_index, texcoords, out_material);
-}
-
-HIPRT_DEVICE static void get_intersection_material_into_noinit(const HIPRTRenderData& render_data,
-															   int material_index,
-															   float2_t texcoords,
-															   DeviceUnpackedPrincipledFullMaterial& out_material)
-{
-	get_intersection_material_into_impl<false>(render_data, material_index, texcoords, out_material);
-}
-
 HIPRT_DEVICE static void load_effective_emission(const DevicePackedEffectiveMaterial& packed_material, EffectiveMaterialEmission& out_emission)
 {
 	out_emission.emission		= packed_material.get_raw_emission() * packed_material.get_emission_strength();
@@ -654,7 +634,7 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 												 MaterialType& out_material)
 {
 	if constexpr (std::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
-		get_intersection_material_into_impl<true>(render_data, material_index, texcoords, out_material, &resolved_user_controls);
+		get_intersection_material_into(render_data, material_index, texcoords, out_material, &resolved_user_controls);
 	else
 	{
 		const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
