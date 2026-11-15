@@ -138,10 +138,13 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 	if (spatial_lobe.power <= 0.0f)
 		return 0.0f;
 
+	// This importance only shapes the sampling probabilities and the same code evaluates it for sampling and for the PDF
+	// so the hardware reciprocal / reciprocal square root are used instead of the correctly rounded division / sqrt sequences:
+	// these sequences were a large part of the cost of the light tree traversal
 	float3_t shading_to_lobe	= spatial_lobe.mean - shading_point;
 	float squared_distance		= hippt::dot(shading_to_lobe, shading_to_lobe);
 	float safe_squared_distance = hippt::max(squared_distance, 1.0e-20f);
-	float3_t to_light_direction = shading_to_lobe * hippt::rsqrt(safe_squared_distance);
+	float3_t to_light_direction = shading_to_lobe * hippt::intrin_rsqrt(safe_squared_distance);
 
 	float c						   = hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, -to_light_direction));
 	float sharpness_clamp_variance = safe_squared_distance / SG_LIGHT_SHARPNESS_MAX;
@@ -149,9 +152,10 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 	variance					   = variance * (1.0f - c) + 0.5f * hippt::square(spatial_lobe.support_radius) * c;
 	variance					   = hippt::max(variance, 1.0e-20f);
 
-	float emissive		  = spatial_lobe.power / variance;
-	float light_sharpness = safe_squared_distance / variance;
-	SGLobe light_lobe	  = SG_product(-directional_vmf.axis, directional_vmf.sharpness, to_light_direction, light_sharpness);
+	float inverse_variance = hippt::intrin_rcp(variance);
+	float emissive		   = spatial_lobe.power * inverse_variance;
+	float light_sharpness  = safe_squared_distance * inverse_variance;
+	SGLobe light_lobe	   = SG_product(-directional_vmf.axis, directional_vmf.sharpness, to_light_direction, light_sharpness);
 
 	float amplitude			   = hippt::intrin_expf(light_lobe.logAmplitude);
 	float cosine			   = hippt::clamp(-1.0f, 1.0f, hippt::dot(light_lobe.axis, shading_normal));

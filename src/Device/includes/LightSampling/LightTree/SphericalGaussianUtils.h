@@ -86,22 +86,30 @@ HIPRT_DEVICE static float SG_integral(const float sharpness)
 }
 
 // Product of two SGs.
+//
+// This function is only used by the light tree SG importance (sampling probabilities that are evaluated by the same code for sampling
+// and for PDF evaluation) so it uses the hardware reciprocal / square root instead of the correctly rounded division / sqrt sequences
+// which are a large part of the cost of the importance evaluation
 HIPRT_DEVICE static SGLobe SG_product(const float3_t axis1, const float sharpness1, const float3_t axis2, const float sharpness2)
 {
-	const float3_t axis	  = axis1 * sharpness1 + axis2 * sharpness2;
-	const float sharpness = hippt::length(axis);
+	const float3_t axis			  = axis1 * sharpness1 + axis2 * sharpness2;
+	const float sharpness		  = hippt::intrin_sqrt(hippt::dot(axis, axis));
+	const float inverse_sharpness = hippt::intrin_rcp(sharpness);
 
 	const float3_t d		  = axis1 - axis2;
 	const float len2		  = hippt::dot(d, d);
-	const float log_amplitude = -sharpness1 * sharpness2 * len2 / (sharpness + sharpness1 + sharpness2);
+	const float log_amplitude = -sharpness1 * sharpness2 * len2 * hippt::intrin_rcp(sharpness + sharpness1 + sharpness2);
 
-	const SGLobe result = { axis / sharpness, sharpness, log_amplitude };
+	const SGLobe result = { axis * inverse_sharpness, sharpness, log_amplitude };
 
 	return result;
 }
 
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 5]
-HIPRT_DEVICE static float upper_SG_clamped_cosine_integral_over_two_pi(const float sharpness)
+//
+// 'inverse_sharpness' is 1.0f / sharpness and 'expm1_over_x' is hippt::expm1_over_x_fast(-sharpness): they are shared with
+// lower_SG_clamped_cosine_integral_over_two_pi() by the caller
+HIPRT_DEVICE static float upper_SG_clamped_cosine_integral_over_two_pi(const float sharpness, const float inverse_sharpness, const float expm1_over_x)
 {
 	if (sharpness <= 0.5f)
 		// Taylor-series approximation for the numerical stability.
@@ -111,14 +119,17 @@ HIPRT_DEVICE static float upper_SG_clamped_cosine_integral_over_two_pi(const flo
 				1.0f / 6.0f) * sharpness +
 			   0.5f;
 
-	return (1.0f - hippt::expm1_over_x_fast(-sharpness)) / sharpness;
+	return (1.0f - expm1_over_x) * inverse_sharpness;
 }
 
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 6]
-HIPRT_DEVICE static float lower_SG_clamped_cosine_integral_over_two_pi(const float sharpness)
+//
+// 'e' is exp(-sharpness), see upper_SG_clamped_cosine_integral_over_two_pi() for the other parameters
+HIPRT_DEVICE static float lower_SG_clamped_cosine_integral_over_two_pi(const float sharpness,
+																	   const float inverse_sharpness,
+																	   const float expm1_over_x,
+																	   const float e)
 {
-	const float e = hippt::intrin_expf(-sharpness);
-
 	if (sharpness <= 0.5f)
 		// Taylor-series approximation for the numerical stability.
 		return e * (((((((((1.0f / 403200.0f) * sharpness - 1.0f / 45360.0f) * sharpness + 1.0f / 5760.0f) * sharpness - 1.0f / 840.0f) * sharpness +
@@ -128,7 +139,7 @@ HIPRT_DEVICE static float lower_SG_clamped_cosine_integral_over_two_pi(const flo
 					 1.0f / 3.0f) * sharpness +
 					0.5f);
 
-	return e * (hippt::expm1_over_x_fast(-sharpness) - e) / sharpness;
+	return e * (expm1_over_x - e) * inverse_sharpness;
 }
 
 // Approximate product integral of an SG and clamped cosine / pi.
@@ -141,18 +152,26 @@ HIPRT_DEVICE static float SG_clamped_cosine_product_integral_over_pi(const float
 	static const float C = 4.0100826728510421403939290030394f;
 	static const float D = 15.219156263147210594866010069381f;
 	static const float E = 76.087896272360737270901154261082f;
-	const float t		 = sharpness * hippt::sqrt(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
-	const float tz		 = t * cosine;
+	// Hardware reciprocal / square root, see SG_product()
+	const float t =
+		sharpness * hippt::intrin_sqrt(0.5f * ((sharpness + A) * sharpness + B) * hippt::intrin_rcp(((sharpness + C) * sharpness + D) * sharpness + E));
+	const float tz = t * cosine;
 
-	const float INV_SQRTPI	= 0.56418958354775628694807945156077f; // = 1.0f / sqrtf(pi).
-	const float lerp_factor = hippt::clamp(0.0f, 1.0f,
-										   0.5f * (cosine * hippt::erfcf_fast(-tz) + hippt::erfcf_fast(t)) -
-																   0.5f * INV_SQRTPI * hippt::intrin_expf(-tz * tz) *
-																						   hippt::intrin_expm1f(t * t * (cosine * cosine - 1.0f)) / t);
+	const float INV_SQRTPI = 0.56418958354775628694807945156077f; // = 1.0f / sqrtf(pi).
+	const float lerp_factor =
+		hippt::clamp(0.0f, 1.0f,
+					 0.5f * (cosine * hippt::erfcf_fast(-tz) + hippt::erfcf_fast(t)) -
+						 0.5f * INV_SQRTPI * hippt::intrin_expf(-tz * tz) * hippt::intrin_expm1f(t * t * (cosine * cosine - 1.0f)) * hippt::intrin_rcp(t));
+
+	// Terms shared by the lower and upper integrals: exp(-sharpness), 1.0f / sharpness and
+	// hippt::expm1_over_x_fast(-sharpness) = (exp(-sharpness) - 1) / -sharpness
+	const float exp_minus_sharpness = hippt::intrin_expf(-sharpness);
+	const float inverse_sharpness	= hippt::intrin_rcp(sharpness);
+	const float expm1_over_x		= exp_minus_sharpness == 1.0f ? 1.0f : (1.0f - exp_minus_sharpness) * inverse_sharpness;
 
 	// Interpolation between lower and upper hemispherical integrals.
-	const float lower_integral = lower_SG_clamped_cosine_integral_over_two_pi(sharpness);
-	const float upper_integral = upper_SG_clamped_cosine_integral_over_two_pi(sharpness);
+	const float lower_integral = lower_SG_clamped_cosine_integral_over_two_pi(sharpness, inverse_sharpness, expm1_over_x, exp_minus_sharpness);
+	const float upper_integral = upper_SG_clamped_cosine_integral_over_two_pi(sharpness, inverse_sharpness, expm1_over_x);
 	return 2.0f * hippt::lerp(lower_integral, upper_integral, lerp_factor);
 }
 

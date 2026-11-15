@@ -136,7 +136,7 @@
  */
 #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 // ReSTIR PT defaults to RIS; the runtime compiler/UI can select the supported learned estimators.
-#define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 #else
 #define DirectLightNEEEstimator LSS_BASE_POWER
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT

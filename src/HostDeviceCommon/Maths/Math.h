@@ -379,6 +379,56 @@ namespace hippt
 		return log1pf(x);
 	}
 
+	/**
+	 * Hardware reciprocal (1 ULP on AMD GPUs): a single instruction instead of the
+	 * correctly rounded division sequence that '1.0f / x' compiles to.
+	 *
+	 * Only use it where an error of a few ULPs is harmless: sampling importances
+	 * that are evaluated by the same code for sampling and for PDF evaluation for example.
+	 */
+	__device__ static float intrin_rcp(float x)
+	{
+#ifdef __CUDACC__
+		return __fdividef(1.0f, x);
+#else
+		return __builtin_amdgcn_rcpf(x);
+#endif
+	}
+
+	/**
+	 * Hardware reciprocal square root (1 ULP on AMD GPUs). 'hippt::rsqrt()' is a correctly
+	 * rounded square root followed by a correctly rounded division.
+	 */
+	__device__ static float intrin_rsqrt(float x)
+	{
+#ifdef __CUDACC__
+		return rsqrtf(x);
+#else
+		return __builtin_amdgcn_rsqf(x);
+#endif
+	}
+
+	/**
+	 * Hardware square root (1 ULP on AMD GPUs) without the denormal scaling and the
+	 * correction steps of the correctly rounded 'sqrtf()'
+	 */
+	__device__ static float intrin_sqrt(float x)
+	{
+#ifdef __CUDACC__
+		return sqrtf(x);
+#else
+		return __builtin_amdgcn_sqrtf(x);
+#endif
+	}
+
+	/**
+	 * 'x / y' through the hardware reciprocal, see 'intrin_rcp()'
+	 */
+	__device__ static float intrin_divide(float x, float y)
+	{
+		return x * hippt::intrin_rcp(y);
+	}
+
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
 	__device__ static float expm1_over_x_precise(const float x)
@@ -442,7 +492,9 @@ namespace hippt
 		q = q * c + 1.0f;
 		p = p * c + 1.0f;
 
-		r = e / q;
+		// Hardware reciprocal: this approximation is only used by the light tree
+		// SG importance where the extra ULPs don't matter
+		r = hippt::intrin_divide(e, q);
 		r = r * p;
 		if (x < 0.0f)
 			r = 2.0f - r;
@@ -1391,6 +1443,27 @@ namespace hippt
 		return std::log1pf(x);
 	}
 
+	// The CPU versions of the hardware approximations of the GPU are exact
+	static float intrin_rcp(float x)
+	{
+		return 1.0f / x;
+	}
+
+	static float intrin_rsqrt(float x)
+	{
+		return 1.0f / std::sqrt(x);
+	}
+
+	static float intrin_sqrt(float x)
+	{
+		return std::sqrt(x);
+	}
+
+	static float intrin_divide(float x, float y)
+	{
+		return x / y;
+	}
+
 	static float3_t atan2(float3_t y, float3_t x)
 	{
 		return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z));
@@ -1488,7 +1561,9 @@ namespace hippt
 		q = q * c + 1.0f;
 		p = p * c + 1.0f;
 
-		r = e / q;
+		// Hardware reciprocal: this approximation is only used by the light tree
+		// SG importance where the extra ULPs don't matter
+		r = hippt::intrin_divide(e, q);
 		r = r * p;
 		if (x < 0.0f)
 			r = 2.0f - r;
