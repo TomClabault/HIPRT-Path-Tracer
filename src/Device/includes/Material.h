@@ -100,11 +100,7 @@ HIPRT_DEVICE static SurfaceTransportMetadata load_surface_transport_metadata(con
 																			 int material_index,
 																			 const PrincipledMaterialClassificationInputs& classification_inputs)
 {
-	SurfaceTransportMetadata metadata;
-	metadata.dispersion_scale	   = classification_inputs.dispersion_scale;
-	metadata.specular_transmission = classification_inputs.lobe_user_weights.specular_transmission;
-	metadata.dielectric_priority   = get_intersection_dielectric_priority(render_data, material_index);
-	return metadata;
+	return load_surface_transport_metadata(render_data.buffers.materials_buffer[material_index], classification_inputs);
 }
 
 /**
@@ -183,11 +179,12 @@ HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, 
 	return read_data<T>(rgba);
 }
 
-HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classification_inputs(const DevicePackedEffectiveMaterial& packed_material,
-																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
+/**
+ * Classification inputs given by the parameters of the packed material, without texture reads
+ */
+HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_packed_material_classification_inputs(const DevicePackedEffectiveMaterial& packed_material)
 {
 	PrincipledMaterialClassificationInputs inputs;
-
 	inputs.lobe_user_weights.coat					 = packed_material.get_coat();
 	inputs.lobe_user_weights.sheen					 = packed_material.get_sheen();
 	inputs.lobe_user_weights.metallic				 = packed_material.get_metallic();
@@ -201,13 +198,21 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 	inputs.thin_walled								 = packed_material.get_thin_walled();
 	inputs.enforce_strong_energy_conservation		 = packed_material.get_enforce_strong_energy_conservation();
 
+	return inputs;
+}
+
+HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classification_inputs(const DevicePackedEffectiveMaterial& packed_material,
+																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
+{
+	PrincipledMaterialClassificationInputs inputs = load_packed_material_classification_inputs(packed_material);
+
 	out_resolved_user_controls.roughness			 = packed_material.get_roughness();
 	out_resolved_user_controls.metallic				 = inputs.lobe_user_weights.metallic;
 	out_resolved_user_controls.specular				 = inputs.lobe_user_weights.specular;
 	out_resolved_user_controls.coat					 = inputs.lobe_user_weights.coat;
 	out_resolved_user_controls.sheen				 = inputs.lobe_user_weights.sheen;
 	out_resolved_user_controls.specular_transmission = inputs.lobe_user_weights.specular_transmission;
-	out_resolved_user_controls.validity_mask = ResolvedMaterialUserControlRoughness | ResolvedMaterialUserControlMetallic |
+	out_resolved_user_controls.validity_mask		 = ResolvedMaterialUserControlRoughness | ResolvedMaterialUserControlMetallic |
 											   ResolvedMaterialUserControlSpecular | ResolvedMaterialUserControlCoat | ResolvedMaterialUserControlSheen |
 											   ResolvedMaterialUserControlSpecularTransmission;
 
@@ -220,20 +225,7 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_material_classif
 																							   ResolvedMaterialUserControlsCache& out_resolved_user_controls)
 {
 	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
-
-	PrincipledMaterialClassificationInputs inputs;
-	inputs.lobe_user_weights.coat					 = packed_material.get_coat();
-	inputs.lobe_user_weights.sheen					 = packed_material.get_sheen();
-	inputs.lobe_user_weights.metallic				 = packed_material.get_metallic();
-	inputs.lobe_user_weights.second_roughness_weight = packed_material.get_second_roughness_weight();
-	inputs.lobe_user_weights.retro_reflection		 = packed_material.get_retro_reflection();
-	inputs.lobe_user_weights.specular				 = packed_material.get_specular();
-	inputs.lobe_user_weights.specular_transmission	 = packed_material.get_specular_transmission();
-	inputs.lobe_user_weights.diffuse_transmission	 = packed_material.get_diffuse_transmission();
-	inputs.thin_film_strength						 = packed_material.get_thin_film();
-	inputs.dispersion_scale							 = packed_material.get_dispersion_scale();
-	inputs.thin_walled								 = packed_material.get_thin_walled();
-	inputs.enforce_strong_energy_conservation		 = packed_material.get_enforce_strong_energy_conservation();
+	PrincipledMaterialClassificationInputs inputs		= load_packed_material_classification_inputs(packed_material);
 
 	out_resolved_user_controls = ResolvedMaterialUserControlsCache();
 
@@ -492,6 +484,54 @@ HIPRT_DEVICE static void load_effective_emission(const HIPRTRenderData& render_d
 	out_emission.emission_flags = emissive ? EffectiveMaterialEmissionIsEmissive : 0u;
 }
 
+/**
+ * Lobe parameters of a specialized effective material (all but the emission and the base color) given by the parameters
+ * of the packed material, without texture reads
+ */
+template <typename MaterialType>
+HIPRT_DEVICE static void load_packed_effective_material_lobe_parameters(const DevicePackedEffectiveMaterial& packed_material, MaterialType& out_material)
+{
+	if constexpr (std::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
+		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
+		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
+#endif
+	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
+	{
+		out_material.roughness					  = packed_material.get_roughness();
+		out_material.anisotropy					  = packed_material.get_anisotropy();
+		out_material.anisotropy_rotation		  = packed_material.get_anisotropy_rotation();
+		out_material.ior						  = packed_material.get_ior();
+		out_material.do_glass_energy_compensation = packed_material.get_do_glass_energy_compensation();
+	}
+	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
+	{
+		out_material.roughness						 = packed_material.get_roughness();
+		out_material.anisotropy						 = packed_material.get_anisotropy();
+		out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
+		out_material.metallic_F82					 = packed_material.get_metallic_F82();
+		out_material.metallic_F90					 = packed_material.get_metallic_F90();
+		out_material.metallic_F90_falloff_exponent	 = packed_material.get_metallic_F90_falloff_exponent();
+		out_material.do_metallic_energy_compensation = packed_material.get_do_metallic_energy_compensation();
+	}
+	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
+	{
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
+#endif
+		out_material.roughness						 = packed_material.get_roughness();
+		out_material.anisotropy						 = packed_material.get_anisotropy();
+		out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
+		out_material.ior							 = packed_material.get_ior();
+		out_material.specular						 = packed_material.get_specular();
+		out_material.specular_tint					 = packed_material.get_specular_tint();
+		out_material.specular_color					 = packed_material.get_specular_color();
+		out_material.specular_darkening				 = packed_material.get_specular_darkening();
+		out_material.do_specular_energy_compensation = packed_material.get_do_specular_energy_compensation();
+	}
+}
+
 template <typename MaterialType>
 HIPRT_DEVICE static void load_effective_material(const DevicePackedEffectiveMaterial& packed_material, MaterialType& out_material)
 {
@@ -502,46 +542,7 @@ HIPRT_DEVICE static void load_effective_material(const DevicePackedEffectiveMate
 		load_effective_emission(packed_material, out_material);
 
 		out_material.base_color = packed_material.get_base_color();
-
-		if constexpr (std::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#endif
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
-		{
-			out_material.roughness					  = packed_material.get_roughness();
-			out_material.anisotropy					  = packed_material.get_anisotropy();
-			out_material.anisotropy_rotation		  = packed_material.get_anisotropy_rotation();
-			out_material.ior						  = packed_material.get_ior();
-			out_material.do_glass_energy_compensation = packed_material.get_do_glass_energy_compensation();
-		}
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
-		{
-			out_material.roughness						 = packed_material.get_roughness();
-			out_material.anisotropy						 = packed_material.get_anisotropy();
-			out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
-			out_material.metallic_F82					 = packed_material.get_metallic_F82();
-			out_material.metallic_F90					 = packed_material.get_metallic_F90();
-			out_material.metallic_F90_falloff_exponent	 = packed_material.get_metallic_F90_falloff_exponent();
-			out_material.do_metallic_energy_compensation = packed_material.get_do_metallic_energy_compensation();
-		}
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
-		{
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#endif
-			out_material.roughness						 = packed_material.get_roughness();
-			out_material.anisotropy						 = packed_material.get_anisotropy();
-			out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
-			out_material.ior							 = packed_material.get_ior();
-			out_material.specular						 = packed_material.get_specular();
-			out_material.specular_tint					 = packed_material.get_specular_tint();
-			out_material.specular_color					 = packed_material.get_specular_color();
-			out_material.specular_darkening				 = packed_material.get_specular_darkening();
-			out_material.do_specular_energy_compensation = packed_material.get_do_specular_energy_compensation();
-		}
+		load_packed_effective_material_lobe_parameters(packed_material, out_material);
 	}
 }
 
@@ -575,71 +576,40 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 				out_material.base_color = packed_material.get_base_color();
 		}
 
-		if constexpr (std::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#endif
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
+		load_packed_effective_material_lobe_parameters(packed_material, out_material);
+
+		// Overriding the parameters of the packed material with the user controls already resolved from the
+		// textures and with the anisotropy texture
+		constexpr bool has_specular_roughness_parameters = std::is_same_v<MaterialType, DevicePrincipledGlassMaterial> ||
+														   std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial> ||
+														   std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>;
+		if constexpr (has_specular_roughness_parameters)
 		{
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
-																												  : packed_material.get_roughness();
-			out_material.anisotropy = packed_material.get_anisotropy();
+			if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
+				out_material.roughness = resolved_user_controls.roughness;
+
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
 			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
 			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
 				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation		  = packed_material.get_anisotropy_rotation();
-			out_material.ior						  = packed_material.get_ior();
-			out_material.do_glass_energy_compensation = packed_material.get_do_glass_energy_compensation();
 		}
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
+
+		if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
 		{
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
-																												  : packed_material.get_roughness();
-			out_material.anisotropy = packed_material.get_anisotropy();
-#if UseMaterialTextures == KERNEL_OPTION_TRUE
-			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
-			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
-				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
-#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation			 = packed_material.get_anisotropy_rotation();
-			out_material.metallic_F82					 = packed_material.get_metallic_F82();
-			out_material.metallic_F90					 = packed_material.get_metallic_F90();
-			out_material.metallic_F90_falloff_exponent	 = packed_material.get_metallic_F90_falloff_exponent();
-			out_material.do_metallic_energy_compensation = packed_material.get_do_metallic_energy_compensation();
-		}
-		else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
-		{
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-			out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
-#endif
-			out_material.roughness	= resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness ? resolved_user_controls.roughness
-																												  : packed_material.get_roughness();
-			out_material.anisotropy = packed_material.get_anisotropy();
-#if UseMaterialTextures == KERNEL_OPTION_TRUE
-			unsigned short int anisotropic_texture_index = packed_material.get_anisotropic_texture_index();
-			if (anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
-				out_material.anisotropy = read_material_texture<float>(render_data, texcoords, anisotropic_texture_index, false);
-#endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
-			out_material.anisotropy_rotation = packed_material.get_anisotropy_rotation();
-			out_material.ior				 = packed_material.get_ior();
-			out_material.specular =
-				resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular ? resolved_user_controls.specular : packed_material.get_specular();
-			out_material.specular_tint					 = packed_material.get_specular_tint();
-			out_material.specular_color					 = packed_material.get_specular_color();
-			out_material.specular_darkening				 = packed_material.get_specular_darkening();
-			out_material.do_specular_energy_compensation = packed_material.get_do_specular_energy_compensation();
+			if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular)
+				out_material.specular = resolved_user_controls.specular;
 		}
 	}
 }
 
-HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const DevicePackedEffectiveMaterial& packed_material)
+/**
+ * Light proposal inputs given by the parameters of the packed material, without texture reads
+ */
+HIPRT_DEVICE static LightProposalInputs load_packed_light_proposal_inputs(const DevicePackedEffectiveMaterial& packed_material, float base_color_luminance)
 {
 	LightProposalInputs proposal_inputs{};
-	proposal_inputs.base_color_luminance  = packed_material.get_base_color().luminance();
+	proposal_inputs.base_color_luminance  = base_color_luminance;
 	proposal_inputs.roughness			  = packed_material.get_roughness();
 	proposal_inputs.ior					  = packed_material.get_ior();
 	proposal_inputs.metallic			  = packed_material.get_metallic();
@@ -654,6 +624,11 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const DeviceP
 	return proposal_inputs;
 }
 
+HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const DevicePackedEffectiveMaterial& packed_material)
+{
+	return load_packed_light_proposal_inputs(packed_material, packed_material.get_base_color().luminance());
+}
+
 HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRenderData& render_data,
 																   int material_index,
 																   float2_t texcoords,
@@ -661,19 +636,7 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 																   const ResolvedMaterialUserControlsCache& resolved_user_controls)
 {
 	const DevicePackedTexturedMaterial& packed_material = render_data.buffers.materials_buffer[material_index];
-	LightProposalInputs proposal_inputs{};
-	proposal_inputs.base_color_luminance  = base_color_luminance;
-	proposal_inputs.roughness			  = packed_material.get_roughness();
-	proposal_inputs.ior					  = packed_material.get_ior();
-	proposal_inputs.metallic			  = packed_material.get_metallic();
-	proposal_inputs.specular			  = packed_material.get_specular();
-	proposal_inputs.coat				  = packed_material.get_coat();
-	proposal_inputs.coat_roughness		  = packed_material.get_coat_roughness();
-	proposal_inputs.coat_ior			  = packed_material.get_coat_ior();
-	proposal_inputs.specular_transmission = packed_material.get_specular_transmission();
-	proposal_inputs.diffuse_transmission  = packed_material.get_diffuse_transmission();
-	proposal_inputs.anisotropy			  = packed_material.get_anisotropy();
-	proposal_inputs.coat_anisotropy		  = packed_material.get_coat_anisotropy();
+	LightProposalInputs proposal_inputs					= load_packed_light_proposal_inputs(packed_material, base_color_luminance);
 
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
