@@ -267,24 +267,44 @@ struct IlluminationAwareKDTreeCoreDevice
 		{
 			const IlluminationAwareKDTreeNode& node = nodes[node_index];
 
-			if (node.flags & IlluminationAwareKDTreeNodeFlag_Guiding)
-				// We stop at the first guiding cell, even if it may have lookahead cells, we only want guiding cells from this function
-				return node_index;
+			// Every field of the node used by the descent is read before the node is tested so that they are all loaded together. With the
+			// tests first, the child index was only loaded once the flags had arrived and the split plane once the child index had arrived:
+			// three memory round trips per level instead of one
+			//
+			// The compiler does not do this reordering itself: a load written after a test that may return stays after that test unless the
+			// compiler can prove that the load is safe on every path, which it cannot do here. Written unconditionally at the top of the loop,
+			// the loads are issued back to back and a single wait covers all of them.
+			//
+			// Reading the split fields of a node that turns out to be a guiding cell or a leaf is wasted but free: the node is small and the
+			// split fields are in the same cache line as the flags
+			unsigned int flags			  = node.flags;
+			unsigned int left_child_index = node.left_child_index;
+			unsigned int split_axis		  = node.split_axis;
+			float split_position		  = node.split_position;
 
-			unsigned int left_child_index  = node.left_child_index;
 			unsigned int right_child_index = left_child_index + 1;
 
-			if (left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
+			// Computed even for a node without children, whose split is not valid: the result is not used for such a node
+			float position_component	 = split_axis == 0 ? position.x : (split_axis == 1 ? position.y : position.z);
+			unsigned int next_node_index = position_component < split_position ? left_child_index : right_child_index;
+
+			// We stop at the first guiding cell, even if it may have lookahead cells, we only want guiding cells from this function
+			bool is_guiding_cell = (flags & IlluminationAwareKDTreeNodeFlag_Guiding) != 0u;
+			// Bitwise | instead of ||: the short-circuit operator would compile to a branch (only evaluate the right side if the left side
+			// is false). Both operands are integer comparisons of values that are already in registers: evaluating both costs an instruction
+			// or two and keeps the loop body free of branches, so nothing separates the loads of one level from the loads of the next
+			bool has_no_children =
+				(left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX) | (right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
+
+			if (is_guiding_cell)
+				return node_index;
+
+			if (has_no_children)
 				// If we're here, the cell doesn't have children and it's not a guiding cell either so we return an invalid index to indicate that the position
 				// is not inside a guiding cell
 				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-			float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
-
-			if (position_component < node.split_position)
-				node_index = left_child_index;
-			else
-				node_index = right_child_index;
+			node_index = next_node_index;
 		}
 	}
 
