@@ -88,7 +88,7 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
 {
-	m_render_data_host_pinned.resize_host_pinned_mem(1);
+	m_render_data_host_pinned.resize_host_pinned_mem(ReSTIRPTRenderPass::RENDER_DATA_UPLOAD_SLOT_COUNT);
 
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID);
@@ -1055,7 +1055,18 @@ void ReSTIRPTRenderPass::post_sample_update_async(HIPRTRenderData& render_data, 
 
 void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
 {
-	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
+	// Each upload uses the next host pinned slot of the ring. The asynchronous copy reads the slot when it executes on the GPU: the slot is only
+	// rewritten once the copy that last read it has completed, otherwise a kernel could receive the render data of a later upload of the frame
+	// (the temporal and spatial passes change their input/output reservoirs and the spatial pass index between uploads)
+	unsigned int slot_index		   = m_next_render_data_upload_slot;
+	m_next_render_data_upload_slot = (m_next_render_data_upload_slot + 1) % ReSTIRPTRenderPass::RENDER_DATA_UPLOAD_SLOT_COUNT;
+
+	if (m_render_data_upload_events[slot_index] == nullptr)
+		OROCHI_CHECK_ERROR(oroEventCreate(&m_render_data_upload_events[slot_index]));
+	else
+		OROCHI_CHECK_ERROR(oroEventSynchronize(m_render_data_upload_events[slot_index]));
+
+	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer() + slot_index;
 	*host_pinned_render_data				 = render_data;
 
 	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID
@@ -1067,6 +1078,7 @@ void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 											  : "RESTIR_PT_RENDER_DATA";
 	m_kernels[kernel_id]->upload_to_module_global(render_data_global_name.c_str(), host_pinned_render_data, sizeof(HIPRTRenderData),
 												  m_renderer->get_main_stream());
+	OROCHI_CHECK_ERROR(oroEventRecord(m_render_data_upload_events[slot_index], m_renderer->get_main_stream()));
 }
 
 void ReSTIRPTRenderPass::update_render_data()
@@ -1084,8 +1096,7 @@ void ReSTIRPTRenderPass::update_render_data()
 		m_spmis_data.to_device(render_data);
 
 		// The pointers of the shadow split union domain kernels are published here, before the frame is launched, and are never changed by launch_async():
-		// every upload_render_data() of a frame copies the render data through the same host pinned buffer asynchronously, a change between two
-		// uploads of a frame could reach the kernels of the earlier upload
+		// every kernel of the frame sees the same pointers
 		ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
 			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
 		if (m_spmis_union_domain_shadow_split_buffer.size() > 0)

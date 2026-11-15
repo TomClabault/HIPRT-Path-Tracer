@@ -137,7 +137,15 @@ private:
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
 
 	ReSTIRPTDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
+	// Number of host pinned render data slots used in turn by upload_render_data(). More than the uploads of one frame so that the wait on the
+	// event of a slot practically never blocks
+	static constexpr unsigned int RENDER_DATA_UPLOAD_SLOT_COUNT = 32;
+	// One host pinned render data per upload of a frame: the asynchronous copy reads its slot when it executes on the GPU, so the slot must not be
+	// overwritten by a later upload before that
 	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
+	// Recorded on the main stream after the copy of each slot. A slot is only rewritten once its event completed
+	std::vector<oroEvent_t> m_render_data_upload_events = std::vector<oroEvent_t>(RENDER_DATA_UPLOAD_SLOT_COUNT, nullptr);
+	unsigned int m_next_render_data_upload_slot			= 0;
 	ReSTIRPTSPMISDataHost<OrochiBuffer> m_spmis_data;
 	// Per-pixel state of the shadow split union domain kernels (every array of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one allocation, in
 	// elements of 16 bytes so that the element count stays small at large resolutions) and the number of pixels it is allocated for. Only allocated
