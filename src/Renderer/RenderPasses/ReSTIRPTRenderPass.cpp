@@ -9,6 +9,8 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <ranges>
 const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME						   = "ReSTIR PT Render pass";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID			   = "ReSTIR PT Initial candidates";
@@ -668,9 +670,37 @@ void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 {
 	upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, render_data);
 
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(
-		KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
-		m_renderer->get_main_stream());
+	// LOCAL DEBUG TOGGLE: HIPRT_INITIAL_CANDIDATES_BANDS=N launches the kernel as N horizontal bands, in stream order. Shorter dispatches avoid
+	// the GPU faults seen with the Radeon Developer Panel attached. Unset or 1: one launch over the whole image
+	static int band_count =
+		std::getenv("HIPRT_INITIAL_CANDIDATES_BANDS") != nullptr ? std::clamp(std::atoi(std::getenv("HIPRT_INITIAL_CANDIDATES_BANDS")), 1, 64) : 1;
+
+	std::shared_ptr<GPUKernel> initial_candidates_kernel = m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID];
+	if (band_count == 1)
+	{
+		initial_candidates_kernel->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x,
+													   m_renderer->m_render_resolution.y, nullptr, m_renderer->get_main_stream());
+
+		return;
+	}
+
+	// Static storage: the uploads are asynchronous so every band needs its own source value that outlives this function
+	static unsigned int band_y_offsets[64];
+
+	int resolution_y = m_renderer->m_render_resolution.y;
+	int band_height	 = ((resolution_y + band_count - 1) / band_count + KernelBlockWidthHeight - 1) / KernelBlockWidthHeight * KernelBlockWidthHeight;
+	for (int band_index = 0; band_index < band_count; band_index++)
+	{
+		int band_y = band_index * band_height;
+		if (band_y >= resolution_y)
+			break;
+
+		band_y_offsets[band_index] = static_cast<unsigned int>(band_y);
+		initial_candidates_kernel->upload_to_module_global("RESTIR_PT_INITIAL_CANDIDATES_BAND_Y_OFFSET", &band_y_offsets[band_index], sizeof(unsigned int),
+														   m_renderer->get_main_stream());
+		initial_candidates_kernel->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x,
+													   std::min(band_height, resolution_y - band_y), nullptr, m_renderer->get_main_stream());
+	}
 }
 
 void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data,

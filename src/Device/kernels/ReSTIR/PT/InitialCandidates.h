@@ -598,6 +598,10 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_dispatch(HIPRTRenderData& render_data,
 extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
+
+	// LOCAL DEBUG TOGGLE (HIPRT_INITIAL_CANDIDATES_BANDS, see ReSTIRPTRenderPass::launch_initial_candidates_pass()): first row of the horizontal
+	// band processed by this launch. Zero when the image is launched in one go
+	__device__ unsigned int RESTIR_PT_INITIAL_CANDIDATES_BAND_Y_OFFSET;
 }
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_InitialCandidates()
 #else  // #ifdef __KERNELCC__
@@ -608,7 +612,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_RENDER_DATA);
 
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y + RESTIR_PT_INITIAL_CANDIDATES_BAND_Y_OFFSET;
 #endif // #ifdef __KERNELCC__
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
