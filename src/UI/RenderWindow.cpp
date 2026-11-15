@@ -575,7 +575,8 @@ RenderWindow::gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GL
 const std::string RenderWindow::PERF_METRICS_CPU_OVERHEAD_TIME_KEY = "CPUDisplayTime";
 
 RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
-	: m_viewport_width(renderer_width), m_viewport_height(renderer_height)
+	: m_viewport_width(renderer_width), m_viewport_height(renderer_height), m_requested_viewport_width(renderer_width),
+	  m_requested_viewport_height(renderer_height)
 {
 	// Adding the size of the windows around the viewport such that these windows
 	// have their base size and the viewport has the size the the user has asked for
@@ -773,6 +774,49 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 	m_display_view_system->resize(new_render_width, new_render_height);
 
 	set_render_dirty(true);
+}
+
+void RenderWindow::correct_window_size_for_requested_viewport()
+{
+	if (m_window_size_correction_done)
+		return;
+
+	ImVec2 viewport_size = m_imgui_renderer->get_imgui_render_window().get_size();
+	int viewport_width	 = static_cast<int>(viewport_size.x);
+	int viewport_height	 = static_cast<int>(viewport_size.y);
+
+	// The docking layout settles over the first frames: only correcting once the
+	// viewport has kept the same size for two frames in a row
+	bool viewport_size_stable		 = viewport_width == m_previous_frame_viewport_width && viewport_height == m_previous_frame_viewport_height;
+	m_previous_frame_viewport_width	 = viewport_width;
+	m_previous_frame_viewport_height = viewport_height;
+	if (!viewport_size_stable || viewport_width <= 0 || viewport_height <= 0)
+		return;
+
+	int missing_width  = m_requested_viewport_width - viewport_width;
+	int missing_height = m_requested_viewport_height - viewport_height;
+	if (missing_width == 0 && missing_height == 0)
+	{
+		m_window_size_correction_done = true;
+
+		return;
+	}
+
+	if (m_window_size_correction_count == RenderWindow::MAX_WINDOW_SIZE_CORRECTIONS)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+								"Could not resize the window to get the requested %dx%d viewport, the viewport is %dx%d.", m_requested_viewport_width,
+								m_requested_viewport_height, viewport_width, viewport_height);
+		m_window_size_correction_done = true;
+
+		return;
+	}
+
+	int window_width, window_height;
+	glfwGetWindowSize(m_glfw_window, &window_width, &window_height);
+	glfwSetWindowSize(m_glfw_window, window_width + missing_width, window_height + missing_height);
+
+	m_window_size_correction_count++;
 }
 
 void RenderWindow::change_resolution_scaling(float new_scaling)
@@ -1172,6 +1216,10 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		render();
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
+
+		// Done before the batch capture check below: a correction resizes the viewport, which marks the render dirty
+		// and so delays the capture until the render has been redone at the requested resolution
+		correct_window_size_for_requested_viewport();
 
 		// A viewport resize during draw_interface() (the docking layout settles over the first frames) reallocates the framebuffer
 		// and only marks the render dirty: the sample count is reset by the next render() call, so is_rendering_done() still

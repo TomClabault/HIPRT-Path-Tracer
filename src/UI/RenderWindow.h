@@ -156,7 +156,29 @@ public:
 	}
 
 private:
+	/**
+	 * The window is created with the size of the requested viewport plus the base sizes of the
+	 * settings and log windows but the docking layout also takes some space (tab bar of the viewport,
+	 * splitters, ...) so the viewport ends up a bit smaller than what was requested on the commandline.
+	 *
+	 * This function grows / shrinks the GLFW window by the missing amount, once the docking layout
+	 * has settled, so that the viewport (and thus the render resolution) is exactly the requested one
+	 */
+	void correct_window_size_for_requested_viewport();
+
+	// How many times at most the window is resized to reach the requested viewport size.
+	// If the requested size still isn't reached after that (window larger than the screen
+	// for example), the viewport just keeps the size it has
+	static constexpr int MAX_WINDOW_SIZE_CORRECTIONS = 3;
+
 	int m_viewport_width, m_viewport_height;
+
+	// Viewport size asked for on the commandline
+	int m_requested_viewport_width, m_requested_viewport_height;
+	// Size of the ImGui viewport at the previous frame, used to detect that the docking layout has settled
+	int m_previous_frame_viewport_width = 0, m_previous_frame_viewport_height = 0;
+	int m_window_size_correction_count = 0;
+	bool m_window_size_correction_done = false;
 
 	/**
 	 * Denoises the renderer framebuffer using the OpenGL interop buffers.
