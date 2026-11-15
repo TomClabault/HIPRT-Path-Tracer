@@ -42,6 +42,18 @@ struct Xorshift32Generator
 	}
 
 	/*
+	 * Same as random_index(int) but 'max_index_excluded_as_float' is the float value of 'max_index_excluded', computed once on the host.
+	 *
+	 * On the GPU, converting a uniform int to a float is a vector instruction: when the compiler hoists that conversion out of a loop, the converted
+	 * value keeps a vector register for the whole loop. A float read from memory is used directly from a scalar register instead
+	 */
+	HIPRT_DEVICE int random_index(int max_index_excluded, float max_index_excluded_as_float)
+	{
+		int random_num = xorshift32() / static_cast<float>(XORSHIFT_MAX) * max_index_excluded_as_float;
+		return hippt::min(random_num, max_index_excluded - 1);
+	}
+
+	/*
 	 * Returns a float int [0, 1.0 - 1.0e-9f]
 	 */
 	HIPRT_DEVICE float operator()()

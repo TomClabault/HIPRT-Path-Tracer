@@ -18,7 +18,7 @@ struct AliasTableHost
 		out.alias_table_probas = probas.data();
 		out.alias_table_alias  = aliases.data();
 
-		out.size		 = size;
+		out.set_size(size);
 		out.sum_elements = sum_elements;
 
 		return out;

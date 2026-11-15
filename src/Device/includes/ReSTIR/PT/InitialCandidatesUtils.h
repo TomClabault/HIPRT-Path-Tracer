@@ -193,11 +193,16 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
 		return;
 
-	int nb_light_candidates	 = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates;
-	int nb_envmap_candidates = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates;
-	int nb_bsdf_candidates	 = render_data.render_settings.restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates;
-	if (nb_bsdf_candidates == 0)
+	const ReSTIRPTInitialCandidatesPassSettings& initial_candidates_settings = render_data.render_settings.restir_pt_settings.initial_candidates;
+
+	int nb_light_candidates = initial_candidates_settings.nee_ris_number_of_light_candidates;
+	if (initial_candidates_settings.nee_ris_number_of_bsdf_candidates == 0)
 		return;
+
+	// Float copies of the counts for the MIS weights, see ReSTIRPTInitialCandidatesPassSettings::nee_ris_number_of_light_candidates_as_float
+	float nb_light_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_light_candidates_as_float;
+	float nb_envmap_candidates_as_float = initial_candidates_settings.nee_ris_number_of_envmap_candidates_as_float;
+	float nb_bsdf_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_bsdf_candidates_as_float;
 
 	float bsdf_sample_pdf = nee_deferred_MIS_context.last_bsdf_sample_pdf;
 	if (bsdf_sample_pdf <= 0.0f)
@@ -239,7 +244,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 		float nee_mis_weight;
 		if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf_solid_angle, nb_envmap_candidates);
+			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, envmap_pdf_solid_angle, nb_envmap_candidates_as_float);
 		else
 			// The uniform sky isn't explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
 			nee_mis_weight = 1.0f;
@@ -283,12 +288,12 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		{
 			float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info,
 																									   view_direction, sampled_bsdf_direction);
-			nee_mis_weight						= balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_sampler_solid_angle_pdf,
-																	nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+			nee_mis_weight						= balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf,
+																	nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 		}
 		else
 			// Faster path for no light candidates, equivalent to balance heuristic (bsdf_pdf, nb_bsdf_candidates, ***, 0)
-			nee_mis_weight = 1.0f / nb_bsdf_candidates;
+			nee_mis_weight = initial_candidates_settings.inverse_nee_ris_number_of_bsdf_candidates;
 
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
 

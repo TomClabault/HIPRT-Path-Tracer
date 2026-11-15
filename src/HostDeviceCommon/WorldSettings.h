@@ -28,8 +28,34 @@ struct WorldSettings
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
 	ColorRGB32F uniform_light_color		= ColorRGB32F(0.0f);
 
-	// Width and height in pixels. Both in the range [1, XXX]
+	// Sets the width and height of the envmap and their float copies
+	HIPRT_HOST void set_envmap_dimensions(unsigned int width, unsigned int height)
+	{
+		envmap_width  = width;
+		envmap_height = height;
+
+		envmap_width_as_float			 = static_cast<float>(width);
+		envmap_height_as_float			 = static_cast<float>(height);
+		envmap_width_minus_one_as_float	 = static_cast<float>(width - 1);
+		envmap_height_minus_one_as_float = static_cast<float>(height - 1);
+		envmap_texel_count_as_float		 = static_cast<float>(width * height);
+	}
+
+	// Width and height in pixels. Both in the range [1, XXX]. Set with set_envmap_dimensions()
 	unsigned int envmap_width = 0, envmap_height = 0;
+
+	// Float copies of the dimensions used by the envmap sampling and lookups.
+	//
+	// On the GPU, converting a uniform int to a float is a vector instruction: when the compiler hoists that conversion out of a loop (the bounce
+	// loop for example), the converted value keeps a vector register for the whole loop. A float read from memory is used directly from a scalar
+	// register instead
+	float envmap_width_as_float			   = 0.0f;
+	float envmap_height_as_float		   = 0.0f;
+	float envmap_width_minus_one_as_float  = 0.0f;
+	float envmap_height_minus_one_as_float = 0.0f;
+	// envmap_width * envmap_height
+	float envmap_texel_count_as_float = 0.0f;
+
 	// Simple scale multiplier on the envmap color read from the envmap texture
 	// in the shader
 	float envmap_intensity = 1.0f;

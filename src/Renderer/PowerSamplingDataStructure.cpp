@@ -85,7 +85,7 @@ void PowerSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompilerOption
 
 									power_alias_table.alias_table_probas = m_alias_table_probas.get_device_pointer();
 									power_alias_table.alias_table_alias	 = m_alias_table_aliases.get_device_pointer();
-									power_alias_table.size				 = emissive_triangle_indices.size();
+									power_alias_table.set_size(emissive_triangle_indices.size());
 									power_alias_table.sum_elements		 = power_sum;
 								});
 }
@@ -102,7 +102,7 @@ void PowerSamplingDataStructure::free()
 
 	render_data.buffers.emissive_triangles_power_alias_table.alias_table_alias	= nullptr;
 	render_data.buffers.emissive_triangles_power_alias_table.alias_table_probas = nullptr;
-	render_data.buffers.emissive_triangles_power_alias_table.size				= 0;
+	render_data.buffers.emissive_triangles_power_alias_table.set_size(0);
 	render_data.buffers.emissive_triangles_power_alias_table.sum_elements		= 0;
 }
 

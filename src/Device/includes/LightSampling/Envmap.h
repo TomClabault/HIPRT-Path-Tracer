@@ -95,13 +95,13 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
 
-	y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
-	x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
+	y = static_cast<int>(floorf(random_index / world_settings.envmap_width_as_float));
+	x = static_cast<int>(floorf(random_index - y * world_settings.envmap_width_as_float));
 #endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 
 	// Converting to UV coordinates
-	float u = static_cast<float>(x) / world_settings.envmap_width;
-	float v = static_cast<float>(y) / world_settings.envmap_height;
+	float u = static_cast<float>(x) / world_settings.envmap_width_as_float;
+	float v = static_cast<float>(y) / world_settings.envmap_height_as_float;
 
 	// Converting to polar coordinates
 	float phi = u * hippt::M_TWO_PI;
@@ -127,7 +127,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor);
 
 	// Account for the fact that the envmap texels have some area in the world
-	envmap_pdf_solid_angle *= world_settings.envmap_width * world_settings.envmap_height;
+	envmap_pdf_solid_angle *= world_settings.envmap_texel_count_as_float;
 #endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 
 	// Converting the PDF from area measure on the envmap to solid angle measure
@@ -163,7 +163,7 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 		  (envmap_total_sum * render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
 
 	// Account for the fact that the envmap texels have some area in the world
-	pdf *= world_settings.envmap_width * world_settings.envmap_height;
+	pdf *= world_settings.envmap_texel_count_as_float;
 #endif // #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 
 	// Converting from "texel on envmap measure" to solid angle

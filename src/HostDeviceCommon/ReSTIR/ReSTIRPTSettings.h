@@ -26,6 +26,26 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	int nee_ris_number_of_envmap_candidates = 1;
 	int nee_ris_number_of_bsdf_candidates	= 1;
 
+	// Float copies of the candidate counts above, used by the MIS weights of the candidates. Set by update_candidate_counts_as_float() before each
+	// initial candidates pass.
+	//
+	// On the GPU, converting a uniform int to a float is a vector instruction: the compiler hoists these conversions out of the bounce loop and
+	// each converted count then keeps a vector register for the whole kernel. A float read from memory is used directly from a scalar register instead
+	float nee_ris_number_of_light_candidates_as_float  = 1.0f;
+	float nee_ris_number_of_envmap_candidates_as_float = 1.0f;
+	float nee_ris_number_of_bsdf_candidates_as_float   = 1.0f;
+	// 1.0f / nee_ris_number_of_bsdf_candidates, 0.0f without BSDF candidates
+	float inverse_nee_ris_number_of_bsdf_candidates = 1.0f;
+
+	HIPRT_HOST void update_candidate_counts_as_float()
+	{
+		nee_ris_number_of_light_candidates_as_float	 = static_cast<float>(nee_ris_number_of_light_candidates);
+		nee_ris_number_of_envmap_candidates_as_float = static_cast<float>(nee_ris_number_of_envmap_candidates);
+		nee_ris_number_of_bsdf_candidates_as_float	 = static_cast<float>(nee_ris_number_of_bsdf_candidates);
+
+		inverse_nee_ris_number_of_bsdf_candidates = nee_ris_number_of_bsdf_candidates > 0 ? 1.0f / nee_ris_number_of_bsdf_candidates : 0.0f;
+	}
+
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
 	ReSTIRPTReservoir* initial_candidates_buffer = nullptr;

@@ -77,7 +77,7 @@ struct IlluminationAwareKDTreeDataHost
 
 		kd_tree_device.core.user_settings								   = render_data.kd_tree_device.core.user_settings;
 		kd_tree_device.learning_to_cluster.user_settings				   = render_data.kd_tree_device.learning_to_cluster.user_settings;
-		kd_tree_device.learning_to_cluster.effective_initial_lightcut_size = render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size;
+		kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size);
 
 		return kd_tree_device;
 	}

@@ -12,7 +12,7 @@ struct AliasTableDevice
 {
 	HIPRT_HOST_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
-		int random_index  = rng.random_index(size);
+		int random_index  = rng.random_index(size, size_as_float);
 		float probability = alias_table_probas[random_index];
 		if (rng() > probability)
 			// Picking the alias
@@ -21,11 +21,21 @@ struct AliasTableDevice
 		return random_index;
 	}
 
+	// Sets the size of the table and its float copy
+	HIPRT_HOST void set_size(unsigned int new_size)
+	{
+		size		  = new_size;
+		size_as_float = static_cast<float>(static_cast<int>(new_size));
+	}
+
 	int* alias_table_alias	  = nullptr;
 	float* alias_table_probas = nullptr;
 
 	float sum_elements = 0.0f;
-	unsigned int size  = 0;
+	// Set with set_size()
+	unsigned int size = 0;
+	// Float copy of 'size' used by sample(), see Xorshift32Generator::random_index(int, float)
+	float size_as_float = 0.0f;
 };
 
 /**

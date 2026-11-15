@@ -212,7 +212,7 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 
 		world_settings.envmap_alias_table.alias_table_probas = nullptr;
 		world_settings.envmap_alias_table.alias_table_alias	 = nullptr;
-		world_settings.envmap_alias_table.size				 = 0;
+		world_settings.envmap_alias_table.set_size(0);
 		world_settings.envmap_alias_table.sum_elements		 = 0;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
@@ -222,7 +222,7 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 
 		world_settings.envmap_alias_table.alias_table_probas = nullptr;
 		world_settings.envmap_alias_table.alias_table_alias	 = nullptr;
-		world_settings.envmap_alias_table.size				 = 0;
+		world_settings.envmap_alias_table.set_size(0);
 		world_settings.envmap_alias_table.sum_elements		 = 0;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
@@ -232,7 +232,7 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 
 		world_settings.envmap_alias_table.alias_table_probas = m_alias_table_probas.get_device_pointer();
 		world_settings.envmap_alias_table.alias_table_alias	 = m_alias_table_alias.get_device_pointer();
-		world_settings.envmap_alias_table.size				 = m_alias_table_alias.size();
+		world_settings.envmap_alias_table.set_size(m_alias_table_alias.size());
 		world_settings.envmap_alias_table.sum_elements		 = m_luminance_total_sum;
 	}
 }

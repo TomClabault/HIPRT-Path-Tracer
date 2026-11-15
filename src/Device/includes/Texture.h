@@ -215,8 +215,8 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettings& world_settings, float2_t uv)
 {
 #if EnvmapSamplingDoBilinearFiltering == KERNEL_OPTION_TRUE
-	float x = uv.x * (world_settings.envmap_width - 1);
-	float y = uv.y * (world_settings.envmap_height - 1);
+	float x = uv.x * world_settings.envmap_width_minus_one_as_float;
+	float y = uv.y * world_settings.envmap_height_minus_one_as_float;
 
 	float x_frac = hippt::fract(x);
 	float y_frac = hippt::fract(y);
@@ -238,8 +238,8 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 
 	return hippt::lerp(hippt::lerp(color_x0y0, color_x1y0, x_frac), hippt::lerp(color_x0y1, color_x1y1, x_frac), y_frac);
 #else // #if EnvmapSamplingDoBilinearFiltering == KERNEL_OPTION_TRUE
-	int x	  = uv.x * (world_settings.envmap_width - 1);
-	int y	  = uv.y * (world_settings.envmap_height - 1);
+	int x	  = uv.x * world_settings.envmap_width_minus_one_as_float;
+	int y	  = uv.y * world_settings.envmap_height_minus_one_as_float;
 	int index = x + y * world_settings.envmap_width;
 
 	return world_settings.envmap[index].unpack() * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor;

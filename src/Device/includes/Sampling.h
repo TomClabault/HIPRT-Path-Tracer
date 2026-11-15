@@ -100,6 +100,18 @@ HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf
 }
 
 /**
+ * Balance heuristic with the numbers of samples given as floats: for numbers of samples that are uniform values
+ * converted to floats once on the host (the int version converts them on the GPU, see ReSTIRPTInitialCandidatesPassSettings)
+ */
+HIPRT_DEVICE static float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
+{
+	if (pdf_a == 0.0f)
+		return 0.0f;
+
+	return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
+}
+
+/**
  * Balance heuristic for 3 strategies
  */
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, float pdf_c, int nb_pdf_c)

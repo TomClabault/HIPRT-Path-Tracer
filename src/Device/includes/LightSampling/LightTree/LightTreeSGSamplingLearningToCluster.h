@@ -135,9 +135,11 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 
 		if (total_weight <= 0.0f)
 		{
-			selected_slot	= random_number_generator.random_index(initial_lightcut_size);
+			float initial_lightcut_size_as_float = kd_tree.learning_to_cluster.effective_initial_lightcut_size_as_float;
+
+			selected_slot	= random_number_generator.random_index(initial_lightcut_size, initial_lightcut_size_as_float);
 			selected_weight = 1.0f;
-			total_weight	= static_cast<float>(initial_lightcut_size);
+			total_weight	= initial_lightcut_size_as_float;
 		}
 
 		result.cluster_node_index  = kd_tree.learning_to_cluster.initial_lightcut_node_indices[selected_slot];

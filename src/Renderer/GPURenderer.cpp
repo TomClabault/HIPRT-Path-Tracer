@@ -1164,8 +1164,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 									m_envmap.recompute_sampling_data_structure(this, &envmap_image);
 
 									m_render_data.world_settings.envmap						  = m_envmap.get_packed_data_pointer();
-									m_render_data.world_settings.envmap_width				  = m_envmap.get_width();
-									m_render_data.world_settings.envmap_height				  = m_envmap.get_height();
+									m_render_data.world_settings.set_envmap_dimensions(m_envmap.get_width(), m_envmap.get_height());
 									m_render_data.world_settings.envmap_packed_scaling_factor = m_envmap.get_envmap_packed_scaling_factor();
 									// We found an envmap so let's use it
 									m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;

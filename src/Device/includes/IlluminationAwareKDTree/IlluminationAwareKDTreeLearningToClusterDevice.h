@@ -243,8 +243,19 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	unsigned int normal_lightcut_set_capacity								  = 0;
 	AtomicType<unsigned int>* normal_face_observation_counts				  = nullptr;
 
-	unsigned int* initial_lightcut_node_indices	 = nullptr;
+	// Sets the effective initial lightcut size and its float copy
+	HIPRT_HOST void set_effective_initial_lightcut_size(unsigned int lightcut_size)
+	{
+		effective_initial_lightcut_size			 = lightcut_size;
+		effective_initial_lightcut_size_as_float = static_cast<float>(static_cast<int>(lightcut_size));
+	}
+
+	unsigned int* initial_lightcut_node_indices = nullptr;
+	// Set with set_effective_initial_lightcut_size()
 	unsigned int effective_initial_lightcut_size = 0;
+	// Float copy of 'effective_initial_lightcut_size' for the uniform fallback of the initial lightcut sampling: converting a uniform int to a float on
+	// the GPU is a vector instruction that the compiler hoists out of the bounce loop, keeping a vector register for the whole kernel
+	float effective_initial_lightcut_size_as_float = 0.0f;
 
 	unsigned int* lightcut_node_indices								   = nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* lightcut_statistics = nullptr;

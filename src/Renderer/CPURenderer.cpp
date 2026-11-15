@@ -489,7 +489,7 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 			m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_alias  = m_power_alias_table_alias.data();
 			m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
 			m_render_data.buffers.emissive_triangles_power_alias_table.sum_elements		  = power_sum;
-			m_render_data.buffers.emissive_triangles_power_alias_table.size				  = scene.emissive_triangles_primitive_indices.size();
+			m_render_data.buffers.emissive_triangles_power_alias_table.set_size(scene.emissive_triangles_primitive_indices.size());
 
 			auto stop = std::chrono::high_resolution_clock::now();
 			std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms"
@@ -526,8 +526,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 	float envmap_scaling_factor;
 	m_packed_envmap.pack_from(envmap_image, envmap_scaling_factor);
 	m_render_data.world_settings.envmap						  = m_packed_envmap.get_data_pointer();
-	m_render_data.world_settings.envmap_width				  = envmap_image.width;
-	m_render_data.world_settings.envmap_height				  = envmap_image.height;
+	m_render_data.world_settings.set_envmap_dimensions(envmap_image.width, envmap_image.height);
 	m_render_data.world_settings.envmap_packed_scaling_factor = envmap_scaling_factor;
 	m_render_data.world_settings.ambient_light_type			  = AmbientLightType::ENVMAP;
 
@@ -538,7 +537,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 		m_render_data.world_settings.envmap_alias_table.alias_table_probas = m_envmap_alias_table_probas.data();
 		m_render_data.world_settings.envmap_alias_table.alias_table_alias  = m_envmap_alias_table_alias.data();
 		m_render_data.world_settings.envmap_alias_table.sum_elements	   = m_render_data.world_settings.envmap_total_sum;
-		m_render_data.world_settings.envmap_alias_table.size			   = envmap_image.width * envmap_image.height;
+		m_render_data.world_settings.envmap_alias_table.set_size(envmap_image.width * envmap_image.height);
 	}
 }
 
@@ -648,8 +647,8 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result			 = m_light_tree_sg_build_result;
 		const std::vector<unsigned int>& second_tree_cut_node_indices					 = light_tree_sg_build_result.second_tree_cut_node_indices;
 		unsigned int effective_second_tree_cut_size										 = light_tree_sg_build_result.effective_second_tree_cut_size;
-		kd_tree_device.learning_to_cluster.effective_initial_lightcut_size				 = effective_second_tree_cut_size;
-		m_render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size = effective_second_tree_cut_size;
+		kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
+		m_render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
 
 		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.begin(),
 				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.end(),
@@ -1143,6 +1142,7 @@ void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
 void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
 {
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
+	m_render_data.render_settings.restir_pt_settings.initial_candidates.update_candidate_counts_as_float();
 }
 
 void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
