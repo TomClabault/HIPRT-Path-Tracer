@@ -69,6 +69,9 @@ struct LightTreeSGNodeDevice
 
 struct LightTreeSGDevice
 {
+	// Depth stored in 'node_path_codes' for a node that is too deep for its path to fit in a 32-bit trail
+	static constexpr unsigned int INVALID_NODE_PATH_DEPTH = 0xFFFFFFFFu;
+
 	LightTreeSGSettings settings;
 
 	LightTreeSGNodeDevice* nodes			   = nullptr;
@@ -78,6 +81,12 @@ struct LightTreeSGDevice
 
 	int* indices_array		 = nullptr;
 	unsigned int* bit_trails = nullptr;
+
+	// One entry per node: x is the path from the root to the node with the same encoding as 'bit_trails' (bit d set if the path goes to the right
+	// child at depth d), y is the depth of the node (0 for the root, INVALID_NODE_PATH_DEPTH if deeper than 32).
+	//
+	// A triangle is under a node if and only if the first 'depth' bits of its bit trail are the path of the node
+	uint2_t* node_path_codes = nullptr;
 };
 
 #endif // #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_DEVICE_H

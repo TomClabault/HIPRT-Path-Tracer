@@ -162,6 +162,33 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].first_triangle_index;
 	}
 
+	// Path from the root to every node, with the encoding of the bit trails of the triangles: the device finds the node of a light cut that
+	// contains a triangle by comparing these paths with the bit trail of the triangle. Nodes deeper than 32 keep the invalid depth: their path
+	// does not fit in a bit trail
+	device_data_out.node_path_codes_device.resize(m_nodes.size(), make_uint2(0u, LightTreeSGDevice::INVALID_NODE_PATH_DEPTH));
+	device_data_out.node_path_codes_device[0] = make_uint2(0u, 0u);
+
+	std::vector<unsigned int> nodes_to_visit = { 0u };
+	while (!nodes_to_visit.empty())
+	{
+		unsigned int node_index = nodes_to_visit.back();
+		nodes_to_visit.pop_back();
+
+		uint2_t node_path_code = device_data_out.node_path_codes_device[node_index];
+		if (m_nodes[node_index].triangle_count != 0 || node_path_code.y >= 32u)
+			// Leaf, or children too deep for a 32-bit trail
+			continue;
+
+		unsigned int left_child_index  = m_nodes[node_index].left_child_index;
+		unsigned int right_child_index = left_child_index + 1;
+
+		device_data_out.node_path_codes_device[left_child_index]  = make_uint2(node_path_code.x, node_path_code.y + 1u);
+		device_data_out.node_path_codes_device[right_child_index] = make_uint2(node_path_code.x | (1u << node_path_code.y), node_path_code.y + 1u);
+
+		nodes_to_visit.push_back(left_child_index);
+		nodes_to_visit.push_back(right_child_index);
+	}
+
 	return device_data_out;
 }
 
@@ -181,6 +208,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		render_data.light_tree_sg.spatial_lobes							  = nullptr;
 		render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
 		render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
+		render_data.light_tree_sg.node_path_codes						  = nullptr;
 
 		return;
 	}
@@ -199,9 +227,10 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
 
-		device_data.m_device_nodes_buffer		  = device_data.nodes_device;
-		device_data.m_device_indices_array_buffer = m_light_tree_ats_builder.get_triangle_indices();
-		device_data.m_bit_trails_buffer			  = converted_bit_trails;
+		device_data.m_device_nodes_buffer			= device_data.nodes_device;
+		device_data.m_device_indices_array_buffer	= m_light_tree_ats_builder.get_triangle_indices();
+		device_data.m_bit_trails_buffer				= converted_bit_trails;
+		device_data.m_device_node_path_codes_buffer = device_data.node_path_codes_device;
 	}
 	else
 	{
@@ -212,9 +241,10 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
 
-		device_data.m_device_nodes_buffer		  = OrochiBuffer<LightTreeSGNodeDevice>(device_data.nodes_device);
-		device_data.m_device_indices_array_buffer = OrochiBuffer<int>(m_light_tree_ats_builder.get_triangle_indices());
-		device_data.m_bit_trails_buffer			  = OrochiBuffer<unsigned int>(converted_bit_trails);
+		device_data.m_device_nodes_buffer			= OrochiBuffer<LightTreeSGNodeDevice>(device_data.nodes_device);
+		device_data.m_device_indices_array_buffer	= OrochiBuffer<int>(m_light_tree_ats_builder.get_triangle_indices());
+		device_data.m_bit_trails_buffer				= OrochiBuffer<unsigned int>(converted_bit_trails);
+		device_data.m_device_node_path_codes_buffer = OrochiBuffer<uint2_t>(device_data.node_path_codes_device);
 	}
 
 	render_data.light_tree_sg.settings.spatial_lobe_count			  = m_build_options.spatial_lobe_count;
@@ -226,6 +256,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	render_data.light_tree_sg.second_tree_cut_node_indices			  = device_data.m_device_second_tree_cut_node_indices_buffer.data();
 	render_data.light_tree_sg.indices_array							  = device_data.m_device_indices_array_buffer.data();
 	render_data.light_tree_sg.bit_trails							  = device_data.m_bit_trails_buffer.data();
+	render_data.light_tree_sg.node_path_codes						  = device_data.m_device_node_path_codes_buffer.data();
 }
 
 #endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_H

@@ -27,6 +27,7 @@ struct LightTreeSGBuilderDeviceData
 			m_device_second_tree_cut_node_indices_buffer = std::vector<unsigned int>();
 			m_device_indices_array_buffer				 = std::vector<int>();
 			m_bit_trails_buffer							 = std::vector<unsigned int>();
+			m_device_node_path_codes_buffer				 = std::vector<uint2_t>();
 		}
 		else
 		{
@@ -36,6 +37,7 @@ struct LightTreeSGBuilderDeviceData
 			m_device_second_tree_cut_node_indices_buffer.free();
 			m_device_indices_array_buffer.free();
 			m_bit_trails_buffer.free();
+			m_device_node_path_codes_buffer.free();
 		}
 	}
 
@@ -43,13 +45,14 @@ struct LightTreeSGBuilderDeviceData
 	{
 		return m_device_nodes_buffer.get_byte_size() + m_device_spatial_lobes_buffer.get_byte_size() + m_device_tree_cut_node_indices_buffer.get_byte_size() +
 			   m_device_second_tree_cut_node_indices_buffer.get_byte_size() + m_device_indices_array_buffer.get_byte_size() +
-			   m_bit_trails_buffer.get_byte_size();
+			   m_bit_trails_buffer.get_byte_size() + m_device_node_path_codes_buffer.get_byte_size();
 	}
 
 	std::vector<LightTreeSGNodeDevice> nodes_device;
 	std::vector<SpatialSGLobeDevice> spatial_lobes_device;
 	std::vector<unsigned int> tree_cut_node_indices_device;
 	std::vector<unsigned int> second_tree_cut_node_indices_device;
+	std::vector<uint2_t> node_path_codes_device;
 
 	DataContainer<LightTreeSGNodeDevice> m_device_nodes_buffer;
 	DataContainer<SpatialSGLobeDevice> m_device_spatial_lobes_buffer;
@@ -57,6 +60,7 @@ struct LightTreeSGBuilderDeviceData
 	DataContainer<unsigned int> m_device_second_tree_cut_node_indices_buffer;
 	DataContainer<int> m_device_indices_array_buffer;
 	DataContainer<unsigned int> m_bit_trails_buffer;
+	DataContainer<uint2_t> m_device_node_path_codes_buffer;
 };
 
 template <template <typename> typename DataContainer>

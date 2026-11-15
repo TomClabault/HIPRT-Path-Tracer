@@ -109,6 +109,7 @@ void LightTreeSGSamplingDataStructure::free()
 	render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 	render_data.light_tree_sg.indices_array							  = nullptr;
 	render_data.light_tree_sg.bit_trails							  = nullptr;
+	render_data.light_tree_sg.node_path_codes						  = nullptr;
 	render_data.light_tree_sg.settings.spatial_lobe_count			  = 0;
 	render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
 	render_data.light_tree_sg.settings.effective_second_tree_cut_size = 0;

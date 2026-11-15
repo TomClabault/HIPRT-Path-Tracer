@@ -268,34 +268,68 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		initial_lightcut ? kd_tree.learning_to_cluster.initial_lightcut_node_indices
 						 : kd_tree.learning_to_cluster.lightcut_node_indices + kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0u);
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	const uint2_t* node_path_codes	   = render_data.light_tree_sg.node_path_codes;
 	unsigned int bit_trail			   = render_data.light_tree_sg.bit_trails[emissive_triangle_global_index];
-	unsigned int current_node_index	   = 0u;
-	unsigned int current_depth		   = 0u;
 	unsigned int selected_slot		   = lightcut_size;
+	unsigned int selected_depth		   = LightTreeSGDevice::INVALID_NODE_PATH_DEPTH;
 
-	// Follow the hit triangle's trail until reaching its cluster; ancestors above the cut are not sampled.
-	while (selected_slot == lightcut_size)
+	// The cluster of the hit triangle is the node of the cut whose path from the root is a prefix of the trail of the triangle; ancestors above
+	// the cut are not sampled.
+	//
+	// Every slot is tested on its own, without an early exit, so that the loads of many slots can be in flight together (following the trail
+	// from the root and scanning the cut at each depth was a chain of dependent loads). The shallowest match is kept: this is the node that the
+	// root-down search finds first.
+	//
+	// The slots are tested in unrolled groups of 8 so that the loads of a whole group are in flight together: in a plain loop over the slots,
+	// every slot waited for its own loads before the next slot was loaded
+	constexpr unsigned int slot_group_size = 8;
+	// The last group reads the slots up to the next multiple of the group size, which must stay inside the storage of the cut
+	static_assert(LearningToClusterMaximumLightCutSize % 8 == 0, "The cut search of the PDF reads the slots of a cut by groups of 8");
+
+	for (unsigned int group_start = 0; group_start < lightcut_size; group_start += slot_group_size)
 	{
-		for (unsigned int slot = 0; slot < lightcut_size; slot++)
+		// The node indices of the group are read with two 16-byte loads: with one load per slot, the compiler issued them one after the other with
+		// a wait after each. A cut has LearningToClusterMaximumLightCutSize slots of storage, a multiple of the group size, so the slots of the
+		// last group past the end of the cut are still in bounds
+		const uint4_t* group_node_indices_vectors		 = reinterpret_cast<const uint4_t*>(cluster_node_indices + group_start);
+		uint4_t first_node_indices						 = group_node_indices_vectors[0];
+		uint4_t second_node_indices						 = group_node_indices_vectors[1];
+		unsigned int group_node_indices[slot_group_size] = { first_node_indices.x,	first_node_indices.y,  first_node_indices.z,  first_node_indices.w,
+															 second_node_indices.x, second_node_indices.y, second_node_indices.z, second_node_indices.w };
+
+		uint2_t group_path_codes[slot_group_size];
+
+		// Two loops, all the loads of the group then all the tests, only to make that order visible: the unrolling is what lets the loads be in
+		// flight together and a single unrolled loop would most likely compile to the same code
+		UNROLL_LOOP
+		for (unsigned int group_slot = 0; group_slot < slot_group_size; group_slot++)
 		{
-			if (cluster_node_indices[slot] == current_node_index)
-			{
-				selected_slot = slot;
-				break;
-			}
+			// The slots past the end of the cut do not hold a valid node index: they read the root instead and they are never selected
+			unsigned int node_index = group_start + group_slot < lightcut_size ? group_node_indices[group_slot] : 0u;
+
+			group_path_codes[group_slot] = node_path_codes[node_index];
 		}
 
-		if (selected_slot != lightcut_size)
-			break;
+		UNROLL_LOOP
+		for (unsigned int group_slot = 0; group_slot < slot_group_size; group_slot++)
+		{
+			unsigned int slot		= group_start + group_slot;
+			unsigned int path_depth = group_path_codes[group_slot].y;
+			unsigned int path_mask	= path_depth >= 32u ? 0xFFFFFFFFu : (1u << path_depth) - 1u;
 
-		const LightTreeSGNodeDevice& current_node = nodes[current_node_index];
-		if (current_node.triangle_count != 0u || current_depth >= sizeof(unsigned int) * 8u)
-			return 0.0f;
-
-		unsigned int child_offset = (bit_trail & (1u << current_depth)) != 0u ? 1u : 0u;
-		current_node_index		  = current_node.left_child_index_or_first_triangle_index + child_offset;
-		current_depth++;
+			// Bitwise & instead of &&: the short-circuit operator was compiled to a branch between the loads of the depth and of the path
+			bool matches =
+				(slot < lightcut_size) & (path_depth <= 32u) & ((bit_trail & path_mask) == group_path_codes[group_slot].x) & (path_depth < selected_depth);
+			selected_slot  = matches ? slot : selected_slot;
+			selected_depth = matches ? path_depth : selected_depth;
+		}
 	}
+
+	if (selected_slot == lightcut_size)
+		return 0.0f;
+
+	unsigned int current_node_index = cluster_node_indices[selected_slot];
+	unsigned int current_depth		= selected_depth;
 
 #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
