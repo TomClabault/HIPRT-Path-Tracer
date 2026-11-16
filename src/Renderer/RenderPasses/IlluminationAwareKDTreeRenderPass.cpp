@@ -382,16 +382,32 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 	{
 		if (m_renderer->get_render_data().render_settings.sample_number == 0)
 		{
-			IlluminationAwareKDTreeDevice kd_tree_device						   = m_illumination_aware_kd_tree.to_device(m_renderer->get_render_data());
+			HIPRTRenderData& render_data										   = m_renderer->get_render_data();
 			const LightTreeSGBuildResult<OrochiBuffer>& light_tree_sg_build_result = m_renderer->get_light_tree_sg_sampling_data_structure().get_build_result();
 			const std::vector<unsigned int>& second_tree_cut_node_indices		   = light_tree_sg_build_result.second_tree_cut_node_indices;
 			unsigned int effective_second_tree_cut_size							   = light_tree_sg_build_result.effective_second_tree_cut_size;
-			kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
-			m_renderer->get_render_data().kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
+
+			// The envmap is the slot 0 of the initial lightcut, in front of the cut of the light tree. The light tree cut leaves one slot for it
+			bool envmap_has_sampling_structure =
+				m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING;
+			render_data.kd_tree_device.learning_to_cluster.setup_envmap_cluster(render_data.world_settings, envmap_has_sampling_structure,
+																				render_data.bsdfs_data.white_furnace_mode,
+																				render_data.buffers.emissive_triangles_count);
+
+			std::vector<unsigned int> initial_lightcut_node_indices;
+			if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
+				initial_lightcut_node_indices.push_back(IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX);
+			initial_lightcut_node_indices.insert(initial_lightcut_node_indices.end(), second_tree_cut_node_indices.begin(),
+												 second_tree_cut_node_indices.begin() +
+													 std::min<size_t>(effective_second_tree_cut_size, second_tree_cut_node_indices.size()));
+			unsigned int effective_initial_lightcut_size = static_cast<unsigned int>(initial_lightcut_node_indices.size());
+
+			render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_initial_lightcut_size);
+			IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
 			if (!second_tree_cut_node_indices.empty() && effective_second_tree_cut_size > 0)
 			{
 				m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.upload_data_partial(
-					0, second_tree_cut_node_indices.data(), effective_second_tree_cut_size);
+					0, initial_lightcut_node_indices.data(), effective_initial_lightcut_size);
 
 				LightTreeSGDevice light_tree_sg				 = m_renderer->get_render_data().light_tree_sg;
 				void* initialize_root_lightcut_launch_args[] = { &kd_tree_device, &light_tree_sg };
@@ -576,7 +592,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		unsigned int learning_to_cluster_lightcut_block_size =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
 		unsigned int maximum_lightcut_face_block_count = kd_tree_device.core.node_capacity * SurfaceNormalFace_Count;
-		unsigned int maximum_lightcut_work_count = kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size;
+		unsigned int maximum_lightcut_work_count	   = kd_tree_device.learning_to_cluster.lightcut_capacity * learning_to_cluster_lightcut_block_size;
 		unsigned int maximum_active_allocation_blocks_per_multiprocessor =
 			static_cast<unsigned int>(m_kernels[IlluminationAwareKDTreeRenderPass::LEARNING_TO_CLUSTER_ALLOCATE_NORMAL_FACE_LIGHTCUTS_KERNEL_ID]
 										  ->get_max_active_blocks_per_multiprocessor(static_cast<int>(learning_to_cluster_lightcut_block_size)));

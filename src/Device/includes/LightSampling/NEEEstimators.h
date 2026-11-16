@@ -333,6 +333,116 @@ HIPRT_DEVICE ColorRGB32F evaluate_learning_to_cluster_without_visibility(HIPRTRe
 	return mis_estimator;
 }
 
+/**
+ * Light sample of learning to cluster when the selected cluster of the lightcut is the envmap: samples a direction from the envmap distribution,
+ * traces the shadow ray towards the envmap and appends the learning-to-cluster and spatial training samples of that light sample.
+ *
+ * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'
+ */
+template <bool use_MIS, NEEShadowMode shadow_mode, typename BsdfMaterialType>
+HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderData& render_data,
+																   RayPayloadT<BsdfMaterialType>& ray_payload,
+																   BsdfMaterialType& bsdf_material,
+																   const HitInfo& closest_hit_info,
+																   const float3_t& view_direction,
+																   const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& cluster_sample,
+																   IlluminationAwareKDTreeLearningToClusterTrainingSample& learning_to_cluster_training_sample,
+																   Xorshift32Generator& random_number_generator,
+																   WavefrontShadowSink* shadow_sink)
+{
+	float envmap_pdf_solid_angle;
+	float3_t sampled_direction;
+	ColorRGB32F envmap_radiance = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf_solid_angle, random_number_generator);
+
+	float solid_angle_pdf = envmap_pdf_solid_angle * cluster_sample.cluster_probability;
+	float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
+	if (!(solid_angle_pdf > 0.0f) || !hippt::is_finite(solid_angle_pdf) || cosine_term <= 0.0f)
+	{
+		// Keep a failed direction proposal observable to learning-to-cluster as a zero-reward observation, as for the emissive clusters
+		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+		return ColorRGB32F(0.0f);
+	}
+
+	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
+	spatial_training_sample.position				   = closest_hit_info.inter_point;
+	spatial_training_sample.incoming_direction		   = sampled_direction;
+	spatial_training_sample.valid_for_spatial_training = true;
+	spatial_training_sample.cached_guiding_node_index  = cluster_sample.guiding_node_index;
+
+	float bsdf_pdf							  = 0.0f;
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+	MicrofacetRegularization::RegularizationMode regularization_mode =
+		use_MIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
+	BSDFContextT<BsdfMaterialType> bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction,
+												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
+												regularization_mode);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+	ColorRGB32F mis_estimator(0.0f);
+	if (bsdf_pdf > 0.0f)
+	{
+		float mis_weight = 1.0f;
+		if constexpr (use_MIS)
+			mis_weight = balance_heuristic(solid_angle_pdf, 1, bsdf_pdf, 1);
+
+		mis_estimator = envmap_radiance * cosine_term * bsdf_color / solid_angle_pdf * mis_weight;
+	}
+
+	// Cancel only cluster selection: Q learns the conditional contribution assigned to NEE by MIS.
+	float cluster_reward_if_visible			 = mis_estimator.luminance() * cluster_sample.cluster_probability;
+	float spatial_radiance_weight_if_visible = (envmap_radiance / solid_angle_pdf).max_component();
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin	 = closest_hit_info.inter_point;
+	shadow_ray.direction = sampled_direction;
+
+	if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
+	{
+		// ENVMAP_RAW: the contribution is clamped with the envmap clamp when the shadow ray is resolved
+		unsigned int queue_slot = shadow_sink->emit(
+			shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
+			WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
+		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
+		{
+			WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
+			sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+			sidecar.learning_to_cluster_sample_index =
+				render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+			sidecar.spatial_radiance_weight_if_visible = spatial_radiance_weight_if_visible;
+			sidecar.cluster_reward_if_visible		   = cluster_reward_if_visible;
+		}
+
+		return ColorRGB32F(0.0f);
+	}
+	else
+	{
+		NEEPlusPlusContext nee_plus_plus_context;
+		nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+		nee_plus_plus_context.point_on_light = sampled_direction;
+		nee_plus_plus_context.envmap		 = true;
+
+		bool shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
+																	 random_number_generator);
+
+		ColorRGB32F envmap_contribution(0.0f);
+		if (!shadow_ray_occluded)
+		{
+			spatial_training_sample.spatial_radiance_weight			 = spatial_radiance_weight_if_visible;
+			learning_to_cluster_training_sample.q_reward			 = cluster_reward_if_visible;
+			learning_to_cluster_training_sample.variance_observation = cluster_reward_if_visible;
+
+			// The envmap clamp applies to the envmap samples of learning to cluster as it does to the envmap samples of the envmap sampler
+			envmap_contribution = clamp_light_contribution(mis_estimator, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
+		}
+
+		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+
+		return envmap_contribution;
+	}
+}
+
 template <bool use_MIS, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType, typename ProposalMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
 																	  RayPayloadT<BsdfMaterialType>& ray_payload,
@@ -375,12 +485,17 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 	learning_to_cluster_training_sample.sampled_lightcut_size		   = triangle_sample.lightcut_size_at_sampling;
 	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
 
+	if (triangle_sample.is_envmap())
+		return sample_envmap_cluster_learning_to_cluster<use_MIS, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
+																			   triangle_sample, learning_to_cluster_training_sample, random_number_generator,
+																			   shadow_sink);
+
 	LightSamplePointInformation light_sample =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																proposal_state, triangle_sample.emissive_triangle_global_index, random_number_generator);
 	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
 
-	if (!(light_sample.area_measure_pdf > 0.0f) || !isfinite(light_sample.area_measure_pdf))
+	if (!(light_sample.area_measure_pdf > 0.0f) || !hippt::is_finite(light_sample.area_measure_pdf))
 	{
 		// Keep a failed point proposal observable to learning-to-cluster as a zero-reward observation without resampling from another proposal.
 		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
@@ -412,7 +527,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 		{
 			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-			if (solid_angle_pdf > 0.0f && isfinite(solid_angle_pdf))
+			if (solid_angle_pdf > 0.0f && hippt::is_finite(solid_angle_pdf))
 			{
 				float spatial_radiance_weight		= 0.0f;
 				float cluster_reward				= 0.0f;
@@ -447,7 +562,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 			if (!shadow_ray_occluded)
 			{
 				float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-				if (solid_angle_pdf > 0.0f && isfinite(solid_angle_pdf))
+				if (solid_angle_pdf > 0.0f && hippt::is_finite(solid_angle_pdf))
 				{
 					spatial_training_sample.spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
 
@@ -920,8 +1035,13 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 {
 	ColorRGB32F total_direct_lighting;
 
-	ColorRGB32F envmap_direct_contribution = sample_environment_map<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info,
-																								   view_direction, random_number_generator, shadow_sink);
+	ColorRGB32F envmap_direct_contribution;
+#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+	// When the envmap is a cluster of the lightcuts, it is sampled by the emissive geometry NEE of learning to cluster
+	if (!render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
+#endif
+		envmap_direct_contribution = sample_environment_map<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info,
+																						   view_direction, random_number_generator, shadow_sink);
 
 	// Clamping direct lighting
 	emissive_geometry_direct_contribution =
@@ -1136,6 +1256,50 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	return RISReservoir();
 }
 
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+/**
+ * When the envmap is a cluster of the lightcuts, the bounce ray of the main path that misses the scene is the BSDF sample of the envmap: returns
+ * the envmap contribution of that ray with its MIS weight against the envmap cluster of the lightcut of the previous vertex
+ */
+HIPRT_DEVICE ColorRGB32F deferred_NEE_MIS_envmap_miss_learning_to_cluster(HIPRTRenderData& render_data,
+																		  const RayPayloadCommon& ray_payload,
+																		  const NEEDeferredMISContext& nee_deferred_MIS_context)
+{
+	const float3_t& bsdf_sampled_direction = nee_deferred_MIS_context.last_bsdf_sampled_direction;
+
+	float envmap_pdf_solid_angle;
+	ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_direction, envmap_pdf_solid_angle);
+
+	float light_sampler_solid_angle_pdf = 0.0f;
+	if (nee_deferred_MIS_context.last_can_do_light_sampling)
+	{
+		const NEEDeferredLightProposalState& proposal_state = nee_deferred_MIS_context.get_last_light_proposal_state();
+		IlluminationAwareKDTreeSGShadingContext shading_context =
+			build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
+												   nee_deferred_MIS_context.last_shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
+		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
+			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
+
+		// Learning updates run after the megakernel, so this resolves the same cut and CDF used at the previous vertex.
+		unsigned int lightcut_index	  = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id);
+		light_sampler_solid_angle_pdf = pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, lightcut_index) * envmap_pdf_solid_angle;
+	}
+
+	// A previous vertex that cannot do light sampling sampled no envmap direction: the BSDF ray is then the only sampler of the envmap and its
+	// weight is 1
+	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf, 1);
+
+	ColorRGB32F envmap_contribution =
+		envmap_radiance * nee_deferred_MIS_context.last_bsdf_x_cos_theta / nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
+
+	// Same envmap clamp as the envmap NEE of the previous vertex, whose bounce is one less than the bounce of this miss
+	envmap_contribution = clamp_light_contribution(envmap_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 1);
+
+	return nee_deferred_MIS_context.last_ray_throughput * envmap_contribution;
+}
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+
 /**
  * If the bounce ray of the main path hits an emissive light, computes the MIS weight for that emissive hit against the light sampler of the last hit and
  * returns the contribution of that emissive hit with that MIS weight.
@@ -1181,6 +1345,11 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 	return nee_deferred_MIS_context.last_ray_throughput * current_hit_emission.get_emission() * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
 		   nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
 #elif DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_BSDF
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+	if (!intersection_found && render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
+		return deferred_NEE_MIS_envmap_miss_learning_to_cluster(render_data, ray_payload, nee_deferred_MIS_context);
+#endif
+
 	if (!current_hit_emission.is_emissive() || !intersection_found)
 		return ColorRGB32F(0.0f);
 	else if (compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(),

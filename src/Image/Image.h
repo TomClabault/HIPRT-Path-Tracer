@@ -131,6 +131,11 @@ public:
 	void compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum = nullptr) const;
 
 	float compute_luminance_sum() const;
+	/**
+	 * Mean luminance of the image used as an equirectangular envmap: every texel is weighted by its solid angle, which is proportional to the sine
+	 * of the polar angle of its row
+	 */
+	float compute_solid_angle_mean_luminance() const;
 
 	size_t byte_size() const;
 

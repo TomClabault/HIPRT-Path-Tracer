@@ -778,6 +778,31 @@ float Image32Bit::compute_luminance_sum() const
 	return sum;
 }
 
+float Image32Bit::compute_solid_angle_mean_luminance() const
+{
+	double weighted_luminance_sum = 0.0;
+	double solid_angle_weight_sum = 0.0;
+
+	for (int y = 0; y < height; y++)
+	{
+		// The polar angle at the center of the row. The sine is symmetric around the equator so the vertical orientation of the image does not matter
+		double theta		 = (static_cast<double>(y) + 0.5) / static_cast<double>(height) * static_cast<double>(hippt::M_Pi);
+		double sin_theta	 = std::sin(theta);
+		double row_luminance = 0.0;
+
+		for (int x = 0; x < width; x++)
+			row_luminance += luminance_of_pixel(x, y);
+
+		weighted_luminance_sum += row_luminance * sin_theta;
+		solid_angle_weight_sum += sin_theta * static_cast<double>(width);
+	}
+
+	if (solid_angle_weight_sum <= 0.0)
+		return 0.0f;
+
+	return static_cast<float>(weighted_luminance_sum / solid_angle_weight_sum);
+}
+
 size_t Image32Bit::byte_size() const
 {
 

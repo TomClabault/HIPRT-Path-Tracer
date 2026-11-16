@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SURFACE_NORMAL_FACE_H
 #define DEVICE_INCLUDES_ILLUMINATION_AWARE_KD_TREE_ILLUMINATION_AWARE_KD_TREE_SURFACE_NORMAL_FACE_H
 
+#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
 enum SurfaceNormalFace : unsigned char

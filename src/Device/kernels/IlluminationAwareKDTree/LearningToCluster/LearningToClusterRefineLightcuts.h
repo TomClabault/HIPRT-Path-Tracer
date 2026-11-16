@@ -186,7 +186,10 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
 		old_node_indices[slot] = kd_tree.learning_to_cluster.lightcut_node_indices[offset];
 		old_statistics[slot]   = kd_tree.learning_to_cluster.lightcut_statistics[offset];
-		total_variance += old_statistics[slot].get_refinement_variance();
+
+		// The envmap cluster is never split: its variance would only lower the split probability of the other clusters
+		if (old_node_indices[slot] != IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX)
+			total_variance += old_statistics[slot].get_refinement_variance();
 	}
 
 	unsigned int maximum_lightcut_size = LearningToClusterMaximumLightCutSize;
@@ -194,9 +197,10 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int accepted_split_count  = 0u;
 	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
-		const LightTreeSGNodeDevice& node = light_tree_sg.nodes[old_node_indices[slot]];
-		bool can_split					  = node.triangle_count == 0 && old_statistics[slot].visit_count > 1u;
-		float split_probability			  = 0.0f;
+		// The envmap cluster has no node in the light tree and is never split: it stays the slot 0 of the cut
+		bool is_envmap_cluster = old_node_indices[slot] == IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+		bool can_split		   = !is_envmap_cluster && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_statistics[slot].visit_count > 1u;
+		float split_probability = 0.0f;
 		if (can_split)
 			split_probability =
 				compute_cluster_split_probability(old_statistics[slot].get_refinement_variance(), total_variance, old_statistics[slot].visit_count,
@@ -300,10 +304,14 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	__syncthreads();
 
 	IlluminationAwareKDTreeLightClusterStatistics old_cluster_statistics = load_lightcut_statistics(old_statistics[slot]);
-	float local_variance												 = slot < old_lightcut_size ? old_cluster_statistics.get_refinement_variance() : 0.0f;
-	float total_variance												 = block_reduce<LearningToClusterMaximumLightCutSize>(local_variance);
 
-	bool can_split = slot < old_lightcut_size && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
+	// The envmap cluster has no node in the light tree and is never split: it stays the slot 0 of the cut. Its variance would only lower the split
+	// probability of the other clusters
+	bool is_light_tree_cluster = slot < old_lightcut_size && old_node_indices[slot] != IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+	float local_variance	   = is_light_tree_cluster ? old_cluster_statistics.get_refinement_variance() : 0.0f;
+	float total_variance	   = block_reduce<LearningToClusterMaximumLightCutSize>(local_variance);
+
+	bool can_split = is_light_tree_cluster && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_cluster_statistics.visit_count > 1u;
 	float split_probability = 0.0f;
 	if (can_split)
 		split_probability =

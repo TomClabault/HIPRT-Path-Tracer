@@ -58,6 +58,9 @@ static const std::vector<std::string>& assimp_supported_extensions()
 
 const char* ImGuiSettingsWindow::TITLE	   = "Render settings";
 const float ImGuiSettingsWindow::BASE_SIZE = 630.0f;
+const char* ImGuiSettingsWindow::ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP =
+	"Envmap sampling is handled by learning to cluster: the envmap is one of the learned clusters of every lightcut, and MIS with BSDF samples is "
+	"controlled by the choice of learning-to-cluster NEE estimator (with or without MIS).";
 
 void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 {
@@ -1375,10 +1378,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"clusters of a lightcut in the spherical gaussian light tree",
 
 				"Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a "
-				"lightcut (hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut",
+				"lightcut (hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut.\n\n"
+				"The envmap is one more cluster of every lightcut: its sampling probability is learned like the probability of the emissive geometry.",
 
 				"Combines learning-to-cluster light sampling with the path continuation BSDF sample using deferred MIS. Learns MIS-weighted cluster "
-				"contributions.",
+				"contributions.\n\n"
+				"The envmap is one more cluster of every lightcut: a BSDF sample that misses the scene is MIS weighted against the envmap cluster, a "
+				"BSDF sample that hits emissive geometry against the emissive clusters.",
 			};
 			static_assert(IM_ARRAYSIZE(items_nee_estimators) == IM_ARRAYSIZE(tooltips_nee_estimators));
 
@@ -1428,6 +1434,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+
+					// The envmap cluster of learning to cluster samples its directions with the importance sampling structure of the envmap
+					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+
+						m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
+					}
 				}
 				else
 					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(
@@ -1614,6 +1628,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			// Disabled if no envmap loaded
 			bool envmap_sampling_disabled = m_renderer->get_envmap().get_width() == 0;
+			// Learning to cluster samples the envmap as a cluster of its lightcuts, with the importance sampling structure of the envmap, and decides
+			// of the MIS with BSDF samples itself
+			bool envmap_sampled_by_learning_to_cluster =
+				DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
 
 			ImGui::BeginDisabled(envmap_sampling_disabled);
 			const char* items[]	   = { "- No envmap sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
@@ -1623,10 +1641,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									   "distributions of the envmap luminance. Good convergence.",
 									   "Importance samples a texel of the environment map proportionally to its luminance using an alias table for constant "
 									   "time sampling. Good convergence and faster than \"Binary Search\"." };
+			unsigned char disabled_envmap_sampling_items[] = { envmap_sampled_by_learning_to_cluster, false, false };
+			static_assert(IM_ARRAYSIZE(disabled_envmap_sampling_items) == IM_ARRAYSIZE(items));
 
 			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy",
 												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY),
-												 items, IM_ARRAYSIZE(items), tooltips))
+												 items, IM_ARRAYSIZE(items), tooltips, disabled_envmap_sampling_items))
 			{
 				ThreadManager::start_thread("RecomputeEnvmapSamplingStructure",
 											[this]() { m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get()); });
@@ -1639,6 +1659,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			if (envmap_sampling_disabled)
 				ImGuiRenderer::add_tooltip("Disabled because no envmap is loaded in the renderer.");
+			else if (envmap_sampled_by_learning_to_cluster)
+				ImGuiRenderer::add_tooltip(std::string(ImGuiSettingsWindow::ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP) +
+										   "\n\nThe envmap cluster samples its directions with the importance sampling strategy selected here.");
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
 			{
@@ -1646,6 +1669,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 				// If we do have an importance sampling strategy
+				ImGui::BeginDisabled(envmap_sampled_by_learning_to_cluster);
 				bool do_envmap_bsdf_mis = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS);
 				if (ImGui::Checkbox("Do MIS with BSDF", &do_envmap_bsdf_mis))
 				{
@@ -1654,6 +1678,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
+				if (envmap_sampled_by_learning_to_cluster)
+					ImGuiRenderer::add_tooltip(ImGuiSettingsWindow::ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP);
+				ImGui::EndDisabled();
 				ImGuiRenderer::show_help_marker("Whether or not to shoot a BSDF ray when sampling the envmap.\n\n"
 												""
 												"Useful on specular/glossy surfaces.");
@@ -4140,9 +4167,16 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_light_sampling_panel()
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 8))
 			m_render_window->set_render_dirty(true);
 
+		bool envmap_sampled_by_learning_to_cluster = DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(
+			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
+		ImGui::BeginDisabled(envmap_sampled_by_learning_to_cluster);
 		if (ImGui::SliderInt("NEE Envmap sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates, 0, 4))
 			m_render_window->set_render_dirty(true);
+		if (envmap_sampled_by_learning_to_cluster)
+			ImGuiRenderer::add_tooltip(std::string(ImGuiSettingsWindow::ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP) +
+									   "\n\nThe NEE light samples also sample the envmap.");
+		ImGui::EndDisabled();
 
 		if (ImGui::SliderInt("NEE BSDF sample count",
 							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates, 0, 4))

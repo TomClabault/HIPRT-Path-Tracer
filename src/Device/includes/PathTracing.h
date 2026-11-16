@@ -262,6 +262,9 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	ColorRGB32F bsdf_color_cos_theta = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal));
 
 	nee_deferred_MIS_context.fill_last_bsdf_information(bsdf_color_cos_theta, bsdf_pdf);
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+	nee_deferred_MIS_context.fill_last_bsdf_sampled_direction(bounce_direction);
+#endif
 
 	out_ray.origin	  = closest_hit_info.inter_point;
 	out_ray.direction = bounce_direction;
@@ -298,7 +301,7 @@ HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pix
 	{
 		float3_t accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * static_cast<float>(accumulation_count_before) + shading_normal) /
 									  (accumulation_count_before + 1.0f);
-		float normal_length			= hippt::length(accumulated_normal);
+		float normal_length = hippt::length(accumulated_normal);
 		if (!hippt::is_zero(normal_length))
 			// Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
 			render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
@@ -434,8 +437,8 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 		{
 			// The framebuffer is divided by the global sample count when it is displayed. Recover the sum of the selected
 			// samples from the previous framebuffer value before adding the current sample.
-			ColorRGB32F accumulated_subset_sum	   = render_data.buffers.accumulated_ray_colors[pixel_index] /
-													 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
+			ColorRGB32F accumulated_subset_sum = render_data.buffers.accumulated_ray_colors[pixel_index] /
+												 static_cast<float>(render_data.render_settings.sample_number) * number_of_samples_before_current;
 			ColorRGB32F accumulated_subset_average = (accumulated_subset_sum + ray_color) / static_cast<float>(number_of_samples_in_subset);
 
 			render_data.buffers.accumulated_ray_colors[pixel_index] = accumulated_subset_average * (render_data.render_settings.sample_number + 1);

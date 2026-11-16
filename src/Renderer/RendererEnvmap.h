@@ -100,6 +100,8 @@ private:
 	unsigned int m_height = 0;
 	// See the documentation of WorldSettings::envmap_packed_scaling_factor for more information about this variable
 	float m_envmap_packed_scaling_factor = 1.0f;
+	// See WorldSettings::envmap_solid_angle_mean_luminance
+	float m_solid_angle_mean_luminance = 0.0f;
 
 	// CDF / Alias table for sampling the envmap
 	OrochiBuffer<float> m_cdf;

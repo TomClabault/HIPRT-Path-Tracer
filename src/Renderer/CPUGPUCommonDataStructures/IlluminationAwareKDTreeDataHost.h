@@ -75,9 +75,12 @@ struct IlluminationAwareKDTreeDataHost
 		m_learning_to_cluster_data.to_device(kd_tree_device);
 		kd_tree_device.any_cell_needs_split = GenericSoAHelpers::get_buffer_data_ptr(m_any_cell_needs_split);
 
-		kd_tree_device.core.user_settings								   = render_data.kd_tree_device.core.user_settings;
-		kd_tree_device.learning_to_cluster.user_settings				   = render_data.kd_tree_device.learning_to_cluster.user_settings;
+		kd_tree_device.core.user_settings				 = render_data.kd_tree_device.core.user_settings;
+		kd_tree_device.learning_to_cluster.user_settings = render_data.kd_tree_device.learning_to_cluster.user_settings;
 		kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(render_data.kd_tree_device.learning_to_cluster.effective_initial_lightcut_size);
+		kd_tree_device.learning_to_cluster.envmap_cluster_enabled		   = render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
+		kd_tree_device.learning_to_cluster.envmap_cluster_importance_prior = render_data.kd_tree_device.learning_to_cluster.envmap_cluster_importance_prior;
+		kd_tree_device.learning_to_cluster.envmap_cluster_power_prior	   = render_data.kd_tree_device.learning_to_cluster.envmap_cluster_power_prior;
 
 		return kd_tree_device;
 	}

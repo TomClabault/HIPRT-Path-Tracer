@@ -12,7 +12,9 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "HostDeviceCommon/AtomicType.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
+#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/Maths/VecTypes.h"
+#include "HostDeviceCommon/WorldSettings.h"
 
 struct IlluminationAwareKDTreeLearningToClusterTrainingSample;
 
@@ -250,12 +252,57 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 		effective_initial_lightcut_size_as_float = static_cast<float>(static_cast<int>(lightcut_size));
 	}
 
+#ifndef __KERNELCC__
+	/**
+	 * Sets 'envmap_cluster_enabled' and the priors of the envmap cluster.
+	 *
+	 * The envmap is a cluster of the lightcuts when it is the ambient light with a positive intensity, outside of the white furnace mode, with an
+	 * importance sampling strategy ('envmap_has_sampling_structure') and when there is emissive geometry: without emissive geometry, there is no
+	 * light tree and no lightcut and the envmap is sampled on its own
+	 */
+	HIPRT_HOST void setup_envmap_cluster(const WorldSettings& world_settings,
+										 bool envmap_has_sampling_structure,
+										 bool white_furnace_mode,
+										 unsigned int emissive_triangle_count)
+	{
+		float envmap_mean_luminance = world_settings.envmap_solid_angle_mean_luminance * world_settings.envmap_intensity;
+
+		envmap_cluster_enabled = world_settings.ambient_light_type == AmbientLightType::ENVMAP && envmap_mean_luminance > 0.0f &&
+								 envmap_has_sampling_structure && !white_furnace_mode && emissive_triangle_count > 0;
+		if (!envmap_cluster_enabled)
+		{
+			envmap_cluster_importance_prior = 0.0f;
+			envmap_cluster_power_prior		= 0.0f;
+
+			return;
+		}
+
+		float3_t scene_extent			   = world_settings.scene_max - world_settings.scene_min;
+		float scene_bounding_sphere_radius = 0.5f * hippt::length(scene_extent);
+
+		// A uniform sky of radiance L gives an irradiance of pi * L on an unoccluded surface and sends a flux of pi * L * (4 * pi * R^2) into a
+		// sphere of radius R
+		envmap_cluster_importance_prior = hippt::M_Pi * envmap_mean_luminance;
+		envmap_cluster_power_prior		= envmap_cluster_importance_prior * 4.0f * hippt::M_Pi * scene_bounding_sphere_radius * scene_bounding_sphere_radius;
+	}
+#endif // #ifndef __KERNELCC__
+
 	unsigned int* initial_lightcut_node_indices = nullptr;
 	// Set with set_effective_initial_lightcut_size()
 	unsigned int effective_initial_lightcut_size = 0;
 	// Float copy of 'effective_initial_lightcut_size' for the uniform fallback of the initial lightcut sampling: converting a uniform int to a float on
 	// the GPU is a vector instruction that the compiler hoists out of the bounce loop, keeping a vector register for the whole kernel
 	float effective_initial_lightcut_size_as_float = 0.0f;
+
+	// Whether the envmap is sampled by learning to cluster, as the slot 0 of every lightcut (IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX).
+	// When false, the envmap is sampled on its own, outside of the lightcuts
+	unsigned int envmap_cluster_enabled = false;
+	// Importance of the envmap cluster where the importance of the other clusters is the importance of their SG node at a shading point: the
+	// irradiance of an unoccluded sky of uniform radiance equal to the mean radiance of the envmap
+	float envmap_cluster_importance_prior = 0.0f;
+	// Importance of the envmap cluster where the importance of the other clusters is the total power of their SG node: the flux that a sky of
+	// uniform radiance equal to the mean radiance of the envmap sends into the bounding sphere of the scene
+	float envmap_cluster_power_prior = 0.0f;
 
 	unsigned int* lightcut_node_indices								   = nullptr;
 	IlluminationAwareKDTreeLightClusterStatistics* lightcut_statistics = nullptr;

@@ -32,9 +32,20 @@ struct IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 		return cluster_probability * conditional_triangle_probability;
 	}
 
+	/**
+	 * Whether the selected cluster is the envmap. 'emissive_triangle_global_index' is then -1 and 'conditional_triangle_probability' is 1: the
+	 * direction is sampled from the envmap distribution by the caller
+	 */
+	HIPRT_DEVICE bool is_envmap() const
+	{
+		return cluster_node_index == IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+	}
+
 	HIPRT_DEVICE bool valid() const
 	{
-		return emissive_triangle_global_index >= 0 && cluster_probability > 0.0f && conditional_triangle_probability > 0.0f;
+		bool has_light = emissive_triangle_global_index >= 0 || is_envmap();
+
+		return has_light && cluster_probability > 0.0f && conditional_triangle_probability > 0.0f;
 	}
 };
 

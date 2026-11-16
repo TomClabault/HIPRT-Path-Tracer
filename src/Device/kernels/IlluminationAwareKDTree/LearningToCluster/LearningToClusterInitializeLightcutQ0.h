@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_ILLUMINATION_AWARE_KD_TREE_INITIALIZE_LIGHTCUT_Q0_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterClusterImportance.h"
 #include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
@@ -40,9 +41,13 @@ HIPRT_DEVICE void initialize_light_cluster_Q0(IlluminationAwareKDTreeDevice kd_t
 
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 #if LearningToClusterQ0UseTotalPower == KERNEL_OPTION_TRUE
-	float initial_importance_Q = light_tree_sg.nodes[cluster_node_index].get_total_power();
+	float initial_importance_Q = light_clustering_cluster_total_power(kd_tree.learning_to_cluster, light_tree_sg, cluster_node_index);
 #else
-	float initial_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
+	float initial_importance_Q;
+	if (cluster_node_index == IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX)
+		initial_importance_Q = hippt::max(1.0e-3f, kd_tree.learning_to_cluster.envmap_cluster_importance_prior);
+	else
+		initial_importance_Q = hippt::max(1.0e-3f, light_clustering_node_importance(light_tree_sg, cluster_node_index, context));
 #endif
 	statistics.initialize_importance_prior(initial_importance_Q);
 	statistics.mean		   = 0.0f;

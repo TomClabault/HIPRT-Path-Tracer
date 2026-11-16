@@ -185,6 +185,10 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 	// resolving it again
 	unsigned int last_lightcut_index = IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
 
+	// Direction of the BSDF sample of the previous vertex. When the envmap is sampled by learning to cluster, a BSDF ray that misses the scene
+	// reads it to evaluate the envmap and its MIS weight: the miss has no hit point to derive the direction from
+	float3_t last_bsdf_sampled_direction = make_float3(0.0f, 0.0f, 0.0f);
+
 	// The previous surface's mesh selects the learned cut, independently of the light hit by the BSDF ray.
 	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
 												const float3_t& view_direction,
@@ -201,6 +205,11 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 	HIPRT_DEVICE void set_last_lightcut_index(unsigned int lightcut_index)
 	{
 		last_lightcut_index = lightcut_index;
+	}
+
+	HIPRT_DEVICE void fill_last_bsdf_sampled_direction(const float3_t& bsdf_sampled_direction)
+	{
+		last_bsdf_sampled_direction = bsdf_sampled_direction;
 	}
 };
 

@@ -51,8 +51,11 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 			{
 				int initial_lightcut_size =
 					static_cast<int>(m_renderer->get_render_data().kd_tree_device.learning_to_cluster.user_settings.initial_lightcut_size);
+				int maximum_lightcut_size = compiler_options->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE);
 
-				m_light_tree_builder_sg.set_second_tree_cut_size(initial_lightcut_size);
+				// One slot of the lightcuts is left for the envmap cluster. A cut of the light tree cannot be truncated to make room for it: the
+				// lights under the dropped nodes would never be sampled
+				m_light_tree_builder_sg.set_second_tree_cut_size(std::min(initial_lightcut_size, maximum_lightcut_size - 1));
 			}
 
 			m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangles_vertex_indices,

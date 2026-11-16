@@ -9,6 +9,7 @@
 #include "Device/includes/Compute/Common/WarpBlockScan.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
+#include "Device/includes/IlluminationAwareKDTree/LearningToClusterClusterImportance.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 
 HIPRT_DEVICE float get_light_cluster_sampling_weight(const IlluminationAwareKDTreeDevice& kd_tree,
@@ -21,7 +22,7 @@ HIPRT_DEVICE float get_light_cluster_sampling_weight(const IlluminationAwareKDTr
 	if (lightcut_data.Q0_initialized)
 		weight = kd_tree.learning_to_cluster.lightcut_statistics[cluster_offset].estimated_importance_Q;
 	else
-		weight = light_tree_sg.nodes[cluster_node_index].get_total_power();
+		weight = light_clustering_cluster_total_power(kd_tree.learning_to_cluster, light_tree_sg, cluster_node_index);
 
 	return hippt::max(weight, 0.0f);
 }

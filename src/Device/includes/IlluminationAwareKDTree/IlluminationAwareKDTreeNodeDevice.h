@@ -32,6 +32,13 @@ struct IlluminationAwareKDTreeNode
 	//
 	// Distinct from INVALID_LIGHTCUT_INDEX, which is a resolved result (the shading point uses the initial lightcut)
 	static constexpr unsigned int UNRESOLVED_LIGHTCUT_INDEX = 0xFFFFFFFEu;
+	// Light cluster node index stored in the slot of a lightcut that holds the envmap instead of a node of the SG light tree.
+	//
+	// When the envmap is sampled by learning to cluster (IlluminationAwareKDTreeLearningToClusterDevice::envmap_cluster_enabled), it is always the
+	// slot 0 of every lightcut: it is never refined so it never moves. It must never be used to index the nodes of the light tree.
+	//
+	// Distinct from INVALID_NODE_INDEX, which marks the unused slots of a lightcut
+	static constexpr unsigned int ENVMAP_CLUSTER_NODE_INDEX = 0xFFFFFFFDu;
 
 	// Index of the left child.
 	//

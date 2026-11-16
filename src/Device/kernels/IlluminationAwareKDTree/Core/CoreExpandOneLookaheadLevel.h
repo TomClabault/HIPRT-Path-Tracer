@@ -51,7 +51,7 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	IlluminationAwareKDTreeNodeBounds& parent_bounds = kd_tree_device.core.node_bounds[parent_index];
 	float minimum_split_extent = split_axis == 0 ? parent_bounds.minimum.x : (split_axis == 1 ? parent_bounds.minimum.y : parent_bounds.minimum.z);
 	float maximum_split_extent = split_axis == 0 ? parent_bounds.maximum.x : (split_axis == 1 ? parent_bounds.maximum.y : parent_bounds.maximum.z);
-	if (split_axis > 2 || !isfinite(split_position) || split_position <= minimum_split_extent || split_position >= maximum_split_extent)
+	if (split_axis > 2 || !hippt::is_finite(split_position) || split_position <= minimum_split_extent || split_position >= maximum_split_extent)
 		return;
 
 	unsigned int left_child = kd_tree_device.core.reserve_physical_nodes(2u);

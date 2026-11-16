@@ -22,6 +22,8 @@ class ImGuiSettingsWindow
 public:
 	static const char* TITLE;
 	static const float BASE_SIZE;
+	// Tooltip of the envmap sampling settings that learning to cluster overrides
+	static const char* ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP;
 
 	void set_render_window(RenderWindow* render_window);
 	void set_status_text(const std::string& new_status_text);

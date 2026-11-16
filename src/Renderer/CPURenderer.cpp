@@ -290,6 +290,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.GPU_BVH = nullptr;
 	m_scene_bounding_box  = parsed_scene.metadata.scene_bounding_box;
 
+	m_render_data.world_settings.scene_min = m_scene_bounding_box.mini;
+	m_render_data.world_settings.scene_max = m_scene_bounding_box.maxi;
+
 	m_gpu_packed_materials.resize(parsed_scene.materials.size());
 	for (int i = 0; i < parsed_scene.materials.size(); i++)
 		m_gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
@@ -528,8 +531,9 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 	m_packed_envmap.pack_from(envmap_image, envmap_scaling_factor);
 	m_render_data.world_settings.envmap = m_packed_envmap.get_data_pointer();
 	m_render_data.world_settings.set_envmap_dimensions(envmap_image.width, envmap_image.height);
-	m_render_data.world_settings.envmap_packed_scaling_factor = envmap_scaling_factor;
-	m_render_data.world_settings.ambient_light_type			  = AmbientLightType::ENVMAP;
+	m_render_data.world_settings.envmap_packed_scaling_factor	   = envmap_scaling_factor;
+	m_render_data.world_settings.envmap_solid_angle_mean_luminance = envmap_image.compute_solid_angle_mean_luminance();
+	m_render_data.world_settings.ambient_light_type				   = AmbientLightType::ENVMAP;
 
 	if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
 		m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();
@@ -648,14 +652,24 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		const LightTreeSGBuildResult<std::vector>& light_tree_sg_build_result = m_light_tree_sg_build_result;
 		const std::vector<unsigned int>& second_tree_cut_node_indices		  = light_tree_sg_build_result.second_tree_cut_node_indices;
 		unsigned int effective_second_tree_cut_size							  = light_tree_sg_build_result.effective_second_tree_cut_size;
-		kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
-		m_render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_second_tree_cut_size);
 
-		std::fill(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.begin(),
-				  m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.end(),
-				  IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
-		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size,
-					m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.begin());
+		// The envmap is the slot 0 of the initial lightcut, in front of the cut of the light tree. The light tree cut leaves one slot for it
+		m_render_data.kd_tree_device.learning_to_cluster.setup_envmap_cluster(m_render_data.world_settings, EnvmapSamplingStrategy != ESS_NO_SAMPLING,
+																			  m_render_data.bsdfs_data.white_furnace_mode,
+																			  m_render_data.buffers.emissive_triangles_count);
+		bool envmap_cluster_enabled = m_render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
+
+		unsigned int envmap_slot_count				 = envmap_cluster_enabled ? 1u : 0u;
+		unsigned int effective_initial_lightcut_size = effective_second_tree_cut_size + envmap_slot_count;
+		m_render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_initial_lightcut_size);
+		kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
+
+		std::vector<unsigned int>& initial_lightcut_node_indices =
+			m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices;
+		std::fill(initial_lightcut_node_indices.begin(), initial_lightcut_node_indices.end(), IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
+		if (envmap_cluster_enabled)
+			initial_lightcut_node_indices[0] = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size, initial_lightcut_node_indices.begin() + envmap_slot_count);
 
 		if (effective_second_tree_cut_size > 0)
 		{

@@ -172,6 +172,28 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_ang
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
 	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+/**
+ * Probability that the light candidates of the previous vertex select the envmap cluster, for the MIS weight of the deferred BSDF candidate that
+ * misses the scene. 0 when the lightcut of the previous vertex is unresolved: its material cannot do light sampling and no light candidate
+ * sampled the envmap there
+ */
+// Not inlined, for the same reason as ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf()
+HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_envmap_cluster_probability(const HIPRTRenderData& render_data,
+																					const NEEDeferredMISContext& nee_deferred_MIS_context)
+{
+	if (nee_deferred_MIS_context.last_lightcut_index == IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX)
+		return 0.0f;
+
+	IlluminationAwareKDTreeSGShadingContext shading_context =
+		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
+											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
+
+	// The lightcut was resolved by the NEE of the previous vertex, at this same shading point
+	return pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index);
+}
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+
 HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												bool intersection_found,
 												float3_t sampled_bsdf_direction,
@@ -241,11 +263,22 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
 
 		float nee_mis_weight;
-		if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, envmap_pdf_solid_angle, nb_envmap_candidates_as_float);
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
+		{
+			// The envmap is a cluster of the lightcuts: the light candidates of the previous vertex sample it, there are no envmap candidates
+			float light_sampler_solid_angle_pdf =
+				ReSTIR_PT_get_deferred_envmap_cluster_probability(render_data, nee_deferred_MIS_context) * envmap_pdf_solid_angle;
+			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf,
+											   nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+		}
 		else
-			// The uniform sky isn't explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
-			nee_mis_weight = 1.0f;
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+			if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+				nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, envmap_pdf_solid_angle, nb_envmap_candidates_as_float);
+			else
+				// The uniform sky isn't explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
+				nee_mis_weight = 1.0f;
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);

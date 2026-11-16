@@ -74,6 +74,8 @@ struct WorldSettings
 
 	// Luminance sum of all the texels of the envmap
 	float envmap_total_sum = 0.0f;
+	// Mean luminance of the envmap over the sphere of directions (texels weighted by their solid angle), before 'envmap_intensity'
+	float envmap_solid_angle_mean_luminance = 0.0f;
 
 	// Cumulative distribution function. 1D float array of length width * height for
 	// importance sampling the envmap with a binary search strategy
