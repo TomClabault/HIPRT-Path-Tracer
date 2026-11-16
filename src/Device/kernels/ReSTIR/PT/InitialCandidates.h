@@ -288,6 +288,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 
 		lightcut_index = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id, &guiding_node_index);
 	}
+
 	// Also written when unresolved so that the deferred PDF of the next vertex never reads the lightcut of an older vertex
 	nee_deferred_MIS_context.set_last_lightcut_index(lightcut_index);
 

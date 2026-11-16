@@ -1023,7 +1023,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 									std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
 									for (int i = 0; i < scene.materials.size(); i++)
-										packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
+										packed_gpu_materials[i] = pack_material_to_GPU(scene.materials[i]);
 
 									m_hiprt_scene.materials_buffer.resize(scene.materials.size());
 									m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
@@ -1223,6 +1223,15 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 	return m_parsed_scene_metadata.material_names;
 }
 
+DevicePackedTexturedMaterial GPURenderer::pack_material_to_GPU(const CPUMaterial& material) const
+{
+	DevicePackedTexturedMaterial packed_material = material.pack_to_GPU();
+	if (m_render_data.bsdfs_data.white_furnace_mode && m_render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
+		packed_material.set_emission_strength(0.0f);
+
+	return packed_material;
+}
+
 void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 {
 	m_current_materials = materials;
@@ -1231,7 +1240,7 @@ void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 	std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(materials.size());
 	for (int i = 0; i < materials.size(); i++)
 	{
-		packed_gpu_materials[i] = materials[i].pack_to_GPU();
+		packed_gpu_materials[i] = pack_material_to_GPU(materials[i]);
 
 		// The material is fully opaque if its base color texture is fully opaque
 		// and if the alpha opacity is fully opaque too (1.0f)
@@ -1249,7 +1258,7 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 {
 	m_current_materials[material_index] = material;
 
-	DevicePackedTexturedMaterial packed_gpu_material = material.pack_to_GPU();
+	DevicePackedTexturedMaterial packed_gpu_material = pack_material_to_GPU(material);
 	// The material is fully opaque if its base color texture is fully opaque
 	// and if the alpha opacity is fully opaque too (1.0f)
 	unsigned char new_opacity = material.alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[material_index];

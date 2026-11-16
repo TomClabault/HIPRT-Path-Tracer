@@ -5828,14 +5828,22 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("If true, NaNs that occur during the rendering will show up as pink pixels.");
 
-	if (ImGui::Checkbox("White furnace mode", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode))
-		m_render_window->set_render_dirty(true);
+	// The emissives are turned off when the materials are packed for the GPU (GPURenderer::pack_material_to_GPU()): both checkboxes reupload them
+	bool white_furnace_emissives_changed = ImGui::Checkbox("White furnace mode", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode);
 	if (m_renderer->get_render_data().bsdfs_data.white_furnace_mode)
 	{
 		ImGui::TreePush("White furnace tree");
-		if (ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives))
-			m_render_window->set_render_dirty(true);
+		white_furnace_emissives_changed |=
+			ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives);
 		ImGui::TreePop();
+	}
+
+	if (white_furnace_emissives_changed)
+	{
+		std::vector<CPUMaterial> materials = m_renderer->get_current_materials();
+		m_renderer->update_all_materials(materials);
+
+		m_render_window->set_render_dirty(true);
 	}
 
 	ImGui::TreePop();

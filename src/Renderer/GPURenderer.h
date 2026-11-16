@@ -365,6 +365,12 @@ private:
 	void update_render_data();
 
 	/**
+	 * Packs 'material' for the GPU. In the white furnace mode with the emissives turned off, the emission strength of the packed material is 0:
+	 * every emission read on the GPU (surface hits, light samples, BSDF rays reaching lights) multiplies by it
+	 */
+	DevicePackedTexturedMaterial pack_material_to_GPU(const CPUMaterial& material) const;
+
+	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
 	bool needs_global_bvh_stack_buffer();
