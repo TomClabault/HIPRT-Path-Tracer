@@ -328,11 +328,12 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	// both evaluated at this same shading point.
 	//
 	// It is resolved before the early exit for disabled direct lighting because the deferred PDF of the next vertex is evaluated even then. It
-	// stays unresolved only when no PDF reads it: without emissive triangles or for a material that cannot do light sampling, the PDFs return
-	// before reading the lightcut
+	// stays unresolved only when no PDF reads it: when the lightcuts hold no cluster (no emissive triangles and no envmap cluster) or for a
+	// material that cannot do light sampling, the PDFs return before reading the lightcut
 	unsigned int lightcut_index		= IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
 	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	if (render_data.buffers.emissive_triangles_count > 0 && ray_payload.material.can_do_light_sampling())
+	bool has_light_to_sample		= learning_to_cluster_has_light_to_sample(render_data);
+	if (has_light_to_sample && ray_payload.material.can_do_light_sampling())
 	{
 		IlluminationAwareKDTreeSGShadingContext shading_context =
 			build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
@@ -349,7 +350,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 		return;
 
 	// When the envmap is a cluster of the lightcuts, the learning-to-cluster light candidate also samples it
-	if (render_data.buffers.emissive_triangles_count > 0)
+	if (has_light_to_sample)
 		ReSTIR_PT_add_learning_to_cluster_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 														  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
 														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, x, y);

@@ -256,19 +256,17 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	/**
 	 * Sets 'envmap_cluster_enabled' and the priors of the envmap cluster.
 	 *
-	 * The envmap is a cluster of the lightcuts when it is the ambient light with a positive intensity, outside of the white furnace mode, with an
-	 * importance sampling strategy ('envmap_has_sampling_structure') and when there is emissive geometry: without emissive geometry, there is no
-	 * light tree and no lightcut and the envmap is sampled on its own
+	 * The envmap is a cluster of the lightcuts when it is the ambient light with a positive intensity, outside of the white furnace mode and with an
+	 * importance sampling strategy ('envmap_has_sampling_structure').
+	 *
+	 * Without emissive geometry, the light tree is empty and the envmap is the only cluster of the lightcuts: it is then always selected
 	 */
-	HIPRT_HOST void setup_envmap_cluster(const WorldSettings& world_settings,
-										 bool envmap_has_sampling_structure,
-										 bool white_furnace_mode,
-										 unsigned int emissive_triangle_count)
+	HIPRT_HOST void setup_envmap_cluster(const WorldSettings& world_settings, bool envmap_has_sampling_structure, bool white_furnace_mode)
 	{
 		float envmap_mean_luminance = world_settings.envmap_solid_angle_mean_luminance * world_settings.envmap_intensity;
 
 		envmap_cluster_enabled = world_settings.ambient_light_type == AmbientLightType::ENVMAP && envmap_mean_luminance > 0.0f &&
-								 envmap_has_sampling_structure && !white_furnace_mode && emissive_triangle_count > 0;
+								 envmap_has_sampling_structure && !white_furnace_mode;
 		if (!envmap_cluster_enabled)
 		{
 			envmap_cluster_importance_prior = 0.0f;

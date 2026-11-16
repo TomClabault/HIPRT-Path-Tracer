@@ -986,10 +986,16 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 												  Xorshift32Generator& random_number_generator,
 												  WavefrontShadowSink* shadow_sink = nullptr)
 {
+#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+	// The envmap can be the only cluster of the lightcuts of learning to cluster, without any emissive geometry
+	if (!learning_to_cluster_has_light_to_sample(render_data))
+		return ColorRGB32F(0.0f);
+#else
 	if (render_data.buffers.emissive_triangles_count == 0)
 		// No emissive geometry in the scene to sample
 		// so return black
 		return ColorRGB32F(0.0f);
+#endif // #if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 
 	if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
 		return ColorRGB32F(0.0f);

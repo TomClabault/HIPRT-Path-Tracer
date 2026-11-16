@@ -655,8 +655,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 
 		// The envmap is the slot 0 of the initial lightcut, in front of the cut of the light tree. The light tree cut leaves one slot for it
 		m_render_data.kd_tree_device.learning_to_cluster.setup_envmap_cluster(m_render_data.world_settings, EnvmapSamplingStrategy != ESS_NO_SAMPLING,
-																			  m_render_data.bsdfs_data.white_furnace_mode,
-																			  m_render_data.buffers.emissive_triangles_count);
+																			  m_render_data.bsdfs_data.white_furnace_mode);
 		bool envmap_cluster_enabled = m_render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
 
 		unsigned int envmap_slot_count				 = envmap_cluster_enabled ? 1u : 0u;
@@ -671,7 +670,8 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 			initial_lightcut_node_indices[0] = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
 		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size, initial_lightcut_node_indices.begin() + envmap_slot_count);
 
-		if (effective_second_tree_cut_size > 0)
+		// Also without emissive geometry when the envmap is a cluster: the initial lightcut then only holds the envmap
+		if (effective_initial_lightcut_size > 0)
 		{
 			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
 			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)

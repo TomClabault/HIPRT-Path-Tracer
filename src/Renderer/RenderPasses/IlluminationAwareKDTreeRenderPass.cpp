@@ -391,8 +391,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 			bool envmap_has_sampling_structure =
 				m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING;
 			render_data.kd_tree_device.learning_to_cluster.setup_envmap_cluster(render_data.world_settings, envmap_has_sampling_structure,
-																				render_data.bsdfs_data.white_furnace_mode,
-																				render_data.buffers.emissive_triangles_count);
+																				render_data.bsdfs_data.white_furnace_mode);
 
 			std::vector<unsigned int> initial_lightcut_node_indices;
 			if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
@@ -404,7 +403,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 
 			render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_initial_lightcut_size);
 			IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
-			if (!second_tree_cut_node_indices.empty() && effective_second_tree_cut_size > 0)
+			// Also without emissive geometry when the envmap is a cluster: the initial lightcut then only holds the envmap
+			if (effective_initial_lightcut_size > 0)
 			{
 				m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices.upload_data_partial(
 					0, initial_lightcut_node_indices.data(), effective_initial_lightcut_size);

@@ -80,6 +80,15 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 	return context;
 }
 
+/**
+ * Whether the lightcuts of learning to cluster hold at least one cluster: emissive geometry or the envmap. Without emissive geometry, the envmap
+ * can be the only cluster of the lightcuts
+ */
+HIPRT_DEVICE bool learning_to_cluster_has_light_to_sample(const HIPRTRenderData& render_data)
+{
+	return render_data.buffers.emissive_triangles_count > 0 || render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
+}
+
 HIPRT_DEVICE float light_clustering_cluster_probability(const IlluminationAwareKDTreeDevice& kd_tree,
 														unsigned int lightcut_index,
 														unsigned int slot,
