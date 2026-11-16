@@ -262,14 +262,15 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	{
 		float envmap_pdf_solid_angle;
 		ColorRGB32F envmap_emission;
-		if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-			// Envmap hit
-			envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
-		else if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
+		// The white furnace mode replaces the envmap with the uniform sky, as path_tracing_miss_gather_envmap() does
+		if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
 		{
 			envmap_emission		   = render_data.world_settings.uniform_light_color;
 			envmap_pdf_solid_angle = 1.0f;
 		}
+		else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+			// Envmap hit
+			envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
 
 		float nee_mis_weight;
 		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
