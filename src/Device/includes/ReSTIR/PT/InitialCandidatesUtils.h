@@ -201,7 +201,7 @@ HIPRT_DEVICE bool ReSTIR_PT_envmap_has_its_own_light_candidate(const HIPRTRender
 		   !render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
 }
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 // Not inlined: inlined into the initial candidates kernel, this PDF raises the register count of the kernel above an allocation step
 HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
 																					   const NEEDeferredMISContext& nee_deferred_MIS_context,
@@ -235,7 +235,7 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_envmap_cluster_probabil
 	// The lightcut was resolved by the NEE of the previous vertex, at this same shading point
 	return pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index);
 }
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
 /**
  * Adds to the reservoir the BSDF candidate of the previous vertex: the BSDF sample that continues the main path, MIS weighted against the light
@@ -253,7 +253,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												NEEDeferredMISContext& nee_deferred_MIS_context,
 												Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	int last_bounce = ray_payload.bounce - 1;
 	if (last_bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
@@ -326,7 +326,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 								path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
 								random_number_generator, -1, -1);
 	}
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
 
 HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
@@ -341,7 +341,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 bool last_intersection_found,
 													 Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
 	// here
 	ray_payload.bounce--;
@@ -360,7 +360,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
 								  nee_deferred_MIS_context, random_number_generator);
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
 
 #endif // #ifndef DEVICE_INCLUDES_RESTIR_PT_INITIAL_CANDIDATES_UTILS_H
