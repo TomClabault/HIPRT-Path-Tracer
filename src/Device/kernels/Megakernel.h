@@ -95,7 +95,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
 				if (bounce > 0 || render_data.render_settings.enable_direct_lighting)
 				{
-					ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y,
+					ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, -ray.direction, x, y,
 																	  nee_deferred_MIS_context, random_number_generator);
 
 					sanity_check<true>(render_data, ray_payload.ray_color, x, y);

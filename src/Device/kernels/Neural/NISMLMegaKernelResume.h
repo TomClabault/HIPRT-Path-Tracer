@@ -61,14 +61,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 
 		if (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting)
 		{
-			ray_payload.ray_color += estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, emissive_geometry_direct_contribution,
-																						 closest_hit_info, -ray.direction, random_number_generator);
+			ray_payload.ray_color +=
+				estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, ray_payload.throughput, emissive_geometry_direct_contribution,
+																	closest_hit_info, -ray.direction, random_number_generator);
 		}
 	}
 	/*else if (ray_payload.next_ray_state != RayState::MISSED && intersection_found &&
 			 (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting))
 		ray_payload.ray_color +=
-			estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context, random_number_generator);*/
+			estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, -ray.direction, x, y, nee_deferred_MIS_context,
+									 random_number_generator);*/
 
 	if (ray_payload.next_ray_state != RayState::MISSED && intersection_found && (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting))
 		sanity_check<true>(render_data, ray_payload.ray_color, x, y);

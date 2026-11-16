@@ -1113,33 +1113,6 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 									random_number_generator);
 }
 
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
-																			 RayPayload& ray_payload,
-																			 ColorRGB32F emissive_geometry_direct_contribution,
-																			 HitInfo& closest_hit_info,
-																			 float3_t view_direction,
-																			 Xorshift32Generator& random_number_generator)
-{
-	return estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, ray_payload.throughput, emissive_geometry_direct_contribution,
-															   closest_hit_info, view_direction, random_number_generator);
-}
-
-/**
- * The x & y parameters are retained for the renderer's direct-lighting interface.
- */
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
-												  RayPayload& ray_payload,
-												  HitInfo& closest_hit_info,
-												  float3_t view_direction,
-												  int x,
-												  int y,
-												  NEEDeferredMISContext& out_nee_mis_context,
-												  Xorshift32Generator& random_number_generator)
-{
-	return estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y, out_nee_mis_context,
-									random_number_generator);
-}
-
 HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderData& render_data,
 																   bool intersection_found,
 																   HitInfo& main_path_ray_hit_info,
