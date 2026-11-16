@@ -361,27 +361,6 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 }
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
-HIPRT_DEVICE void ReSTIR_PT_stream_NEE_dispatch(HIPRTRenderData& render_data,
-												float3_t view_direction,
-												RayPayload& ray_payload,
-												ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-												ColorRGB32F path_unweighted_throughput_after_rc_vertex,
-												ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
-												ReSTIRPTReservoirSample& restir_pt_initial_sample,
-												HitInfo& closest_hit_info,
-												NEEDeferredMISContext& nee_deferred_MIS_context,
-												Xorshift32Generator& random_number_generator,
-												int x,
-												int y)
-{
-	// Compiled out for the other NEE estimators: this kernel is only built with them when ReSTIR PT is not the path sampling strategy, and is
-	// then never launched
-#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
-	ReSTIR_PT_stream_NEE(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
-						 restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
-#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
-}
-
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
 extern "C"
@@ -507,9 +486,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					if (bounce == 1)
 						ReSTIR_PT_rc_vertex_fill_information(render_data, ray_payload, closest_hit_info, restir_pt_initial_sample);
 
-					ReSTIR_PT_stream_NEE_dispatch(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-												  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
-												  closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
+					// Compiled out for the other NEE estimators: this kernel is only built with them when ReSTIR PT is not the path sampling strategy,
+					// and is then never launched
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+										 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
+										 nee_deferred_MIS_context, random_number_generator, x, y);
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
