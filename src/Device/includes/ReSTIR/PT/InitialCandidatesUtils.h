@@ -145,6 +145,53 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 }
 
 /**
+ * Adds to the reservoir the candidate of a light sample or of a BSDF sample of the vertex at 'bounce' that reaches a light in 'incident_light_direction'.
+ *
+ * 'light_point', 'light_geometric_normal' and 'light_primitive_index' describe the point reached on emissive geometry. For a candidate that reaches
+ * the envmap, 'light_point' is the direction towards the envmap, 'light_geometric_normal' is zero and 'light_primitive_index' is -1.
+ *
+ * 'bsdf_throughput' is the BSDF times the cosine term of 'incident_light_direction' at the vertex, 'incident_light_info' is the lobe information
+ * of the BSDF sample (BSDFIncidentLightInfo::NO_INFO for a light sample) and 'weight' is the resampling weight of the candidate
+ */
+HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
+										  float3_t incident_light_direction,
+										  float3_t light_point,
+										  float3_t light_geometric_normal,
+										  int light_primitive_index,
+										  ColorRGB32F light_emission,
+										  ColorRGB32F bsdf_throughput,
+										  BSDFIncidentLightInfo incident_light_info,
+										  ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+										  ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+										  float weight,
+										  ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+										  ReSTIRPTReservoirSample& restir_pt_initial_sample,
+										  Xorshift32Generator& random_number_generator,
+										  int x,
+										  int y)
+{
+	if (bounce == 0)
+		ReSTIR_PT_rc_di_vertex_fill_information(light_point, light_geometric_normal, light_primitive_index, incident_light_info, restir_pt_initial_sample);
+	if (bounce == 1)
+	{
+		restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
+		restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
+	}
+	if (bounce <= 1)
+		restir_pt_initial_sample.rc_vertex_incident_light_direction = incident_light_direction;
+
+	restir_pt_initial_sample.di_sample					 = bounce == 0;
+	restir_pt_initial_sample.rc_vertex_incident_radiance = light_emission * path_unweighted_throughput_after_rc_vertex;
+	if (bounce >= 2)
+		restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
+	restir_pt_initial_sample.target_function =
+		(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_emission).luminance();
+
+	restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
+	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
+}
+
+/**
  * Whether the envmap is sampled by an envmap candidate of its own at each vertex: when it is importance sampled but is not a cluster of the
  * lightcuts of learning to cluster. A cluster of the lightcuts is sampled by the learning-to-cluster light candidate instead
  */
@@ -234,22 +281,6 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			envmap_pdf_solid_angle = 1.0f;
 		}
 
-		if (last_bounce == 0)
-			ReSTIR_PT_rc_di_vertex_fill_information(sampled_bsdf_direction, make_float3(0.0f, 0.0f, 0.0f), -1, incident_light_info, restir_pt_initial_sample);
-		if (last_bounce == 1)
-		{
-			restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
-			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-		}
-		if (last_bounce <= 1)
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
-		restir_pt_initial_sample.di_sample					 = last_bounce == 0;
-		restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission * path_unweighted_throughput_after_rc_vertex;
-		if (last_bounce >= 2)
-			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-		restir_pt_initial_sample.target_function =
-			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
-
 		float nee_mis_weight;
 		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
 		{
@@ -266,8 +297,9 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			nee_mis_weight = 1.0f;
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 
-		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-		restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
+		ReSTIR_PT_add_candidate(last_bounce, sampled_bsdf_direction, sampled_bsdf_direction, make_float3(0.0f, 0.0f, 0.0f), -1, envmap_emission,
+								bsdf_throughput, incident_light_info, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
+								weight, restir_pt_initial_reservoir, restir_pt_initial_sample, random_number_generator, -1, -1);
 
 		return;
 	}
@@ -279,23 +311,6 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 	if (bsdf_sample_pdf > 0.0f)
 	{
-		if (last_bounce == 0)
-			ReSTIR_PT_rc_di_vertex_fill_information(light_hit_info.inter_point, light_hit_info.geometric_normal, light_hit_info.primitive_index,
-													incident_light_info, restir_pt_initial_sample);
-		if (last_bounce == 1)
-		{
-			restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
-			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-		}
-		if (last_bounce <= 1)
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
-		restir_pt_initial_sample.di_sample					 = last_bounce == 0;
-		restir_pt_initial_sample.rc_vertex_incident_radiance = hit_emission * path_unweighted_throughput_after_rc_vertex;
-		if (last_bounce >= 2)
-			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-		restir_pt_initial_sample.target_function =
-			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * hit_emission).luminance();
-
 		float nee_mis_weight = 1.0f;
 		if (render_data.buffers.emissive_triangles_count > 0)
 		{
@@ -306,8 +321,10 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
 
-		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-		restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
+		ReSTIR_PT_add_candidate(last_bounce, sampled_bsdf_direction, light_hit_info.inter_point, light_hit_info.geometric_normal,
+								light_hit_info.primitive_index, hit_emission, bsdf_throughput, incident_light_info, path_unweighted_throughput_up_to_rc_vertex,
+								path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
+								random_number_generator, -1, -1);
 	}
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
