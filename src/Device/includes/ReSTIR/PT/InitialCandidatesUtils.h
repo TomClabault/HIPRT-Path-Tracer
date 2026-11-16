@@ -144,16 +144,22 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
 		ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(render_data, ray_payload.material, restir_pt_initial_sample);
 }
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
-	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+/**
+ * Whether the envmap is sampled by an envmap candidate of its own at each vertex: when it is importance sampled but is not a cluster of the
+ * lightcuts of learning to cluster. A cluster of the lightcuts is sampled by the learning-to-cluster light candidate instead
+ */
+HIPRT_DEVICE bool ReSTIR_PT_envmap_has_its_own_light_candidate(const HIPRTRenderData& render_data)
+{
+	return render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && EnvmapSamplingStrategy != ESS_NO_SAMPLING &&
+		   !render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
+}
+
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 // Not inlined: inlined into the initial candidates kernel, this PDF raises the register count of the kernel above an allocation step
 HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
 																					   const NEEDeferredMISContext& nee_deferred_MIS_context,
-																					   const HitInfo& light_hit_info,
-																					   const float3_t& view_direction,
-																					   const float3_t& sampled_bsdf_direction)
+																					   const HitInfo& light_hit_info)
 {
-#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
@@ -161,18 +167,8 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_ang
 	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index,
 																		nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index,
 																		light_hit_info.inter_point, light_hit_info.original_geometric_normal());
-#else
-	float hit_distance = hippt::length(light_hit_info.inter_point - nee_deferred_MIS_context.last_shading_point);
-	return pdf_of_emissive_triangle_hit_solid_angle(render_data, nee_deferred_MIS_context.last_shading_point, view_direction,
-													nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data),
-													light_hit_info.primitive_index, light_hit_info.original_geometric_normal(), hit_distance,
-													sampled_bsdf_direction);
-#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
-	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 /**
  * Probability that the light candidates of the previous vertex select the envmap cluster, for the MIS weight of the deferred BSDF candidate that
  * misses the scene. 0 when the lightcut of the previous vertex is unresolved: its material cannot do light sampling and no light candidate
@@ -194,6 +190,10 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_envmap_cluster_probabil
 }
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
+/**
+ * Adds to the reservoir the BSDF candidate of the previous vertex: the BSDF sample that continues the main path, MIS weighted against the light
+ * candidates of the previous vertex. It is the only BSDF candidate of that vertex
+ */
 HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												bool intersection_found,
 												float3_t sampled_bsdf_direction,
@@ -206,23 +206,11 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												NEEDeferredMISContext& nee_deferred_MIS_context,
 												Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
-	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	int last_bounce = ray_payload.bounce - 1;
 	if (last_bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		// Deferred NEE MIS for the primary hit but we're not doing direct lighting
 		return;
-
-	const ReSTIRPTInitialCandidatesPassSettings& initial_candidates_settings = render_data.render_settings.restir_pt_settings.initial_candidates;
-
-	int nb_light_candidates = initial_candidates_settings.nee_ris_number_of_light_candidates;
-	if (initial_candidates_settings.nee_ris_number_of_bsdf_candidates == 0)
-		return;
-
-	// Float copies of the counts for the MIS weights, see ReSTIRPTInitialCandidatesPassSettings::nee_ris_number_of_light_candidates_as_float
-	float nb_light_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_light_candidates_as_float;
-	float nb_envmap_candidates_as_float = initial_candidates_settings.nee_ris_number_of_envmap_candidates_as_float;
-	float nb_bsdf_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_bsdf_candidates_as_float;
 
 	float bsdf_sample_pdf = nee_deferred_MIS_context.last_bsdf_sample_pdf;
 	if (bsdf_sample_pdf <= 0.0f)
@@ -263,22 +251,19 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
 
 		float nee_mis_weight;
-#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
 		{
-			// The envmap is a cluster of the lightcuts: the light candidates of the previous vertex sample it, there are no envmap candidates
+			// The envmap is a cluster of the lightcuts: the learning-to-cluster light candidate of the previous vertex samples it
 			float light_sampler_solid_angle_pdf =
 				ReSTIR_PT_get_deferred_envmap_cluster_probability(render_data, nee_deferred_MIS_context) * envmap_pdf_solid_angle;
-			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf,
-											   nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, light_sampler_solid_angle_pdf);
 		}
+		else if (ReSTIR_PT_envmap_has_its_own_light_candidate(render_data))
+			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_pdf_solid_angle);
 		else
-#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
-			if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-				nee_mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, envmap_pdf_solid_angle, nb_envmap_candidates_as_float);
-			else
-				// The uniform sky isn't explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
-				nee_mis_weight = 1.0f;
+			// The uniform sky or an envmap without importance sampling isn't explicitly sampled: BSDF samples only can gather emission from the
+			// sky: 1.0f MIS weight
+			nee_mis_weight = 1.0f;
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
@@ -291,9 +276,6 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	ColorRGB32F hit_emission = ray_payload.material.get_emission();
 	if (hit_emission.is_black() || compute_cosine_term_at_light_source(light_hit_info.original_geometric_normal(), view_direction) <= 0.0f)
 		return;
-
-	if (render_data.buffers.emissive_triangles_count == 0)
-		nb_light_candidates = 0;
 
 	if (bsdf_sample_pdf > 0.0f)
 	{
@@ -315,24 +297,19 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * hit_emission).luminance();
 
 		float nee_mis_weight = 1.0f;
-		if (nb_light_candidates > 0)
+		if (render_data.buffers.emissive_triangles_count > 0)
 		{
-			float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info,
-																									   view_direction, sampled_bsdf_direction);
-			nee_mis_weight						= balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf,
-																	nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
+			float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info);
+			nee_mis_weight						= balance_heuristic(bsdf_sample_pdf, light_sampler_solid_angle_pdf);
 		}
-		else
-			// Faster path for no light candidates, equivalent to balance heuristic (bsdf_pdf, nb_bsdf_candidates, ***, 0)
-			nee_mis_weight = initial_candidates_settings.inverse_nee_ris_number_of_bsdf_candidates;
+		// else: no light candidate samples emissive geometry, the BSDF candidate is the only strategy: 1.0f MIS weight
 
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * hit_emission).luminance();
 
 		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 		restir_pt_initial_reservoir.sanity_check(make_int2(-1, -1));
 	}
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
-	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
 
 HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_data,
@@ -347,8 +324,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 bool last_intersection_found,
 													 Xorshift32Generator& random_number_generator)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT &&                                                                                                         \
-	(DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
 	// here
 	ray_payload.bounce--;
@@ -367,8 +343,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
 								  nee_deferred_MIS_context, random_number_generator);
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && (DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||
-	   // DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
 
 #endif // #ifndef DEVICE_INCLUDES_RESTIR_PT_INITIAL_CANDIDATES_UTILS_H

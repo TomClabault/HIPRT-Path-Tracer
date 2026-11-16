@@ -51,6 +51,9 @@ private:
 	void load_new_scene(std::string filepath);
 
 	void draw_sampling_panel();
+	// Applies the settings that the current NEE estimator depends on (light sampling strategy, light tree spatial lobes, envmap sampling, ...).
+	// Does not recompile the kernels
+	void apply_nee_estimator_dependent_settings();
 	void draw_material_settings_panel();
 	void draw_ris_settings_panel();
 	void draw_risltc_settings_panel();
@@ -70,7 +73,6 @@ private:
 	bool compute_ReSTIR_PT_using_SPMIS_union_domain_boolean();
 	void draw_ReSTIR_PT_SPMIS_settings_panel();
 	void draw_ReSTIR_PT_initial_candidates_panel();
-	void draw_ReSTIR_PT_light_sampling_panel();
 
 	void draw_next_event_estimation_plus_plus_panel();
 	bool use_nee_plus_plus_checkbox(const std::string& text = "Use NEE++");

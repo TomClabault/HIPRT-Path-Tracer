@@ -671,7 +671,6 @@ void ReSTIRPTRenderPass::configure_initial_candidates_pass(HIPRTRenderData& rend
 	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
 	render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer =
 		m_initial_candidates_working_samples_buffer.get_device_pointer();
-	render_data.render_settings.restir_pt_settings.initial_candidates.update_candidate_counts_as_float();
 }
 
 void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_data)

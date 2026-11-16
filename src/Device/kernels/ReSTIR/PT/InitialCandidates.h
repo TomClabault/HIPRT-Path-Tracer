@@ -18,243 +18,11 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
-									   float3_t view_direction,
-									   RayPayload& ray_payload,
-									   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-									   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
-									   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
-									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
-									   HitInfo& closest_hit_info,
-									   NEEDeferredMISContext& nee_deferred_MIS_context,
-									   Xorshift32Generator& random_number_generator,
-									   int x,
-									   int y)
-{
-	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
-		return;
+#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER_MIS
+#error "ReSTIR PT only supports the LSS_LEARNING_TO_CLUSTER_MIS NEE estimator."
+#endif
 
-	const ReSTIRPTInitialCandidatesPassSettings& initial_candidates_settings = render_data.render_settings.restir_pt_settings.initial_candidates;
-
-	int nb_light_candidates	 = initial_candidates_settings.nee_ris_number_of_light_candidates;
-	int nb_envmap_candidates = initial_candidates_settings.nee_ris_number_of_envmap_candidates;
-	int nb_bsdf_candidates	 = initial_candidates_settings.nee_ris_number_of_bsdf_candidates;
-
-	// Float copies of the counts for the MIS weights, see ReSTIRPTInitialCandidatesPassSettings::nee_ris_number_of_light_candidates_as_float
-	float nb_light_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_light_candidates_as_float;
-	float nb_envmap_candidates_as_float = initial_candidates_settings.nee_ris_number_of_envmap_candidates_as_float;
-	float nb_bsdf_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_bsdf_candidates_as_float;
-
-	if (render_data.buffers.emissive_triangles_count == 0)
-	{
-		nb_light_candidates			 = 0;
-		nb_light_candidates_as_float = 0.0f;
-	}
-
-	if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP || EnvmapSamplingStrategy == ESS_NO_SAMPLING)
-	{
-		nb_envmap_candidates		  = 0;
-		nb_envmap_candidates_as_float = 0.0f;
-	}
-
-	float number_of_light_candidates_as_float = nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
-	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
-	{
-		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-			sample_one_point_on_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-									  closest_hit_info.geometric_normal, closest_hit_info.primitive_index, ray_payload, random_number_generator);
-
-		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
-		{
-			LightSamplePointInformation& light_sample = light_samples[i];
-
-			float nee_connection_pdf_solid_angle =
-				area_to_solid_angle_pdf(light_sample.area_measure_pdf, hippt::length(light_sample.point_on_light - closest_hit_info.inter_point),
-										compute_cosine_term_at_light_source(light_sample.light_source_normal,
-																			hippt::normalize(closest_hit_info.inter_point - light_sample.point_on_light)));
-
-			if (nee_connection_pdf_solid_angle <= 0.0f)
-				continue;
-
-			float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
-			float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
-			float distance_to_light					 = hippt::length(shadow_ray_direction);
-			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-			hiprtRay shadow_ray;
-			shadow_ray.origin	 = shadow_ray_origin;
-			shadow_ray.direction = shadow_ray_direction_normalized;
-
-			NEEPlusPlusContext nee_plus_plus_context;
-			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-			if (ray_payload.bounce == 0)
-				restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
-															   nee_plus_plus_context, random_number_generator);
-
-			if (in_shadow)
-				continue;
-
-			BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-			BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
-									 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-									 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-
-			float bsdf_pdf;
-			ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-			ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
-
-			if (ray_payload.bounce == 0)
-				ReSTIR_PT_rc_di_vertex_fill_information(light_sample.point_on_light, light_sample.light_source_normal,
-														light_sample.emissive_triangle_global_index, BSDFIncidentLightInfo::NO_INFO, restir_pt_initial_sample);
-			if (ray_payload.bounce == 1)
-			{
-				restir_pt_initial_sample.incident_light_info_at_sample_point	   = BSDFIncidentLightInfo::NO_INFO;
-				restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-			}
-			if (ray_payload.bounce <= 1)
-				restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
-			restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
-			restir_pt_initial_sample.rc_vertex_incident_radiance = light_sample.emission * path_unweighted_throughput_after_rc_vertex;
-			if (ray_payload.bounce >= 2)
-				restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-			restir_pt_initial_sample.target_function =
-				(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_sample.emission).luminance();
-			constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
-			float nee_mis_weight =
-				balance_heuristic(nee_connection_pdf_solid_angle, number_of_light_candidates_as_float, bsdf_pdf, nb_bsdf_candidates_as_float);
-			float mis_weight = multi_light_sample_mis_weight * nee_mis_weight;
-			float weight	 = mis_weight * (ray_payload.throughput * bsdf_throughput / nee_connection_pdf_solid_angle * light_sample.emission).luminance();
-
-			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
-		}
-	}
-
-	for (int envmap_candidate = 0; envmap_candidate < nb_envmap_candidates; envmap_candidate++)
-	{
-		float envmap_pdf_solid_angle;
-		float3_t envmap_sampled_direction;
-		ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
-
-		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
-		float3_t shadow_ray_direction_normalized = envmap_sampled_direction;
-
-		hiprtRay shadow_ray;
-		shadow_ray.origin	 = shadow_ray_origin;
-		shadow_ray.direction = shadow_ray_direction_normalized;
-
-		NEEPlusPlusContext nee_plus_plus_context;
-		nee_plus_plus_context.envmap		 = true;
-		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
-		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-		if (ray_payload.bounce == 0)
-			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator);
-
-		if (in_shadow)
-			continue;
-
-		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
-								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-
-		float bsdf_pdf;
-		ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
-
-		if (ray_payload.bounce == 0)
-			ReSTIR_PT_rc_di_vertex_fill_information(envmap_sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, BSDFIncidentLightInfo::NO_INFO,
-													restir_pt_initial_sample);
-		if (ray_payload.bounce == 1)
-		{
-			restir_pt_initial_sample.incident_light_info_at_sample_point	   = BSDFIncidentLightInfo::NO_INFO;
-			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-		}
-		if (ray_payload.bounce <= 1)
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
-		restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
-		restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission * path_unweighted_throughput_after_rc_vertex;
-		if (ray_payload.bounce >= 2)
-			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-		restir_pt_initial_sample.target_function =
-			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
-		constexpr float multi_light_sample_mis_weight = 1.0f / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
-		float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, nb_envmap_candidates_as_float, bsdf_pdf, nb_bsdf_candidates_as_float);
-		float mis_weight	 = multi_light_sample_mis_weight * nee_mis_weight;
-		float weight		 = mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
-
-		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
-	}
-
-	// NB BSDF candidates - 1 here because we're already doing 1 candidate thanks to the bounce of the main path
-	for (int bsdf_candidate = 0; bsdf_candidate < nb_bsdf_candidates - 1; bsdf_candidate++)
-	{
-		float bsdf_sample_pdf;
-		float3_t sampled_bsdf_direction;
-		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-
-		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-		ColorRGB32F bsdf_color		= bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
-		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
-
-		if (bsdf_sample_pdf > 0.0f)
-		{
-			hiprtRay new_ray;
-			new_ray.origin	  = closest_hit_info.inter_point;
-			new_ray.direction = sampled_bsdf_direction;
-
-			BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
-			if (ray_payload.bounce == 0)
-				restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-			bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
-																	 random_number_generator);
-
-			// Checking that we did hit something and if we hit something,
-			// it needs to be emissive
-			if (!intersection_found || shadow_light_ray_hit_info.hit_emission.is_black() ||
-				compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) <= 0.0f)
-				continue;
-
-			float3_t point_on_light = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-			if (ray_payload.bounce == 0)
-				ReSTIR_PT_rc_di_vertex_fill_information(point_on_light, shadow_light_ray_hit_info.hit_geometric_normal,
-														shadow_light_ray_hit_info.hit_prim_index, incident_light_info, restir_pt_initial_sample);
-			if (ray_payload.bounce == 1)
-			{
-				restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
-				restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-			}
-			if (ray_payload.bounce <= 1)
-				restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
-			restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
-			restir_pt_initial_sample.rc_vertex_incident_radiance = shadow_light_ray_hit_info.hit_emission * path_unweighted_throughput_after_rc_vertex;
-			if (ray_payload.bounce >= 2)
-				restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-			restir_pt_initial_sample.target_function = (path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex *
-														bsdf_throughput * shadow_light_ray_hit_info.hit_emission)
-														   .luminance();
-
-			float light_sampler_solid_angle_pdf =
-				pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-														 ray_payload.material, shadow_light_ray_hit_info, sampled_bsdf_direction);
-			float nee_mis_weight =
-				balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf, number_of_light_candidates_as_float);
-			float weight = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / bsdf_sample_pdf * shadow_light_ray_hit_info.hit_emission).luminance();
-
-			restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-			restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
-		}
-	}
-}
-
-#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 /**
  * Adds to the reservoir the candidate of a light sample or of a BSDF sample of the current vertex that reaches the envmap in 'direction'.
  *
@@ -301,7 +69,6 @@ HIPRT_DEVICE void ReSTIR_PT_add_envmap_candidate(int bounce,
  *
  * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'
  */
-template <bool use_MIS>
 HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	HIPRTRenderData& render_data,
 	float3_t view_direction,
@@ -312,8 +79,6 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	ReSTIRPTReservoirSample& restir_pt_initial_sample,
 	HitInfo& closest_hit_info,
 	Xorshift32Generator& random_number_generator,
-	float number_of_light_candidates,
-	float number_of_bsdf_candidates,
 	const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& cluster_sample,
 	IlluminationAwareKDTreeLearningToClusterTrainingSample& learning_to_cluster_training_sample,
 	int x,
@@ -357,20 +122,16 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 
 		float bsdf_pdf							  = 0.0f;
 		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-		MicrofacetRegularization::RegularizationMode regularization_mode =
-			use_MIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
 		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, incident_light_info,
-								 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness, regularization_mode);
+								 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+								 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 		ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
 		if (bsdf_pdf > 0.0f)
 		{
-			float light_candidate_mis_weight;
-			if constexpr (use_MIS)
-				light_candidate_mis_weight = balance_heuristic(solid_angle_pdf, number_of_light_candidates, bsdf_pdf, number_of_bsdf_candidates);
-			else
-				light_candidate_mis_weight = 1.0f / number_of_light_candidates;
+			// MIS weighted against the BSDF sample of the main path, the only BSDF candidate of the vertex
+			float light_candidate_mis_weight = balance_heuristic(solid_angle_pdf, bsdf_pdf);
 
 			float weight = light_candidate_mis_weight * (ray_payload.throughput * bsdf_throughput / solid_angle_pdf * envmap_emission).luminance();
 			ReSTIR_PT_add_envmap_candidate(ray_payload.bounce, sampled_direction, envmap_emission, bsdf_throughput, BSDFIncidentLightInfo::NO_INFO,
@@ -387,7 +148,6 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 }
 
-template <bool use_MIS>
 HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderData& render_data,
 																	float3_t view_direction,
 																	RayPayload& ray_payload,
@@ -397,8 +157,6 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 																	ReSTIRPTReservoirSample& restir_pt_initial_sample,
 																	HitInfo& closest_hit_info,
 																	Xorshift32Generator& random_number_generator,
-																	float number_of_light_candidates,
-																	float number_of_bsdf_candidates,
 																	unsigned int lightcut_index,
 																	unsigned int guiding_node_index,
 																	int x,
@@ -436,10 +194,10 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 
 	if (triangle_sample.is_envmap())
 	{
-		ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate<use_MIS>(
-			render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
-			restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, random_number_generator, number_of_light_candidates,
-			number_of_bsdf_candidates, triangle_sample, learning_to_cluster_training_sample, x, y);
+		ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+																 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
+																 restir_pt_initial_sample, closest_hit_info, random_number_generator, triangle_sample,
+																 learning_to_cluster_training_sample, x, y);
 
 		return;
 	}
@@ -496,14 +254,11 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 			{
 				spatial_training_sample.spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
 
-				float bsdf_pdf													 = 0.0f;
-				BSDFIncidentLightInfo incident_light_info						 = BSDFIncidentLightInfo::NO_INFO;
-				MicrofacetRegularization::RegularizationMode regularization_mode = use_MIS
-																					   ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
-																					   : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
+				float bsdf_pdf							  = 0.0f;
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_direction,
 										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-										 regularization_mode);
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 				ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 				ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
 
@@ -528,11 +283,8 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 						(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_sample.emission)
 							.luminance();
 
-					float light_candidate_mis_weight;
-					if constexpr (use_MIS)
-						light_candidate_mis_weight = balance_heuristic(solid_angle_pdf, number_of_light_candidates, bsdf_pdf, number_of_bsdf_candidates);
-					else
-						light_candidate_mis_weight = 1.0f / number_of_light_candidates;
+					// MIS weighted against the BSDF sample of the main path, the only BSDF candidate of the vertex
+					float light_candidate_mis_weight = balance_heuristic(solid_angle_pdf, bsdf_pdf);
 
 					float weight =
 						light_candidate_mis_weight * (ray_payload.throughput * bsdf_throughput / solid_angle_pdf * light_sample.emission).luminance();
@@ -551,22 +303,82 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 }
 
-template <bool use_MIS>
-HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& render_data,
-														   float3_t view_direction,
-														   RayPayload& ray_payload,
-														   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-														   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
-														   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
-														   ReSTIRPTReservoirSample& restir_pt_initial_sample,
-														   HitInfo& closest_hit_info,
-														   NEEDeferredMISContext& nee_deferred_MIS_context,
-														   Xorshift32Generator& random_number_generator,
-														   int x,
-														   int y)
+/**
+ * Envmap candidate of a vertex when the envmap is not a cluster of the lightcuts (see ReSTIR_PT_envmap_has_its_own_light_candidate()): samples a
+ * direction from the envmap distribution, traces the shadow ray towards the envmap and adds the candidate to the reservoir
+ */
+HIPRT_DEVICE void ReSTIR_PT_add_envmap_light_candidate(HIPRTRenderData& render_data,
+													   float3_t view_direction,
+													   RayPayload& ray_payload,
+													   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+													   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+													   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+													   ReSTIRPTReservoirSample& restir_pt_initial_sample,
+													   HitInfo& closest_hit_info,
+													   Xorshift32Generator& random_number_generator,
+													   int x,
+													   int y)
 {
-	// The lightcut of this shading point is resolved once and used by every light candidate, by the BSDF candidates below and by the deferred
-	// PDF of the next vertex, which are all evaluated at this same shading point.
+	float envmap_pdf_solid_angle;
+	float3_t envmap_sampled_direction;
+	ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin	 = closest_hit_info.inter_point;
+	shadow_ray.direction = envmap_sampled_direction;
+
+	NEEPlusPlusContext nee_plus_plus_context;
+	nee_plus_plus_context.envmap		 = true;
+	nee_plus_plus_context.point_on_light = envmap_sampled_direction;
+	nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+	if (ray_payload.bounce == 0)
+		restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+	bool in_shadow =
+		evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
+
+	if (in_shadow)
+		return;
+
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, envmap_sampled_direction, incident_light_info,
+							 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+
+	float bsdf_pdf;
+	ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+	ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, envmap_sampled_direction));
+
+	// MIS weighted against the BSDF sample of the main path, the only BSDF candidate of the vertex
+	float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
+	float weight		 = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
+
+	ReSTIR_PT_add_envmap_candidate(ray_payload.bounce, envmap_sampled_direction, envmap_emission, bsdf_throughput, BSDFIncidentLightInfo::NO_INFO,
+								   path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir,
+								   restir_pt_initial_sample, random_number_generator, x, y);
+}
+
+/**
+ * Light candidates of the current vertex: one learning-to-cluster light candidate and, when the envmap is not a cluster of the lightcuts, one
+ * envmap candidate.
+ *
+ * The only BSDF candidate of the vertex is the BSDF sample that continues the main path: it is MIS weighted against these light candidates when
+ * the next vertex is found, by ReSTIR_PT_do_deferred_NEE_MIS()
+ */
+HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
+									   float3_t view_direction,
+									   RayPayload& ray_payload,
+									   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
+									   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+									   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
+									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
+									   HitInfo& closest_hit_info,
+									   NEEDeferredMISContext& nee_deferred_MIS_context,
+									   Xorshift32Generator& random_number_generator,
+									   int x,
+									   int y)
+{
+	// The lightcut of this shading point is resolved once and used by the light candidate and by the deferred PDF of the next vertex, which are
+	// both evaluated at this same shading point.
 	//
 	// It is resolved before the early exit for disabled direct lighting because the deferred PDF of the next vertex is evaluated even then. It
 	// stays unresolved only when no PDF reads it: without emissive triangles or for a material that cannot do light sampling, the PDFs return
@@ -589,200 +401,18 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_learning_to_cluster(HIPRTRenderData& rend
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		return;
 
-	const ReSTIRPTInitialCandidatesPassSettings& initial_candidates_settings = render_data.render_settings.restir_pt_settings.initial_candidates;
+	// When the envmap is a cluster of the lightcuts, the learning-to-cluster light candidate also samples it
+	if (render_data.buffers.emissive_triangles_count > 0)
+		ReSTIR_PT_add_learning_to_cluster_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+														  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, x, y);
 
-	int nb_light_candidates	 = initial_candidates_settings.nee_ris_number_of_light_candidates;
-	int nb_envmap_candidates = initial_candidates_settings.nee_ris_number_of_envmap_candidates;
-	int nb_bsdf_candidates	 = use_MIS ? initial_candidates_settings.nee_ris_number_of_bsdf_candidates : 0;
-
-	// Float copies of the counts for the MIS weights, see ReSTIRPTInitialCandidatesPassSettings::nee_ris_number_of_light_candidates_as_float
-	float nb_light_candidates_as_float	= initial_candidates_settings.nee_ris_number_of_light_candidates_as_float;
-	float nb_envmap_candidates_as_float = initial_candidates_settings.nee_ris_number_of_envmap_candidates_as_float;
-	float nb_bsdf_candidates_as_float	= use_MIS ? initial_candidates_settings.nee_ris_number_of_bsdf_candidates_as_float : 0.0f;
-
-	if (render_data.buffers.emissive_triangles_count == 0)
-	{
-		nb_light_candidates			 = 0;
-		nb_light_candidates_as_float = 0.0f;
-	}
-
-	// When the envmap is a cluster of the lightcuts, the light candidates sample it and there are no separate envmap candidates
-	bool envmap_cluster_enabled = render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
-	if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP || EnvmapSamplingStrategy == ESS_NO_SAMPLING || envmap_cluster_enabled)
-	{
-		nb_envmap_candidates		  = 0;
-		nb_envmap_candidates_as_float = 0.0f;
-	}
-
-	float number_of_light_candidates_as_float = nb_light_candidates_as_float * DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
-	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
-	{
-		ReSTIR_PT_add_learning_to_cluster_light_candidate<use_MIS>(
-			render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
-			restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, random_number_generator, number_of_light_candidates_as_float,
-			nb_bsdf_candidates_as_float, lightcut_index, guiding_node_index, x, y);
-	}
-
-	for (int envmap_candidate = 0; envmap_candidate < nb_envmap_candidates; envmap_candidate++)
-	{
-		float envmap_pdf_solid_angle;
-		float3_t envmap_sampled_direction;
-		ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
-
-		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
-		float3_t shadow_ray_direction_normalized = envmap_sampled_direction;
-
-		hiprtRay shadow_ray;
-		shadow_ray.origin	 = shadow_ray_origin;
-		shadow_ray.direction = shadow_ray_direction_normalized;
-
-		NEEPlusPlusContext nee_plus_plus_context;
-		nee_plus_plus_context.envmap		 = true;
-		nee_plus_plus_context.point_on_light = envmap_sampled_direction;
-		nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
-		if (ray_payload.bounce == 0)
-			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-		bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
-														   random_number_generator);
-
-		if (in_shadow)
-			continue;
-
-		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized,
-								 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-								 use_MIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS
-										 : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-
-		float bsdf_pdf;
-		ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-		ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
-
-		if (ray_payload.bounce == 0)
-			ReSTIR_PT_rc_di_vertex_fill_information(envmap_sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, BSDFIncidentLightInfo::NO_INFO,
-													restir_pt_initial_sample);
-		if (ray_payload.bounce == 1)
-		{
-			restir_pt_initial_sample.incident_light_info_at_sample_point	   = BSDFIncidentLightInfo::NO_INFO;
-			restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-		}
-		if (ray_payload.bounce <= 1)
-			restir_pt_initial_sample.rc_vertex_incident_light_direction = shadow_ray_direction_normalized;
-		restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
-		restir_pt_initial_sample.rc_vertex_incident_radiance = envmap_emission * path_unweighted_throughput_after_rc_vertex;
-		if (ray_payload.bounce >= 2)
-			restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-		restir_pt_initial_sample.target_function =
-			(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * envmap_emission).luminance();
-
-		float weight;
-		if constexpr (use_MIS)
-		{
-			float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, nb_envmap_candidates_as_float, bsdf_pdf, nb_bsdf_candidates_as_float);
-			weight				 = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
-		}
-		else
-			weight = 1.0f / nb_envmap_candidates_as_float * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
-
-		restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-		restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
-	}
-
-	if constexpr (use_MIS)
-	{
-		// Probability that the light candidates select the envmap cluster, for the MIS weight of the BSDF candidates that miss the scene. It stays
-		// 0 when the lightcut is unresolved: the material cannot do light sampling and no light candidate samples the envmap
-		float envmap_cluster_probability = 0.0f;
-		if (envmap_cluster_enabled && nb_bsdf_candidates > 1 && lightcut_index != IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX)
-		{
-			IlluminationAwareKDTreeSGShadingContext shading_context =
-				build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
-			envmap_cluster_probability = pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, lightcut_index);
-		}
-
-		// NB BSDF candidates - 1 here because the main path supplies one deferred candidate.
-		for (int bsdf_candidate = 0; bsdf_candidate < nb_bsdf_candidates - 1; bsdf_candidate++)
-		{
-			float bsdf_sample_pdf;
-			float3_t sampled_bsdf_direction;
-			BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-
-			BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-									 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-									 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-			ColorRGB32F bsdf_color		= bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
-			ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
-
-			if (bsdf_sample_pdf > 0.0f)
-			{
-				hiprtRay new_ray;
-				new_ray.origin	  = closest_hit_info.inter_point;
-				new_ray.direction = sampled_bsdf_direction;
-
-				BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
-				if (ray_payload.bounce == 0)
-					restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-				bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info,
-																		 closest_hit_info.primitive_index, random_number_generator);
-
-				if (!intersection_found && envmap_cluster_enabled)
-				{
-					// The BSDF candidate reaches the envmap: MIS against the light candidates that select the envmap cluster
-					float envmap_pdf_solid_angle;
-					ColorRGB32F envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
-
-					float light_sampler_solid_angle_pdf = envmap_cluster_probability * envmap_pdf_solid_angle;
-					float nee_mis_weight =
-						balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf, number_of_light_candidates_as_float);
-					float weight = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
-
-					ReSTIR_PT_add_envmap_candidate(ray_payload.bounce, sampled_bsdf_direction, envmap_emission, bsdf_throughput, incident_light_info,
-												   path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex, weight,
-												   restir_pt_initial_reservoir, restir_pt_initial_sample, random_number_generator, x, y);
-
-					continue;
-				}
-
-				if (!intersection_found || shadow_light_ray_hit_info.hit_emission.is_black() ||
-					compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) <= 0.0f)
-					continue;
-
-				float3_t point_on_light = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-				if (ray_payload.bounce == 0)
-					ReSTIR_PT_rc_di_vertex_fill_information(point_on_light, shadow_light_ray_hit_info.hit_geometric_normal,
-															shadow_light_ray_hit_info.hit_prim_index, incident_light_info, restir_pt_initial_sample);
-				if (ray_payload.bounce == 1)
-				{
-					restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
-					restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
-				}
-				if (ray_payload.bounce <= 1)
-					restir_pt_initial_sample.rc_vertex_incident_light_direction = sampled_bsdf_direction;
-				restir_pt_initial_sample.di_sample					 = ray_payload.bounce == 0;
-				restir_pt_initial_sample.rc_vertex_incident_radiance = shadow_light_ray_hit_info.hit_emission * path_unweighted_throughput_after_rc_vertex;
-				if (ray_payload.bounce >= 2)
-					restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
-				restir_pt_initial_sample.target_function = (path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex *
-															bsdf_throughput * shadow_light_ray_hit_info.hit_emission)
-															   .luminance();
-
-				IlluminationAwareKDTreeSGShadingContext shading_context =
-					build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
-				float light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
-					render_data, shading_context, lightcut_index, ray_payload.material, shadow_light_ray_hit_info.hit_prim_index, point_on_light,
-					shadow_light_ray_hit_info.hit_geometric_normal);
-				float nee_mis_weight =
-					balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates_as_float, light_sampler_solid_angle_pdf, number_of_light_candidates_as_float);
-				float weight =
-					nee_mis_weight * (ray_payload.throughput * bsdf_throughput / bsdf_sample_pdf * shadow_light_ray_hit_info.hit_emission).luminance();
-
-				restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
-				restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
-			}
-		}
-	}
+	if (ReSTIR_PT_envmap_has_its_own_light_candidate(render_data))
+		ReSTIR_PT_add_envmap_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
+											 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+											 closest_hit_info, random_number_generator, x, y);
 }
-#endif // #if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
 HIPRT_DEVICE void ReSTIR_PT_stream_NEE_dispatch(HIPRTRenderData& render_data,
 												float3_t view_direction,
@@ -797,18 +427,12 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE_dispatch(HIPRTRenderData& render_data,
 												int x,
 												int y)
 {
-#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
-	ReSTIR_PT_stream_NEE_learning_to_cluster<false>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-													path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
-													closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
-#elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
-	ReSTIR_PT_stream_NEE_learning_to_cluster<true>(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-												   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
-												   closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
-#else														 // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+	// Compiled out for the other NEE estimators: this kernel is only built with them when ReSTIR PT is not the path sampling strategy, and is
+	// then never launched
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	ReSTIR_PT_stream_NEE(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
 						 restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context, random_number_generator, x, y);
-#endif														 // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }
 
 #ifdef __KERNELCC__

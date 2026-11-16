@@ -136,13 +136,10 @@
  *		Same as LSS_LEARNING_TO_CLUSTER but with BSDF MIS. A BSDF sample that misses the scene is MIS weighted against the envmap cluster
  *
  *Combines learning-to-cluster light sampling with the deferred BSDF sample using MIS. Cluster rewards include the light sample's MIS weight.
+ *
+ * ReSTIR PT (PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT) only supports LSS_LEARNING_TO_CLUSTER_MIS
  */
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
-// ReSTIR PT defaults to RIS; the runtime compiler/UI can select the supported learned estimators.
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
-#else
-#define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
 
 #if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \
 	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG

@@ -1159,7 +1159,6 @@ void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer =
 		m_restir_pt_state.initial_candidates_working_samples.data();
-	m_render_data.render_settings.restir_pt_settings.initial_candidates.update_candidate_counts_as_float();
 }
 
 void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()

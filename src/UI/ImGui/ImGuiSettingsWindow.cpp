@@ -1062,6 +1062,38 @@ void ImGuiSettingsWindow::draw_environment_panel()
 		m_render_window->set_render_dirty(true);
 }
 
+void ImGuiSettingsWindow::apply_nee_estimator_dependent_settings()
+{
+	HIPRTRenderData& render_data									= m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
+	{
+		render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML;
+		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
+
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+	}
+	else if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+	{
+		render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER;
+		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
+
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
+
+		// The envmap cluster of learning to cluster samples its directions with the importance sampling structure of the envmap
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+
+			m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
+		}
+	}
+	else
+		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(LightTreeSGBuilderOptions::LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT);
+}
+
 void ImGuiSettingsWindow::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
@@ -1385,17 +1417,19 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 			static_assert(IM_ARRAYSIZE(items_nee_estimators) == IM_ARRAYSIZE(tooltips_nee_estimators));
 
+			// ReSTIR PT only supports learning to cluster + MIS
 			bool restir_pt = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
 			bool no_direct_light_sampling_disabled = restir_pt;
 			bool uniform_one_light_disabled		   = restir_pt;
 			bool bsdf_sampling_disabled			   = restir_pt;
 
-			bool mis_disabled				  = restir_pt;
-			bool ris_disabled				  = false;
-			bool risltc_disabled			  = restir_pt;
-			bool ltc_shading_disabled		  = restir_pt;
-			bool neural_many_lights_disabled  = restir_pt;
-			bool learning_to_cluster_disabled = false;
+			bool mis_disabled					  = restir_pt;
+			bool ris_disabled					  = restir_pt;
+			bool risltc_disabled				  = restir_pt;
+			bool ltc_shading_disabled			  = restir_pt;
+			bool neural_many_lights_disabled	  = restir_pt;
+			bool learning_to_cluster_disabled	  = restir_pt;
+			bool learning_to_cluster_mis_disabled = false;
 
 			unsigned char disabled_nee_estimator_items[] = { no_direct_light_sampling_disabled,
 															 uniform_one_light_disabled,
@@ -1406,7 +1440,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 															 ltc_shading_disabled,
 															 neural_many_lights_disabled,
 															 learning_to_cluster_disabled,
-															 learning_to_cluster_disabled };
+															 learning_to_cluster_mis_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_light_sampling_strategy' array.
@@ -1417,32 +1451,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"NEE Estimator", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 					items_nee_estimators, IM_ARRAYSIZE(items_nee_estimators), tooltips_nee_estimators, disabled_nee_estimator_items))
 			{
-				int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-				if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
-				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML;
-					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
-
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
-				}
-				else if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
-				{
-					render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER;
-					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
-
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
-
-					// The envmap cluster of learning to cluster samples its directions with the importance sampling structure of the envmap
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
-
-						m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
-					}
-				}
-				else
-					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(
-						LightTreeSGBuilderOptions::LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT);
+				apply_nee_estimator_dependent_settings();
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1459,6 +1468,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						if (!disabled_nee_estimator_items[i])
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, i);
+							apply_nee_estimator_dependent_settings();
 
 							m_renderer->recompute_emissives_sampling_data_structure();
 							m_renderer->recompile_kernels();
@@ -1471,6 +1481,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				else
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, preferred_base_strategy);
+					apply_nee_estimator_dependent_settings();
 
 					m_renderer->recompute_emissives_sampling_data_structure();
 					m_renderer->recompile_kernels();
@@ -1594,8 +1605,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
 				draw_ris_settings_panel();
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
-					draw_ReSTIR_PT_light_sampling_panel();
 
 				break;
 			}
@@ -1728,9 +1737,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
 				{
+					// ReSTIR PT only supports learning to cluster + MIS
 					int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-					if (nee_estimator != LSS_RIS_BSDF_AND_LIGHT && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
+					if (nee_estimator != LSS_LEARNING_TO_CLUSTER_MIS)
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_LEARNING_TO_CLUSTER_MIS);
+						apply_nee_estimator_dependent_settings();
+
+						m_renderer->recompute_emissives_sampling_data_structure();
+					}
 				}
 
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF_WAVEFRONT)
@@ -2029,8 +2044,6 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 	HIPRTRenderData& render_data									= m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
-	bool ris_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
-	ImGui::BeginDisabled(ris_disabled);
 	if (ImGui::CollapsingHeader("RIS Settings"))
 	{
 		ImGui::TreePush("RIS Settings tree");
@@ -2064,9 +2077,6 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
-	ImGui::EndDisabled(); // ris_disabled
-	if (ris_disabled)
-		ImGuiRenderer::add_tooltip("The RIS light sampling settings are controlled by ReSTIR PT.");
 }
 
 void ImGuiSettingsWindow::draw_risltc_settings_panel()
@@ -4148,36 +4158,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_initial_candidates_panel()
 
 			ImGui::TreePop();
 		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
-}
-
-void ImGuiSettingsWindow::draw_ReSTIR_PT_light_sampling_panel()
-{
-	if (ImGui::CollapsingHeader("ReSTIR PT light sampling settings"))
-	{
-		ImGui::TreePush("ReSTIR PT - Light sampling tree");
-
-		if (ImGui::SliderInt("NEE Light sample count",
-							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_light_candidates, 0, 8))
-			m_render_window->set_render_dirty(true);
-
-		bool envmap_sampled_by_learning_to_cluster = DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(
-			m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
-		ImGui::BeginDisabled(envmap_sampled_by_learning_to_cluster);
-		if (ImGui::SliderInt("NEE Envmap sample count",
-							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_envmap_candidates, 0, 4))
-			m_render_window->set_render_dirty(true);
-		if (envmap_sampled_by_learning_to_cluster)
-			ImGuiRenderer::add_tooltip(std::string(ImGuiSettingsWindow::ENVMAP_SAMPLED_BY_LEARNING_TO_CLUSTER_TOOLTIP) +
-									   "\n\nThe NEE light samples also sample the envmap.");
-		ImGui::EndDisabled();
-
-		if (ImGui::SliderInt("NEE BSDF sample count",
-							 &m_renderer->get_render_settings().restir_pt_settings.initial_candidates.nee_ris_number_of_bsdf_candidates, 0, 4))
-			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

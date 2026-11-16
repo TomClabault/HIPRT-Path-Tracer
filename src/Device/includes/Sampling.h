@@ -101,7 +101,8 @@ HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf
 
 /**
  * Balance heuristic with the numbers of samples given as floats: for numbers of samples that are uniform values
- * converted to floats once on the host (the int version converts them on the GPU, see ReSTIRPTInitialCandidatesPassSettings)
+ * converted to floats once on the host. The int version converts them on the GPU: converting a uniform int to a float is a
+ * vector instruction that the compiler hoists out of loops, keeping a vector register for the whole kernel
  */
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
 {
