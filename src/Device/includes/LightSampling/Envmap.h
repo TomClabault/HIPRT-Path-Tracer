@@ -157,8 +157,11 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 
 	float envmap_total_sum = world_settings.envmap_total_sum;
 
-	float theta_bsdf_dir = acosf(-direction.y);
-	float sin_theta		 = hippt::intrin_sinf(theta_bsdf_dir);
+	// The polar angle of the texel is measured in the space of the envmap, where envmap_sample() sampled it: in world space, a rotated envmap would
+	// give the sine of another texel row and a PDF that does not match the sampling PDF
+	float3_t envmap_space_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
+	float theta_bsdf_dir			= acosf(-envmap_space_direction.y);
+	float sin_theta					= hippt::intrin_sinf(theta_bsdf_dir);
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 	// The texel was sampled according to its luminance. Same normalization as in envmap_sample(): the packed scaling factor is already undone by the
