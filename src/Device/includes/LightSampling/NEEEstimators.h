@@ -860,53 +860,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_neural_many_lights(HIPRTRenderD
 																  nisml_sample, shadow_sink);
 }
 
-template <typename BsdfMaterialType, typename ProposalMaterialType>
-HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data,
-													  RayPayloadT<BsdfMaterialType>& ray_payload,
-													  BsdfMaterialType& bsdf_material,
-													  const HitInfo closest_hit_info,
-													  const float3_t& view_direction,
-													  const ProposalMaterialType& proposal_state,
-													  Xorshift32Generator& random_number_generator)
-{
-	if (!bsdf_material.can_do_light_sampling())
-		return ColorRGB32F(0.0f);
-
-	int valid_light_sample_count		= 0;
-	ColorRGB32F total_outgoing_radiance = ColorRGB32F(0.0f);
-
-	LightSampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
-		sample_one_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-						 closest_hit_info.primitive_index, ray_payload, proposal_state, random_number_generator);
-
-	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
-	{
-		LightSampleInformation& light_sample = light_samples[i];
-
-		if (light_sample.pdf <= 0.0f)
-			// Can happen for very small triangles or the light
-			// sampling technique couldn't sample a triangle
-			return ColorRGB32F(0.0f);
-
-		valid_light_sample_count++;
-
-		float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 0]];
-		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 1]];
-		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 2]];
-
-		float specular_lobe = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, closest_hit_info.inter_point, view_direction,
-										   closest_hit_info.shading_normal, proposal_state, LTCLobe::SPECULAR_LOBE);
-
-		float diffuse_lobe = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, closest_hit_info.inter_point, view_direction,
-										  closest_hit_info.shading_normal, proposal_state, LTCLobe::DIFFUSE_LOBE);
-
-		ColorRGB32F light_sample_emission = triangle_load_emission(render_data, light_sample.emissive_triangle_global_index);
-		total_outgoing_radiance += (ColorRGB32F(specular_lobe) + diffuse_lobe * bsdf_material.base_color) * light_sample_emission;
-	}
-
-	return total_outgoing_radiance / valid_light_sample_count;
-}
-
 template <NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType, typename ProposalMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data,
 														   RayPayloadT<BsdfMaterialType>& ray_payload,
@@ -940,9 +893,6 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 #elif DirectLightNEEEstimator == LSS_RISLTC					 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_lights_RISLTC<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
 		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, shadow_sink);
-#elif DirectLightNEEEstimator == LSS_LTC_SHADING			 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
-	direct_light_contribution =
-		sample_one_light_LTC_shading(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator);
 #elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights<shadow_mode>(render_data, ray_payload, closest_hit_info, view_direction,
 																						random_number_generator, shadow_sink);

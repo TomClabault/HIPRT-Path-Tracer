@@ -18,10 +18,9 @@
 #define LSS_MIS_LIGHT_BSDF			 3
 #define LSS_RIS_BSDF_AND_LIGHT		 4
 #define LSS_RISLTC					 5
-#define LSS_LTC_SHADING				 6
-#define LSS_NEURAL_MANY_LIGHTS		 7
-#define LSS_LEARNING_TO_CLUSTER		 8
-#define LSS_LEARNING_TO_CLUSTER_MIS	 9
+#define LSS_NEURAL_MANY_LIGHTS		 6
+#define LSS_LEARNING_TO_CLUSTER		 7
+#define LSS_LEARNING_TO_CLUSTER_MIS	 8
 
 #define DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator) ((nee_estimator) == LSS_LEARNING_TO_CLUSTER || (nee_estimator) == LSS_LEARNING_TO_CLUSTER_MIS)
 
@@ -116,10 +115,6 @@
  * 	- LSS_RISLTC
  *		Samples lights in the scene with RISLTC (from [Combining Resampled Importance and Projected Solid Angle
  *		Samplings for Many Area Light Rendering, Shash et. al 2023])
- *
- *	- LSS_LTC_SHADING
- *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
- *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
  *
  *	- LSS_NEURAL_MANY_LIGHTS
  *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling

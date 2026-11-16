@@ -1380,7 +1380,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 													  "- MIS (1 Light + 1 BSDF)",
 													  "- RIS BDSF + Light candidates",
 													  "- RISLTC BSDF + Light candidates",
-													  "- LTC Shading",
 													  "- Neural importance sampling of many lights",
 													  "- Learning to cluster SG light tree",
 													  "- Learning to cluster SG light tree + MIS" };
@@ -1399,9 +1398,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				"Experimental and unfinished! Samples lights in the scene with RISLTC (Shah et. al, 2023) with both BSDF and light candidates. The number of "
 				"light or BSDF candidates can be controlled.",
-
-				"Experimental and unfinished! Uses Linearly Transformed Cosines to analytically shade lights. This is biased as shadowing is not taken into "
-				"account. Not all BSDF lobe configurations are supported.",
 
 				"Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling probabilities on "
 				"clusters of a lightcut in the spherical gaussian light tree",
@@ -1426,21 +1422,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			bool mis_disabled					  = restir_pt;
 			bool ris_disabled					  = restir_pt;
 			bool risltc_disabled				  = restir_pt;
-			bool ltc_shading_disabled			  = restir_pt;
 			bool neural_many_lights_disabled	  = restir_pt;
 			bool learning_to_cluster_disabled	  = restir_pt;
 			bool learning_to_cluster_mis_disabled = false;
 
-			unsigned char disabled_nee_estimator_items[] = { no_direct_light_sampling_disabled,
-															 uniform_one_light_disabled,
-															 bsdf_sampling_disabled,
-															 mis_disabled,
-															 ris_disabled,
-															 risltc_disabled,
-															 ltc_shading_disabled,
-															 neural_many_lights_disabled,
-															 learning_to_cluster_disabled,
-															 learning_to_cluster_mis_disabled };
+			unsigned char disabled_nee_estimator_items[] = {
+				no_direct_light_sampling_disabled, uniform_one_light_disabled,	 bsdf_sampling_disabled,		  mis_disabled, ris_disabled, risltc_disabled,
+				neural_many_lights_disabled,	   learning_to_cluster_disabled, learning_to_cluster_mis_disabled
+			};
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_light_sampling_strategy' array.
