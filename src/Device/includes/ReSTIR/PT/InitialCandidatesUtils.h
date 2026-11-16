@@ -191,16 +191,6 @@ HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
 }
 
-/**
- * Whether the envmap is sampled by an envmap candidate of its own at each vertex: when it is importance sampled but is not a cluster of the
- * lightcuts of learning to cluster. A cluster of the lightcuts is sampled by the learning-to-cluster light candidate instead
- */
-HIPRT_DEVICE bool ReSTIR_PT_envmap_has_its_own_light_candidate(const HIPRTRenderData& render_data)
-{
-	return render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && EnvmapSamplingStrategy != ESS_NO_SAMPLING &&
-		   !render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled;
-}
-
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 // Not inlined: inlined into the initial candidates kernel, this PDF raises the register count of the kernel above an allocation step
 HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
@@ -289,11 +279,9 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 				ReSTIR_PT_get_deferred_envmap_cluster_probability(render_data, nee_deferred_MIS_context) * envmap_pdf_solid_angle;
 			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, light_sampler_solid_angle_pdf);
 		}
-		else if (ReSTIR_PT_envmap_has_its_own_light_candidate(render_data))
-			nee_mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_pdf_solid_angle);
 		else
-			// The uniform sky or an envmap without importance sampling isn't explicitly sampled: BSDF samples only can gather emission from the
-			// sky: 1.0f MIS weight
+			// The uniform sky, or an envmap that is not a cluster of the lightcuts (no importance sampling, zero intensity, white furnace mode), isn't
+			// explicitly sampled: BSDF samples only can gather emission from the sky: 1.0f MIS weight
 			nee_mis_weight = 1.0f;
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 

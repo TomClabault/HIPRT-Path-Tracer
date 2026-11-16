@@ -250,65 +250,10 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 }
 
 /**
- * Envmap candidate of a vertex when the envmap is not a cluster of the lightcuts (see ReSTIR_PT_envmap_has_its_own_light_candidate()): samples a
- * direction from the envmap distribution, traces the shadow ray towards the envmap and adds the candidate to the reservoir
- */
-HIPRT_DEVICE void ReSTIR_PT_add_envmap_light_candidate(HIPRTRenderData& render_data,
-													   float3_t view_direction,
-													   RayPayload& ray_payload,
-													   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-													   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
-													   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
-													   ReSTIRPTReservoirSample& restir_pt_initial_sample,
-													   HitInfo& closest_hit_info,
-													   Xorshift32Generator& random_number_generator,
-													   int x,
-													   int y)
-{
-	float envmap_pdf_solid_angle;
-	float3_t envmap_sampled_direction;
-	ColorRGB32F envmap_emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, envmap_pdf_solid_angle, random_number_generator);
-
-	hiprtRay shadow_ray;
-	shadow_ray.origin	 = closest_hit_info.inter_point;
-	shadow_ray.direction = envmap_sampled_direction;
-
-	NEEPlusPlusContext nee_plus_plus_context;
-	nee_plus_plus_context.envmap		 = true;
-	nee_plus_plus_context.point_on_light = envmap_sampled_direction;
-	nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
-	if (ray_payload.bounce == 0)
-		restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
-	bool in_shadow =
-		evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
-
-	if (in_shadow)
-		return;
-
-	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, envmap_sampled_direction, incident_light_info,
-							 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
-							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-
-	float bsdf_pdf;
-	ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-	ColorRGB32F bsdf_throughput = bsdf_color * hippt::abs(hippt::dot(closest_hit_info.shading_normal, envmap_sampled_direction));
-
-	// MIS weighted against the BSDF sample of the main path, the only BSDF candidate of the vertex
-	float nee_mis_weight = balance_heuristic(envmap_pdf_solid_angle, bsdf_pdf);
-	float weight		 = nee_mis_weight * (ray_payload.throughput * bsdf_throughput / envmap_pdf_solid_angle * envmap_emission).luminance();
-
-	ReSTIR_PT_add_candidate(ray_payload.bounce, envmap_sampled_direction, envmap_sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, envmap_emission,
-							bsdf_throughput, BSDFIncidentLightInfo::NO_INFO, path_unweighted_throughput_up_to_rc_vertex,
-							path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample, random_number_generator,
-							x, y);
-}
-
-/**
- * Light candidates of the current vertex: one learning-to-cluster light candidate and, when the envmap is not a cluster of the lightcuts, one
- * envmap candidate.
+ * Light candidate of the current vertex: one learning-to-cluster light candidate, which also samples the envmap when the envmap is a cluster of
+ * the lightcuts.
  *
- * The only BSDF candidate of the vertex is the BSDF sample that continues the main path: it is MIS weighted against these light candidates when
+ * The only BSDF candidate of the vertex is the BSDF sample that continues the main path: it is MIS weighted against this light candidate when
  * the next vertex is found, by ReSTIR_PT_do_deferred_NEE_MIS()
  */
 HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
@@ -354,11 +299,6 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 		ReSTIR_PT_add_learning_to_cluster_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 														  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
 														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, x, y);
-
-	if (ReSTIR_PT_envmap_has_its_own_light_candidate(render_data))
-		ReSTIR_PT_add_envmap_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-											 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
-											 closest_hit_info, random_number_generator, x, y);
 }
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 

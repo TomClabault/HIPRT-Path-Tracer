@@ -22,7 +22,7 @@ struct ReSTIRPTInitialCandidatesPassSettings
 	// How many path trees are resampled per pixel during the initial candidates generation pass is the ReSTIR_PT_InitialPathTreesCount kernel option
 
 	// ReSTIR PT only supports the LSS_LEARNING_TO_CLUSTER_MIS NEE estimator. Each path vertex resamples one learning-to-cluster light candidate,
-	// one envmap candidate when the envmap is not a cluster of the lightcuts, and the BSDF sample that continues the path, all MIS weighted together
+	// which also samples the envmap when it is a cluster of the lightcuts, and the BSDF sample that continues the path, MIS weighted together
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
