@@ -9,7 +9,6 @@
 #include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/Envmap.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/Surface.h"

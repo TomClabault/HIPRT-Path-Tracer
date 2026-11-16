@@ -12,7 +12,6 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeSurfaceNormalFace.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/Envmap.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/RussianRoulette.h"
@@ -348,22 +347,16 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 		}
 	}
 
-	skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
 	if (out_raw_envmap_emission)
 		*out_raw_envmap_emission = skysphere_color;
 
 	ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_throughput;
-	// Only clamping with the indirect lighting clamp value if
-	// this is bounce > 0 (thanks to /* clamp condition */ bounce > 0)
-	ColorRGB32F clamped_indirect_lighting_contribution =
-		clamp_light_contribution(indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp,
-								 /* clamp condition */ bounce > 0);
 
 	if (bounce == 0)
 		// The camera ray missed so we don't have the normals but we have the base color
 		store_denoiser_AOVs(render_data, pixel_index, make_float3(0, 0, 0), skysphere_color);
 
-	return clamped_indirect_lighting_contribution;
+	return indirect_lighting_contribution;
 }
 
 HIPRT_DEVICE HIPRT_INLINE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data,

@@ -10,7 +10,6 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/HashGrid.h"
 #include "Device/includes/LightSampling/Envmap.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/PathTracingDebugViews.h"

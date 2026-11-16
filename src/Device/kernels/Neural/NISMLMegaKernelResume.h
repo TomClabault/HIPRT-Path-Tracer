@@ -61,11 +61,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 
 		if (ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting)
 		{
-			ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting_from_emissive_contribution(
-				render_data, ray_payload, emissive_geometry_direct_contribution, closest_hit_info, -ray.direction, random_number_generator);
-
-			ray_payload.ray_color +=
-				clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
+			ray_payload.ray_color += estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, emissive_geometry_direct_contribution,
+																						 closest_hit_info, -ray.direction, random_number_generator);
 		}
 	}
 	/*else if (ray_payload.next_ray_state != RayState::MISSED && intersection_found &&

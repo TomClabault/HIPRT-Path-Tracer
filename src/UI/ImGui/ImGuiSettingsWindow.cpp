@@ -790,10 +790,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		break;
 
 	case SETTINGS_PRESET_REFERENCE_BRUTE_FORCE_PATH_TRACER:
-		render_settings.do_alpha_testing			= true;
-		render_settings.direct_contribution_clamp	= 0.0f;
-		render_settings.indirect_contribution_clamp = 0.0f;
-		render_settings.envmap_contribution_clamp	= 0.0f;
+		render_settings.do_alpha_testing = true;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
@@ -5140,27 +5137,10 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	ImGui::SeparatorText("Light clamping");
+	ImGui::SeparatorText("Lights");
 	{
 		ImGui::TreePush("Lighting Settings Performance Tree");
 
-		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		bool allow_backfacing_lights = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS);
 		if (ImGui::Checkbox("Allow backfacing lights", &allow_backfacing_lights))
 		{

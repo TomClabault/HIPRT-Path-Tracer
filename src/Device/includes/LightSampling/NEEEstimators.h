@@ -12,7 +12,6 @@
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
@@ -399,7 +398,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 	if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
-		// ENVMAP_RAW: the contribution is clamped with the envmap clamp when the shadow ray is resolved
+		// ENVMAP_RAW: the contribution is multiplied by the path throughput when the shadow ray is resolved
 		unsigned int queue_slot = shadow_sink->emit(
 			shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
 			WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
@@ -432,8 +431,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 			learning_to_cluster_training_sample.q_reward			 = cluster_reward_if_visible;
 			learning_to_cluster_training_sample.variance_observation = cluster_reward_if_visible;
 
-			// The envmap clamp applies to the envmap samples of learning to cluster as it does to the envmap samples of the envmap sampler
-			envmap_contribution = clamp_light_contribution(mis_estimator, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
+			envmap_contribution = mis_estimator;
 		}
 
 		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
@@ -1014,11 +1012,6 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 	return direct_light_contribution;
 }
 
-HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
-{
-	return clamp_light_contribution(direct_lighting_contribution, direct_contribution_clamp, bounce > 0);
-}
-
 /**
  * The x & y parameters are retained for the renderer's direct-lighting interface.
  */
@@ -1043,19 +1036,11 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 		envmap_direct_contribution = sample_environment_map<BsdfMaterialType, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info,
 																						   view_direction, random_number_generator, shadow_sink);
 
-	// Clamping direct lighting
-	emissive_geometry_direct_contribution =
-		clamp_light_contribution(emissive_geometry_direct_contribution, render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
-	envmap_direct_contribution =
-		clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
-
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
 	// This if() rejects backfacing lights if backfacing lights are disabled
 	if (compute_cosine_term_at_light_source(closest_hit_info.original_geometric_normal(), view_direction) > 0.0f)
 	{
 		ColorRGB32F hit_emission = bsdf_material.get_emission();
-
-		hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
 		if (render_data.render_settings.enable_direct_lighting || ray_payload.bounce > 1)
 			total_direct_lighting += hit_emission * ray_throughput;
@@ -1068,7 +1053,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 		// geometry + direct light sampling). Otherwise, we don't check for bounce == 0
 		total_direct_lighting += bsdf_material.get_emission();
 
-	// Clamped indirect lighting
+	// Direct lighting from light sampling
 	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_throughput;
 
 	total_direct_lighting += direct_lighting_contribution;
@@ -1136,27 +1121,8 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 																			 float3_t view_direction,
 																			 Xorshift32Generator& random_number_generator)
 {
-	ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting_from_emissive_contribution(
-		render_data, ray_payload, ray_payload.throughput, emissive_geometry_direct_contribution, closest_hit_info, view_direction, random_number_generator);
-
-	return clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
-}
-
-/**
- * The x & y parameters are retained for the renderer's direct-lighting interface.
- */
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data,
-															  RayPayload& ray_payload,
-															  ColorRGB32F ray_throughput,
-															  HitInfo& closest_hit_info,
-															  float3_t view_direction,
-															  int x,
-															  int y,
-															  NEEDeferredMISContext& out_nee_mis_context,
-															  Xorshift32Generator& random_number_generator)
-{
-	return estimate_direct_lighting(render_data, ray_payload, ray_throughput, closest_hit_info, view_direction, x, y, out_nee_mis_context,
-									random_number_generator);
+	return estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, ray_payload.throughput, emissive_geometry_direct_contribution,
+															   closest_hit_info, view_direction, random_number_generator);
 }
 
 /**
@@ -1171,10 +1137,8 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 												  NEEDeferredMISContext& out_nee_mis_context,
 												  Xorshift32Generator& random_number_generator)
 {
-	ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y,
-																	 out_nee_mis_context, random_number_generator);
-
-	return clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
+	return estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y, out_nee_mis_context,
+									random_number_generator);
 }
 
 HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderData& render_data,
@@ -1292,9 +1256,6 @@ HIPRT_DEVICE ColorRGB32F deferred_NEE_MIS_envmap_miss_learning_to_cluster(HIPRTR
 
 	ColorRGB32F envmap_contribution =
 		envmap_radiance * nee_deferred_MIS_context.last_bsdf_x_cos_theta / nee_deferred_MIS_context.last_bsdf_sample_pdf * bsdf_sample_mis_weight;
-
-	// Same envmap clamp as the envmap NEE of the previous vertex, whose bounce is one less than the bounce of this miss
-	envmap_contribution = clamp_light_contribution(envmap_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 1);
 
 	return nee_deferred_MIS_context.last_ray_throughput * envmap_contribution;
 }

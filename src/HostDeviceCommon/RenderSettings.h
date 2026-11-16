@@ -213,13 +213,6 @@ struct HIPRTRenderSettings
 	// Whether or not to enable direct lighting (direct incoming light at the primary hit)
 	bool enable_direct_lighting = true;
 
-	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 0.0f;
-	// Clamp envmap contribution to reduce fireflies
-	float envmap_contribution_clamp = 0.0f;
-	// Clamp indirect lighting contribution to reduce fireflies
-	float indirect_contribution_clamp = 0.0f;
-
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
 

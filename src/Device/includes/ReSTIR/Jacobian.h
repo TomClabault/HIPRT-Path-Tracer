@@ -6,8 +6,6 @@
 #ifndef DEVICE_RESTIR_JACOBIAN_H
 #define DEVICE_RESTIR_JACOBIAN_H
 
-#include "Device/includes/LightSampling/LightClamping.h"
-
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3_t& reconnection_point,
@@ -25,7 +23,7 @@ HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3_t& r
 
 	float cosine_at_reconnection_point_from_center = hippt::abs(hippt::dot(-direction_to_reconnection_point_from_center, reconnection_point_surface_normal));
 	float cosine_at_reconnection_point_from_neighbor =
-							hippt::abs(hippt::dot(-direction_to_reconnection_point_from_neighbor, reconnection_point_surface_normal));
+		hippt::abs(hippt::dot(-direction_to_reconnection_point_from_neighbor, reconnection_point_surface_normal));
 
 	float cosine_ratio			 = cosine_at_reconnection_point_from_center / cosine_at_reconnection_point_from_neighbor;
 	float distance_squared_ratio = (distance_to_reconnection_point_from_neighbor * distance_to_reconnection_point_from_neighbor) /

@@ -9,7 +9,6 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/LightSampling/Envmap.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/ReSTIR/PT/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"

@@ -7,7 +7,6 @@
 #define KERNELS_WAVEFRONT_TRACE_SHADOW_RAYS_H
 
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/Wavefront/WavefrontCommon.h"
 #include "Device/includes/Wavefront/WavefrontShadow.h"
 
@@ -59,9 +58,6 @@ HIPRT_DEVICE void wavefront_commit_shadow_contributions(HIPRTRenderData& render_
 	unsigned int shadow_flags			= wavefront_data.path_shadow_flags[path_index];
 	bool primary_vertex					= (shadow_flags & WAVEFRONT_SHADOW_PATH_PRIMARY) != 0;
 
-	emissive = clamp_light_contribution(emissive, render_data.render_settings.direct_contribution_clamp, primary_vertex);
-	envmap	 = clamp_light_contribution(envmap, render_data.render_settings.envmap_contribution_clamp, primary_vertex);
-
 	ColorRGB32F contribution	= (emissive + envmap) * wavefront_data.path_shadow_throughputs[path_index];
 	ColorRGB32F final_ray_color = wavefront_data.path_ray_colors[path_index] + contribution;
 
@@ -91,7 +87,7 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 		if (path_work_count > work_items_per_path)
 			path_work_count = work_items_per_path;
 
-		// Sum split samples before clamping, keeping only the two raw contributions live across traversal.
+		// Sum split samples before applying the path throughput, keeping only the two raw contributions live across traversal.
 		ColorRGB32F emissive(0.0f);
 		ColorRGB32F envmap(0.0f);
 
