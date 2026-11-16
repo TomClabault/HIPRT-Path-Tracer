@@ -423,20 +423,17 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 		bool shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
 																	 random_number_generator);
 
-		ColorRGB32F envmap_contribution(0.0f);
 		if (!shadow_ray_occluded)
 		{
 			spatial_training_sample.spatial_radiance_weight			 = spatial_radiance_weight_if_visible;
 			learning_to_cluster_training_sample.q_reward			 = cluster_reward_if_visible;
 			learning_to_cluster_training_sample.variance_observation = cluster_reward_if_visible;
-
-			envmap_contribution = mis_estimator;
 		}
 
 		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
 		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 
-		return envmap_contribution;
+		return shadow_ray_occluded ? ColorRGB32F(0.0f) : mis_estimator;
 	}
 }
 
