@@ -123,8 +123,11 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
 	// Computing envmap PDF
 	envmap_pdf_solid_angle = 1.0f;
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
-	// The texel was sampled according to its luminance
-	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity * world_settings.envmap_packed_scaling_factor);
+	// The texel was sampled according to its luminance.
+	//
+	// The sampling structure is built from the luminance of the original envmap texels, and the radiance read in the shader is that original
+	// radiance times the intensity: the packed scaling factor of the texels is already undone by the texture fetch
+	envmap_pdf_solid_angle = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
 
 	// Account for the fact that the envmap texels have some area in the world
 	envmap_pdf_solid_angle *= world_settings.envmap_texel_count_as_float;
@@ -158,9 +161,9 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 	float sin_theta		 = hippt::intrin_sinf(theta_bsdf_dir);
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE
-	// The texel was sampled according to its luminance
-	pdf = envmap_radiance.luminance() /
-		  (envmap_total_sum * render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
+	// The texel was sampled according to its luminance. Same normalization as in envmap_sample(): the packed scaling factor is already undone by the
+	// texture fetch
+	pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
 
 	// Account for the fact that the envmap texels have some area in the world
 	pdf *= world_settings.envmap_texel_count_as_float;

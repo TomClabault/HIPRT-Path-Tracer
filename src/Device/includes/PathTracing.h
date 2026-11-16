@@ -341,8 +341,10 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 #else  // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 			if (!render_data.world_settings.envmap_scale_background_intensity)
 #endif // #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-	   // Un-scaling the envmap if the user doesn't want to scale the background
-				skysphere_color /= (render_data.world_settings.envmap_intensity * render_data.world_settings.envmap_packed_scaling_factor);
+	   // Un-scaling the envmap if the user doesn't want to scale the background.
+	   //
+	   // Only the intensity is undone: the packed scaling factor of the texels is part of the original radiance of the envmap
+				skysphere_color /= render_data.world_settings.envmap_intensity;
 		}
 	}
 
