@@ -35,7 +35,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	float3_t view_direction,
 	RayPayload& ray_payload,
 	ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-	ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+	ColorRGB32F path_weighted_throughput_after_rc_vertex,
 	ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 	ReSTIRPTReservoirSample& restir_pt_initial_sample,
 	HitInfo& closest_hit_info,
@@ -97,7 +97,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 			float weight = light_candidate_mis_weight * (ray_payload.throughput * bsdf_throughput / solid_angle_pdf * envmap_emission).luminance();
 			ReSTIR_PT_add_candidate(ray_payload.bounce, sampled_direction, sampled_direction, make_float3(0.0f, 0.0f, 0.0f), -1, envmap_emission,
 									bsdf_throughput, BSDFIncidentLightInfo::NO_INFO, path_unweighted_throughput_up_to_rc_vertex,
-									path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
+									path_weighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
 									random_number_generator, x, y);
 
 			ColorRGB32F learning_estimator							 = envmap_emission * bsdf_throughput / solid_angle_pdf * light_candidate_mis_weight;
@@ -114,7 +114,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 																	float3_t view_direction,
 																	RayPayload& ray_payload,
 																	ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-																	ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+																	ColorRGB32F path_weighted_throughput_after_rc_vertex,
 																	ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 																	ReSTIRPTReservoirSample& restir_pt_initial_sample,
 																	HitInfo& closest_hit_info,
@@ -157,7 +157,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 	if (triangle_sample.is_envmap())
 	{
 		ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-																 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
+																 path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
 																 restir_pt_initial_sample, closest_hit_info, random_number_generator, triangle_sample,
 																 learning_to_cluster_training_sample, x, y);
 
@@ -234,7 +234,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 					ReSTIR_PT_add_candidate(ray_payload.bounce, shadow_direction, light_sample.point_on_light, light_sample.light_source_normal,
 											triangle_sample.emissive_triangle_global_index, light_sample.emission, bsdf_throughput,
 											BSDFIncidentLightInfo::NO_INFO, path_unweighted_throughput_up_to_rc_vertex,
-											path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
+											path_weighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
 											random_number_generator, x, y);
 
 					ColorRGB32F learning_estimator				 = light_sample.emission * bsdf_throughput / solid_angle_pdf * light_candidate_mis_weight;
@@ -260,7 +260,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 									   float3_t view_direction,
 									   RayPayload& ray_payload,
 									   ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-									   ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+									   ColorRGB32F path_weighted_throughput_after_rc_vertex,
 									   ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 									   ReSTIRPTReservoirSample& restir_pt_initial_sample,
 									   HitInfo& closest_hit_info,
@@ -298,7 +298,7 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	// When the envmap is a cluster of the lightcuts, the learning-to-cluster light candidate also samples it
 	if (has_light_to_sample)
 		ReSTIR_PT_add_learning_to_cluster_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-														  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+														  path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
 														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, x, y);
 }
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
@@ -384,10 +384,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 		// Bounce throughput from rc_vertex to the next vertex included
 		ColorRGB32F path_unweighted_throughput_up_to_rc_vertex = ColorRGB32F(1.0f);
-		ColorRGB32F path_unweighted_throughput_after_rc_vertex = ColorRGB32F(1.0f);
+		// BSDF * cosine / PDF of the bounces after the reconnection vertex. The unweighted BSDF * cosine of a diffuse bounce is around 0.2: its product
+		// over ~45 bounces falls below the smallest normal float, the target function of the sample becomes denormal or zero and its UCW infinite.
+		// Divided by the PDF, the factors are around the albedo and the product stays in range. The sample stores this suffix as its incident
+		// radiance: the suffix PDF is the same in every shifted copy of the sample (the reconnection shift keeps all the vertices after the
+		// reconnection vertex), so it scales the target function and the UCW of the sample by inverse factors and the contributions do not change
+		ColorRGB32F path_weighted_throughput_after_rc_vertex = ColorRGB32F(1.0f);
 
 		// Keep the clamped continuation factor separate until deferred MIS has consumed the segment's starting throughputs.
-		ColorRGB32F pending_unweighted_throughput = ColorRGB32F(1.0f);
+		// Unweighted for the bounces of the prefix, divided by the BSDF PDF for the bounces after the reconnection vertex
+		ColorRGB32F pending_throughput = ColorRGB32F(1.0f);
 
 		if (intersection_found)
 			store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
@@ -411,15 +417,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						// We're checking for intersection found here because otherwise this would add envmap contribution but the envmap contribution on miss
 						// is already added by ReSTIR_PT_do_last_deferred_NEE_MIS
 						ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-													  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
+													  path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
 													  closest_hit_info, nee_deferred_MIS_context, random_number_generator);
 
 						// Hardcoded to bounce 2 for a simple reconnection shift at the first indirect vertex.
 						// The pending factor belongs to bounce - 1, so the first two factors belong to the prefix.
 						if (bounce > 2)
-							path_unweighted_throughput_after_rc_vertex *= pending_unweighted_throughput;
+							path_weighted_throughput_after_rc_vertex *= pending_throughput;
 						else
-							path_unweighted_throughput_up_to_rc_vertex *= pending_unweighted_throughput;
+							path_unweighted_throughput_up_to_rc_vertex *= pending_throughput;
 					}
 				}
 
@@ -432,22 +438,26 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					// and is then never launched
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 					ReSTIR_PT_stream_NEE(render_data, -ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-										 path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
+										 path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
 										 nee_deferred_MIS_context, random_number_generator, x, y);
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
-					pending_unweighted_throughput =
+					pending_throughput =
 						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator,
 															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
 
-					if (pending_unweighted_throughput == ReSTIR_PT_invalid_throughput)
+					if (pending_throughput == ReSTIR_PT_invalid_throughput)
 					{
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...
 						bounce++;
 						break;
 					}
+
+					// This factor goes into the suffix after the reconnection vertex (see the multiplication with the pending factor above)
+					if (bounce >= 2)
+						pending_throughput /= bsdf_pdf;
 
 					if (bounce == 0)
 						restir_pt_initial_sample.incident_light_info_at_visible_point = incident_light_info;
@@ -459,7 +469,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 						// Paths continuing past the reconnection vertex must store the BSDF * cosine of their continuation direction, not the value
 						// left by the NEE sample of this bounce: the spatial-reuse neighbor selection target uses it in place of the reconnection
 						// vertex throughput
-						restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = pending_unweighted_throughput.luminance();
+						restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = pending_throughput.luminance();
 					}
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -481,9 +491,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 			}
 		}
 
-		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-										   path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info,
-										   nee_deferred_MIS_context, intersection_found, random_number_generator);
+		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_weighted_throughput_after_rc_vertex,
+										   restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context,
+										   intersection_found, random_number_generator);
 	}
 
 	// The end of the kernel reads per-pixel buffers that the beginning of the kernel already read (G-buffer, random seeds). Hidden from the

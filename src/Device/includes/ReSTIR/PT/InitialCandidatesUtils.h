@@ -152,6 +152,10 @@ HIPRT_DEVICE void ReSTIR_PT_rc_vertex_fill_information(const HIPRTRenderData& re
  *
  * 'bsdf_throughput' is the BSDF times the cosine term of 'incident_light_direction' at the vertex, 'incident_light_info' is the lobe information
  * of the BSDF sample (BSDFIncidentLightInfo::NO_INFO for a light sample) and 'weight' is the resampling weight of the candidate
+ *
+ * 'path_unweighted_throughput_up_to_rc_vertex' is the BSDF * cosine product of the vertices up to the reconnection vertex and
+ * 'path_weighted_throughput_after_rc_vertex' the BSDF * cosine / PDF product of the vertices after it. The target function of the candidate is
+ * therefore its path contribution divided by the PDF of the bounces after the reconnection vertex. 'weight' does not depend on that division
  */
 HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 										  float3_t incident_light_direction,
@@ -162,7 +166,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 										  ColorRGB32F bsdf_throughput,
 										  BSDFIncidentLightInfo incident_light_info,
 										  ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-										  ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+										  ColorRGB32F path_weighted_throughput_after_rc_vertex,
 										  float weight,
 										  ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 										  ReSTIRPTReservoirSample& restir_pt_initial_sample,
@@ -181,11 +185,11 @@ HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 		restir_pt_initial_sample.rc_vertex_incident_light_direction = incident_light_direction;
 
 	restir_pt_initial_sample.di_sample					 = bounce == 0;
-	restir_pt_initial_sample.rc_vertex_incident_radiance = light_emission * path_unweighted_throughput_after_rc_vertex;
+	restir_pt_initial_sample.rc_vertex_incident_radiance = light_emission * path_weighted_throughput_after_rc_vertex;
 	if (bounce >= 2)
 		restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
 	restir_pt_initial_sample.target_function =
-		(path_unweighted_throughput_up_to_rc_vertex * path_unweighted_throughput_after_rc_vertex * bsdf_throughput * light_emission).luminance();
+		(path_unweighted_throughput_up_to_rc_vertex * path_weighted_throughput_after_rc_vertex * bsdf_throughput * light_emission).luminance();
 
 	restir_pt_initial_reservoir.add_one_candidate(restir_pt_initial_sample, weight, random_number_generator);
 	restir_pt_initial_reservoir.sanity_check(make_int2(x, y));
@@ -236,7 +240,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 												float3_t sampled_bsdf_direction,
 												RayPayload& ray_payload,
 												ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-												ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+												ColorRGB32F path_weighted_throughput_after_rc_vertex,
 												ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 												ReSTIRPTReservoirSample& restir_pt_initial_sample,
 												HitInfo& light_hit_info,
@@ -287,7 +291,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 		float weight = nee_mis_weight * (nee_deferred_MIS_context.last_ray_throughput * bsdf_throughput / bsdf_sample_pdf * envmap_emission).luminance();
 
 		ReSTIR_PT_add_candidate(last_bounce, sampled_bsdf_direction, sampled_bsdf_direction, make_float3(0.0f, 0.0f, 0.0f), -1, envmap_emission,
-								bsdf_throughput, incident_light_info, path_unweighted_throughput_up_to_rc_vertex, path_unweighted_throughput_after_rc_vertex,
+								bsdf_throughput, incident_light_info, path_unweighted_throughput_up_to_rc_vertex, path_weighted_throughput_after_rc_vertex,
 								weight, restir_pt_initial_reservoir, restir_pt_initial_sample, random_number_generator, -1, -1);
 
 		return;
@@ -312,7 +316,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 
 		ReSTIR_PT_add_candidate(last_bounce, sampled_bsdf_direction, light_hit_info.inter_point, light_hit_info.geometric_normal,
 								light_hit_info.primitive_index, hit_emission, bsdf_throughput, incident_light_info, path_unweighted_throughput_up_to_rc_vertex,
-								path_unweighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
+								path_weighted_throughput_after_rc_vertex, weight, restir_pt_initial_reservoir, restir_pt_initial_sample,
 								random_number_generator, -1, -1);
 	}
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
@@ -322,7 +326,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 													 hiprtRay ray,
 													 RayPayload& ray_payload,
 													 ColorRGB32F path_unweighted_throughput_up_to_rc_vertex,
-													 ColorRGB32F path_unweighted_throughput_after_rc_vertex,
+													 ColorRGB32F path_weighted_throughput_after_rc_vertex,
 													 ReSTIRPTInitialCandidatesReservoir& restir_pt_initial_reservoir,
 													 ReSTIRPTReservoirSample& restir_pt_initial_sample,
 													 HitInfo& light_hit_info,
@@ -347,7 +351,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	ray_payload.bounce++;
 
 	ReSTIR_PT_do_deferred_NEE_MIS(render_data, intersection_found, ray.direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
-								  path_unweighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
+								  path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample, light_hit_info,
 								  nee_deferred_MIS_context, random_number_generator);
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 }

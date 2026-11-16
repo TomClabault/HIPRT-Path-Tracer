@@ -27,6 +27,8 @@ struct ReSTIRPTReservoirSample
 	Octahedral24BitNormalPadded32b rc_vertex_geometric_normal;
 	float3_t rc_vertex_incident_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
 	Octahedral24BitNormalPadded32b rc_vertex_shading_normal;
+	// Radiance arriving at the reconnection vertex from 'rc_vertex_incident_light_direction', with the bounces after the reconnection vertex
+	// weighted by their BSDF PDF (an estimate of that radiance). The last BSDF * cosine toward the light is not divided by its PDF
 	ColorRGB32F rc_vertex_incident_radiance;
 	int rc_vertex_primitive_index = -1;
 
