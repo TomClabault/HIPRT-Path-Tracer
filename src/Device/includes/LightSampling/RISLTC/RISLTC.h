@@ -96,7 +96,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 			if (!sample.is_bsdf_sample && !final_color.is_black())
 			{
 				shadow_sink->emit(closest_hit_info.inter_point, shadow_ray_direction_normalized, distance_to_light, closest_hit_info.primitive_index,
-								  light_sample_info.point_on_light, final_color, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
+								  light_sample_info.point_on_light, final_color, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS);
 				final_color = ColorRGB32F(0.0f);
 			}
 		}

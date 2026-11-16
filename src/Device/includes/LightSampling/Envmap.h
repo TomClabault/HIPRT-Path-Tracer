@@ -222,7 +222,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				ColorRGB32F contribution_if_visible = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf_solid_angle;
 				if (!contribution_if_visible.is_black())
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction,
-									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW);
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP);
 			}
 			else
 			{
@@ -284,7 +284,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				ColorRGB32F contribution_if_visible = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
 				if (!contribution_if_visible.is_black())
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, bsdf_sampled_dir,
-									  contribution_if_visible, WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW);
+									  contribution_if_visible, WAVEFRONT_SHADOW_IS_ENVMAP);
 			}
 		}
 		else

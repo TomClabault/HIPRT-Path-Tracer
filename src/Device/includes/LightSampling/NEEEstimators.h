@@ -106,7 +106,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 																 shadow_ray.direction, distance_to_light, dot_light_source, random_number_generator);
 				if (!contribution_if_visible.is_black())
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
-									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS);
 			}
 			else
 			{
@@ -242,8 +242,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_deferred_BSDF(HIPRTRenderData& ren
 																  shadow_ray.direction, distance_to_light, random_number_generator);
 					if (!contribution_if_visible.is_black())
 						shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index,
-										  light_sample.point_on_light, contribution_if_visible,
-										  WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW);
+										  light_sample.point_on_light, contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS);
 				}
 				else
 				{
@@ -398,10 +397,10 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 	if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
-		// ENVMAP_RAW: the contribution is multiplied by the path throughput when the shadow ray is resolved
-		unsigned int queue_slot = shadow_sink->emit(
-			shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
-			WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_ENVMAP_RAW | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
+		// The shadow sink multiplies the contribution by the path throughput
+		unsigned int queue_slot =
+			shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
+							  WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
 		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
 		{
 			WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
@@ -533,9 +532,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 					render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample, shadow_direction, solid_angle_pdf,
 					triangle_sample.cluster_probability, random_number_generator, spatial_radiance_weight, cluster_reward);
 
-				unsigned int queue_slot = shadow_sink->emit(
-					shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
-					contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
+				unsigned int queue_slot =
+					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
 				if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
 				{
 					WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
@@ -729,9 +728,9 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 							numerator_if_visible / light_sample_solid_angle_pdf / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 					}
 
-					unsigned int queue_slot = shadow_sink->emit(
-						shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
-						contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_EMISSIVE_RAW | WAVEFRONT_SHADOW_UPDATE_NISML);
+					unsigned int queue_slot = shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index,
+																light_sample.point_on_light, contribution_if_visible,
+																WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_UPDATE_NISML);
 					if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
 					{
 						WavefrontNISMLShadowSidecar& sidecar	   = render_data.wavefront_data.nisml_shadow_sidecars[queue_slot];

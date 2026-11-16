@@ -38,7 +38,6 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 float,
 											 unsigned int,
 											 WavefrontResolvedMaterialClassification,
-											 ColorRGB32F,
 											 unsigned int,
 											 GenericAtomicType<unsigned int, DataContainer>,
 											 WavefrontShadowWork,
@@ -75,7 +74,6 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION,
 	WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS,
 	WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS,
-	WAVEFRONT_PATH_SHADOW_THROUGHPUTS,
 	WAVEFRONT_PATH_SHADOW_FLAGS,
 	WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS,
 	WAVEFRONT_SHADOW_WORK_ITEMS,
@@ -112,7 +110,6 @@ struct WavefrontDataHost
 												 WAVEFRONT_PATH_RESOLVED_MATERIAL_SPECULAR_TRANSMISSION,
 												 WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS,
 												 WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS,
-												 WAVEFRONT_PATH_SHADOW_THROUGHPUTS,
 												 WAVEFRONT_PATH_SHADOW_FLAGS,
 												 WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS,
 												 WAVEFRONT_SHADOW_WORK_ITEMS,
@@ -126,7 +123,6 @@ struct WavefrontDataHost
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_QUEUE_COUNT_1>(1);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_COMPLETION_QUEUE_COUNT>(1);
 		unsigned int shadow_path_capacity = shadow_work_capacity > 0 ? path_capacity : 0;
-		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_SHADOW_THROUGHPUTS>(shadow_path_capacity);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_SHADOW_FLAGS>(shadow_path_capacity);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>(shadow_path_capacity);
 		m_wavefront_data.template memset_buffer<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>(0u);
@@ -256,8 +252,7 @@ struct WavefrontDataHost
 
 		if (m_shadow_work_capacity > 0)
 		{
-			wavefront_data_device.path_shadow_throughputs = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_SHADOW_THROUGHPUTS>();
-			wavefront_data_device.path_shadow_flags		  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_SHADOW_FLAGS>();
+			wavefront_data_device.path_shadow_flags = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_SHADOW_FLAGS>();
 			wavefront_data_device.path_remaining_shadow_work_counts =
 				m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_PATH_REMAINING_SHADOW_WORK_COUNTS>();
 

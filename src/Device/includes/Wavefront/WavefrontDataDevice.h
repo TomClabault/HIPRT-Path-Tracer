@@ -62,7 +62,6 @@ struct WavefrontDataDevice
 	unsigned int* path_queues[3]			  = { nullptr, nullptr, nullptr };
 	AtomicType<unsigned int>* queue_counts[3] = { nullptr, nullptr, nullptr };
 
-	ColorRGB32F* path_shadow_throughputs						= nullptr;
 	unsigned int* path_shadow_flags								= nullptr;
 	AtomicType<unsigned int>* path_remaining_shadow_work_counts = nullptr;
 

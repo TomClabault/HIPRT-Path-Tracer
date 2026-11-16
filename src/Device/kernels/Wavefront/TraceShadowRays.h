@@ -52,13 +52,11 @@ HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data,
 	}
 }
 
-HIPRT_DEVICE void wavefront_commit_shadow_contributions(HIPRTRenderData& render_data, unsigned int path_index, ColorRGB32F emissive, ColorRGB32F envmap)
+HIPRT_DEVICE void wavefront_commit_shadow_contributions(HIPRTRenderData& render_data, unsigned int path_index, ColorRGB32F contribution)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 	unsigned int shadow_flags			= wavefront_data.path_shadow_flags[path_index];
-	bool primary_vertex					= (shadow_flags & WAVEFRONT_SHADOW_PATH_PRIMARY) != 0;
 
-	ColorRGB32F contribution	= (emissive + envmap) * wavefront_data.path_shadow_throughputs[path_index];
 	ColorRGB32F final_ray_color = wavefront_data.path_ray_colors[path_index] + contribution;
 
 	if ((shadow_flags & WAVEFRONT_SHADOW_PATH_PENDING_FINALIZE) != 0)
@@ -87,15 +85,14 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 		if (path_work_count > work_items_per_path)
 			path_work_count = work_items_per_path;
 
-		// Sum split samples before applying the path throughput, keeping only the two raw contributions live across traversal.
-		ColorRGB32F emissive(0.0f);
-		ColorRGB32F envmap(0.0f);
+		// Sum split samples, keeping only one contribution live across traversal.
+		ColorRGB32F contribution(0.0f);
 
 		for (unsigned int work_ordinal = 0; work_ordinal < path_work_count; work_ordinal++)
 		{
 			unsigned int queue_slot		 = work_ordinal * wavefront_data.path_capacity + path_slot;
 			WavefrontShadowWork work	 = wavefront_data.shadow_work_items[queue_slot];
-			unsigned int packed_rng_key	 = work.flags >> 7;
+			unsigned int packed_rng_key	 = work.flags >> WAVEFRONT_SHADOW_RNG_KEY_SHIFT;
 			unsigned int shadow_rng_seed = make_wavefront_shadow_rng_seed(render_data, work.path_index, packed_rng_key, 0x53484457u);
 			Xorshift32Generator random_number_generator(shadow_rng_seed);
 
@@ -119,20 +116,13 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 
 			bool visible = !occluded;
 			if (visible)
-			{
-				if ((work.flags & WAVEFRONT_SHADOW_EMISSIVE_RAW) != 0)
-					emissive += work.contribution_if_visible;
-				else if ((work.flags & WAVEFRONT_SHADOW_ENVMAP_RAW) != 0)
-					envmap += work.contribution_if_visible;
-				else if ((work.flags & WAVEFRONT_SHADOW_FINAL_COLOR) != 0)
-					wavefront_data.path_ray_colors[path_slot] += work.contribution_if_visible;
-			}
+				contribution += work.contribution_if_visible;
 
 			wavefront_update_shadow_training(render_data, queue_slot, work.flags, visible);
 		}
 
 		wavefront_data.path_remaining_shadow_work_counts[path_slot] = 0;
-		wavefront_commit_shadow_contributions(render_data, path_slot, emissive, envmap);
+		wavefront_commit_shadow_contributions(render_data, path_slot, contribution);
 	}
 }
 

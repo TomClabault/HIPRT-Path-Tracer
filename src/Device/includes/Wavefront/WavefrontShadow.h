@@ -55,10 +55,8 @@ struct WavefrontShadowSink
 		WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
 
 		if (emitted_count == 0)
-		{
-			wavefront_data.path_shadow_throughputs[path_index] = throughput;
-			wavefront_data.path_shadow_flags[path_index]	   = bounce == 0 ? WAVEFRONT_SHADOW_PATH_PRIMARY : 0u;
-		}
+			// Clears the PENDING_FINALIZE flag set at a previous bounce of this path
+			wavefront_data.path_shadow_flags[path_index] = 0u;
 
 		unsigned int work_items_per_path = wavefront_data.shadow_work_capacity / wavefront_data.path_capacity;
 		if (emitted_count >= work_items_per_path)
@@ -76,9 +74,13 @@ struct WavefrontShadowSink
 		work.last_hit_primitive_index = last_hit_primitive_index;
 		unsigned int packed_rng_key	  = pack_wavefront_shadow_rng_key(bounce, shadow_phase, emitted_count);
 
-		// The low seven bits hold behavior flags. Keeping the deterministic RNG key in the
+		// The low bits hold behavior flags. Keeping the deterministic RNG key in the
 		// unused upper bits avoids a separate four-byte queue field and makes each item 64 bytes.
-		work.flags					 = flags | (packed_rng_key << 7);
+		work.flags = flags | (packed_rng_key << WAVEFRONT_SHADOW_RNG_KEY_SHIFT);
+
+		// Applying the throughput here lets the shadow ray pass add every visible contribution to the path color as is
+		if ((flags & WAVEFRONT_SHADOW_FINAL_COLOR) == 0)
+			contribution_if_visible *= throughput;
 		work.contribution_if_visible = contribution_if_visible;
 		work.point_on_light			 = point_on_light;
 

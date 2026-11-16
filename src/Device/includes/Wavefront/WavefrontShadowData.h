@@ -12,6 +12,8 @@
 #include "HostDeviceCommon/Color.h"
 
 static constexpr unsigned int WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT = 0xFFFFFFFFu;
+// The bits of WavefrontShadowWork::flags below this shift hold the WavefrontShadowFlags, the bits above hold the deterministic RNG key
+static constexpr unsigned int WAVEFRONT_SHADOW_RNG_KEY_SHIFT = 5;
 
 enum NEEShadowMode
 {
@@ -21,19 +23,18 @@ enum NEEShadowMode
 
 enum WavefrontShadowFlags : unsigned int
 {
-	WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS			= 1u << 0,
-	WAVEFRONT_SHADOW_IS_ENVMAP					= 1u << 1,
-	WAVEFRONT_SHADOW_EMISSIVE_RAW				= 1u << 2,
-	WAVEFRONT_SHADOW_ENVMAP_RAW					= 1u << 3,
-	WAVEFRONT_SHADOW_FINAL_COLOR				= 1u << 4,
-	WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER = 1u << 5,
-	WAVEFRONT_SHADOW_UPDATE_NISML				= 1u << 6,
+	WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS = 1u << 0,
+	WAVEFRONT_SHADOW_IS_ENVMAP		   = 1u << 1,
+	// The contribution already includes the throughput of the path vertex it was sampled from and is not multiplied by the throughput of
+	// the shadow sink
+	WAVEFRONT_SHADOW_FINAL_COLOR				= 1u << 2,
+	WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER = 1u << 3,
+	WAVEFRONT_SHADOW_UPDATE_NISML				= 1u << 4,
 };
 
 enum WavefrontShadowPathFlags : unsigned int
 {
-	WAVEFRONT_SHADOW_PATH_PRIMARY		   = 1u << 0,
-	WAVEFRONT_SHADOW_PATH_PENDING_FINALIZE = 1u << 1,
+	WAVEFRONT_SHADOW_PATH_PENDING_FINALIZE = 1u << 0,
 };
 
 enum WavefrontShadowPhase : unsigned int

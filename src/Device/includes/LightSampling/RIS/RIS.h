@@ -26,7 +26,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 													   const RISReservoir& reservoir,
 													   Xorshift32Generator& random_number_generator,
 													   WavefrontShadowSink* shadow_sink = nullptr,
-													   unsigned int shadow_flags		= WAVEFRONT_SHADOW_EMISSIVE_RAW,
+													   unsigned int shadow_flags		= 0u,
 													   ColorRGB32F contribution_scale	= ColorRGB32F(1.0f))
 {
 	ColorRGB32F final_color;
