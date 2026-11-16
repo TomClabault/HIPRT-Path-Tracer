@@ -177,6 +177,7 @@ struct NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 	}
 };
 
+// The previous surface's mesh selects the learned cut, independently of the light hit by the BSDF ray.
 template <int PathIntegrator>
 struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegrator> : NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>
 {
@@ -188,19 +189,6 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 	// Direction of the BSDF sample of the previous vertex. When the envmap is sampled by learning to cluster, a BSDF ray that misses the scene
 	// reads it to evaluate the envmap and its MIS weight: the miss has no hit point to derive the direction from
 	float3_t last_bsdf_sampled_direction = make_float3(0.0f, 0.0f, 0.0f);
-
-	// The previous surface's mesh selects the learned cut, independently of the light hit by the BSDF ray.
-	HIPRT_DEVICE void fill_last_hit_information(HitInfo& closest_hit_info,
-												const float3_t& view_direction,
-												const RayVolumeState& volume_state,
-												int primitive_index,
-												float2_t texcoords,
-												unsigned int primary_gbuffer_path_index,
-												const ColorRGB32F& ray_throughput)
-	{
-		NEEDeferredMISContextSpecialized<LSS_MIS_LIGHT_BSDF, PathIntegrator>::fill_last_hit_information(
-			closest_hit_info, view_direction, volume_state, primitive_index, texcoords, primary_gbuffer_path_index, ray_throughput);
-	}
 
 	HIPRT_DEVICE void set_last_lightcut_index(unsigned int lightcut_index)
 	{
