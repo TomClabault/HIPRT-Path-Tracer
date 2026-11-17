@@ -126,7 +126,7 @@ enum KernelMaterialSpecialization : unsigned int
 /**
  * BSDF model for all the materials of the scene
  */
-#define BSDFGlobalModel BSDF_LAMBERTIAN
+#define BSDFGlobalModel BSDF_PRINCIPLED
 
 /**
  * If false, material textures will not be read and so the global material overrider
@@ -159,7 +159,7 @@ enum KernelMaterialSpecialization : unsigned int
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT
+#define PathSamplingStrategy PATH_SAMPLING_BSDF_WAVEFRONT
 
 #endif // #ifndef __KERNELCC__
 

@@ -2191,7 +2191,11 @@ HIPRT_DEVICE static void principled_specular_diffuse_sampling_probabilities(cons
 											 glass_probability, unused_probability);
 }
 
-HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& rng)
+// Forced inline: to fix a weird AMD crash all over again
+HIPRT_DEVICE HIPRT_INLINE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data,
+																  BSDFContext& bsdf_context,
+																  float& pdf,
+																  Xorshift32Generator& rng)
 {
 	pdf = 0.0f;
 
@@ -2427,8 +2431,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 
 		// Giving some information about what the BSDF sampled to the caller
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-		output_direction				 = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
-																principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
+		output_direction = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
+												principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
 	}
 	else if (rand_1 < cdf1)
 	{

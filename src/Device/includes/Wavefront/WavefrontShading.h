@@ -84,18 +84,19 @@ HIPRT_DEVICE void wavefront_copy_compact_principled_material(const DeviceUnpacke
 	}
 }
 
+// Forced inline: see the comment above principled_bsdf_eval()
 template <typename MaterialType>
-HIPRT_DEVICE bool wavefront_compute_next_indirect_bounce(HIPRTRenderData& render_data,
-														 RayPayloadT<MaterialType>& ray_payload,
-														 MaterialType& bsdf_material,
-														 float dispersion_scale,
-														 unsigned int path_index,
-														 HitInfo& closest_hit_info,
-														 float3_t view_direction,
-														 hiprtRay& out_ray,
-														 Xorshift32Generator& random_number_generator,
-														 BSDFIncidentLightInfo& incident_light_info,
-														 NEEDeferredMISContext& nee_deferred_MIS_context)
+HIPRT_DEVICE HIPRT_INLINE bool wavefront_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+																	  RayPayloadT<MaterialType>& ray_payload,
+																	  MaterialType& bsdf_material,
+																	  float dispersion_scale,
+																	  unsigned int path_index,
+																	  HitInfo& closest_hit_info,
+																	  float3_t view_direction,
+																	  hiprtRay& out_ray,
+																	  Xorshift32Generator& random_number_generator,
+																	  BSDFIncidentLightInfo& incident_light_info,
+																	  NEEDeferredMISContext& nee_deferred_MIS_context)
 {
 	return path_tracing_compute_next_indirect_bounce(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, out_ray,
 													 random_number_generator, incident_light_info, nee_deferred_MIS_context, dispersion_scale, path_index);
@@ -152,21 +153,22 @@ HIPRT_DEVICE bool wavefront_shade_hit_with_material(HIPRTRenderData& render_data
 												  random_number_generator, sampled_light_info, nee_deferred_MIS_context);
 }
 
+// Forced inline: see the comment above principled_bsdf_eval()
 template <bool initialize_primary_path, typename MaterialType>
-HIPRT_DEVICE bool wavefront_load_and_shade_hit(HIPRTRenderData& render_data,
-											   RayPayloadCommon& ray_payload,
-											   unsigned int pixel_index,
-											   HitInfo& closest_hit_info,
-											   hiprtRay& ray,
-											   int x,
-											   int y,
-											   const ResolvedMaterialUserControlsCache& resolved_user_controls,
-											   NEEDeferredMISContext& nee_deferred_MIS_context,
-											   float dispersion_scale,
-											   unsigned int path_index,
-											   WavefrontShadowSink& shadow_sink,
-											   Xorshift32Generator& random_number_generator,
-											   BSDFIncidentLightInfo& sampled_light_info)
+HIPRT_DEVICE HIPRT_INLINE bool wavefront_load_and_shade_hit(HIPRTRenderData& render_data,
+															RayPayloadCommon& ray_payload,
+															unsigned int pixel_index,
+															HitInfo& closest_hit_info,
+															hiprtRay& ray,
+															int x,
+															int y,
+															const ResolvedMaterialUserControlsCache& resolved_user_controls,
+															NEEDeferredMISContext& nee_deferred_MIS_context,
+															float dispersion_scale,
+															unsigned int path_index,
+															WavefrontShadowSink& shadow_sink,
+															Xorshift32Generator& random_number_generator,
+															BSDFIncidentLightInfo& sampled_light_info)
 {
 	RayPayloadT<MaterialType> typed_ray_payload(NoInitTag{});
 	static_cast<RayPayloadCommon&>(typed_ray_payload) = ray_payload;

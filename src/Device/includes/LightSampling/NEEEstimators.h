@@ -291,19 +291,20 @@ HIPRT_DEVICE void append_failed_light_clustering_training_sample(HIPRTRenderData
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(training_sample);
 }
 
+// Forced inline: see the comment above principled_bsdf_eval()
 template <bool use_MIS, typename BsdfMaterialType>
-HIPRT_DEVICE ColorRGB32F evaluate_learning_to_cluster_without_visibility(HIPRTRenderData& render_data,
-																		 RayPayloadT<BsdfMaterialType>& ray_payload,
-																		 BsdfMaterialType& bsdf_material,
-																		 const HitInfo& closest_hit_info,
-																		 const float3_t& view_direction,
-																		 const LightSamplePointInformation& light_sample,
-																		 float3_t shadow_direction,
-																		 float solid_angle_pdf,
-																		 float cluster_probability,
-																		 Xorshift32Generator& random_number_generator,
-																		 float& spatial_radiance_weight,
-																		 float& cluster_reward)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F evaluate_learning_to_cluster_without_visibility(HIPRTRenderData& render_data,
+																					  RayPayloadT<BsdfMaterialType>& ray_payload,
+																					  BsdfMaterialType& bsdf_material,
+																					  const HitInfo& closest_hit_info,
+																					  const float3_t& view_direction,
+																					  const LightSamplePointInformation& light_sample,
+																					  float3_t shadow_direction,
+																					  float solid_angle_pdf,
+																					  float cluster_probability,
+																					  Xorshift32Generator& random_number_generator,
+																					  float& spatial_radiance_weight,
+																					  float& cluster_reward)
 {
 	spatial_radiance_weight = (light_sample.emission / solid_angle_pdf).max_component();
 
@@ -963,16 +964,17 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 /**
  * The x & y parameters are retained for the renderer's direct-lighting interface.
  */
+// Forced inline: see the comment above principled_bsdf_eval()
 template <NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType>
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
-																			 RayPayloadT<BsdfMaterialType>& ray_payload,
-																			 BsdfMaterialType& bsdf_material,
-																			 ColorRGB32F ray_throughput,
-																			 ColorRGB32F emissive_geometry_direct_contribution,
-																			 HitInfo& closest_hit_info,
-																			 float3_t view_direction,
-																			 Xorshift32Generator& random_number_generator,
-																			 WavefrontShadowSink* shadow_sink = nullptr)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
+																						  RayPayloadT<BsdfMaterialType>& ray_payload,
+																						  BsdfMaterialType& bsdf_material,
+																						  ColorRGB32F ray_throughput,
+																						  ColorRGB32F emissive_geometry_direct_contribution,
+																						  HitInfo& closest_hit_info,
+																						  float3_t view_direction,
+																						  Xorshift32Generator& random_number_generator,
+																						  WavefrontShadowSink* shadow_sink = nullptr)
 {
 	ColorRGB32F total_direct_lighting;
 
@@ -1010,13 +1012,14 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIP
 	return total_direct_lighting;
 }
 
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
-																			 RayPayload& ray_payload,
-																			 ColorRGB32F ray_throughput,
-																			 ColorRGB32F emissive_geometry_direct_contribution,
-																			 HitInfo& closest_hit_info,
-																			 float3_t view_direction,
-																			 Xorshift32Generator& random_number_generator)
+// Forced inline: see the comment above principled_bsdf_eval()
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F estimate_direct_lighting_from_emissive_contribution(HIPRTRenderData& render_data,
+																						  RayPayload& ray_payload,
+																						  ColorRGB32F ray_throughput,
+																						  ColorRGB32F emissive_geometry_direct_contribution,
+																						  HitInfo& closest_hit_info,
+																						  float3_t view_direction,
+																						  Xorshift32Generator& random_number_generator)
 {
 	return estimate_direct_lighting_from_emissive_contribution(render_data, ray_payload, ray_payload.material, ray_throughput,
 															   emissive_geometry_direct_contribution, closest_hit_info, view_direction,
