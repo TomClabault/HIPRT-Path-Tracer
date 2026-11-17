@@ -5742,33 +5742,7 @@ void ImGuiSettingsWindow::draw_debug_panel()
 
 		return;
 
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
 	ImGui::TreePush("Debug tree");
-
-	if (ImGui::CollapsingHeader("Debug/WIP options"))
-	{
-		ImGui::TreePush("Debug options tree");
-
-		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		static int debug_index = 0;
-		if (ImGui::InputInt("Debug index", &debug_index))
-			debug_index = hippt::clamp(0, 1023, debug_index);
-		unsigned long long int sum_count = OrochiBuffer<unsigned long long int>::download_data(
-			reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_1) + debug_index, 1)[0];
-		unsigned long long int sums = OrochiBuffer<unsigned long long int>::download_data(
-			reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_2) + debug_index, 1)[0];
-		ImGui::Text("Debug sum count / sums / ratio:"
-					"\n\t%llu"
-					"\n\t%llu"
-					"\n\t%f",
-					sum_count, sums, sum_count / (double)sums);
-
-		ImGui::TreePop();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	}
 
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);

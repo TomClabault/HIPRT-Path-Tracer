@@ -39,11 +39,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer  = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 
-	m_DEBUG_BUFFER_ULL_1.resize(1024);
-	m_DEBUG_BUFFER_ULL_2.resize(1024);
-	m_DEBUG_BUFFER_FLOAT.resize(1024);
-	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
-
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -811,13 +806,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 	return kernels;
 }
 
-std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, int index)
-{
-	std::vector<char> debug_string_CPU = OrochiBuffer<char>::download_data(DEBUG_BUFFER_STRINGS, 1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
-
-	return std::string(&debug_string_CPU[index * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
-}
-
 oroStream_t GPURenderer::get_main_stream()
 {
 
@@ -860,11 +848,6 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 void GPURenderer::reset(bool reset_by_camera_movement)
 {
-	m_DEBUG_BUFFER_ULL_1.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_ULL);
-	m_DEBUG_BUFFER_ULL_2.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_ULL);
-	m_DEBUG_BUFFER_FLOAT.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_FLOAT);
-	m_DEBUG_BUFFER_STRINGS.memset_whole_buffer(0);
-
 	if (m_render_data.render_settings.accumulate)
 	{
 		// Only resetting the seed for deterministic rendering if we're accumulating.
@@ -908,11 +891,6 @@ void GPURenderer::update_render_data()
 
 		m_render_data.GPU_BVH		= m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
-
-		m_render_data.render_settings.DEBUG_BUFFER_ULL_1   = m_DEBUG_BUFFER_ULL_1.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_BUFFER_ULL_2   = m_DEBUG_BUFFER_ULL_2.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_BUFFER_FLOAT   = m_DEBUG_BUFFER_FLOAT.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
 		m_render_data.buffers.triangles_indices					  = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
 		m_render_data.buffers.global_triangle_index_to_mesh_index = m_hiprt_scene.global_triangle_index_to_mesh_index.get_device_pointer();
