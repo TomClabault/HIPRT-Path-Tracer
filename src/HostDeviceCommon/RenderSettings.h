@@ -12,7 +12,6 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRPGSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
-#include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"
@@ -229,7 +228,6 @@ struct HIPRTRenderSettings
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;
-	RISLTCSettings risltc_settings;
 
 	// Settings for ReSTIR PT
 	ReSTIRPTSettings restir_pt_settings;

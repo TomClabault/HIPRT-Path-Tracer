@@ -56,7 +56,6 @@ private:
 	void apply_nee_estimator_dependent_settings();
 	void draw_material_settings_panel();
 	void draw_ris_settings_panel();
-	void draw_risltc_settings_panel();
 	void draw_ReSTIR_PG_settings_panel();
 	void draw_ltc_settings_panel();
 	void draw_light_tree_ATS_settings_panel();

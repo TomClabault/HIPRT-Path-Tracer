@@ -18,7 +18,7 @@ inline WavefrontRoutingConfiguration get_wavefront_routing_configuration(int bsd
 	unsigned int material_family_count				  = bsdf_model == BSDF_PRINCIPLED ? KernelMaterialSpecializationCount : 1;
 	bool route_deferred_completion_by_material_family = bsdf_model == BSDF_PRINCIPLED && nee_estimator == LSS_RIS_BSDF_AND_LIGHT;
 	bool requires_terminal_trace_completion = nee_estimator == LSS_BSDF || nee_estimator == LSS_MIS_LIGHT_BSDF || nee_estimator == LSS_RIS_BSDF_AND_LIGHT ||
-											  nee_estimator == LSS_RISLTC || nee_estimator == LSS_LEARNING_TO_CLUSTER_MIS;
+											  nee_estimator == LSS_LEARNING_TO_CLUSTER_MIS;
 
 	return { material_family_count, route_deferred_completion_by_material_family, requires_terminal_trace_completion };
 }

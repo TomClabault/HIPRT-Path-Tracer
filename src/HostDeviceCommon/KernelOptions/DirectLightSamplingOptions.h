@@ -17,10 +17,9 @@
 #define LSS_BSDF					 2
 #define LSS_MIS_LIGHT_BSDF			 3
 #define LSS_RIS_BSDF_AND_LIGHT		 4
-#define LSS_RISLTC					 5
-#define LSS_NEURAL_MANY_LIGHTS		 6
-#define LSS_LEARNING_TO_CLUSTER		 7
-#define LSS_LEARNING_TO_CLUSTER_MIS	 8
+#define LSS_NEURAL_MANY_LIGHTS		 5
+#define LSS_LEARNING_TO_CLUSTER		 6
+#define LSS_LEARNING_TO_CLUSTER_MIS	 7
 
 #define DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator) ((nee_estimator) == LSS_LEARNING_TO_CLUSTER || (nee_estimator) == LSS_LEARNING_TO_CLUSTER_MIS)
 
@@ -111,10 +110,6 @@
  *
  *	- LSS_RIS_BSDF_AND_LIGHT
  *		Samples lights in the scene with Resampled Importance Sampling
- *
- * 	- LSS_RISLTC
- *		Samples lights in the scene with RISLTC (from [Combining Resampled Importance and Projected Solid Angle
- *		Samplings for Many Area Light Rendering, Shash et. al 2023])
  *
  *	- LSS_NEURAL_MANY_LIGHTS
  *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling
@@ -293,7 +288,7 @@ HIPRT_DEVICE constexpr int DirectLightIntegrationFactor()
 
 #define DirectLightNEEEstimatorHasBSDFSampling                                                                                                                 \
 	(DirectLightNEEEstimator == LSS_BSDF || DirectLightNEEEstimator == LSS_MIS_LIGHT_BSDF || DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT ||              \
-	 DirectLightNEEEstimator == LSS_RISLTC || DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
+	 DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS)
 
 #endif // #ifdef LightTreeATSDoSplitting
 

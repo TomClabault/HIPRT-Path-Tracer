@@ -15,7 +15,6 @@
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
-#include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/Sampling.h"
@@ -890,9 +889,6 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 																		 proposal_state, random_number_generator);
 
 	out_nee_mis_context.fill_ris_reservoir(reservoir);
-#elif DirectLightNEEEstimator == LSS_RISLTC					 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
-	direct_light_contribution = sample_lights_RISLTC<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
-		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, shadow_sink);
 #elif DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS		 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS_neural_many_lights<shadow_mode>(render_data, ray_payload, closest_hit_info, view_direction,
 																						random_number_generator, shadow_sink);
@@ -1204,9 +1200,6 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
 
 #if !DirectLightNEEEstimatorHasBSDFSampling
-	return ColorRGB32F(0.0f);
-#elif DirectLightNEEEstimator == LSS_RISLTC
-	// RISLTC evaluates its BSDF candidates inside its own estimator and has no generic deferred BSDF context.
 	return ColorRGB32F(0.0f);
 #else
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)

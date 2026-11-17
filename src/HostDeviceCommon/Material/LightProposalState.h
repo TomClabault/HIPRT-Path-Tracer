@@ -77,17 +77,15 @@ struct LightProposalStateComponents<true, true> : LightTreeSGProposalState, LTCP
 template <int light_sampling_strategy, int triangle_point_sampling_strategy, BSDFModel model>
 struct LightProposalStateFor
 	: LightProposalStateComponents<light_sampling_strategy == LSS_BASE_LIGHT_TREE_SG || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator),
-								   DirectLightNEEEstimator == LSS_RISLTC ||
-									   (TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE &&
-										(triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
-										 triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE))>
+								   (TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE &&
+									(triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+									 triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE))>
 {
 	static_assert(model == BSDFModel::Lambertian || model == BSDFModel::OrenNayar || model == BSDFModel::Principled);
-	static constexpr bool has_sg_state = light_sampling_strategy == LSS_BASE_LIGHT_TREE_SG || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator);
-	static constexpr bool has_ltc_state =
-		DirectLightNEEEstimator == LSS_RISLTC || (TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE &&
-												  (triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
-												   triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE));
+	static constexpr bool has_sg_state	= light_sampling_strategy == LSS_BASE_LIGHT_TREE_SG || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator);
+	static constexpr bool has_ltc_state = TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE &&
+										  (triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+										   triangle_point_sampling_strategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE);
 };
 
 HIPRT_HOST_DEVICE inline void get_sg_specular_importance_parameters(const LightProposalInputs& proposal_inputs,

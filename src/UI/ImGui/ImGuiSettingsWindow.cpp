@@ -1379,7 +1379,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 													  "- BSDF Sampling",
 													  "- MIS (1 Light + 1 BSDF)",
 													  "- RIS BDSF + Light candidates",
-													  "- RISLTC BSDF + Light candidates",
 													  "- Neural importance sampling of many lights",
 													  "- Learning to cluster SG light tree",
 													  "- Learning to cluster SG light tree + MIS" };
@@ -1395,9 +1394,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF "
 				"candidates can be controlled.",
-
-				"Experimental and unfinished! Samples lights in the scene with RISLTC (Shah et. al, 2023) with both BSDF and light candidates. The number of "
-				"light or BSDF candidates can be controlled.",
 
 				"Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling probabilities on "
 				"clusters of a lightcut in the spherical gaussian light tree",
@@ -1421,13 +1417,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool mis_disabled					  = restir_pt;
 			bool ris_disabled					  = restir_pt;
-			bool risltc_disabled				  = restir_pt;
 			bool neural_many_lights_disabled	  = restir_pt;
 			bool learning_to_cluster_disabled	  = restir_pt;
 			bool learning_to_cluster_mis_disabled = false;
 
 			unsigned char disabled_nee_estimator_items[] = {
-				no_direct_light_sampling_disabled, uniform_one_light_disabled,	 bsdf_sampling_disabled,		  mis_disabled, ris_disabled, risltc_disabled,
+				no_direct_light_sampling_disabled, uniform_one_light_disabled,	 bsdf_sampling_disabled,		  mis_disabled, ris_disabled,
 				neural_many_lights_disabled,	   learning_to_cluster_disabled, learning_to_cluster_mis_disabled
 			};
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
@@ -1594,13 +1589,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
 				draw_ris_settings_panel();
-
-				break;
-			}
-
-			case LSS_RISLTC:
-			{
-				draw_risltc_settings_panel();
 
 				break;
 			}
@@ -2059,37 +2047,6 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 		{
 			// Clamping to 0
 			render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
-
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::TreePop();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	}
-}
-
-void ImGuiSettingsWindow::draw_risltc_settings_panel()
-{
-	HIPRTRenderSettings& render_settings							= m_renderer->get_render_settings();
-	HIPRTRenderData& render_data									= m_renderer->get_render_data();
-	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-
-	if (ImGui::CollapsingHeader("RISLTC Settings"))
-	{
-		ImGui::TreePush("RISLTC Settings tree");
-
-		// if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-		//{
-		//	// Clamping to 0
-		//	render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
-
-		//	m_render_window->set_render_dirty(true);
-		//}
-
-		if (ImGui::SliderInt("RIS # of light candidates", &render_settings.risltc_settings.number_of_light_candidates, 0, 32))
-		{
-			// Clamping to 0
-			render_settings.risltc_settings.number_of_light_candidates = std::max(0, render_settings.risltc_settings.number_of_light_candidates);
 
 			m_render_window->set_render_dirty(true);
 		}

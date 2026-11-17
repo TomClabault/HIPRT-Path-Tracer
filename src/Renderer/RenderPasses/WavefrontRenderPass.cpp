@@ -778,8 +778,7 @@ unsigned int WavefrontRenderPass::get_shadow_work_capacity(unsigned int path_cap
 	unsigned int emissive_shadow_count = 0;
 	if (nee_estimator == LSS_ONE_LIGHT || nee_estimator == LSS_MIS_LIGHT_BSDF)
 		emissive_shadow_count = direct_light_sample_count;
-	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || nee_estimator == LSS_RISLTC || nee_estimator == LSS_NEURAL_MANY_LIGHTS ||
-			 DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || nee_estimator == LSS_NEURAL_MANY_LIGHTS || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 		emissive_shadow_count = 1;
 
 	unsigned int envmap_shadow_count = 0;
