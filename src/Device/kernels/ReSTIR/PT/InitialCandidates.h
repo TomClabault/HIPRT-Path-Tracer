@@ -401,8 +401,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		// + 1 to nb_bounces here because we want "0" bounces to still act as one
 		// hit and to return some color
 		NEEDeferredMISContext nee_deferred_MIS_context;
-		for (int& bounce = ray_payload.bounce; bounce < bounce_count + 1; bounce++)
+
+		// Bounce counter needs to be in its own variable here because HIPRTC 7.2 codegen issues otherwise, yet again...
+		int bounce = ray_payload.bounce;
+		for (; bounce < bounce_count + 1; bounce++)
 		{
+			ray_payload.bounce = bounce;
+
 			if (ray_payload.next_ray_state != RayState::MISSED)
 			{
 				if (bounce > 0)
@@ -490,6 +495,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					break;
 			}
 		}
+
+		// ReSTIR_PT_do_last_deferred_NEE_MIS() expects the bounce index one past the last traced vertex, as the loop leaves it
+		ray_payload.bounce = bounce;
 
 		ReSTIR_PT_do_last_deferred_NEE_MIS(render_data, ray, ray_payload, path_unweighted_throughput_up_to_rc_vertex, path_weighted_throughput_after_rc_vertex,
 										   restir_pt_initial_reservoir, restir_pt_initial_sample, closest_hit_info, nee_deferred_MIS_context,
