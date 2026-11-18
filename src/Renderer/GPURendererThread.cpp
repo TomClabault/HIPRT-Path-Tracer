@@ -89,8 +89,13 @@ void GPURendererThread::setup_render_graphs()
 	restir_pt_render_pass->add_dependency(camera_rays_render_pass);
 	restir_pt_render_pass->add_dependency(nee_plus_plus_render_pass);
 
+	std::shared_ptr<ReSTIRPTWavefrontRenderPass> restir_pt_wavefront_render_pass = render_graph_full.create_render_pass<ReSTIRPTWavefrontRenderPass>();
+	restir_pt_wavefront_render_pass->add_dependency(camera_rays_render_pass);
+	restir_pt_wavefront_render_pass->add_dependency(nee_plus_plus_render_pass);
+
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass = render_graph_full.create_render_pass<ReSTIRPGRenderPass>();
 	restir_pg_render_pass->add_dependency(restir_pt_render_pass);
+	restir_pg_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = render_graph_full.create_render_pass<GMoNRenderPass>();
 	// GMoN depends on the main path tracing pass which
@@ -101,6 +106,7 @@ void GPURendererThread::setup_render_graphs()
 	gmon_render_pass->add_dependency(wavefront_render_pass);
 	gmon_render_pass->add_dependency(nisml_megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_pt_render_pass);
+	gmon_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass =
 		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
@@ -108,12 +114,14 @@ void GPURendererThread::setup_render_graphs()
 	illumination_aware_kd_tree_render_pass->add_dependency(wavefront_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(nisml_megakernel_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_render_pass);
+	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
 	std::shared_ptr<NISMLRenderPass> nisml_render_pass = render_graph_full.create_render_pass<NISMLRenderPass>();
 	nisml_render_pass->add_dependency(megakernel_render_pass);
 	nisml_render_pass->add_dependency(wavefront_render_pass);
 	nisml_render_pass->add_dependency(nisml_megakernel_render_pass);
 	nisml_render_pass->add_dependency(restir_pt_render_pass);
+	nisml_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 	nisml_render_pass->add_dependency(illumination_aware_kd_tree_render_pass);
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
@@ -121,6 +129,7 @@ void GPURendererThread::setup_render_graphs()
 	ssbn_permutation_render_pass->add_dependency(wavefront_render_pass);
 	ssbn_permutation_render_pass->add_dependency(nisml_megakernel_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_pt_render_pass);
+	ssbn_permutation_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
 	std::shared_ptr<HierarchicalAdaptiveSamplingRenderPass> hierarchical_adaptive_sampling_render_pass =
 		render_graph_full.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
@@ -128,6 +137,7 @@ void GPURendererThread::setup_render_graphs()
 	hierarchical_adaptive_sampling_render_pass->add_dependency(wavefront_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(nisml_megakernel_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_render_pass);
+	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
 	std::shared_ptr<DisplayPostProcessRenderPass> display_post_process_render_pass = render_graph_full.create_render_pass<DisplayPostProcessRenderPass>();
 
@@ -138,6 +148,7 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(wavefront_render_pass);
 	render_graph_full.add_render_pass(nisml_megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_pt_render_pass);
+	render_graph_full.add_render_pass(restir_pt_wavefront_render_pass);
 	render_graph_full.add_render_pass(restir_pg_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
@@ -471,6 +482,12 @@ std::shared_ptr<SSBNPermutationRenderPass> GPURendererThread::get_ssbn_permutati
 
 std::shared_ptr<ReSTIRPTRenderPass> GPURendererThread::get_ReSTIR_PT_render_pass()
 {
+
+	// Both ReSTIR PT render passes are in the render graph, only the one of the path sampling strategy in use is used
+	std::shared_ptr<ReSTIRPTRenderPass> restir_pt_wavefront_render_pass = std::dynamic_pointer_cast<ReSTIRPTRenderPass>(
+		m_active_render_graph->get_render_pass(ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_RENDER_PASS_NAME));
+	if (restir_pt_wavefront_render_pass && restir_pt_wavefront_render_pass->is_render_pass_used(*m_active_render_graph->get_compiler_options()))
+		return restir_pt_wavefront_render_pass;
 
 	return std::dynamic_pointer_cast<ReSTIRPTRenderPass>(m_active_render_graph->get_render_pass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME));
 }

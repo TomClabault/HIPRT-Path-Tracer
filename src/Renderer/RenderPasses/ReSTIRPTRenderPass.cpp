@@ -86,7 +86,12 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 };
 
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
-	: RenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
+	: ReSTIRPTRenderPass(ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME, renderer, options)
+{
+}
+
+ReSTIRPTRenderPass::ReSTIRPTRenderPass(const std::string& render_pass_name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(render_pass_name, renderer, options)
 {
 	m_render_data_host_pinned.resize_host_pinned_mem(ReSTIRPTRenderPass::RENDER_DATA_UPLOAD_SLOT_COUNT);
 
@@ -1113,8 +1118,10 @@ void ReSTIRPTRenderPass::update_render_data()
 			// Shadow split kernels not used, their buffer is not allocated
 			shadow_split_buffers = ReSTIRPTSPMISUnionDomainShadowSplitBuffers();
 	}
-	else
+	else if (!path_sampling_strategy_is_restir_pt(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))
 	{
+		// The pointers are left to the other ReSTIR PT render pass when its path sampling strategy is the one in use.
+		//
 		// If ReSTIR PT is disabled, setting the pointers to nullptr so that the camera rays kernel
 		// for example can detect that the buffers are freed and doesn't try to reset them or do
 		// anything with them (which would be invalid since we would be accessing nullptr buffers)
@@ -1151,7 +1158,13 @@ void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 bool ReSTIRPTRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
 
-	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == get_path_sampling_strategy();
+}
+
+int ReSTIRPTRenderPass::get_path_sampling_strategy() const
+{
+
+	return PATH_SAMPLING_RESTIR_PT;
 }
 
 void ReSTIRPTRenderPass::request_temporal_bufffers_clear()

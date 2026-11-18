@@ -17,6 +17,7 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRPGOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/KernelOptions/SSBNPermutationOptions.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #define DEBUG_PIXEL_X_KD_TREE 719
 #define DEBUG_PIXEL_Y_KD_TREE 393
@@ -83,7 +84,8 @@ enum KernelMaterialSpecialization : unsigned int
 #define PATH_SAMPLING_RESTIR_PT		 2
 // This is actually a fake option just for convenience in ImGui. ReSTIR PG is useable through enabling ReSTIR PT + ReSTIRPGEnable. ReSTIR PG is not its
 // own "path sampling" strategy, it has to be piggy backing on a ReSTIR path sampler
-#define PATH_SAMPLING_RESTIR_PG 3
+#define PATH_SAMPLING_RESTIR_PG			  3
+#define PATH_SAMPLING_RESTIR_PT_WAVEFRONT 4
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -153,14 +155,32 @@ enum KernelMaterialSpecialization : unsigned int
  *		Implementation of [Generalized Resampled Importance Sampling: Foundations of ReSTIR, Lin et al. 2022], resampling paths and not full path
  *		trees.
  *
+ *	- PATH_SAMPLING_RESTIR_PT_WAVEFRONT
+ *		Same ReSTIR PT algorithm as PATH_SAMPLING_RESTIR_PT, with the paths processed one bounce at a time through compacted queues.
+ *
  *	- PATH_SAMPLING_RESTIR_PG
  *		Implementation of [ReSTIR PG: Path Guiding with Spatiotemporally Resampled Paths, Zeng et al. 2025]
  *
  *		Uses ReSTIR Path Guiding for learning a guiding distribution in a hash grid and sampling from that distribution for the path bounces.
  *		This option should only be selected from ImGui and not set directly here as the value
  */
-#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT
+#define PathSamplingStrategy PATH_SAMPLING_RESTIR_PT_WAVEFRONT
 
 #endif // #ifndef __KERNELCC__
+
+/**
+ * Whether the path sampling strategy is one of the ReSTIR PT strategies. Usable in #if directives and in code
+ * (the PathSamplingStrategy macro is a compile-time constant on both the CPU and the GPU)
+ */
+#define PathSamplingStrategyIsReSTIRPT (PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT || PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT)
+
+/**
+ * Same as PathSamplingStrategyIsReSTIRPT but for a path sampling strategy value only known at runtime
+ * (the value of the PATH_SAMPLING_STRATEGY option stored in the GPUKernelCompilerOptions for example)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool path_sampling_strategy_is_restir_pt(int path_sampling_strategy)
+{
+	return path_sampling_strategy == PATH_SAMPLING_RESTIR_PT || path_sampling_strategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT;
+}
 
 #endif // #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H

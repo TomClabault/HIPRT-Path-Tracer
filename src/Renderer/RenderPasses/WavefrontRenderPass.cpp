@@ -176,14 +176,6 @@ WavefrontRenderPass::WavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<
 	m_kernels[TRACE_PATHS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
-
-	// The events only order the streams, they are never used for timing
-	OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_fork_event, oroEventDisableTiming));
-	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
-	{
-		OROCHI_CHECK_ERROR(oroStreamCreate(&m_material_family_streams[family_index]));
-		OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_join_events[family_index], oroEventDisableTiming));
-	}
 }
 
 void WavefrontRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -193,7 +185,7 @@ void WavefrontRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_oroch
 {
 	// Kernel options can change the NEE deferred MIS context layout. Query its newly compiled size
 	// before deciding whether the wavefront staging buffers need to be resized.
-	m_nee_deferred_mis_context_byte_size_dirty = true;
+	m_wavefront_common.set_nee_deferred_mis_context_byte_size_dirty();
 
 	RenderPass::recompile(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
 }
@@ -217,7 +209,7 @@ bool WavefrontRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroc
 			name_to_kernel.second->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 			if (name_to_kernel.first == NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)
-				m_nee_deferred_mis_context_byte_size_dirty = true;
+				m_wavefront_common.set_nee_deferred_mis_context_byte_size_dirty();
 		}
 	}
 
@@ -236,13 +228,15 @@ bool WavefrontRenderPass::pre_frame_render_update(float delta_time)
 
 	if (!is_render_pass_used(*m_compiler_options))
 	{
-		bool had_buffers = m_staging_buffers_allocated;
-		free_staging_buffers();
+		bool had_buffers = m_wavefront_common.are_staging_buffers_allocated();
+		m_wavefront_common.free_staging_buffers();
 
 		return had_buffers;
 	}
 
-	bool resized = resize_staging_buffers();
+	unsigned int path_capacity = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
+	bool resized			   = m_wavefront_common.resize_staging_buffers(path_capacity, render_data.ray_volume_state_byte_size, *m_compiler_options,
+																		   m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL]);
 
 	// Resetting this flag as this is a new frame
 	render_data.render_settings.do_update_status_buffers = false;
@@ -258,16 +252,16 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	if (!is_render_pass_used(compiler_options))
 
 		return false;
-	if (!kernels_ready() || !m_staging_buffers_allocated)
+	if (!kernels_ready() || !m_wavefront_common.are_staging_buffers_allocated())
 	{
-		if (m_staging_buffers_allocated)
+		if (m_wavefront_common.are_staging_buffers_allocated())
 			// The camera rays pass may already have appended this frame's primary hits to the material family queues
-			reset_material_family_counts_async(m_renderer->get_main_stream());
+			m_wavefront_common.reset_material_family_counts_async(m_renderer->get_main_stream());
 
 		return false;
 	}
 
-	render_data.wavefront_data				= get_wavefront_data_device();
+	render_data.wavefront_data				= m_wavefront_common.get_wavefront_data_device(*m_compiler_options);
 	bool trace_classifies_material_families = render_data.wavefront_data.trace_classifies_material_families != 0;
 
 	unsigned int path_capacity = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
@@ -278,9 +272,8 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	oroStream_t main_stream = m_renderer->get_main_stream();
 
 	unsigned int queue_block_size	   = KernelBlockWidthHeight * KernelBlockWidthHeight;
-	unsigned int wavefront_block_size  = 64;
-	unsigned int wavefront_block_count = std::max(1u, std::min((path_capacity + 63u) / 64u, 2048u));
-	unsigned int shadow_block_count	   = (path_capacity + 63u) / 64u;
+	unsigned int wavefront_block_count = WavefrontRenderPassCommon::get_wavefront_block_count(path_capacity);
+	unsigned int shadow_block_count	   = WavefrontRenderPassCommon::get_shadow_block_count(path_capacity);
 
 	int nee_estimator = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	WavefrontRoutingConfiguration routing_configuration =
@@ -289,80 +282,43 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	bool has_deferred_bsdf_sampling		   = routing_configuration.requires_terminal_trace_completion;
 	bool route_deferred_by_material_family = routing_configuration.route_deferred_completion_by_material_family;
 	bool defer_nee_shadow_traversal = compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL) == KERNEL_OPTION_TRUE;
-	bool run_shadow_pass			= defer_nee_shadow_traversal && m_wavefront_data.shadow_work_capacity() > 0;
+	bool run_shadow_pass			= defer_nee_shadow_traversal && m_wavefront_common.get_wavefront_data().shadow_work_capacity() > 0;
 
-	// HIPRT assigns the global BVH traversal stacks statically from the block index: two family kernels running
-	// concurrently would share the stacks of their blocks with the same index. Each family is given its own slice
-	// of the global stack buffer and the grid of the family kernels is limited to the size of that slice
-	hiprtGlobalStackBuffer global_stack_buffer = render_data.global_traversal_stack_buffer;
-	unsigned int family_stack_count			   = global_stack_buffer.stackCount / material_family_count;
-	unsigned int family_block_count			   = std::min(wavefront_block_count, family_stack_count / wavefront_block_size);
-	// The families fall back to running one after the other on the main stream with the whole stack buffer if
-	// it is too small to be split between them. A single family has nothing to overlap with.
-	// They also run one after the other if overlapping was turned off to measure the cost of each family kernel
+	unsigned int family_block_count;
 	bool overlap_family_kernels =
-		m_overlap_material_family_kernels && material_family_count > 1 && global_stack_buffer.stackData != nullptr && family_block_count > 0;
-	if (!overlap_family_kernels)
-		family_block_count = wavefront_block_count;
+		m_wavefront_common.prepare_material_family_render_data(render_data, material_family_count, wavefront_block_count, family_block_count);
 
-	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
-	host_pinned_render_data[0]				 = render_data;
+	m_wavefront_common.upload_main_stream_render_data(*m_kernels[TRACE_PATHS_KERNEL], "WAVEFRONT_TRACE_RENDER_DATA", main_stream);
+	m_wavefront_common.upload_main_stream_render_data(*m_kernels[TRACE_SHADOW_RAYS_KERNEL], "WAVEFRONT_TRACE_SHADOW_RENDER_DATA", main_stream);
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 	{
-		HIPRTRenderData& family_render_data = host_pinned_render_data[1 + family_index];
-		family_render_data					= render_data;
-		if (!overlap_family_kernels)
-			continue;
-
-		unsigned int family_slice_stack_count = family_block_count * wavefront_block_size;
-		std::size_t family_slice_entry_offset =
-			static_cast<std::size_t>(family_index) * family_slice_stack_count * static_cast<std::size_t>(global_stack_buffer.stackSize);
-
-		// The global stack buffer is created with integer entries
-		family_render_data.global_traversal_stack_buffer.stackData	= static_cast<unsigned int*>(global_stack_buffer.stackData) + family_slice_entry_offset;
-		family_render_data.global_traversal_stack_buffer.stackCount = family_slice_stack_count;
-	}
-
-	m_kernels[TRACE_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
-	m_kernels[TRACE_SHADOW_RAYS_KERNEL]->upload_to_module_global("WAVEFRONT_TRACE_SHADOW_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
-																 main_stream);
-	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-	{
-		HIPRTRenderData* family_render_data = host_pinned_render_data + 1 + family_index;
-
-		m_kernels[get_primary_shading_kernel_name(family_index)]->upload_to_module_global("WAVEFRONT_SHADE_PRIMARY_RENDER_DATA", family_render_data,
-																						  sizeof(HIPRTRenderData), main_stream);
-		m_kernels[get_secondary_shading_kernel_name(family_index)]->upload_to_module_global("WAVEFRONT_SHADE_RENDER_DATA", family_render_data,
-																							sizeof(HIPRTRenderData), main_stream);
+		m_wavefront_common.upload_material_family_render_data(*m_kernels[get_primary_shading_kernel_name(family_index)], "WAVEFRONT_SHADE_PRIMARY_RENDER_DATA",
+															  family_index, main_stream);
+		m_wavefront_common.upload_material_family_render_data(*m_kernels[get_secondary_shading_kernel_name(family_index)], "WAVEFRONT_SHADE_RENDER_DATA",
+															  family_index, main_stream);
 	}
 
 	if (!trace_classifies_material_families)
-		m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->upload_to_module_global("WAVEFRONT_CLASSIFY_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA",
-																							  host_pinned_render_data, sizeof(HIPRTRenderData), main_stream);
+		m_wavefront_common.upload_main_stream_render_data(*m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL],
+														  "WAVEFRONT_CLASSIFY_SECONDARY_MATERIAL_FAMILIES_RENDER_DATA", main_stream);
 	if (route_deferred_by_material_family)
 	{
 		for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-			m_kernels[get_deferred_completion_kernel_name(family_index)]->upload_to_module_global(
-				"WAVEFRONT_COMPLETE_DEFERRED_RENDER_DATA", host_pinned_render_data + 1 + family_index, sizeof(HIPRTRenderData), main_stream);
+			m_wavefront_common.upload_material_family_render_data(*m_kernels[get_deferred_completion_kernel_name(family_index)],
+																  "WAVEFRONT_COMPLETE_DEFERRED_RENDER_DATA", family_index, main_stream);
 	}
 	else
-		m_kernels[COMPLETE_DEFERRED_PATHS_KERNEL]->upload_to_module_global("WAVEFRONT_COMPLETE_DEFERRED_RENDER_DATA", host_pinned_render_data,
-																		   sizeof(HIPRTRenderData), main_stream);
+		m_wavefront_common.upload_main_stream_render_data(*m_kernels[COMPLETE_DEFERRED_PATHS_KERNEL], "WAVEFRONT_COMPLETE_DEFERRED_RENDER_DATA", main_stream);
 
-	unsigned int* zero = m_zero_host_pinned.get_host_pinned_pointer();
-	zero[0]			   = 0;
-
-	// The dominant material family only matters when the families are overlapped: it is the one that runs on the main stream
-	bool read_back_material_family_counts		   = overlap_family_kernels && m_material_family_count_readback_frame_counter == 0;
-	m_material_family_count_readback_frame_counter = (m_material_family_count_readback_frame_counter + 1) % MATERIAL_FAMILY_COUNT_READBACK_PERIOD;
+	bool read_back_material_family_counts = m_wavefront_common.update_material_family_count_readback(overlap_family_kernels);
 
 	for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
 	{
-		m_wavefront_data.get_queue_count_buffer(1).upload_data_async(zero, main_stream);
+		m_wavefront_common.reset_queue_count_async(1, main_stream);
 		if (run_shadow_pass)
 		{
-			m_wavefront_data.get_shadow_work_count_buffer().upload_data_async(zero, main_stream);
-			m_wavefront_data.get_shadow_queue_overflow_count_buffer().upload_data_async(zero, main_stream);
+			m_wavefront_common.reset_shadow_work_count_async(main_stream);
+			m_wavefront_common.reset_shadow_queue_overflow_count_async(main_stream);
 		}
 
 		void* shade_launch_args[] = { &bounce_count };
@@ -372,14 +328,15 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 			launch_material_family_kernels_async(MaterialFamilyKernelType::PRIMARY_SHADING, shade_launch_args, material_family_count, family_block_count,
 												 overlap_family_kernels);
 			if (read_back_material_family_counts)
-				read_back_material_family_counts_async(MaterialFamilyKernelType::PRIMARY_SHADING);
+				m_wavefront_common.read_back_material_family_counts_async(get_material_family_count_readback_slot(MaterialFamilyKernelType::PRIMARY_SHADING),
+																		  main_stream);
 		}
 		else if (bounce_index > 0 && path_capacity > 0)
 		{
 			if (!trace_classifies_material_families)
 			{
 				// The family-routed deferred completion of the previous bounce has consumed the family queues, they can be rebuilt from queue 0
-				reset_material_family_counts_async(main_stream);
+				m_wavefront_common.reset_material_family_counts_async(main_stream);
 				m_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL]->launch_asynchronous_3D_block_count(wavefront_block_count, 1, 1, 64, 1, 1, nullptr,
 																												 main_stream);
 			}
@@ -388,7 +345,8 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 												 overlap_family_kernels);
 			// The first secondary bounce is representative of the following ones
 			if (read_back_material_family_counts && bounce_index == 1)
-				read_back_material_family_counts_async(MaterialFamilyKernelType::SECONDARY_SHADING);
+				m_wavefront_common.read_back_material_family_counts_async(get_material_family_count_readback_slot(MaterialFamilyKernelType::SECONDARY_SHADING),
+																		  main_stream);
 		}
 
 		if (run_shadow_pass)
@@ -400,15 +358,15 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 		if (trace_classifies_material_families)
 			// TracePaths appends the new hits to the material family queues, which the shading passes of this bounce have already consumed.
 			// Queue 0 is not used in that case
-			reset_material_family_counts_async(main_stream);
+			m_wavefront_common.reset_material_family_counts_async(main_stream);
 		else
-			m_wavefront_data.get_queue_count_buffer(0).upload_data_async(zero, main_stream);
-		m_wavefront_data.get_queue_count_buffer(WAVEFRONT_COMPLETION_QUEUE_INDEX).upload_data_async(zero, main_stream);
+			m_wavefront_common.reset_queue_count_async(0, main_stream);
+		m_wavefront_common.reset_queue_count_async(WAVEFRONT_COMPLETION_QUEUE_INDEX, main_stream);
 		m_kernels[TRACE_PATHS_KERNEL]->launch_asynchronous(queue_block_size, 1, path_capacity, 1, nullptr, main_stream);
 
 		bool deferred_completion_can_emit_shadow = run_shadow_pass && nee_estimator == LSS_RIS_BSDF_AND_LIGHT;
 		if (deferred_completion_can_emit_shadow)
-			m_wavefront_data.get_shadow_work_count_buffer().upload_data_async(zero, main_stream);
+			m_wavefront_common.reset_shadow_work_count_async(main_stream);
 
 		// Family-routed deferred completion reuses these queues and filters paths by terminal/miss state.
 		bool complete_by_family		 = route_deferred_by_material_family;
@@ -425,7 +383,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 	}
 
 	// The camera rays pass of the next frame appends the primary hits to the material family queues
-	reset_material_family_counts_async(main_stream);
+	m_wavefront_common.reset_material_family_counts_async(main_stream);
 
 	return true;
 }
@@ -434,30 +392,16 @@ void WavefrontRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (is_render_pass_used(*m_compiler_options) && m_staging_buffers_allocated)
-		render_data.wavefront_data = get_wavefront_data_device();
-	else
-		render_data.wavefront_data = WavefrontDataDevice();
-}
-
-WavefrontDataDevice WavefrontRenderPass::get_wavefront_data_device()
-{
-	WavefrontDataDevice wavefront_data_device = m_wavefront_data.to_device();
-
-	// The family-routed deferred completion runs after TracePaths and still needs the family queues of the shaded vertex.
-	// TracePaths cannot overwrite them with the families of the new hits in that case so a separate classification pass runs instead
-	if (wavefront_data_device.material_family_routing_enabled && !uses_deferred_material_family_routing(*m_compiler_options))
-		wavefront_data_device.trace_classifies_material_families = 1;
-
-	return wavefront_data_device;
-}
-
-void WavefrontRenderPass::reset_material_family_counts_async(oroStream_t stream)
-{
-	if (!m_staging_buffers_allocated)
+	// Every pass of the render graph that runs wavefront kernels updates the render data every frame but only the pass in use
+	// may write render_data.wavefront_data: an unused pass leaves it to the pass in use.
+	// The ReSTIR PT wavefront path sampling strategy has its own wavefront pass. With any other strategy, this pass writes the
+	// wavefront data, including when it is not used so that the wavefront data is the default one when no wavefront pass is used
+	bool pass_used				  = is_render_pass_used(*m_compiler_options);
+	bool restir_pt_wavefront_used = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT_WAVEFRONT;
+	if (!pass_used && restir_pt_wavefront_used)
 		return;
 
-	m_wavefront_data.get_material_family_count_buffer().upload_data_async(m_zero_host_pinned.get_host_pinned_pointer(), stream);
+	m_wavefront_common.update_render_data_wavefront_data(render_data, pass_used, *m_compiler_options);
 }
 
 const std::string& WavefrontRenderPass::get_material_family_kernel_name(MaterialFamilyKernelType kernel_type, unsigned int family_index) const
@@ -477,99 +421,39 @@ const std::string& WavefrontRenderPass::get_material_family_kernel_name(Material
 	}
 }
 
-unsigned int WavefrontRenderPass::get_material_family_count_readback_slot(MaterialFamilyKernelType kernel_type) const
+WavefrontRenderPassCommon::MaterialFamilyKernels WavefrontRenderPass::get_material_family_kernels(MaterialFamilyKernelType kernel_type) const
+{
+	WavefrontRenderPassCommon::MaterialFamilyKernels family_kernels;
+	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
+		family_kernels[family_index] = m_kernels.at(get_material_family_kernel_name(kernel_type, family_index));
+
+	return family_kernels;
+}
+
+WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot WavefrontRenderPass::get_material_family_count_readback_slot(
+	MaterialFamilyKernelType kernel_type) const
 {
 	// The deferred completion consumes the family queues of the secondary hits
-	return kernel_type == MaterialFamilyKernelType::PRIMARY_SHADING ? 0 : 1;
-}
-
-unsigned int WavefrontRenderPass::get_dominant_material_family(MaterialFamilyKernelType kernel_type, unsigned int material_family_count) const
-{
-	unsigned int readback_slot	 = get_material_family_count_readback_slot(kernel_type);
-	const unsigned int* counts	 = m_material_family_counts_host_pinned.get_host_pinned_pointer() + readback_slot * KernelMaterialSpecializationCount;
-	unsigned int dominant_family = 0;
-
-	// Before the first read back has completed, all the counts are 0 and the first family is picked
-	for (unsigned int family_index = 1; family_index < material_family_count; family_index++)
-		if (counts[family_index] > counts[dominant_family])
-			dominant_family = family_index;
-
-	return dominant_family;
-}
-
-void WavefrontRenderPass::read_back_material_family_counts_async(MaterialFamilyKernelType kernel_type)
-{
-	unsigned int readback_slot = get_material_family_count_readback_slot(kernel_type);
-	unsigned int* destination  = m_material_family_counts_host_pinned.get_host_pinned_pointer() + readback_slot * KernelMaterialSpecializationCount;
-
-	// Enqueued on the main stream after the join of the family kernels: the counters still hold the counts that the
-	// family kernels have just consumed, they are only reset before the next pass that appends to the family queues
-	m_wavefront_data.get_material_family_count_buffer().download_data_async(destination, m_renderer->get_main_stream());
+	return kernel_type == MaterialFamilyKernelType::PRIMARY_SHADING ? WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::PRIMARY_HITS
+																	: WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::SECONDARY_HITS;
 }
 
 void WavefrontRenderPass::launch_material_family_kernels_async(
 	MaterialFamilyKernelType kernel_type, void** launch_args, unsigned int material_family_count, unsigned int block_count, bool overlap)
 {
-	oroStream_t main_stream = m_renderer->get_main_stream();
-
-	if (!overlap)
-	{
-		for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-			m_kernels[get_material_family_kernel_name(kernel_type, family_index)]->launch_asynchronous_3D_block_count(block_count, 1, 1, 64, 1, 1, launch_args,
-																													  main_stream);
-
-		return;
-	}
-
-	unsigned int dominant_family_index = get_dominant_material_family(kernel_type, material_family_count);
-
-	// The family kernels must not start before the work already queued on the main stream: render data uploads,
-	// queue counter resets and the kernels that produced the family queues
-	OROCHI_CHECK_ERROR(oroEventRecord(m_material_family_fork_event, main_stream));
-
-	// The dominant family is launched on the main stream: it has no cross-stream wait so the worker thread of the main stream
-	// submits it ahead of time and it starts right after the kernel that produced its queue. The worker threads of the
-	// other streams wait on the CPU for the fork event before they can submit their kernels (see the comment on the join below).
-	// It still uses its own render data and its slice of the global stack buffer since the other families run concurrently
-	m_kernels[get_material_family_kernel_name(kernel_type, dominant_family_index)]->launch_asynchronous_3D_block_count(block_count, 1, 1, 64, 1, 1, launch_args,
-																													   main_stream);
-
-	// The families shade disjoint sets of paths and only append to the shared queues with atomics so they can run concurrently
-	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-	{
-		if (family_index == dominant_family_index)
-			continue;
-
-		oroStream_t family_stream = m_material_family_streams[family_index];
-
-		OROCHI_CHECK_ERROR(oroStreamWaitEvent(family_stream, m_material_family_fork_event, 0));
-		m_kernels[get_material_family_kernel_name(kernel_type, family_index)]->launch_asynchronous_3D_block_count(block_count, 1, 1, 64, 1, 1, launch_args,
-																												  family_stream);
-		OROCHI_CHECK_ERROR(oroEventRecord(m_material_family_join_events[family_index], family_stream));
-	}
-
-	// The following passes of the main stream consume the outputs of all the families.
-	// The dominant family is already ordered on the main stream so it is not joined.
-	//
-	// The HIP runtime has no direct dispatch on Windows (PAL backend): each stream has a worker thread that handles cross-stream
-	// waits on the CPU, the app thread does not block here. When the worker of the main stream reaches the wait of a family that
-	// has not finished, HostQueue::loop() first waits for all the work already submitted on the main stream, which includes the
-	// dominant family kernel, and then for the family. The next passes are only submitted after that so the GPU idles
-	// at each join (see memory/performance/OPTIMIZATIONS_SUCCESS.md)
-	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
-		if (family_index != dominant_family_index)
-			OROCHI_CHECK_ERROR(oroStreamWaitEvent(main_stream, m_material_family_join_events[family_index], 0));
+	m_wavefront_common.launch_material_family_kernels_async(get_material_family_kernels(kernel_type), get_material_family_count_readback_slot(kernel_type),
+															launch_args, material_family_count, block_count, overlap, m_renderer->get_main_stream());
 }
 
 bool WavefrontRenderPass::get_overlap_material_family_kernels() const
 {
 
-	return m_overlap_material_family_kernels;
+	return m_wavefront_common.get_overlap_material_family_kernels();
 }
 
 void WavefrontRenderPass::set_overlap_material_family_kernels(bool overlap_material_family_kernels)
 {
-	m_overlap_material_family_kernels = overlap_material_family_kernels;
+	m_wavefront_common.set_overlap_material_family_kernels(overlap_material_family_kernels);
 }
 
 void WavefrontRenderPass::reset(bool reset_by_camera_movement)
@@ -595,24 +479,6 @@ bool WavefrontRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& co
 	bool nisml_enabled	  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy);
 
 	return wavefront_path_strategy_uses_pass(compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), nisml_enabled);
-}
-
-unsigned int WavefrontRenderPass::get_material_family_count(const GPUKernelCompilerOptions& compiler_options) const
-{
-	WavefrontRoutingConfiguration configuration =
-		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
-											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
-
-	return configuration.material_family_count;
-}
-
-bool WavefrontRenderPass::uses_deferred_material_family_routing(const GPUKernelCompilerOptions& compiler_options) const
-{
-	WavefrontRoutingConfiguration configuration =
-		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
-											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
-
-	return configuration.route_deferred_completion_by_material_family;
 }
 
 const std::string& WavefrontRenderPass::get_primary_shading_kernel_name(unsigned int family_index) const
@@ -687,7 +553,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 
 		return {};
 
-	unsigned int material_family_count = get_material_family_count(*m_compiler_options);
+	unsigned int material_family_count = WavefrontRenderPassCommon::get_material_family_count(*m_compiler_options);
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels;
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
@@ -697,11 +563,11 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_all_k
 	}
 
 	// Without family-routed deferred completion, TracePaths classifies the secondary hits itself
-	if (uses_deferred_material_family_routing(*m_compiler_options))
+	if (WavefrontRenderPassCommon::uses_deferred_material_family_routing(*m_compiler_options))
 		active_kernels[MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL] = m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL);
 
 	active_kernels[COMPLETE_DEFERRED_PATHS_KERNEL] = m_kernels.at(COMPLETE_DEFERRED_PATHS_KERNEL);
-	if (uses_deferred_material_family_routing(*m_compiler_options))
+	if (WavefrontRenderPassCommon::uses_deferred_material_family_routing(*m_compiler_options))
 	{
 		for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 			active_kernels[get_deferred_completion_kernel_name(family_index)] = m_kernels.at(get_deferred_completion_kernel_name(family_index));
@@ -720,7 +586,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_traci
 
 		return {};
 
-	unsigned int material_family_count = get_material_family_count(*m_compiler_options);
+	unsigned int material_family_count = WavefrontRenderPassCommon::get_material_family_count(*m_compiler_options);
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> tracing_kernels;
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
@@ -735,74 +601,16 @@ std::map<std::string, std::shared_ptr<GPUKernel>> WavefrontRenderPass::get_traci
 	return tracing_kernels;
 }
 
-std::size_t WavefrontRenderPass::get_nee_deferred_mis_context_byte_size()
-{
-	if (!m_nee_deferred_mis_context_byte_size_dirty)
-
-		return m_nee_deferred_mis_context_byte_size;
-
-	std::shared_ptr<GPUKernel> context_size_kernel = m_kernels[NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL];
-	if (!context_size_kernel->has_been_compiled())
-
-		return 0;
-
-	OrochiBuffer<std::size_t> out_size_buffer(1);
-	std::size_t* out_size_buffer_pointer = out_size_buffer.get_device_pointer();
-	void* launch_args[]					 = { &out_size_buffer_pointer };
-	context_size_kernel->launch_synchronous(1, 1, 1, 1, launch_args, 0);
-
-	m_nee_deferred_mis_context_byte_size	   = out_size_buffer.download_data()[0];
-	m_nee_deferred_mis_context_byte_size_dirty = false;
-
-	return m_nee_deferred_mis_context_byte_size;
-}
-
-unsigned int WavefrontRenderPass::get_shadow_work_capacity(unsigned int path_capacity) const
-{
-	if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL) != KERNEL_OPTION_TRUE)
-		return 0;
-
-	int nee_estimator					   = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-	int sampling_strategy				   = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-	unsigned int direct_light_sample_count = 1;
-
-	if (sampling_strategy == LSS_BASE_LIGHT_TREE_ATS &&
-		m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE)
-		direct_light_sample_count =
-			static_cast<unsigned int>(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES));
-	else if (sampling_strategy == LSS_BASE_LIGHT_TREE_SG &&
-			 m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING) == KERNEL_OPTION_TRUE)
-		direct_light_sample_count =
-			static_cast<unsigned int>(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_SPLITTING_MAX_LIGHT_SAMPLES));
-
-	unsigned int emissive_shadow_count = 0;
-	if (nee_estimator == LSS_ONE_LIGHT || nee_estimator == LSS_MIS_LIGHT_BSDF)
-		emissive_shadow_count = direct_light_sample_count;
-	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || nee_estimator == LSS_NEURAL_MANY_LIGHTS || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
-		emissive_shadow_count = 1;
-
-	unsigned int envmap_shadow_count = 0;
-	if (nee_estimator != LSS_NO_DIRECT_LIGHT_SAMPLING &&
-		m_compiler_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
-	{
-		envmap_shadow_count = 1;
-		if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS) == KERNEL_OPTION_TRUE)
-			envmap_shadow_count++;
-	}
-
-	return path_capacity * (emissive_shadow_count + envmap_shadow_count);
-}
-
 bool WavefrontRenderPass::kernels_ready() const
 {
 	if (!m_kernels.at(TRACE_PATHS_KERNEL)->has_been_compiled() || !m_kernels.at(COMPLETE_DEFERRED_PATHS_KERNEL)->has_been_compiled() ||
 		!m_kernels.at(TRACE_SHADOW_RAYS_KERNEL)->has_been_compiled() || !m_kernels.at(NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL)->has_been_compiled() ||
-		m_nee_deferred_mis_context_byte_size == 0)
+		m_wavefront_common.get_nee_deferred_mis_context_byte_size() == 0)
 
 		return false;
 
-	unsigned int material_family_count = get_material_family_count(*m_compiler_options);
-	if (uses_deferred_material_family_routing(*m_compiler_options))
+	unsigned int material_family_count = WavefrontRenderPassCommon::get_material_family_count(*m_compiler_options);
+	if (WavefrontRenderPassCommon::uses_deferred_material_family_routing(*m_compiler_options))
 	{
 		for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 			if (!m_kernels.at(get_deferred_completion_kernel_name(family_index))->has_been_compiled())
@@ -816,80 +624,8 @@ bool WavefrontRenderPass::kernels_ready() const
 
 			return false;
 
-	if (uses_deferred_material_family_routing(*m_compiler_options))
+	if (WavefrontRenderPassCommon::uses_deferred_material_family_routing(*m_compiler_options))
 		return m_kernels.at(MATERIAL_FAMILY_ROUTING_CLASSIFY_SECONDARY_KERNEL)->has_been_compiled();
 
 	return true;
-}
-
-bool WavefrontRenderPass::resize_staging_buffers()
-{
-	unsigned int path_capacity					  = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
-	unsigned int shadow_work_capacity			  = get_shadow_work_capacity(path_capacity);
-	std::size_t ray_volume_state_byte_size		  = m_renderer->get_render_data().ray_volume_state_byte_size;
-	bool allocate_resolved_material_control_cache = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES) == KERNEL_OPTION_TRUE;
-	// Only the principled BSDF classifies the secondary hits into material families: the classification is cached for the shading pass
-	bool allocate_current_material_classifications =
-		allocate_resolved_material_control_cache && m_compiler_options->get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL) == BSDF_PRINCIPLED;
-	int nee_estimator								  = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-	bool allocate_learning_to_cluster_shadow_sidecars = shadow_work_capacity > 0 && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator);
-	bool allocate_nisml_shadow_sidecars				  = shadow_work_capacity > 0 && nee_estimator == LSS_NEURAL_MANY_LIGHTS;
-	if (ray_volume_state_byte_size == 0)
-		Debug::debugbreak();
-	std::size_t nee_deferred_mis_context_byte_size = get_nee_deferred_mis_context_byte_size();
-	if (nee_deferred_mis_context_byte_size == 0)
-	{
-		bool had_buffers = m_staging_buffers_allocated;
-		free_staging_buffers();
-
-		return had_buffers;
-	}
-
-	bool needs_resize = !m_staging_buffers_allocated || m_wavefront_data.path_capacity() != path_capacity ||
-						m_wavefront_data.has_resolved_material_control_cache() != allocate_resolved_material_control_cache ||
-						m_wavefront_data.has_current_material_classifications() != allocate_current_material_classifications ||
-						m_wavefront_data.shadow_work_capacity() != shadow_work_capacity ||
-						m_wavefront_data.has_learning_to_cluster_shadow_sidecars() != allocate_learning_to_cluster_shadow_sidecars ||
-						m_wavefront_data.has_nisml_shadow_sidecars() != allocate_nisml_shadow_sidecars ||
-						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
-						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size ||
-						m_render_data_host_pinned.size() != 1 + KernelMaterialSpecializationCount ||
-						m_zero_host_pinned.size() != KernelMaterialSpecializationCount ||
-						m_material_family_counts_host_pinned.size() != 2 * KernelMaterialSpecializationCount;
-	if (!needs_resize)
-
-		return false;
-
-	free_staging_buffers();
-
-	m_wavefront_data.resize(path_capacity, shadow_work_capacity, ray_volume_state_byte_size, nee_deferred_mis_context_byte_size,
-							allocate_resolved_material_control_cache, allocate_current_material_classifications, allocate_learning_to_cluster_shadow_sidecars,
-							allocate_nisml_shadow_sidecars);
-	// One render data for the main stream kernels and one per material family
-	m_render_data_host_pinned.resize_host_pinned_mem(1 + KernelMaterialSpecializationCount);
-	// Large enough to reset all the material family counters with a single upload
-	m_zero_host_pinned.resize_host_pinned_mem(KernelMaterialSpecializationCount);
-	std::fill_n(m_zero_host_pinned.get_host_pinned_pointer(), KernelMaterialSpecializationCount, 0u);
-	// The primary and secondary shading counts read back to find the dominant material family of each pass
-	m_material_family_counts_host_pinned.resize_host_pinned_mem(2 * KernelMaterialSpecializationCount);
-	std::fill_n(m_material_family_counts_host_pinned.get_host_pinned_pointer(), 2 * KernelMaterialSpecializationCount, 0u);
-	m_material_family_count_readback_frame_counter = 0;
-
-	m_allocated_ray_volume_state_byte_size		   = ray_volume_state_byte_size;
-	m_allocated_nee_deferred_mis_context_byte_size = nee_deferred_mis_context_byte_size;
-	m_staging_buffers_allocated					   = true;
-
-	return true;
-}
-
-void WavefrontRenderPass::free_staging_buffers()
-{
-	m_wavefront_data.free();
-	m_render_data_host_pinned.free_no_error();
-	m_zero_host_pinned.free_no_error();
-	m_material_family_counts_host_pinned.free_no_error();
-
-	m_allocated_ray_volume_state_byte_size		   = 0;
-	m_allocated_nee_deferred_mis_context_byte_size = 0;
-	m_staging_buffers_allocated					   = false;
 }

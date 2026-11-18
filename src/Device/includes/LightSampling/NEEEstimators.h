@@ -1075,7 +1075,7 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 																   Xorshift32Generator& random_number_generator,
 																   WavefrontShadowSink* shadow_sink = nullptr)
 {
-#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#if !PathSamplingStrategyIsReSTIRPT
 
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
@@ -1139,12 +1139,12 @@ HIPRT_DEVICE RISReservoir deferred_NEE_MIS_add_one_RIS_BSDF_sample(HIPRTRenderDa
 	return RISReservoir();
 #endif // #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 
-#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT // #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif // !PathSamplingStrategyIsReSTIRPT // #if !PathSamplingStrategyIsReSTIRPT
 
 	return RISReservoir();
 }
 
-#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && !PathSamplingStrategyIsReSTIRPT
 /**
  * When the envmap is a cluster of the lightcuts, the bounce ray of the main path that misses the scene is the BSDF sample of the envmap: returns
  * the envmap contribution of that ray with its MIS weight against the envmap cluster of the lightcut of the previous vertex
@@ -1183,7 +1183,7 @@ HIPRT_DEVICE ColorRGB32F deferred_NEE_MIS_envmap_miss_learning_to_cluster(HIPRTR
 
 	return nee_deferred_MIS_context.last_ray_throughput * envmap_contribution;
 }
-#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS && !PathSamplingStrategyIsReSTIRPT
 
 /**
  * If the bounce ray of the main path hits an emissive light, computes the MIS weight for that emissive hit against the light sampler of the last hit and
@@ -1200,7 +1200,7 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 														   Xorshift32Generator& random_number_generator,
 														   WavefrontShadowSink* shadow_sink = nullptr)
 {
-#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#if !PathSamplingStrategyIsReSTIRPT
 
 #if !DirectLightNEEEstimatorHasBSDFSampling
 	return ColorRGB32F(0.0f);
@@ -1306,8 +1306,8 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 	return last_hit_NEE_estimate * nee_deferred_MIS_context.last_ray_throughput;
 #endif													// #if DirectLightNEEEstimator == LSS_BSDF
 
-#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT // #if !DirectLightNEEEstimatorHasBSDFSampling
-#endif // DirectLightNEEEstimatorHasBSDFSampling // #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif // !PathSamplingStrategyIsReSTIRPT // #if !DirectLightNEEEstimatorHasBSDFSampling
+#endif // DirectLightNEEEstimatorHasBSDFSampling // #if !PathSamplingStrategyIsReSTIRPT
 
 	return ColorRGB32F();
 }
@@ -1347,7 +1347,7 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 																Xorshift32Generator& random_number_generator,
 																NEEDeferredMISContext& nee_deferred_MIS_context)
 {
-#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#if !PathSamplingStrategyIsReSTIRPT
 	if (ray_payload.next_ray_state == RayState::MISSED)
 		// The miss path has already gathered the envmap contribution, so there is no valid ray to retrace for deferred NEE MIS.
 		return ColorRGB32F(0.0f);
@@ -1373,7 +1373,7 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 
 	return ColorRGB32F(0.0f);
 
-#endif // PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT // #if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#endif // !PathSamplingStrategyIsReSTIRPT // #if !PathSamplingStrategyIsReSTIRPT
 
 	return ColorRGB32F();
 }

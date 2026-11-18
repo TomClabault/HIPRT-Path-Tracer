@@ -38,7 +38,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 
 #if (ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                         \
 	 ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) &&                                                              \
-	PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+	PathSamplingStrategyIsReSTIRPT
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes[pixel_index]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_index_in_cell[pixel_index]	  = 0;
@@ -59,7 +59,7 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_confidence_sums[pixel_index]				= 0;
 		render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance[pixel_index]					= -1.0f;
 #endif // #if (ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
-	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE) && PathSamplingStrategyIsReSTIRPT
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())

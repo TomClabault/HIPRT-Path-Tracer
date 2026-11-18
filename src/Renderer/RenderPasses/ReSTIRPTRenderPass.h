@@ -74,7 +74,7 @@ public:
 	 */
 	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
 	void configure_initial_candidates_pass(HIPRTRenderData& render_data);
-	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
+	virtual void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, ReSTIRPTReservoir* input_reservoirs);
 	void resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count);
 	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
@@ -109,7 +109,18 @@ public:
 	/**
 	 * Returns the VRAM used by ReSTIR PT in MB
 	 */
-	float get_VRAM_usage() const;
+	virtual float get_VRAM_usage() const;
+
+protected:
+	/**
+	 * For the render passes that run the ReSTIR PT passes of this render pass with their own initial candidates
+	 */
+	ReSTIRPTRenderPass(const std::string& render_pass_name, GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
+
+	/**
+	 * The path sampling strategy (PATH_SAMPLING_RESTIR_PT, ...) with which this render pass is used
+	 */
+	virtual int get_path_sampling_strategy() const;
 
 private:
 	/**

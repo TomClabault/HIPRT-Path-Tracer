@@ -1142,7 +1142,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					if (!render_settings.accumulate)
 						ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+					if (path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))
 					{
 						ImGuiRenderer::add_warning(
 							"Adaptive sampling may not be efficient when used with ReSTIR. This is because "
@@ -1241,7 +1241,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					"Sample subsets and low-resolution interaction rendering temporarily bypass this mode.");
 				if (!render_settings.accumulate)
 					ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+				if (path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))
 				{
 					ImGuiRenderer::add_warning(
 						"Adaptive sampling may not be efficient when used with ReSTIR. This is because "
@@ -1410,7 +1410,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			static_assert(IM_ARRAYSIZE(items_nee_estimators) == IM_ARRAYSIZE(tooltips_nee_estimators));
 
 			// ReSTIR PT only supports learning to cluster + MIS
-			bool restir_pt = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT;
+			bool restir_pt = path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY));
 			bool no_direct_light_sampling_disabled = restir_pt;
 			bool uniform_one_light_disabled		   = restir_pt;
 			bool bsdf_sampling_disabled			   = restir_pt;
@@ -1692,17 +1692,37 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Path sampling tree");
 
-			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR PT", "- ReSTIR PG" };
+			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR PT", "- ReSTIR PT (wavefront)", "- ReSTIR PG" };
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
 				"Uses classical BSDF path tracing while processing paths one bounce at a time through compacted wavefront queues.",
 				"Uses ReSTIR PT to resample a path to shade for the pixel. ReSTIR PT resamples paths and not full path trees, guaranteeing unbiasedness.",
+				"Uses ReSTIR PT while processing paths one bounce at a time through compacted wavefront queues.",
 				"Uses ReSTIR Path Guiding piggy-backing on another ReSTIR path sampler to improve path sampling distributions over time with guiding.",
 			};
-			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy",
-												 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items,
-												 IM_ARRAYSIZE(items), tooltips))
+
+			// The order of the items in the combo is not the order of the PATH_SAMPLING_* values: ReSTIR PT (wavefront) is listed next to ReSTIR PT
+			// and ReSTIR PG is a fake entry (it is not a PATH_SAMPLING_* value that is ever kept as the path sampling strategy)
+			int path_sampling_strategy		= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY);
+			int path_sampling_strategy_item = path_sampling_strategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT ? 3 : path_sampling_strategy;
+			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", &path_sampling_strategy_item, items, IM_ARRAYSIZE(items), tooltips))
 			{
+				switch (path_sampling_strategy_item)
+				{
+				case 3:
+					path_sampling_strategy = PATH_SAMPLING_RESTIR_PT_WAVEFRONT;
+					break;
+
+				case 4:
+					path_sampling_strategy = PATH_SAMPLING_RESTIR_PG;
+					break;
+
+				default:
+					path_sampling_strategy = path_sampling_strategy_item;
+					break;
+				}
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, path_sampling_strategy);
+
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PG)
 				{
 					// This is ReSTIR PG. Its enabled through ReSTIR PT so let's enable ReSTIR PT
@@ -1712,7 +1732,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, KERNEL_OPTION_TRUE);
 				}
 
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+				if (path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))
 				{
 					// ReSTIR PT only supports learning to cluster + MIS
 					int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
@@ -1741,7 +1761,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PT)
+			if (path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))
 			{
 				if (ImGui::CollapsingHeader("ReSTIR PT"))
 				{

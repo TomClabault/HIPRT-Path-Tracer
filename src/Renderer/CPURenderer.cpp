@@ -163,7 +163,7 @@ void CPURenderer::setup_buffers()
 	unsigned int requested_node_count = static_cast<unsigned int>(std::max(1, m_render_data.render_settings.hierarchical_adaptive_sampling_max_node_count));
 	m_hierarchical_adaptive_sampling_nodes.resize(std::min(maximum_useful_node_count, requested_node_count));
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#if PathSamplingStrategyIsReSTIRPT
 	m_restir_pt_state.initial_candidates_reservoirs.resize(width * height);
 	m_restir_pt_state.initial_candidates_working_samples.resize(width * height);
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
@@ -175,7 +175,7 @@ void CPURenderer::setup_buffers()
 		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 	// Always allocated on the CPU, the spatial reuse decides every frame whether it uses them (ReSTIRPTSettings::do_spmis_union_domain_reuse())
 	m_restir_pt_state.spmis_data.resize_union_domain_buffers(width, height);
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if PathSamplingStrategyIsReSTIRPT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	m_restir_pg_state.splatting_samples_soa_buffer.resize(width, height, m_render_data.render_settings.nb_bounces);
@@ -272,7 +272,7 @@ void CPURenderer::GMoN_post_sample_update()
 
 void CPURenderer::ReSTIR_PT_post_sample_update()
 {
-#if PathSamplingStrategy != PATH_SAMPLING_RESTIR_PT
+#if !PathSamplingStrategyIsReSTIRPT
 	return;
 #endif
 
@@ -409,7 +409,7 @@ void CPURenderer::update_render_data()
 	m_render_data.g_buffer_prev_frame.primary_hit_position = m_g_buffer_prev_frame.primary_hit_position.data();
 	m_render_data.g_buffer_prev_frame.first_hit_prim_index = m_g_buffer_prev_frame.first_hit_prim_index.data();
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#if PathSamplingStrategyIsReSTIRPT
 	m_render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.input_reservoirs				  = m_restir_pt_state.initial_candidates_reservoirs.data();
 	m_render_data.render_settings.restir_pt_settings.temporal_pass.output_reservoirs			  = m_restir_pt_state.temporal_reservoirs.data();
@@ -422,7 +422,7 @@ void CPURenderer::update_render_data()
 
 	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if PathSamplingStrategyIsReSTIRPT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 	m_render_data.render_settings.restir_pg_settings.splatting_samples_soa = m_restir_pg_state.splatting_samples_soa_buffer.to_device();
@@ -604,7 +604,7 @@ void CPURenderer::render()
 
 #if PathSamplingStrategy == PATH_SAMPLING_BSDF || PathSamplingStrategy == PATH_SAMPLING_BSDF_WAVEFRONT
 		tracing_pass();
-#elif PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#elif PathSamplingStrategyIsReSTIRPT
 		ReSTIR_PT_pass();
 #endif // #if PathSamplingStrategy == PATH_SAMPLING_BSDF || PathSamplingStrategy == PATH_SAMPLING_BSDF_WAVEFRONT
 

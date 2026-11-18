@@ -18,7 +18,7 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER_MIS
+#if PathSamplingStrategyIsReSTIRPT && DirectLightNEEEstimator != LSS_LEARNING_TO_CLUSTER_MIS
 #error "ReSTIR PT only supports the LSS_LEARNING_TO_CLUSTER_MIS NEE estimator."
 #endif
 

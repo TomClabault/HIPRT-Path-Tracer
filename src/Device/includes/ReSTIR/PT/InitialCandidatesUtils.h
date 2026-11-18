@@ -106,7 +106,7 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 		ReSTIR_PT_invalid_throughput)
 		return ReSTIR_PT_invalid_throughput;
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#if PathSamplingStrategyIsReSTIRPT
 	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
 #endif
 

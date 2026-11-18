@@ -112,7 +112,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	{
 		// Reading from the output of ReSTIR PT
 
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#if PathSamplingStrategyIsReSTIRPT
 		restir_pt_reservoir_pixel_index = render_data.render_settings.restir_pt_settings.restir_pt_output_reservoirs[pixel_index].sample.pixel_index;
 #else
 		restir_pt_reservoir_pixel_index = -1;
@@ -120,7 +120,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 #error "Unknown PathSamplingStrategy"
 #endif
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT
+#endif // #if PathSamplingStrategyIsReSTIRPT
 	}
 	if (restir_pt_reservoir_pixel_index == static_cast<unsigned int>(-1))
 		// That means potentially no spatial reuse / temporal so our reservoir didn't move

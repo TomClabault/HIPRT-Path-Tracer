@@ -141,7 +141,7 @@ struct ReSTIRPTMISTargetFunctionBSDFApproximationLobe
  */
 HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const HIPRTRenderData& render_data)
 {
-#if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+#if PathSamplingStrategyIsReSTIRPT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 	bool enabled = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
@@ -151,7 +151,7 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const
 	return enabled;
 #else
 	return false;
-#endif // #if PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+#endif // #if PathSamplingStrategyIsReSTIRPT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 }
 
 /**

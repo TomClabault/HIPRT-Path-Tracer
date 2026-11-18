@@ -13,6 +13,7 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "Device/includes/Neural/NISML/NISMLDevice.h"
+#include "Device/includes/ReSTIR/PT/Wavefront/ReSTIRPTWavefrontDataDevice.h"
 #include "Device/includes/Wavefront/WavefrontDataDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
@@ -73,6 +74,8 @@ struct HIPRTRenderData
 	WorldSettings world_settings;
 
 	WavefrontDataDevice wavefront_data;
+	// Per-path state of the wavefront ReSTIR PT initial candidates. Only allocated with the PATH_SAMPLING_RESTIR_PT_WAVEFRONT path sampling strategy
+	ReSTIRPTWavefrontDataDevice restir_pt_wavefront_data;
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;

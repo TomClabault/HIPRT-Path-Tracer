@@ -127,7 +127,7 @@
  *
  *Combines learning-to-cluster light sampling with the deferred BSDF sample using MIS. Cluster rewards include the light sample's MIS weight.
  *
- * ReSTIR PT (PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT) only supports LSS_LEARNING_TO_CLUSTER_MIS
+ * ReSTIR PT (PathSamplingStrategyIsReSTIRPT) only supports LSS_LEARNING_TO_CLUSTER_MIS
  */
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 
