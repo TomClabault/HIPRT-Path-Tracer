@@ -41,33 +41,80 @@ struct ReSTIRPTSPMISUnionDomain
 	}
 
 	/**
+	 * Offset of the cell 'index' of the domain in pixel_indices_sorted (cell_offsets of the cell)
+	 */
+	HIPRT_DEVICE unsigned int get_cell_offset(int index) const
+	{
+		return index == 0 ? cell_offset_0 : (index == 1 ? cell_offset_1 : (index == 2 ? cell_offset_2 : cell_offset_3));
+	}
+
+	/**
+	 * Number of pixels of the cell 'index' of the domain, zero reservoirs included (cell_pixels_counters of the cell)
+	 */
+	HIPRT_DEVICE unsigned int get_cell_pixel_count(int index) const
+	{
+		return index == 0 ? cell_pixel_count_0 : (index == 1 ? cell_pixel_count_1 : (index == 2 ? cell_pixel_count_2 : cell_pixel_count_3));
+	}
+
+	/**
 	 * Adds the cell to the domain and its pixels to the sums of the domain
 	 */
 	HIPRT_DEVICE void add_cell(const ReSTIRPTSPMISSettings& spmis_settings, unsigned int cell_index)
 	{
+		unsigned int cell_offset	  = spmis_settings.cell_offsets[cell_index];
+		unsigned int cell_pixel_count = spmis_settings.cell_pixels_counters[cell_index];
+
 		if (cell_count == 0)
-			cell_0 = cell_index;
+		{
+			cell_0			   = cell_index;
+			cell_offset_0	   = cell_offset;
+			cell_pixel_count_0 = cell_pixel_count;
+		}
 		else if (cell_count == 1)
-			cell_1 = cell_index;
+		{
+			cell_1			   = cell_index;
+			cell_offset_1	   = cell_offset;
+			cell_pixel_count_1 = cell_pixel_count;
+		}
 		else if (cell_count == 2)
-			cell_2 = cell_index;
+		{
+			cell_2			   = cell_index;
+			cell_offset_2	   = cell_offset;
+			cell_pixel_count_2 = cell_pixel_count;
+		}
 		else
-			cell_3 = cell_index;
+		{
+			cell_3			   = cell_index;
+			cell_offset_3	   = cell_offset;
+			cell_pixel_count_3 = cell_pixel_count;
+		}
 
 		cell_count++;
 
 		confidence_sum += spmis_settings.cell_confidence_sums[cell_index];
-		pixel_count += spmis_settings.cell_pixels_counters[cell_index];
+		pixel_count += cell_pixel_count;
 		non_zero_count += spmis_settings.cell_non_zero_reservoir_counters[cell_index];
 		if (spmis_settings.cell_non_zero_reservoir_counters[cell_index] > 0)
 			// SPMIS CDF layout: cdf[0] holds the sum of the importances c W p_hat of the cell
-			importance_sum += spmis_settings.cell_cdfs[spmis_settings.cell_offsets[cell_index]];
+			importance_sum += spmis_settings.cell_cdfs[cell_offset];
 	}
 
 	unsigned int cell_0 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	unsigned int cell_1 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	unsigned int cell_2 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	unsigned int cell_3 = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
+	// Offsets and pixel counts of the cells, read once when the cell is added: the uniform pixel draws over the domain and the neighbor selection
+	// would otherwise load them again for every draw and every candidate, as dependent loads before the pixel or the record
+	unsigned int cell_offset_0 = 0;
+	unsigned int cell_offset_1 = 0;
+	unsigned int cell_offset_2 = 0;
+	unsigned int cell_offset_3 = 0;
+
+	unsigned int cell_pixel_count_0 = 0;
+	unsigned int cell_pixel_count_1 = 0;
+	unsigned int cell_pixel_count_2 = 0;
+	unsigned int cell_pixel_count_3 = 0;
 
 	int cell_count = 0;
 
@@ -211,19 +258,33 @@ HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_index(const HIPRTRenderDat
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
-	for (int cell = 0; cell < domain.cell_count; cell++)
-	{
-		unsigned int cell_index		  = domain.get_cell(cell);
-		unsigned int cell_pixel_count = spmis_settings.cell_pixels_counters[cell_index];
-		if (pixel_list_index < cell_pixel_count)
-			return spmis_settings.pixel_indices_sorted[spmis_settings.cell_offsets[cell_index] + pixel_list_index];
+	// Cell of the pixel and index in that cell. No early exit: the pixel counts of all the cells are read up front, so their reads do not wait on
+	// one another, and only the final read of the pixel depends on them
+	int last_cell					 = domain.cell_count - 1;
+	int selected_cell				 = last_cell;
+	unsigned int index_in_cell		 = domain.get_cell_pixel_count(last_cell) - 1;
+	unsigned int pixels_before_cells = 0;
+	bool cell_found					 = false;
 
-		pixel_list_index -= cell_pixel_count;
+	UNROLL_LOOP
+	for (int cell = 0; cell < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS; cell++)
+	{
+		unsigned int cell_pixel_count = domain.get_cell_pixel_count(cell);
+
+		bool in_cell =
+			!cell_found && cell < domain.cell_count && pixel_list_index >= pixels_before_cells && pixel_list_index < pixels_before_cells + cell_pixel_count;
+		if (in_cell)
+		{
+			selected_cell = cell;
+			index_in_cell = pixel_list_index - pixels_before_cells;
+			cell_found	  = true;
+		}
+
+		pixels_before_cells += cell_pixel_count;
 	}
 
-	// Floating point / count safety: last pixel of the last cell
-	unsigned int last_cell = domain.get_cell(domain.cell_count - 1);
-	return spmis_settings.pixel_indices_sorted[spmis_settings.cell_offsets[last_cell] + spmis_settings.cell_pixels_counters[last_cell] - 1];
+	// If no cell was found (floating point / count safety): last pixel of the last cell
+	return spmis_settings.pixel_indices_sorted[domain.get_cell_offset(selected_cell) + index_in_cell];
 }
 
 /**
@@ -371,7 +432,21 @@ HIPRT_DEVICE float spmis_union_domain_cell_importance(const ReSTIRPTSPMISSetting
 	if (spmis_settings.cell_non_zero_reservoir_counters[cell_index] == 0)
 		return 0.0f;
 
-	return spmis_settings.cell_cdfs[spmis_settings.cell_offsets[cell_index]];
+	return spmis_settings.cell_cdfs[domain.get_cell_offset(cell)];
+}
+
+/**
+ * Scale from the confidence sum of the cell 'cell' of the domain to the confidence sum of the whole domain, 0 beyond the cells of the domain
+ */
+HIPRT_DEVICE float spmis_union_domain_cell_confidence_scale(const ReSTIRPTSPMISSettings& spmis_settings,
+															const ReSTIRPTSPMISUnionDomain& domain,
+															int cell,
+															float domain_confidence_sum)
+{
+	if (cell >= domain.cell_count)
+		return 0.0f;
+
+	return domain_confidence_sum / hippt::max(1.0f, static_cast<float>(spmis_settings.cell_confidence_sums[domain.get_cell(cell)]));
 }
 
 /**
@@ -490,6 +565,18 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 	float cell_importance_2 = spmis_union_domain_cell_importance(spmis_settings, domain, 2);
 	float cell_importance_3 = spmis_union_domain_cell_importance(spmis_settings, domain, 3);
 
+	// Same for the number of non-zero reservoirs of the cells and the scale from the confidence sum of a cell to the one of the whole domain (the
+	// records store the confidence sum of their own cell, the selection target needs the one of the whole domain)
+	unsigned int non_zero_cell_size_0 = domain.cell_count > 0 ? static_cast<unsigned int>(spmis_settings.cell_non_zero_reservoir_counters[domain.cell_0]) : 0;
+	unsigned int non_zero_cell_size_1 = domain.cell_count > 1 ? static_cast<unsigned int>(spmis_settings.cell_non_zero_reservoir_counters[domain.cell_1]) : 0;
+	unsigned int non_zero_cell_size_2 = domain.cell_count > 2 ? static_cast<unsigned int>(spmis_settings.cell_non_zero_reservoir_counters[domain.cell_2]) : 0;
+	unsigned int non_zero_cell_size_3 = domain.cell_count > 3 ? static_cast<unsigned int>(spmis_settings.cell_non_zero_reservoir_counters[domain.cell_3]) : 0;
+
+	float confidence_scale_0 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 0, domain_confidence_sum);
+	float confidence_scale_1 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 1, domain_confidence_sum);
+	float confidence_scale_2 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 2, domain_confidence_sum);
+	float confidence_scale_3 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 3, domain_confidence_sum);
+
 	float weight_sum = 0.0f;
 
 	// Slot of the selected record in pixel_indices_sorted (cell_offsets[cell] + index in the cell): the pixel index is only loaded for the selected
@@ -509,7 +596,7 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		float stratified_uniform = hippt::min((stratum + rng()) * inverse_total_neighbor_budget, 0.99999994f);
 
 		// Cell proportionally to its importance sum, the uniform is remapped into the interval of the chosen cell (the stratification carries over)
-		unsigned int cell_index		= domain.cell_0;
+		int selected_cell			= 0;
 		float cell_importance		= 0.0f;
 		float cumulative_before		= 0.0f;
 		float cumulative_importance = 0.0f;
@@ -517,7 +604,6 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 
 		for (int cell = 0; cell < domain.cell_count; cell++)
 		{
-			unsigned int candidate_cell_index = domain.get_cell(cell);
 			float importance = cell == 0 ? cell_importance_0 : (cell == 1 ? cell_importance_1 : (cell == 2 ? cell_importance_2 : cell_importance_3));
 
 			float next_cumulative_importance = cumulative_importance + importance * inverse_importance_sum;
@@ -525,7 +611,7 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 			bool take_cell = !cell_found && importance > 0.0f && (stratified_uniform < next_cumulative_importance || cell == domain.cell_count - 1);
 			if (take_cell)
 			{
-				cell_index		  = candidate_cell_index;
+				selected_cell	  = cell;
 				cell_importance	  = importance;
 				cumulative_before = cumulative_importance;
 				cell_found		  = true;
@@ -540,8 +626,10 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		float cell_share		 = cell_importance * inverse_importance_sum;
 		float cell_local_uniform = hippt::clamp(0.0f, 0.99999994f, (stratified_uniform - cumulative_before) / cell_share);
 
-		unsigned int cell_start_index	= spmis_settings.cell_offsets[cell_index];
-		unsigned int non_zero_cell_size = spmis_settings.cell_non_zero_reservoir_counters[cell_index];
+		unsigned int cell_start_index = domain.get_cell_offset(selected_cell);
+		unsigned int non_zero_cell_size =
+			selected_cell == 0 ? non_zero_cell_size_0
+							   : (selected_cell == 1 ? non_zero_cell_size_1 : (selected_cell == 2 ? non_zero_cell_size_2 : non_zero_cell_size_3));
 		// Same distribution as the CDF of the cell: one alias table load picks the record
 		unsigned int record_index = spmis_sample_cell_alias_table(cell_alias_tables + cell_start_index, non_zero_cell_size, cell_local_uniform);
 
@@ -551,7 +639,8 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		// (record_second.z is the CDF importance c W p_hat of the record)
 		float candidate_probability = cell_share * record_second.z / cell_importance;
 		// The records store the confidence sum of their own cell, the selection target needs the one of the whole domain
-		record_second.w *= domain_confidence_sum / hippt::max(1.0f, static_cast<float>(spmis_settings.cell_confidence_sums[cell_index]));
+		record_second.w *= selected_cell == 0 ? confidence_scale_0
+											  : (selected_cell == 1 ? confidence_scale_1 : (selected_cell == 2 ? confidence_scale_2 : confidence_scale_3));
 
 		float target = spmis_neighbor_record_target(record_first, record_second, center_surface, center_bsdf_luminance, center_confidence);
 		if (target <= 0.0f)
