@@ -34,6 +34,9 @@
 #define UNROLL_LOOP		 UNROLL_PRAGMA(unroll)
 
 #define HIPRT_NOINLINE __attribute__((noinline))
+// For small functions that the inliner keeps out of line: a call drains every outstanding memory operation of the caller on entry and the
+// arguments passed by reference are read back from scratch memory
+#define HIPRT_FORCEINLINE __attribute__((always_inline))
 
 #ifndef __CUDACC__
 inline void __syncwarp(unsigned int mask) {}
@@ -62,6 +65,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define HIPRT_HOST		  __host__
 #define HIPRT_INLINE	  inline
 #define HIPRT_NOINLINE
+#define HIPRT_FORCEINLINE inline
 
 #define UNROLL_LOOP
 

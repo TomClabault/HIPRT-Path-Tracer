@@ -328,18 +328,13 @@ HIPRT_DEVICE static float3_t principled_diffuse_sample(const float3_t& world_spa
 	return cosine_weighted_sample_around_normal_world_space(world_space_surface_normal, random_number_generator);
 }
 
+/**
+ * Forced inline: it is called three times per principled evaluation, and an out-of-line call would wait for every outstanding memory operation
+ * of the caller on entry and read 'material' back from scratch memory, which costs more than its arithmetic
+ */
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const MaterialType& material, float relative_specular_ior, float cos_theta_i)
+HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F principled_specular_fresnel(const MaterialType& material, float relative_specular_ior, float cos_theta_i)
 {
-	// We want the IOR of the layer we're coming from for the thin-film fresnel
-	//
-	// 'relative_specular_IOR' is "A / B"
-	// with A the IOR of the specular layer
-	// and B the IOR of the layer (or medium) above the specular layer
-	//
-	// so the IOR of the layer above is 1.0f / (relative_IOR / specular_ior) = specular_IOR / relative_IOR
-	float layer_above_IOR = material.ior / relative_specular_ior;
-
 	// Computing the fresnel term
 	// It's either the thin film fresnel for thin film interference or the usual
 	// non colored dielectric/dielectric fresnel.
@@ -353,9 +348,23 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const MaterialType& 
 		if (material_thin_film < 1.0f)
 			F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
 
-		ColorRGB32F F_thin_film = thin_film_fresnel(material, layer_above_IOR, cos_theta_i);
-		ColorRGB32F F			= hippt::lerp(F_specular, F_thin_film, material_thin_film);
-		return F;
+		// A thin film weight of 0 leaves the dielectric fresnel unchanged: the thin film fresnel is only evaluated with a non-zero weight
+		if (material_thin_film > 0.0f)
+		{
+			// We want the IOR of the layer we're coming from for the thin-film fresnel
+			//
+			// 'relative_specular_IOR' is "A / B"
+			// with A the IOR of the specular layer
+			// and B the IOR of the layer (or medium) above the specular layer
+			//
+			// so the IOR of the layer above is 1.0f / (relative_IOR / specular_ior) = specular_IOR / relative_IOR
+			float layer_above_IOR = material.ior / relative_specular_ior;
+
+			ColorRGB32F F_thin_film = thin_film_fresnel(material, layer_above_IOR, cos_theta_i);
+			F_specular				= hippt::lerp(F_specular, F_thin_film, material_thin_film);
+		}
+
+		return F_specular;
 	}
 	else
 		F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
