@@ -562,7 +562,9 @@ namespace hippt
 
 	__device__ static float3_t normalize(float3_t u)
 	{
-		return hiprt::normalize(u);
+		float squared_length = u.x * u.x + u.y * u.y + u.z * u.z;
+
+		return u * hippt::intrin_rsqrt(squared_length);
 	}
 
 	template <typename T>
