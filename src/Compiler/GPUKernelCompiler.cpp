@@ -73,6 +73,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	compiler_options.push_back("-fstandalone-debug");
 	compiler_options.push_back("-Wno-constant-logical-operand");
 	compiler_options.push_back("-Wno-tautological-compare");
+	compiler_options.push_back("-fno-hip-fp32-correctly-rounded-divide-sqrt");
 #else  // #ifndef OROCHI_ENABLE_CUEW
 	// Adding CUDA toolkit includes for device side includes such as cuda_fp16
 	compiler_options.push_back(std::string("-I") + CUDA_TOOLKIT_PATH + "/include");
