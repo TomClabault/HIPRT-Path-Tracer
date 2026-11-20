@@ -341,6 +341,24 @@ HIPRT_DEVICE unsigned int spmis_sample_cell_cdf(const float* cdf, const unsigned
 }
 
 /**
+ * Samples the alias table of a cell (ReSTIRPTSPMISUnionDomainSettings::cell_alias_tables, built by ReSTIR_PT_SPMIS_BuildAliasTables) at a given uniform
+ *
+ * The integer part of 'random_value' x 'size' picks the bin, its fractional part chooses between the bin and its alias, so that one uniform is enough
+ * (and stratified uniforms stay stratified over the bins). Returns the index of the record in the cell
+ */
+HIPRT_DEVICE unsigned int spmis_sample_cell_alias_table(const float2_t* cell_alias_table, unsigned int size, float random_value)
+{
+	float scaled_random_value = random_value * size;
+	unsigned int bin_index	  = hippt::min(static_cast<unsigned int>(scaled_random_value), size - 1);
+	float bin_fraction		  = scaled_random_value - bin_index;
+
+	// x: probability of keeping the bin, y: index of its alias in the cell (exact as a float)
+	float2_t alias_table_entry = cell_alias_table[bin_index];
+
+	return bin_fraction < alias_table_entry.x ? bin_index : static_cast<unsigned int>(alias_table_entry.y);
+}
+
+/**
  * Importance sum (SPMIS CDF layout: cdf[0]) of the cell 'cell' (in [0, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS - 1]) of the domain, 0 for a cell without
  * any non-zero reservoir or beyond the cells of the domain
  */
@@ -364,8 +382,9 @@ HIPRT_DEVICE float spmis_union_domain_cell_importance(const ReSTIRPTSPMISSetting
  *	  Exact probabilities P = t_i / sum(t)
  *
  *	- larger domains: RIS. The pool draws K = total_neighbor_budget stratified candidates: the cell proportionally to its importance sum, then the record
- *	  in the cell through its CDF (every non-zero record has a non-zero importance c W p_hat). The pool_size reservoirs resample that candidate set with
- *	  rotated copies of one acceptance uniform. P = t_i / sum(RIS weights), the inverse of the RIS unbiased contribution weight
+ *	  in the cell with the alias table of the cell, same distribution as its CDF (every non-zero record has a non-zero importance c W p_hat). The
+ *	  pool_size reservoirs resample that candidate set with rotated copies of one acceptance uniform. P = t_i / sum(RIS weights), the inverse of
+ *	  the RIS unbiased contribution weight
  *
  * Outputs, per pick: the pixel, its selection "probability" P (1 / unbiased contribution weight) and its selection target t. 'pool_size' must be in
  * [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE].
@@ -401,8 +420,9 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 	float center_confidence		= static_cast<float>(center_pixel_reservoir_confidence);
 	float domain_confidence_sum = static_cast<float>(domain.confidence_sum);
 
-	const float4_t* neighbor_records = reinterpret_cast<const float4_t*>(union_domain_settings.neighbor_records);
-	float inverse_pool_size			 = 1.0f / pool_size;
+	const float4_t* neighbor_records  = reinterpret_cast<const float4_t*>(union_domain_settings.neighbor_records);
+	const float2_t* cell_alias_tables = reinterpret_cast<const float2_t*>(union_domain_settings.cell_alias_tables);
+	float inverse_pool_size			  = 1.0f / pool_size;
 
 	if (exact)
 	{
@@ -520,16 +540,15 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		float cell_share		 = cell_importance * inverse_importance_sum;
 		float cell_local_uniform = hippt::clamp(0.0f, 0.99999994f, (stratified_uniform - cumulative_before) / cell_share);
 
-		unsigned int cell_start_index	   = spmis_settings.cell_offsets[cell_index];
-		unsigned int non_zero_cell_size	   = spmis_settings.cell_non_zero_reservoir_counters[cell_index];
-		const float* cell_cdf			   = spmis_settings.cell_cdfs + cell_start_index;
-		const unsigned short int* cell_lut = spmis_settings.cell_cdf_luts + spmis_settings.cell_cdf_lut_offsets[cell_index];
-		unsigned int record_index		   = spmis_sample_cell_cdf(cell_cdf, cell_lut, non_zero_cell_size, cell_local_uniform);
+		unsigned int cell_start_index	= spmis_settings.cell_offsets[cell_index];
+		unsigned int non_zero_cell_size = spmis_settings.cell_non_zero_reservoir_counters[cell_index];
+		// Same distribution as the CDF of the cell: one alias table load picks the record
+		unsigned int record_index = spmis_sample_cell_alias_table(cell_alias_tables + cell_start_index, non_zero_cell_size, cell_local_uniform);
 
 		float4_t record_first  = neighbor_records[(cell_start_index + record_index) * 2 + 0];
 		float4_t record_second = neighbor_records[(cell_start_index + record_index) * 2 + 1];
-		// Probability of the candidate: probability of its cell x probability of the record in the CDF of the cell (record_second.z is the CDF
-		// importance c W p_hat of the record)
+		// Probability of the candidate: probability of its cell x probability of the record in the CDF of the cell, which the alias table samples
+		// (record_second.z is the CDF importance c W p_hat of the record)
 		float candidate_probability = cell_share * record_second.z / cell_importance;
 		// The records store the confidence sum of their own cell, the selection target needs the one of the whole domain
 		record_second.w *= domain_confidence_sum / hippt::max(1.0f, static_cast<float>(spmis_settings.cell_confidence_sums[cell_index]));

@@ -36,7 +36,7 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation (ReSTIRPTOptions.h), not a setting of this structure
 
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
-	// stratified candidates in total, split over the neighbors, through the CDFs of the cells.
+	// stratified candidates in total, split over the neighbors, through the alias tables of the cells.
 	//
 	// A candidate costs no ray: 32 candidates with a visibility pool of 5 and 2 canonical groups measured faster and at least as good as 16 candidates
 	// with a pool of 6 and 3 canonical groups
@@ -52,6 +52,10 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// For every pixel with a non-zero spatial reuse input reservoir, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats at the slot of the
 	// pixel in its cell (same indexing as pixel_indices_sorted), built every frame by ReSTIR_PT_SPMIS_BuildNeighborRecords
 	float* neighbor_records = nullptr;
+	// Alias table of every cell, RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT floats per non-zero pixel of the cell (same slots as
+	// neighbor_records): same distribution as the CDF of the cell, sampled by stage 1 of the neighbor selection. Built every frame by
+	// ReSTIR_PT_SPMIS_BuildAliasTables
+	float* cell_alias_tables = nullptr;
 	// Per-pixel cache of the union domain (RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE unsigned ints per pixel) so that the cell search only runs when the cache
 	// is empty. Emptied whenever the reuse cell cache all_pixels_reuse_cell_pixel_index is
 	unsigned int* domain_cache = nullptr;

@@ -148,6 +148,10 @@
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES 8
 // Number of floats of the neighbor record of a pixel (two float4, see ReSTIR_PT_SPMIS_BuildNeighborRecords)
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT 8u
+// Number of floats of the alias table entry of a pixel slot of a cell (keep probability, alias index in the cell), see ReSTIR_PT_SPMIS_BuildAliasTables
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT 2u
+// Threads per block (one block per cell) of ReSTIR_PT_SPMIS_BuildAliasTables: they only load the importances, one thread builds the table
+#define RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE 128u
 // Per pixel in the union domain cache: the number of cached cells then one representative pixel per cell
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE (1u + RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS)
 // Maximum value of ReSTIRPTSPMISUnionDomainSettings::neighbor_count with which the shadow split kernels of the union domain reuse run (see

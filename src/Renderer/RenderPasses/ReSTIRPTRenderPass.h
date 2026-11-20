@@ -38,6 +38,7 @@ public:
 	static const std::string RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID;
+	static const std::string RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;

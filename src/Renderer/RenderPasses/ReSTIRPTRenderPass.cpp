@@ -36,6 +36,7 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "Re
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT SPMIS Build CDFs";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT SPMIS Compute Per Cell Noise";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT SPMIS Build Neighbor Records";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID	   = "ReSTIR PT SPMIS Build Alias Tables";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },
@@ -56,7 +57,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, "ReSTIR_PT_SPMIS_Sort" },
 	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildCDFs" },
 	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, "ReSTIR_PT_SPMIS_ComputeCellsVariance" },
-	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildNeighborRecords" }
+	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildNeighborRecords" },
+	{ RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID, "ReSTIR_PT_SPMIS_BuildAliasTables" }
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FILES = {
@@ -82,7 +84,8 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPMIS_SORT_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/Sort.h" },
 	{ RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildCDFs.h" },
 	{ RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ComputeCellsVariance.h" },
-	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildNeighborRecords.h" }
+	{ RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildNeighborRecords.h" },
+	{ RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/BuildAliasTables.h" }
 };
 
 ReSTIRPTRenderPass::ReSTIRPTRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
@@ -297,6 +300,14 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(const std::string& render_pass_name, GPUR
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->set_kernel_function_name(
 		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID));
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->synchronize_options_with(m_compiler_options);
+
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID] =
+		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->set_kernel_file_path(
+		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->set_kernel_function_name(
+		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID));
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 }
 
 void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -379,6 +390,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 			recompiled = true;
 		}
@@ -779,6 +791,10 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
 	unsigned int* cell_cdf_lut_offsets =
 		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
+	bool union_domain_reuse = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
+		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE));
+	// Only the legacy SPMIS spatial reuse samples the CDFs through their LUTs, the union domain reuse samples the alias tables of the cells
+	bool build_cdf_luts			   = !union_domain_reuse;
 	void* build_cdfs_launch_args[] = { &cell_non_zero_reservoir_counters,
 									   &cell_offsets,
 									   &cell_alive_list,
@@ -787,6 +803,7 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 									   &cell_cdfs,
 									   &cell_cdf_luts,
 									   &cell_cdf_lut_offsets,
+									   &build_cdf_luts,
 									   &num_cells };
 
 	if (cell_alive_count > 0)
@@ -808,9 +825,23 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 				1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
 		}
 
-		if (render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
-				compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE)))
+		if (union_domain_reuse)
 		{
+			// Alias tables of the cells, same distributions as their CDFs built above. One block per alive cell
+			float* cell_alias_tables =
+				m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().get_device_pointer();
+			void* build_alias_tables_launch_args[] = { &cell_non_zero_reservoir_counters,
+													   &cell_offsets,
+													   &cell_alive_list,
+													   &pixel_indices_sorted,
+													   &input_reservoirs,
+													   &cell_cdfs,
+													   &cell_alias_tables,
+													   &num_cells };
+			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->launch_asynchronous(
+				RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1, cell_alive_count * RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1, build_alias_tables_launch_args,
+				m_renderer->get_main_stream());
+
 			// Compact records of the non-zero reservoirs of the cells, read by the neighbor selection of the union domain reuse. One thread per pixel
 			unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
 

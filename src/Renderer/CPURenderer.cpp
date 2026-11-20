@@ -23,6 +23,7 @@
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomain.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
+#include "Device/kernels/ReSTIR/SPMIS/BuildAliasTables.h"
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
 #include "Device/kernels/ReSTIR/SPMIS/BuildNeighborRecords.h"
 #include "Device/kernels/ReSTIR/SPMIS/ComputeCellsVariance.h"
@@ -1224,8 +1225,10 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	unsigned short int* cell_cdf_luts = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().data();
 
 	unsigned int* cell_cdf_luts_offsets = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().data();
+	bool union_domain_reuse				= m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
+	// Only the legacy SPMIS spatial reuse samples the CDFs through their LUTs, the union domain reuse samples the alias tables of the cells
 	ReSTIR_PT_SPMIS_BuildCDFs(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted, input_reservoirs,
-							  cell_cdfs, cell_cdf_luts, cell_cdf_luts_offsets);
+							  cell_cdfs, cell_cdf_luts, cell_cdf_luts_offsets, !union_domain_reuse);
 
 	if (m_render_data.render_settings.sample_number == 0)
 	{
@@ -1234,8 +1237,12 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 											 cell_variance);
 	}
 
-	if (m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType))
+	if (union_domain_reuse)
 	{
+		float* cell_alias_tables = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().data();
+		ReSTIR_PT_SPMIS_BuildAliasTables(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, cell_alive_count, pixel_indices_sorted,
+										 input_reservoirs, cell_cdfs, cell_alias_tables);
+
 		// Neighbor records of the union domain reuse, for all the pixels (not only the debug pixels): they are the neighbors of the debug pixels
 		// No OpenMP on this loop: MSVC 14.51 crashes (internal compiler error C1001) when compiling it as an 'omp parallel for'
 		unsigned int pixel_count = m_resolution.x * m_resolution.y;

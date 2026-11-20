@@ -20,6 +20,7 @@ ReSTIR_PT_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
 						  float* out_cdfs,
 						  unsigned short int* cell_cdf_luts,
 						  unsigned int* cell_cdf_luts_offsets,
+						  bool build_cdf_luts,
 						  unsigned int size)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
@@ -32,6 +33,7 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 								 float* out_cdfs,
 								 unsigned short int* cell_cdf_luts,
 								 unsigned int* cell_cdf_luts_offsets,
+								 bool build_cdf_luts,
 								 [[maybe_unused]] unsigned int size				= 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
 								 [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
 #endif // #ifdef __KERNELCC__
@@ -61,6 +63,9 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 				out_cdfs[cell_offset + i] /= running_sum;
 			// Writing the sum in [0], used to compute the probability at sampling time (which is neighbor_importance / sum)
 			out_cdfs[cell_offset] = running_sum;
+
+			if (!build_cdf_luts)
+				continue;
 
 			// Now computing the LUT
 			unsigned int current_cdf_index = 0;
@@ -125,6 +130,10 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 		else
 			out_cdfs[index] = prefix_scanned / weight_sum;
 	}
+
+	if (!build_cdf_luts)
+		// The union domain reuse samples the cells with their alias tables (ReSTIR_PT_SPMIS_BuildAliasTables), no LUT reads the CDFs
+		return;
 
 	// Now building the LUTs for sampling CDFs faster than a naive binary search
 	if (threadIdx.x == 0)

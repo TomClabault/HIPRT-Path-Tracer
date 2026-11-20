@@ -29,6 +29,7 @@ using ReSTIRPTSPMISDataHostInternal = GenericSoA<DataContainer,
 												 unsigned int,										   // Cells CDF LUT offsets
 												 float,												   // Cells variance
 												 float,												   // Union domain reuse neighbor records
+												 float,												   // Union domain reuse cell alias tables
 												 unsigned int>;										   // Union domain reuse domain cache
 
 enum ReSTIRPTSPMISDataHostBuffers
@@ -51,6 +52,7 @@ enum ReSTIRPTSPMISDataHostBuffers
 	RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS,
 	RESTIR_PT_SPMIS_CELL_VARIANCE,
 	RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS,
+	RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES,
 	RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE,
 };
 
@@ -63,9 +65,9 @@ struct ReSTIRPTSPMISDataHost
 
 		// RESTIR_PT_SPMIS_CELL_CDF_LUTS is resized when creating spmis cells, not here
 		// The union domain reuse buffers are only allocated while the union domain reuse is used, see resize_union_domain_buffers()
-		m_spmis_data.resize(width * height,
-							{ RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER, RESTIR_PT_SPMIS_CELL_CDF_LUTS,
-							  RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS, RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE });
+		m_spmis_data.resize(width * height, { RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER, RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER,
+											  RESTIR_PT_SPMIS_CELL_CDF_LUTS, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS,
+											  RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES, RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE });
 		m_spmis_data.template get_buffer<RESTIR_PT_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>().resize(width * height * RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE);
 
 		m_spmis_data.template resize_one_buffer<RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>(1);
@@ -87,6 +89,8 @@ struct ReSTIRPTSPMISDataHost
 		// Not using resize_one_buffer() so that the maximum size of the SoA, which is the number of hash grid cells, isn't changed
 		m_spmis_data.template get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS>().resize(width * height *
 																								 RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT);
+		m_spmis_data.template get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().resize(width * height *
+																								  RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT);
 		m_spmis_data.template get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE>().resize(width * height * RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE);
 
 		// The newly allocated cache must not hold any domain
@@ -102,6 +106,7 @@ struct ReSTIRPTSPMISDataHost
 			return false;
 
 		m_spmis_data.template free_one_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS>();
+		m_spmis_data.template free_one_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>();
 		m_spmis_data.template free_one_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE>();
 
 		return true;
@@ -182,8 +187,9 @@ struct ReSTIRPTSPMISDataHost
 			render_data.render_settings.restir_pt_settings.spmis_settings.cell_cdf_lut_offsets			   = nullptr;
 			render_data.render_settings.restir_pt_settings.spmis_settings.cell_variance					   = nullptr;
 
-			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.neighbor_records = nullptr;
-			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache		= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.neighbor_records	 = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.cell_alias_tables = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache		 = nullptr;
 
 			return;
 		}
@@ -229,14 +235,17 @@ struct ReSTIRPTSPMISDataHost
 		{
 			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.neighbor_records =
 				m_spmis_data.template get_buffer_data_ptr<RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS>();
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.cell_alias_tables =
+				m_spmis_data.template get_buffer_data_ptr<RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>();
 			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache =
 				m_spmis_data.template get_buffer_data_ptr<RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE>();
 		}
 		else
 		{
 			// Union domain reuse not used, its buffers are not allocated
-			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.neighbor_records = nullptr;
-			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache		= nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.neighbor_records	 = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.cell_alias_tables = nullptr;
+			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache		 = nullptr;
 		}
 	}
 
