@@ -260,11 +260,13 @@ HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_index(const HIPRTRenderDat
 
 	// Cell of the pixel and index in that cell. No early exit: the pixel counts of all the cells are read up front, so their reads do not wait on
 	// one another, and only the final read of the pixel depends on them
-	int last_cell					 = domain.cell_count - 1;
-	int selected_cell				 = last_cell;
+	int last_cell	  = domain.cell_count - 1;
+	int selected_cell = last_cell;
+
 	unsigned int index_in_cell		 = domain.get_cell_pixel_count(last_cell) - 1;
 	unsigned int pixels_before_cells = 0;
-	bool cell_found					 = false;
+
+	bool cell_found = false;
 
 	UNROLL_LOOP
 	for (int cell = 0; cell < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS; cell++)
@@ -577,6 +579,14 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 	float confidence_scale_2 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 2, domain_confidence_sum);
 	float confidence_scale_3 = spmis_union_domain_cell_confidence_scale(spmis_settings, domain, 3, domain_confidence_sum);
 
+	// Offsets of the cells in pixel_indices_sorted, copied out of the domain once per pixel: the domain lives in scratch memory (it is kept across
+	// the out-of-line calls of the kernel that follow this selection), so reading the offset from the domain for every candidate would be a scratch
+	// load before the alias table and record loads of that candidate
+	unsigned int cell_offset_0 = domain.get_cell_offset(0);
+	unsigned int cell_offset_1 = domain.get_cell_offset(1);
+	unsigned int cell_offset_2 = domain.get_cell_offset(2);
+	unsigned int cell_offset_3 = domain.get_cell_offset(3);
+
 	float weight_sum = 0.0f;
 
 	// Slot of the selected record in pixel_indices_sorted (cell_offsets[cell] + index in the cell): the pixel index is only loaded for the selected
@@ -626,7 +636,8 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		float cell_share		 = cell_importance * inverse_importance_sum;
 		float cell_local_uniform = hippt::clamp(0.0f, 0.99999994f, (stratified_uniform - cumulative_before) / cell_share);
 
-		unsigned int cell_start_index = domain.get_cell_offset(selected_cell);
+		unsigned int cell_start_index =
+			selected_cell == 0 ? cell_offset_0 : (selected_cell == 1 ? cell_offset_1 : (selected_cell == 2 ? cell_offset_2 : cell_offset_3));
 		unsigned int non_zero_cell_size =
 			selected_cell == 0 ? non_zero_cell_size_0
 							   : (selected_cell == 1 ? non_zero_cell_size_1 : (selected_cell == 2 ? non_zero_cell_size_2 : non_zero_cell_size_3));
