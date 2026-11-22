@@ -11,8 +11,7 @@
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 										  const std::vector<float>& triangles_average_emissive_power_luminance,
 										  const std::vector<int>& triangle_indices,
-										  const std::vector<float3_t>& vertices_positions,
-										  unsigned int total_scene_triangle_count)
+										  const std::vector<float3_t>& vertices_positions)
 {
 	update_ats_builder_options();
 	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangle_indices,
@@ -29,7 +28,6 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 		m_effective_tree_cut_size = 0;
 		m_second_tree_cut_node_indices.clear();
 		m_effective_second_tree_cut_size = 0;
-		m_nisml.free();
 
 		return;
 	}
@@ -37,10 +35,6 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 	compute_node_spherical_gaussian(0, LightTreeBuilderTrianglesData(emissive_triangles_primitive_indices, triangle_indices, vertices_positions));
 	compute_tree_cut(m_tree_cut_node_indices, m_effective_tree_cut_size, m_build_options.tree_cut_size);
 	compute_tree_cut(m_second_tree_cut_node_indices, m_effective_second_tree_cut_size, m_second_tree_cut_size);
-	compute_tree_cut(m_nisml.tree_cut_node_indices_neural_many_lights, m_nisml.effective_tree_cut_size_neural_many_lights,
-					 m_build_options.tree_cut_size_neural_many_lights);
-	m_nisml.build_lookup(m_light_tree_ats_builder.get_nodes(), m_light_tree_ats_builder.get_bit_trails(), m_light_tree_ats_builder.get_triangle_indices(),
-						 emissive_triangles_primitive_indices, total_scene_triangle_count);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
@@ -418,16 +412,6 @@ void LightTreeSGBuilder::cleanup()
 	m_effective_second_tree_cut_size = 0;
 }
 
-LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data()
-{
-	return m_nisml;
-}
-
-const LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data() const
-{
-	return m_nisml;
-}
-
 void LightTreeSGBuilder::update_ats_builder_options()
 {
 	LightTreeATSBuilderOptions& ats_builder_options			= m_light_tree_ats_builder.get_build_options();
@@ -461,16 +445,6 @@ int LightTreeSGBuilder::get_tree_cut_size() const
 void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
 {
 	m_build_options.tree_cut_size = hippt::clamp(1, 2000000000, tree_cut_size);
-}
-
-int LightTreeSGBuilder::get_tree_cut_size_neural_many_lights() const
-{
-	return m_build_options.tree_cut_size_neural_many_lights;
-}
-
-void LightTreeSGBuilder::set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights)
-{
-	m_build_options.tree_cut_size_neural_many_lights = hippt::clamp(1, 2000000000, tree_cut_size_neural_many_lights);
 }
 
 int LightTreeSGBuilder::get_second_tree_cut_size() const

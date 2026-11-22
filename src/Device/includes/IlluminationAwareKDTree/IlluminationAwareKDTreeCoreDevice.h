@@ -351,7 +351,7 @@ struct IlluminationAwareKDTreeCoreDevice
 	{
 #if DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
 		return training_sample_capacity;
-#elif DirectLightNEEEstimator != LSS_NEURAL_MANY_LIGHTS && !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+#elif !DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 		return training_sample_capacity;
 #endif
 

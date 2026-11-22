@@ -12,7 +12,6 @@
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeBuilderCommon.h"
 #include "Renderer/LightTree/LightTreeSGBuilderDeviceData.h"
-#include "Renderer/LightTree/LightTreeSGBuilderNISML.h"
 #include "Renderer/LightTree/LightTreeSGBuilderOptions.h"
 #include "Renderer/LightTree/LightTreeSGNode.h"
 
@@ -28,8 +27,7 @@ public:
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 						  const std::vector<float>& triangles_average_emissive_power_luminance,
 						  const std::vector<int>& triangle_indices,
-						  const std::vector<float3_t>& vertices_positions,
-						  unsigned int total_scene_triangle_count);
+						  const std::vector<float3_t>& vertices_positions);
 
 	void compute_node_spherical_gaussian(unsigned int node_index, const LightTreeBuilderTrianglesData& triangle_data);
 
@@ -44,9 +42,6 @@ public:
 
 	void cleanup();
 
-	LightTreeSGBuilderNISML& get_nisml_data();
-	const LightTreeSGBuilderNISML& get_nisml_data() const;
-
 	LightTreeSGBuilderOptions& get_build_options();
 
 	int get_spatial_lobe_count() const;
@@ -54,8 +49,6 @@ public:
 
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
-	int get_tree_cut_size_neural_many_lights() const;
-	void set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights);
 	int get_second_tree_cut_size() const;
 	void set_second_tree_cut_size(int second_tree_cut_size);
 
@@ -88,7 +81,6 @@ private:
 	unsigned int m_effective_second_tree_cut_size = 0;
 	int m_second_tree_cut_size					  = LearningToClusterInitialLightCutSize;
 
-	LightTreeSGBuilderNISML m_nisml;
 	LightTreeSGBuilderOptions m_build_options;
 };
 

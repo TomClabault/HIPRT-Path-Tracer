@@ -12,14 +12,12 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
-#include "Device/includes/Neural/NISML/NISMLDevice.h"
 #include "Device/includes/ReSTIR/PT/Wavefront/ReSTIRPTWavefrontDataDevice.h"
 #include "Device/includes/Wavefront/WavefrontDataDevice.h"
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/DisplayPostProcessSettings.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/NISMLMegaKernelData.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/SSBNPermutationSettings.h"
@@ -82,8 +80,6 @@ struct HIPRTRenderData
 	IlluminationAwareKDTreeDevice kd_tree_device;
 	LightTreeATSDevice light_tree_ats;
 	LightTreeSGDevice light_tree_sg;
-	NISMLDevice nisml;
-	NISMLMegaKernelDevice nisml_mega_kernel;
 
 	// The GPU RayVolumeState size can change when the nested dielectric stack compiler option changes.
 	size_t ray_volume_state_byte_size = 0;

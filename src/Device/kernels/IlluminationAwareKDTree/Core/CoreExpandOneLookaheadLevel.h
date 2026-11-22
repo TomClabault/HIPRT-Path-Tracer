@@ -105,8 +105,6 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	kd_tree_device.core.batch_spatial_moments[right_child]	 = {};
 	kd_tree_device.core.history_spatial_moments[left_child]	 = {};
 	kd_tree_device.core.history_spatial_moments[right_child] = {};
-	kd_tree_device.nisml.initialize_nisml_cache_for_guiding_cell(left_child, kd_tree_device.core.node_capacity);
-	kd_tree_device.nisml.initialize_nisml_cache_for_guiding_cell(right_child, kd_tree_device.core.node_capacity);
 
 	parent.split_axis		= split_axis;
 	parent.split_position	= split_position;

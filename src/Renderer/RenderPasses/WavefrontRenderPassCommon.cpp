@@ -62,7 +62,7 @@ unsigned int WavefrontRenderPassCommon::get_shadow_work_capacity(unsigned int pa
 	unsigned int emissive_shadow_count = 0;
 	if (nee_estimator == LSS_ONE_LIGHT || nee_estimator == LSS_MIS_LIGHT_BSDF)
 		emissive_shadow_count = direct_light_sample_count;
-	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || nee_estimator == LSS_NEURAL_MANY_LIGHTS || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+	else if (nee_estimator == LSS_RIS_BSDF_AND_LIGHT || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 		emissive_shadow_count = 1;
 
 	unsigned int envmap_shadow_count = 0;
@@ -132,7 +132,6 @@ bool WavefrontRenderPassCommon::resize_staging_buffers(unsigned int path_capacit
 		allocate_resolved_material_control_cache && compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL) == BSDF_PRINCIPLED;
 	int nee_estimator								  = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	bool allocate_learning_to_cluster_shadow_sidecars = shadow_work_capacity > 0 && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator);
-	bool allocate_nisml_shadow_sidecars				  = shadow_work_capacity > 0 && nee_estimator == LSS_NEURAL_MANY_LIGHTS;
 
 	if (ray_volume_state_byte_size == 0)
 		Debug::debugbreak();
@@ -151,7 +150,6 @@ bool WavefrontRenderPassCommon::resize_staging_buffers(unsigned int path_capacit
 						m_wavefront_data.has_current_material_classifications() != allocate_current_material_classifications ||
 						m_wavefront_data.shadow_work_capacity() != shadow_work_capacity ||
 						m_wavefront_data.has_learning_to_cluster_shadow_sidecars() != allocate_learning_to_cluster_shadow_sidecars ||
-						m_wavefront_data.has_nisml_shadow_sidecars() != allocate_nisml_shadow_sidecars ||
 						m_allocated_ray_volume_state_byte_size != ray_volume_state_byte_size ||
 						m_allocated_nee_deferred_mis_context_byte_size != nee_deferred_mis_context_byte_size ||
 						m_render_data_host_pinned.size() != 1 + KernelMaterialSpecializationCount ||
@@ -164,8 +162,7 @@ bool WavefrontRenderPassCommon::resize_staging_buffers(unsigned int path_capacit
 	free_staging_buffers();
 
 	m_wavefront_data.resize(path_capacity, shadow_work_capacity, ray_volume_state_byte_size, nee_deferred_mis_context_byte_size,
-							allocate_resolved_material_control_cache, allocate_current_material_classifications, allocate_learning_to_cluster_shadow_sidecars,
-							allocate_nisml_shadow_sidecars);
+							allocate_resolved_material_control_cache, allocate_current_material_classifications, allocate_learning_to_cluster_shadow_sidecars);
 	// One render data for the main stream kernels and one per material family
 	m_render_data_host_pinned.resize_host_pinned_mem(1 + KernelMaterialSpecializationCount);
 	// Large enough to reset all the material family counters with a single upload

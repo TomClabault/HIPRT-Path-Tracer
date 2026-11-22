@@ -10,7 +10,6 @@
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
@@ -1095,14 +1094,7 @@ void ImGuiSettingsWindow::apply_nee_estimator_dependent_settings()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	int nee_estimator = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-	if (nee_estimator == LSS_NEURAL_MANY_LIGHTS)
-	{
-		render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_NISML;
-		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
-
-		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
-	}
-	else if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+	if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 	{
 		render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER;
 		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
@@ -1391,12 +1383,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]",
 			};
 
-			bool using_learning_to_cluster_or_nisml =
-				DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)) ||
-				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_NEURAL_MANY_LIGHTS;
-			bool uniform_sampling_disabled = using_learning_to_cluster_or_nisml;
-			bool power_sampling_disabled   = using_learning_to_cluster_or_nisml;
-			bool light_tree_ats_disabled   = using_learning_to_cluster_or_nisml;
+			bool using_learning_to_cluster =
+				DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
+			bool uniform_sampling_disabled = using_learning_to_cluster;
+			bool power_sampling_disabled   = using_learning_to_cluster;
+			bool light_tree_ats_disabled   = using_learning_to_cluster;
 			bool sg_light_tree_disabled	   = false;
 
 			unsigned char disabled_light_sampling_strategies[] = { uniform_sampling_disabled, power_sampling_disabled, light_tree_ats_disabled,
@@ -1413,7 +1404,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 													  "- BSDF Sampling",
 													  "- MIS (1 Light + 1 BSDF)",
 													  "- RIS BDSF + Light candidates",
-													  "- Neural importance sampling of many lights",
 													  "- Learning to cluster SG light tree",
 													  "- Learning to cluster SG light tree + MIS" };
 			const char* tooltips_nee_estimators[] = {
@@ -1428,9 +1418,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF "
 				"candidates can be controlled.",
-
-				"Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling probabilities on "
-				"clusters of a lightcut in the spherical gaussian light tree",
 
 				"Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a "
 				"lightcut (hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut.\n\n"
@@ -1451,13 +1438,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool mis_disabled					  = restir_pt;
 			bool ris_disabled					  = restir_pt;
-			bool neural_many_lights_disabled	  = restir_pt;
 			bool learning_to_cluster_disabled	  = restir_pt;
 			bool learning_to_cluster_mis_disabled = false;
 
 			unsigned char disabled_nee_estimator_items[] = {
-				no_direct_light_sampling_disabled, uniform_one_light_disabled,	 bsdf_sampling_disabled,		  mis_disabled, ris_disabled,
-				neural_many_lights_disabled,	   learning_to_cluster_disabled, learning_to_cluster_mis_disabled
+				no_direct_light_sampling_disabled, uniform_one_light_disabled,		bsdf_sampling_disabled, mis_disabled, ris_disabled,
+				learning_to_cluster_disabled,	   learning_to_cluster_mis_disabled
 			};
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
@@ -1600,7 +1586,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_light_tree_SG_settings_panel();
 				draw_illumination_aware_kd_tree_panel();
 				draw_learning_to_cluster_many_lights_panel();
-				draw_neural_many_lights_panel();
 
 				break;
 			}
@@ -1613,9 +1598,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 
 			case LSS_ONE_LIGHT:
-				break;
-
-			case LSS_NEURAL_MANY_LIGHTS:
 				break;
 
 			case LSS_MIS_LIGHT_BSDF:
@@ -1780,17 +1762,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						apply_nee_estimator_dependent_settings();
 
 						m_renderer->recompute_emissives_sampling_data_structure();
-					}
-				}
-
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF_WAVEFRONT)
-				{
-					int nee_estimator	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-					int sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-					if (ILLUMINATION_AWARE_KD_TREE_IS_NISML(nee_estimator, sampling_strategy))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_MIS_LIGHT_BSDF);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_POWER);
 					}
 				}
 
@@ -2484,16 +2455,11 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
-	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
 
-	bool using_neural_many_lights		  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
 	bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
-	// True if we are not using just the SG itself for sampling but rather a technique on of top of the SG tree
-	bool not_using_raw_sg_tree = using_neural_many_lights;
 
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
@@ -2580,7 +2546,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 		{
 			static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING);
 			ImGui::BeginDisabled(do_splitting);
-			ImGui::BeginDisabled(not_using_raw_sg_tree);
 
 			static bool use_tree_cut = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_USE_TREE_CUT);
 			if (ImGui::Checkbox("Use tree cut sampling", &use_tree_cut))
@@ -2592,25 +2557,16 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (not_using_raw_sg_tree)
-				ImGuiRenderer::add_tooltip("Tree cut sampling is disabled because of currently using neural many lights. This "
-										   "techniques control the sampling. Tree cut sampling can only be used by the raw SG tree.");
-			else
-				ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
-												"reservoir sampling. This massively reduces variance but is quite expensive.");
+			ImGuiRenderer::show_help_marker("When enabled without adaptive splitting, samples are selected from the precomputed SG tree cut using weighted "
+											"reservoir sampling. This massively reduces variance but is quite expensive.");
 
 			static int current_tree_cut_size = m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size();
 			ImGui::InputInt("Tree cut size", &current_tree_cut_size);
 			// Maximum 1024 to fit in shared memory kernels (1024 is maximum number of threads per block on most GPUs)
 			current_tree_cut_size = hippt::clamp(1, 1024, current_tree_cut_size);
 
-			if (not_using_raw_sg_tree)
-				ImGuiRenderer::add_tooltip("Tree cut sampling is disabled because of currently using neural many lights. This "
-										   "techniques control the sampling. Tree cut sampling can only be used by the raw SG tree.");
-			else
-				ImGuiRenderer::show_help_marker(
-					"Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
-					"rebuilding the light-tree data.");
+			ImGuiRenderer::show_help_marker("Number of nodes in the SG light-tree frontier, expanded breadth first and stored for sampling. Changes require "
+											"rebuilding the light-tree data.");
 
 			if (current_tree_cut_size != m_renderer->get_light_tree_sg_sampling_data_structure().get_tree_cut_size())
 			{
@@ -2627,7 +2583,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 
 				ImGui::TreePop();
 			}
-			ImGui::EndDisabled(); // not_using_raw_sg_tree
 			ImGui::EndDisabled(); // do_splitting
 
 			static int current_spatial_lobe_count = m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count();
@@ -2649,8 +2604,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 
-			ImGui::BeginDisabled(not_using_raw_sg_tree);
-
 			if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_SG_DO_SPLITTING,
@@ -2659,11 +2612,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-
-			if (not_using_raw_sg_tree)
-				ImGuiRenderer::add_tooltip("Adaptive splitting is only available when using the SG tree itself for sampling, i.e. not when using a technique "
-										   "on top of the SG tree (neural many lights)");
-			ImGui::EndDisabled(); // not_using_raw_sg_tree
 
 			if (do_splitting)
 			{
@@ -2774,15 +2722,10 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
 	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
-	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
 
 	int direct_light_nee_estimator		  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	int direct_light_sampling_strategy	  = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-	bool using_neural_many_lights		  = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
 	bool using_illumination_aware_kd_tree = ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(direct_light_nee_estimator, direct_light_sampling_strategy);
-	// True if we are not using just the SG itself for sampling but rather a technique on of top of the SG tree
-	bool not_using_raw_sg_tree = using_neural_many_lights;
 
 	if (using_illumination_aware_kd_tree)
 	{
@@ -2974,7 +2917,6 @@ void ImGuiSettingsWindow::draw_illumination_aware_kd_tree_panel()
 					ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG)
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE, LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
 				}
 
 				m_renderer->recompile_kernels();
@@ -3224,7 +3166,6 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
 														   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE, NISML_DEBUG_MODE_NO_DEBUG);
 				}
 
 				m_renderer->recompile_kernels();
@@ -3242,248 +3183,6 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-	}
-}
-
-void ImGuiSettingsWindow::draw_neural_many_lights_panel()
-{
-	HIPRTRenderSettings& render_settings													  = m_renderer->get_render_settings();
-	HIPRTRenderData& render_data															  = m_renderer->get_render_data();
-	LightTreeSGBuilderOptions& build_options												  = m_renderer->get_light_tree_sg_build_options();
-	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options							  = m_renderer->get_global_compiler_options();
-	std::shared_ptr<IlluminationAwareKDTreeRenderPass> illumination_aware_kd_tree_render_pass = m_renderer->get_illumination_aware_kd_tree_render_pass();
-	std::shared_ptr<NISMLRenderPass> nisml_render_pass										  = std::dynamic_pointer_cast<NISMLRenderPass>(
-		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(NISMLRenderPass::NISML_RENDER_PASS_NAME));
-
-	int direct_light_nee_estimator	   = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
-	int direct_light_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
-
-	bool using_neural_many_lights = ILLUMINATION_AWARE_KD_TREE_IS_NISML(direct_light_nee_estimator, direct_light_sampling_strategy);
-	if (using_neural_many_lights)
-	{
-		if (ImGui::CollapsingHeader("Neural importance sampling of many lights"))
-		{
-			ImGui::TreePush("NISML tree");
-
-			if (nisml_render_pass)
-			{
-				NISMLVRAMUsage nisml_vram_usage								 = nisml_render_pass->get_vram_usage_breakdown();
-				IlluminationAwareKDTreeNISMLVRAMUsage nisml_cache_vram_usage = illumination_aware_kd_tree_render_pass
-																				   ? illumination_aware_kd_tree_render_pass->get_nisml_vram_usage_breakdown()
-																				   : IlluminationAwareKDTreeNISMLVRAMUsage();
-
-				std::size_t nisml_cache_bytes = nisml_cache_vram_usage.get_total_bytes();
-
-				ImGui::Text("NISML VRAM usage: %.3fMB", (nisml_vram_usage.get_total_bytes() + nisml_cache_bytes) / 1000000.0f);
-				ImGui::Text("VRAM Usage breakdown: ");
-
-				std::vector<char> vram_tooltip_buffer(4096);
-				snprintf(
-					vram_tooltip_buffer.data(), vram_tooltip_buffer.size(),
-					"  Neuron biases: %.3fMB\n"
-					"  Gradient biases: %.3fMB\n"
-					"  FP32 connection weights: %.3fMB\n"
-					"  FP16 connection weights: %.3fMB\n"
-					"  Gradient weights: %.3fMB\n"
-					"  Adam weight means: %.3fMB\n"
-					"  Adam weight variances: %.3fMB\n"
-					"  Adam bias means: %.3fMB\n"
-					"  Adam bias variances: %.3fMB\n"
-					"  Training activations: %.3fMB\n"
-					"  NEE training records: %.3fMB\n"
-					"  Training sample counter: %.3fMB\n"
-					"  Record counter: %.3fMB\n"
-					"  NISML cache buffers: %.3fMB\n"
-					"    Cache entries: %.3fMB\n"
-					"    Hash keys: %.3fMB\n"
-					"    Hash entry states: %.3fMB\n"
-					"    Hash occupied-entry counter: %.3fMB\n"
-					"    Representative sample counts: %.3fMB\n"
-					"    Representative occupied counts: %.3fMB\n"
-					"    Representative valid flags: %.3fMB\n"
-					"    Representative write locks: %.3fMB\n"
-					"    Representative dirty flags: %.3fMB\n"
-					"    Cache ready flags: %.3fMB\n"
-					"    Pending cell count: %.3fMB",
-					nisml_vram_usage.neurons_biases / 1000000.0f, nisml_vram_usage.gradient_biases / 1000000.0f,
-					nisml_vram_usage.connection_weights / 1000000.0f, nisml_vram_usage.connection_weights_fp16 / 1000000.0f,
-					nisml_vram_usage.gradient_weights / 1000000.0f, nisml_vram_usage.adam_weights_means / 1000000.0f,
-					nisml_vram_usage.adam_weights_variances / 1000000.0f, nisml_vram_usage.adam_biases_means / 1000000.0f,
-					nisml_vram_usage.adam_biases_variances / 1000000.0f, nisml_vram_usage.train_activations / 1000000.0f,
-					nisml_vram_usage.training_records / 1000000.0f, nisml_vram_usage.training_sample_count / 1000000.0f,
-					nisml_vram_usage.training_record_count / 1000000.0f, nisml_cache_bytes / 1000000.0f, nisml_cache_vram_usage.nisml_cache / 1000000.0f,
-					nisml_cache_vram_usage.nisml_hash_keys / 1000000.0f, nisml_cache_vram_usage.nisml_hash_entry_states / 1000000.0f,
-					nisml_cache_vram_usage.nisml_hash_occupied_entry_count / 1000000.0f, nisml_cache_vram_usage.nisml_representative_sample_counts / 1000000.0f,
-					nisml_cache_vram_usage.nisml_representative_occupied_counts / 1000000.0f, nisml_cache_vram_usage.nisml_representative_valid / 1000000.0f,
-					nisml_cache_vram_usage.nisml_representative_write_locks / 1000000.0f, nisml_cache_vram_usage.nisml_representative_dirty / 1000000.0f,
-					nisml_cache_vram_usage.nisml_cache_ready / 1000000.0f, nisml_cache_vram_usage.nisml_pending_cell_count / 1000000.0f);
-				ImGuiRenderer::show_help_marker(vram_tooltip_buffer.data());
-
-				unsigned int hash_table_capacity =
-					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_nisml_hash_table_capacity() : 0u;
-				unsigned int occupied_hash_entry_count =
-					illumination_aware_kd_tree_render_pass ? illumination_aware_kd_tree_render_pass->get_nisml_hash_occupied_entry_count() : 0u;
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
-				ImGui::SeparatorText("Training");
-				ImGui::PopStyleVar();
-
-				if (ImGui::InputInt("NEE training records buffer capacity##nisml", &nisml_render_pass->get_training_record_buffer_capacity()))
-				{
-					nisml_render_pass->get_training_record_buffer_capacity() = std::max(nisml_render_pass->get_training_record_buffer_capacity(), 1);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Maximum number of NEE training records retained for each MLP training step.");
-
-				if (ImGui::SliderFloat("NEE samples used for training##nisml", &nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f, "%.1f%%"))
-				{
-					nisml_render_pass->get_training_record_percentage() = std::clamp(nisml_render_pass->get_training_record_percentage(), 0.0f, 100.0f);
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Percentage of valid NEE samples generated during each SPP that are retained for MLP training.");
-
-				if (ImGui::SliderInt("Stop MLP training after SPP##nisml", &nisml_render_pass->get_training_spp(), 0, 128))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("Stop retaining records and training after this SPP. Zero keeps training enabled for all SPPs.");
-
-				if (ImGui::SliderFloat("Adam learning rate##nisml", &nisml_render_pass->get_adam_learning_rate(), 0.001f, 0.1f, "%.6f"))
-					m_render_window->set_render_dirty(true);
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
-				ImGui::SeparatorText("SG importance caches");
-				ImGui::PopStyleVar();
-
-				static bool use_sg_importance_caches =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES) == KERNEL_OPTION_TRUE;
-				if (ImGui::Checkbox("Use SG importance caches", &use_sg_importance_caches))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES,
-														   use_sg_importance_caches ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (use_sg_importance_caches)
-				{
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					float hash_map_load_factor = hash_table_capacity > 0u ? occupied_hash_entry_count / static_cast<float>(hash_table_capacity) * 100.0f : 0.0f;
-					ImGui::Text("Hash map load factor: %.2f%%", hash_map_load_factor);
-
-					if (illumination_aware_kd_tree_render_pass)
-					{
-						if (ImGui::InputInt("Representatives per NISML cache entry##nisml",
-											&illumination_aware_kd_tree_render_pass->get_nisml_representative_capacity()))
-						{
-							illumination_aware_kd_tree_render_pass->get_nisml_representative_capacity() =
-								std::max(illumination_aware_kd_tree_render_pass->get_nisml_representative_capacity(), 1);
-							illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Number of reservoir representatives retained for each KD-tree cell and surface-normal cache entry. "
-														"Changing this invalidates existing NISML cache snapshots.");
-
-						if (ImGui::InputInt("SG importance hash table size (MB)##nisml",
-											&illumination_aware_kd_tree_render_pass->get_nisml_hash_table_size_mb()))
-						{
-							illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Reserved GPU memory budget for the fixed-capacity NISML cached SG-cluster importances hash table.");
-
-						if (ImGui::InputInt("NISML SG importance hash normal precision##nisml",
-											&illumination_aware_kd_tree_render_pass->get_nisml_hash_normal_precision()))
-						{
-							illumination_aware_kd_tree_render_pass->mark_buffers_need_reallocation();
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Normal quantization precision used in NISML SG-importance cache keys.");
-					}
-				}
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextBorderSize, 5.0f);
-				ImGui::SeparatorText("Debug");
-				ImGui::PopStyleVar();
-				const char* nisml_debug_view_items[]	= { "- No debug",
-															"- NISML entropy",
-															"- NISML neural-vs-baseline KL divergence",
-															"- NISML latent activations",
-															"- NISML SG-importance caches (solid)",
-															"- NISML SG-importance caches (outlines)" };
-				const char* nisml_debug_view_tooltips[] = {
-					"Disable the NISML debug view.",
-
-					"Displays normalized Shannon entropy H / log(K) of the NISML cluster probabilities. "
-					"Entropy considers all clusters: 0 means that the network focuses on one or a few clusters, while 1 means "
-					"that the distribution is nearly uniform across the K active clusters. The selected heatmap maps lower values "
-					"to its first color and higher values to its last color.",
-
-					"Displays 1 - exp(-KL(p_NISML || p_baseline)), where p_NISML is the neural "
-					"cluster distribution and p_baseline is the baseline cluster distribution before neural residuals are applied. "
-					"Zero means that NISML leaves the baseline unchanged; larger values indicate that NISML is changing it more strongly.",
-
-					"Shows the normalized activations of the last hidden layer as a quantized RGB projection. Similar 64-dimensional "
-					"activations receive similar colors, while quantization makes nearby activations often receive the same color. "
-					"This is a deterministic local projection, not a global clustering.",
-
-					"Colors each guiding KD-tree node and quantized shading-normal bucket by its hash key. This shows the placement of SG importance caches.",
-
-					"Colors the outline of each guiding KD-tree node and quantized shading-normal bucket by its hash key. This shows the placement of SG "
-					"importance caches."
-				};
-
-				if (ImGuiRenderer::ComboWithTooltips("NISML debug view",
-													 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE),
-													 nisml_debug_view_items, IM_ARRAYSIZE(nisml_debug_view_items), nisml_debug_view_tooltips))
-				{
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE) != NISML_DEBUG_MODE_NO_DEBUG)
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
-															   ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE_NO_DEBUG);
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
-															   LEARNING_TO_CLUSTER_DEBUG_MODE_NO_DEBUG);
-					}
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				int nisml_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE);
-				if (nisml_debug_mode == NISML_DEBUG_MODE_ENTROPY || nisml_debug_mode == NISML_DEBUG_MODE_KL_DIVERGENCE)
-				{
-					const char* heatmap_items[] = { "Blue-green-red", "Magma", "Inferno", "Viridis", "Grayscale" };
-					if (ImGui::Combo("Debug view heatmap##nisml",
-									 global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX),
-									 heatmap_items, IM_ARRAYSIZE(heatmap_items)))
-					{
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-				}
-
-				bool draw_nisml_representative_points =
-					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS) ==
-					KERNEL_OPTION_TRUE;
-				if (ImGui::Checkbox("Draw NISML representative points", &draw_nisml_representative_points))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
-														   draw_nisml_representative_points ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Draw valid NISML representative positions as red dots on top of the selected KD-tree debug view.");
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

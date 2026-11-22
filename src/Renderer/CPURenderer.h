@@ -17,9 +17,6 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/Neural/MLPDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLDataHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/Neural/NISMLPositionLearnableDenseGridDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
@@ -189,18 +186,6 @@ private:
 		bool auto_split_iterations_per_SPP		= true;
 		int lightcut_refinement_rounds_per_SPP	= 3;
 	} m_illumination_aware_kd_tree_state;
-
-	struct NISMLState
-	{
-		MLPDataHost<std::vector, NeuralImportanceSamplingMLP> m_mlp;
-		NISMLPositionLearnableDenseGridDataHost<std::vector> m_position_learnable_dense_grid;
-		NISMLDataHost<std::vector> m_nisml_data;
-
-		float m_training_record_percentage = 15.0f;
-		int m_training_spp				   = 0;
-		float m_adam_learning_rate		   = 0.03f;
-		unsigned int m_adam_step		   = 0;
-	} m_nisml_state;
 
 	BSDFDataHost m_bsdf_data_cpu_data;
 

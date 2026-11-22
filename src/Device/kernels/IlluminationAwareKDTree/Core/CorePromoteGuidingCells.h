@@ -87,9 +87,6 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 		parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
 		parent.lightcut_normal_set_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 
-		illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(left_child_index, illumination_aware_kd_tree.core.node_capacity);
-		illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(right_child_index, illumination_aware_kd_tree.core.node_capacity);
-
 		illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index]		  = left_child_index;
 		illumination_aware_kd_tree.core.active_guiding_nodes[active_guiding_output_index] = right_child_index;
 	}
@@ -320,8 +317,6 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 	parent.flags &= ~IlluminationAwareKDTreeNodeFlag_Guiding;
 	parent.lightcut_normal_set_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 
-	illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(left_child_index, illumination_aware_kd_tree.core.node_capacity);
-	illumination_aware_kd_tree.nisml.initialize_nisml_cache_for_guiding_cell(right_child_index, illumination_aware_kd_tree.core.node_capacity);
 	illumination_aware_kd_tree.core.active_guiding_nodes[guiding_list_index]		  = left_child_index;
 	illumination_aware_kd_tree.core.active_guiding_nodes[active_guiding_output_index] = right_child_index;
 

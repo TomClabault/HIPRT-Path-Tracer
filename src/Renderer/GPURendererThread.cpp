@@ -84,10 +84,6 @@ void GPURendererThread::setup_render_graphs()
 	wavefront_render_pass->add_dependency(camera_rays_render_pass);
 	wavefront_render_pass->add_dependency(nee_plus_plus_render_pass);
 
-	std::shared_ptr<NISMLMegaKernelRenderPass> nisml_megakernel_render_pass = render_graph_full.create_render_pass<NISMLMegaKernelRenderPass>();
-	nisml_megakernel_render_pass->add_dependency(camera_rays_render_pass);
-	nisml_megakernel_render_pass->add_dependency(nee_plus_plus_render_pass);
-
 	std::shared_ptr<ReSTIRPTRenderPass> restir_pt_render_pass = render_graph_full.create_render_pass<ReSTIRPTRenderPass>();
 	restir_pt_render_pass->add_dependency(camera_rays_render_pass);
 	restir_pt_render_pass->add_dependency(nee_plus_plus_render_pass);
@@ -107,7 +103,6 @@ void GPURendererThread::setup_render_graphs()
 	// so far
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(wavefront_render_pass);
-	gmon_render_pass->add_dependency(nisml_megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_pt_render_pass);
 	gmon_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
@@ -115,22 +110,12 @@ void GPURendererThread::setup_render_graphs()
 		render_graph_full.create_render_pass<IlluminationAwareKDTreeRenderPass>();
 	illumination_aware_kd_tree_render_pass->add_dependency(megakernel_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(wavefront_render_pass);
-	illumination_aware_kd_tree_render_pass->add_dependency(nisml_megakernel_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_render_pass);
 	illumination_aware_kd_tree_render_pass->add_dependency(restir_pt_wavefront_render_pass);
-
-	std::shared_ptr<NISMLRenderPass> nisml_render_pass = render_graph_full.create_render_pass<NISMLRenderPass>();
-	nisml_render_pass->add_dependency(megakernel_render_pass);
-	nisml_render_pass->add_dependency(wavefront_render_pass);
-	nisml_render_pass->add_dependency(nisml_megakernel_render_pass);
-	nisml_render_pass->add_dependency(restir_pt_render_pass);
-	nisml_render_pass->add_dependency(restir_pt_wavefront_render_pass);
-	nisml_render_pass->add_dependency(illumination_aware_kd_tree_render_pass);
 
 	std::shared_ptr<SSBNPermutationRenderPass> ssbn_permutation_render_pass = render_graph_full.create_render_pass<SSBNPermutationRenderPass>();
 	ssbn_permutation_render_pass->add_dependency(megakernel_render_pass);
 	ssbn_permutation_render_pass->add_dependency(wavefront_render_pass);
-	ssbn_permutation_render_pass->add_dependency(nisml_megakernel_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_pt_render_pass);
 	ssbn_permutation_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
@@ -138,7 +123,6 @@ void GPURendererThread::setup_render_graphs()
 		render_graph_full.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
 	hierarchical_adaptive_sampling_render_pass->add_dependency(megakernel_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(wavefront_render_pass);
-	hierarchical_adaptive_sampling_render_pass->add_dependency(nisml_megakernel_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_render_pass);
 	hierarchical_adaptive_sampling_render_pass->add_dependency(restir_pt_wavefront_render_pass);
 
@@ -149,13 +133,11 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_full.add_render_pass(illumination_aware_kd_tree_render_pass);
 	render_graph_full.add_render_pass(megakernel_render_pass);
 	render_graph_full.add_render_pass(wavefront_render_pass);
-	render_graph_full.add_render_pass(nisml_megakernel_render_pass);
 	render_graph_full.add_render_pass(restir_pt_render_pass);
 	render_graph_full.add_render_pass(restir_pt_wavefront_render_pass);
 	render_graph_full.add_render_pass(restir_pg_render_pass);
 	render_graph_full.add_render_pass(gmon_render_pass);
 	render_graph_full.add_render_pass(ssbn_permutation_render_pass);
-	render_graph_full.add_render_pass(nisml_render_pass);
 	render_graph_full.add_render_pass(hierarchical_adaptive_sampling_render_pass);
 	render_graph_full.add_render_pass_at_end(display_post_process_render_pass);
 

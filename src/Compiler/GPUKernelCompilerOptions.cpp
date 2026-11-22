@@ -9,7 +9,6 @@
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/MegakernelOptions.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "Utils/Utils.h"
 
 #include <cassert>
@@ -85,12 +84,7 @@ const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CU
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER = "LearningToClusterQ0UseTotalPower";
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE = "LearningToClusterDebugMode";
 const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE = "IlluminationAwareKDTreeDebugMode";
-const std::string GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS = "IlluminationAwareKDTreeDebugRepresentativePoints";
 const std::string GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE_HEATMAP_INDEX = "LearningToClusterDebugModeHeatmapIndex";
-
-const std::string GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES = "NISMLUseSGImportancesKDTreeCaches";
-const std::string GPUKernelCompilerOptions::NISML_DEBUG_MODE = "NISMLDebugMode";
-const std::string GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX = "NISMLDebugModeHeatmapIndex";
 
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
@@ -181,12 +175,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_Q0_USE_TOTAL_POWER,
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE,
 	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE,
-	GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS,
 	GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE_HEATMAP_INDEX,
-
-	GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES,
-	GPUKernelCompilerOptions::NISML_DEBUG_MODE,
-	GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX,
 
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
@@ -285,14 +274,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 		std::make_shared<int>(LearningToClusterQ0UseTotalPower);
 	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE] = std::make_shared<int>(LearningToClusterDebugMode);
 	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_MODE] = std::make_shared<int>(IlluminationAwareKDTreeDebugMode);
-	m_options_macro_map[GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_DEBUG_REPRESENTATIVE_POINTS] =
-		std::make_shared<int>(IlluminationAwareKDTreeDebugRepresentativePoints);
 	m_options_macro_map[GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_DEBUG_MODE_HEATMAP_INDEX] =
 		std::make_shared<int>(LearningToClusterDebugModeHeatmapIndex);
-
-	m_options_macro_map[GPUKernelCompilerOptions::NISML_USE_SG_IMPORTANCES_KD_TREE_CACHES] = std::make_shared<int>(NISMLUseSGImportancesKDTreeCaches);
-	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE] = std::make_shared<int>(NISMLDebugMode);
-	m_options_macro_map[GPUKernelCompilerOptions::NISML_DEBUG_MODE_HEATMAP_INDEX] = std::make_shared<int>(NISMLDebugModeHeatmapIndex);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);

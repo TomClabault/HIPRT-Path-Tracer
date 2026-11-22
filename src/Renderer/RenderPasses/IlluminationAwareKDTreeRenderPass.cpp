@@ -10,7 +10,6 @@
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
-#include "HostDeviceCommon/KernelOptions/NeuralImportanceSamplingManyLightsOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #include <algorithm>
@@ -47,14 +46,10 @@ const std::string IlluminationAwareKDTreeRenderPass::REPLAY_TRAINING_SAMPLES_KER
 const std::string IlluminationAwareKDTreeRenderPass::INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID	= "Initialize Created Node History";
 const std::string IlluminationAwareKDTreeRenderPass::MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID = "Mark Guiding Cells For Splitting";
 const std::string IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID			= "Promote Guiding Cells";
-const std::string IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID	= "Replay NISML Training Samples";
-const std::string IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID				= "Build NISML Caches";
 
 IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: RenderPass(IlluminationAwareKDTreeRenderPass::ILLUMINATION_AWARE_KD_TREE_RENDER_PASS_NAME, renderer, options)
 {
-	m_render_data_host_pinned.resize_host_pinned_mem(1);
-
 	m_cached_current_node_count.resize_host_pinned_mem(1);
 	m_cached_current_node_count.get_host_pinned_pointer()[0] = 1;
 	m_cached_current_guiding_node_count.resize_host_pinned_mem(1);
@@ -246,21 +241,6 @@ IlluminationAwareKDTreeRenderPass::IlluminationAwareKDTreeRenderPass(GPURenderer
 		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/Core/CorePromoteGuidingCells.h");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_CorePromoteGuidingCells");
 	m_kernels[IlluminationAwareKDTreeRenderPass::PROMOTE_GUIDING_CELLS_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_file_path(
-		DEVICE_KERNELS_DIRECTORY "/IlluminationAwareKDTree/NISML/NISMLReplayTrainingSamples.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->set_kernel_function_name(
-		"IlluminationAwareKDTree_NISMLReplayTrainingSamples");
-	m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
-
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID);
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY
-																									 "/IlluminationAwareKDTree/NISML/NISMLBuildCaches.h");
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->set_kernel_function_name("IlluminationAwareKDTree_NISMLBuildCaches");
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->synchronize_options_with(m_compiler_options, {});
 }
 
 bool IlluminationAwareKDTreeRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -294,15 +274,8 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 		return {};
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
-	bool using_nisml												 = is_using_nisml(*m_compiler_options);
-	bool using_learning_to_cluster									 = is_using_learning_to_cluster(*m_compiler_options);
 
-	if (!using_nisml)
-	{
-		active_kernels.erase(REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
-		active_kernels.erase(BUILD_NISML_CACHES_KERNEL_ID);
-	}
-
+	bool using_learning_to_cluster = is_using_learning_to_cluster(*m_compiler_options);
 	if (!using_learning_to_cluster)
 	{
 		active_kernels.erase(LEARNING_TO_CLUSTER_INITIALIZE_ROOT_LIGHTCUT_KERNEL_ID);
@@ -327,46 +300,25 @@ void IlluminationAwareKDTreeRenderPass::resize(unsigned int new_width, unsigned 
 
 bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 {
-	m_nisml_representative_capacity = std::max(m_nisml_representative_capacity, 1);
-
 	if (!is_render_pass_used(*m_renderer->get_global_compiler_options()))
 	{
-		m_buffers_need_reallocation		  = true;
-		m_nisml_hash_occupied_entry_count = 0;
+		m_buffers_need_reallocation = true;
 
 		return m_illumination_aware_kd_tree.free();
 	}
-
-	unsigned int nisml_representative_capacity = static_cast<unsigned int>(m_nisml_representative_capacity);
-
-	bool nisml_representative_capacity_changed = m_illumination_aware_kd_tree.m_nisml_data.m_representative_capacity != nisml_representative_capacity;
-	if (nisml_representative_capacity_changed)
-		m_buffers_need_reallocation = true;
 
 	unsigned int maximum_lightcut_size = static_cast<unsigned int>(
 		m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::LEARNING_TO_CLUSTER_MAXIMUM_LIGHT_CUT_SIZE));
 	if (m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_maximum_lightcut_size != maximum_lightcut_size)
 		m_buffers_need_reallocation = true;
 
-	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
-	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
-
-	bool nisml_hash_settings_changed = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
-									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
-	if (nisml_hash_settings_changed)
-		m_buffers_need_reallocation = true;
-
 	if (!m_buffers_need_reallocation)
 
 		return false;
 
-	m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, nisml_representative_capacity,
-										nisml_hash_table_reserved_bytes, nisml_hash_normal_precision, maximum_lightcut_size);
+	m_illumination_aware_kd_tree.resize(m_nodes_buffer_capacity, m_training_sample_buffer_capacity, maximum_lightcut_size);
 
 	m_buffers_need_reallocation = false;
-
-	// Reallocation creates fresh cache buffers whose metadata must be initialized even when the tree is frozen.
-	m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
 
 	return true;
 }
@@ -454,44 +406,10 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 																												launch_args, m_renderer->get_main_stream());
 }
 
-bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const
-{
-	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
-											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
-}
-
 bool IlluminationAwareKDTreeRenderPass::is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const
 {
 	return ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
-}
-
-void IlluminationAwareKDTreeRenderPass::upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data)
-{
-	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
-	*host_pinned_render_data				 = render_data;
-	m_kernels[kernel_id]->upload_to_module_global("ILLUMINATION_AWARE_KD_TREE_RENDER_DATA", host_pinned_render_data, sizeof(HIPRTRenderData),
-												  m_renderer->get_main_stream());
-}
-
-void IlluminationAwareKDTreeRenderPass::build_nisml(HIPRTRenderData& render_data)
-{
-	if (render_data.nisml.cluster_node_indices == nullptr || render_data.nisml.cluster_count == 0 || render_data.nisml.cluster_count > NISML_MAX_CLUSTER_COUNT)
-
-		return;
-
-	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
-	if (kd_tree_device.nisml.nisml_hash_table_capacity == 0u)
-
-		return;
-
-	HIPRTRenderData cache_render_data = render_data;
-	cache_render_data.kd_tree_device  = kd_tree_device;
-	upload_render_data(IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID, cache_render_data);
-	void* launch_args[]				 = { &kd_tree_device };
-	unsigned int hash_table_capacity = kd_tree_device.nisml.nisml_hash_table_capacity;
-	m_kernels[IlluminationAwareKDTreeRenderPass::BUILD_NISML_CACHES_KERNEL_ID]->launch_asynchronous(256, 1, hash_table_capacity, 1, launch_args,
-																									m_renderer->get_main_stream());
 }
 
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -694,23 +612,6 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.download_data_async(
 			m_cached_current_allocated_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());
 	}
-
-	if (is_using_nisml(compiler_options))
-	{
-		if (!render_data.nisml.learning_enabled)
-
-			return;
-
-		unsigned int training_record_capacity = render_data.nisml.training_record_capacity;
-		if (training_record_capacity > 0)
-		{
-			upload_render_data(IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID, render_data);
-			m_kernels[IlluminationAwareKDTreeRenderPass::REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID]->launch_asynchronous(256, 1, training_record_capacity, 1,
-																													   nullptr, m_renderer->get_main_stream());
-		}
-
-		build_nisml(render_data);
-	}
 }
 
 void IlluminationAwareKDTreeRenderPass::ensure_all_lookahead_cell_levels(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -816,9 +717,6 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 		// moving around
 		return;
 
-	// The tree may reuse node indices after a full reset, so clear the separate hash-backed cache before rebuilding the root.
-	m_illumination_aware_kd_tree.m_nisml_data.clear_representative_metadata();
-	m_nisml_hash_occupied_entry_count = 0;
 	m_illumination_aware_kd_tree.reset();
 	m_lookahead_frontier_initialized		 = false;
 	m_next_creation_tag						 = 0;
@@ -873,31 +771,6 @@ int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_spp()
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_seconds()
 {
 	return m_learning_to_cluster_learning_seconds;
-}
-
-int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
-{
-	return m_nisml_representative_capacity;
-}
-
-int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_size_mb()
-{
-	return m_nisml_hash_table_size_mb;
-}
-
-int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_normal_precision()
-{
-	return m_nisml_hash_normal_precision;
-}
-
-unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_occupied_entry_count() const
-{
-	return m_nisml_hash_occupied_entry_count;
-}
-
-unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_capacity() const
-{
-	return static_cast<unsigned int>(m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_capacity);
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity()
@@ -996,25 +869,6 @@ IlluminationAwareKDTreeLearningToClusterVRAMUsage IlluminationAwareKDTreeRenderP
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_representative_shading_contexts.get_byte_size();
 	vram_usage.lightcut_representative_shading_context_states =
 		m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_representative_shading_context_states.get_byte_size();
-
-	return vram_usage;
-}
-
-IlluminationAwareKDTreeNISMLVRAMUsage IlluminationAwareKDTreeRenderPass::get_nisml_vram_usage_breakdown() const
-{
-	IlluminationAwareKDTreeNISMLVRAMUsage vram_usage;
-
-	vram_usage.nisml_cache							= m_illumination_aware_kd_tree.m_nisml_data.m_cache.get_byte_size();
-	vram_usage.nisml_hash_keys						= m_illumination_aware_kd_tree.m_nisml_data.m_hash_keys.get_byte_size();
-	vram_usage.nisml_hash_entry_states				= m_illumination_aware_kd_tree.m_nisml_data.m_hash_entry_states.get_byte_size();
-	vram_usage.nisml_hash_occupied_entry_count		= m_illumination_aware_kd_tree.m_nisml_data.m_hash_occupied_entry_count.get_byte_size();
-	vram_usage.nisml_representative_sample_counts	= m_illumination_aware_kd_tree.m_nisml_data.m_representative_sample_counts.get_byte_size();
-	vram_usage.nisml_representative_occupied_counts = m_illumination_aware_kd_tree.m_nisml_data.m_representative_occupied_counts.get_byte_size();
-	vram_usage.nisml_representative_valid			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_valid.get_byte_size();
-	vram_usage.nisml_representative_write_locks		= m_illumination_aware_kd_tree.m_nisml_data.m_representative_write_locks.get_byte_size();
-	vram_usage.nisml_representative_dirty			= m_illumination_aware_kd_tree.m_nisml_data.m_representative_dirty.get_byte_size();
-	vram_usage.nisml_cache_ready					= m_illumination_aware_kd_tree.m_nisml_data.m_cache_ready.get_byte_size();
-	vram_usage.nisml_pending_cell_count				= m_illumination_aware_kd_tree.m_nisml_data.m_pending_cell_count.get_byte_size();
 
 	return vram_usage;
 }

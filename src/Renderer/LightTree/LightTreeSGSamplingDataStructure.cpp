@@ -59,7 +59,7 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 			}
 
 			m_light_tree_builder_sg.build_light_tree(emissive_triangles_primitive_indices, triangles_average_emissive_power_luminance, triangles_vertex_indices,
-													 vertices_positions, static_cast<unsigned int>(triangles_vertex_indices.size() / 3));
+													 vertices_positions);
 			m_light_tree_sg_build_result = m_light_tree_builder_sg.compute_build_result<OrochiBuffer>();
 			m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3,
 											  m_light_tree_sg_build_result);
@@ -103,7 +103,6 @@ void LightTreeSGSamplingDataStructure::recompute_if_needed_or_free(std::shared_p
 void LightTreeSGSamplingDataStructure::free()
 {
 	m_light_tree_sg_build_result.free();
-	m_light_tree_builder_sg.get_nisml_data().free();
 
 	HIPRTRenderData& render_data									  = m_renderer->get_render_data();
 	render_data.light_tree_sg.nodes									  = nullptr;
@@ -131,7 +130,7 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count, st
 
 size_t LightTreeSGSamplingDataStructure::get_VRAM_usage_bytes() const
 {
-	return m_light_tree_sg_build_result.get_VRAM_usage_bytes() + m_light_tree_builder_sg.get_nisml_data().get_VRAM_usage_bytes();
+	return m_light_tree_sg_build_result.get_VRAM_usage_bytes();
 }
 
 LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
@@ -162,16 +161,6 @@ int LightTreeSGSamplingDataStructure::get_tree_cut_size() const
 void LightTreeSGSamplingDataStructure::set_tree_cut_size(int tree_cut_size)
 {
 	m_light_tree_builder_sg.set_tree_cut_size(tree_cut_size);
-}
-
-int LightTreeSGSamplingDataStructure::get_tree_cut_size_neural_many_lights() const
-{
-	return m_light_tree_builder_sg.get_tree_cut_size_neural_many_lights();
-}
-
-void LightTreeSGSamplingDataStructure::set_tree_cut_size_neural_many_lights(int tree_cut_size_neural_many_lights)
-{
-	m_light_tree_builder_sg.set_tree_cut_size_neural_many_lights(tree_cut_size_neural_many_lights);
 }
 
 int LightTreeSGSamplingDataStructure::get_second_tree_cut_size() const

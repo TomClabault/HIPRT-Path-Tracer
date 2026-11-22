@@ -17,9 +17,8 @@
 #define LSS_BSDF					 2
 #define LSS_MIS_LIGHT_BSDF			 3
 #define LSS_RIS_BSDF_AND_LIGHT		 4
-#define LSS_NEURAL_MANY_LIGHTS		 5
-#define LSS_LEARNING_TO_CLUSTER		 6
-#define LSS_LEARNING_TO_CLUSTER_MIS	 7
+#define LSS_LEARNING_TO_CLUSTER		 5
+#define LSS_LEARNING_TO_CLUSTER_MIS	 6
 
 #define DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator) ((nee_estimator) == LSS_LEARNING_TO_CLUSTER || (nee_estimator) == LSS_LEARNING_TO_CLUSTER_MIS)
 
@@ -111,10 +110,6 @@
  *	- LSS_RIS_BSDF_AND_LIGHT
  *		Samples lights in the scene with Resampled Importance Sampling
  *
- *	- LSS_NEURAL_MANY_LIGHTS
- *		Implementation of [Neural Importance Sampling for Many Lights, Figueiredo et al. 2025]. Uses an MLP to learn sampling
- *		probabilities on clusters of a lightcut in the spherical gaussian light tree
- *
  *	- LSS_LEARNING_TO_CLUSTER
  *		Implementation of [Learning to Cluster for Rendering with Many Lights, Wang et al. 2021]. Learns sampling probabilities on clusters of a lightcut
  *		(hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut.
@@ -131,9 +126,8 @@
  */
 #define DirectLightNEEEstimator LSS_LEARNING_TO_CLUSTER_MIS
 
-#if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) || DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS) &&                                 \
-	DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
-#error "Learning-to-cluster and neural many-lights estimators require DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG."
+#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) && DirectLightSamplingStrategy != LSS_BASE_LIGHT_TREE_SG
+#error "Learning-to-cluster estimators require DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG."
 #endif
 
 /**

@@ -6,9 +6,7 @@
 #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_SHADOW_DATA_H
 #define DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_SHADOW_DATA_H
 
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDirectIlluminationTrainingSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
-#include "Device/includes/Neural/NISML/NISMLTrainingSample.h"
 #include "HostDeviceCommon/Color.h"
 
 static constexpr unsigned int WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT = 0xFFFFFFFFu;
@@ -29,7 +27,6 @@ enum WavefrontShadowFlags : unsigned int
 	// the shadow sink
 	WAVEFRONT_SHADOW_FINAL_COLOR				= 1u << 2,
 	WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER = 1u << 3,
-	WAVEFRONT_SHADOW_UPDATE_NISML				= 1u << 4,
 };
 
 enum WavefrontShadowPathFlags : unsigned int
@@ -65,20 +62,6 @@ struct WavefrontLearningToClusterShadowSidecar
 	unsigned int learning_to_cluster_sample_index = 0;
 	float spatial_radiance_weight_if_visible	  = 0.0f;
 	float cluster_reward_if_visible				  = 0.0f;
-};
-
-struct WavefrontNISMLShadowSidecar
-{
-	IlluminationAwareKDTreeDirectIlluminationTrainingSample spatial_training_sample{};
-	NISMLTrainingSample training_record{};
-
-	float spatial_radiance_weight_if_visible = 0.0f;
-	float point_on_light_pdf_if_visible		 = 0.0f;
-	float contribution_luminance_if_visible	 = 0.0f;
-
-	unsigned int append_spatial_training_sample = 0;
-	unsigned int append_training_record			= 0;
-	unsigned int training_rng_seed				= 0;
 };
 
 #endif // #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_SHADOW_DATA_H

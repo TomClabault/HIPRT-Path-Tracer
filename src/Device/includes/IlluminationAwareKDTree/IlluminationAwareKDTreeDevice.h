@@ -9,7 +9,6 @@
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeCoreDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterDevice.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterTrainingSample.h"
-#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNISMLDevice.h"
 
 struct IlluminationAwareKDTreeDevice
 {
@@ -60,7 +59,6 @@ struct IlluminationAwareKDTreeDevice
 
 	IlluminationAwareKDTreeCoreDevice core;
 	IlluminationAwareKDTreeLearningToClusterDevice learning_to_cluster;
-	IlluminationAwareKDTreeNISMLDevice nisml;
 
 	unsigned char* any_cell_needs_split = nullptr;
 };

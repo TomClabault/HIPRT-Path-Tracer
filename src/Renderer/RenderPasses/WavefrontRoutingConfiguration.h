@@ -23,9 +23,9 @@ inline WavefrontRoutingConfiguration get_wavefront_routing_configuration(int bsd
 	return { material_family_count, route_deferred_completion_by_material_family, requires_terminal_trace_completion };
 }
 
-inline bool wavefront_path_strategy_uses_pass(int path_sampling_strategy, bool nisml_enabled)
+inline bool wavefront_path_strategy_uses_pass(int path_sampling_strategy)
 {
-	return !nisml_enabled && path_sampling_strategy == PATH_SAMPLING_BSDF_WAVEFRONT;
+	return path_sampling_strategy == PATH_SAMPLING_BSDF_WAVEFRONT;
 }
 
 #endif // #ifndef RENDERER_WAVEFRONT_ROUTING_CONFIGURATION_H

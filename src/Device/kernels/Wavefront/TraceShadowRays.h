@@ -31,27 +31,6 @@ HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data,
 			}
 		}
 	}
-
-	if ((flags & WAVEFRONT_SHADOW_UPDATE_NISML) != 0)
-	{
-		WavefrontNISMLShadowSidecar& sidecar = render_data.wavefront_data.nisml_shadow_sidecars[queue_slot];
-
-		if (visible)
-		{
-			sidecar.spatial_training_sample.spatial_radiance_weight = sidecar.spatial_radiance_weight_if_visible;
-			sidecar.training_record.point_on_light_pdf_solid_angle	= sidecar.point_on_light_pdf_if_visible;
-			sidecar.training_record.contribution_luminance			= sidecar.contribution_luminance_if_visible;
-		}
-
-		if (sidecar.append_spatial_training_sample != 0)
-			render_data.kd_tree_device.core.append_direct_illumination_training_sample(sidecar.spatial_training_sample);
-
-		if (sidecar.append_training_record != 0)
-		{
-			Xorshift32Generator training_random_number_generator(sidecar.training_rng_seed);
-			render_data.nisml.append_training_record(sidecar.training_record, training_random_number_generator);
-		}
-	}
 }
 
 HIPRT_DEVICE void wavefront_commit_shadow_contributions(HIPRTRenderData& render_data, unsigned int path_index, ColorRGB32F contribution)

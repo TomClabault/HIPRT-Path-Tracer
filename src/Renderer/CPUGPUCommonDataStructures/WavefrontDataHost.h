@@ -43,8 +43,7 @@ using WavefrontDataHostInternal = GenericSoA<DataContainer,
 											 WavefrontShadowWork,
 											 GenericAtomicType<unsigned int, DataContainer>,
 											 GenericAtomicType<unsigned int, DataContainer>,
-											 WavefrontLearningToClusterShadowSidecar,
-											 WavefrontNISMLShadowSidecar>;
+											 WavefrontLearningToClusterShadowSidecar>;
 
 enum WavefrontDataHostBuffers
 {
@@ -80,7 +79,6 @@ enum WavefrontDataHostBuffers
 	WAVEFRONT_SHADOW_WORK_COUNT,
 	WAVEFRONT_SHADOW_QUEUE_OVERFLOW_COUNT,
 	WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS,
-	WAVEFRONT_NISML_SHADOW_SIDECARS,
 };
 
 template <template <typename> typename DataContainer>
@@ -92,8 +90,7 @@ struct WavefrontDataHost
 				std::size_t nee_deferred_mis_context_byte_size,
 				bool allocate_resolved_material_control_cache,
 				bool allocate_current_material_classifications,
-				bool allocate_learning_to_cluster_shadow_sidecars,
-				bool allocate_nisml_shadow_sidecars)
+				bool allocate_learning_to_cluster_shadow_sidecars)
 	{
 		m_wavefront_data.resize(path_capacity, { WAVEFRONT_PATH_VOLUME_STATE_BYTES,
 												 WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES,
@@ -115,8 +112,7 @@ struct WavefrontDataHost
 												 WAVEFRONT_SHADOW_WORK_ITEMS,
 												 WAVEFRONT_SHADOW_WORK_COUNT,
 												 WAVEFRONT_SHADOW_QUEUE_OVERFLOW_COUNT,
-												 WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS,
-												 WAVEFRONT_NISML_SHADOW_SIDECARS });
+												 WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS });
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_VOLUME_STATE_BYTES>(path_capacity * ray_volume_state_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_PATH_NEE_DEFERRED_MIS_CONTEXT_BYTES>(path_capacity * nee_deferred_mis_context_byte_size);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_QUEUE_COUNT_0>(1);
@@ -131,7 +127,6 @@ struct WavefrontDataHost
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_SHADOW_QUEUE_OVERFLOW_COUNT>(shadow_work_capacity > 0 ? 1 : 0);
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS>(
 			allocate_learning_to_cluster_shadow_sidecars ? shadow_work_capacity : 0);
-		m_wavefront_data.template resize_one_buffer<WAVEFRONT_NISML_SHADOW_SIDECARS>(allocate_nisml_shadow_sidecars ? shadow_work_capacity : 0);
 		// The shading passes always read their paths from the material family queues. The BSDF models other than the principled
 		// BSDF only use the queue of the KernelMaterialSpecializationAll family
 		m_wavefront_data.template resize_one_buffer<WAVEFRONT_MATERIAL_FAMILY_INDICES>(static_cast<std::size_t>(path_capacity) *
@@ -153,7 +148,6 @@ struct WavefrontDataHost
 		m_current_material_classifications_allocated	= allocate_current_material_classifications;
 		m_shadow_work_capacity							= shadow_work_capacity;
 		m_learning_to_cluster_shadow_sidecars_allocated = allocate_learning_to_cluster_shadow_sidecars;
-		m_nisml_shadow_sidecars_allocated				= allocate_nisml_shadow_sidecars;
 	}
 
 	bool free()
@@ -166,7 +160,6 @@ struct WavefrontDataHost
 		m_current_material_classifications_allocated	= false;
 		m_shadow_work_capacity							= 0;
 		m_learning_to_cluster_shadow_sidecars_allocated = false;
-		m_nisml_shadow_sidecars_allocated				= false;
 		return true;
 	}
 
@@ -198,11 +191,6 @@ struct WavefrontDataHost
 	bool has_learning_to_cluster_shadow_sidecars() const
 	{
 		return m_learning_to_cluster_shadow_sidecars_allocated;
-	}
-
-	bool has_nisml_shadow_sidecars() const
-	{
-		return m_nisml_shadow_sidecars_allocated;
 	}
 
 	WavefrontDataDevice to_device()
@@ -267,9 +255,6 @@ struct WavefrontDataHost
 			if (m_learning_to_cluster_shadow_sidecars_allocated)
 				wavefront_data_device.learning_to_cluster_shadow_sidecars =
 					m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS>();
-
-			if (m_nisml_shadow_sidecars_allocated)
-				wavefront_data_device.nisml_shadow_sidecars = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_NISML_SHADOW_SIDECARS>();
 		}
 
 		wavefront_data_device.path_capacity = static_cast<unsigned int>(path_capacity());
@@ -307,7 +292,6 @@ struct WavefrontDataHost
 	bool m_current_material_classifications_allocated	 = false;
 	unsigned int m_shadow_work_capacity					 = 0;
 	bool m_learning_to_cluster_shadow_sidecars_allocated = false;
-	bool m_nisml_shadow_sidecars_allocated				 = false;
 };
 
 #endif // #ifndef RENDERER_WAVEFRONT_DATA_HOST_H

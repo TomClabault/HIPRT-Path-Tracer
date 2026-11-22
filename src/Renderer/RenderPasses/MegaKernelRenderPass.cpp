@@ -110,11 +110,5 @@ void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 
 bool MegaKernelRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-	bool nisml_enabled = ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
-															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
-	if (nisml_enabled)
-
-		return false;
-
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_BSDF;
 }

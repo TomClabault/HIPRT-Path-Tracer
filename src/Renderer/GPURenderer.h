@@ -26,7 +26,6 @@
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
-#include "Renderer/RenderPasses/NISMLRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"

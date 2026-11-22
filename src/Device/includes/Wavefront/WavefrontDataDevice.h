@@ -69,7 +69,6 @@ struct WavefrontDataDevice
 	AtomicType<unsigned int>* shadow_work_count									 = nullptr;
 	AtomicType<unsigned int>* shadow_queue_overflow_count						 = nullptr;
 	WavefrontLearningToClusterShadowSidecar* learning_to_cluster_shadow_sidecars = nullptr;
-	WavefrontNISMLShadowSidecar* nisml_shadow_sidecars							 = nullptr;
 
 	unsigned int shadow_work_capacity = 0;
 

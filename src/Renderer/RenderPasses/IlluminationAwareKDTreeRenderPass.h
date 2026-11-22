@@ -74,28 +74,6 @@ struct IlluminationAwareKDTreeLearningToClusterVRAMUsage
 	}
 };
 
-struct IlluminationAwareKDTreeNISMLVRAMUsage
-{
-	std::size_t nisml_cache							 = 0;
-	std::size_t nisml_hash_keys						 = 0;
-	std::size_t nisml_hash_entry_states				 = 0;
-	std::size_t nisml_hash_occupied_entry_count		 = 0;
-	std::size_t nisml_representative_sample_counts	 = 0;
-	std::size_t nisml_representative_occupied_counts = 0;
-	std::size_t nisml_representative_valid			 = 0;
-	std::size_t nisml_representative_write_locks	 = 0;
-	std::size_t nisml_representative_dirty			 = 0;
-	std::size_t nisml_cache_ready					 = 0;
-	std::size_t nisml_pending_cell_count			 = 0;
-
-	std::size_t get_total_bytes() const
-	{
-		return nisml_cache + nisml_hash_keys + nisml_hash_entry_states + nisml_hash_occupied_entry_count + nisml_representative_sample_counts +
-			   nisml_representative_occupied_counts + nisml_representative_valid + nisml_representative_write_locks + nisml_representative_dirty +
-			   nisml_cache_ready + nisml_pending_cell_count;
-	}
-};
-
 class IlluminationAwareKDTreeRenderPass : public RenderPass
 {
 public:
@@ -123,8 +101,6 @@ public:
 	static const std::string INITIALIZE_CREATED_NODE_HISTORY_KERNEL_ID;
 	static const std::string MARK_GUIDING_CELLS_FOR_SPLITTING_KERNEL_ID;
 	static const std::string PROMOTE_GUIDING_CELLS_KERNEL_ID;
-	static const std::string REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID;
-	static const std::string BUILD_NISML_CACHES_KERNEL_ID;
 
 public:
 	IlluminationAwareKDTreeRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
@@ -156,12 +132,6 @@ public:
 	int& get_learning_to_cluster_learning_spp();
 	int& get_learning_to_cluster_learning_seconds();
 
-	int& get_nisml_representative_capacity();
-	int& get_nisml_hash_table_size_mb();
-	int& get_nisml_hash_normal_precision();
-	unsigned int get_nisml_hash_occupied_entry_count() const;
-	unsigned int get_nisml_hash_table_capacity() const;
-
 	int& get_current_node_buffer_capacity();
 	unsigned int get_current_node_count() const;
 	unsigned int get_current_guiding_node_count() const;
@@ -178,23 +148,18 @@ public:
 	 */
 	IlluminationAwareKDTreeVRAMUsage get_vram_usage_breakdown() const;
 	IlluminationAwareKDTreeLearningToClusterVRAMUsage get_learning_to_cluster_vram_usage_breakdown() const;
-	IlluminationAwareKDTreeNISMLVRAMUsage get_nisml_vram_usage_breakdown() const;
 	std::size_t get_vram_usage_bytes() const;
 
 private:
-	void upload_render_data(const std::string& kernel_id, HIPRTRenderData& render_data);
 	bool ensure_buffers_match_configuration();
 
-	bool is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const;
 	bool is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const;
-	void build_nisml(HIPRTRenderData& render_data);
 
 	bool m_frozen_tree				 = false;
 	bool m_buffers_need_reallocation = true;
 
 	IlluminationAwareKDTreeUserSettings m_user_settings;
 	IlluminationAwareKDTreeDataHost<OrochiBuffer> m_illumination_aware_kd_tree;
-	OrochiBuffer<HIPRTRenderData> m_render_data_host_pinned;
 
 	// How many times to:
 	//	for (int split; split < m_split_iterations; split++)
@@ -220,11 +185,6 @@ private:
 	int m_learning_to_cluster_learning_spp		= 2;
 	int m_learning_to_cluster_learning_seconds	= 0;
 	float m_learning_to_cluster_elapsed_seconds = 0.0f;
-
-	int m_nisml_representative_capacity			   = 2;
-	int m_nisml_hash_table_size_mb				   = 275;
-	int m_nisml_hash_normal_precision			   = 3;
-	unsigned int m_nisml_hash_occupied_entry_count = 0;
 
 	OrochiBuffer<unsigned int> m_cached_current_node_count;
 	OrochiBuffer<unsigned int> m_cached_current_guiding_node_count;

@@ -33,19 +33,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove principled lobe oren nayar support, just use Lambertian all the time
 // - Remove enforce_strong_energy_conservation
 //
-// Ideas for neural importance sampling many lights:
-//	- Splitting in the subtree + RIS
-//		Or maybe juste do splitting in the subtree if visibility variance is high
-//		The better theoretical question is when is splitting needed? This is probably not necessarily when vis variance is high
-//	- Wider subtree + sample one root cluster brute force WRS
-//		Or if caching spatially works well, do caching of the wider subtree as well to avoid
-//	- Double mlp in the subtree as well ? i.e. multiple level MLP. One MLP inference for probabilities on the root node wide clusters and another MLP inference
-//	for the subtree wide root clusters.
-//		Or maybe a single MLP that does all that
-//	- How to to NISML but on 1024 root node clusters?
-//  - Why is it that 50% of training samples budget doesn't learn much faster than 15%? What is the theory behind that?
-//	- Specular isn't amazing so do we even need the view direction in the input of the net?
-//
 // Ideas for learning to cluster:
 //	- Spatial filtering to reduce grid artifacts, Practical Path Guiding 2019
 //	- Splitting in the subtree + RIS
@@ -55,7 +42,7 @@ extern ImGuiLogger g_imgui_logger;
 //		Or if caching spatially works well, do caching of the wider subtree as well to avoid
 //	- Why doesn't learning to cluster reach 0 variance? Where is the bottleneck? Compare against optimal brute force and find where the bottleneck is
 //	- Online Bayesian regression for the optimal cluster sampling probabilities assuming that the subtree sampler isn't optimal
-//	- Use a hash grid for normal aware stuff instead of dense 6-face, same as NISML
+//	- Use a hash grid for normal aware stuff instead of dense 6-face
 //	- When to stop learning automatically?
 //	- Rename clustering to lightcut: IlluminationAwareKDTreeLightClusteringData ---> IlluminationAwareKDTreeLightcutData
 //	- How to refine more aggressively? Because now that we are learning from all samples, waiting fir lightcut refinement is actually the bottleneck, we need to

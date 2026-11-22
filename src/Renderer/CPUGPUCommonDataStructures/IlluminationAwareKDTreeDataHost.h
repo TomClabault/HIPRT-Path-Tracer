@@ -13,7 +13,6 @@
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeIlluminationSignatureSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLearningToClusterDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeLightClusterBatchStatisticsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeNISMLDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/IlluminationAwareKDTreeSpatialSampleMomentsSoAHost.h"
 
 template <template <typename> typename DataContainer>
@@ -21,13 +20,9 @@ struct IlluminationAwareKDTreeDataHost
 {
 	void resize(unsigned int new_node_capacity,
 				unsigned int new_training_sample_capacity,
-				unsigned int new_nisml_representative_capacity		   = 1,
-				unsigned int new_nisml_hash_table_reserved_bytes	   = 100000000u,
-				unsigned int new_nisml_hash_normal_precision		   = 2u,
 				unsigned int maximum_learning_to_cluster_lightcut_size = LearningToClusterMaximumLightCutSize)
 	{
 		m_kd_tree_data.resize(new_node_capacity, new_training_sample_capacity);
-		m_nisml_data.resize(new_node_capacity, new_nisml_representative_capacity, new_nisml_hash_table_reserved_bytes, new_nisml_hash_normal_precision);
 		m_learning_to_cluster_data.resize(new_node_capacity, new_training_sample_capacity, maximum_learning_to_cluster_lightcut_size);
 
 		GenericSoAHelpers::resize<DataContainer>(m_any_cell_needs_split, 1);
@@ -46,7 +41,6 @@ struct IlluminationAwareKDTreeDataHost
 			return false;
 
 		bool core_data_freed				= m_kd_tree_data.free();
-		bool nisml_data_freed				= m_nisml_data.free();
 		bool learning_to_cluster_data_freed = m_learning_to_cluster_data.free();
 
 		bool any_cell_needs_split_freed = m_any_cell_needs_split.size() > 0;
@@ -58,7 +52,7 @@ struct IlluminationAwareKDTreeDataHost
 		bool node_count_before_expansion_host_pinned_freed = m_node_count_before_expansion_host_pinned.size() > 0;
 		m_node_count_before_expansion_host_pinned		   = DataContainer<unsigned int>();
 
-		return core_data_freed || nisml_data_freed || learning_to_cluster_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed ||
+		return core_data_freed || learning_to_cluster_data_freed || any_cell_needs_split_freed || any_cell_needs_split_host_pinned_freed ||
 			   node_count_before_expansion_host_pinned_freed;
 	}
 
@@ -71,7 +65,6 @@ struct IlluminationAwareKDTreeDataHost
 	{
 		IlluminationAwareKDTreeDevice kd_tree_device = m_kd_tree_data.to_device();
 
-		m_nisml_data.to_device(kd_tree_device);
 		m_learning_to_cluster_data.to_device(kd_tree_device);
 		kd_tree_device.any_cell_needs_split = GenericSoAHelpers::get_buffer_data_ptr(m_any_cell_needs_split);
 
@@ -86,7 +79,6 @@ struct IlluminationAwareKDTreeDataHost
 	}
 
 	IlluminationAwareKDTreeCoreDataHost<DataContainer> m_kd_tree_data;
-	IlluminationAwareKDTreeNISMLDataHost<DataContainer> m_nisml_data;
 	IlluminationAwareKDTreeLearningToClusterDataHost<DataContainer> m_learning_to_cluster_data;
 
 	DataContainer<unsigned char> m_any_cell_needs_split;

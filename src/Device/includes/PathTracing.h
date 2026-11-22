@@ -13,7 +13,6 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
-#include "Device/includes/LightSampling/NISML/NISML.h"
 #include "Device/includes/RussianRoulette.h"
 
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"

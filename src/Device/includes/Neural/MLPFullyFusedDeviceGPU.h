@@ -8,8 +8,8 @@
 
 #include "Device/includes/Neural/MLPFullyFusedDeviceCommon.h"
 
-#ifndef NISML_HAS_WMMA
-#define NISML_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
+#ifndef MLP_HAS_WMMA
+#define MLP_HAS_WMMA (__gfx1100__ || __gfx1101__ || __gfx1102__ || __gfx1200__ || __gfx1201__)
 #endif
 
 template <unsigned int InputSizeEncoded_,
@@ -97,7 +97,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		static_assert(HiddenLayerSize_ % 16 == 0, "HiddenLayerSize_ must be a multiple of 16 for WMMA");
 		static_assert(OUTPUT_SIZE_PADDED_WMMA % 16 == 0, "OUTPUT_SIZE_PADDED_WMMA must be a multiple of 16 for WMMA");
 
-#if NISML_HAS_WMMA
+#if MLP_HAS_WMMA
 		unsigned int output_activation_index_block_base = sample_offset * NEURON_COUNT;
 
 		for (unsigned int layer_index = 1; layer_index < LAYER_COUNT; layer_index++)
@@ -193,7 +193,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			}
 			__syncthreads();
 		}
-#endif // #if NISML_HAS_WMMA
+#endif // #if MLP_HAS_WMMA
 	}
 
 	HIPRT_DEVICE void inference_wmma(fp16 activations_buffer[ACTIVATION_WIDTH * 2][BLOCK_SIZE]) const
@@ -280,13 +280,13 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		static_assert(OUTPUT_SIZE_PADDED_WMMA <= ERROR_WIDTH, "Error buffer must fit the padded output layer");
 		static_assert(HIDDEN_LAYER_SIZE <= ERROR_WIDTH, "Error buffer must fit hidden layers");
 
-#if NISML_HAS_WMMA
+#if MLP_HAS_WMMA
 		unsigned int lane_id	  = threadIdx.x & 31;
 		unsigned int warp_id	  = threadIdx.x / 32;
 		unsigned int lane_id_wmma = lane_id & 15;
 		unsigned int lane_high	  = lane_id / 16;
 		unsigned int warp_count	  = BlockSize_ / 32;
-		// NISML scales errors before storing them in FP16; restore the scale when accumulating FP32 parameter gradients.
+		// The caller scales errors before storing them in FP16; restore the scale when accumulating FP32 parameter gradients.
 		float inverse_error_scale					 = 1.0f / error_scale;
 		constexpr unsigned int errors_ping_pong_size = ERROR_WIDTH;
 		unsigned int output_layer_index				 = LAYER_COUNT - 1;
@@ -482,7 +482,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 
 		if (count_training_sample)
 			hippt::atomic_fetch_add(last_training_sample_count, 1u);
-#endif // #if NISML_HAS_WMMA
+#endif // #if MLP_HAS_WMMA
 	}
 
 	template <unsigned int input_gradient_count>
