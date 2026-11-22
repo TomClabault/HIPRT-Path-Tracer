@@ -134,8 +134,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			secondary_hit_throughput	   = bsdf_secondary_hit * hippt::abs(hippt::dot(to_light_direction_sample_point, shading_normal_sample_point));
 		}
 
-		camera_outgoing_radiance +=
-			first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
+		// A zero first hit BSDF PDF is a zero contribution. The secondary hit throughput can be a NaN there: a bounce ray that hits a triangle
+		// adjacent to the primary hit at a zero distance (primary hit on a shared edge) gives a reconnection vertex at the shading point, whose
+		// directions are NaNs, and the zero first hit throughput times that NaN would be a NaN
+		if (bsdf_pdf_first_hit > 0.0f)
+			camera_outgoing_radiance +=
+				first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
 	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
