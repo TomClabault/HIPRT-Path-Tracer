@@ -264,6 +264,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 				}
 
 				shadow_split_buffers.canonical_viewpoints[entry_index] = probe_pixel_index;
+
 				prepare_flags |= 1u << (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + probe);
 			}
 		}
@@ -295,7 +296,7 @@ extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitPrepare()
+GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitPrepare()
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitPrepare(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
