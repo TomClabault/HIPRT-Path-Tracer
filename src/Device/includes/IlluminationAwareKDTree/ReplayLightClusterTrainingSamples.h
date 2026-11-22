@@ -11,15 +11,6 @@
 #include "Device/includes/IlluminationAwareKDTree/LearningToClusterCommon.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 
-HIPRT_DEVICE unsigned int get_replayed_light_clustering_index(const IlluminationAwareKDTreeDevice& kd_tree,
-															  const IlluminationAwareKDTreeLearningToClusterTrainingSample& sample)
-{
-	if (sample.valid_for_lightcut == 0u)
-		return IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-
-	return kd_tree.resolve_lightcut(sample.shading_context, sample.mesh_id);
-}
-
 HIPRT_DEVICE int find_replayed_light_cluster_slot_for_triangle(const IlluminationAwareKDTreeDevice& kd_tree,
 															   const LightTreeSGDevice& light_tree_sg,
 															   unsigned int lightcut_index,

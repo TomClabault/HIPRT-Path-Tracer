@@ -35,56 +35,6 @@ HIPRT_DEVICE RayPayloadCommon wavefront_make_ray_payload()
 		return RayPayloadCommon(NoInitTag{});
 }
 
-template <typename MaterialType>
-HIPRT_DEVICE void wavefront_copy_compact_principled_material(const DeviceUnpackedPrincipledFullMaterial& source, MaterialType& destination)
-{
-	destination.emission = source.get_emission();
-
-	if (source.is_emissive())
-		destination.emission_flags |= EffectiveMaterialEmissionIsEmissive;
-	destination.base_color = source.base_color;
-
-	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
-	{
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-		destination.oren_nayar_sigma = source.oren_nayar_sigma;
-#endif
-	}
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
-	{
-		destination.roughness					 = source.roughness;
-		destination.anisotropy					 = source.anisotropy;
-		destination.anisotropy_rotation			 = source.anisotropy_rotation;
-		destination.ior							 = source.ior;
-		destination.do_glass_energy_compensation = source.do_glass_energy_compensation;
-	}
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
-	{
-		destination.roughness						= source.roughness;
-		destination.anisotropy						= source.anisotropy;
-		destination.anisotropy_rotation				= source.anisotropy_rotation;
-		destination.metallic_F82					= source.metallic_F82;
-		destination.metallic_F90					= source.metallic_F90;
-		destination.metallic_F90_falloff_exponent	= source.metallic_F90_falloff_exponent;
-		destination.do_metallic_energy_compensation = source.do_metallic_energy_compensation;
-	}
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
-	{
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-		destination.oren_nayar_sigma = source.oren_nayar_sigma;
-#endif
-		destination.roughness						= source.roughness;
-		destination.anisotropy						= source.anisotropy;
-		destination.anisotropy_rotation				= source.anisotropy_rotation;
-		destination.ior								= source.ior;
-		destination.specular						= source.specular;
-		destination.specular_tint					= source.specular_tint;
-		destination.specular_color					= source.specular_color;
-		destination.specular_darkening				= source.specular_darkening;
-		destination.do_specular_energy_compensation = source.do_specular_energy_compensation;
-	}
-}
-
 // Forced inline: see the comment above principled_bsdf_eval()
 template <typename MaterialType>
 HIPRT_DEVICE HIPRT_INLINE bool wavefront_compute_next_indirect_bounce(HIPRTRenderData& render_data,

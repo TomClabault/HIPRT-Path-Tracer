@@ -27,22 +27,6 @@ HIPRT_DEVICE void path_guiding_update_volume_stack_after_sampling(const float3_t
 		ray_payload.volume_state.interior_stack.pop(ray_payload.volume_state.inside_material);
 }
 
-HIPRT_DEVICE void path_guiding_update_volume_stack_after_eval(const float3_t& bounce_direction, const HitInfo& closest_hit_info, RayPayload& ray_payload)
-{
-	if (hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0.0f && ray_payload.material.allows_refraction())
-	{
-		// We only need to worry about popping if we're refracting out of a material
-
-		if (ray_payload.volume_state.inside_material || ray_payload.material.thin_walled)
-		{
-			// We changed volume so we're resetting the distance
-			ray_payload.volume_state.distance_in_volume = 0.0f;
-			// We refracting out of a volume so we're poping the stack
-			ray_payload.volume_state.interior_stack.pop(ray_payload.volume_state.inside_material);
-		}
-	}
-}
-
 HIPRT_DEVICE void path_guiding_compute_sampled_lobe(HIPRTRenderData& render_data,
 													BSDFContext& bsdf_context,
 													RayPayload& ray_payload,

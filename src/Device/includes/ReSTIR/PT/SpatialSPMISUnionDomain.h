@@ -480,30 +480,6 @@ HIPRT_DEVICE float spmis_neighbor_record_target(const HIPRTRenderData& render_da
 }
 
 /**
- * Inverse of the CDF of a cell (SPMIS layout: cdf[0] holds the sum of the importances, cdf[k > 0] the normalized prefix sums) at a given uniform, with
- * the LUT acceleration of CDFDeviceWithLUT::sample(). The uniform is given (instead of drawn) so that stratified uniforms can be used
- */
-HIPRT_DEVICE unsigned int spmis_sample_cell_cdf(const float* cdf, const unsigned short int* cdf_lut, unsigned int size, float random_value)
-{
-	unsigned int lut_bin_index = hippt::min(ReSTIR_PT_SPMISCDFLUTSize - 1u, static_cast<unsigned int>(random_value * ReSTIR_PT_SPMISCDFLUTSize));
-
-	unsigned int left  = cdf_lut[lut_bin_index];
-	unsigned int right = (lut_bin_index < ReSTIR_PT_SPMISCDFLUTSize - 1u ? cdf_lut[lut_bin_index + 1] : size - 1) + 1;
-	while (left < right)
-	{
-		unsigned int middle = (left + right) / 2;
-
-		float cdf_value = middle == 0 ? 0.0f : cdf[middle];
-		if (cdf_value < random_value)
-			left = middle + 1;
-		else
-			right = middle;
-	}
-
-	return hippt::min(left > 0 ? left - 1 : 0, size - 1);
-}
-
-/**
  * Samples the alias table of a cell (ReSTIRPTSPMISUnionDomainSettings::cell_alias_tables, built by ReSTIR_PT_SPMIS_BuildAliasTables) at a given uniform
  *
  * The integer part of 'random_value' x 'size' picks the bin, its fractional part chooses between the bin and its alias, so that one uniform is enough

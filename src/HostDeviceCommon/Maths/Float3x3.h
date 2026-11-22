@@ -37,26 +37,6 @@ struct float3x3
 		m[2][2] = col2.z;
 	}
 
-	/**
-	 * Construct from 3 columns
-	 */
-	HIPRT_DEVICE static float3x3 from_cols(float3_t col0, float3_t col1, float3_t col2)
-	{
-		float3x3 result;
-
-		result.m[0][0] = col0.x;
-		result.m[0][1] = col1.x;
-		result.m[0][2] = col2.x;
-		result.m[1][0] = col0.y;
-		result.m[1][1] = col1.y;
-		result.m[1][2] = col2.y;
-		result.m[2][0] = col0.z;
-		result.m[2][1] = col1.z;
-		result.m[2][2] = col2.z;
-
-		return result;
-	}
-
 	HIPRT_DEVICE static float3x3 from_rows(float3_t row0, float3_t row1, float3_t row2)
 	{
 		float3x3 result;
