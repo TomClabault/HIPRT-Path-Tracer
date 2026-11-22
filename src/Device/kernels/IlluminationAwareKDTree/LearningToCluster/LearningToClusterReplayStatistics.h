@@ -53,8 +53,9 @@ IlluminationAwareKDTree_LearningToClusterReplayStatistics(IlluminationAwareKDTre
 	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, static_cast<unsigned int>(lightcut_slot));
 	float observation	= sample.variance_observation;
 
-	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_batch_statistics.contribution_sum + offset, observation);
-	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_batch_statistics.squared_contribution_sum + offset, observation * observation);
+	// All the training samples of a lightcut add to the few slots of that lightcut: the native float atomic add keeps that contention cheap
+	hippt::atomic_fetch_add_device_memory(kd_tree.learning_to_cluster.lightcut_batch_statistics.contribution_sum + offset, observation);
+	hippt::atomic_fetch_add_device_memory(kd_tree.learning_to_cluster.lightcut_batch_statistics.squared_contribution_sum + offset, observation * observation);
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_batch_statistics.selected_count + offset, 1u);
 	hippt::atomic_fetch_add(kd_tree.learning_to_cluster.lightcut_sample_counts + lightcut_index, 1u);
 }

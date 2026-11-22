@@ -761,6 +761,24 @@ namespace hippt
 		return atomic_fetch_add(address, increment);
 	}
 
+	/**
+	 * Float atomic add compiled to the native float atomic add instruction. atomicAdd(float*) compiles to a compare-and-swap loop on AMD (without
+	 * -munsafe-fp-atomics): when many threads add to the same few addresses, the retries of that loop serialize and a kernel of a few milliseconds
+	 * takes seconds.
+	 *
+	 * Only for device memory: the native instruction does not support fine-grained (host coherent) memory.
+	 *
+	 * The function returns the value at 'address' before the increment
+	 */
+	__device__ static float atomic_fetch_add_device_memory(float* address, float increment)
+	{
+#ifdef __HIP_PLATFORM_AMD__
+		return unsafeAtomicAdd(address, increment);
+#else
+		return atomicAdd(address, increment);
+#endif // #ifdef __HIP_PLATFORM_AMD__
+	}
+
 	template <>
 	__device__ unsigned char atomic_fetch_add(unsigned char* address, unsigned char increment)
 	{
@@ -1791,6 +1809,16 @@ namespace hippt
 	 */
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment)
+	{
+		return atomic_address->fetch_add(increment);
+	}
+
+	/**
+	 * CPU version of the GPU float atomic add for device memory: a plain atomic add
+	 *
+	 * The function returns the value at 'address' before the increment
+	 */
+	static float atomic_fetch_add_device_memory(std::atomic<float>* atomic_address, float increment)
 	{
 		return atomic_address->fetch_add(increment);
 	}
